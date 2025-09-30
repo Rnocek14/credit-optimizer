@@ -57,6 +57,14 @@ export const QUERY_KEYS = {
   PROVIDER_ALTERNATES: (skillTags?: string[], difficulty?: string, estimatedHours?: number) => 
     ['provider-alternates', skillTags, difficulty, estimatedHours] as const,
   CAREER_TRACKS: (userId?: string) => ['career-tracks', userId] as const,
+
+  // Course-aware nodes: batched options and transfer rules
+  requirementOptionsBatch: (blockIds: string[], scope: string) =>
+    ['requirement-options-batch', scope, ...blockIds.sort()] as const,
+  transferRulesBatch: (blockIds: string[], scope: string) =>
+    ['transfer-rules-batch', scope, ...blockIds.sort()] as const,
+  courseEquivalencies: (courseIds: string[]) =>
+    ['course-equivalencies', ...courseIds.sort()] as const,
 } as const;
 
 export type QueryKey = keyof typeof QUERY_KEYS;

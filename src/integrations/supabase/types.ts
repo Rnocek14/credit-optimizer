@@ -2953,6 +2953,57 @@ export type Database = {
           },
         ]
       }
+      course_equivalencies: {
+        Row: {
+          course_id: string
+          created_at: string | null
+          equivalent_course_id: string
+          evidence: Json | null
+          id: string
+          last_updated: string | null
+          provider_from: string
+          provider_to: string
+          score: number | null
+        }
+        Insert: {
+          course_id: string
+          created_at?: string | null
+          equivalent_course_id: string
+          evidence?: Json | null
+          id?: string
+          last_updated?: string | null
+          provider_from: string
+          provider_to: string
+          score?: number | null
+        }
+        Update: {
+          course_id?: string
+          created_at?: string | null
+          equivalent_course_id?: string
+          evidence?: Json | null
+          id?: string
+          last_updated?: string | null
+          provider_from?: string
+          provider_to?: string
+          score?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_equivalencies_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "edu_courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "course_equivalencies_equivalent_course_id_fkey"
+            columns: ["equivalent_course_id"]
+            isOneToOne: false
+            referencedRelation: "edu_courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       course_intelligence_pipeline: {
         Row: {
           ai_analysis: Json
@@ -9733,35 +9784,58 @@ export type Database = {
       transfer_rules: {
         Row: {
           active: boolean | null
+          block_id: string | null
+          course_id: string | null
           created_at: string | null
           description: string | null
           details: Json | null
           id: string
+          notes: string | null
           rule_kind: Database["public"]["Enums"]["rule_kind"]
+          score: number | null
           to_program_id: string
+          transfer_state: string
           value: number
         }
         Insert: {
           active?: boolean | null
+          block_id?: string | null
+          course_id?: string | null
           created_at?: string | null
           description?: string | null
           details?: Json | null
           id?: string
+          notes?: string | null
           rule_kind: Database["public"]["Enums"]["rule_kind"]
+          score?: number | null
           to_program_id: string
+          transfer_state?: string
           value: number
         }
         Update: {
           active?: boolean | null
+          block_id?: string | null
+          course_id?: string | null
           created_at?: string | null
           description?: string | null
           details?: Json | null
           id?: string
+          notes?: string | null
           rule_kind?: Database["public"]["Enums"]["rule_kind"]
+          score?: number | null
           to_program_id?: string
+          transfer_state?: string
           value?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "transfer_rules_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "edu_courses"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       trust_badge_shares: {
         Row: {

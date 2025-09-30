@@ -134,11 +134,13 @@ export function mergeBlocksWithLiveData(
 
 /**
  * Generate stable data version hash for change detection
- * Changes when any live data updates
+ * Changes when any live data updates (blocks, courses, options, transfers, selections)
  */
 export function calculateDataVersion(
   liveBlocks: DBBlock[] | undefined,
   liveCourses: DBCourse[] | undefined,
+  optionsByBlock?: Map<string, any[]>,
+  transferRulesByBlock?: Map<string, any[]>,
   selectionsUpdatedAt?: number
 ): string {
   const blockHashes = (liveBlocks ?? [])
@@ -151,15 +153,28 @@ export function calculateDataVersion(
     .sort()
     .join('|');
   
+  const optionsHash = optionsByBlock 
+    ? Array.from(optionsByBlock.entries())
+        .map(([blockId, opts]) => `${blockId}:${opts.length}`)
+        .sort()
+        .join('|')
+    : '';
+  
+  const transfersHash = transferRulesByBlock
+    ? Array.from(transferRulesByBlock.entries())
+        .map(([blockId, rules]) => `${blockId}:${rules.length}`)
+        .sort()
+        .join('|')
+    : '';
+  
   const selectionsHash = selectionsUpdatedAt ?? 0;
   
-  // Simple hash: combine lengths + first/last item signatures
-  const sig = `v${liveBlocks?.length ?? 0}b${liveCourses?.length ?? 0}c${selectionsHash}s`;
+  // Combine all data sources for comprehensive change detection
+  const fullData = `${blockHashes}::${courseHashes}::${optionsHash}::${transfersHash}::${selectionsHash}`;
+  const hash = simpleHash(fullData);
   
-  // Add a checksum of the full data for real change detection
-  const fullHash = `${blockHashes}::${courseHashes}`.slice(0, 50);
-  
-  return `${sig}-${simpleHash(fullHash)}`;
+  // Return short UI-friendly version
+  return `v${hash}`;
 }
 
 // Simple string hash (djb2 algorithm)

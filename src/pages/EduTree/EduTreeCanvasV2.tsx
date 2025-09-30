@@ -21,6 +21,9 @@ import { useFeatureFlags } from '@/lib/featureFlags';
 import { type FilterMode } from './data/seedDataV2';
 import { LaneHeaders } from './components/LaneHeaders';
 import { EdgeLegend } from './components/EdgeLegend';
+import { NodeOptionsPill } from './components/NodeOptionsPill';
+import { CourseOptionsList, type CourseOptionData } from './components/CourseOptionsList';
+import { CourseSelectionModal } from './components/CourseSelectionModal';
 import HeaderNode from './nodes/HeaderNode';
 import GateEdge from './edges/GateEdge';
 import GateBranchEdge from './edges/GateBranchEdge';
@@ -62,10 +65,8 @@ import { EvidenceBadges } from './components/EvidenceBadges';
 import { PhaseHeaders } from './components/HUD/PhaseHeaders';
 import { LaneCaptions } from './components/HUD/LaneCaptions';
 import { ComparisonLegend as HudComparisonLegend } from './components/HUD/ComparisonLegend';
-import { CourseSelectionModal } from './components/CourseSelectionModal';
 import { useUserPlan } from '@/hooks/useUserPlan';
 import { ENV } from '@/config/env';
-import { NodeOptionsPill } from './components/NodeOptionsPill';
 import { marketplaceKeysFromNodeId } from './helpers/marketplaceKeys';
 
 // Export marketplace helpers globally for diagnostics
@@ -294,6 +295,18 @@ const RequirementNode = ({ data }: { data: V2NodeData }) => {
         <div className="text-xs font-medium text-primary mt-1">
           {data.trackId.toUpperCase()}
         </div>
+      )}
+      
+      {/* Phase 3: Course options list with transferability */}
+      {(data as any)?.options && Array.isArray((data as any).options) && (data as any).options.length > 0 && (
+        <CourseOptionsList 
+          options={(data as any).options as CourseOptionData[]}
+          maxDisplay={3}
+          onOptionClick={(courseId) => {
+            console.log('[RequirementNode] Course clicked:', courseId);
+            setModalOpen(true);
+          }}
+        />
       )}
       
       {/* DEV DIAGNOSTIC: Only show when real pill wouldn't render */}

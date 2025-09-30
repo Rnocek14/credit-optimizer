@@ -265,6 +265,8 @@ export function useEduTreeV2Data(filterMode: FilterMode = null): UseEduTreeV2Dat
     return calculateDataVersion(
       liveBlocksData as DBBlock[] | undefined,
       liveCoursesData as DBCourse[] | undefined,
+      undefined, // optionsByBlock - will wire after hooks are added
+      undefined, // transferRulesByBlock - will wire after hooks are added
       Date.now() // Use current timestamp as proxy for selections changes
     );
   }, [liveBlocksData, liveCoursesData]);
