@@ -154,6 +154,20 @@ const RequirementNode = ({ data }: { data: V2NodeData }) => {
     }
     // only primitive deps; avoid object deps that change each render
   }, [ocFromData, (data as any)?.id, (data as any)?.blockId, (data as any)?.block?.id]);
+  
+  // 4) Sticky count to prevent flicker during re-compute
+  const lastGoodCountRef = React.useRef<number | undefined>(undefined);
+  
+  const resolvedCount = useMemo(() => {
+    const n = Number(optionsCount);
+    return Number.isFinite(n) && n > 0 ? n : undefined;
+  }, [optionsCount]);
+  
+  React.useEffect(() => {
+    if (resolvedCount != null) lastGoodCountRef.current = resolvedCount;
+  }, [resolvedCount]);
+  
+  const countToShow = resolvedCount ?? lastGoodCountRef.current;
   const hasAceCredit = data.hasAceCredit ?? (blockData as any)?.hasAceCredit;
   const hasClep = data.hasClep ?? (blockData as any)?.hasClep;
   const selectedCourse = data.selectedCourse ?? (blockData as any)?.selectedCourse;
@@ -164,49 +178,18 @@ const RequirementNode = ({ data }: { data: V2NodeData }) => {
     if (typeof window === 'undefined') return false;
     const LOCAL_MP = window.localStorage?.getItem('mp') === '1';
     const URL_MP = new URLSearchParams(window.location.search).get('mp') === '1';
-    const enabled = ENV.DEGREE_MARKETPLACE || LOCAL_MP || URL_MP || true; // Force enabled for testing
-    console.log('[REQNODE] Marketplace flag check:', { ENV: ENV.DEGREE_MARKETPLACE, LOCAL_MP, URL_MP, enabled });
-    return enabled;
+    return ENV.DEGREE_MARKETPLACE || LOCAL_MP || URL_MP || true; // Force enabled for testing
   }, []);
   
-  // DIAGNOSTIC: Enhanced logging for marketplace data flow
-  useEffect(() => {
-    if (process.env.NODE_ENV !== 'development') return;
-    
-    // Only log nodes with marketplace data or first 3 nodes
-    const shouldLog = Number.isFinite(optionsCount) || 
-                     Math.random() < 0.05; // Sample 5% of nodes
-    
-    if (shouldLog) {
-      console.log('[REQNODE] Marketplace state:', blockId, {
-        SHOW_MP,
-        rawIn,
-        rawInType: typeof rawIn,
-        ocFromData,
-        optionsCount,
-        optionsCountType: typeof optionsCount,
-        optionsCountFinite: Number.isFinite(optionsCount),
-        optionsCountGreaterThanZero: Number.isFinite(optionsCount) && optionsCount! > 0,
-        hasAceCredit,
-        hasClep,
-        selectedCourse: selectedCourse?.title,
-        dataKeys: Object.keys(data),
-        mpSig: (data as any).mpSig,
-        willRenderPill: SHOW_MP && Number.isFinite(optionsCount) && optionsCount! > 0
-      });
-    }
-  }, [blockId, SHOW_MP, optionsCount, hasAceCredit, hasClep, selectedCourse, data]);
-
-  // OLD diagnostic - keep for backward compatibility
-  useEffect(() => {
-    if (process.env.NODE_ENV !== 'development') return;
-    console.log('[REQNODE]', blockId, {
-      SHOW_MP, 
-      optionsCount, 
-      isFinite: Number.isFinite(optionsCount),
-      greaterThanZero: Number(optionsCount) > 0
-    });
-  }, [blockId, optionsCount, SHOW_MP]);
+  // Simplified pill visibility: only depends on explicit switches
+  const allowPills = !!SHOW_MP;
+  const n = Number(countToShow);
+  const showPill = allowPills && Number.isFinite(n) && n > 0;
+  
+  if (import.meta.env.DEV) {
+    console.log('[PILL] show=%o count=%o allow=%o resolved=%o sticky=%o', 
+      showPill, countToShow, allowPills, resolvedCount, lastGoodCountRef.current);
+  }
   
   // Extract track and program info for styling
   const trackId = data.trackId || blockData?.track_id || blockData?.block?.track_id;
@@ -302,30 +285,28 @@ const RequirementNode = ({ data }: { data: V2NodeData }) => {
         </span>
       )}
       
-      {/* Phase 2: Course marketplace chips - clean single source of truth */}
-      {SHOW_MP && (
-        <div className="mt-2 flex flex-wrap gap-1 items-center text-[10px]">
-          <NodeOptionsPill 
-            count={Number.isFinite(optionsCount) ? optionsCount as number : undefined}
-            onClick={() => setModalOpen(true)}
-            show={true}
-          />
-          {Number.isFinite(optionsCount) && optionsCount! > 0 && (
-            <>
-              {hasAceCredit && (
-                <span className="px-1.5 py-0.5 rounded bg-amber-100/60 text-amber-700 border border-amber-200/50" title="ACE credit available">
-                  ACE
-                </span>
-              )}
-              {hasClep && (
-                <span className="px-1.5 py-0.5 rounded bg-blue-100/60 text-blue-700 border border-blue-200/50" title="CLEP exam available">
-                  CLEP
-                </span>
-              )}
-            </>
-          )}
-        </div>
-      )}
+      {/* Phase 2: Course marketplace chips - simplified visibility */}
+      <div className="relative overflow-visible mt-2 flex flex-wrap gap-1 items-center text-[10px]">
+        <NodeOptionsPill 
+          count={n}
+          show={showPill}
+          onClick={() => setModalOpen(true)}
+        />
+        {showPill && (
+          <>
+            {hasAceCredit && (
+              <span className="px-1.5 py-0.5 rounded bg-amber-100/60 text-amber-700 border border-amber-200/50" title="ACE credit available">
+                ACE
+              </span>
+            )}
+            {hasClep && (
+              <span className="px-1.5 py-0.5 rounded bg-blue-100/60 text-blue-700 border border-blue-200/50" title="CLEP exam available">
+                CLEP
+              </span>
+            )}
+          </>
+        )}
+      </div>
       
       {/* Selected course display */}
       {SHOW_MP && selectedCourse && (
