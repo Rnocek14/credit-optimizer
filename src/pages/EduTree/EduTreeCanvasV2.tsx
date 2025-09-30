@@ -65,16 +65,7 @@ import { CourseSelectionModal } from './components/CourseSelectionModal';
 import { useUserPlan } from '@/hooks/useUserPlan';
 import { ENV } from '@/config/env';
 
-// Marketplace feature flag (module-level, computed once)
-const LOCAL_MP = typeof window !== 'undefined' && window.localStorage?.getItem('mp') === '1';
-const URL_MP = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('mp') === '1';
-const SHOW_MP = ENV.DEGREE_MARKETPLACE || LOCAL_MP || URL_MP;
-
-console.log('[EduTreeV2] Marketplace enabled:', SHOW_MP, {
-  env: ENV.DEGREE_MARKETPLACE,
-  localStorage: LOCAL_MP,
-  url: URL_MP
-});
+// Marketplace feature flag moved inside component for reactivity
 
 // Node components for V2
 const RequirementNode = ({ data }: { data: V2NodeData }) => {
@@ -88,7 +79,13 @@ const RequirementNode = ({ data }: { data: V2NodeData }) => {
   const { optionsCount, hasAceCredit, hasClep, selectedCourse } = data;
   const [modalOpen, setModalOpen] = useState(false);
   
-  // SHOW_MP is computed at module level (see top of file)
+  // Reactive marketplace feature flag
+  const SHOW_MP = useMemo(() => {
+    if (typeof window === 'undefined') return false;
+    const LOCAL_MP = window.localStorage?.getItem('mp') === '1';
+    const URL_MP = new URLSearchParams(window.location.search).get('mp') === '1';
+    return ENV.DEGREE_MARKETPLACE || LOCAL_MP || URL_MP;
+  }, []);
   
   // DIAGNOSTIC: Log each node's marketplace state (Step 2 from checklist)
   useEffect(() => {
@@ -99,7 +96,7 @@ const RequirementNode = ({ data }: { data: V2NodeData }) => {
       greaterThanZero: optionsCount > 0,
       rawData: data
     });
-  }, [blockId, optionsCount]);
+  }, [blockId, optionsCount, SHOW_MP]);
   
   // Extract track and program info for styling
   const trackId = data.trackId || blockData?.track_id || blockData?.block?.track_id;
