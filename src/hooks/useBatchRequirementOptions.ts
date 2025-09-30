@@ -3,6 +3,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useMemo } from 'react';
 import { warnOnce } from '@/utils/warnOnce';
 import { MARKETPLACE_VERSION as VERSION, EVIDENCE_VERSION, IN_CHUNK } from '@/config/versions';
+import { ENV } from '@/config/env';
+import type { MPInfo, MPMap } from '@/pages/EduTree/utils/gateAggregation';
 
 // Module-scope cache for key generation with versioning
 const __mpCache = new Map<string, string[]>();
@@ -42,11 +44,7 @@ function chunk<T>(arr: T[], size = IN_CHUNK): T[][] {
 }
 
 // Dev banner (once per load; never in prod or SSR)
-const IS_PROD =
-  (typeof import.meta !== 'undefined' && (import.meta as any).env?.PROD) ||
-  (typeof process !== 'undefined' && process.env?.NODE_ENV === 'production');
-
-if (typeof window !== 'undefined' && !IS_PROD) {
+if (typeof window !== 'undefined' && !ENV.PROD) {
   warnOnce('dev-banner', '[Dev] Marketplace v%s, Evidence v%s, IN_CHUNK=%d', VERSION, EVIDENCE_VERSION, IN_CHUNK);
 }
 
@@ -109,7 +107,7 @@ export function useBatchRequirementOptions(requirementIds: string[]) {
       });
 
       // Map results back to original node IDs (use max/sum for collisions)
-      const resultMap = new Map<string, { optionsCount: number; hasAceCredit: boolean; hasClep: boolean }>();
+      const resultMap: MPMap = new Map<string, MPInfo>();
       for (const d of rows) {
         const nodeId = pickNodeId(String(d.block_id).toLowerCase());
         if (!nodeId) continue;

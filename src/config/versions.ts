@@ -1,8 +1,11 @@
 /**
  * Centralized version configuration for query keys and caching
  * Bump these when schema/API changes require cache invalidation
+ * Can be overridden via VITE_* environment variables
  */
 
-export const MARKETPLACE_VERSION = '2025-09-29' as const;
-export const EVIDENCE_VERSION    = '2025-09-29' as const;
-export const IN_CHUNK: number    = 500;     // keep as number for arithmetic
+import { ENV } from './env';
+
+export const MARKETPLACE_VERSION = ENV.MARKETPLACE_VERSION;
+export const EVIDENCE_VERSION    = ENV.EVIDENCE_VERSION;
+export const IN_CHUNK: number    = ENV.IN_CHUNK;

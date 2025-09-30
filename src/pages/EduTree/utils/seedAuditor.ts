@@ -1,6 +1,7 @@
 import { supabase } from '@/integrations/supabase/client';
 import { marketplaceKeysFromNodeId } from '@/hooks/useBatchRequirementOptions';
 import { IN_CHUNK } from '@/config/versions';
+import { ENV } from '@/config/env';
 
 type Block = {
   id: string;
@@ -73,11 +74,8 @@ export async function auditSeeds(blocks: Block[], selectedPrograms: string[]): P
     issues.push('No program-specific Y2 requirements found to contribute to gate-y3-tracks');
   }
 
-  // Marketplace presence (skip if AUDIT_MP=false)
-  const IS_DEV = typeof window !== 'undefined';
-  const AUDIT_MP = IS_DEV; // Only audit marketplace in browser dev environments
-  
-  if (AUDIT_MP) {
+  // Marketplace presence (skip if AUDIT_MP=false via ENV)
+  if (ENV.AUDIT_MP) {
     const candidates = Array.from(reqIds).flatMap(marketplaceKeysFromNodeId);
     const unique = Array.from(new Set(candidates.map(k => String(k).toLowerCase())));
     const present = new Set<string>();
@@ -121,9 +119,8 @@ export function printAuditReport(result: Result) {
   result.issues.forEach(i => console.warn(' -', i));
   console.groupEnd();
   
-  // CI mode: fail on issues (only in Node.js environments with process.env)
-  const IS_CI_MODE = typeof process !== 'undefined' && process.env?.AUDIT_SEEDS === 'true';
-  if (IS_CI_MODE) {
+  // CI mode: fail on issues (via ENV)
+  if (ENV.AUDIT_SEEDS) {
     console.error('[SeedAudit] Failing CI due to seed issues');
     throw new Error(`Seed audit failed with ${result.issues.length} issue(s)`);
   }
