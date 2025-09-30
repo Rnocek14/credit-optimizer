@@ -21,16 +21,16 @@ const SEED_TO_DB_SLUG: Record<string, string> = {
   'y1-math': 'mathematics',
   'y1-genedab': 'general-education',
   'y2-cs-core': 'core-i',
-  'y2-cs-elec': 'program-electives',
+  'y2-cs-elec': 'cs-elec',
   'y2-it-core': 'core-i',
-  'y2-it-elec': 'program-electives',
+  'y2-it-elec': 'it-elec',
   'y3-se-core': 'core-ii',
-  'y3-se-elec': 'track-electives',
+  'y3-se-elec': 'se-elec',
   'y3-ds-core': 'core-ii',
-  'y3-ds-elec': 'track-electives',
-  'y4-se-cap': 'capstone',
-  'y4-ds-cap': 'capstone',
-  'y4-it-cap': 'capstone',
+  'y3-ds-elec': 'ds-elec',
+  'y4-se-cap': 'se-cap',
+  'y4-ds-cap': 'ds-cap',
+  'y4-it-cap': 'it-cap',
 };
 
 // Generate candidate marketplace keys from a node ID (deterministic, ordered by distance)
