@@ -65,6 +65,12 @@ import { CourseSelectionModal } from './components/CourseSelectionModal';
 import { useUserPlan } from '@/hooks/useUserPlan';
 import { ENV } from '@/config/env';
 import { NodeOptionsPill } from './components/NodeOptionsPill';
+import { marketplaceKeysFromNodeId } from './helpers/marketplaceKeys';
+
+// Export marketplace helpers globally for diagnostics
+if (typeof window !== 'undefined') {
+  (window as any).marketplaceKeysFromNodeId = marketplaceKeysFromNodeId;
+}
 
 // Marketplace feature flag moved inside component for reactivity
 
@@ -82,8 +88,11 @@ const RequirementNode = ({ data }: { data: V2NodeData }) => {
   const creditsNeeded = blockData?.creditsNeeded ?? blockData?.block?.creditsNeeded ?? null;
   const catalogCourseIds = blockData?.block?.catalogCourseIds ?? blockData?.catalogCourseIds ?? undefined;
   
-  // Phase 2: Course marketplace data
-  const { optionsCount, hasAceCredit, hasClep, selectedCourse } = data;
+  // Phase 2: Course marketplace data - WITH FALLBACKS
+  const optionsCount = data.optionsCount ?? (blockData as any)?.optionsCount;
+  const hasAceCredit = data.hasAceCredit ?? (blockData as any)?.hasAceCredit;
+  const hasClep = data.hasClep ?? (blockData as any)?.hasClep;
+  const selectedCourse = data.selectedCourse ?? (blockData as any)?.selectedCourse;
   const [modalOpen, setModalOpen] = useState(false);
   
   // Reactive marketplace feature flag - enable by default for testing
@@ -96,20 +105,29 @@ const RequirementNode = ({ data }: { data: V2NodeData }) => {
     return enabled;
   }, []);
   
-  // DIAGNOSTIC: Log marketplace state for ALL nodes in dev
+  // DIAGNOSTIC: Enhanced logging for marketplace data flow
   useEffect(() => {
     if (process.env.NODE_ENV !== 'development') return;
-    console.log('[REQNODE] Marketplace data received:', blockId, {
-      SHOW_MP,
-      optionsCount,
-      optionsCountType: typeof optionsCount,
-      optionsCountFinite: Number.isFinite(optionsCount),
-      hasAceCredit,
-      hasClep,
-      selectedCourse: selectedCourse?.title,
-      rawData: { optionsCount, hasAceCredit, hasClep },
-      allData: data
-    });
+    
+    // Only log nodes with marketplace data or first 3 nodes
+    const shouldLog = Number.isFinite(optionsCount) || 
+                     Math.random() < 0.05; // Sample 5% of nodes
+    
+    if (shouldLog) {
+      console.log('[REQNODE] Marketplace state:', blockId, {
+        SHOW_MP,
+        optionsCount,
+        optionsCountType: typeof optionsCount,
+        optionsCountFinite: Number.isFinite(optionsCount),
+        optionsCountGreaterThanZero: Number.isFinite(optionsCount) && optionsCount! > 0,
+        hasAceCredit,
+        hasClep,
+        selectedCourse: selectedCourse?.title,
+        dataKeys: Object.keys(data),
+        mpSig: (data as any).mpSig,
+        willRenderPill: SHOW_MP && Number.isFinite(optionsCount) && optionsCount! > 0
+      });
+    }
   }, [blockId, SHOW_MP, optionsCount, hasAceCredit, hasClep, selectedCourse, data]);
 
   // OLD diagnostic - keep for backward compatibility
@@ -728,6 +746,73 @@ function EduTreeCanvasV2Content({
         });
         console.table(out);
         return out;
+      };
+      
+      // Enhanced comprehensive pipeline audit
+      (window as any).__auditMpPipeline = () => {
+        console.log('=== MARKETPLACE PIPELINE AUDIT (ENHANCED) ===');
+        
+        const mp = (window as any).__lastMpMap as Map<string, any> | undefined;
+        const enriched = (window as any).__enriched ?? [];
+        const rfNodes = safeNodes;
+        
+        // 1. Marketplace data fetch
+        console.log('1. Marketplace Data Fetch:');
+        const mpMapSize = mp?.size ?? 0;
+        const mpKeys = Array.from(mp?.keys() ?? []);
+        console.log('   - Map size:', mpMapSize);
+        console.log('   - Sample keys:', mpKeys.slice(0, 15));
+        console.log('   - Sample values:', mpKeys.slice(0, 3).map(k => ({ key: k, value: mp?.get(k) })));
+        
+        // 2. Enriched blocks analysis
+        console.log('2. Enriched Blocks:');
+        const enrichedWithMp = enriched.filter((b: any) => Number.isFinite(b.optionsCount) && b.optionsCount > 0);
+        const enrichedWithZero = enriched.filter((b: any) => b.optionsCount === 0);
+        const enrichedUndef = enriched.filter((b: any) => b.optionsCount === undefined);
+        console.log('   - Total enriched:', enriched.length);
+        console.log('   - With marketplace data (>0):', enrichedWithMp.length);
+        console.log('   - With zero options:', enrichedWithZero.length);
+        console.log('   - With undefined:', enrichedUndef.length);
+        console.log('   - Sample with data:', enrichedWithMp.slice(0, 5).map((b: any) => ({
+          id: b.id, optionsCount: b.optionsCount, hasAceCredit: b.hasAceCredit
+        })));
+        
+        // 3. React Flow nodes analysis
+        console.log('3. React Flow Nodes:');
+        const reqNodes = rfNodes.filter(n => n.type === 'requirement');
+        const nodesWithMp = reqNodes.filter((n: any) => Number.isFinite(n.data?.optionsCount) && n.data.optionsCount > 0);
+        const nodesWithZero = reqNodes.filter((n: any) => n.data?.optionsCount === 0);
+        const nodesUndef = reqNodes.filter((n: any) => n.data?.optionsCount === undefined);
+        console.log('   - Total RF nodes:', rfNodes.length);
+        console.log('   - Requirement nodes:', reqNodes.length);
+        console.log('   - With marketplace data (>0):', nodesWithMp.length);
+        console.log('   - With zero options:', nodesWithZero.length);
+        console.log('   - With undefined:', nodesUndef.length);
+        console.log('   - Sample with data:', nodesWithMp.slice(0, 5).map((n: any) => ({
+          id: n.id, optionsCount: n.data?.optionsCount, mpSig: n.data?.mpSig
+        })));
+        console.log('   - Sample undefined:', nodesUndef.slice(0, 3).map((n: any) => ({
+          id: n.id, optionsCount: n.data?.optionsCount, dataKeys: Object.keys(n.data ?? {})
+        })));
+        
+        // 4. Data flow integrity
+        console.log('4. Data Flow Integrity:');
+        const lostInNodeMapping = enrichedWithMp.length - nodesWithMp.length;
+        console.log('   - Lost in node mapping:', lostInNodeMapping, '(should be ~0)');
+        console.log('   - Survival rate:', mpMapSize > 0 ? `${((nodesWithMp.length / mpMapSize) * 100).toFixed(1)}%` : 'N/A');
+        
+        // 5. DOM rendering
+        console.log('5. DOM Rendering:');
+        const pills = document.querySelectorAll('[title*="View catalog course options"]');
+        const devPills = document.querySelectorAll('[title*="Dev diagnostic"]');
+        console.log('   - Production pills:', pills.length);
+        console.log('   - Dev pills:', devPills.length);
+        console.log('   - Expected:', nodesWithMp.length);
+        console.log('   - Rendering gap:', nodesWithMp.length - pills.length);
+        
+        console.log('=== END AUDIT ===');
+        
+        return { mpMapSize, enrichedWithMp: enrichedWithMp.length, nodesWithMp: nodesWithMp.length, pillsRendered: pills.length };
       };
     }
   }, [safeNodes, processedEdges]);

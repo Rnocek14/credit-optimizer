@@ -136,11 +136,20 @@ export function blocksToNodes(
       };
     }
 
-    // Helper to convert to number without masking undefined
+    // Helper to convert to number without masking undefined - MORE PERMISSIVE
     const asNum = (v: any) => {
-      if (v === null || v === undefined || v === '') return undefined;
+      // Explicitly handle undefined/null
+      if (v === null || v === undefined) return undefined;
+      // Handle empty string
+      if (v === '') return undefined;
+      // Try to convert to number
       const num = Number(v);
-      return Number.isNaN(num) ? undefined : num;
+      // Only reject if NaN, but accept 0
+      if (Number.isNaN(num)) {
+        console.warn('[blocksToNodes] Could not convert to number:', { blockId: block.id, value: v, type: typeof v });
+        return undefined;
+      }
+      return num;
     };
     
     // Build marketplace signature for reliable re-render detection
@@ -150,17 +159,25 @@ export function blocksToNodes(
     const sel = (block as any).selectedCourse?.id ?? '∅';
     const mpSig = `${oc ?? '∅'}|${ace}|${clep}|${sel}`;
     
-    // DIAGNOSTIC: Log marketplace data mapping for first 5 blocks
-    if (process.env.NODE_ENV === 'development' && safeBlocks.indexOf(block) < 5) {
-      console.log('[blocksToNodes] Marketplace data mapping:', {
-        blockId: block.id,
-        rawOptionsCount: (block as any).optionsCount,
-        rawType: typeof (block as any).optionsCount,
-        convertedOc: oc,
-        hasAceCredit: (block as any).hasAceCredit,
-        hasClep: (block as any).hasClep,
-        mpSig
-      });
+    // DIAGNOSTIC: Log marketplace data mapping - MORE DETAILED
+    if (process.env.NODE_ENV === 'development') {
+      const blockIndex = safeBlocks.indexOf(block);
+      // Log first 10 blocks AND any block with marketplace data
+      if (blockIndex < 10 || oc !== undefined) {
+        console.log('[blocksToNodes] Marketplace data mapping:', {
+          blockId: block.id,
+          blockIndex,
+          rawOptionsCount: (block as any).optionsCount,
+          rawType: typeof (block as any).optionsCount,
+          convertedOc: oc,
+          ocIsFinite: Number.isFinite(oc),
+          ocIsZero: oc === 0,
+          hasAceCredit: (block as any).hasAceCredit,
+          hasClep: (block as any).hasClep,
+          mpSig,
+          willRenderPill: Number.isFinite(oc) && oc! > 0
+        });
+      }
     }
     
     return {

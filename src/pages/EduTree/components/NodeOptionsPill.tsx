@@ -14,14 +14,19 @@ export function NodeOptionsPill({
   show: boolean;
   className?: string;
 }) {
-  // DIAGNOSTIC: Log why pill might not render
+  // DIAGNOSTIC: Enhanced logging with call stack info
   if (process.env.NODE_ENV === 'development') {
-    if (!show) {
-      console.log('[NodeOptionsPill] Not showing - show flag is false');
-    } else if (!Number.isFinite(count)) {
-      console.log('[NodeOptionsPill] Not showing - count not finite:', count, typeof count);
-    } else if (Number(count) <= 0) {
-      console.log('[NodeOptionsPill] Not showing - count <= 0:', count);
+    const reasons = [];
+    if (!show) reasons.push('show flag is false');
+    if (count === undefined) reasons.push('count is undefined');
+    if (count === null) reasons.push('count is null');
+    if (!Number.isFinite(count)) reasons.push(`count not finite: ${count} (${typeof count})`);
+    if (Number.isFinite(count) && Number(count) <= 0) reasons.push(`count <= 0: ${count}`);
+    
+    if (reasons.length > 0) {
+      console.log('[NodeOptionsPill] Not rendering:', { count, show, reasons });
+    } else {
+      console.log('[NodeOptionsPill] RENDERING pill:', { count, show });
     }
   }
   
