@@ -88,8 +88,11 @@ const RequirementNode = ({ data }: { data: V2NodeData }) => {
   const creditsNeeded = blockData?.creditsNeeded ?? blockData?.block?.creditsNeeded ?? null;
   const catalogCourseIds = blockData?.block?.catalogCourseIds ?? blockData?.catalogCourseIds ?? undefined;
   
-  // Phase 2: Course marketplace data - WITH FALLBACKS
-  const optionsCount = data.optionsCount ?? (blockData as any)?.optionsCount;
+  // Phase 2: Course marketplace data - WITH FALLBACKS AND COERCION
+  const rawOc = data.optionsCount ?? (blockData as any)?.optionsCount;
+  const optionsCount = rawOc == null ? undefined :
+    typeof rawOc === 'number' ? rawOc :
+    Number(rawOc); // Coerce string "5" -> 5, invalid -> NaN
   const hasAceCredit = data.hasAceCredit ?? (blockData as any)?.hasAceCredit;
   const hasClep = data.hasClep ?? (blockData as any)?.hasClep;
   const selectedCourse = data.selectedCourse ?? (blockData as any)?.selectedCourse;
@@ -116,6 +119,8 @@ const RequirementNode = ({ data }: { data: V2NodeData }) => {
     if (shouldLog) {
       console.log('[REQNODE] Marketplace state:', blockId, {
         SHOW_MP,
+        rawOc,
+        rawType: typeof rawOc,
         optionsCount,
         optionsCountType: typeof optionsCount,
         optionsCountFinite: Number.isFinite(optionsCount),
@@ -239,11 +244,11 @@ const RequirementNode = ({ data }: { data: V2NodeData }) => {
       {SHOW_MP && (
         <div className="mt-2 flex flex-wrap gap-1 items-center text-[10px]">
           <NodeOptionsPill 
-            count={optionsCount}
+            count={Number.isFinite(optionsCount) ? optionsCount as number : undefined}
             onClick={() => setModalOpen(true)}
             show={true}
           />
-          {Number.isFinite(optionsCount) && Number(optionsCount) > 0 && (
+          {Number.isFinite(optionsCount) && optionsCount! > 0 && (
             <>
               {hasAceCredit && (
                 <span className="px-1.5 py-0.5 rounded bg-amber-100/60 text-amber-700 border border-amber-200/50" title="ACE credit available">

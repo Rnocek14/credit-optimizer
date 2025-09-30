@@ -9,29 +9,38 @@ export function NodeOptionsPill({
   show,
   className = '',
 }: {
-  count: number | undefined;
+  count: number | string | undefined;
   onClick: () => void;
   show: boolean;
   className?: string;
 }) {
+  // Coerce count to number (handles both string and number inputs)
+  const n = count == null ? NaN : Number(count);
+  
   // DIAGNOSTIC: Enhanced logging with call stack info
   if (process.env.NODE_ENV === 'development') {
     const reasons = [];
     if (!show) reasons.push('show flag is false');
     if (count === undefined) reasons.push('count is undefined');
     if (count === null) reasons.push('count is null');
-    if (!Number.isFinite(count)) reasons.push(`count not finite: ${count} (${typeof count})`);
-    if (Number.isFinite(count) && Number(count) <= 0) reasons.push(`count <= 0: ${count}`);
+    if (Number.isNaN(n)) reasons.push(`coerced to NaN: ${count} (${typeof count})`);
+    if (Number.isFinite(n) && n <= 0) reasons.push(`count <= 0: ${n}`);
     
     if (reasons.length > 0) {
-      console.log('[NodeOptionsPill] Not rendering:', { count, show, reasons });
+      console.log('[NodeOptionsPill] Not rendering:', { 
+        rawCount: count, 
+        rawType: typeof count,
+        coercedN: n,
+        show, 
+        reasons 
+      });
     } else {
-      console.log('[NodeOptionsPill] RENDERING pill:', { count, show });
+      console.log('[NodeOptionsPill] RENDERING pill:', { rawCount: count, coercedN: n, show });
     }
   }
   
   // Only render for valid, positive counts
-  if (!show || !Number.isFinite(count) || Number(count) <= 0) {
+  if (!show || !Number.isFinite(n) || n <= 0) {
     return null;
   }
 
@@ -44,7 +53,7 @@ export function NodeOptionsPill({
       }
       title="View catalog course options that satisfy this requirement"
     >
-      Options: {count}
+      Options: {n}
     </button>
   );
 }
