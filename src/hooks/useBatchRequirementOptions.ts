@@ -144,6 +144,23 @@ export function useBatchRequirementOptions(requirementIds: string[]) {
         warnOnce('mp-misses', '[MP-BATCH] ⚠️ No marketplace data for:', misses);
       }
 
+      // Warn about blocks with 0 options (data quality issue)
+      const zeroes = requirementIds.filter(id => resultMap.get(id)?.optionsCount === 0);
+      if (zeroes.length > 0) {
+        if (!window.__mpZeroWarned) window.__mpZeroWarned = new Set();
+        const newZeroes = zeroes.filter(id => !window.__mpZeroWarned?.has(id));
+        if (newZeroes.length > 0) {
+          console.warn(
+            `[MP-BATCH] ⚠️ ${newZeroes.length} blocks have 0 course options:`,
+            newZeroes,
+            '\nFix: Add courses to block_members and refresh marketplace counts'
+          );
+          newZeroes.forEach(id => window.__mpZeroWarned?.add(id));
+        }
+      }
+
+      console.log('[MP-BATCH] ✅ Query returned', rows.length, 'rows');
+
       return resultMap;
     },
   });
