@@ -13,20 +13,24 @@ import { useUserPlan } from '@/hooks/useUserPlan';
 import { aggregateGateMarketplaceData, type MPInfo } from '../utils/gateAggregation';
 
 // Tolerant marketplace lookup: tries direct block.id, then all candidate keys
+// NORMALIZE: force all keys to lowercase for consistent lookup
 function getMpInfoForBlock(marketplaceData: Map<string, MPInfo> | undefined, blockId: string): MPInfo | undefined {
   if (!marketplaceData) return undefined;
   
+  const key = String(blockId).toLowerCase();
+  
   // Fast path: direct match
-  const direct = marketplaceData.get(blockId);
+  const direct = marketplaceData.get(key);
   if (direct) return direct;
 
   // Tolerant path: try all candidate keys (seed id -> db slugs like 'cs-elec', 'y1-foundations', etc.)
-  for (const candidateKey of marketplaceKeysFromNodeId(blockId)) {
-    const hit = marketplaceData.get(candidateKey);
+  for (const candidateKey of marketplaceKeysFromNodeId(key)) {
+    const candLower = String(candidateKey).toLowerCase();
+    const hit = marketplaceData.get(candLower);
     if (hit) {
       // Track backfill usage for debugging
       (window as any).__mpSlugBackfills ??= new Set<string>();
-      (window as any).__mpSlugBackfills.add(`${blockId}→${candidateKey}`);
+      (window as any).__mpSlugBackfills.add(`${key}→${candLower}`);
       return hit;
     }
   }

@@ -153,7 +153,7 @@ export function useBatchRequirementOptions(requirementIds: string[]) {
       const resultMap: MPMap = new Map<string, MPInfo>();
       for (const d of rows) {
         const dbSlug = String(d.block_id).toLowerCase();
-        const nodeId = pickNodeId(dbSlug);
+        const nodeId = pickNodeId(dbSlug)?.toLowerCase() ?? null;
         
         const info: MPInfo = {
           optionsCount: Number(d.options_count ?? d.count ?? 0),
@@ -163,6 +163,7 @@ export function useBatchRequirementOptions(requirementIds: string[]) {
 
         // Dual-key strategy: key by both resolved nodeId (seed id) and raw DB slug
         // This makes lookup tolerant to seed-ID vs DB-slug differences
+        // NORMALIZE: force both keys to lowercase for consistent lookup
         if (nodeId) {
           const existing = resultMap.get(nodeId);
           if (!existing) {
@@ -177,7 +178,7 @@ export function useBatchRequirementOptions(requirementIds: string[]) {
           }
         }
         
-        // Also key by raw DB slug for tolerant lookup
+        // Also key by raw DB slug for tolerant lookup (lowercased)
         const existingSlug = resultMap.get(dbSlug);
         if (!existingSlug) {
           resultMap.set(dbSlug, info);
