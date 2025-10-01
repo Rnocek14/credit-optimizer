@@ -967,7 +967,7 @@ export function applyManualLayout(
         options: mergedOptions,
         transferRules: transferRules,
         optionsCount: rawOptions.length,
-        __v: dataVersion,
+        __v: `${dataVersion}-mp${rawOptions.length}`, // Include count to trigger re-render
         // PHASE 2: Unified marketplace data structure (removed mpSig)
         marketplace: {
           ...(node as any).data?.marketplace,
