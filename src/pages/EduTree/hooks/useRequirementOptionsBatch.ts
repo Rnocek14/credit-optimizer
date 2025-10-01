@@ -79,40 +79,72 @@ export function useRequirementOptionsBatch(
       const idBySlug = new Map((reqs || []).map(r => [String(r.slug).toLowerCase(), String(r.id).toLowerCase()]));
       const slugById = new Map((reqs || []).map(r => [String(r.id).toLowerCase(), String(r.slug).toLowerCase()]));
 
-      // Normalize incoming blockIds → UUIDs where possible
-      const normalizedIds = [...new Set(blockIds
-        .map(k => (idBySlug.get(String(k).toLowerCase()) ?? String(k).toLowerCase()))
-      )];
+      // Helper: strip gate nodes and generate slug candidates
+      const dropGate = (k: string) => !k.startsWith('gate-');
+      const toSlugCandidates = (raw: string) => {
+        const s = raw.toLowerCase();
+        const noYear = s.replace(/^y\d-/, '');                  // y3-se-elec -> se-elec
+        const last2 = s.split('-').slice(-2).join('-');         // y3-se-elec -> se-elec
+        return [s, noYear, last2];
+      };
+
+      // Canonicalize incoming IDs -> block UUIDs
+      const blockUUIDs = new Set<string>();
+      const unresolved: string[] = [];
+
+      for (const k of blockIds.filter(Boolean).map(String).filter(dropGate)) {
+        // Already a UUID?
+        if (/^[0-9a-f-]{36}$/i.test(k)) {
+          blockUUIDs.add(k.toLowerCase());
+          continue;
+        }
+        // Try slug candidates
+        const hit = toSlugCandidates(k)
+          .map((c) => idBySlug.get(c))
+          .find(Boolean);
+        if (hit) blockUUIDs.add(hit);
+        else unresolved.push(k);
+      }
 
       trace({
         stage: 'MP_BATCH',
         t: Date.now(),
         note: 'ID_RESOLUTION',
         mp: { 
-          count: normalizedIds.length,
-          signature: `resolve|${blockIds.length}→${normalizedIds.length}`
+          count: blockUUIDs.size,
+          signature: `resolve|${blockIds.length}→${blockUUIDs.size}|unresolved:${unresolved.length}`
         }
       });
 
-      if (blockIds.length > 0 && normalizedIds.length === 0) {
+      console.log('[MP_BATCH][ID_RESOLUTION]', {
+        scope,
+        inputCount: blockIds.length,
+        resolvedCount: blockUUIDs.size,
+        unresolvedCount: unresolved.length,
+        unresolvedSample: unresolved.slice(0, 5),
+      });
+
+      if (blockUUIDs.size === 0) {
         console.error('[MP_BATCH] ⚠️ ID resolution produced zero UUIDs', {
           scope,
           blockIdsSample: blockIds.slice(0, 8),
+          unresolved: unresolved.slice(0, 10),
         });
         trace({ stage: 'MP_BATCH', t: Date.now(), note: 'ID_RESOLUTION_EMPTY' });
         return new Map<string, CourseOption[]>();
       }
 
-      // Step 2: Probe query to discover actual option_kind values (no filter)
+      // Step 2: Probe query to discover actual option_kind values
+      // JOIN requirements and filter on requirements.block_id (the correct FK)
       const { data: probe, error: probeErr } = await supabase
         .from('requirement_options')
-        .select('requirement_id, option_kind, option_ref_id')
-        .in('requirement_id', normalizedIds)
-        .limit(50); // Small sample is fine
+        .select('option_kind, requirements!inner(block_id)')
+        .in('requirements.block_id', Array.from(blockUUIDs))
+        .limit(50);
 
       if (probeErr) throw probeErr;
 
-      const kindCounts = (probe || []).reduce((acc, r) => {
+      const kindCounts = (probe || []).reduce((acc, r: any) => {
         const kind = r.option_kind ?? 'NULL';
         acc[kind] = (acc[kind] ?? 0) + 1;
         return acc;
@@ -132,55 +164,55 @@ export function useRequirementOptionsBatch(
         scope,
         probeRows: probe?.length ?? 0,
         kindCounts,
-        normalizedIdsSample: normalizedIds.slice(0, 5),
+        blockUUIDsSample: Array.from(blockUUIDs).slice(0, 5),
       });
 
-      // Step 3: Main query - use 'course' if found in probe, otherwise no filter
-      const hasCourseKind = kindCounts['course'] > 0;
+      // Step 3: Main query - JOIN requirements and courses, filter on requirements.block_id
+      const allowedKinds = Object.keys(kindCounts).filter(k => k && k !== 'NULL') as ('cert' | 'course' | 'exam')[];
       
-      let query = supabase
+      const { data: rows, error: rowsErr } = await supabase
         .from('requirement_options')
-        .select('requirement_id, option_kind, option_ref_id, transfer_eligible, credits_awarded')
-        .in('requirement_id', normalizedIds);
-
-      // Only filter by 'course' if the probe confirmed it exists
-      if (hasCourseKind) {
-        query = query.eq('option_kind', 'course');
-      }
-
-      const { data: optionsData, error: optionsError } = await query;
+        .select(`
+          option_kind,
+          option_ref_id,
+          transfer_eligible,
+          credits_awarded,
+          requirements!inner ( id, block_id ),
+          edu_courses!inner ( id, code, title, area, credits, is_core, is_capstone, description )
+        `)
+        .in('requirements.block_id', Array.from(blockUUIDs))
+        .in('option_kind', allowedKinds.length > 0 ? allowedKinds : ['course'] as const);
 
       trace({
         stage: 'MP_BATCH',
         t: Date.now(),
         note: 'DB_FETCH',
         mp: { 
-          count: optionsData?.length ?? 0,
-          signature: `fetch|${optionsData?.length ?? 0}|${hasCourseKind ? 'course' : 'all'}`
+          count: rows?.length ?? 0,
+          signature: `fetch|${rows?.length ?? 0}|kinds:${allowedKinds.join(',')}`
         },
       });
       
       console.log('[MP_BATCH][DB_FETCH]', {
         scope,
-        normalizedIdsCount: normalizedIds.length,
-        normalizedIdsSample: normalizedIds.slice(0, 5),
-        optionsDataCount: optionsData?.length ?? 0,
-        hasCourseKind,
-        kindCounts,
-        error: optionsError ? String(optionsError) : null,
+        blockUUIDsCount: blockUUIDs.size,
+        blockUUIDsSample: Array.from(blockUUIDs).slice(0, 5),
+        rowsCount: rows?.length ?? 0,
+        allowedKinds,
+        error: rowsErr ? String(rowsErr) : null,
       });
 
-      if (optionsError) {
-        console.error('[MP_BATCH][DB_ERROR]', { scope, error: optionsError });
-        throw optionsError;
+      if (rowsErr) {
+        console.error('[MP_BATCH][DB_ERROR]', { scope, error: rowsErr });
+        throw rowsErr;
       }
       
-      if (!optionsData || optionsData.length === 0) {
+      if (!rows || rows.length === 0) {
         console.warn('[MP_BATCH] ⚠️ No requirement_options rows returned', {
           scope,
-          normalizedIdsCount: normalizedIds.length,
-          normalizedIdsSample: normalizedIds.slice(0, 5),
-          hasCourseKind,
+          blockUUIDsCount: blockUUIDs.size,
+          blockUUIDsSample: Array.from(blockUUIDs).slice(0, 5),
+          allowedKinds,
           kindCounts,
         });
         trace({ stage: 'MP_BATCH', t: Date.now(), note: 'NO_ROWS' });
@@ -188,64 +220,32 @@ export function useRequirementOptionsBatch(
         return new Map<string, CourseOption[]>();
       }
 
-      // Step 4: Fetch courses for all option_ref_ids
-      const courseIds = [...new Set(optionsData.map(opt => opt.option_ref_id))].filter(Boolean);
-      
-      const { data: coursesData, error: coursesError } = await supabase
-        .from('edu_courses')
-        .select('id, code, title, area, credits, is_core, is_capstone, description')
-        .in('id', courseIds);
-
-      if (coursesError) {
-        console.error('[MP_BATCH][COURSES_ERROR]', { scope, error: coursesError });
-        throw coursesError;
-      }
-
-      // Build course map
-      const courseMap = new Map<string, CourseData>();
-      (coursesData || []).forEach(course => {
-        courseMap.set(course.id, course);
-      });
-
-      trace({
-        stage: 'MP_BATCH',
-        t: Date.now(),
-        note: 'COURSES_FETCHED',
-        mp: { 
-          count: coursesData?.length ?? 0,
-          signature: `courses|${coursesData?.length ?? 0}`
-        }
-      });
-
-      // Step 5: Group options by block ID
+      // Step 4: Group options by block UUID/slug
       const resultMap = new Map<string, CourseOption[]>();
       
-      for (const row of optionsData) {
-        if (!row.option_ref_id) continue;
+      for (const r of rows as any[]) {
+        const c = r.edu_courses;
+        if (!c) continue;
         
-        const course = courseMap.get(row.option_ref_id);
-        if (!course) {
-          console.warn('[MP_BATCH] Course not found for option_ref_id', { option_ref_id: row.option_ref_id });
-          continue;
-        }
-        const evidence = typeof course.description === 'string' 
-          ? tryParseEvidence(course.description)
+        const evidence = typeof c.description === 'string' 
+          ? tryParseEvidence(c.description)
           : { ace: false, clep: false };
 
         const courseOption: CourseOption = {
-          courseId: course.id,
-          code: course.code,
-          title: course.title,
-          provider: course.area || 'Unknown',
-          credits: course.credits,
+          courseId: c.id,
+          code: c.code,
+          title: c.title,
+          provider: c.area || 'Unknown',
+          credits: c.credits,
           cost: undefined,
           evidence,
         };
 
-        const uuidKey = String(row.requirement_id).toLowerCase();
-        const slugKey = slugById.get(uuidKey);
+        // Key by block UUID and slug (from requirements.block_id)
+        const blockUuid = String(r.requirements.block_id).toLowerCase();
+        const slug = slugById.get(blockUuid);
 
-        for (const k of [uuidKey, slugKey].filter(Boolean) as string[]) {
+        for (const k of [blockUuid, slug].filter(Boolean) as string[]) {
           if (!resultMap.has(k)) resultMap.set(k, []);
           resultMap.get(k)!.push(courseOption);
         }
@@ -275,9 +275,8 @@ export function useRequirementOptionsBatch(
           scope,
           blockIdsCount: blockIds.length,
           blockIdsSample: blockIds.slice(0, 8),
-          normalizedIdsCount: normalizedIds.length,
-          optionsDataCount: optionsData.length,
-          coursesDataCount: coursesData?.length ?? 0,
+          blockUUIDsCount: blockUUIDs.size,
+          rowsCount: rows.length,
           kindCounts,
         });
       }
