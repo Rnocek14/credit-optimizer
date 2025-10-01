@@ -56,7 +56,7 @@ export function useRequirementOptionsBatch(
   });
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ['reqOptionsBatch', scope, [...blockIds].sort()], // Stable cache key
+    queryKey: ['reqOptionsBatch', 'v3-block-members', scope, [...blockIds].sort()], // v3: using block_members table
     enabled: enabled && blockIds.length > 0, // Add explicit enabled check
     queryFn: async () => {
       mark('mp_batch:start');
