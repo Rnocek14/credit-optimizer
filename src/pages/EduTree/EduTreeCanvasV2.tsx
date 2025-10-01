@@ -106,11 +106,27 @@ const RequirementNode = ({ data }: { data: V2NodeData }) => {
   const catalogCourseIds = blockData?.block?.catalogCourseIds ?? blockData?.catalogCourseIds ?? undefined;
   
   // Phase 2: Course marketplace data - Use enriched marketplace subtree
-  const marketplace = (data as any)?.marketplace;
+  // CRITICAL: Direct access without type casting to avoid undefined
+  const rawData = data as any;
+  const marketplace = rawData?.marketplace;
+  
+  // DEV DIAGNOSTIC: Log what we actually receive (sample 5%)
+  if (import.meta.env.DEV && Math.random() < 0.05) {
+    console.log('[RequirementNode][data-check]', {
+      nodeId: blockId,
+      hasMarketplace: !!marketplace,
+      mpCount: marketplace?.count,
+      mpShow: marketplace?.show,
+      mpSignature: marketplace?.signature?.slice(0, 30),
+      dataKeys: Object.keys(rawData || {}),
+      fallbackOptionsCount: rawData?.optionsCount,
+      fallbackOptionsLen: Array.isArray(rawData?.options) ? rawData.options.length : 0,
+    });
+  }
   
   // Primary source: enriched marketplace data from manualLayoutRenderer
-  const optionsCount = marketplace?.count ?? (data as any)?.optionsCount;
-  const marketplaceOptions = marketplace?.options ?? (data as any)?.options;
+  const optionsCount = marketplace?.count ?? rawData?.optionsCount;
+  const marketplaceOptions = marketplace?.options ?? rawData?.options;
   
   // Sticky count to prevent flicker during re-compute
   const lastGoodCountRef = React.useRef<number | undefined>(undefined);

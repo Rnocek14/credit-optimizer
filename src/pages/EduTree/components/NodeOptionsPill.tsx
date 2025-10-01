@@ -17,8 +17,10 @@ export function NodeOptionsPill({
   // Coerce count to number (handles both string and number inputs)
   const n = count == null ? NaN : Number(count);
   
-  // DIAGNOSTIC: Enhanced logging with call stack info
-  if (process.env.NODE_ENV === 'development') {
+  // DIAGNOSTIC: Sample 10% to reduce noise, but always log when count exists
+  const shouldLog = process.env.NODE_ENV === 'development' && (n > 0 || Math.random() < 0.1);
+  
+  if (shouldLog) {
     const reasons = [];
     if (!show) reasons.push('show flag is false');
     if (count === undefined) reasons.push('count is undefined');
@@ -35,7 +37,7 @@ export function NodeOptionsPill({
         reasons 
       });
     } else {
-      console.log('[NodeOptionsPill] RENDERING pill:', { rawCount: count, coercedN: n, show });
+      console.log('[NodeOptionsPill] ✅ RENDERING pill:', { rawCount: count, coercedN: n, show });
     }
   }
   
