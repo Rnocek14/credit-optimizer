@@ -1,6 +1,8 @@
 /**
  * Batched hook for fetching course options for multiple requirement blocks
  * Returns Map<block_id, Course[]> with full course details + evidence
+ * 
+ * PHASE 2 FIX: Caches by dataVersion to avoid redundant fetches
  */
 
 import { useQuery } from '@tanstack/react-query';
@@ -10,6 +12,9 @@ import type { Database } from '@/integrations/supabase/types';
 import { trace, mark, measure } from '../utils/debug';
 
 type DBCourse = Database['public']['Tables']['edu_courses']['Row'];
+
+// Simple in-memory cache by dataVersion
+const optionsCache = new Map<string, Map<string, CourseOption[]>>();
 
 // Subset of course fields we fetch for options
 type CourseData = Pick<DBCourse, 'id' | 'code' | 'title' | 'area' | 'credits' | 'is_core' | 'is_capstone' | 'description'>;
@@ -60,6 +65,12 @@ export function useRequirementOptionsBatch(
     enabled: enabled && blockIds.length > 0, // Add explicit enabled check
     queryFn: async () => {
       mark('mp_batch:start');
+      
+      // PHASE 2 FIX: Check cache by scope (which includes dataVersion)
+      if (optionsCache.has(scope)) {
+        console.log('[MP_BATCH][CACHE_HIT] Using cached data for scope:', scope);
+        return optionsCache.get(scope)!;
+      }
       
       // STAGE 0: INPUT - Log what we're asking for
       trace({
@@ -248,6 +259,10 @@ export function useRequirementOptionsBatch(
           },
         });
       }
+
+      // PHASE 2 FIX: Store in cache for next call with same dataVersion
+      optionsCache.set(scope, resultMap);
+      console.log('[MP_BATCH][CACHE_SET] Stored results for scope:', scope, 'blocks:', resultMap.size);
 
       return resultMap;
     },

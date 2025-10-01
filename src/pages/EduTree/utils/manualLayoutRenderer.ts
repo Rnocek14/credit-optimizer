@@ -189,6 +189,41 @@ export function blocksToNodes(
     // Build marketplace signature for reliable re-render detection
     const oc = asNum((block as any).optionsCount);
     
+    /**
+     * PHASE 2 FIX: Generate comprehensive block aliases
+     * Maps common variants for gates and cores that appear in different contexts
+     */
+    const getBlockAliases = (id: string, slug?: string): string[] => {
+      const aliases: string[] = [];
+      const idLower = id.toLowerCase();
+      const slugLower = (slug || '').toLowerCase();
+      
+      // Gate aliases
+      if (idLower.includes('gate') || idLower.includes('program') || idLower.includes('track')) {
+        aliases.push('program-gate', 'program-choice', 'y2-program-gate', 'y2-programs');
+        aliases.push('track-gate', 'track-choice', 'y3-track-gate', 'y3-tracks');
+      }
+      
+      // Core block aliases (Year 3 track-specific cores)
+      if (idLower.includes('core') || slugLower.includes('core')) {
+        aliases.push('se-core', 'software-engineering-core', 'core-iii-se', 'year3-se-core', 'y3-se-core');
+        aliases.push('ds-core', 'data-science-core', 'core-iii-ds', 'year3-ds-core', 'y3-ds-core');
+      }
+      
+      // Elective aliases
+      if (idLower.includes('elec') || slugLower.includes('elec')) {
+        aliases.push('cs-elec', 'y2-cs-elec', 'it-elec', 'y2-it-elec');
+        aliases.push('se-elec', 'y3-se-elec', 'ds-elec', 'y3-ds-elec');
+      }
+      
+      // Capstone aliases
+      if (idLower.includes('cap') || slugLower.includes('cap')) {
+        aliases.push('se-cap', 'y4-se-cap', 'ds-cap', 'y4-ds-cap', 'it-cap', 'y4-it-cap');
+      }
+      
+      return aliases;
+    };
+    
     // Course-aware: Get options and transfer rules for this block
     // Use the SAME key generation logic as useBatchRequirementOptions for consistency
     const candidateKeys = marketplaceKeysFromNodeId(block.id);
@@ -203,6 +238,10 @@ export function blocksToNodes(
         candidateKeys.splice(2, 0, slugNoYear);
       }
     }
+    
+    // Add comprehensive aliases for known blocks (PHASE 2 FIX: Gates and cores)
+    const blockAliases = getBlockAliases(block.id, block.slug);
+    candidateKeys.push(...blockAliases);
     
     const pickFromMap = <T,>(m?: Map<string, T>): T | undefined => {
       if (!m) return undefined;
@@ -219,20 +258,70 @@ export function blocksToNodes(
         }
       }
       
-      // STAGE 2: KEY_RESOLUTION
-      trace({
-        stage: 'KEY_RESOLUTION',
-        t: Date.now(),
-        dataVersion,
-        blockId: block.id,
-        slug: block.slug,
-        uuid: block.uuid,
-        pickedKey,
-        keysTried: candidateKeys,
-        mapSize: m.size,
-        sampleMapKeys: Array.from(m.keys()).slice(0, 10),
-        note: pickedKey ? 'hit' : 'MISS',
-      });
+      // STAGE 2: KEY_RESOLUTION (PHASE 2 FIX: Single definitive log)
+      if (pickedKey) {
+        // Determine resolution method
+        const via = 
+          pickedKey === block.id ? 'uuid' :
+          pickedKey === block.slug ? 'slug' :
+          blockAliases.includes(pickedKey) ? 'alias' :
+          'normalized';
+        
+        trace({
+          stage: 'KEY_RESOLUTION',
+          t: Date.now(),
+          dataVersion,
+          blockId: block.id,
+          slug: block.slug,
+          pickedKey,
+          via,
+          note: 'hit',
+        });
+      } else {
+        // Only log MISS if we truly have no match
+        trace({
+          stage: 'KEY_RESOLUTION',
+          t: Date.now(),
+          dataVersion,
+          blockId: block.id,
+          slug: block.slug,
+          keysTried: candidateKeys.slice(0, 5),
+          mapSize: m.size,
+          note: 'MISS',
+        });
+      }
+      // STAGE 2: KEY_RESOLUTION (PHASE 2 FIX: Single definitive log)
+      if (pickedKey) {
+        // Determine resolution method
+        const via = 
+          pickedKey === block.id ? 'uuid' :
+          pickedKey === block.slug ? 'slug' :
+          blockAliases.includes(pickedKey) ? 'alias' :
+          'normalized';
+        
+        trace({
+          stage: 'KEY_RESOLUTION',
+          t: Date.now(),
+          dataVersion,
+          blockId: block.id,
+          slug: block.slug,
+          pickedKey,
+          via,
+          note: 'hit',
+        });
+      } else {
+        // Only log MISS if we truly have no match
+        trace({
+          stage: 'KEY_RESOLUTION',
+          t: Date.now(),
+          dataVersion,
+          blockId: block.id,
+          slug: block.slug,
+          keysTried: candidateKeys.slice(0, 5),
+          mapSize: m.size,
+          note: 'MISS',
+        });
+      }
       
       return result;
     };

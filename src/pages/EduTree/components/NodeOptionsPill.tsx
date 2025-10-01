@@ -37,24 +37,28 @@ export function NodeOptionsPill({
   const firstArray = optionsSources.find(arr => Array.isArray(arr) && arr.length > 0);
   const fallbackCount = firstArray ? firstArray.length : 0;
 
-  // Compute final values - prioritize explicit count, then array length, then 0
-  const resolvedCount = typeof mp0.count === 'number' ? mp0.count : fallbackCount;
-  const resolvedResolved = typeof mp0.resolved === 'number' ? mp0.resolved : resolvedCount;
-  const resolvedSticky = typeof mp0.sticky === 'number' ? mp0.sticky : resolvedCount;
+  // PHASE 2 FIX: Separate capacity from choices
+  // capacity = how many you CAN pick (count)
+  // choices = how many options are actually available (optionsLen)
+  const capacity = typeof mp0.count === 'number' ? mp0.count : 0;
+  const choices = fallbackCount; // This is the actual optionsLen from arrays
+  const resolvedResolved = typeof mp0.resolved === 'number' ? mp0.resolved : choices;
+  const resolvedSticky = typeof mp0.sticky === 'number' ? mp0.sticky : choices;
   
   const mp = {
     ...mp0,
-    count: resolvedCount,
+    count: capacity,      // Capacity (how many to pick)
+    choices,              // Available choices
     resolved: resolvedResolved,
     sticky: resolvedSticky,
     allow: mp0.allow ?? true,
-    show: (mp0.show ?? (resolvedCount > 0)) && (mp0.allow ?? true),
+    show: (mp0.show ?? (choices > 0)) && (mp0.allow ?? true),
   };
 
   // Legacy props fallback (backwards compat only if marketplace unavailable)
-  const finalCount = (typeof count === 'number' && !mp0.count) ? count : mp.count;
+  const finalChoices = (typeof count === 'number' && !mp0.count && choices === 0) ? count : choices;
   const finalShow = (typeof show === 'boolean' && mp0.show === undefined) ? show : mp.show;
-  const n = Number(finalCount) || 0; // Ensure no NaN
+  const n = Number(finalChoices) || 0; // Display choices, not capacity
 
   // STAGE 6: PILL_RENDER - Final mile before rendering
   trace({
@@ -62,7 +66,7 @@ export function NodeOptionsPill({
     t: Date.now(),
     blockId: nodeId,
     mp: {
-      count: finalCount,
+      count: finalChoices,
       optionsLen: firstArray?.length,
       show: finalShow,
       allow: mp.allow,
@@ -72,10 +76,10 @@ export function NodeOptionsPill({
   
   // DIAGNOSTIC: Comprehensive logging in dev
   if (isDev) {
-    console.log('[PILL][%s] show=%s count=%s allow=%s resolved=%s sticky=%s sig=%s',
+    console.log('[PILL][%s] show=%s choices=%s allow=%s resolved=%s sticky=%s sig=%s',
       nodeId?.slice(0, 20),
       finalShow, 
-      finalCount, 
+      finalChoices, 
       mp.allow, 
       mp.resolved, 
       mp.sticky, 
@@ -91,7 +95,7 @@ export function NodeOptionsPill({
       if (!firstArray || firstArray.length === 0) reasons.push('no options array');
       
       console.log('[PILL][%s] Not rendering:', nodeId?.slice(0, 20), { 
-        finalCount, 
+        finalChoices, 
         finalShow, 
         n, 
         reasons,
@@ -107,16 +111,19 @@ export function NodeOptionsPill({
     return null;
   }
 
+  // PHASE 2 FIX: Show choices vs capacity
+  const capacityLabel = mp.count > 0 && mp.count !== n ? ` (pick up to ${mp.count})` : '';
+
   return (
     <button
       onClick={onClick}
       className={
-        "px-2 py-0.5 rounded-full border text-xs bg-secondary/10 hover:bg-primary/10 border-border/50 hover:border-primary/50 transition-colors cursor-pointer pointer-events-auto z-10 " +
+        "px-2 py-0.5 rounded-full border text-xs bg-transparent hover:bg-primary/10 border-border/50 hover:border-primary/50 transition-colors cursor-pointer pointer-events-auto z-10 " +
         className
       }
-      title="View catalog course options that satisfy this requirement"
+      title={`${n} course options available${capacityLabel ? `. ${capacityLabel.trim()}` : ''}`}
     >
-      Options: {n}
+      Choices: {n}{capacityLabel}
     </button>
   );
 }

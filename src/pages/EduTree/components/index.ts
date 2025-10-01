@@ -10,3 +10,5 @@ export { DegreeOutcomeBanner } from './DegreeOutcomeBanner';
 export { TrackValidator } from './TrackValidator';
 export { SimpleTrackPicker } from './SimpleTrackPicker';
 export { TrackComparisonControls } from './TrackComparisonControls';
+export { StatusChip, EvidenceMeter, type CourseStatus } from './CourseStatusChip';
+export { PillSkeletonCard } from './PillSkeletonCard';

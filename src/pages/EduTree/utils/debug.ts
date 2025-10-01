@@ -33,17 +33,18 @@ export type PillTrace = {
   uuid?: string;
   rfNodeId?: string;        // fallback id at node level
   pickedKey?: string;       // which key matched the map?
-  keysTried?: string[];
-  mapSize?: number;
-  sampleMapKeys?: string[];
-  mp?: {
-    count?: number;
+  via?: string;             // resolution method: uuid|slug|alias|normalized
+  keysTried?: string[];     // keys attempted
+  mapSize?: number;         // size of map we checked
+  sampleMapKeys?: string[]; // sample keys for debugging
+  note?: string;            // hit/MISS/etc.
+  mp?: {                    // marketplace metrics
+    count?: number | string | null;
     optionsLen?: number;
     show?: boolean;
     allow?: boolean;
     signature?: string;
   };
-  note?: string;
 };
 
 export function trace(rec: PillTrace) {
@@ -56,10 +57,11 @@ export function trace(rec: PillTrace) {
   }
   
   // Always print if there's an anomaly; otherwise sample at 20% (increased from 5%)
+  const countNum = typeof rec.mp?.count === 'number' ? rec.mp.count : Number(rec.mp?.count ?? 0);
   const anomaly =
     !rec.mp ||
-    !Number.isFinite(rec.mp?.count as any) ||
-    ((rec.mp?.count ?? 0) <= 0 && rec.stage === 'PILL_RENDER');
+    !Number.isFinite(countNum) ||
+    (countNum <= 0 && rec.stage === 'PILL_RENDER');
   
   if (!anomaly && Math.random() > 0.2) return; // 20% sampling
   
