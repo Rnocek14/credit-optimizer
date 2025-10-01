@@ -111,7 +111,7 @@ export function NodeOptionsPill({
     <button
       onClick={onClick}
       className={
-        "px-2 py-0.5 rounded-full border text-xs bg-surface hover:bg-primary/10 border-border/50 hover:border-primary/50 transition-colors cursor-pointer pointer-events-auto z-10 " +
+        "px-2 py-0.5 rounded-full border text-xs bg-secondary/10 hover:bg-primary/10 border-border/50 hover:border-primary/50 transition-colors cursor-pointer pointer-events-auto z-10 " +
         className
       }
       title="View catalog course options that satisfy this requirement"

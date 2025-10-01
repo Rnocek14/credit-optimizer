@@ -284,30 +284,28 @@ const RequirementNode = ({ data }: { data: V2NodeData }) => {
       )}
       
       {/* Phase 2: Course marketplace chips - simplified visibility */}
-      <div className="relative overflow-visible mt-2 flex flex-wrap gap-1 items-center text-[10px]">
-        <NodeOptionsPill 
-          key={`pill-${blockId}-${data?.__v || 'v0'}`}
-          count={n}
-          show={showPill}
-          onClick={() => setModalOpen(true)}
-          data={data}
-          nodeId={blockId}
-        />
-        {showPill && (
-          <>
-            {hasAceCredit && (
-              <span className="px-1.5 py-0.5 rounded bg-amber-100/60 text-amber-700 border border-amber-200/50" title="ACE credit available">
-                ACE
-              </span>
-            )}
-            {hasClep && (
-              <span className="px-1.5 py-0.5 rounded bg-blue-100/60 text-blue-700 border border-blue-200/50" title="CLEP exam available">
-                CLEP
-              </span>
-            )}
-          </>
-        )}
-      </div>
+      {showPill && (
+        <div className="relative overflow-visible mt-2 flex flex-wrap gap-1 items-center text-[10px]">
+          <NodeOptionsPill 
+            key={`pill-${blockId}-${data?.__v || 'v0'}`}
+            count={n}
+            show={showPill}
+            onClick={() => setModalOpen(true)}
+            data={data}
+            nodeId={blockId}
+          />
+          {hasAceCredit && (
+            <span className="px-1.5 py-0.5 rounded bg-amber-100/60 text-amber-700 border border-amber-200/50" title="ACE credit available">
+              ACE
+            </span>
+          )}
+          {hasClep && (
+            <span className="px-1.5 py-0.5 rounded bg-blue-100/60 text-blue-700 border border-blue-200/50" title="CLEP exam available">
+              CLEP
+            </span>
+          )}
+        </div>
+      )}
       
       {/* Selected course display */}
       {SHOW_MP && selectedCourse && (

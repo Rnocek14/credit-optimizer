@@ -1119,8 +1119,8 @@ export function applyManualLayout(
       });
 
       // Adaptive row gap - more spacing for crowded years
-      const baseGap = 120;
-      const ROW_GAP = Math.min(180, baseGap + Math.max(0, list.length - 3) * 12);
+      const baseGap = 160;
+      const ROW_GAP = Math.min(220, baseGap + Math.max(0, list.length - 3) * 12);
 
       const centerY = CENTER_BY_YEAR[year] ?? 360;
       const n = list.length;
