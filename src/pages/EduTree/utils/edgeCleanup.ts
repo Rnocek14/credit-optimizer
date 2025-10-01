@@ -65,11 +65,25 @@ export function cleanupEdgesBeforeValidation(edges: any[], nodes: any[]) {
         }
       }
       
-      return {
-        ...e,
-        sourceHandle,
-        targetHandle
+      // Build result - only include handle properties if they're valid strings
+      const result: any = {
+        ...e
       };
+      
+      // Only set handle properties if they're valid strings (not null)
+      if (sourceHandle !== null) {
+        result.sourceHandle = sourceHandle;
+      } else {
+        delete result.sourceHandle; // Remove the property entirely
+      }
+      
+      if (targetHandle !== null) {
+        result.targetHandle = targetHandle;
+      } else {
+        delete result.targetHandle; // Remove the property entirely
+      }
+      
+      return result;
     });
 }
 
