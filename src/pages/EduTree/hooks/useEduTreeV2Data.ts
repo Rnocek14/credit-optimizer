@@ -851,6 +851,15 @@ export function useEduTreeV2Data(filterMode: FilterMode = null): UseEduTreeV2Dat
         // gate CSS helpers
         aggHasAce: !!mpInfo?.hasAceCredit,
         aggHasClep: !!mpInfo?.hasClep,
+        // Add marketplace object for NodeOptionsPill component compatibility
+        marketplace: mpInfo ? {
+          count: oc,
+          optionsCount: oc,
+          hasAceCredit: mpInfo.hasAceCredit,
+          hasClep: mpInfo.hasClep,
+          show: Number.isFinite(oc) && oc! > 0,
+          allow: true,
+        } : undefined,
         // Data version for React identity tracking
         __v: dataVersion,
       };

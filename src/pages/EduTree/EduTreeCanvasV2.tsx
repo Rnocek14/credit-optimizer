@@ -235,15 +235,7 @@ const RequirementNode = ({ data }: { data: V2NodeData }) => {
 
   return (
     <div className={nodeClassNames}>
-      {/* Dev badge showing dataVersion (temporary diagnostic) */}
-      {process.env.NODE_ENV === 'development' && data?.__v && (
-        <div 
-          style={{ position:'absolute', top:2, right:6, fontSize:10, opacity:.6 }}
-          title={`Data version: ${data.__v}`}
-        >
-          v:{String(data.__v).slice(-4)}
-        </div>
-      )}
+      {/* Dev badge showing dataVersion - removed dark rectangle issue */}
       <div className="font-semibold text-sm text-foreground mb-1">
         {data.title || blockData?.title || 'Untitled Block'}
       </div>
