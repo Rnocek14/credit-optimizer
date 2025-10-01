@@ -9,8 +9,14 @@ import { useToast } from '@/hooks/use-toast';
 
 export function DebugLogPanel() {
   const [logs, setLogs] = useState<PillTrace[]>([]);
-  const [isOpen, setIsOpen] = useState(true);
-  const [isMinimized, setIsMinimized] = useState(false);
+  const [isOpen, setIsOpen] = useState(() => {
+    const saved = localStorage.getItem('debugLogPanel.isOpen');
+    return saved !== null ? saved === 'true' : true;
+  });
+  const [isMinimized, setIsMinimized] = useState(() => {
+    const saved = localStorage.getItem('debugLogPanel.isMinimized');
+    return saved === 'true';
+  });
   const { toast } = useToast();
 
   useEffect(() => {
@@ -20,6 +26,15 @@ export function DebugLogPanel() {
 
     return () => clearInterval(interval);
   }, []);
+
+  // Persist state to localStorage
+  useEffect(() => {
+    localStorage.setItem('debugLogPanel.isOpen', String(isOpen));
+  }, [isOpen]);
+
+  useEffect(() => {
+    localStorage.setItem('debugLogPanel.isMinimized', String(isMinimized));
+  }, [isMinimized]);
 
   const copyAllLogs = () => {
     const formatted = logs.map(log => {
@@ -60,10 +75,20 @@ export function DebugLogPanel() {
     });
   };
 
-  if (!isOpen) return null;
+  if (!isOpen) {
+    return (
+      <button
+        onClick={() => setIsOpen(true)}
+        className="fixed bottom-4 right-4 z-50 bg-background border border-border rounded-lg shadow-lg p-2 hover:bg-accent transition-colors"
+        title="Open Debug Logs"
+      >
+        <div className="text-xs font-semibold">Debug Logs ({logs.length})</div>
+      </button>
+    );
+  }
 
   return (
-    <div 
+    <div
       className="fixed bottom-4 right-4 z-50 bg-background border border-border rounded-lg shadow-lg"
       style={{ 
         width: isMinimized ? '300px' : '600px',
