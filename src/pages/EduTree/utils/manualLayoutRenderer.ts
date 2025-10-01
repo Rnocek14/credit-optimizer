@@ -6,7 +6,7 @@
 import { Node, Edge, MarkerType, Position } from '@xyflow/react';
 import { V2RequirementBlock, V2Edge, EdgeKind } from '../data/seedDataV2';
 import type { CourseOption } from '../hooks/useRequirementOptionsBatch';
-import { marketplaceKeysFromNodeId } from '@/hooks/useBatchRequirementOptions';
+import { marketplaceKeysFromNodeId } from '../helpers/marketplaceKeys';
 import { trace, assertDbg, mark, measure } from './debug';
 
 type RFNode = Node;

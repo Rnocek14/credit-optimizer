@@ -43,16 +43,40 @@ function normalizeId(id: string): string {
  * Resolve block ID - handles mismatches between DB slugs and seed IDs
  * Seed IDs: y1-found, y2-cs-core, etc.
  * DB slugs: foundations, core-i, etc. (may have year prefix)
+ * 
+ * Returns array of possible seed IDs for a given DB block
  */
-function resolveBlockId(dbBlock: DBBlock): string {
+function getPossibleSeedIds(dbBlock: DBBlock): string[] {
   // If slug exists and starts with year prefix, use it directly
   if (dbBlock.slug && /^y\d-/.test(dbBlock.slug)) {
-    return dbBlock.slug.toLowerCase();
+    return [dbBlock.slug.toLowerCase()];
   }
   
-  // Otherwise construct: y{level_year}-{slug or id}
-  const baseName = dbBlock.slug || dbBlock.id;
-  return `y${dbBlock.level_year}-${baseName.toLowerCase()}`;
+  const baseName = (dbBlock.slug || dbBlock.id).toLowerCase();
+  const year = dbBlock.level_year;
+  
+  // Map DB slugs to all possible seed ID variants
+  const slugVariants: Record<string, string[]> = {
+    'foundations': ['found', 'foundations'],
+    'mathematics': ['math', 'mathematics'],
+    'general-education': ['genedAB', 'genedab', 'general-education'],
+    'core-i': ['cs-core', 'it-core'], // Used by both CS and IT programs
+    'core-ii': ['se-core', 'ds-core'], // Used by both SE and DS tracks
+    'cs-elec': ['cs-elec'],
+    'it-elec': ['it-elec'],
+    'se-elec': ['se-elec'],
+    'ds-elec': ['ds-elec'],
+    'se-cap': ['se-cap'],
+    'ds-cap': ['ds-cap'],
+    'it-cap': ['it-cap'],
+    'bsn-found': ['bsn-found'],
+    'bsn-core': ['bsn-core'],
+    'bsn-clinical': ['bsn-clinical'],
+    'bsn-capstone': ['bsn-capstone'],
+  };
+  
+  const variants = slugVariants[baseName] || [baseName];
+  return variants.map(v => `y${year}-${v}`);
 }
 
 /**
@@ -73,9 +97,14 @@ export function mergeBlocksWithLiveData(
   const liveKeyMapping = new Map<string, string>(); // Track which live key matched which seed key
   
   for (const live of liveBlocks) {
-    const resolvedId = resolveBlockId(live);
-    const normalizedKey = normalizeId(resolvedId);
-    liveMap.set(normalizedKey, live);
+    const possibleIds = getPossibleSeedIds(live);
+    for (const resolvedId of possibleIds) {
+      const normalizedKey = normalizeId(resolvedId);
+      // Store live block for each possible seed ID it could match
+      if (!liveMap.has(normalizedKey)) {
+        liveMap.set(normalizedKey, live);
+      }
+    }
   }
 
   console.log('[DataMerge] Merging blocks:', {
