@@ -818,8 +818,10 @@ export function applyManualLayout(
       console.log('[nodes][enriched]', {
         id: bid || node.id,
         count: rawOptions.length,
+        resolved: mergedOptions.length,
         top: mergedOptions[0]?.code,
         topState: mergedOptions[0]?.transfer?.state,
+        pillPreview: mergedOptions.slice(0, 2).map(x => x.code || x.title),
       });
     }
     
@@ -849,10 +851,23 @@ export function applyManualLayout(
       ...node,
       data: {
         ...node.data,
+        // Top-level for backward compatibility
         options: mergedOptions,
         transferRules: transferRules,
         optionsCount: rawOptions.length,
         __v: dataVersion,
+        // Preserve marketplace signature
+        mpSig: (node as any).data?.mpSig,
+        // Marketplace subtree that NodeOptionsPill expects
+        marketplace: {
+          ...(node as any).data?.marketplace,
+          count: rawOptions.length,
+          resolved: mergedOptions.length,
+          sticky: mergedOptions.length,
+          options: mergedOptions,
+          allow: true,
+          show: rawOptions.length > 0,
+        },
         phaseAPlan: { lane, col, x: gridCoords.x, y: gridCoords.y }
       }
     };
