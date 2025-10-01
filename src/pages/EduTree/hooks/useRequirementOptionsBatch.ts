@@ -11,6 +11,9 @@ import { trace, mark, measure } from '../utils/debug';
 
 type DBCourse = Database['public']['Tables']['edu_courses']['Row'];
 
+// Subset of course fields we fetch for options
+type CourseData = Pick<DBCourse, 'id' | 'code' | 'title' | 'area' | 'credits' | 'is_core' | 'is_capstone' | 'description'>;
+
 export interface CourseOption {
   courseId: string;
   code: string;
@@ -66,37 +69,95 @@ export function useRequirementOptionsBatch(
         blockIdsSample: blockIds.slice(0, 8),
       });
 
-      // Normalize block IDs (handle both UUID and slug formats)
-      const normalized = blockIds.map(id => id.toLowerCase());
+      // Step 1: Build reliable ID maps (slug <-> UUID)
+      const { data: reqs, error: reqsError } = await supabase
+        .from('requirement_blocks')
+        .select('id, slug');
       
-      // Resolve slugs -> UUIDs if any IDs are non-UUID (best-effort)
-      const slugCandidates = normalized.filter(id => !/^[0-9a-f-]{36}$/.test(id));
-      let uuidSet = new Set(normalized.filter(id => /^[0-9a-f-]{36}$/.test(id)));
-      
-      if (slugCandidates.length > 0) {
-        const { data: slugRows } = await supabase
-          .from('requirement_blocks')
-          .select('id, slug')
-          .in('slug', slugCandidates);
-        slugRows?.forEach(r => uuidSet.add(String(r.id).toLowerCase()));
-      }
-      
-      const normalizedIds = Array.from(uuidSet);
+      if (reqsError) throw reqsError;
 
-      // Step 1: Fetch requirement_options for all blocks
-      // Schema: requirement_id, option_kind (enum), option_ref_id (UUID pointing to course)
-      const { data: optionsData, error: optionsError } = await supabase
+      const idBySlug = new Map((reqs || []).map(r => [String(r.slug).toLowerCase(), String(r.id).toLowerCase()]));
+      const slugById = new Map((reqs || []).map(r => [String(r.id).toLowerCase(), String(r.slug).toLowerCase()]));
+
+      // Normalize incoming blockIds → UUIDs where possible
+      const normalizedIds = [...new Set(blockIds
+        .map(k => (idBySlug.get(String(k).toLowerCase()) ?? String(k).toLowerCase()))
+      )];
+
+      trace({
+        stage: 'MP_BATCH',
+        t: Date.now(),
+        note: 'ID_RESOLUTION',
+        mp: { 
+          count: normalizedIds.length,
+          signature: `resolve|${blockIds.length}→${normalizedIds.length}`
+        }
+      });
+
+      if (blockIds.length > 0 && normalizedIds.length === 0) {
+        console.error('[MP_BATCH] ⚠️ ID resolution produced zero UUIDs', {
+          scope,
+          blockIdsSample: blockIds.slice(0, 8),
+        });
+        trace({ stage: 'MP_BATCH', t: Date.now(), note: 'ID_RESOLUTION_EMPTY' });
+        return new Map<string, CourseOption[]>();
+      }
+
+      // Step 2: Probe query to discover actual option_kind values (no filter)
+      const { data: probe, error: probeErr } = await supabase
+        .from('requirement_options')
+        .select('requirement_id, option_kind, option_ref_id')
+        .in('requirement_id', normalizedIds)
+        .limit(50); // Small sample is fine
+
+      if (probeErr) throw probeErr;
+
+      const kindCounts = (probe || []).reduce((acc, r) => {
+        const kind = r.option_kind ?? 'NULL';
+        acc[kind] = (acc[kind] ?? 0) + 1;
+        return acc;
+      }, {} as Record<string, number>);
+
+      trace({
+        stage: 'MP_BATCH',
+        t: Date.now(),
+        note: 'DB_PROBE',
+        mp: { 
+          count: probe?.length ?? 0, 
+          signature: `probe|${probe?.length ?? 0}|${Object.keys(kindCounts).join(',')}`
+        }
+      });
+
+      console.log('[MP_BATCH][DB_PROBE]', {
+        scope,
+        probeRows: probe?.length ?? 0,
+        kindCounts,
+        normalizedIdsSample: normalizedIds.slice(0, 5),
+      });
+
+      // Step 3: Main query - use 'course' if found in probe, otherwise no filter
+      const hasCourseKind = kindCounts['course'] > 0;
+      
+      let query = supabase
         .from('requirement_options')
         .select('requirement_id, option_kind, option_ref_id, transfer_eligible, credits_awarded')
-        .in('requirement_id', normalizedIds)
-        .eq('option_kind', 'course'); // Filter to only course options
+        .in('requirement_id', normalizedIds);
 
-      // STAGE 1: DB_FETCH - Log what came back
+      // Only filter by 'course' if the probe confirmed it exists
+      if (hasCourseKind) {
+        query = query.eq('option_kind', 'course');
+      }
+
+      const { data: optionsData, error: optionsError } = await query;
+
       trace({
         stage: 'MP_BATCH',
         t: Date.now(),
         note: 'DB_FETCH',
-        mp: { count: optionsData?.length ?? 0 },
+        mp: { 
+          count: optionsData?.length ?? 0,
+          signature: `fetch|${optionsData?.length ?? 0}|${hasCourseKind ? 'course' : 'all'}`
+        },
       });
       
       console.log('[MP_BATCH][DB_FETCH]', {
@@ -104,6 +165,8 @@ export function useRequirementOptionsBatch(
         normalizedIdsCount: normalizedIds.length,
         normalizedIdsSample: normalizedIds.slice(0, 5),
         optionsDataCount: optionsData?.length ?? 0,
+        hasCourseKind,
+        kindCounts,
         error: optionsError ? String(optionsError) : null,
       });
 
@@ -117,107 +180,105 @@ export function useRequirementOptionsBatch(
           scope,
           normalizedIdsCount: normalizedIds.length,
           normalizedIdsSample: normalizedIds.slice(0, 5),
+          hasCourseKind,
+          kindCounts,
         });
+        trace({ stage: 'MP_BATCH', t: Date.now(), note: 'NO_ROWS' });
         mark('mp_batch:end');
         return new Map<string, CourseOption[]>();
       }
 
-      // Step 1b: fetch slugs for these requirement_ids so we can alias keys
-      const uniqueReqIds = [...new Set(optionsData.map(o => String(o.requirement_id).toLowerCase()))];
-      const { data: rbRows, error: rbErr } = await supabase
-        .from('requirement_blocks')
-        .select('id, slug')
-        .in('id', uniqueReqIds);
-      if (rbErr) throw rbErr;
-      const slugById = new Map<string, string>();
-      (rbRows || []).forEach(r => {
-        if (r?.id && r?.slug) slugById.set(String(r.id).toLowerCase(), String(r.slug).toLowerCase());
-      });
-
-      // Step 2: Get unique course IDs (from option_ref_id which points to edu_courses)
+      // Step 4: Fetch courses for all option_ref_ids
       const courseIds = [...new Set(optionsData.map(opt => opt.option_ref_id))].filter(Boolean);
-
-      // Step 3: Fetch full course details
+      
       const { data: coursesData, error: coursesError } = await supabase
         .from('edu_courses')
         .select('id, code, title, area, credits, is_core, is_capstone, description')
         .in('id', courseIds);
 
-      if (coursesError) throw coursesError;
+      if (coursesError) {
+        console.error('[MP_BATCH][COURSES_ERROR]', { scope, error: coursesError });
+        throw coursesError;
+      }
 
-      // Step 4: Build map of course_id -> CourseOption
-      const courseMap = new Map<string, CourseOption>();
-      (coursesData || []).forEach((course: DBCourse) => {
+      // Build course map
+      const courseMap = new Map<string, CourseData>();
+      (coursesData || []).forEach(course => {
+        courseMap.set(course.id, course);
+      });
+
+      trace({
+        stage: 'MP_BATCH',
+        t: Date.now(),
+        note: 'COURSES_FETCHED',
+        mp: { 
+          count: coursesData?.length ?? 0,
+          signature: `courses|${coursesData?.length ?? 0}`
+        }
+      });
+
+      // Step 5: Group options by block ID
+      const resultMap = new Map<string, CourseOption[]>();
+      
+      for (const row of optionsData) {
+        if (!row.option_ref_id) continue;
+        
+        const course = courseMap.get(row.option_ref_id);
+        if (!course) {
+          console.warn('[MP_BATCH] Course not found for option_ref_id', { option_ref_id: row.option_ref_id });
+          continue;
+        }
         const evidence = typeof course.description === 'string' 
           ? tryParseEvidence(course.description)
           : { ace: false, clep: false };
 
-        courseMap.set(course.id, {
+        const courseOption: CourseOption = {
           courseId: course.id,
           code: course.code,
           title: course.title,
           provider: course.area || 'Unknown',
           credits: course.credits,
-          cost: undefined, // TODO: Add cost field to edu_courses or join with pricing table
+          cost: undefined,
           evidence,
-        });
-      });
+        };
 
-      // Step 5: Group options by block ID using robust key resolution
-      const resultMap = new Map<string, CourseOption[]>();
-      const idSet = new Set(blockIds.map(s => s.toLowerCase()));
-      
-      // Helper to find best key for this row
-      const keyFromRow = (opt: any): string[] => {
-        const uuidKey = String(opt.requirement_id).toLowerCase();
+        const uuidKey = String(row.requirement_id).toLowerCase();
         const slugKey = slugById.get(uuidKey);
-        
-        const candidates = [
-          uuidKey,
-          slugKey,
-        ].filter(Boolean) as string[];
-        
-        return candidates;
-      };
-      
-      optionsData.forEach(opt => {
-        if (!opt.option_ref_id) return;
-        
-        const course = courseMap.get(opt.option_ref_id);
-        if (!course) return;
 
-        const keys = keyFromRow(opt);
-        for (const k of keys) {
+        for (const k of [uuidKey, slugKey].filter(Boolean) as string[]) {
           if (!resultMap.has(k)) resultMap.set(k, []);
-          resultMap.get(k)!.push(course);
+          resultMap.get(k)!.push(courseOption);
         }
-      });
-      
-      // STAGE 1.5: GROUPING_SUMMARY
-      if (optionsData.length > 0) {
-        const sample = Array.from(resultMap.entries()).slice(0, 3).map(([k, v]) => ({ k, n: v.length }));
-        trace({
-          stage: 'MP_BATCH',
-          t: Date.now(),
-          note: 'GROUPED',
-          mp: { count: resultMap.size },
-        });
-        console.log('[MP_BATCH][GROUPED]', {
-          mapSize: resultMap.size,
-          sample,
-          allKeys: Array.from(resultMap.keys()),
-        });
       }
+      
+      // GROUPING_SUMMARY
+      const sample = Array.from(resultMap.entries()).slice(0, 3).map(([k, v]) => ({ k, n: v.length }));
+      trace({
+        stage: 'MP_BATCH',
+        t: Date.now(),
+        note: 'GROUPED',
+        mp: { 
+          count: resultMap.size,
+          signature: `grouped|${resultMap.size}|${sample.map(s => s.k).join(',')}`
+        },
+      });
+      console.log('[MP_BATCH][GROUPED]', {
+        scope,
+        mapSize: resultMap.size,
+        sample,
+        allKeys: Array.from(resultMap.keys()).slice(0, 10),
+      });
       
       // SMOKE ASSERT: Empty result when we expected data
       if (blockIds.length > 0 && resultMap.size === 0) {
-        console.warn('[MP_BATCH] ⚠️ No options for any block', {
+        console.error('[MP_BATCH] ⚠️ No options mapped to any block', {
           scope,
           blockIdsCount: blockIds.length,
           blockIdsSample: blockIds.slice(0, 8),
           normalizedIdsCount: normalizedIds.length,
           optionsDataCount: optionsData.length,
           coursesDataCount: coursesData?.length ?? 0,
+          kindCounts,
         });
       }
 
