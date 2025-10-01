@@ -319,6 +319,17 @@ export function useEduTreeV2Data(filterMode: FilterMode = null): UseEduTreeV2Dat
     // Convert block IDs (slugs from seed) to UUIDs with enhanced resolution
     const resolutionLog: Array<{ seedId: string; tried: string[]; resolved: string | null }> = [];
     
+    // Special case mappings for mismatched slugs
+    const SPECIAL_SLUG_MAPPINGS: Record<string, string> = {
+      'found': 'foundations',
+      'math': 'mathematics',
+      'genedab': 'general-education',
+      'cs-core': 'core-i',
+      'se-core': 'core-ii',
+      'ds-core': 'core-ii',
+      'it-core': 'core-i'
+    };
+    
     const uuids = filteredBlocks
       .map(b => {
         const seedId = String(b.id).toLowerCase();
@@ -341,6 +352,17 @@ export function useEduTreeV2Data(filterMode: FilterMode = null): UseEduTreeV2Dat
           if (uuid) {
             resolutionLog.push({ seedId, tried: triedKeys, resolved: uuid });
             return uuid;
+          }
+          
+          // 2b. Try special mapping (e.g., "found" → "foundations")
+          const mapped = SPECIAL_SLUG_MAPPINGS[noYearPrefix];
+          if (mapped) {
+            triedKeys.push(mapped);
+            uuid = slugToUUID.get(mapped);
+            if (uuid) {
+              resolutionLog.push({ seedId, tried: triedKeys, resolved: uuid });
+              return uuid;
+            }
           }
         }
         
