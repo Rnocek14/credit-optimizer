@@ -626,7 +626,8 @@ export function useEduTreeV2Data(filterMode: FilterMode = null): UseEduTreeV2Dat
           sample: rfNodes?.filter((n: any) => n.type === 'requirement').slice(0, 5).map((n: any) => ({
             id: n.id,
             optionsCount: n.data?.optionsCount,
-            mpSig: n.data?.mpSig,
+            marketplaceCount: n.data?.marketplace?.count,
+            marketplaceSignature: n.data?.marketplace?.signature?.slice(0, 20),
             hasAceCredit: n.data?.hasAceCredit
           }))
         });

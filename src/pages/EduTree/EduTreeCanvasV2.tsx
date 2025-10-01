@@ -111,7 +111,8 @@ const RequirementNode = ({ data }: { data: V2NodeData }) => {
   const marketplace = rawData?.marketplace;
   
   // DEV DIAGNOSTIC: Log what we actually receive (sample 5%)
-  if (import.meta.env.DEV && Math.random() < 0.05) {
+  const isDev = process.env.NODE_ENV === 'development';
+  if (isDev && Math.random() < 0.05) {
     console.log('[RequirementNode][data-check]', {
       nodeId: blockId,
       hasMarketplace: !!marketplace,
@@ -160,7 +161,8 @@ const RequirementNode = ({ data }: { data: V2NodeData }) => {
   const showPill = allowPills && Number.isFinite(n) && n > 0;
   
   // Sample pill logging to 2% to reduce noise
-  if (import.meta.env.DEV && Math.random() < 0.02) {
+  const isDev2 = process.env.NODE_ENV === 'development';
+  if (isDev2 && Math.random() < 0.02) {
     console.log('[PILL] show=%o count=%o allow=%o resolved=%o sticky=%o', 
       showPill, countToShow, allowPills, resolvedCount, lastGoodCountRef.current);
   }
@@ -735,7 +737,8 @@ function EduTreeCanvasV2Content({
   }, [safeEdges]); // Depends on safeEdges, not raw inputs
   
   // Dev-only assertion: verify no dangling edges post-cleanup
-  if (import.meta.env.DEV) {
+  const isDev3 = process.env.NODE_ENV === 'development';
+  if (isDev3) {
     React.useEffect(() => {
       const allValid = displayEdges.every(e => e.source && e.target);
       if (!allValid) {
@@ -906,10 +909,16 @@ function EduTreeCanvasV2Content({
         console.log('   - With zero options:', nodesWithZero.length);
         console.log('   - With undefined:', nodesUndef.length);
         console.log('   - Sample with data:', nodesWithMp.slice(0, 5).map((n: any) => ({
-          id: n.id, optionsCount: n.data?.optionsCount, mpSig: n.data?.mpSig
+          id: n.id, 
+          optionsCount: n.data?.optionsCount, 
+          mpCount: n.data?.marketplace?.count,
+          mpSignature: n.data?.marketplace?.signature?.slice(0, 20)
         })));
         console.log('   - Sample undefined:', nodesUndef.slice(0, 3).map((n: any) => ({
-          id: n.id, optionsCount: n.data?.optionsCount, dataKeys: Object.keys(n.data ?? {})
+          id: n.id, 
+          optionsCount: n.data?.optionsCount, 
+          dataKeys: Object.keys(n.data ?? {}),
+          hasMarketplace: !!n.data?.marketplace
         })));
         
         // 4. Data flow integrity

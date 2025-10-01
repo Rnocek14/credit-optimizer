@@ -18,12 +18,10 @@ export function NodeOptionsPill({
   data?: any;
   nodeId?: string;
 }) {
-  // DIAGNOSTIC: Log what we receive
-  if (import.meta.env.DEV) {
-    console.log('[PILL][diag] nodeId=', nodeId, 'data keys=', Object.keys(data ?? {}), 'mp=', !!data?.marketplace);
-  }
-
-  // Read marketplace subtree with fallbacks
+  // PHASE 1 FIX: Use consistent environment detection
+  const isDev = process.env.NODE_ENV === 'development';
+  
+  // Read marketplace subtree with robust fallbacks
   const mp0 = data?.marketplace ?? {};
   const options = Array.isArray(mp0.options)
     ? mp0.options
@@ -31,7 +29,7 @@ export function NodeOptionsPill({
     ? data.options
     : [];
 
-  // Compute final values with tolerant fallbacks
+  // Compute final values - prioritize data.marketplace over legacy props
   const mp = {
     ...mp0,
     count: typeof mp0.count === 'number' ? mp0.count : options.length,
@@ -41,27 +39,44 @@ export function NodeOptionsPill({
     show: (mp0.show ?? (options.length > 0)) && (mp0.allow ?? true),
   };
 
-  // Override with legacy props if provided (backwards compat)
-  const finalCount = typeof count === 'number' ? count : mp.count;
-  const finalShow = typeof show === 'boolean' ? show : mp.show;
+  // Legacy props fallback (backwards compat only if marketplace unavailable)
+  const finalCount = typeof count === 'number' && !mp0.count ? count : mp.count;
+  const finalShow = typeof show === 'boolean' && mp0.show === undefined ? show : mp.show;
   const n = Number(finalCount);
 
-  // DIAGNOSTIC: Always log in dev
-  if (import.meta.env.DEV) {
-    console.log('[PILL] show=%s count=%s allow=%s resolved=%s sticky=%s sig=%s',
-      finalShow, finalCount, mp.allow, mp.resolved, mp.sticky, mp.signature?.slice(0, 30));
+  // DIAGNOSTIC: Comprehensive logging in dev
+  if (isDev) {
+    console.log('[PILL][%s] show=%s count=%s allow=%s resolved=%s sticky=%s sig=%s',
+      nodeId?.slice(0, 20),
+      finalShow, 
+      finalCount, 
+      mp.allow, 
+      mp.resolved, 
+      mp.sticky, 
+      mp.signature?.slice(0, 30) ?? 'none'
+    );
     
     if (!finalShow || !Number.isFinite(n) || n <= 0) {
       const reasons = [];
       if (!finalShow) reasons.push('show=false');
       if (!Number.isFinite(n)) reasons.push('count not finite');
       if (n <= 0) reasons.push('count<=0');
-      console.log('[PILL] Not rendering:', { finalCount, finalShow, n, reasons });
+      if (!data?.marketplace) reasons.push('no marketplace data');
+      if (!options.length) reasons.push('no options array');
+      
+      console.log('[PILL][%s] Not rendering:', nodeId?.slice(0, 20), { 
+        finalCount, 
+        finalShow, 
+        n, 
+        reasons,
+        hasMarketplace: !!data?.marketplace,
+        hasOptions: !!data?.options,
+        dataKeys: Object.keys(data ?? {})
+      });
     }
   }
 
-  // Only render for valid, positive counts (temp: force on for diagnosis)
-  if (false) return null; // TEMP: bypassed to verify data flow
+  // PHASE 1 FIX: Removed hardcoded bypass - use actual logic
   if (!finalShow || !Number.isFinite(n) || n <= 0) {
     return null;
   }

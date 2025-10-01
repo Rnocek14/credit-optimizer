@@ -176,10 +176,6 @@ export function blocksToNodes(
     
     // Build marketplace signature for reliable re-render detection
     const oc = asNum((block as any).optionsCount);
-    const ace = (block as any).hasAceCredit ? 1 : 0;
-    const clep = (block as any).hasClep ? 1 : 0;
-    const sel = (block as any).selectedCourse?.id ?? '∅';
-    const mpSig = `${oc ?? '∅'}|${ace}|${clep}|${sel}`;
     
     // Course-aware: Get options and transfer rules for this block
     // Try all known keys (uuid, slug, dbId) for map lookup
@@ -258,7 +254,7 @@ export function blocksToNodes(
           ocIsZero: oc === 0,
           hasAceCredit: (block as any).hasAceCredit,
           hasClep: (block as any).hasClep,
-          mpSig,
+          marketplaceCount: (block as any).marketplace?.count,
           willRenderPill: Number.isFinite(oc) && oc! > 0
         });
       }
@@ -288,8 +284,6 @@ export function blocksToNodes(
       hasAceCredit: (block as any).hasAceCredit ?? undefined,
       hasClep: (block as any).hasClep ?? undefined,
       selectedCourse: (block as any).selectedCourse,
-      // Marketplace signature for re-render detection
-      mpSig,
       // Course-aware: Add merged options with transfer state, transfer rules, and selection
       options: options,
       transferRules: transferRules,
@@ -856,9 +850,7 @@ export function applyManualLayout(
         transferRules: transferRules,
         optionsCount: rawOptions.length,
         __v: dataVersion,
-        // Preserve marketplace signature
-        mpSig: (node as any).data?.mpSig,
-        // Marketplace subtree that NodeOptionsPill expects
+        // PHASE 2: Unified marketplace data structure (removed mpSig)
         marketplace: {
           ...(node as any).data?.marketplace,
           count: rawOptions.length,
@@ -1039,10 +1031,10 @@ export function applyManualLayout(
       id: n.id,
       type: n.type,
       optionsCount: n.data?.optionsCount,
-      mpSig: n.data?.mpSig,
       marketplace: n.data?.marketplace,
       hasMarketplace: !!n.data?.marketplace,
       mpCount: n.data?.marketplace?.count,
+      mpSignature: n.data?.marketplace?.signature?.slice(0, 30),
     }));
   }
   
@@ -1292,12 +1284,11 @@ export function applyManualLayout(
       id: n.id,
       type: n.type,
       optionsCount: n.data?.optionsCount,
-      mpSig: n.data?.mpSig,
       marketplace: n.data?.marketplace,
       hasMarketplace: !!n.data?.marketplace,
       mpCount: n.data?.marketplace?.count,
       mpShow: n.data?.marketplace?.show,
-      mpSignature: n.data?.marketplace?.signature,
+      mpSignature: n.data?.marketplace?.signature?.slice(0, 30),
     }));
     
     const pre = (window as any).__preLayoutNodes?.slice(0, 5) || [];
