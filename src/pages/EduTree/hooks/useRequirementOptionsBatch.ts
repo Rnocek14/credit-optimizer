@@ -45,8 +45,19 @@ export function useRequirementOptionsBatch(
   scope: string,
   enabled = true
 ): RequirementOptionsBatchResult {
+  // DIAGNOSTIC: Log hook invocation
+  console.log('[useRequirementOptionsBatch] Hook invoked:', {
+    enabled,
+    blockIdsCount: blockIds.length,
+    scope,
+    sampleBlockIds: blockIds.slice(0, 5),
+    willExecuteQuery: enabled && blockIds.length > 0,
+    timestamp: Date.now()
+  });
+
   const { data, isLoading, error } = useQuery({
     queryKey: ['reqOptionsBatch', scope, [...blockIds].sort()], // Stable cache key
+    enabled: enabled && blockIds.length > 0, // Add explicit enabled check
     queryFn: async () => {
       mark('mp_batch:start');
       
@@ -54,8 +65,14 @@ export function useRequirementOptionsBatch(
       trace({
         stage: 'MP_BATCH',
         t: Date.now(),
-        note: 'INPUT',
+        note: 'QUERY_START',
         mp: { count: blockIds.length },
+      });
+      
+      console.log('[MP_BATCH][QUERY_START]', {
+        scope,
+        blockIdsCount: blockIds.length,
+        allBlockIds: blockIds,
       });
       
       if (blockIds.length === 0) {
@@ -236,7 +253,6 @@ export function useRequirementOptionsBatch(
 
       return resultMap;
     },
-    enabled: enabled && blockIds.length > 0,
     staleTime: 30000, // 30s cache
   });
 

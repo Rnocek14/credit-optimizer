@@ -279,38 +279,111 @@ export function useEduTreeV2Data(filterMode: FilterMode = null): UseEduTreeV2Dat
   // Get visible block IDs from merged blocks (after filtering)
   // Map slugs to UUIDs since DB tables use UUIDs for foreign keys
   const visibleBlockIds = useMemo(() => {
-    if (!isV2Mode || !liveBlocksData) return [];
+    if (!isV2Mode || !liveBlocksData) {
+      console.log('[EduTreeV2Data][visibleBlockIds] Early exit:', { isV2Mode, hasLiveData: !!liveBlocksData });
+      return [];
+    }
     
     const mergedBlocks = mergeBlocksWithLiveData(GOLDEN_LAYOUT_SEED.blocks, liveBlocksData as DBBlock[] | undefined);
     const filteredBlocks = filterBlocksByMode(mergedBlocks, effectiveFilterMode, { programs: selectedPrograms });
     
-    // Build slug -> UUID map from live database data
+    // Build multi-key slug -> UUID map from live database data
     const slugToUUID = new Map<string, string>();
+    const debugSlugMap: Record<string, string> = {};
+    
     (liveBlocksData as DBBlock[] || []).forEach((dbBlock: DBBlock) => {
-      if (dbBlock.slug && dbBlock.id) {
-        slugToUUID.set(String(dbBlock.slug).toLowerCase(), String(dbBlock.id));
+      if (!dbBlock.slug || !dbBlock.id) return;
+      
+      const dbSlug = String(dbBlock.slug).toLowerCase();
+      const dbUUID = String(dbBlock.id);
+      
+      // Store multiple variations for each block:
+      // 1. Original slug (e.g., "cs-elec")
+      slugToUUID.set(dbSlug, dbUUID);
+      debugSlugMap[dbSlug] = dbUUID.slice(0, 8);
+      
+      // 2. With year prefixes (e.g., "y2-cs-elec", "y3-cs-elec", "y4-cs-elec")
+      if (dbBlock.level_year) {
+        const yearSlug = `y${dbBlock.level_year}-${dbSlug}`;
+        slugToUUID.set(yearSlug, dbUUID);
+        debugSlugMap[yearSlug] = dbUUID.slice(0, 8);
       }
     });
     
-    // Convert block IDs (slugs from seed) to UUIDs
+    console.log('[EduTreeV2Data][slugToUUID] Built map with variations:', {
+      totalKeys: slugToUUID.size,
+      sampleKeys: Object.keys(debugSlugMap).slice(0, 10),
+      dbBlocksCount: liveBlocksData?.length ?? 0
+    });
+    
+    // Convert block IDs (slugs from seed) to UUIDs with enhanced resolution
+    const resolutionLog: Array<{ seedId: string; tried: string[]; resolved: string | null }> = [];
+    
     const uuids = filteredBlocks
       .map(b => {
-        const slug = String(b.id).toLowerCase();
-        return slugToUUID.get(slug) || null;
+        const seedId = String(b.id).toLowerCase();
+        const triedKeys: string[] = [];
+        
+        // Try multiple slug variations:
+        // 1. Direct match (e.g., "y2-cs-elec")
+        triedKeys.push(seedId);
+        let uuid = slugToUUID.get(seedId);
+        if (uuid) {
+          resolutionLog.push({ seedId, tried: [seedId], resolved: uuid });
+          return uuid;
+        }
+        
+        // 2. Strip year prefix (e.g., "y2-cs-elec" → "cs-elec")
+        const noYearPrefix = seedId.replace(/^y\d+-/, '');
+        if (noYearPrefix !== seedId) {
+          triedKeys.push(noYearPrefix);
+          uuid = slugToUUID.get(noYearPrefix);
+          if (uuid) {
+            resolutionLog.push({ seedId, tried: triedKeys, resolved: uuid });
+            return uuid;
+          }
+        }
+        
+        // 3. Try last two segments (e.g., "y2-cs-elec" → "cs-elec")
+        const segments = seedId.split('-');
+        if (segments.length >= 2) {
+          const lastTwo = segments.slice(-2).join('-');
+          if (lastTwo !== seedId && lastTwo !== noYearPrefix) {
+            triedKeys.push(lastTwo);
+            uuid = slugToUUID.get(lastTwo);
+            if (uuid) {
+              resolutionLog.push({ seedId, tried: triedKeys, resolved: uuid });
+              return uuid;
+            }
+          }
+        }
+        
+        // 4. No match found
+        resolutionLog.push({ seedId, tried: triedKeys, resolved: null });
+        return null;
       })
       .filter(Boolean) as string[];
     
-    if (process.env.NODE_ENV === 'development') {
-      console.log('[EduTreeV2Data][visibleBlockIds]', {
-        isV2Mode,
-        totalMerged: mergedBlocks.length,
-        afterFilter: filteredBlocks.length,
-        slugsCount: filteredBlocks.length,
-        uuidsCount: uuids.length,
-        sampleSlugs: filteredBlocks.slice(0, 3).map(b => b.id),
-        sampleUUIDs: uuids.slice(0, 3),
-        effectiveFilterMode,
-        selectedPrograms
+    const failed = resolutionLog.filter(r => !r.resolved);
+    
+    console.log('[EduTreeV2Data][visibleBlockIds] Resolution complete:', {
+      isV2Mode,
+      totalMerged: mergedBlocks.length,
+      afterFilter: filteredBlocks.length,
+      resolvedCount: uuids.length,
+      failedCount: failed.length,
+      successRate: `${Math.round((uuids.length / filteredBlocks.length) * 100)}%`,
+      effectiveFilterMode,
+      selectedPrograms,
+      sampleResolved: resolutionLog.filter(r => r.resolved).slice(0, 3),
+      sampleFailed: failed.slice(0, 5),
+      allAvailableKeys: Array.from(slugToUUID.keys()).slice(0, 15)
+    });
+    
+    if (failed.length > 0) {
+      console.warn('[EduTreeV2Data][visibleBlockIds] Failed to resolve slugs:', {
+        failedIds: failed.map(f => f.seedId),
+        availableKeys: Array.from(slugToUUID.keys())
       });
     }
     
