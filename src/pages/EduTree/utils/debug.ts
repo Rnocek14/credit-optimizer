@@ -6,6 +6,11 @@ export const isDev =
   (typeof import.meta !== 'undefined' && !!(import.meta as any)?.env?.DEV) ||
   process.env.NODE_ENV === 'development';
 
+// Log once to verify debug system is active
+if (typeof window !== 'undefined' && isDev) {
+  console.log('[DEBUG SYSTEM] Initialized - isDev =', isDev);
+}
+
 export type Stage =
   | 'MP_BATCH'          // batch returned rows
   | 'KEY_RESOLUTION'    // map key chosen for this block
@@ -36,21 +41,20 @@ export type PillTrace = {
   note?: string;
 };
 
-const TAG = '%c[TreeDbg]';
-const STYLE = 'color:#7b5cff;font-weight:600';
-
 export function trace(rec: PillTrace) {
   if (!isDev) return;
-  // Always print if there's an anomaly; otherwise sample lightly.
+  
+  // Always print if there's an anomaly; otherwise sample at 20% (increased from 5%)
   const anomaly =
     !rec.mp ||
     !Number.isFinite(rec.mp?.count as any) ||
     ((rec.mp?.count ?? 0) <= 0 && rec.stage === 'PILL_RENDER');
-  if (!anomaly && Math.random() > 0.05) return; // 5% sampling
-
-  // Short node sig for readability
+  
+  if (!anomaly && Math.random() > 0.2) return; // 20% sampling
+  
+  // Use simple console.log instead of styled output for better compatibility
   const shortSig = rec.mp?.signature?.slice(-20);
-  console.log(TAG, STYLE, { ...rec, mp: { ...rec.mp, signature: shortSig } });
+  console.log(`[TreeDbg:${rec.stage}]`, { ...rec, mp: { ...rec.mp, signature: shortSig } });
 }
 
 export function assertDbg(ok: boolean, message: string, ctx: PillTrace) {
