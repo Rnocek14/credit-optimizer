@@ -769,6 +769,60 @@ export function applyManualLayout(
       });
     }
     
+    // Robust block key resolution (uuid / slug / dbId)
+    const bid = String((node as any)?.data?.block?.id ?? node.id ?? (node as any)?.data?._rfNodeId ?? '').toLowerCase();
+    const slugKey = String((node as any)?.data?.block?.slug ?? (node as any)?.data?.slug ?? (block as any)?.slug ?? '').toLowerCase();
+    const dbIdKey = String((node as any)?.data?.block?.dbId ?? (node as any)?.data?.block?.db_id ?? (block as any)?.dbId ?? '').toLowerCase();
+    const keys = [bid, slugKey, dbIdKey].filter(Boolean);
+
+    const pick = <T,>(m?: Map<string, T>): T | undefined => {
+      if (!m) return undefined;
+      for (const k of keys) {
+        const v = m.get(k);
+        if (v) return v;
+      }
+      return undefined;
+    };
+
+    const rawOptions = pick(optionsByBlock) ?? [];
+    const transferRules = pick(transferRulesByBlock) ?? [];
+
+    // Merge per-course transfer metadata
+    const byCourse = new Map<string, any>();
+    transferRules.forEach((r: any) => {
+      const cid = String(r.courseId ?? r.course_id ?? '').toLowerCase();
+      if (cid) byCourse.set(cid, r);
+    });
+
+    const mergedOptions = rawOptions
+      .map((c: any) => {
+        const cid = String(c.courseId ?? c.course_id ?? c.id ?? '').toLowerCase();
+        const tr = byCourse.get(cid) || {};
+        return {
+          ...c,
+          transfer: {
+            state: tr.transferState ?? tr.transfer_state ?? 'unknown',
+            score: tr.score ?? undefined,
+          },
+        };
+      })
+      .sort(
+        (a: any, b: any) =>
+          (b.transfer?.score ?? 0) - (a.transfer?.score ?? 0) ||
+          (b.evidence?.ace ? 1 : 0) - (a.evidence?.ace ? 1 : 0) ||
+          (b.evidence?.clep ? 1 : 0) - (a.evidence?.clep ? 1 : 0)
+      )
+      .slice(0, 3);
+
+    if (process.env.NODE_ENV === 'development' && mergedOptions.length > 0) {
+      console.log('[nodes][enriched]', {
+        id: bid || node.id,
+        count: rawOptions.length,
+        top: mergedOptions[0]?.code,
+        topState: mergedOptions[0]?.transfer?.state,
+      });
+    }
+    
     // Compute phase A plan for future grid mode
     const lane: 'up' | 'down' | undefined = 
       block.track_id === 'se' || block.program_id === 'bs_cs' ? 'up' :
@@ -795,6 +849,10 @@ export function applyManualLayout(
       ...node,
       data: {
         ...node.data,
+        options: mergedOptions,
+        transferRules: transferRules,
+        optionsCount: rawOptions.length,
+        __v: dataVersion,
         phaseAPlan: { lane, col, x: gridCoords.x, y: gridCoords.y }
       }
     };
