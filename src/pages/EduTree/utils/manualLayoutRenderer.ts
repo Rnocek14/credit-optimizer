@@ -867,6 +867,7 @@ export function applyManualLayout(
           options: mergedOptions,
           allow: true,
           show: rawOptions.length > 0,
+          signature: `v1|${dataVersion}|${block.id}|${rawOptions.length}|${mergedOptions.map(o => (o.code ?? o.id ?? '')).join(',')}`,
         },
         phaseAPlan: { lane, col, x: gridCoords.x, y: gridCoords.y }
       }

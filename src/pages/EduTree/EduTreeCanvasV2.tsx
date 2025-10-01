@@ -105,74 +105,14 @@ const RequirementNode = ({ data }: { data: V2NodeData }) => {
   }, [blockId, data?.title, data?.__v]);
   const catalogCourseIds = blockData?.block?.catalogCourseIds ?? blockData?.catalogCourseIds ?? undefined;
   
-  // Phase 2: Course marketplace data - BULLETPROOF LAST-MILE RESOLVER
-  // 1) Pull any value already on the node
-  const rawIn =
-    (data as any)?.optionsCount ??
-    (data?.block as any)?.optionsCount ??
-    (data as any)?.block?.data?.optionsCount;
-
-  const ocFromData =
-    rawIn == null ? undefined : (typeof rawIn === 'number' ? rawIn : Number(rawIn));
-
-  // 2) Safe helpers
-  const safeNumber = (v: unknown) => {
-    const n = Number(v);
-    return Number.isFinite(n) ? n : undefined;
-  };
-  const toBlockId = (d: any): string => {
-    try {
-      const candidates = [
-        d?.block?.id,
-        d?.blockId,
-        d?.id,
-        (d?.block && typeof d.block === 'string' ? d.block : undefined),
-      ].filter((x) => typeof x === 'string' && x.length) as string[];
-      return candidates[0] ?? '';
-    } catch {
-      return '';
-    }
-  };
-
-  // 3) Last-mile resolver (never throws)
-  const optionsCount = useMemo(() => {
-    try {
-      if (Number.isFinite(ocFromData)) return ocFromData as number;
-
-      const mp: any = (window as any).__lastMpMap;
-      const isMap = mp && typeof mp.get === 'function';
-      if (!isMap) return undefined;
-
-      const id = toBlockId(data);
-      if (!id) return undefined;
-
-      const variants = [
-        id,
-        id.toLowerCase(),
-        id.replace(/[^a-z0-9]/gi, ''),
-        id.toLowerCase().replace(/[^a-z0-9]/g, ''),
-      ];
-
-      for (const key of variants) {
-        const hit = mp.get(key);
-        const n = hit?.optionsCount != null ? safeNumber(hit.optionsCount) : undefined;
-        if (n !== undefined) {
-          if (import.meta.env.DEV) {
-            console.log('[REQNODE] Last-mile resolver found count:', { blockId: id, matchedKey: key, optionsCount: n });
-          }
-          return n;
-        }
-      }
-      return undefined;
-    } catch (err) {
-      // Never let this crash the node
-      console.warn('[REQNODE] Resolver failed safely:', err);
-      return undefined;
-    }
-    // only primitive deps; avoid object deps that change each render
-  }, [ocFromData, (data as any)?.id, (data as any)?.blockId, (data as any)?.block?.id]);
+  // Phase 2: Course marketplace data - Use enriched marketplace subtree
+  const marketplace = (data as any)?.marketplace;
   
-  // 4) Sticky count to prevent flicker during re-compute
+  // Primary source: enriched marketplace data from manualLayoutRenderer
+  const optionsCount = marketplace?.count ?? (data as any)?.optionsCount;
+  const marketplaceOptions = marketplace?.options ?? (data as any)?.options;
+  
+  // Sticky count to prevent flicker during re-compute
   const lastGoodCountRef = React.useRef<number | undefined>(undefined);
   
   const resolvedCount = useMemo(() => {
@@ -300,9 +240,9 @@ const RequirementNode = ({ data }: { data: V2NodeData }) => {
       )}
       
       {/* Phase 3: Course options list with transferability */}
-      {(data as any)?.options && Array.isArray((data as any).options) && (data as any).options.length > 0 && (
+      {marketplaceOptions && Array.isArray(marketplaceOptions) && marketplaceOptions.length > 0 && (
         <CourseOptionsList 
-          options={(data as any).options as CourseOptionData[]}
+          options={marketplaceOptions as CourseOptionData[]}
           maxDisplay={3}
           onOptionClick={(courseId) => {
             console.log('[RequirementNode] Course clicked:', courseId);
@@ -312,7 +252,7 @@ const RequirementNode = ({ data }: { data: V2NodeData }) => {
       )}
       
       {/* DEV DIAGNOSTIC: Show when optionsCount exists but options array is empty (pipeline issue) */}
-      {process.env.NODE_ENV === 'development' && (data.optionsCount ?? 0) > 0 && !Array.isArray((data as any)?.options) && (
+      {process.env.NODE_ENV === 'development' && (optionsCount ?? 0) > 0 && !Array.isArray(marketplaceOptions) && (
         <div className="mt-1 text-[10px] text-amber-600">debug: options map empty for this block</div>
       )}
       
