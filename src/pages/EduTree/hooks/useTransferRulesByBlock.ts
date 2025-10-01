@@ -48,16 +48,37 @@ export function useTransferRulesByBlock(
         };
       }
 
-      // Fetch transfer rules for all provided block IDs
+      // Resolve slug → uuid for incoming ids
+      const norm = blockIds.map(x => String(x).toLowerCase());
+      const slugCandidates = norm.filter(id => !/^[0-9a-f-]{36}$/.test(id));
+      let uuidSet = new Set(norm.filter(id => /^[0-9a-f-]{36}$/.test(id)));
+      if (slugCandidates.length) {
+        const { data: rbRows } = await supabase
+          .from('requirement_blocks')
+          .select('id, slug')
+          .in('slug', slugCandidates);
+        rbRows?.forEach(r => uuidSet.add(String(r.id).toLowerCase()));
+      }
+      const uuidList = Array.from(uuidSet);
+
+      // Fetch transfer rules by UUIDs
       const { data: rulesData, error: rulesError } = await supabase
         .from('transfer_rules')
         .select('id, block_id, course_id, transfer_state, score, notes, created_at')
-        .in('block_id', blockIds);
+        .in('block_id', uuidList);
 
       if (rulesError) throw rulesError;
 
       const rulesByBlock = new Map<string, TransferRule[]>();
       const rulesByCourse = new Map<string, TransferRule>();
+
+      // Build slug map to alias rule keys
+      const { data: blocksForAlias } = await supabase
+        .from('requirement_blocks')
+        .select('id, slug')
+        .in('id', uuidList);
+      const slugById = new Map<string, string>();
+      blocksForAlias?.forEach(b => slugById.set(String(b.id).toLowerCase(), String(b.slug || '').toLowerCase()));
 
       (rulesData || []).forEach((rule: any) => {
         const transferRule: TransferRule = {
@@ -71,11 +92,15 @@ export function useTransferRulesByBlock(
           updatedAt: rule.created_at || new Date().toISOString(),
         };
 
-        // Group by block
-        if (!rulesByBlock.has(rule.block_id)) {
-          rulesByBlock.set(rule.block_id, []);
+        // Group by block (both UUID and slug keys)
+        const uuidKey = String(rule.block_id).toLowerCase();
+        const slugKey = slugById.get(uuidKey);
+        if (!rulesByBlock.has(uuidKey)) rulesByBlock.set(uuidKey, []);
+        rulesByBlock.get(uuidKey)!.push(transferRule);
+        if (slugKey) {
+          if (!rulesByBlock.has(slugKey)) rulesByBlock.set(slugKey, []);
+          rulesByBlock.get(slugKey)!.push(transferRule);
         }
-        rulesByBlock.get(rule.block_id)!.push(transferRule);
 
         // Index by course (for quick lookup when rendering options)
         if (rule.course_id) {

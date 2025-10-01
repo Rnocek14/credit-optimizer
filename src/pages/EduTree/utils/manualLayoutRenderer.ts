@@ -5,6 +5,7 @@
 
 import { Node, Edge, MarkerType, Position } from '@xyflow/react';
 import { V2RequirementBlock, V2Edge, EdgeKind } from '../data/seedDataV2';
+import type { CourseOption } from '../hooks/useRequirementOptionsBatch';
 
 type RFNode = Node;
 type RFEdge = Edge;
@@ -181,10 +182,19 @@ export function blocksToNodes(
     const mpSig = `${oc ?? '∅'}|${ace}|${clep}|${sel}`;
     
     // Course-aware: Get options and transfer rules for this block
-    const blockIdNormalized = String(block.id).toLowerCase();
-    const courseOptions = optionsByBlock?.get(blockIdNormalized) ?? [];
-    const transferRules = transferRulesByBlock?.get(blockIdNormalized) ?? [];
-    const selection = selectionsByBlock.get(blockIdNormalized);
+    // Try all known keys (uuid, slug, dbId) for map lookup
+    const idKey = String(block.id || '').toLowerCase();
+    const slugKey = String((block as any).slug || '').toLowerCase();
+    const dbIdKey = String((block as any).dbId || (block as any).db_id || '').toLowerCase();
+    const keys = [idKey, slugKey, dbIdKey].filter(Boolean);
+    const pickFromMap = <T,>(m?: Map<string, T>) => {
+      if (!m) return undefined as unknown as T;
+      for (const k of keys) { const v = m.get(k); if (v) return v; }
+      return undefined as unknown as T;
+    };
+    const courseOptions = pickFromMap<CourseOption[]>(optionsByBlock) ?? [];
+    const transferRules = pickFromMap<any[]>(transferRulesByBlock) ?? [];
+    const selection = pickFromMap<any>(selectionsByBlock);
     
     // Build transfer rules map by course ID for efficient lookup
     const byCourse = new Map<string, any>();

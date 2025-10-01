@@ -76,6 +76,18 @@ export function useRequirementOptionsBatch(
         return new Map<string, CourseOption[]>();
       }
 
+      // Step 1b: fetch slugs for these requirement_ids so we can alias keys
+      const uniqueReqIds = [...new Set(optionsData.map(o => String(o.requirement_id).toLowerCase()))];
+      const { data: rbRows, error: rbErr } = await supabase
+        .from('requirement_blocks')
+        .select('id, slug')
+        .in('id', uniqueReqIds);
+      if (rbErr) throw rbErr;
+      const slugById = new Map<string, string>();
+      (rbRows || []).forEach(r => {
+        if (r?.id && r?.slug) slugById.set(String(r.id).toLowerCase(), String(r.slug).toLowerCase());
+      });
+
       // Step 2: Get unique course IDs (from option_ref_id which points to edu_courses)
       const courseIds = [...new Set(optionsData.map(opt => opt.option_ref_id))].filter(Boolean);
 
@@ -105,7 +117,7 @@ export function useRequirementOptionsBatch(
         });
       });
 
-      // Step 5: Group options by block ID
+      // Step 5: Group options by block ID, and also alias by slug
       const resultMap = new Map<string, CourseOption[]>();
       optionsData.forEach(opt => {
         if (!opt.option_ref_id) return;
@@ -113,11 +125,14 @@ export function useRequirementOptionsBatch(
         const course = courseMap.get(opt.option_ref_id);
         if (!course) return;
 
-        const blockId = opt.requirement_id.toLowerCase();
-        if (!resultMap.has(blockId)) {
-          resultMap.set(blockId, []);
+        const uuidKey = String(opt.requirement_id).toLowerCase();
+        const slugKey = slugById.get(uuidKey);
+        if (!resultMap.has(uuidKey)) resultMap.set(uuidKey, []);
+        resultMap.get(uuidKey)!.push(course);
+        if (slugKey) {
+          if (!resultMap.has(slugKey)) resultMap.set(slugKey, []);
+          resultMap.get(slugKey)!.push(course);
         }
-        resultMap.get(blockId)!.push(course);
       });
 
       if (process.env.NODE_ENV === 'development') {
