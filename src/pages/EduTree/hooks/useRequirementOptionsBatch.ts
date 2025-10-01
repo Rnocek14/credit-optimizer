@@ -47,7 +47,21 @@ export function useRequirementOptionsBatch(
       if (blockIds.length === 0) return new Map<string, CourseOption[]>();
 
       // Normalize block IDs (handle both UUID and slug formats)
-      const normalizedIds = blockIds.map(id => id.toLowerCase());
+      const normalized = blockIds.map(id => id.toLowerCase());
+      
+      // Resolve slugs -> UUIDs if any IDs are non-UUID (best-effort)
+      const slugCandidates = normalized.filter(id => !/^[0-9a-f-]{36}$/.test(id));
+      let uuidSet = new Set(normalized.filter(id => /^[0-9a-f-]{36}$/.test(id)));
+      
+      if (slugCandidates.length > 0) {
+        const { data: slugRows } = await supabase
+          .from('requirement_blocks')
+          .select('id, slug')
+          .in('slug', slugCandidates);
+        slugRows?.forEach(r => uuidSet.add(String(r.id).toLowerCase()));
+      }
+      
+      const normalizedIds = Array.from(uuidSet);
 
       // Step 1: Fetch requirement_options for all blocks
       // Schema: requirement_id, option_kind (enum), option_ref_id (UUID pointing to course)

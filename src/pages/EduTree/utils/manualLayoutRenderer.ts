@@ -186,6 +186,33 @@ export function blocksToNodes(
     const transferRules = transferRulesByBlock?.get(blockIdNormalized) ?? [];
     const selection = selectionsByBlock.get(blockIdNormalized);
     
+    // Build transfer rules map by course ID for efficient lookup
+    const byCourse = new Map<string, any>();
+    transferRules.forEach((r: any) => {
+      const courseId = String(r.courseId ?? r.course_id ?? '');
+      if (courseId) byCourse.set(courseId, r);
+    });
+    
+    // Merge course options with transfer state and sort by priority
+    const options = courseOptions
+      .map((c: any) => {
+        const tr = byCourse.get(c.courseId) || {};
+        return {
+          ...c,
+          transfer: {
+            state: tr.transferState ?? tr.transfer_state ?? 'unknown',
+            score: tr.score ?? undefined
+          }
+        };
+      })
+      .sort((a: any, b: any) =>
+        // Sort by: transfer score desc, ACE desc, CLEP desc
+        (b.transfer?.score ?? 0) - (a.transfer?.score ?? 0) ||
+        (b.evidence?.ace ? 1 : 0) - (a.evidence?.ace ? 1 : 0) ||
+        (b.evidence?.clep ? 1 : 0) - (a.evidence?.clep ? 1 : 0)
+      )
+      .slice(0, 3); // Take top 3
+    
     // [ACCEPTANCE TEST] Log enrichment for first 5 blocks with data
     if (process.env.NODE_ENV === 'development' && (courseOptions.length > 0 || transferRules.length > 0 || selection)) {
       const blockIndex = safeBlocks.indexOf(block);
@@ -198,6 +225,9 @@ export function blocksToNodes(
           selectedCourseId: selection?.course_id,
           sampleOption: courseOptions[0]?.code,
           sampleTransfer: transferRules[0]?.transferState,
+          mergedOptions: options.length,
+          topOption: options[0]?.code,
+          topTransferState: options[0]?.transfer?.state,
           dataVersion
         });
       }
@@ -250,8 +280,8 @@ export function blocksToNodes(
       selectedCourse: (block as any).selectedCourse,
       // Marketplace signature for re-render detection
       mpSig,
-      // Course-aware: Add options, transfer rules, and selection
-      options: courseOptions,
+      // Course-aware: Add merged options with transfer state, transfer rules, and selection
+      options: options,
       transferRules: transferRules,
       selectedCourseId: selection?.course_id,
       // Data version for React identity tracking
@@ -275,12 +305,30 @@ export function blocksToNodes(
         const courseOptions = optionsByBlock?.get(blockIdNormalized) ?? [];
         const transferRules = transferRulesByBlock?.get(blockIdNormalized) ?? [];
         const selection = selectionsByBlock.get(blockIdNormalized);
+        
+        // Reconstruct merged options to match what was set on node.data
+        const byCourse = new Map<string, any>();
+        transferRules.forEach((r: any) => {
+          const courseId = String(r.courseId ?? r.course_id ?? '');
+          if (courseId) byCourse.set(courseId, r);
+        });
+        const mergedOptions = courseOptions.map((c: any) => {
+          const tr = byCourse.get(c.courseId) || {};
+          return {
+            ...c,
+            transfer: {
+              state: tr.transferState ?? tr.transfer_state ?? 'unknown',
+              score: tr.score ?? undefined
+            }
+          };
+        }).slice(0, 3);
+        
         return {
           id: block.id,
           title: block.title,
           optionsCount: courseOptions.length,
-          opt0: courseOptions[0]?.code,
-          transfer0: transferRules[0]?.transferState,
+          opt0: mergedOptions[0]?.code,
+          transfer0: mergedOptions[0]?.transfer?.state,
           selectedCourseId: selection?.course_id,
           __v: dataVersion
         };

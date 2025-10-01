@@ -311,6 +311,11 @@ const RequirementNode = ({ data }: { data: V2NodeData }) => {
         />
       )}
       
+      {/* DEV DIAGNOSTIC: Show when optionsCount exists but options array is empty (pipeline issue) */}
+      {process.env.NODE_ENV === 'development' && (data.optionsCount ?? 0) > 0 && (!Array.isArray((data as any)?.options) || (data as any).options.length === 0) && (
+        <div className="mt-1 text-[10px] text-amber-600">debug: options map empty for this block</div>
+      )}
+      
       {/* DEV DIAGNOSTIC: Only show when real pill wouldn't render */}
       {process.env.NODE_ENV === 'development' 
         && SHOW_MP 
