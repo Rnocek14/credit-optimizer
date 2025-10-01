@@ -33,12 +33,12 @@ export function EvidenceMeter({
     return (
       <div
         className={clsx(
-          'inline-flex items-center gap-2 rounded-full border border-dashed border-border bg-transparent px-2 py-0.5 text-xs text-muted-foreground',
+          'inline-flex items-center gap-2 rounded-full border-2 border-dashed border-border/30 bg-transparent px-2 py-0.5 text-xs text-muted-foreground',
           className
         )}
         aria-label={`${label}: no data`}
       >
-        <span className="h-1.5 w-16 rounded bg-muted/40" aria-hidden />
+        <span className="h-1.5 w-16 rounded bg-transparent" aria-hidden />
         {!quiet && <span>no data</span>}
       </div>
     );
@@ -50,7 +50,7 @@ export function EvidenceMeter({
       className={clsx('flex items-center gap-2', className)}
       aria-label={`${label}: ${pct}%`}
     >
-      <div className="h-1.5 w-20 overflow-hidden rounded bg-muted/40">
+      <div className="h-1.5 w-20 overflow-hidden rounded border border-border/20 bg-card">
         <div className="h-full bg-primary" style={{ width: `${pct}%` }} />
       </div>
       {!quiet && <span className="text-xs text-muted-foreground">{pct}%</span>}

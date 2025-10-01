@@ -221,6 +221,14 @@ export function blocksToNodes(
         aliases.push('se-cap', 'y4-se-cap', 'ds-cap', 'y4-ds-cap', 'it-cap', 'y4-it-cap');
       }
       
+      // BSN Program aliases - restore missing nursing blocks
+      if (idLower.includes('bsn') || slugLower.includes('bsn') || slugLower.includes('nursing')) {
+        aliases.push('bsn-found', 'y1-bsn-found', 'bsn-foundations');
+        aliases.push('bsn-core', 'y2-bsn-core', 'bsn-core-courses');
+        aliases.push('bsn-clinical', 'y3-bsn-clinical', 'bsn-clinical-practice');
+        aliases.push('bsn-capstone', 'y4-bsn-capstone', 'bsn-capstone-project');
+      }
+      
       return aliases;
     };
     

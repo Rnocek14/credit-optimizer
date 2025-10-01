@@ -4,10 +4,10 @@
  */
 
 export const COL_W = 280;        // Node width
-export const COL_GAP = 160;      // Standard gap between years (increased for better spacing)
+export const COL_GAP = 200;      // Standard gap between years (increased for better spacing)
 export const GRID = 8;           // Grid snap unit
 export const NODE_HEIGHT = 120;  // Standard node height
-export const LANE_GAP = 40;      // Gap between nodes in same lane (increased from 24)
+export const LANE_GAP = 60;      // Gap between nodes in same lane (increased for visibility)
 
 const snap8 = (n: number) => Math.round(n / GRID) * GRID;
 

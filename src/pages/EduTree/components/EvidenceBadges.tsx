@@ -52,6 +52,17 @@ export const EvidenceBadges: React.FC<Props> = ({
     return { c, ip, p };
   }, [catalogCourseIds, getCourseStatus]);
 
+  // Compute status based on evidence percent
+  const evidencePercent = coverage.neededCredits 
+    ? Math.floor((coverage.earnedCredits / coverage.neededCredits) * 100) 
+    : 0;
+  
+  // Status determination: >= 85% evidence → accepted
+  const status: 'accepted' | 'completed' | 'none' = 
+    evidencePercent >= 85 ? 'accepted' : 
+    coverage.complete ? 'completed' : 
+    'none';
+
   return (
     <div className="evi--dock" aria-label="Student evidence">
       {/* progress ring / bar (neutral tone, never conflicts with A/B colors) */}
@@ -63,7 +74,7 @@ export const EvidenceBadges: React.FC<Props> = ({
           <div
             className="evi--meter-fill"
             style={{
-              width: `${Math.min(100, Math.floor( (coverage.earnedCredits / (coverage.neededCredits || 1)) * 100 ))}%`,
+              width: `${Math.min(100, evidencePercent)}%`,
             }}
           />
           <span className="evi--meter-label">

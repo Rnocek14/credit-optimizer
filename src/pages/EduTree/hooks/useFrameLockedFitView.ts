@@ -66,7 +66,7 @@ export function useFrameLockedFitView({
             const frameNodes = [...FRAME_NODE_IDS.map(id => ({ id })), ...itNodes.map(n => ({ id: n.id }))];
             reactFlow.fitView({
               nodes: frameNodes,
-              padding: 0.15,
+              padding: 0.25,
               includeHiddenNodes: true,
               duration: 300
             });
@@ -74,7 +74,7 @@ export function useFrameLockedFitView({
             // Standard frame-locked fitView
             reactFlow.fitView({
               nodes: FRAME_NODE_IDS.map(id => ({ id })),
-              padding: 0.15,
+              padding: 0.25,
               includeHiddenNodes: true,
               duration: 300
             });

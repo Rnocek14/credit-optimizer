@@ -75,21 +75,21 @@ interface EvidenceMeterProps {
 export function EvidenceMeter({ percent = 0, className }: EvidenceMeterProps) {
   const safePercent = Math.max(0, Math.min(100, percent));
 
-  // NO DATA: quiet outline, muted track, no solid dark fill
+  // NO DATA: quiet outline, NO dark fill - pure transparent
   if (!Number.isFinite(percent) || percent === 0) {
     return (
       <span
-        className={cn('ml-2 inline-flex h-[10px] w-16 rounded-sm border border-dashed border-border bg-transparent overflow-hidden', className)}
+        className={cn('ml-2 inline-flex h-[10px] w-16 rounded-sm border-2 border-dashed border-border/30 bg-transparent overflow-hidden', className)}
         title="Evidence: 0%"
       >
-        <span className="h-full w-full bg-muted/40" />
+        <span className="h-full w-full bg-transparent" />
       </span>
     );
   }
 
   return (
     <span
-      className={cn('ml-2 inline-flex h-[10px] w-16 rounded-sm bg-muted/40 overflow-hidden', className)}
+      className={cn('ml-2 inline-flex h-[10px] w-16 rounded-sm border border-border/20 bg-card overflow-hidden', className)}
       title={`Evidence: ${safePercent}%`}
     >
       <span
