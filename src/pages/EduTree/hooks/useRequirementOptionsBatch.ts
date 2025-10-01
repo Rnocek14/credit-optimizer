@@ -43,11 +43,28 @@ export function useRequirementOptionsBatch(
   enabled = true
 ): RequirementOptionsBatchResult {
   const { data, isLoading, error } = useQuery({
-    queryKey: QUERY_KEYS.requirementOptionsBatch(blockIds, scope),
+    queryKey: ['reqOptionsBatch', scope, [...blockIds].sort()], // Stable cache key
     queryFn: async () => {
       mark('mp_batch:start');
       
-      if (blockIds.length === 0) return new Map<string, CourseOption[]>();
+      // STAGE 0: INPUT - Log what we're asking for
+      trace({
+        stage: 'MP_BATCH',
+        t: Date.now(),
+        note: 'INPUT',
+        mp: { count: blockIds.length },
+      });
+      
+      if (blockIds.length === 0) {
+        trace({ stage: 'MP_BATCH', t: Date.now(), note: 'EMPTY_BLOCKIDS' });
+        return new Map<string, CourseOption[]>();
+      }
+      
+      console.log('[MP_BATCH][INPUT]', {
+        scope,
+        blockIdsCount: blockIds.length,
+        blockIdsSample: blockIds.slice(0, 8),
+      });
 
       // Normalize block IDs (handle both UUID and slug formats)
       const normalized = blockIds.map(id => id.toLowerCase());
@@ -74,8 +91,34 @@ export function useRequirementOptionsBatch(
         .in('requirement_id', normalizedIds)
         .eq('option_kind', 'course'); // Filter to only course options
 
-      if (optionsError) throw optionsError;
+      // STAGE 1: DB_FETCH - Log what came back
+      trace({
+        stage: 'MP_BATCH',
+        t: Date.now(),
+        note: 'DB_FETCH',
+        mp: { count: optionsData?.length ?? 0 },
+      });
+      
+      console.log('[MP_BATCH][DB_FETCH]', {
+        scope,
+        normalizedIdsCount: normalizedIds.length,
+        normalizedIdsSample: normalizedIds.slice(0, 5),
+        optionsDataCount: optionsData?.length ?? 0,
+        error: optionsError ? String(optionsError) : null,
+      });
+
+      if (optionsError) {
+        console.error('[MP_BATCH][DB_ERROR]', { scope, error: optionsError });
+        throw optionsError;
+      }
+      
       if (!optionsData || optionsData.length === 0) {
+        console.warn('[MP_BATCH] ⚠️ No requirement_options rows returned', {
+          scope,
+          normalizedIdsCount: normalizedIds.length,
+          normalizedIdsSample: normalizedIds.slice(0, 5),
+        });
+        mark('mp_batch:end');
         return new Map<string, CourseOption[]>();
       }
 
@@ -120,43 +163,68 @@ export function useRequirementOptionsBatch(
         });
       });
 
-      // Step 5: Group options by block ID, and also alias by slug
+      // Step 5: Group options by block ID using robust key resolution
       const resultMap = new Map<string, CourseOption[]>();
+      const idSet = new Set(blockIds.map(s => s.toLowerCase()));
+      
+      // Helper to find best key for this row
+      const keyFromRow = (opt: any): string[] => {
+        const uuidKey = String(opt.requirement_id).toLowerCase();
+        const slugKey = slugById.get(uuidKey);
+        
+        const candidates = [
+          uuidKey,
+          slugKey,
+        ].filter(Boolean) as string[];
+        
+        return candidates;
+      };
+      
       optionsData.forEach(opt => {
         if (!opt.option_ref_id) return;
         
         const course = courseMap.get(opt.option_ref_id);
         if (!course) return;
 
-        const uuidKey = String(opt.requirement_id).toLowerCase();
-        const slugKey = slugById.get(uuidKey);
-        if (!resultMap.has(uuidKey)) resultMap.set(uuidKey, []);
-        resultMap.get(uuidKey)!.push(course);
-        if (slugKey) {
-          if (!resultMap.has(slugKey)) resultMap.set(slugKey, []);
-          resultMap.get(slugKey)!.push(course);
+        const keys = keyFromRow(opt);
+        for (const k of keys) {
+          if (!resultMap.has(k)) resultMap.set(k, []);
+          resultMap.get(k)!.push(course);
         }
       });
-
-      if (process.env.NODE_ENV === 'development') {
-        const sampleBlock = resultMap.size > 0 ? Array.from(resultMap.entries())[0] : null;
-        console.log('[useRequirementOptionsBatch] Fetched:', {
-          scope,
-          blockIdsCount: blockIds.length,
-          blockIdsSample: blockIds.slice(0, 3),
-          totalOptions: optionsData.length,
-          coursesFound: coursesData?.length || 0,
-          resultMapSize: resultMap.size,
-          sampleBlock: sampleBlock ? {
-            blockId: sampleBlock[0],
-            optionsCount: sampleBlock[1].length,
-            firstCourse: sampleBlock[1][0]?.code
-          } : null
+      
+      // STAGE 1.5: GROUPING_SUMMARY
+      if (optionsData.length > 0) {
+        const sample = Array.from(resultMap.entries()).slice(0, 3).map(([k, v]) => ({ k, n: v.length }));
+        trace({
+          stage: 'MP_BATCH',
+          t: Date.now(),
+          note: 'GROUPED',
+          mp: { count: resultMap.size },
+        });
+        console.log('[MP_BATCH][GROUPED]', {
+          mapSize: resultMap.size,
+          sample,
+          allKeys: Array.from(resultMap.keys()),
         });
       }
       
-      // STAGE 1: MP_BATCH - Log all blocks with options
+      // SMOKE ASSERT: Empty result when we expected data
+      if (blockIds.length > 0 && resultMap.size === 0) {
+        console.warn('[MP_BATCH] ⚠️ No options for any block', {
+          scope,
+          blockIdsCount: blockIds.length,
+          blockIdsSample: blockIds.slice(0, 8),
+          normalizedIdsCount: normalizedIds.length,
+          optionsDataCount: optionsData.length,
+          coursesDataCount: coursesData?.length ?? 0,
+        });
+      }
+
+      // STAGE 2: MP_BATCH - Log all blocks with options
+      mark('mp_batch:end');
       measure('mp_batch:total', 'mp_batch:start', 'mp_batch:end');
+      
       for (const [blockKey, items] of resultMap.entries()) {
         if (!items?.length) continue;
         trace({
