@@ -244,7 +244,9 @@ const RequirementNode = ({ data }: { data: V2NodeData }) => {
           v:{String(data.__v).slice(-4)}
         </div>
       )}
-      <div className="font-semibold text-sm text-foreground mb-1">{data.title}</div>
+      <div className="font-semibold text-sm text-foreground mb-1">
+        {data.title || blockData?.title || 'Untitled Block'}
+      </div>
       <div className="text-xs text-muted-foreground">
         Year {data.levelYear} • {data.area}
       </div>
@@ -292,6 +294,7 @@ const RequirementNode = ({ data }: { data: V2NodeData }) => {
       {/* Phase 2: Course marketplace chips - simplified visibility */}
       <div className="relative overflow-visible mt-2 flex flex-wrap gap-1 items-center text-[10px]">
         <NodeOptionsPill 
+          key={`pill-${blockId}-${data?.__v || 'v0'}`}
           count={n}
           show={showPill}
           onClick={() => setModalOpen(true)}
