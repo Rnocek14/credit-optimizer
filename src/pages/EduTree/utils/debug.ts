@@ -6,9 +6,14 @@ export const isDev =
   (typeof import.meta !== 'undefined' && !!(import.meta as any)?.env?.DEV) ||
   process.env.NODE_ENV === 'development';
 
+// Store logs in memory for UI display
+const logBuffer: PillTrace[] = [];
+const MAX_LOGS = 200;
+
 // Log once to verify debug system is active
 if (typeof window !== 'undefined' && isDev) {
   console.log('[DEBUG SYSTEM] Initialized - isDev =', isDev);
+  (window as any).__debugLogs = logBuffer;
 }
 
 export type Stage =
@@ -44,6 +49,12 @@ export type PillTrace = {
 export function trace(rec: PillTrace) {
   if (!isDev) return;
   
+  // Store in buffer for UI display
+  logBuffer.push(rec);
+  if (logBuffer.length > MAX_LOGS) {
+    logBuffer.shift(); // Keep only last 200 logs
+  }
+  
   // Always print if there's an anomaly; otherwise sample at 20% (increased from 5%)
   const anomaly =
     !rec.mp ||
@@ -55,6 +66,14 @@ export function trace(rec: PillTrace) {
   // Use simple console.log instead of styled output for better compatibility
   const shortSig = rec.mp?.signature?.slice(-20);
   console.log(`[TreeDbg:${rec.stage}]`, { ...rec, mp: { ...rec.mp, signature: shortSig } });
+}
+
+export function getDebugLogs(): PillTrace[] {
+  return [...logBuffer];
+}
+
+export function clearDebugLogs() {
+  logBuffer.length = 0;
 }
 
 export function assertDbg(ok: boolean, message: string, ctx: PillTrace) {

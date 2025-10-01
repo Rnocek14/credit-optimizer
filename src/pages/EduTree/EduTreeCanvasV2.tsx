@@ -47,6 +47,7 @@ import { CheckpointControls } from './components/CheckpointControls';
 import { DebugHUD } from '../../components/DebugHUD';
 import { SuffixMetrics } from './components/SuffixMetrics';
 import { useSuffixCompare } from './hooks/useSuffixCompare';
+import { DebugLogPanel } from './components/DebugLogPanel';
 import './components/StabilityStyles.css';
 import './styles/trackOverlay.css';
 import './styles/reactFlowFix.css';
@@ -1738,6 +1739,9 @@ function EduTreeCanvasV2Content({
           reachableSet={suffixCompare.reachableSet}
           mode={mode}
         />
+        
+        {/* Debug Log Panel - Dev Only */}
+        {process.env.NODE_ENV === 'development' && <DebugLogPanel />}
       </div>
       </>
     </ReactFlowErrorBoundary>
