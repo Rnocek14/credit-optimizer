@@ -964,15 +964,11 @@ export function applyManualLayout(
     const optionIds = mergedOptions.map((o: any) => o.code ?? o.id ?? '').filter(Boolean);
     const newSignature = `v1|${dataVersion}|${blockId}|${rawOptions.length}|${optionIds.slice(0, 3).join(',')}`;
     
-    // Force React Flow to detect update by updating position field
-    // Add tiny offset to ensure React Flow recognizes the change
-    const positionOffset = 0.00001;
-    
     return {
       ...node,
       position: {
-        x: gridCoords.x + positionOffset,
-        y: gridCoords.y + positionOffset,
+        x: gridCoords.x,
+        y: gridCoords.y,
       },
       data: {
         ...node.data,

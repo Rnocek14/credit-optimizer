@@ -26,6 +26,20 @@ export function NodeOptionsPill({
   // Read marketplace subtree with robust fallbacks
   const mp0 = data?.marketplace ?? {};
   
+  // CRITICAL FIX: Wait for enriched data with proper signature format
+  // Old signature format: "|vgfxlxu|y1-found|0|" (stale)
+  // New signature format: "v1|v1tttv1w|y1-found|2|CS-101,CS-102" (enriched)
+  const hasValidSignature = mp0.signature?.startsWith?.('v1|');
+  
+  // Don't render during transition with stale data
+  if (!hasValidSignature && mp0.signature) {
+    if (isDev && Math.random() < 0.1) {
+      console.log('[PILL][%s] Skipping render - waiting for enriched data. Signature: %s', 
+        nodeId?.slice(0, 15), mp0.signature?.slice(0, 30));
+    }
+    return null;
+  }
+  
   // Try multiple sources for options array (in order of preference)
   const optionsSources = [
     mp0.options,              // data.marketplace.options (primary - full objects)
