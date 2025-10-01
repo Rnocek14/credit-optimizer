@@ -1174,6 +1174,23 @@ function EduTreeCanvasV2Content({
           (window as any).__rfNodes = finalNodes; // Alias for easier console access
           (window as any).__flowEdges__ = newEdges;
           (window as any).gatePositions = gatePositions;
+          
+          // CRITICAL DIAGNOSTIC: Verify marketplace data survives through to React Flow
+          const finalNodesWithMP = finalNodes.filter(n => (n.data as any)?.marketplace);
+          console.log(`[EduTreeCanvas] ${finalNodesWithMP.length} nodes have marketplace data in finalNodes`);
+          if (finalNodesWithMP.length > 0) {
+            console.log('[EduTreeCanvas] Sample final node marketplace:', {
+              nodeId: finalNodesWithMP[0].id,
+              marketplace: (finalNodesWithMP[0].data as any)?.marketplace
+            });
+          } else {
+            console.warn('[EduTreeCanvas] ⚠️ NO MARKETPLACE DATA IN FINAL NODES - data was stripped!');
+            // Log first non-gate node to see what data it has
+            const sampleNode = finalNodes.find(n => n.type !== 'gate' && n.type !== 'header');
+            if (sampleNode) {
+              console.log('[EduTreeCanvas] Sample node data keys:', Object.keys(sampleNode.data || {}));
+            }
+          }
         }
         
         // Validate no overlaps (acceptance criteria)

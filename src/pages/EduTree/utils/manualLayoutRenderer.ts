@@ -1040,6 +1040,9 @@ export function applyManualLayout(
       type: n.type,
       optionsCount: n.data?.optionsCount,
       mpSig: n.data?.mpSig,
+      marketplace: n.data?.marketplace,
+      hasMarketplace: !!n.data?.marketplace,
+      mpCount: n.data?.marketplace?.count,
     }));
   }
   
@@ -1290,13 +1293,30 @@ export function applyManualLayout(
       type: n.type,
       optionsCount: n.data?.optionsCount,
       mpSig: n.data?.mpSig,
+      marketplace: n.data?.marketplace,
+      hasMarketplace: !!n.data?.marketplace,
+      mpCount: n.data?.marketplace?.count,
+      mpShow: n.data?.marketplace?.show,
+      mpSignature: n.data?.marketplace?.signature,
     }));
     
     const pre = (window as any).__preLayoutNodes?.slice(0, 5) || [];
     const post = (window as any).__postLayoutNodes?.slice(0, 5) || [];
-    console.log('[ManualLayout] Data preservation check:');
+    console.log('[ManualLayout] Data preservation check (pre-layout):');
     console.table(pre);
+    console.log('[ManualLayout] Data preservation check (post-layout):');
     console.table(post);
+    
+    // Detailed check for marketplace data
+    const nodesWithMarketplace = allNodes.filter(n => n.data?.marketplace);
+    console.log(`[ManualLayout] ${nodesWithMarketplace.length} nodes have marketplace data out of ${allNodes.length} total nodes`);
+    
+    if (nodesWithMarketplace.length > 0) {
+      console.log('[ManualLayout] Sample marketplace data:', {
+        nodeId: nodesWithMarketplace[0].id,
+        marketplace: nodesWithMarketplace[0].data?.marketplace
+      });
+    }
   }
   
   onApply(allNodes, sanitizedEdges);
