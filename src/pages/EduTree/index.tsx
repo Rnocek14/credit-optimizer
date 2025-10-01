@@ -84,13 +84,13 @@ export default function EduTree() {
       <div className="w-full h-full relative">
         {/* Dev controls (hidden in production) */}
         {process.env.NODE_ENV !== 'production' && (
-          <div className="absolute top-3 left-3 z-50 rounded-xl bg-black/50 backdrop-blur p-3 flex gap-3 items-center text-sm text-white">
+          <div className="absolute top-3 left-3 z-50 rounded-xl bg-background/80 backdrop-blur p-3 flex gap-3 items-center text-sm text-foreground border border-border/50">
             <label className="flex items-center gap-2">
               Filter
               <select 
                 value={filterMode} 
                 onChange={e=>handleFilterChange(e.target.value as FilterMode)} 
-                className="bg-white/20 border border-white/30 px-2 py-1 rounded text-white"
+                className="bg-background/90 border border-border px-2 py-1 rounded text-foreground"
               >
                 <option value="compare-tracks">compare-tracks</option>
                 <option value="se">se</option>
@@ -108,7 +108,7 @@ export default function EduTree() {
               <select 
                 value={layoutMode} 
                 onChange={e=>handleLayoutChange(e.target.value as any)} 
-                className="bg-white/20 border border-white/30 px-2 py-1 rounded text-white"
+                className="bg-background/90 border border-border px-2 py-1 rounded text-foreground"
               >
                 <option value="legacy">legacy</option>
                 <option value="manual_v1">manual_v1</option>
@@ -128,14 +128,14 @@ export default function EduTree() {
 
             <button 
               onClick={resetToDefaults}
-              className="px-2 py-1 bg-white/20 border border-white/30 rounded text-xs hover:bg-white/30"
+              className="px-2 py-1 bg-background/90 border border-border rounded text-xs hover:bg-accent"
             >
               Reset
             </button>
 
             <button 
               onClick={copyLinkWithParams}
-              className="px-2 py-1 bg-white/20 border border-white/30 rounded text-xs hover:bg-white/30"
+              className="px-2 py-1 bg-background/90 border border-border rounded text-xs hover:bg-accent"
               title="Copy URL with current settings"
             >
               📋

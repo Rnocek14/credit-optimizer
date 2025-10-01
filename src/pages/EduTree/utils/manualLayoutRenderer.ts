@@ -362,8 +362,8 @@ export function blocksToNodes(
       options: options,
       transferRules: transferRules,
       selectedCourseId: selection?.course_id,
-      // Data version for React identity tracking
-      __v: (dataVersion ?? (block as any).__v) + (options.length > 0 ? 1 : 0),
+      // Data version for React identity tracking - ensure it changes when data changes
+      __v: `${dataVersion}-mp${count}`,
       // Fallback ID for debugging
       _rfNodeId: block.id
     };

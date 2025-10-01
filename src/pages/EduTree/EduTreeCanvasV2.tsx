@@ -1651,9 +1651,9 @@ function EduTreeCanvasV2Content({
             <TranscriptUploadDemo />
           </HudDock>
 
-          <HudDock corner="BR" index={1} className="text-xs opacity-80 bg-black/40 px-2 py-1 rounded">
+          <HudDock corner="BR" index={1} className="text-xs opacity-80 bg-background/80 text-foreground px-2 py-1 rounded backdrop-blur-sm">
             Mode: {effectiveFlags.eduTreeLayoutMode} • Tracks: {([...new Set(blocks.map(b => b.track_id).filter(Boolean))]).join(',') || 'shared'} • Programs: {([...new Set(blocks.map(b => b.program_id).filter(Boolean))]).join(',') || 'shared'}
-            {isAutoMode && <span className="ml-2 text-blue-300">🤖 Auto</span>}
+            {isAutoMode && <span className="ml-2 text-primary">🤖 Auto</span>}
           </HudDock>
 
           {/* Top-Left Stack - Professional Compare Picker */}
