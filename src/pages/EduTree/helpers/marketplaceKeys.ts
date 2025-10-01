@@ -6,6 +6,14 @@
 export function marketplaceKeysFromNodeId(id: string): string[] {
   const raw = String(id || '').toLowerCase().trim();
   
+  // Common abbreviation expansions for Year 1 blocks
+  const expansions: Record<string, string[]> = {
+    'found': ['found', 'foundations'],
+    'math': ['math', 'mathematics'],
+    'genedab': ['genedab', 'general-education', 'gened'],
+    'gened': ['gened', 'general-education'],
+  };
+  
   // Generate variants to handle different naming conventions
   const noReq = raw.replace(/^req[-_]/, '');
   const noGate = raw.replace(/^gate[-_]/, '');
@@ -13,7 +21,7 @@ export function marketplaceKeysFromNodeId(id: string): string[] {
   const noPick = raw.replace(/\(pick\s*\d+\)/gi, '').trim();
   const noYear = raw.replace(/^y\d+-/, '');
   
-  // Create all possible variants
+  // Create base variants
   const variants = new Set([
     raw,
     noReq,
@@ -24,6 +32,22 @@ export function marketplaceKeysFromNodeId(id: string): string[] {
     noPick.replace(/[\s_]+/g, '-'),
     raw.replace(/[\s_-]+/g, ''),  // completely compact
   ]);
+  
+  // Add expansion variants for year-prefixed blocks
+  // E.g., y1-found → [y1-found, y1-foundations, found, foundations]
+  const yearMatch = raw.match(/^(y\d+)[-_](.+)$/);
+  if (yearMatch) {
+    const [, yearPrefix, suffix] = yearMatch;
+    const expanded = expansions[suffix] || [suffix];
+    expanded.forEach(exp => {
+      variants.add(`${yearPrefix}-${exp}`); // y1-foundations
+      variants.add(exp); // foundations
+    });
+  } else {
+    // No year prefix - add expansions directly
+    const expanded = expansions[noYear] || [noYear];
+    expanded.forEach(exp => variants.add(exp));
+  }
   
   return Array.from(variants);
 }
