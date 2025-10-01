@@ -140,93 +140,51 @@ export function useRequirementOptionsBatch(
         return new Map();
       }
 
-      // Step 3a: Query block_requirement_map to get requirement IDs for our blocks
-      const { data: blockReqMap, error: blockReqErr } = await supabase
-        .from('block_requirement_map')
-        .select('block_id, requirement_id')
+      // Step 3: Query block_members to get direct block→course mappings
+      const { data: blockMembers, error: blockMembersErr } = await supabase
+        .from('block_members')
+        .select('block_id, course_id')
         .in('block_id', Array.from(blockUUIDs));
 
-      if (blockReqErr) throw blockReqErr;
+      if (blockMembersErr) throw blockMembersErr;
 
-      const requirementIds = [...new Set((blockReqMap ?? []).map(br => br.requirement_id))];
-      console.log('[MP_BATCH][BLOCK_REQ_MAP]', { 
+      console.log('[MP_BATCH][BLOCK_MEMBERS]', { 
         blocks: blockUUIDs.size, 
-        mappings: blockReqMap?.length, 
-        uniqueRequirements: requirementIds.length 
+        mappings: blockMembers?.length
       });
 
-      if (!requirementIds.length) {
-        trace({ stage: 'MP_BATCH', t: Date.now(), note: 'NO_REQUIREMENTS_FOR_BLOCKS', mp: { count: 0 } });
+      if (!blockMembers?.length) {
+        trace({ stage: 'MP_BATCH', t: Date.now(), note: 'NO_BLOCK_MEMBERS', mp: { count: 0 } });
         return new Map();
       }
 
-      // Step 3b: Query requirement_options to get options for those requirements
-      const { data: reqOptions, error: reqOptErr } = await supabase
-        .from('requirement_options')
-        .select('id, requirement_id, option_kind, option_ref_id')
-        .in('requirement_id', requirementIds);
+      // Step 4: Fetch course details from edu_courses
+      const courseIds = [...new Set(blockMembers.map(bm => bm.course_id))];
+      const { data: courses, error: coursesErr } = await supabase
+        .from('edu_courses')
+        .select('id, code, title, area, credits, is_core, is_capstone, description')
+        .in('id', courseIds);
 
-      if (reqOptErr) throw reqOptErr;
+      if (coursesErr) throw coursesErr;
 
-      const seenKinds = [...new Set((reqOptions ?? []).map(o => o.option_kind).filter(Boolean))];
-      console.log('[MP_BATCH][REQ_OPTIONS]', { 
-        rows: reqOptions?.length, 
-        kinds: seenKinds,
-        requirements: requirementIds.length 
-      });
-
-      if (!reqOptions?.length) {
-        trace({ stage: 'MP_BATCH', t: Date.now(), note: 'NO_OPTIONS', mp: { count: 0 } });
-        return new Map();
-      }
-
-      // Step 3c: Fetch courses from edu_courses (using option_ref_id which points to edu_courses)
-      const courseRefIds = [...new Set(reqOptions.filter(o => o.option_kind === 'course' && o.option_ref_id).map(o => o.option_ref_id))];
-      let courseMap = new Map<string, CourseData>();
-
-      if (courseRefIds.length) {
-        const { data: courses, error: cErr } = await supabase
-          .from('edu_courses')
-          .select('id, code, title, area, credits, is_core, is_capstone, description')
-          .in('id', courseRefIds);
-
-        if (cErr) throw cErr;
-        courseMap = new Map((courses ?? []).map(c => [String(c.id).toLowerCase(), c]));
-        console.log('[MP_BATCH][COURSES]', { wanted: courseRefIds.length, got: courseMap.size });
-      }
-
-      // Build a map: requirement_id -> block_ids[]
-      const reqToBlocks = new Map<string, string[]>();
-      for (const br of blockReqMap ?? []) {
-        if (!reqToBlocks.has(br.requirement_id)) {
-          reqToBlocks.set(br.requirement_id, []);
-        }
-        reqToBlocks.get(br.requirement_id)!.push(br.block_id);
-      }
-
-      // Build enriched options with block associations
-      const enrichedOptions = reqOptions.map(opt => ({
-        ...opt,
-        block_ids: reqToBlocks.get(opt.requirement_id) || []
-      }));
+      const courseMap = new Map((courses ?? []).map(c => [String(c.id).toLowerCase(), c]));
+      console.log('[MP_BATCH][COURSES]', { wanted: courseIds.length, got: courseMap.size });
 
       trace({ 
         stage: 'MP_BATCH', 
         t: Date.now(), 
         note: 'DB_FETCH', 
         mp: { 
-          count: enrichedOptions.length,
-          signature: `fetch|opts:${enrichedOptions.length}|courses:${courseMap.size}|kinds:${seenKinds.join(',')}`
+          count: blockMembers.length,
+          signature: `fetch|members:${blockMembers.length}|courses:${courseMap.size}`
         } 
       });
 
-      // Step 4: Group options by block UUID + slug
+      // Step 5: Group courses by block UUID + slug
       const resultMap = new Map<string, CourseOption[]>();
 
-      for (const o of enrichedOptions) {
-        if (o.option_kind !== 'course') continue;
-
-        const course = courseMap.get(String(o.option_ref_id).toLowerCase());
+      for (const bm of blockMembers) {
+        const course = courseMap.get(String(bm.course_id).toLowerCase());
         if (!course) continue;
 
         const evidence = typeof course.description === 'string'
@@ -243,15 +201,13 @@ export function useRequirementOptionsBatch(
           evidence,
         };
 
-        // Map to all associated blocks
-        for (const blockUuid of o.block_ids) {
-          const blockLower = String(blockUuid).toLowerCase();
-          const slug = slugById.get(blockLower);
+        // Map to block UUID and its slug
+        const blockLower = String(bm.block_id).toLowerCase();
+        const slug = slugById.get(blockLower);
 
-          for (const k of [blockLower, slug].filter(Boolean) as string[]) {
-            if (!resultMap.has(k)) resultMap.set(k, []);
-            resultMap.get(k)!.push(courseOption);
-          }
+        for (const k of [blockLower, slug].filter(Boolean) as string[]) {
+          if (!resultMap.has(k)) resultMap.set(k, []);
+          resultMap.get(k)!.push(courseOption);
         }
       }
 
@@ -261,15 +217,15 @@ export function useRequirementOptionsBatch(
         note: 'GROUPED',
         mp: { 
           count: resultMap.size,
-          signature: `grouped|${resultMap.size}|kinds:${seenKinds.join(',')}`
+          signature: `grouped|blocks:${resultMap.size}|courses:${courseMap.size}`
         }
       });
 
       if (blockIds.length > 0 && resultMap.size === 0) {
-        console.warn('[MP_BATCH] ⚠️ No options mapped to any block', {
+        console.warn('[MP_BATCH] ⚠️ No courses mapped to any block', {
           scope,
           blockIdsCount: blockIds.length,
-          optionsCount: enrichedOptions?.length,
+          blockMembersCount: blockMembers?.length,
           coursesCount: courseMap.size,
           blockUUIDs: Array.from(blockUUIDs).slice(0, 5),
         });
