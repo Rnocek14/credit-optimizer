@@ -21,7 +21,9 @@ export interface V2RequirementBlock {
   is_virtual?: boolean;
   is_empty_year?: boolean; // New flag for ghost nodes
   
-  // Enriched fields (added by useEduTreeV2Data)
+  // Enriched fields (added by useEduTreeV2Data / dataMerge)
+  uuid?: string; // Live DB UUID (for marketplace/options lookups)
+  slug?: string; // Live DB slug (alternative key)
   optionsCount?: number;
   hasAceCredit?: boolean;
   hasClep?: boolean;

@@ -23,11 +23,16 @@ export function NodeOptionsPill({
   
   // Read marketplace subtree with robust fallbacks
   const mp0 = data?.marketplace ?? {};
-  const options = Array.isArray(mp0.options)
-    ? mp0.options
-    : Array.isArray(data?.options)
-    ? data.options
-    : [];
+  
+  // Try multiple sources for options array (in order of preference)
+  const optionsSources = [
+    mp0.options,              // data.marketplace.options (primary)
+    mp0.optionIds,            // data.marketplace.optionIds (IDs only)
+    data?.options,            // data.options (legacy top-level)
+    mp0.requirementIds,       // data.marketplace.requirementIds (alt naming)
+  ];
+  
+  const options = optionsSources.find(arr => Array.isArray(arr) && arr.length > 0) ?? [];
 
   // Compute final values - prioritize data.marketplace over legacy props
   const mp = {

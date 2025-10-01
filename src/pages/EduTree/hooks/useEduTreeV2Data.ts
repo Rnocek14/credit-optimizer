@@ -590,6 +590,7 @@ export function useEduTreeV2Data(filterMode: FilterMode = null): UseEduTreeV2Dat
   useEffect(() => {
     if (typeof window !== 'undefined') {
       (window as any).__lastMpMap = marketplaceData;
+      (window as any).__optionsByBlock = optionsByBlock; // DIAGNOSTIC: Expose options map
       
       // Audit function to check complete data pipeline
       (window as any).__auditMpPipeline = () => {
@@ -601,6 +602,17 @@ export function useEduTreeV2Data(filterMode: FilterMode = null): UseEduTreeV2Dat
           size: marketplaceData?.size,
           sampleKeys: Array.from(marketplaceData?.keys() || []).slice(0, 5),
           sampleValues: Array.from(marketplaceData?.entries() || []).slice(0, 3).map(([k, v]) => ({ key: k, value: v }))
+        });
+        
+        // 1b. Check optionsByBlock
+        console.log('1b. Options by block (actual course arrays):', {
+          hasData: !!optionsByBlock,
+          size: optionsByBlock?.size,
+          sampleKeys: Array.from(optionsByBlock?.keys() || []).slice(0, 10),
+          sampleEntry: optionsByBlock?.size > 0 ? (() => {
+            const [k, v] = Array.from(optionsByBlock.entries())[0];
+            return { key: k, optionsCount: v?.length, firstOption: v?.[0] };
+          })() : null
         });
         
         // 2. Check enriched blocks
@@ -642,15 +654,16 @@ export function useEduTreeV2Data(filterMode: FilterMode = null): UseEduTreeV2Dat
         console.log('=== END AUDIT ===');
         console.log('\nSUMMARY:', {
           marketplaceDataFetched: !!marketplaceData && marketplaceData.size > 0,
+          optionsByBlockFetched: !!optionsByBlock && optionsByBlock.size > 0,
           blocksEnriched: enriched?.filter((b: any) => Number.isFinite(b.optionsCount)).length > 0,
           nodesHaveData: rfNodes?.filter((n: any) => Number.isFinite(n.data?.optionsCount)).length > 0,
           pillsRendered: pills.length > 0
         });
         
-        return { marketplaceData, enriched, rfNodes, pillsCount: pills.length };
+        return { marketplaceData, optionsByBlock, enriched, rfNodes, pillsCount: pills.length };
       };
     }
-  }, [marketplaceData]);
+  }, [marketplaceData, optionsByBlock]);
 
   // Phase 3: Gate aggregation (chips show transferables) - Declarative rules
   const gateAggregates = useMemo(() => {

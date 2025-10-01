@@ -763,11 +763,25 @@ export function applyManualLayout(
       });
     }
     
-    // Robust block key resolution (uuid / slug / dbId)
+    // Robust block key resolution (uuid / slug / dbId) with comprehensive fallbacks
     const bid = String((node as any)?.data?.block?.id ?? node.id ?? (node as any)?.data?._rfNodeId ?? '').toLowerCase();
     const slugKey = String((node as any)?.data?.block?.slug ?? (node as any)?.data?.slug ?? (block as any)?.slug ?? '').toLowerCase();
     const dbIdKey = String((node as any)?.data?.block?.dbId ?? (node as any)?.data?.block?.db_id ?? (block as any)?.dbId ?? '').toLowerCase();
-    const keys = [bid, slugKey, dbIdKey].filter(Boolean);
+    const uuidKey = String((block as any)?.uuid ?? (node as any)?.data?.uuid ?? '').toLowerCase(); // NEW: Try UUID from merged block
+    
+    // Add more key variants for better matching - UUID FIRST (most reliable)
+    const blockIdVariants = [
+      uuidKey,                                   // UUID from live DB (PRIORITY)
+      bid,                                       // current node/block ID
+      slugKey,                                   // slug from block
+      dbIdKey,                                   // db_id from block
+      block.id.toLowerCase(),                    // original block ID
+      block.id.toLowerCase().replace(/^y\d-/, ''), // without year prefix
+      (block as any).slug?.toLowerCase(),        // slug from block
+      (block as any).db_id?.toLowerCase(),       // db_id from block
+    ].filter(Boolean);
+    
+    const keys = Array.from(new Set(blockIdVariants)); // dedupe
 
     const pick = <T,>(m?: Map<string, T>): T | undefined => {
       if (!m) return undefined;
@@ -779,6 +793,25 @@ export function applyManualLayout(
     };
 
     const rawOptions = pick(optionsByBlock) ?? [];
+    
+    // DIAGNOSTIC: Log key mismatches for blocks that should have data
+    const isDev = process.env.NODE_ENV === 'development';
+    if (isDev && optionsByBlock && optionsByBlock.size > 0 && rawOptions.length === 0 && Math.random() < 0.15) {
+      const mapKeys = Array.from(optionsByBlock.keys()).slice(0, 10);
+      const hasUUID = !!uuidKey && uuidKey !== '';
+      const uuidMatch = uuidKey && optionsByBlock.has(uuidKey);
+      
+      console.warn('[ManualLayout][KEY-MISS]', {
+        blockId: block.id,
+        uuid: uuidKey || 'NO_UUID',
+        hasUUID,
+        uuidMatch,
+        keysTriedCount: keys.length,
+        keysTriedSample: keys.slice(0, 4),
+        mapSize: optionsByBlock.size,
+        mapKeysSample: mapKeys.slice(0, 5),
+      });
+    }
     const transferRules = pick(transferRulesByBlock) ?? [];
 
     // Merge per-course transfer metadata
@@ -808,7 +841,8 @@ export function applyManualLayout(
       )
       .slice(0, 3);
 
-    if (process.env.NODE_ENV === 'development' && mergedOptions.length > 0) {
+    const isDev2 = process.env.NODE_ENV === 'development';
+    if (isDev2 && mergedOptions.length > 0) {
       console.log('[nodes][enriched]', {
         id: bid || node.id,
         count: rawOptions.length,
@@ -816,6 +850,16 @@ export function applyManualLayout(
         top: mergedOptions[0]?.code,
         topState: mergedOptions[0]?.transfer?.state,
         pillPreview: mergedOptions.slice(0, 2).map(x => x.code || x.title),
+      });
+    }
+    
+    // DIAGNOSTIC: Log marketplace data being set
+    if (isDev2 && rawOptions.length > 0 && Math.random() < 0.1) {
+      console.log('[MP→BLOCKS] Merged options into marketplace:', {
+        blockId: block.id,
+        rawCount: rawOptions.length,
+        mergedCount: mergedOptions.length,
+        signature: `v1|${dataVersion}|${block.id}|${rawOptions.length}|${mergedOptions.slice(0, 2).map(o => o.code ?? o.id ?? '').join(',')}...`
       });
     }
     

@@ -99,6 +99,9 @@ export function mergeBlocksWithLiveData(
         rule_type: liveBlock.rule_type,
         credits_needed: liveBlock.credits_needed,
         area: liveBlock.area,
+        // Attach UUID for marketplace/options lookups
+        uuid: liveBlock.id,
+        slug: liveBlock.slug,
         // Preserve seed positioning and program/track info
       };
       
