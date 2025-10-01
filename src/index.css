@@ -141,6 +141,66 @@
     background-color: hsl(var(--card) / 0.6);
     @apply backdrop-blur-sm;
   }
+
+  /* Unified Status Chip System - Dark Mode Safe */
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.2rem 0.6rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    border: 1px solid oklch(var(--border));
+    background: oklch(var(--card));
+  }
+
+  .chip--accepted {
+    border-color: oklch(var(--success-700));
+    color: oklch(var(--success-700));
+    background: color-mix(in oklch, oklch(var(--success-700)) 10%, transparent);
+  }
+
+  .chip--pending {
+    border-color: oklch(var(--warning-700));
+    color: oklch(var(--warning-700));
+    background: color-mix(in oklch, oklch(var(--warning-700)) 10%, transparent);
+  }
+
+  .chip--rejected {
+    border-color: oklch(var(--destructive-700));
+    color: oklch(var(--destructive-700));
+    background: color-mix(in oklch, oklch(var(--destructive-700)) 10%, transparent);
+  }
+
+  .chip--unknown {
+    border-color: oklch(var(--muted-foreground));
+    color: oklch(var(--muted-foreground));
+    opacity: 0.7;
+  }
+
+  .chip--locked {
+    opacity: 0.6;
+  }
+
+  .chip--completed {
+    border-color: oklch(var(--primary-700));
+    color: oklch(var(--primary-700));
+    background: color-mix(in oklch, oklch(var(--primary-700)) 10%, transparent);
+  }
+
+  /* Evidence Placeholder - No Data State */
+  .evidence--placeholder {
+    background: transparent;
+    border: 2px dashed color-mix(in oklch, currentColor 30%, transparent);
+  }
+
+  /* Badge Ghost Variant */
+  .badge-ghost {
+    background: transparent;
+    border: 1px dashed oklch(var(--border));
+    color: inherit;
+  }
 }
 
 @layer base {

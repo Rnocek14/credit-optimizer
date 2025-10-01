@@ -3,7 +3,7 @@ import { NodeProps } from '@xyflow/react';
 import { Handle, Position } from '@xyflow/react';
 import { useNodeResize } from '@/hooks/useNodeResize';
 import { Star, GraduationCap } from 'lucide-react';
-import { EvidenceBadges } from './EvidenceBadges';
+// import { EvidenceBadges } from './EvidenceBadges'; // Section 1: Commented out to avoid conflicts with unified status system
 
 interface TerminalNodeData {
   label?: string;
@@ -81,12 +81,12 @@ export const TerminalNode: React.FC<NodeProps> = ({ id, data, selected }) => {
         </div>
       </div>
       
-      {/* Evidence overlay (non-interactive) */}
-      <EvidenceBadges
+      {/* Evidence overlay (non-interactive) - Section 1: Temporarily disabled */}
+      {/* <EvidenceBadges
         blockId={blockId}
         creditsNeeded={creditsNeeded}
         catalogCourseIds={catalogCourseIds}
-      />
+      /> */}
       
       {isEligible && (
         <div className="absolute -top-1 -right-1 w-3 h-3 bg-primary rounded-full animate-pulse" />

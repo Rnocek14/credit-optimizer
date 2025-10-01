@@ -13,7 +13,8 @@ export default {
 		'bg-accent-gold','text-accent-gold-foreground', 
 		'bg-accent-lime','text-accent-lime-foreground',
 		'bg-risk-low','bg-risk-medium','bg-risk-high','bg-risk-critical',
-		'gradient-primary', 'lp-swatch', 'lp-grid'
+		'gradient-primary', 'lp-swatch', 'lp-grid',
+		{ pattern: /chip--(accepted|pending|rejected|unknown|locked|completed)/ },
 	],
 	prefix: "",
 	theme: {

@@ -63,7 +63,7 @@ type DevOverrides = {
 
 import { EmptyYearNode } from './components/EmptyYearNode';
 import { injectGhostNodes, getActivePrograms, addGhostNodeEdges, createGhostNodeData } from './utils/ghostNodeInjector';
-import { EvidenceBadges } from './components/EvidenceBadges';
+// import { EvidenceBadges } from './components/EvidenceBadges'; // Section 1: Commented out to avoid conflicts with unified status system
 import { PhaseHeaders } from './components/HUD/PhaseHeaders';
 import { LaneCaptions } from './components/HUD/LaneCaptions';
 import { ComparisonLegend as HudComparisonLegend } from './components/HUD/ComparisonLegend';
@@ -326,12 +326,12 @@ const RequirementNode = ({ data }: { data: V2NodeData }) => {
         </div>
       )}
       
-      {/* Evidence overlay (non-interactive) */}
-      <EvidenceBadges
+      {/* Evidence overlay (non-interactive) - Section 1: Temporarily disabled */}
+      {/* <EvidenceBadges
         blockId={blockId}
         creditsNeeded={creditsNeeded}
         catalogCourseIds={catalogCourseIds}
-      />
+      /> */}
       
       {/* Course selection modal */}
       {SHOW_MP && modalOpen && (
