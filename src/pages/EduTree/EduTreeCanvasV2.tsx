@@ -291,6 +291,8 @@ const RequirementNode = ({ data }: { data: V2NodeData }) => {
           count={n}
           show={showPill}
           onClick={() => setModalOpen(true)}
+          data={data}
+          nodeId={blockId}
         />
         {showPill && (
           <>
