@@ -79,7 +79,7 @@ export function DebugLogPanel() {
     return (
       <button
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-4 right-4 z-50 bg-background border border-border rounded-lg shadow-lg p-2 hover:bg-accent transition-colors"
+        className="fixed bottom-4 left-4 z-50 bg-background border border-border rounded-lg shadow-lg p-2 hover:bg-accent transition-colors"
         title="Open Debug Logs"
       >
         <div className="text-xs font-semibold">Debug Logs ({logs.length})</div>
@@ -89,7 +89,7 @@ export function DebugLogPanel() {
 
   return (
     <div
-      className="fixed bottom-4 right-4 z-50 bg-background border border-border rounded-lg shadow-lg"
+      className="fixed bottom-4 left-4 z-50 bg-background border border-border rounded-lg shadow-lg"
       style={{ 
         width: isMinimized ? '300px' : '600px',
         maxHeight: isMinimized ? '60px' : '500px'
