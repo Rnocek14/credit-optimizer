@@ -966,10 +966,6 @@ export function applyManualLayout(
     
     return {
       ...node,
-      position: {
-        x: gridCoords.x,
-        y: gridCoords.y,
-      },
       data: {
         ...node.data,
         // Top-level for backward compatibility
