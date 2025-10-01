@@ -116,133 +116,78 @@ export function useRequirementOptionsBatch(
         }
       });
 
-      console.log('[MP_BATCH][ID_RESOLUTION]', {
-        scope,
-        inputCount: blockIds.length,
-        resolvedCount: blockUUIDs.size,
-        unresolvedCount: unresolved.length,
-        unresolvedSample: unresolved.slice(0, 5),
-      });
+      console.log('[MP_BATCH][UUIDS]', { in: blockIds.length, uuids: Array.from(blockUUIDs).slice(0, 5) });
 
       if (blockUUIDs.size === 0) {
-        console.error('[MP_BATCH] ⚠️ ID resolution produced zero UUIDs', {
-          scope,
-          blockIdsSample: blockIds.slice(0, 8),
-          unresolved: unresolved.slice(0, 10),
-        });
-        trace({ stage: 'MP_BATCH', t: Date.now(), note: 'ID_RESOLUTION_EMPTY' });
-        return new Map<string, CourseOption[]>();
+        trace({ stage: 'MP_BATCH', t: Date.now(), note: 'EMPTY_AFTER_NORMALIZATION' });
+        return new Map();
       }
 
-      // Step 2: Probe query to discover actual option_kind values
-      // JOIN requirements and filter on requirements.block_id (the correct FK)
-      const { data: probe, error: probeErr } = await supabase
-        .from('requirement_options')
-        .select('option_kind, requirements!inner(block_id)')
-        .in('requirements.block_id', Array.from(blockUUIDs))
-        .limit(50);
+      // Step 3a: Get all options using the view (already joins requirements → blocks)
+      const { data: options, error: optErr } = await supabase
+        .from('requirement_options_view_by_block')
+        .select('*')
+        .in('block_id', Array.from(blockUUIDs));
 
-      if (probeErr) throw probeErr;
+      if (optErr) throw optErr;
 
-      const kindCounts = (probe || []).reduce((acc, r: any) => {
-        const kind = r.option_kind ?? 'NULL';
-        acc[kind] = (acc[kind] ?? 0) + 1;
-        return acc;
-      }, {} as Record<string, number>);
+      const seenKinds = [...new Set((options ?? []).map((o: any) => o.option_kind).filter(Boolean))];
+      console.log('[MP_BATCH][OPTS]', { rows: options?.length, kinds: seenKinds, blockUUIDs: Array.from(blockUUIDs).slice(0, 3) });
 
-      trace({
-        stage: 'MP_BATCH',
-        t: Date.now(),
-        note: 'DB_PROBE',
+      if (!options?.length) {
+        trace({ stage: 'MP_BATCH', t: Date.now(), note: 'NO_OPTIONS', mp: { count: 0 } });
+        return new Map();
+      }
+
+      // Step 3b: Fetch courses for course options
+      const courseRefIds = [...new Set(options.filter((o: any) => o.option_kind === 'course' && o.provider_id).map((o: any) => o.provider_id))];
+      let courseMap = new Map<string, CourseData>();
+
+      if (courseRefIds.length) {
+        const { data: courses, error: cErr } = await supabase
+          .from('edu_courses')
+          .select('id, code, title, area, credits, is_core, is_capstone, description')
+          .in('id', courseRefIds);
+
+        if (cErr) throw cErr;
+        courseMap = new Map((courses ?? []).map(c => [String(c.id).toLowerCase(), c]));
+        console.log('[MP_BATCH][COURSES]', { wanted: courseRefIds.length, got: courseMap.size });
+      }
+
+      trace({ 
+        stage: 'MP_BATCH', 
+        t: Date.now(), 
+        note: 'DB_FETCH', 
         mp: { 
-          count: probe?.length ?? 0, 
-          signature: `probe|${probe?.length ?? 0}|${Object.keys(kindCounts).join(',')}`
-        }
+          count: options.length,
+          signature: `fetch|opts:${options.length}|courses:${courseMap.size}|kinds:${seenKinds.join(',')}`
+        } 
       });
 
-      console.log('[MP_BATCH][DB_PROBE]', {
-        scope,
-        probeRows: probe?.length ?? 0,
-        kindCounts,
-        blockUUIDsSample: Array.from(blockUUIDs).slice(0, 5),
-      });
-
-      // Step 3: Main query - JOIN requirements and courses, filter on requirements.block_id
-      const allowedKinds = Object.keys(kindCounts).filter(k => k && k !== 'NULL') as ('cert' | 'course' | 'exam')[];
-      
-      const { data: rows, error: rowsErr } = await supabase
-        .from('requirement_options')
-        .select(`
-          option_kind,
-          option_ref_id,
-          transfer_eligible,
-          credits_awarded,
-          requirements!inner ( id, block_id ),
-          edu_courses!inner ( id, code, title, area, credits, is_core, is_capstone, description )
-        `)
-        .in('requirements.block_id', Array.from(blockUUIDs))
-        .in('option_kind', allowedKinds.length > 0 ? allowedKinds : ['course'] as const);
-
-      trace({
-        stage: 'MP_BATCH',
-        t: Date.now(),
-        note: 'DB_FETCH',
-        mp: { 
-          count: rows?.length ?? 0,
-          signature: `fetch|${rows?.length ?? 0}|kinds:${allowedKinds.join(',')}`
-        },
-      });
-      
-      console.log('[MP_BATCH][DB_FETCH]', {
-        scope,
-        blockUUIDsCount: blockUUIDs.size,
-        blockUUIDsSample: Array.from(blockUUIDs).slice(0, 5),
-        rowsCount: rows?.length ?? 0,
-        allowedKinds,
-        error: rowsErr ? String(rowsErr) : null,
-      });
-
-      if (rowsErr) {
-        console.error('[MP_BATCH][DB_ERROR]', { scope, error: rowsErr });
-        throw rowsErr;
-      }
-      
-      if (!rows || rows.length === 0) {
-        console.warn('[MP_BATCH] ⚠️ No requirement_options rows returned', {
-          scope,
-          blockUUIDsCount: blockUUIDs.size,
-          blockUUIDsSample: Array.from(blockUUIDs).slice(0, 5),
-          allowedKinds,
-          kindCounts,
-        });
-        trace({ stage: 'MP_BATCH', t: Date.now(), note: 'NO_ROWS' });
-        mark('mp_batch:end');
-        return new Map<string, CourseOption[]>();
-      }
-
-      // Step 4: Group options by block UUID/slug
+      // Step 4: Group options by block UUID + slug
       const resultMap = new Map<string, CourseOption[]>();
-      
-      for (const r of rows as any[]) {
-        const c = r.edu_courses;
-        if (!c) continue;
-        
-        const evidence = typeof c.description === 'string' 
-          ? tryParseEvidence(c.description)
+
+      for (const o of options as any[]) {
+        if (o.option_kind !== 'course') continue;
+
+        const course = courseMap.get(String(o.provider_id).toLowerCase());
+        if (!course) continue;
+
+        const evidence = typeof course.description === 'string'
+          ? tryParseEvidence(course.description)
           : { ace: false, clep: false };
 
         const courseOption: CourseOption = {
-          courseId: c.id,
-          code: c.code,
-          title: c.title,
-          provider: c.area || 'Unknown',
-          credits: c.credits,
+          courseId: course.id,
+          code: course.code,
+          title: course.title,
+          provider: course.area || 'Unknown',
+          credits: course.credits,
           cost: undefined,
           evidence,
         };
 
-        // Key by block UUID and slug (from requirements.block_id)
-        const blockUuid = String(r.requirements.block_id).toLowerCase();
+        const blockUuid = String(o.block_id).toLowerCase();
         const slug = slugById.get(blockUuid);
 
         for (const k of [blockUuid, slug].filter(Boolean) as string[]) {
@@ -250,34 +195,24 @@ export function useRequirementOptionsBatch(
           resultMap.get(k)!.push(courseOption);
         }
       }
-      
-      // GROUPING_SUMMARY
-      const sample = Array.from(resultMap.entries()).slice(0, 3).map(([k, v]) => ({ k, n: v.length }));
+
       trace({
         stage: 'MP_BATCH',
         t: Date.now(),
         note: 'GROUPED',
         mp: { 
           count: resultMap.size,
-          signature: `grouped|${resultMap.size}|${sample.map(s => s.k).join(',')}`
-        },
+          signature: `grouped|${resultMap.size}|kinds:${seenKinds.join(',')}`
+        }
       });
-      console.log('[MP_BATCH][GROUPED]', {
-        scope,
-        mapSize: resultMap.size,
-        sample,
-        allKeys: Array.from(resultMap.keys()).slice(0, 10),
-      });
-      
-      // SMOKE ASSERT: Empty result when we expected data
+
       if (blockIds.length > 0 && resultMap.size === 0) {
-        console.error('[MP_BATCH] ⚠️ No options mapped to any block', {
+        console.warn('[MP_BATCH] ⚠️ No options mapped to any block', {
           scope,
           blockIdsCount: blockIds.length,
-          blockIdsSample: blockIds.slice(0, 8),
-          blockUUIDsCount: blockUUIDs.size,
-          rowsCount: rows.length,
-          kindCounts,
+          optionsCount: options?.length,
+          coursesCount: courseMap.size,
+          blockUUIDs: Array.from(blockUUIDs).slice(0, 5),
         });
       }
 
