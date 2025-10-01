@@ -17,6 +17,7 @@ import { runRegressionChecks } from './utils/regressionChecks';
 import { runSmokeTest } from './utils/smokeTest';
 import { assertNoInvisibleMetroEdges } from './utils/assertNoInvisibleMetroEdges';
 import { cleanupEdgesBeforeValidation } from './utils/edgeCleanup';
+import { trace } from './utils/debug';
 import { useFeatureFlags } from '@/lib/featureFlags';
 import { type FilterMode } from './data/seedDataV2';
 import { LaneHeaders } from './components/LaneHeaders';
@@ -1191,6 +1192,34 @@ function EduTreeCanvasV2Content({
         
         // No need to filter edges here - filtering happens in manualLayoutRenderer
         
+        // STAGE 4: SET_NODES - Log sample before handing to React Flow
+        if (process.env.NODE_ENV === 'development') {
+          const preview = finalNodes.filter(n => (n.data as any)?.marketplace?.count > 0).slice(0, 3);
+          trace({
+            stage: 'SET_NODES',
+            t: Date.now(),
+            dataVersion,
+            note: `nodes=${finalNodes.length}, edges=${newEdges.length}`,
+          });
+          for (const n of preview) {
+            const mp = (n.data as any)?.marketplace;
+            trace({
+              stage: 'SET_NODES',
+              t: Date.now(),
+              dataVersion,
+              blockId: n.id,
+              rfNodeId: n.id,
+              mp: {
+                count: mp?.count,
+                optionsLen: mp?.options?.length,
+                show: mp?.show,
+                allow: mp?.allow,
+                signature: mp?.signature,
+              },
+            });
+          }
+        }
+        
         // Direct assignment to prevent stale ghost nodes from persisting
         setNodes(finalNodes);
         setEdges(newEdges);
@@ -1201,6 +1230,38 @@ function EduTreeCanvasV2Content({
           (window as any).__rfNodes = finalNodes; // Alias for easier console access
           (window as any).__flowEdges__ = newEdges;
           (window as any).gatePositions = gatePositions;
+          
+          // STAGE 5: RF_RENDER
+          trace({
+            stage: 'RF_RENDER',
+            t: Date.now(),
+            dataVersion: (finalNodes[0]?.data as any)?.__v,
+            note: `final nodes=${finalNodes.length} edges=${newEdges.length}`,
+          });
+          
+          // Window inspector for quick debugging
+          (window as any).__tree = {
+            inspect(id: string) {
+              const rf = finalNodes.find(n => n.id === id);
+              const mp = (rf?.data as any)?.marketplace;
+              console.log('[__tree.inspect]', {
+                id,
+                exists: !!rf,
+                keys: Object.keys(rf?.data ?? {}),
+                mp: mp ? {
+                  count: mp.count,
+                  optionsLen: mp.options?.length,
+                  show: mp.show,
+                  allow: mp.allow,
+                  signature: mp.signature?.slice(-30)
+                } : null
+              });
+              return rf;
+            },
+            keys() {
+              return Array.from(optionsByBlock?.keys?.() ?? []);
+            },
+          };
           
           // CRITICAL DIAGNOSTIC: Verify marketplace data survives through to React Flow
           const finalNodesWithMP = finalNodes.filter(n => (n.data as any)?.marketplace);

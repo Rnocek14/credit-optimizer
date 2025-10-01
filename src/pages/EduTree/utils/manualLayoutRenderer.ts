@@ -7,6 +7,7 @@ import { Node, Edge, MarkerType, Position } from '@xyflow/react';
 import { V2RequirementBlock, V2Edge, EdgeKind } from '../data/seedDataV2';
 import type { CourseOption } from '../hooks/useRequirementOptionsBatch';
 import { marketplaceKeysFromNodeId } from '@/hooks/useBatchRequirementOptions';
+import { trace, assertDbg, mark, measure } from './debug';
 
 type RFNode = Node;
 type RFEdge = Edge;
@@ -205,24 +206,35 @@ export function blocksToNodes(
     
     const pickFromMap = <T,>(m?: Map<string, T>): T | undefined => {
       if (!m) return undefined;
+      
+      let pickedKey: string | undefined;
+      let result: T | undefined;
+      
       for (const k of candidateKeys) {
         const v = m.get(k);
-        if (v) return v;
+        if (v) {
+          pickedKey = k;
+          result = v;
+          break;
+        }
       }
       
-      // DIAGNOSTIC: Log key miss with full context
-      if (process.env.NODE_ENV === 'development' && m.size > 0) {
-        console.warn('[ManualLayout][KEY-MISS]', {
-          blockId: block.id,
-          uuid: block.uuid,
-          slug: block.slug,
-          candidateKeys,
-          mapSize: m.size,
-          sampleMapKeys: Array.from(m.keys()).slice(0, 10),
-        });
-      }
+      // STAGE 2: KEY_RESOLUTION
+      trace({
+        stage: 'KEY_RESOLUTION',
+        t: Date.now(),
+        dataVersion,
+        blockId: block.id,
+        slug: block.slug,
+        uuid: block.uuid,
+        pickedKey,
+        keysTried: candidateKeys,
+        mapSize: m.size,
+        sampleMapKeys: Array.from(m.keys()).slice(0, 10),
+        note: pickedKey ? 'hit' : 'MISS',
+      });
       
-      return undefined;
+      return result;
     };
     
     const courseOptions = pickFromMap<CourseOption[]>(optionsByBlock) ?? [];
@@ -258,33 +270,46 @@ export function blocksToNodes(
     
     // Build marketplace object for pill component
     const optionIds = options.map((o: any) => o.code ?? o.id ?? '').filter(Boolean);
+    const count = options.length;
+    const signature = `v1|${dataVersion}|${block.id}|${count}|${optionIds.join(',')}`;
+    
     const marketplace = {
       options,
       optionIds,
-      count: options.length,
-      resolved: options.length,
-      sticky: options.length,
+      count,
+      resolved: count,
+      sticky: count,
       allow: true,
-      show: options.length > 0,
-      signature: `v1|${dataVersion}|${block.id}|${options.length}|${optionIds.join(',')}`,
+      show: count > 0,
+      signature,
     };
     
-    // [ACCEPTANCE TEST] Log enrichment for blocks with marketplace data
-    if (process.env.NODE_ENV === 'development' && marketplace.count > 0) {
-      const blockIndex = safeBlocks.indexOf(block);
-      if (blockIndex < 5) {
-        console.log('[MP→BLOCKS] Merged marketplace data:', {
-          blockId: block.id,
-          uuid: block.uuid,
-          slug: block.slug,
-          count: marketplace.count,
-          optsLen: marketplace.options.length,
-          sig: marketplace.signature.slice(-20),
-          topOption: options[0]?.code,
-          topTransferState: options[0]?.transfer?.state,
-        });
-      }
-    }
+    // STAGE 3: ENRICH_BLOCK
+    trace({
+      stage: 'ENRICH_BLOCK',
+      t: Date.now(),
+      dataVersion,
+      blockId: block.id,
+      slug: block.slug,
+      uuid: block.uuid,
+      mp: { count, optionsLen: count, show: count > 0, allow: true, signature },
+    });
+    
+    // Guardrails: these should never fail
+    assertDbg(count === (optionIds?.length ?? 0), 'count != optionIds.length', {
+      stage: 'ENRICH_BLOCK',
+      t: Date.now(),
+      dataVersion,
+      blockId: block.id,
+      mp: { count, optionsLen: optionIds.length, signature }
+    });
+    assertDbg(signature.includes(`|${count}|`), 'signature missing count token', {
+      stage: 'ENRICH_BLOCK',
+      t: Date.now(),
+      dataVersion,
+      blockId: block.id,
+      mp: { count, signature }
+    });
     
     // DIAGNOSTIC: Log marketplace data mapping - MORE DETAILED
     if (process.env.NODE_ENV === 'development') {

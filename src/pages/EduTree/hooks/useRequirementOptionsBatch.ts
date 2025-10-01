@@ -7,6 +7,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { QUERY_KEYS } from '@/lib/queryKeys';
 import type { Database } from '@/integrations/supabase/types';
+import { trace, mark, measure } from '../utils/debug';
 
 type DBCourse = Database['public']['Tables']['edu_courses']['Row'];
 
@@ -44,6 +45,8 @@ export function useRequirementOptionsBatch(
   const { data, isLoading, error } = useQuery({
     queryKey: QUERY_KEYS.requirementOptionsBatch(blockIds, scope),
     queryFn: async () => {
+      mark('mp_batch:start');
+      
       if (blockIds.length === 0) return new Map<string, CourseOption[]>();
 
       // Normalize block IDs (handle both UUID and slug formats)
@@ -149,6 +152,22 @@ export function useRequirementOptionsBatch(
             optionsCount: sampleBlock[1].length,
             firstCourse: sampleBlock[1][0]?.code
           } : null
+        });
+      }
+      
+      // STAGE 1: MP_BATCH - Log all blocks with options
+      measure('mp_batch:total', 'mp_batch:start', 'mp_batch:end');
+      for (const [blockKey, items] of resultMap.entries()) {
+        if (!items?.length) continue;
+        trace({
+          stage: 'MP_BATCH',
+          t: Date.now(),
+          blockId: blockKey,
+          mp: { 
+            count: items.length, 
+            optionsLen: items.length, 
+            signature: `raw|${blockKey}|${items.length}` 
+          },
         });
       }
 

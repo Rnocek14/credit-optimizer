@@ -3,6 +3,8 @@
  * Single source of truth for displaying course options count on nodes
  */
 
+import { trace } from '../utils/debug';
+
 export function NodeOptionsPill({
   count,
   onClick,
@@ -54,6 +56,20 @@ export function NodeOptionsPill({
   const finalShow = (typeof show === 'boolean' && mp0.show === undefined) ? show : mp.show;
   const n = Number(finalCount) || 0; // Ensure no NaN
 
+  // STAGE 6: PILL_RENDER - Final mile before rendering
+  trace({
+    stage: 'PILL_RENDER',
+    t: Date.now(),
+    blockId: nodeId,
+    mp: {
+      count: finalCount,
+      optionsLen: firstArray?.length,
+      show: finalShow,
+      allow: mp.allow,
+      signature: mp.signature,
+    },
+  });
+  
   // DIAGNOSTIC: Comprehensive logging in dev
   if (isDev) {
     console.log('[PILL][%s] show=%s count=%s allow=%s resolved=%s sticky=%s sig=%s',
@@ -66,7 +82,7 @@ export function NodeOptionsPill({
       mp.signature?.slice(0, 30) ?? 'none'
     );
     
-      if (!finalShow || !Number.isFinite(n) || n <= 0) {
+    if (!finalShow || !Number.isFinite(n) || n <= 0) {
       const reasons = [];
       if (!finalShow) reasons.push('show=false');
       if (!Number.isFinite(n)) reasons.push('count not finite');
