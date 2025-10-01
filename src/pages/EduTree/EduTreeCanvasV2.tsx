@@ -1533,7 +1533,7 @@ function EduTreeCanvasV2Content({
                 className="absolute text-xs font-medium opacity-80 z-10 pointer-events-none"
                 style={{ bottom: 140, left: lanesCalc.y3R }}
               >
-                <div className="bg-secondary/20 text-secondary px-3 py-1 rounded-lg border border-secondary/20 whitespace-nowrap text-xs leading-4">
+                <div className="bg-muted/20 text-muted-foreground px-3 py-1 rounded-lg border border-border/50 whitespace-nowrap text-xs leading-4">
                   ← {headers.lower}
                 </div>
               </div>

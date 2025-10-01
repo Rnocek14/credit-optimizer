@@ -25,7 +25,7 @@ export function StatusChip({ status, evidencePercent = 0, lockedReason, classNam
     return (
       <span
         className={cn(
-          'ml-2 rounded-full bg-green-500/10 text-green-700 dark:text-green-400 text-xs px-2 py-0.5 border border-green-500/20',
+          'ml-2 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 text-xs px-2 py-0.5 border border-emerald-500/20',
           className
         )}
         title={`Accepted transfer credit (${evidencePercent}% match)`}
@@ -39,7 +39,7 @@ export function StatusChip({ status, evidencePercent = 0, lockedReason, classNam
     return (
       <span
         className={cn(
-          'ml-2 rounded-full bg-blue-500/10 text-blue-700 dark:text-blue-400 text-xs px-2 py-0.5 border border-blue-500/20',
+          'ml-2 rounded-full bg-primary/10 text-primary text-xs px-2 py-0.5 border border-primary/20',
           className
         )}
         title="Course completed"
@@ -75,13 +75,25 @@ interface EvidenceMeterProps {
 export function EvidenceMeter({ percent = 0, className }: EvidenceMeterProps) {
   const safePercent = Math.max(0, Math.min(100, percent));
 
+  // NO DATA: quiet outline, muted track, no solid dark fill
+  if (!Number.isFinite(percent) || percent === 0) {
+    return (
+      <span
+        className={cn('ml-2 inline-flex h-[10px] w-16 rounded-sm border border-dashed border-border bg-transparent overflow-hidden', className)}
+        title="Evidence: 0%"
+      >
+        <span className="h-full w-full bg-muted/40" />
+      </span>
+    );
+  }
+
   return (
     <span
-      className={cn('ml-2 inline-flex h-[10px] w-16 rounded-sm bg-black/80 dark:bg-white/20 overflow-hidden', className)}
+      className={cn('ml-2 inline-flex h-[10px] w-16 rounded-sm bg-muted/40 overflow-hidden', className)}
       title={`Evidence: ${safePercent}%`}
     >
       <span
-        className="h-full rounded-sm bg-white/90 dark:bg-white/80 transition-all duration-300"
+        className="h-full rounded-sm bg-primary transition-all duration-300"
         style={{ width: `${safePercent}%` }}
       />
     </span>

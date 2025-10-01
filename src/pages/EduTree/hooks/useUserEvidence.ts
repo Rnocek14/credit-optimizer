@@ -40,8 +40,13 @@ export function useUserEvidence() {
       const { data, error } = await supabase.functions.invoke('evidence-summary');
 
       if (error) {
+        // Treat 400 as "no evidence data" (quiet, non-blocking)
+        if (error.message?.includes('400') || error.status === 400) {
+          console.warn('[Evidence] 400 from evidence-summary → returning null (no data)');
+          return { completed: [], inProgress: [], transferPending: [] } as EvidenceSummary;
+        }
         warnOnce('evidence-400', '[Evidence] summary failed once:', { status: error.status, message: error.message });
-        return null as unknown as EvidenceSummary; // graceful fallback
+        return { completed: [], inProgress: [], transferPending: [] } as EvidenceSummary; // graceful fallback
       }
       return data as EvidenceSummary;
     },
