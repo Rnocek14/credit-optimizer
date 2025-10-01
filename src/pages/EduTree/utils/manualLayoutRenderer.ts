@@ -6,6 +6,7 @@
 import { Node, Edge, MarkerType, Position } from '@xyflow/react';
 import { V2RequirementBlock, V2Edge, EdgeKind } from '../data/seedDataV2';
 import type { CourseOption } from '../hooks/useRequirementOptionsBatch';
+import { marketplaceKeysFromNodeId } from '@/hooks/useBatchRequirementOptions';
 
 type RFNode = Node;
 type RFEdge = Edge;
@@ -58,6 +59,16 @@ export interface V2NodeData {
     y: number;
   };
   // Phase 2: Marketplace integration fields
+  marketplace?: {
+    options: any[];
+    optionIds: string[];
+    count: number;
+    resolved: number;
+    sticky: number;
+    allow: boolean;
+    show: boolean;
+    signature: string;
+  };
   optionsCount?: number;
   hasAceCredit?: boolean;
   hasClep?: boolean;
@@ -76,7 +87,7 @@ export interface V2NodeData {
   transferRules?: any[]; // Array of transfer rule objects
   selectedCourseId?: string; // User's selected course ID
   // Data version for React identity tracking
-  __v?: string;
+  __v?: string | number;
   [key: string]: unknown; // Index signature for ReactFlow compatibility
 }
 
@@ -178,16 +189,42 @@ export function blocksToNodes(
     const oc = asNum((block as any).optionsCount);
     
     // Course-aware: Get options and transfer rules for this block
-    // Try all known keys (uuid, slug, dbId) for map lookup
-    const idKey = String(block.id || '').toLowerCase();
-    const slugKey = String((block as any).slug || '').toLowerCase();
-    const dbIdKey = String((block as any).dbId || (block as any).db_id || '').toLowerCase();
-    const keys = [idKey, slugKey, dbIdKey].filter(Boolean);
-    const pickFromMap = <T,>(m?: Map<string, T>) => {
-      if (!m) return undefined as unknown as T;
-      for (const k of keys) { const v = m.get(k); if (v) return v; }
-      return undefined as unknown as T;
+    // Use the SAME key generation logic as useBatchRequirementOptions for consistency
+    const candidateKeys = marketplaceKeysFromNodeId(block.id);
+    
+    // Also add uuid and slug if available
+    if (block.uuid) candidateKeys.unshift(block.uuid.toLowerCase());
+    if (block.slug) {
+      candidateKeys.unshift(block.slug.toLowerCase());
+      // Try slug without year prefix too
+      const slugNoYear = block.slug.replace(/^y\d-/, '').toLowerCase();
+      if (slugNoYear !== block.slug.toLowerCase()) {
+        candidateKeys.splice(2, 0, slugNoYear);
+      }
+    }
+    
+    const pickFromMap = <T,>(m?: Map<string, T>): T | undefined => {
+      if (!m) return undefined;
+      for (const k of candidateKeys) {
+        const v = m.get(k);
+        if (v) return v;
+      }
+      
+      // DIAGNOSTIC: Log key miss with full context
+      if (process.env.NODE_ENV === 'development' && m.size > 0) {
+        console.warn('[ManualLayout][KEY-MISS]', {
+          blockId: block.id,
+          uuid: block.uuid,
+          slug: block.slug,
+          candidateKeys,
+          mapSize: m.size,
+          sampleMapKeys: Array.from(m.keys()).slice(0, 10),
+        });
+      }
+      
+      return undefined;
     };
+    
     const courseOptions = pickFromMap<CourseOption[]>(optionsByBlock) ?? [];
     const transferRules = pickFromMap<any[]>(transferRulesByBlock) ?? [];
     const selection = pickFromMap<any>(selectionsByBlock);
@@ -219,22 +256,32 @@ export function blocksToNodes(
       )
       .slice(0, 3); // Take top 3
     
-    // [ACCEPTANCE TEST] Log enrichment for first 5 blocks with data
-    if (process.env.NODE_ENV === 'development' && (courseOptions.length > 0 || transferRules.length > 0 || selection)) {
+    // Build marketplace object for pill component
+    const optionIds = options.map((o: any) => o.code ?? o.id ?? '').filter(Boolean);
+    const marketplace = {
+      options,
+      optionIds,
+      count: options.length,
+      resolved: options.length,
+      sticky: options.length,
+      allow: true,
+      show: options.length > 0,
+      signature: `v1|${dataVersion}|${block.id}|${options.length}|${optionIds.join(',')}`,
+    };
+    
+    // [ACCEPTANCE TEST] Log enrichment for blocks with marketplace data
+    if (process.env.NODE_ENV === 'development' && marketplace.count > 0) {
       const blockIndex = safeBlocks.indexOf(block);
       if (blockIndex < 5) {
-        console.log('[blocksToNodes][ENRICH]', {
+        console.log('[MP→BLOCKS] Merged marketplace data:', {
           blockId: block.id,
-          blockIndex,
-          optionsCount: courseOptions.length,
-          transferRulesCount: transferRules.length,
-          selectedCourseId: selection?.course_id,
-          sampleOption: courseOptions[0]?.code,
-          sampleTransfer: transferRules[0]?.transferState,
-          mergedOptions: options.length,
+          uuid: block.uuid,
+          slug: block.slug,
+          count: marketplace.count,
+          optsLen: marketplace.options.length,
+          sig: marketplace.signature.slice(-20),
           topOption: options[0]?.code,
           topTransferState: options[0]?.transfer?.state,
-          dataVersion
         });
       }
     }
@@ -279,7 +326,9 @@ export function blocksToNodes(
       isVirtual: block.is_virtual,
       junctionType: block.is_virtual ? (block.id.includes('program') ? 'program' : 'track') : undefined,
       singleRailStraight,
-      // Marketplace fields from enriched blocks - DON'T mask undefined
+      // Marketplace object (for pill component)
+      marketplace,
+      // Legacy fields (for backwards compat with other components)
       optionsCount: oc,
       hasAceCredit: (block as any).hasAceCredit ?? undefined,
       hasClep: (block as any).hasClep ?? undefined,
@@ -289,7 +338,7 @@ export function blocksToNodes(
       transferRules: transferRules,
       selectedCourseId: selection?.course_id,
       // Data version for React identity tracking
-      __v: dataVersion ?? (block as any).__v,
+      __v: (dataVersion ?? (block as any).__v) + (options.length > 0 ? 1 : 0),
       // Fallback ID for debugging
       _rfNodeId: block.id
     };

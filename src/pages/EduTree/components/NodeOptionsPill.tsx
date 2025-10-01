@@ -26,28 +26,33 @@ export function NodeOptionsPill({
   
   // Try multiple sources for options array (in order of preference)
   const optionsSources = [
-    mp0.options,              // data.marketplace.options (primary)
+    mp0.options,              // data.marketplace.options (primary - full objects)
     mp0.optionIds,            // data.marketplace.optionIds (IDs only)
     data?.options,            // data.options (legacy top-level)
     mp0.requirementIds,       // data.marketplace.requirementIds (alt naming)
   ];
   
-  const options = optionsSources.find(arr => Array.isArray(arr) && arr.length > 0) ?? [];
+  const firstArray = optionsSources.find(arr => Array.isArray(arr) && arr.length > 0);
+  const fallbackCount = firstArray ? firstArray.length : 0;
 
-  // Compute final values - prioritize data.marketplace over legacy props
+  // Compute final values - prioritize explicit count, then array length, then 0
+  const resolvedCount = typeof mp0.count === 'number' ? mp0.count : fallbackCount;
+  const resolvedResolved = typeof mp0.resolved === 'number' ? mp0.resolved : resolvedCount;
+  const resolvedSticky = typeof mp0.sticky === 'number' ? mp0.sticky : resolvedCount;
+  
   const mp = {
     ...mp0,
-    count: typeof mp0.count === 'number' ? mp0.count : options.length,
-    resolved: typeof mp0.resolved === 'number' ? mp0.resolved : options.length,
-    sticky: typeof mp0.sticky === 'number' ? mp0.sticky : options.length,
+    count: resolvedCount,
+    resolved: resolvedResolved,
+    sticky: resolvedSticky,
     allow: mp0.allow ?? true,
-    show: (mp0.show ?? (options.length > 0)) && (mp0.allow ?? true),
+    show: (mp0.show ?? (resolvedCount > 0)) && (mp0.allow ?? true),
   };
 
   // Legacy props fallback (backwards compat only if marketplace unavailable)
-  const finalCount = typeof count === 'number' && !mp0.count ? count : mp.count;
-  const finalShow = typeof show === 'boolean' && mp0.show === undefined ? show : mp.show;
-  const n = Number(finalCount);
+  const finalCount = (typeof count === 'number' && !mp0.count) ? count : mp.count;
+  const finalShow = (typeof show === 'boolean' && mp0.show === undefined) ? show : mp.show;
+  const n = Number(finalCount) || 0; // Ensure no NaN
 
   // DIAGNOSTIC: Comprehensive logging in dev
   if (isDev) {
@@ -61,13 +66,13 @@ export function NodeOptionsPill({
       mp.signature?.slice(0, 30) ?? 'none'
     );
     
-    if (!finalShow || !Number.isFinite(n) || n <= 0) {
+      if (!finalShow || !Number.isFinite(n) || n <= 0) {
       const reasons = [];
       if (!finalShow) reasons.push('show=false');
       if (!Number.isFinite(n)) reasons.push('count not finite');
       if (n <= 0) reasons.push('count<=0');
       if (!data?.marketplace) reasons.push('no marketplace data');
-      if (!options.length) reasons.push('no options array');
+      if (!firstArray || firstArray.length === 0) reasons.push('no options array');
       
       console.log('[PILL][%s] Not rendering:', nodeId?.slice(0, 20), { 
         finalCount, 
