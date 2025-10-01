@@ -959,6 +959,11 @@ export function applyManualLayout(
       console.log(`[Grid] ${node.id}: lane=${lane}, col=${col}, coords=(${gridCoords.x},${gridCoords.y})`);
     }
     
+    // Build updated signature with new dataVersion and count
+    const blockId = (node as any).data?.block?.id || node.id;
+    const optionIds = mergedOptions.map((o: any) => o.code ?? o.id ?? '').filter(Boolean);
+    const newSignature = `v1|${dataVersion}|${blockId}|${rawOptions.length}|${optionIds.slice(0, 3).join(',')}`;
+    
     return {
       ...node,
       data: {
@@ -968,16 +973,16 @@ export function applyManualLayout(
         transferRules: transferRules,
         optionsCount: rawOptions.length,
         __v: `${dataVersion}-mp${rawOptions.length}`, // Include count to trigger re-render
-        // PHASE 2: Unified marketplace data structure (removed mpSig)
+        // PHASE 2: Unified marketplace data structure with UPDATED signature
         marketplace: {
-          ...(node as any).data?.marketplace,
           count: rawOptions.length,
           resolved: mergedOptions.length,
           sticky: mergedOptions.length,
           options: mergedOptions,
+          optionIds: optionIds,
           allow: true,
           show: rawOptions.length > 0,
-          signature: `v1|${dataVersion}|${block.id}|${rawOptions.length}|${mergedOptions.map(o => (o.code ?? o.id ?? '')).join(',')}`,
+          signature: newSignature, // NEW signature with current dataVersion
         },
         phaseAPlan: { lane, col, x: gridCoords.x, y: gridCoords.y }
       }
@@ -1398,16 +1403,19 @@ export function applyManualLayout(
   
   // DIAGNOSTIC: Final exposure of post-layout nodes for debugging
   if (process.env.NODE_ENV === 'development') {
-    (window as any).__postLayoutNodes = allNodes.map(n => ({
-      id: n.id,
-      type: n.type,
-      optionsCount: n.data?.optionsCount,
-      marketplace: n.data?.marketplace,
-      hasMarketplace: !!n.data?.marketplace,
-      mpCount: n.data?.marketplace?.count,
-      mpShow: n.data?.marketplace?.show,
-      mpSignature: n.data?.marketplace?.signature?.slice(0, 30),
-    }));
+    (window as any).__postLayoutNodes = allNodes.map(n => {
+      const mp = (n.data as any)?.marketplace;
+      return {
+        id: n.id,
+        type: n.type,
+        optionsCount: (n.data as any)?.optionsCount,
+        marketplace: mp,
+        hasMarketplace: !!mp,
+        mpCount: mp?.count,
+        mpShow: mp?.show,
+        mpSignature: mp?.signature?.slice(0, 30),
+      };
+    });
     
     const pre = (window as any).__preLayoutNodes?.slice(0, 5) || [];
     const post = (window as any).__postLayoutNodes?.slice(0, 5) || [];
