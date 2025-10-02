@@ -195,54 +195,46 @@ export function blocksToNodes(
       return num;
     };
     
-    // Build marketplace signature for reliable re-render detection
-    const oc = asNum((block as any).optionsCount);
+    // Build marketplace signature for reliable re-render detection (removed old guard - now at function level)
     
-    // Guard: ensure index is available before resolving
-    if (!index || index.size === 0) {
-      console.warn('[RESOLVE_GUARD] Attempt to resolve with empty index', { blockId: block.id, dataVersion });
-      return {
-        ...baseNode,
-        type: 'requirement',
-        data: {
-          title: block.title,
-          ruleType: block.rule_type,
-          levelYear: block.level_year,
-          area: block.area,
-          creditsNeeded: block.credits_needed,
-          trackId: block.track_id,
-          programId: block.program_id,
-          track_id: block.track_id,
-          program_id: block.program_id,
-          __v: dataVersion,
-          marketplace: { options: [], optionIds: [], count: 0, resolved: 0, sticky: 0, allow: false, show: false, signature: '' }
-        } as V2NodeData
-      };
-    }
+    // Import nk helper for consistent key normalization
+    const nk = (s?: string | null) => (s ?? '').trim().toLowerCase();
     
     // Use centralized resolver - try slug first, then uuid, then id
     const resolvedId = 
-      (block.slug ? resolve(block.slug, index) : null) ??
-      (block.uuid ? resolve(block.uuid, index) : null) ??
+      (block.slug && resolve(block.slug, index)) ??
+      (block.uuid && resolve(block.uuid, index)) ??
       resolve(block.id, index) ??
       block.id;
     
-    // Lookup using resolved ID
-    const courseOptions = (resolvedId && optionsByBlock?.get(resolvedId.toLowerCase())) ?? [];
-    const transferRules = (resolvedId && transferRulesByBlock?.get(resolvedId.toLowerCase())) ?? [];
-    const selection = (resolvedId && selectionsByBlock?.get(resolvedId.toLowerCase())) ?? undefined;
+    // Lookup using normalized keys (database maps are keyed by lowercase UUID/slug)
+    const courseOptions = 
+      optionsByBlock?.get(nk(block.uuid)) ??
+      optionsByBlock?.get(nk(block.slug)) ??
+      optionsByBlock?.get(nk(resolvedId)) ??
+      [];
+    const transferRules = 
+      transferRulesByBlock?.get(nk(block.uuid)) ??
+      transferRulesByBlock?.get(nk(block.slug)) ??
+      transferRulesByBlock?.get(nk(resolvedId)) ??
+      [];
+    const selection = 
+      selectionsByBlock?.get(nk(block.uuid)) ??
+      selectionsByBlock?.get(nk(block.slug)) ??
+      selectionsByBlock?.get(nk(resolvedId)) ??
+      undefined;
     
     // Build transfer rules map by course ID for efficient lookup
     const byCourse = new Map<string, any>();
     transferRules.forEach((r: any) => {
-      const courseId = String(r.courseId ?? r.course_id ?? '');
+      const courseId = nk(r.courseId ?? r.course_id);
       if (courseId) byCourse.set(courseId, r);
     });
     
     // Merge course options with transfer state and sort by priority
     const options = courseOptions
       .map((c: any) => {
-        const tr = byCourse.get(c.courseId) || {};
+        const tr = byCourse.get(nk(c.courseId)) || {};
         return {
           ...c,
           transfer: {
@@ -259,10 +251,15 @@ export function blocksToNodes(
       )
       .slice(0, 3); // Take top 3
     
+    // Find selected course from user plan selections
+    const selectedCourse = selection?.course_id 
+      ? options.find(o => nk(o.courseId) === nk(selection.course_id))
+      : undefined;
+    
     // Build marketplace object for pill component
     const optionIds = options.map((o: any) => o.code ?? o.id ?? '').filter(Boolean);
     const count = options.length;
-    const signature = `v1|${dataVersion}|${block.id}|${count}|${optionIds.join(',')}`;
+    const signature = `v1|${nk(dataVersion)}|${nk(resolvedId)}|${count}|${nk(selectedCourse?.code)}`;
     
     const marketplace = {
       options,
@@ -306,19 +303,19 @@ export function blocksToNodes(
     if (process.env.NODE_ENV === 'development') {
       const blockIndex = safeBlocks.indexOf(block);
       // Log first 10 blocks AND any block with marketplace data
-      if (blockIndex < 10 || oc !== undefined) {
+      if (blockIndex < 10 || count > 0) {
         console.log('[blocksToNodes] Marketplace data mapping:', {
           blockId: block.id,
           blockIndex,
           rawOptionsCount: (block as any).optionsCount,
           rawType: typeof (block as any).optionsCount,
-          convertedOc: oc,
-          ocIsFinite: Number.isFinite(oc),
-          ocIsZero: oc === 0,
+          computedCount: count,
+          countIsFinite: Number.isFinite(count),
+          countIsZero: count === 0,
           hasAceCredit: (block as any).hasAceCredit,
           hasClep: (block as any).hasClep,
           marketplaceCount: (block as any).marketplace?.count,
-          willRenderPill: Number.isFinite(oc) && oc! > 0
+          willRenderPill: Number.isFinite(count) && count > 0
         });
       }
     }
@@ -345,7 +342,7 @@ export function blocksToNodes(
       // Marketplace object (for pill component)
       marketplace,
       // Legacy fields (for backwards compat with other components)
-      optionsCount: oc,
+      optionsCount: count,
       hasAceCredit: (block as any).hasAceCredit ?? undefined,
       hasClep: (block as any).hasClep ?? undefined,
       selectedCourse: (block as any).selectedCourse,
@@ -769,10 +766,23 @@ export function applyManualLayout(
   transferRulesByBlock?: Map<string, any[]>,
   userPlanSelections?: any[]
 ): void {
+  // INVARIANT: index and resolver must be valid
+  if (!index || index.size === 0 || typeof resolve !== 'function') {
+    console.error('[APPLY_LAYOUT_INVARIANT] Invalid index or resolver', { 
+      hasIndex: !!index, 
+      indexSize: index?.size, 
+      hasResolver: typeof resolve === 'function',
+      blocksCount: blocks.length
+    });
+    onApply([], []); // no-op to keep flow stable
+    return;
+  }
+
   console.log('[ManualLayout] Applying direct positions for', blocks.length, 'blocks', 
     useGridAnchors ? '(with grid anchors)' : '(manual positions)',
     useV2EdgeKinds ? '(with V2 edge kinds)' : '(legacy edges)');
       console.log('[ManualLayout] Parameters:', {
+        indexSize: index.size,
         singleRailStraight, 
         filterMode, 
         useV2EdgeKinds,
