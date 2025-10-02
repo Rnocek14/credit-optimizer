@@ -297,38 +297,6 @@ export function blocksToNodes(
           note: 'MISS',
         });
       }
-      // STAGE 2: KEY_RESOLUTION (PHASE 2 FIX: Single definitive log)
-      if (pickedKey) {
-        // Determine resolution method
-        const via = 
-          pickedKey === block.id ? 'uuid' :
-          pickedKey === block.slug ? 'slug' :
-          blockAliases.includes(pickedKey) ? 'alias' :
-          'normalized';
-        
-        trace({
-          stage: 'KEY_RESOLUTION',
-          t: Date.now(),
-          dataVersion,
-          blockId: block.id,
-          slug: block.slug,
-          pickedKey,
-          via,
-          note: 'hit',
-        });
-      } else {
-        // Only log MISS if we truly have no match
-        trace({
-          stage: 'KEY_RESOLUTION',
-          t: Date.now(),
-          dataVersion,
-          blockId: block.id,
-          slug: block.slug,
-          keysTried: candidateKeys.slice(0, 5),
-          mapSize: m.size,
-          note: 'MISS',
-        });
-      }
       
       return result;
     };

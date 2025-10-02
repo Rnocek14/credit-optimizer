@@ -14,3 +14,5 @@ export { TrackComparisonControls } from './TrackComparisonControls';
 export { StatusChip } from '@/components/edu/status/StatusChip';
 export type { NodeState as CourseStatus } from '@/components/edu/status';
 export { PillSkeletonCard } from './PillSkeletonCard';
+export { GatePlaceholder } from './GatePlaceholder';
+export { TreeSkeleton } from './TreeSkeleton';

@@ -70,8 +70,9 @@ import { ComparisonLegend as HudComparisonLegend } from './components/HUD/Compar
 import { useUserPlan } from '@/hooks/useUserPlan';
 import { ENV } from '@/config/env';
 import { marketplaceKeysFromNodeId } from './helpers/marketplaceKeys';
-import { useBlockIndex } from './hooks/useBlockIndex';
+import { useBlockIndex, createCachedResolver } from './hooks/useBlockIndex';
 import { GatePlaceholder } from './components/GatePlaceholder';
+import { TreeSkeleton } from './components/TreeSkeleton';
 
 // Export marketplace helpers globally for diagnostics
 if (typeof window !== 'undefined') {
@@ -522,6 +523,11 @@ function EduTreeCanvasV2Content({
     rulesByBlock,
     userPlanSelections 
   } = useEduTreeV2Data(passedFilterMode);
+  
+  // Pre-index system: Build stable block ID resolution map
+  const { index, isReady } = useBlockIndex(blocks, dataVersion);
+  const resolver = useMemo(() => createCachedResolver(dataVersion), [dataVersion]);
+  
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [flowEdges, setEdges, onEdgesChange] = useEdgesState([]);
   const { fitView } = useReactFlow();
@@ -1393,7 +1399,12 @@ function EduTreeCanvasV2Content({
           <div className="text-sm">Manual layout seed not loaded</div>
         </div>
       </div>
-  );
+    );
+  }
+  
+  // Wait for index to be ready before rendering tree
+  if (!isReady) {
+    return <TreeSkeleton />;
   }
   
   // REMOVED: Loading comparison logic - fixed at the hook level
