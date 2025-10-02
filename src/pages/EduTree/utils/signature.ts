@@ -40,7 +40,10 @@ export function normalizeOrRebuildSig(
 ): string {
   const s = mp?.signature ?? '';
   const tokens = s.split('|').filter(Boolean);
-  const looksValid = tokens.length >= 4 && tokens[0] === 'v1';
+  const looksValid = 
+    tokens.length >= 4 && 
+    tokens[0] === 'v1' &&
+    Number.isFinite(Number(tokens[3]));
 
   if (looksValid) return s;
 
