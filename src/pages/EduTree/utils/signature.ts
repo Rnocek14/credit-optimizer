@@ -29,8 +29,10 @@ export function buildMarketplaceSig(params: {
   count: number | null | undefined;
   selectedCode?: string | null | undefined;
 }): string {
-  // Normalize dataVersion to dv*, idempotent if already dv-prefixed
-  const dv = (nk(params.dataVersion) || 'dv0').replace(/^v(?=\d)/, 'dv');
+  // CRITICAL FIX: Normalize dataVersion to dv*, idempotent if already dv-prefixed
+  // This fixes malformed sigs like "1|v181nfqo|..." or "|v181nfqo|..."
+  const rawDv = nk(params.dataVersion) || 'dv0';
+  const dv = rawDv.replace(/^v(?=\d)/, 'dv'); // v123 → dv123, dv123 → dv123
   const id = nk(params.blockId);
   const cnt = Number.isFinite(params.count as number) ? String(params.count) : '0';
   const code = params.selectedCode ? nk(params.selectedCode) : undefined;
@@ -53,9 +55,12 @@ export function normalizeOrRebuildSig(
 ): string {
   const s = mp?.signature ?? '';
   const tokens = s.split('|').filter(Boolean);
+  
+  // Enhanced validity check: MUST have v1 + dv-prefix + numeric count
   const looksValid = 
     tokens.length >= 4 && 
     tokens[0] === 'v1' &&
+    /^dv/.test(tokens[1] || '') &&
     Number.isFinite(Number(tokens[3]));
 
   if (looksValid) return s;

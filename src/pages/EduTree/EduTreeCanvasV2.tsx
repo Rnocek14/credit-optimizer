@@ -1327,7 +1327,7 @@ function EduTreeCanvasV2Content({
           console.log('[EduTreeV2] ✓ No node overlaps - acceptance criteria met');
         }
         
-        // 🔍 Dev Audit Banner (once per session)
+        // 🔍 Dev Audit Banner (once per session) - PATCH 4: Enhanced reporting
         if (DEV && !(window as any).__eduTreeAuditShown) {
           (window as any).__eduTreeAuditShown = true;
 
@@ -1352,8 +1352,10 @@ function EduTreeCanvasV2Content({
           console.log('Edges (rendered):', newEdges.length);
           console.log('Edges (filtered):', edges.length - newEdges.length);
           console.log('Signatures:', { valid, invalid, sampleInvalid: samples });
-          console.log('Healed signatures:', getSigRepairCount());
+          console.log('Healed signatures (runtime):', getSigRepairCount());
           console.log('Overlaps:', validation.hasOverlaps ? validation.overlaps.length : 0);
+          console.log('Filter mode:', effectiveFilterMode);
+          console.log('Selected programs:', selectedPrograms);
           console.groupEnd();
         }
         
@@ -1694,6 +1696,26 @@ function EduTreeCanvasV2Content({
           filterMode={effectiveFilterMode} 
           hasGhostNodes={blocks.some(b => b.is_empty_year === true)}
         />
+        
+        {/* PATCH 5: Compare Column Labels - Sticky program identifiers */}
+        {effectiveFilterMode?.startsWith('compare') && pathHighlight.primarySelection && pathHighlight.secondarySelection && (() => {
+          const getLabel = (sel: typeof pathHighlight.primarySelection) => {
+            if (!sel) return '';
+            const option = compareOptions.find(o => o.kind === sel.kind && o.id === sel.id);
+            return option?.label || `${sel.kind}: ${sel.id}`;
+          };
+          
+          return (
+            <div className="absolute top-2 left-4 right-4 flex justify-between pointer-events-none z-50">
+              <div className="text-xs font-semibold opacity-70 px-2 py-1 rounded bg-neutral-800/40 backdrop-blur border border-white/10">
+                Primary: {getLabel(pathHighlight.primarySelection)}
+              </div>
+              <div className="text-xs font-semibold opacity-70 px-2 py-1 rounded bg-neutral-800/40 backdrop-blur border border-white/10">
+                Compare: {getLabel(pathHighlight.secondarySelection)}
+              </div>
+            </div>
+          );
+        })()}
         
         {/* Edge Type Legend - show in compare modes */}
         <EdgeLegend show={filterMode === 'compare-tracks' || filterMode === 'compare-programs'} />
