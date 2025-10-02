@@ -9,6 +9,7 @@ import type { CourseOption } from '../hooks/useRequirementOptionsBatch';
 import { marketplaceKeysFromNodeId } from '../helpers/marketplaceKeys';
 import { trace, assertDbg, mark, measure } from './debug';
 import { nk, mkSig } from './keys';
+import { buildMarketplaceSig } from './signature';
 
 type RFNode = Node;
 type RFEdge = Edge;
@@ -257,8 +258,12 @@ export function blocksToNodes(
     // Build marketplace object for pill component
     const optionIds = options.map((o: any) => o.code ?? o.id ?? '').filter(Boolean);
     const count = options.length;
-    const dv = dataVersion ?? 'dv0';
-    const signature = mkSig(['v1', dv, resolvedId, count, selectedCourse?.code]);
+    const signature = buildMarketplaceSig({ 
+      dataVersion, 
+      blockId: resolvedId, 
+      count, 
+      selectedCode: selectedCourse?.code 
+    });
     
     const marketplace = {
       options,
@@ -932,14 +937,18 @@ export function applyManualLayout(
     }
     
     // DIAGNOSTIC: Log marketplace data being set
-    if (isDev2 && rawOptions.length > 0 && Math.random() < 0.1) {
-      const dv = dataVersion ?? 'dv0';
+    if (isDev2 && mergedOptions.length > 0 && Math.random() < 0.1) {
       const selectedCourse = (node as any).data?.selectedCourse;
       console.log('[MP→BLOCKS] Merged options into marketplace:', {
         blockId: block.id,
         rawCount: rawOptions.length,
         mergedCount: mergedOptions.length,
-        signature: mkSig(['v1', dv, block.id, rawOptions.length, selectedCourse?.code])
+        signature: buildMarketplaceSig({ 
+          dataVersion, 
+          blockId: block.id, 
+          count: mergedOptions.length, 
+          selectedCode: selectedCourse?.code 
+        })
       });
     }
     
@@ -965,12 +974,16 @@ export function applyManualLayout(
       console.log(`[Grid] ${node.id}: lane=${lane}, col=${col}, coords=(${gridCoords.x},${gridCoords.y})`);
     }
     
-    // Build updated signature with new dataVersion and count
+    // Build updated signature with new dataVersion and count (using merged options count)
     const blockId = (node as any).data?.block?.id || node.id;
     const selectedCourse = (node as any).data?.selectedCourse;
     const optionIds = mergedOptions.map((o: any) => o.code ?? o.id ?? '').filter(Boolean);
-    const dv = dataVersion ?? 'dv0';
-    const newSignature = mkSig(['v1', dv, blockId, rawOptions.length, selectedCourse?.code]);
+    const newSignature = buildMarketplaceSig({ 
+      dataVersion, 
+      blockId, 
+      count: mergedOptions.length, 
+      selectedCode: selectedCourse?.code 
+    });
     
     return {
       ...node,
@@ -979,17 +992,17 @@ export function applyManualLayout(
         // Top-level for backward compatibility
         options: mergedOptions,
         transferRules: transferRules,
-        optionsCount: rawOptions.length,
-        __v: `${dataVersion}-mp${rawOptions.length}`, // Include count to trigger re-render
+        optionsCount: mergedOptions.length,
+        __v: `${dataVersion}-mp${mergedOptions.length}`, // Include count to trigger re-render
         // PHASE 2: Unified marketplace data structure with UPDATED signature
         marketplace: {
-          count: rawOptions.length,
+          count: mergedOptions.length,
           resolved: mergedOptions.length,
           sticky: mergedOptions.length,
           options: mergedOptions,
           optionIds: optionIds,
           allow: true,
-          show: rawOptions.length > 0,
+          show: mergedOptions.length > 0,
           signature: newSignature, // NEW signature with current dataVersion
         },
         phaseAPlan: { lane, col, x: gridCoords.x, y: gridCoords.y }
