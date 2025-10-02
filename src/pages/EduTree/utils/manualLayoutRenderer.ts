@@ -156,6 +156,13 @@ export function blocksToNodes(
         block.level_year + 1
       );
       
+      console.log('[ManualLayout] Creating emptyYear node:', {
+        id: block.id,
+        programId: block.program_id,
+        year: block.level_year,
+        position: { x: block.position_x, y: block.position_y }
+      });
+      
       return {
         ...baseNode,
         type: 'emptyYear',

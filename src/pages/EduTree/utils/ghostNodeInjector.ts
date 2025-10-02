@@ -19,6 +19,7 @@ export function injectGhostNodes(
   const allowedPrograms = new Set(activePrograms);
   
   console.log('[GhostInject] Called with programs:', activePrograms);
+  console.log('[GhostInject] Existing ghost nodes:', blocks.filter(b => b.is_empty_year).map(b => b.id));
   
   // Check each active program for skipped years
   for (const programId of activePrograms) {
@@ -62,6 +63,7 @@ export function injectGhostNodes(
     }
   }
   
+  console.log('[GhostInject] Total ghost nodes created:', ghostNodes.length, ghostNodes.map(g => g.id));
   return [...blocks, ...ghostNodes];
 }
 
