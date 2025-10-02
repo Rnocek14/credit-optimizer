@@ -7,6 +7,18 @@ import { mkSig, nk } from './keys';
 
 export const SIG_VERSION = 'v1' as const;
 
+// Runtime guard: ensure SIG_VERSION matches expected format
+if (process.env.NODE_ENV === 'development' && !/^v\d+$/.test(SIG_VERSION)) {
+  console.error('[SIG_CONFIG_BAD] SIG_VERSION must match /^v\\d+$/', { actual: SIG_VERSION });
+}
+
+// Track repair count for dev diagnostics
+let __sigRepairCount = 0;
+
+export function getSigRepairCount() {
+  return __sigRepairCount;
+}
+
 /**
  * Build a canonical marketplace signature
  * Format: v1|<dataVersion>|<blockId>|<count>|<selectedCode?>
@@ -17,7 +29,8 @@ export function buildMarketplaceSig(params: {
   count: number | null | undefined;
   selectedCode?: string | null | undefined;
 }): string {
-  const dv = nk(params.dataVersion) || 'dv0';
+  // Normalize dataVersion to dv*, idempotent if already dv-prefixed
+  const dv = (nk(params.dataVersion) || 'dv0').replace(/^v(?=\d)/, 'dv');
   const id = nk(params.blockId);
   const cnt = Number.isFinite(params.count as number) ? String(params.count) : '0';
   const code = params.selectedCode ? nk(params.selectedCode) : undefined;
@@ -56,20 +69,37 @@ export function normalizeOrRebuildSig(
   });
 
   if (process.env.NODE_ENV === 'development') {
-    console.warn('[SIG_REPAIR]', { had: s, rebuilt, ctx });
+    __sigRepairCount++;
+    console.warn('[SIG_REPAIR]', { had: s, rebuilt, ctx, totalRepairs: __sigRepairCount });
   }
   
   return rebuilt;
 }
 
 /**
- * Assert signature shape in development (optional invariant check)
+ * Assert signature shape in development (full validation with regex)
  */
-export function assertSigShape(sig: string): void {
+export function assertSigShape(sig: string, stage?: string): void {
   if (process.env.NODE_ENV !== 'development') return;
   
-  const t = sig.split('|').filter(Boolean);
-  if (t.length < 4 || t[0] !== 'v1') {
-    console.error('[SIG_INVARIANT_FAILED]', { sig, tokens: t });
+  const t = (sig ?? '').split('|').filter(Boolean);
+  const ok =
+    t.length >= 4 &&
+    t[0] === 'v1' &&
+    /^dv/.test(t[1] || '') &&
+    Number.isFinite(Number(t[3]));
+
+  if (!ok) {
+    console.error('[SIG_INVARIANT_FAILED]', {
+      stage: stage || 'unknown',
+      sig,
+      tokens: t,
+      checks: {
+        hasV1: t[0] === 'v1',
+        dvPrefix: /^dv/.test(t[1] || ''),
+        numericCount: Number.isFinite(Number(t[3])),
+        tokenCount: t.length
+      }
+    });
   }
 }

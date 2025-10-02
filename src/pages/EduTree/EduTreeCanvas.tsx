@@ -60,8 +60,7 @@ import './styles/trackOverlay.css';
 import { ComparisonLegend } from './components/ComparisonLegend';
 import { EnhancedControls } from './components/EnhancedControls';
 import { ProgressIndicator } from './components/ProgressIndicator';
-
-const DEV = import.meta.env.DEV;
+import { DEV } from './utils/constants';
 const RESIZE_DEBOUNCE_MS = 120;
 
 // Type definitions

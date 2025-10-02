@@ -272,7 +272,7 @@ export function blocksToNodes(
       { dataVersion: dataVersion ?? 'dv0', blockId: resolvedId }
     );
     
-    assertSigShape(signature);
+    assertSigShape(signature, 'ENRICH_BLOCK');
     
     const marketplace = {
       options,
@@ -887,8 +887,7 @@ export function applyManualLayout(
     const rawOptions = pick(optionsByBlock) ?? [];
     
     // DIAGNOSTIC: Log key mismatches for blocks that should have data
-    const isDev = process.env.NODE_ENV === 'development';
-    if (isDev && optionsByBlock && optionsByBlock.size > 0 && rawOptions.length === 0 && Math.random() < 0.15) {
+    if (DEV && optionsByBlock && optionsByBlock.size > 0 && rawOptions.length === 0 && Math.random() < 0.15) {
       const mapKeys = Array.from(optionsByBlock.keys()).slice(0, 10);
       const hasUUID = !!uuidKey && uuidKey !== '';
       const uuidMatch = uuidKey && optionsByBlock.has(uuidKey);
@@ -933,8 +932,7 @@ export function applyManualLayout(
       )
       .slice(0, 3);
 
-    const isDev2 = process.env.NODE_ENV === 'development';
-    if (isDev2 && mergedOptions.length > 0) {
+    if (DEV && mergedOptions.length > 0) {
       console.log('[nodes][enriched]', {
         id: bid || node.id,
         count: rawOptions.length,
@@ -946,7 +944,7 @@ export function applyManualLayout(
     }
     
     // DIAGNOSTIC: Log marketplace data being set
-    if (isDev2 && mergedOptions.length > 0 && Math.random() < 0.1) {
+    if (DEV && mergedOptions.length > 0 && Math.random() < 0.1) {
       const selectedCourse = (node as any).data?.selectedCourse;
       console.log('[MP→BLOCKS] Merged options into marketplace:', {
         blockId: block.id,
@@ -994,6 +992,13 @@ export function applyManualLayout(
       selectedCode: selectedCourse?.code 
     });
     
+    // PATCH: Heal + assert at SET_NODES stage
+    const healedSig = normalizeOrRebuildSig(
+      { signature: newSignature, count: mergedOptions.length, selectedCourse },
+      { dataVersion: dataVersion ?? 'dv0', blockId }
+    );
+    assertSigShape(healedSig, 'SET_NODES');
+    
     return {
       ...node,
       data: {
@@ -1012,7 +1017,7 @@ export function applyManualLayout(
           optionIds: optionIds,
           allow: true,
           show: mergedOptions.length > 0,
-          signature: newSignature, // NEW signature with current dataVersion
+          signature: healedSig, // Use healed signature
         },
         phaseAPlan: { lane, col, x: gridCoords.x, y: gridCoords.y }
       }
@@ -1520,9 +1525,8 @@ export function validateNoOverlaps(nodes: Node[]): { hasOverlaps: boolean; overl
  */
 export function resolveOverlaps(nodes: Node[]): Node[] {
   const NODE_HEIGHT = 80;
-  const MIN_GAP = 24;      // 24px minimum vertical gap
+  const MIN_GAP = 28;      // Increased from 24px to 28px minimum vertical gap
   const COL_TOLERANCE = 60; // Nodes within 60px horizontally are in same column
-  const DEV = import.meta.env?.DEV;
   
   // Group nodes by column (round x to nearest COL_TOLERANCE)
   const columnMap = new Map<number, Node[]>();

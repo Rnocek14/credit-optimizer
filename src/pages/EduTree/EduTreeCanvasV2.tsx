@@ -54,6 +54,8 @@ import './styles/reactFlowFix.css';
 import './styles/gateAggregation.css';
 import '../../styles/eduTreeHud.css';
 import { auditSeeds, printAuditReport } from './utils/seedAuditor';
+import { DEV } from './utils/constants';
+import { getSigRepairCount } from './utils/signature';
 
 type DevOverrides = {
   filterMode?: FilterMode;
@@ -116,8 +118,7 @@ const RequirementNode = ({ data }: { data: V2NodeData }) => {
   const marketplace = rawData?.marketplace;
   
   // DEV DIAGNOSTIC: Log what we actually receive (sample 5%)
-  const isDev = process.env.NODE_ENV === 'development';
-  if (isDev && Math.random() < 0.05) {
+  if (DEV && Math.random() < 0.05) {
     console.log('[RequirementNode][data-check]', {
       nodeId: blockId,
       hasMarketplace: !!marketplace,
@@ -166,8 +167,7 @@ const RequirementNode = ({ data }: { data: V2NodeData }) => {
   const showPill = allowPills && Number.isFinite(n) && n > 0;
   
   // Sample pill logging to 2% to reduce noise
-  const isDev2 = process.env.NODE_ENV === 'development';
-  if (isDev2 && Math.random() < 0.02) {
+  if (DEV && Math.random() < 0.02) {
     console.log('[PILL] show=%o count=%o allow=%o resolved=%o sticky=%o', 
       showPill, countToShow, allowPills, resolvedCount, lastGoodCountRef.current);
   }
@@ -269,12 +269,12 @@ const RequirementNode = ({ data }: { data: V2NodeData }) => {
       )}
       
       {/* DEV DIAGNOSTIC: Show when optionsCount exists but options array is empty (pipeline issue) */}
-      {process.env.NODE_ENV === 'development' && (optionsCount ?? 0) > 0 && !Array.isArray(marketplaceOptions) && (
+      {DEV && (optionsCount ?? 0) > 0 && !Array.isArray(marketplaceOptions) && (
         <div className="mt-1 text-[10px] text-amber-600">debug: options map empty for this block</div>
       )}
       
       {/* DEV DIAGNOSTIC: Only show when real pill wouldn't render */}
-      {process.env.NODE_ENV === 'development' 
+      {DEV 
         && SHOW_MP 
         && (!Number.isFinite(optionsCount) || Number(optionsCount) <= 0) && (
         <span
@@ -1327,7 +1327,37 @@ function EduTreeCanvasV2Content({
           console.log('[EduTreeV2] ✓ No node overlaps - acceptance criteria met');
         }
         
-        // Validate lane placement for comparison modes  
+        // 🔍 Dev Audit Banner (once per session)
+        if (DEV && !(window as any).__eduTreeAuditShown) {
+          (window as any).__eduTreeAuditShown = true;
+
+          const re = /^v1\|dv[^|]+\|[^|]+\|\d+(?:\|[^|]+)?$/;
+          let valid = 0, invalid = 0;
+          const samples: string[] = [];
+          
+          finalNodes.forEach(n => {
+            const sig = (n.data as any)?.marketplace?.signature ?? '';
+            if (!sig) return; // Skip nodes without marketplace
+            if (re.test(sig)) {
+              valid++;
+            } else {
+              invalid++;
+              if (samples.length < 3) samples.push(`${n.id}: ${sig}`);
+            }
+          });
+
+          console.group('🔍 [EduTree V2 Audit Banner]');
+          console.log('Nodes:', finalNodes.length);
+          console.log('Edges (original):', edges.length);
+          console.log('Edges (rendered):', newEdges.length);
+          console.log('Edges (filtered):', edges.length - newEdges.length);
+          console.log('Signatures:', { valid, invalid, sampleInvalid: samples });
+          console.log('Healed signatures:', getSigRepairCount());
+          console.log('Overlaps:', validation.hasOverlaps ? validation.overlaps.length : 0);
+          console.groupEnd();
+        }
+        
+        // Validate lane placement for comparison modes
         if (process.env.NODE_ENV === 'development' && (effectiveFilterMode === 'compare-programs' || effectiveFilterMode === 'compare-any')) {
           import('./utils/validateLanes').then(({ validateProgramCompareLanes }) => {
             const laneValidation = validateProgramCompareLanes(finalNodes);

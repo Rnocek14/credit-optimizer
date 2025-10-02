@@ -2,17 +2,20 @@
  * Unified debug utilities for EduTree pill rendering pipeline
  */
 
-export const isDev =
+// Internal dev flag for bootstrap - don't export to avoid duplicates
+const _isDev =
   (typeof import.meta !== 'undefined' && !!(import.meta as any)?.env?.DEV) ||
   process.env.NODE_ENV === 'development';
+
+// Use _isDev internally only
 
 // Store logs in memory for UI display
 const logBuffer: PillTrace[] = [];
 const MAX_LOGS = 200;
 
 // Log once to verify debug system is active
-if (typeof window !== 'undefined' && isDev) {
-  console.log('[DEBUG SYSTEM] Initialized - isDev =', isDev);
+if (typeof window !== 'undefined' && _isDev) {
+  console.log('[DEBUG SYSTEM] Initialized - isDev =', _isDev);
   (window as any).__debugLogs = logBuffer;
 }
 
@@ -48,7 +51,7 @@ export type PillTrace = {
 };
 
 export function trace(rec: PillTrace) {
-  if (!isDev) return;
+  if (!_isDev) return;
   
   // Store in buffer for UI display
   logBuffer.push(rec);
@@ -79,11 +82,11 @@ export function clearDebugLogs() {
 }
 
 export function assertDbg(ok: boolean, message: string, ctx: PillTrace) {
-  if (!isDev || ok) return;
+  if (!_isDev || ok) return;
   console.warn('[ASSERT]', message, ctx);
 }
 
 // Optional: perf marks
-export const mark = (name: string) => isDev && performance.mark(name);
+export const mark = (name: string) => _isDev && performance.mark(name);
 export const measure = (name: string, start: string, end: string) =>
-  isDev && (performance.mark(end), performance.measure(name, start, end));
+  _isDev && (performance.mark(end), performance.measure(name, start, end));
