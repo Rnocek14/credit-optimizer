@@ -32,7 +32,8 @@ export function buildMarketplaceSig(params: {
   // CRITICAL FIX: Normalize dataVersion to dv*, idempotent if already dv-prefixed
   // This fixes malformed sigs like "1|v181nfqo|..." or "|v181nfqo|..."
   const rawDv = nk(params.dataVersion) || 'dv0';
-  const dv = rawDv.replace(/^v(?=\d)/, 'dv'); // v123 → dv123, dv123 → dv123
+  // Replace ANY leading 'v' with 'dv', but keep if already starts with 'dv'
+  const dv = rawDv.startsWith('dv') ? rawDv : rawDv.replace(/^v/, 'dv');
   const id = nk(params.blockId);
   const cnt = Number.isFinite(params.count as number) ? String(params.count) : '0';
   const code = params.selectedCode ? nk(params.selectedCode) : undefined;
