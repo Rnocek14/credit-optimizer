@@ -529,11 +529,7 @@ function EduTreeCanvasV2Content({
   const { index, isReady } = useBlockIndex(blocks, dataVersion);
   const resolver = useMemo(() => createCachedResolver(dataVersion), [dataVersion]);
   
-  // Gate tree rendering until index is ready
-  if (!isReady) {
-    return <TreeSkeleton />;
-  }
-  
+  // ALL HOOKS MUST BE CALLED BEFORE ANY CONDITIONAL RETURNS
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [flowEdges, setEdges, onEdgesChange] = useEdgesState([]);
   const { fitView } = useReactFlow();
@@ -746,17 +742,16 @@ function EduTreeCanvasV2Content({
   }, [safeEdges]); // Depends on safeEdges, not raw inputs
   
   // Dev-only assertion: verify no dangling edges post-cleanup
-  const isDev3 = process.env.NODE_ENV === 'development';
-  if (isDev3) {
-    React.useEffect(() => {
-      const allValid = displayEdges.every(e => e.source && e.target);
-      if (!allValid) {
-        console.error('[ASSERT] Dangling edges detected post-cleanup:', 
-          displayEdges.filter(e => !e.source || !e.target)
-        );
-      }
-    }, [displayEdges]);
-  }
+  React.useEffect(() => {
+    if (process.env.NODE_ENV !== 'development') return;
+    
+    const allValid = displayEdges.every(e => e.source && e.target);
+    if (!allValid) {
+      console.error('[ASSERT] Dangling edges detected post-cleanup:', 
+        displayEdges.filter(e => !e.source || !e.target)
+      );
+    }
+  }, [displayEdges]);
 
   // Initialize suffix compare with filtered edges
   const suffixCompare = useSuffixCompare({ edges: displayEdges });
