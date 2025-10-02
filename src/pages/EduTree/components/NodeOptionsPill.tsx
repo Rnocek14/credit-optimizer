@@ -30,7 +30,7 @@ export function NodeOptionsPill({
   // Heal signature at read time (defensive against legacy/bad data)
   const healed = normalizeOrRebuildSig(
     mp0,
-    { dataVersion: dataVersion ?? 'dv0', blockId: nodeId ?? '' }
+    { dataVersion: dataVersion ?? 'dv0', blockId: nodeId ?? '', selectedCode: undefined }
   );
   
   if (DEV && healed !== (mp0?.signature ?? '')) {

@@ -274,6 +274,11 @@ export function blocksToNodes(
     
     assertSigShape(signature, 'ENRICH_BLOCK');
     
+    // Dev-time guard: block non-canonical writes immediately
+    if (process.env.NODE_ENV === 'development' && !signature.match(/^v1\|dv[a-z0-9]+\|[A-Za-z0-9_-]+\|\d+(?:\|[a-z0-9_-]+)?$/)) {
+      console.error('[BLOCKED_NONCANONICAL_WRITE]', { stage: 'ENRICH_BLOCK', signature, blockId: resolvedId });
+    }
+    
     const marketplace = {
       options,
       optionIds,
@@ -998,6 +1003,11 @@ export function applyManualLayout(
       { dataVersion: dataVersion ?? 'dv0', blockId }
     );
     assertSigShape(healedSig, 'SET_NODES');
+    
+    // Dev-time guard: block non-canonical writes immediately
+    if (process.env.NODE_ENV === 'development' && !healedSig.match(/^v1\|dv[a-z0-9]+\|[A-Za-z0-9_-]+\|\d+(?:\|[a-z0-9_-]+)?$/)) {
+      console.error('[BLOCKED_NONCANONICAL_WRITE]', { stage: 'SET_NODES', signature: healedSig, blockId });
+    }
     
     return {
       ...node,

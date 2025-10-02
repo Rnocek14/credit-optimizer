@@ -7,6 +7,9 @@ import { mkSig, nk } from './keys';
 
 export const SIG_VERSION = 'v1' as const;
 
+// Canonical signature regex - single source of truth for validation
+const SIG_RE = /^v1\|dv[a-z0-9]+\|[A-Za-z0-9_-]+\|\d+(?:\|[a-z0-9_-]+)?$/;
+
 // Runtime guard: ensure SIG_VERSION matches expected format
 if (process.env.NODE_ENV === 'development' && !/^v\d+$/.test(SIG_VERSION)) {
   console.error('[SIG_CONFIG_BAD] SIG_VERSION must match /^v\\d+$/', { actual: SIG_VERSION });
@@ -48,73 +51,50 @@ export function buildMarketplaceSig(params: {
 /**
  * Normalize or rebuild a signature at runtime
  * Heals old/bad signatures by rebuilding them if they don't match expected format
+ * Uses strict canonical regex - rebuilds anything that doesn't match exactly
  */
 export function normalizeOrRebuildSig(
   mp: {
     signature?: string | null;
-    count?: number;
+    count?: number | null | undefined;
     selectedCourse?: { code?: string | null } | null;
   },
-  ctx: { dataVersion: string; blockId: string }
+  ctx: { dataVersion?: string | null; blockId?: string | null; selectedCode?: string | null }
 ): string {
-  const s = mp?.signature ?? '';
-  const tokens = s.split('|').filter(Boolean);
+  const s = (mp?.signature ?? '').trim();
   
-  // Enhanced validity check: MUST have v1 + dv-prefix + numeric count
-  const looksValid = 
-    tokens.length >= 4 && 
-    tokens[0] === 'v1' &&
-    /^dv/.test(tokens[1] || '') &&
-    Number.isFinite(Number(tokens[3]));
+  // Fast-path: only if 100% canonical
+  if (SIG_RE.test(s)) return s;
 
-  if (looksValid) return s;
-
-  // Rebuild from truthy fields; prefer merged options count
+  // Always rebuild if not exact match - this catches all malformed cases
   const rebuilt = buildMarketplaceSig({
-    dataVersion: ctx.dataVersion,
-    blockId: ctx.blockId,
-    count: mp?.count ?? 0,
-    selectedCode: mp?.selectedCourse?.code ?? undefined,
+    dataVersion: ctx?.dataVersion ?? null,
+    blockId: ctx?.blockId ?? null,
+    count: Number.isFinite(Number(mp?.count)) ? Number(mp?.count) : 0,
+    selectedCode: ctx?.selectedCode ?? mp?.selectedCourse?.code ?? null,
   });
 
   if (process.env.NODE_ENV === 'development') {
     __sigRepairCount++;
-    console.warn('[SIG_REPAIR]', { had: s, rebuilt, ctx, totalRepairs: __sigRepairCount });
+    console.warn('[SIG_AUTOREPAIR]', { from: s, to: rebuilt, ctx, totalRepairs: __sigRepairCount });
   }
   
   return rebuilt;
 }
 
 /**
- * Assert signature shape in development (full validation with regex)
+ * Assert signature shape in development (uses canonical regex)
  */
 export function assertSigShape(sig: string, stage?: string): void {
   if (process.env.NODE_ENV !== 'development') return;
   
-  const t = (sig ?? '').split('|').filter(Boolean);
+  const ok = SIG_RE.test(sig || '');
   
-  // Strict validation for each token
-  const hasV1 = t[0] === 'v1';
-  const dvValid = /^dv[a-z0-9]+$/.test(t[1] || '');           // lowercase dv + hash
-  const blockIdValid = /^[A-Za-z0-9_-]+$/.test(t[2] || '');   // allow mixed-case blockId
-  const countValid = Number.isFinite(Number(t[3]));
-  const codeValid = !t[4] || /^[a-z0-9_-]+$/.test(t[4]);      // optional selectedCode lowercase
-  
-  const ok = t.length >= 4 && hasV1 && dvValid && blockIdValid && countValid && codeValid;
-
   if (!ok) {
     console.error('[SIG_INVARIANT_FAILED]', {
       stage: stage || 'unknown',
       sig,
-      tokens: t,
-      checks: {
-        hasV1,
-        dvValid,
-        blockIdValid,
-        countValid,
-        codeValid,
-        tokenCount: t.length
-      }
+      expected: 'v1|dv<hash>|<BlockId>|<count>[|<code>]'
     });
   }
 }
