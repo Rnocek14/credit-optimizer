@@ -10,5 +10,7 @@ export { DegreeOutcomeBanner } from './DegreeOutcomeBanner';
 export { TrackValidator } from './TrackValidator';
 export { SimpleTrackPicker } from './SimpleTrackPicker';
 export { TrackComparisonControls } from './TrackComparisonControls';
-export { StatusChip, EvidenceMeter, type CourseStatus } from './CourseStatusChip';
+// Section 1: Migrated to unified status system
+export { StatusChip } from '@/components/edu/status/StatusChip';
+export type { NodeState as CourseStatus } from '@/components/edu/status';
 export { PillSkeletonCard } from './PillSkeletonCard';

@@ -121,20 +121,16 @@ const isCompareAny = React.useMemo(() => {
           ctx.toggleLock(k);
         }
       }}
+      className={`
+        pointer-events-auto px-2.5 py-1 rounded-full text-xs backdrop-blur-sm z-[1000]
+        ${locked 
+          ? 'bg-primary/20 border-primary/80 text-primary shadow-[0_0_0_2px_hsl(var(--primary)/0.3),0_0_0_1px_rgba(0,0,0,0.25)_inset]' 
+          : isActive 
+            ? 'bg-background/15 border-primary/60 text-foreground shadow-[0_0_0_1px_rgba(0,0,0,0.25)_inset]'
+            : 'bg-background/8 border-border/18 text-foreground/90 shadow-[0_0_0_1px_rgba(0,0,0,0.25)_inset]'
+        }
+      `}
       style={{
-        pointerEvents: 'auto', // Enable keyboard interaction
-        padding: '4px 10px',
-        borderRadius: 999,
-        background: locked ? 'rgba(180,220,255,0.2)' : isActive ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.08)',
-        border: `1px solid ${locked ? 'rgba(180,220,255,0.8)' : (isFocused || isActive) ? 'rgba(180,220,255,0.6)' : 'rgba(255,255,255,0.18)'}`,
-        color: locked ? 'rgba(180,220,255,1)' : isActive ? 'rgba(255,255,255,1)' : 'rgba(255,255,255,0.9)',
-        fontSize: 12,
-        lineHeight: '16px',
-        backdropFilter: 'blur(2px)',
-        boxShadow: (isFocused || locked)
-          ? '0 0 0 2px rgba(180,220,255,0.3), 0 0 0 1px rgba(0,0,0,0.25) inset'
-          : '0 0 0 1px rgba(0,0,0,0.25) inset',
-        zIndex: 1000, // Ensure headers sit well above edges
         position: 'relative',
         left: '-60px', // Offset so arrow meets badge edge cleanly
         cursor: 'pointer',
