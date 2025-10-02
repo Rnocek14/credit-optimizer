@@ -8,6 +8,7 @@ import { V2RequirementBlock, V2Edge, EdgeKind } from '../data/seedDataV2';
 import type { CourseOption } from '../hooks/useRequirementOptionsBatch';
 import { marketplaceKeysFromNodeId } from '../helpers/marketplaceKeys';
 import { trace, assertDbg, mark, measure } from './debug';
+import { nk, mkSig } from './keys';
 
 type RFNode = Node;
 type RFEdge = Edge;
@@ -259,7 +260,8 @@ export function blocksToNodes(
     // Build marketplace object for pill component
     const optionIds = options.map((o: any) => o.code ?? o.id ?? '').filter(Boolean);
     const count = options.length;
-    const signature = `v1|${nk(dataVersion)}|${nk(resolvedId)}|${count}|${nk(selectedCourse?.code)}`;
+    const dv = dataVersion ?? 'dv0';
+    const signature = mkSig(['v1', dv, resolvedId, count, selectedCourse?.code]);
     
     const marketplace = {
       options,
@@ -966,8 +968,10 @@ export function applyManualLayout(
     
     // Build updated signature with new dataVersion and count
     const blockId = (node as any).data?.block?.id || node.id;
+    const selectedCourse = (node as any).data?.selectedCourse;
     const optionIds = mergedOptions.map((o: any) => o.code ?? o.id ?? '').filter(Boolean);
-    const newSignature = `v1|${dataVersion}|${blockId}|${rawOptions.length}|${optionIds.slice(0, 3).join(',')}`;
+    const dv = dataVersion ?? 'dv0';
+    const newSignature = mkSig(['v1', dv, blockId, rawOptions.length, selectedCourse?.code]);
     
     return {
       ...node,

@@ -63,10 +63,7 @@ export function useBlockIndex(blocks: V2RequirementBlock[], dataVersion: string)
   return { index, isReady };
 }
 
-/**
- * Key normalization helper - use everywhere for consistent casing
- */
-export const nk = (s?: string | null) => (s ?? '').trim().toLowerCase();
+import { nk } from '../utils/keys';
 
 /**
  * SAFE resolver: no negative-cache poisoning
@@ -85,17 +82,18 @@ export function createCachedResolver(dataVersion: string) {
       perIndexCache.set(index, cache);
     }
 
-    const ck = `${dataVersion}:${nk(key)}`;
+    const k = nk(key);
+    const ck = `${nk(dataVersion) || 'dv0'}:${k}`;
+
     if (cache.has(ck)) {
-      const v = cache.get(ck)!;
-      // Guardrail: detect poisoned cache (should never happen now)
+      const v = cache.get(ck);
       if (!v) {
         console.warn('[CACHE_NULL_HIT]', { key, dataVersion, indexSize: index.size });
       }
-      return v;
+      return v ?? null;
     }
 
-    const hit = index.get(nk(key));
+    const hit = index.get(k);
     if (hit) {
       cache.set(ck, hit);
       return hit;
@@ -104,7 +102,7 @@ export function createCachedResolver(dataVersion: string) {
     // NOTE: do NOT cache null; allow future lookups after index grows/changes
     if (Math.random() < 0.1) {
       console.warn('[KEY_RESOLUTION][MISS]', {
-        key, normalized: nk(key), indexSize: index.size, dataVersion
+        key, normalized: k, indexSize: index.size, dataVersion
       });
     }
     return null;
