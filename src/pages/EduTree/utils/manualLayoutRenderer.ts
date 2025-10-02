@@ -269,13 +269,14 @@ export function blocksToNodes(
     // Heal signature (defensive, should be no-op since we just built it)
     const signature = normalizeOrRebuildSig(
       { signature: builtSig, count, selectedCourse },
-      { dataVersion: dataVersion ?? 'dv0', blockId: resolvedId }
+      { dataVersion: dataVersion ?? 'dv0', blockId: resolvedId, selectedCode: selectedCourse?.code }
     );
     
     assertSigShape(signature, 'ENRICH_BLOCK');
     
     // Dev-time guard: block non-canonical writes immediately
     if (process.env.NODE_ENV === 'development' && !signature.match(/^v1\|dv[a-z0-9]+\|[A-Za-z0-9_-]+\|\d+(?:\|[a-z0-9_-]+)?$/)) {
+      // eslint-disable-next-line no-console
       console.error('[BLOCKED_NONCANONICAL_WRITE]', { stage: 'ENRICH_BLOCK', signature, blockId: resolvedId });
     }
     
@@ -1000,12 +1001,13 @@ export function applyManualLayout(
     // PATCH: Heal + assert at SET_NODES stage
     const healedSig = normalizeOrRebuildSig(
       { signature: newSignature, count: mergedOptions.length, selectedCourse },
-      { dataVersion: dataVersion ?? 'dv0', blockId }
+      { dataVersion: dataVersion ?? 'dv0', blockId, selectedCode: selectedCourse?.code }
     );
     assertSigShape(healedSig, 'SET_NODES');
     
     // Dev-time guard: block non-canonical writes immediately
     if (process.env.NODE_ENV === 'development' && !healedSig.match(/^v1\|dv[a-z0-9]+\|[A-Za-z0-9_-]+\|\d+(?:\|[a-z0-9_-]+)?$/)) {
+      // eslint-disable-next-line no-console
       console.error('[BLOCKED_NONCANONICAL_WRITE]', { stage: 'SET_NODES', signature: healedSig, blockId });
     }
     

@@ -30,7 +30,7 @@ export function NodeOptionsPill({
   // Heal signature at read time (defensive against legacy/bad data)
   const healed = normalizeOrRebuildSig(
     mp0,
-    { dataVersion: dataVersion ?? 'dv0', blockId: nodeId ?? '', selectedCode: undefined }
+    { dataVersion, blockId: nodeId, selectedCode: undefined }
   );
   
   if (DEV && healed !== (mp0?.signature ?? '')) {
@@ -42,7 +42,7 @@ export function NodeOptionsPill({
     });
   }
   
-  assertSigShape(healed);
+  assertSigShape(healed, 'PILL_RENDER');
   
   // Try multiple sources for options array (in order of preference)
   const optionsSources = [

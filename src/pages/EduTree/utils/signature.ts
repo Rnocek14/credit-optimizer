@@ -8,7 +8,7 @@ import { mkSig, nk } from './keys';
 export const SIG_VERSION = 'v1' as const;
 
 // Canonical signature regex - single source of truth for validation
-const SIG_RE = /^v1\|dv[a-z0-9]+\|[A-Za-z0-9_-]+\|\d+(?:\|[a-z0-9_-]+)?$/;
+export const SIG_RE = /^v1\|dv[a-z0-9]+\|[A-Za-z0-9_-]+\|\d+(?:\|[a-z0-9_-]+)?$/;
 
 // Runtime guard: ensure SIG_VERSION matches expected format
 if (process.env.NODE_ENV === 'development' && !/^v\d+$/.test(SIG_VERSION)) {
@@ -48,25 +48,29 @@ export function buildMarketplaceSig(params: {
   return parts.join('|');
 }
 
+type MpLike = {
+  signature?: string | null;
+  count?: number | null | undefined;
+  selectedCourse?: { code?: string | null } | null;
+};
+
+type CtxLike = {
+  dataVersion?: string | null;
+  blockId?: string | null;
+  selectedCode?: string | null;
+};
+
 /**
- * Normalize or rebuild a signature at runtime
- * Heals old/bad signatures by rebuilding them if they don't match expected format
- * Uses strict canonical regex - rebuilds anything that doesn't match exactly
+ * Normalize or rebuild a signature at runtime.
+ * If it isn't EXACTLY canonical, rebuild from context.
  */
-export function normalizeOrRebuildSig(
-  mp: {
-    signature?: string | null;
-    count?: number | null | undefined;
-    selectedCourse?: { code?: string | null } | null;
-  },
-  ctx: { dataVersion?: string | null; blockId?: string | null; selectedCode?: string | null }
-): string {
+export function normalizeOrRebuildSig(mp: MpLike, ctx: CtxLike): string {
   const s = (mp?.signature ?? '').trim();
-  
-  // Fast-path: only if 100% canonical
+
+  // Fast-path only if fully canonical
   if (SIG_RE.test(s)) return s;
 
-  // Always rebuild if not exact match - this catches all malformed cases
+  // Always rebuild anything non-canonical
   const rebuilt = buildMarketplaceSig({
     dataVersion: ctx?.dataVersion ?? null,
     blockId: ctx?.blockId ?? null,
@@ -76,6 +80,7 @@ export function normalizeOrRebuildSig(
 
   if (process.env.NODE_ENV === 'development') {
     __sigRepairCount++;
+    // eslint-disable-next-line no-console
     console.warn('[SIG_AUTOREPAIR]', { from: s, to: rebuilt, ctx, totalRepairs: __sigRepairCount });
   }
   
@@ -83,18 +88,18 @@ export function normalizeOrRebuildSig(
 }
 
 /**
- * Assert signature shape in development (uses canonical regex)
+ * Dev-only invariant: signature must match canonical regex.
  */
 export function assertSigShape(sig: string, stage?: string): void {
   if (process.env.NODE_ENV !== 'development') return;
-  
+
   const ok = SIG_RE.test(sig || '');
-  
   if (!ok) {
+    // eslint-disable-next-line no-console
     console.error('[SIG_INVARIANT_FAILED]', {
       stage: stage || 'unknown',
       sig,
-      expected: 'v1|dv<hash>|<BlockId>|<count>[|<code>]'
+      expected: 'v1|dv<hash>|<BlockId>|<count>[|<selectedCode>]',
     });
   }
 }
