@@ -15,3 +15,13 @@ export function mkSig(parts: Array<string | number | null | undefined>) {
     .filter(Boolean)
     .join('|');
 }
+
+// Case-preserving variant (for scenarios where case matters)
+// Only trims, does NOT lowercase tokens
+export function mkSigPreservingCase(parts: Array<string | number | null | undefined>) {
+  return parts
+    .map(p => (p == null ? '' : String(p)))
+    .map(p => p.trim())
+    .filter(Boolean)
+    .join('|');
+}

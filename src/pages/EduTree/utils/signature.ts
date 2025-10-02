@@ -34,12 +34,15 @@ export function buildMarketplaceSig(params: {
   const rawDv = nk(params.dataVersion) || 'dv0';
   // Replace ANY leading 'v' with 'dv', but keep if already starts with 'dv'
   const dv = rawDv.startsWith('dv') ? rawDv : rawDv.replace(/^v/, 'dv');
-  const id = nk(params.blockId);
+  
+  // PRESERVE blockId case (no lowercasing!)
+  const id = (params.blockId ?? '').trim();
   const cnt = Number.isFinite(params.count as number) ? String(params.count) : '0';
   const code = params.selectedCode ? nk(params.selectedCode) : undefined;
   
-  // Order is fixed: version | dataVersion | blockId | count | selectedCode?
-  return mkSig([SIG_VERSION, dv, id, cnt, code]);
+  // Manual construction to avoid mkSig lowercasing SIG_VERSION and blockId
+  const parts = [SIG_VERSION, dv, id, cnt, code].filter(p => p !== undefined && p !== '');
+  return parts.join('|');
 }
 
 /**
@@ -89,11 +92,15 @@ export function assertSigShape(sig: string, stage?: string): void {
   if (process.env.NODE_ENV !== 'development') return;
   
   const t = (sig ?? '').split('|').filter(Boolean);
-  const ok =
-    t.length >= 4 &&
-    t[0] === 'v1' &&
-    /^dv/.test(t[1] || '') &&
-    Number.isFinite(Number(t[3]));
+  
+  // Strict validation for each token
+  const hasV1 = t[0] === 'v1';
+  const dvValid = /^dv[a-z0-9]+$/.test(t[1] || '');           // lowercase dv + hash
+  const blockIdValid = /^[A-Za-z0-9_-]+$/.test(t[2] || '');   // allow mixed-case blockId
+  const countValid = Number.isFinite(Number(t[3]));
+  const codeValid = !t[4] || /^[a-z0-9_-]+$/.test(t[4]);      // optional selectedCode lowercase
+  
+  const ok = t.length >= 4 && hasV1 && dvValid && blockIdValid && countValid && codeValid;
 
   if (!ok) {
     console.error('[SIG_INVARIANT_FAILED]', {
@@ -101,9 +108,11 @@ export function assertSigShape(sig: string, stage?: string): void {
       sig,
       tokens: t,
       checks: {
-        hasV1: t[0] === 'v1',
-        dvPrefix: /^dv/.test(t[1] || ''),
-        numericCount: Number.isFinite(Number(t[3])),
+        hasV1,
+        dvValid,
+        blockIdValid,
+        countValid,
+        codeValid,
         tokenCount: t.length
       }
     });

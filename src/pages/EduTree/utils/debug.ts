@@ -47,6 +47,7 @@ export type PillTrace = {
     show?: boolean;
     allow?: boolean;
     signature?: string;
+    debugSig?: string;      // debug-only signature (not canonical)
   };
 };
 

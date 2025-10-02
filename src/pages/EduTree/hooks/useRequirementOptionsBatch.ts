@@ -140,7 +140,7 @@ export function useRequirementOptionsBatch(
         note: 'ID_RESOLUTION',
         mp: { 
           count: blockUUIDs.size,
-          signature: `resolve|${blockIds.length}→${blockUUIDs.size}|unresolved:${unresolved.length}`
+          debugSig: `resolve|${blockIds.length}→${blockUUIDs.size}|unresolved:${unresolved.length}`
         }
       });
 
@@ -187,8 +187,8 @@ export function useRequirementOptionsBatch(
         note: 'DB_FETCH', 
         mp: { 
           count: blockMembers.length,
-          signature: `fetch|members:${blockMembers.length}|courses:${courseMap.size}`
-        } 
+          debugSig: `fetch|members:${blockMembers.length}|courses:${courseMap.size}`
+        }
       });
 
       // Step 5: Group courses by block UUID + slug
@@ -228,7 +228,7 @@ export function useRequirementOptionsBatch(
         note: 'GROUPED',
         mp: { 
           count: resultMap.size,
-          signature: `grouped|blocks:${resultMap.size}|courses:${courseMap.size}`
+          debugSig: `grouped|blocks:${resultMap.size}|courses:${courseMap.size}`
         }
       });
 
@@ -255,7 +255,7 @@ export function useRequirementOptionsBatch(
           mp: { 
             count: items.length, 
             optionsLen: items.length, 
-            signature: `raw|${blockKey}|${items.length}` 
+            debugSig: `raw|${blockKey}|${items.length}` 
           },
         });
       }
