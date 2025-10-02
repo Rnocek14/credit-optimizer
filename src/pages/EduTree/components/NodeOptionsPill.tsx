@@ -4,6 +4,8 @@
  */
 
 import { trace } from '../utils/debug';
+import { normalizeOrRebuildSig, assertSigShape } from '../utils/signature';
+import { DEV } from '../utils/constants';
 
 export function NodeOptionsPill({
   count,
@@ -12,6 +14,7 @@ export function NodeOptionsPill({
   className = '',
   data,
   nodeId,
+  dataVersion,
 }: {
   count?: number | string | undefined;
   onClick: () => void;
@@ -19,12 +22,27 @@ export function NodeOptionsPill({
   className?: string;
   data?: any;
   nodeId?: string;
+  dataVersion?: string;
 }) {
-  // PHASE 1 FIX: Use consistent environment detection
-  const isDev = process.env.NODE_ENV === 'development';
-  
   // Read marketplace subtree with robust fallbacks
   const mp0 = data?.marketplace ?? {};
+  
+  // Heal signature at read time (defensive against legacy/bad data)
+  const healed = normalizeOrRebuildSig(
+    mp0,
+    { dataVersion: dataVersion ?? 'dv0', blockId: nodeId ?? '' }
+  );
+  
+  if (DEV && healed !== (mp0?.signature ?? '')) {
+    console.warn('[SIG_REPAIR][PILL]', { 
+      had: mp0?.signature, 
+      healed, 
+      blockId: nodeId, 
+      dataVersion 
+    });
+  }
+  
+  assertSigShape(healed);
   
   // Try multiple sources for options array (in order of preference)
   const optionsSources = [
@@ -47,6 +65,7 @@ export function NodeOptionsPill({
   
   const mp = {
     ...mp0,
+    signature: healed,    // Use healed signature
     count: capacity,      // Capacity (how many to pick)
     choices,              // Available choices
     resolved: resolvedResolved,
@@ -74,8 +93,8 @@ export function NodeOptionsPill({
     },
   });
   
-  // DIAGNOSTIC: Comprehensive logging in dev
-  if (isDev) {
+  // DIAGNOSTIC: Sampled logging in dev (10%)
+  if (DEV && Math.random() < 0.1) {
     console.log('[PILL][%s] show=%s choices=%s allow=%s resolved=%s sticky=%s sig=%s',
       nodeId?.slice(0, 20),
       finalShow, 
@@ -85,25 +104,26 @@ export function NodeOptionsPill({
       mp.sticky, 
       mp.signature?.slice(0, 30) ?? 'none'
     );
+  }
+  
+  // Always log non-rendering cases (errors, not noise)
+  if (DEV && (!finalShow || !Number.isFinite(n) || n <= 0)) {
+    const reasons = [];
+    if (!finalShow) reasons.push('show=false');
+    if (!Number.isFinite(n)) reasons.push('count not finite');
+    if (n <= 0) reasons.push('count<=0');
+    if (!data?.marketplace) reasons.push('no marketplace data');
+    if (!firstArray || firstArray.length === 0) reasons.push('no options array');
     
-    if (!finalShow || !Number.isFinite(n) || n <= 0) {
-      const reasons = [];
-      if (!finalShow) reasons.push('show=false');
-      if (!Number.isFinite(n)) reasons.push('count not finite');
-      if (n <= 0) reasons.push('count<=0');
-      if (!data?.marketplace) reasons.push('no marketplace data');
-      if (!firstArray || firstArray.length === 0) reasons.push('no options array');
-      
-      console.log('[PILL][%s] Not rendering:', nodeId?.slice(0, 20), { 
-        finalChoices, 
-        finalShow, 
-        n, 
-        reasons,
-        hasMarketplace: !!data?.marketplace,
-        hasOptions: !!data?.options,
-        dataKeys: Object.keys(data ?? {})
-      });
-    }
+    console.log('[PILL][%s] Not rendering:', nodeId?.slice(0, 20), { 
+      finalChoices, 
+      finalShow, 
+      n, 
+      reasons,
+      hasMarketplace: !!data?.marketplace,
+      hasOptions: !!data?.options,
+      dataKeys: Object.keys(data ?? {})
+    });
   }
 
   // PHASE 1 FIX: Removed hardcoded bypass - use actual logic

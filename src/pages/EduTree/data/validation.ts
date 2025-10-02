@@ -82,14 +82,20 @@ export function validateEduTreeDataModel(gatePositions?: GatePositions): Validat
     }
   };
   
-  // Log results
+  // Log results with detail
   if (result.success) {
     console.log('[EduTree Validation] ✅ All validations passed!', result.summary);
   } else {
-    console.error('[EduTree Validation] ❌ Validation failed:', {
-      errors: result.errors,
-      warnings: result.warnings
-    });
+    console.group('[EduTree Validation] ❌ Validation failed');
+    if (result.errors && result.errors.length > 0) {
+      console.error('Errors:');
+      result.errors.forEach((err, i) => console.error(`  ${i + 1}. ${err}`));
+    }
+    if (result.warnings && result.warnings.length > 0) {
+      console.warn('Warnings:');
+      result.warnings.forEach((warn, i) => console.warn(`  ${i + 1}. ${warn}`));
+    }
+    console.groupEnd();
   }
   
   return result;

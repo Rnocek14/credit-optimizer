@@ -9,7 +9,8 @@ import type { CourseOption } from '../hooks/useRequirementOptionsBatch';
 import { marketplaceKeysFromNodeId } from '../helpers/marketplaceKeys';
 import { trace, assertDbg, mark, measure } from './debug';
 import { nk, mkSig } from './keys';
-import { buildMarketplaceSig } from './signature';
+import { buildMarketplaceSig, normalizeOrRebuildSig, assertSigShape } from './signature';
+import { DEV } from './constants';
 
 type RFNode = Node;
 type RFEdge = Edge;
@@ -258,12 +259,20 @@ export function blocksToNodes(
     // Build marketplace object for pill component
     const optionIds = options.map((o: any) => o.code ?? o.id ?? '').filter(Boolean);
     const count = options.length;
-    const signature = buildMarketplaceSig({ 
+    const builtSig = buildMarketplaceSig({ 
       dataVersion, 
       blockId: resolvedId, 
       count, 
       selectedCode: selectedCourse?.code 
     });
+    
+    // Heal signature (defensive, should be no-op since we just built it)
+    const signature = normalizeOrRebuildSig(
+      { signature: builtSig, count, selectedCourse },
+      { dataVersion: dataVersion ?? 'dv0', blockId: resolvedId }
+    );
+    
+    assertSigShape(signature);
     
     const marketplace = {
       options,
@@ -303,25 +312,16 @@ export function blocksToNodes(
       mp: { count, signature }
     });
     
-    // DIAGNOSTIC: Log marketplace data mapping - MORE DETAILED
-    if (process.env.NODE_ENV === 'development') {
-      const blockIndex = safeBlocks.indexOf(block);
-      // Log first 10 blocks AND any block with marketplace data
-      if (blockIndex < 10 || count > 0) {
-        console.log('[blocksToNodes] Marketplace data mapping:', {
-          blockId: block.id,
-          blockIndex,
-          rawOptionsCount: (block as any).optionsCount,
-          rawType: typeof (block as any).optionsCount,
-          computedCount: count,
-          countIsFinite: Number.isFinite(count),
-          countIsZero: count === 0,
-          hasAceCredit: (block as any).hasAceCredit,
-          hasClep: (block as any).hasClep,
-          marketplaceCount: (block as any).marketplace?.count,
-          willRenderPill: Number.isFinite(count) && count > 0
-        });
-      }
+    // DIAGNOSTIC: Sampled logging in dev (10%)
+    if (DEV && Math.random() < 0.1) {
+      console.log('[blocksToNodes] Marketplace data mapping:', {
+        blockId: block.id,
+        computedCount: count,
+        countIsFinite: Number.isFinite(count),
+        countIsZero: count === 0,
+        signature: signature.slice(0, 40),
+        willRenderPill: Number.isFinite(count) && count > 0
+      });
     }
     
     const nodeData: V2NodeData = {
