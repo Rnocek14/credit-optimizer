@@ -64,40 +64,45 @@ export function useBlockIndex(blocks: V2RequirementBlock[], dataVersion: string)
 }
 
 /**
- * Cached resolution with logging
+ * SAFE resolver: no negative-cache poisoning
+ * Cache is bound to index instance via WeakMap to avoid cross-index contamination
  */
 export function createCachedResolver(dataVersion: string) {
-  const cache = new Map<string, string | null>();
-  
+  // Cache per index instance to avoid cross-index contamination
+  const perIndexCache = new WeakMap<Map<string, string>, Map<string, string>>();
+
   return function resolveBlockId(key: string, index: Map<string, string>): string | null {
-    if (!key) return null;
-    
-    // Check cache first
-    const cacheKey = `${dataVersion}:${key.toLowerCase()}`;
-    if (cache.has(cacheKey)) {
-      return cache.get(cacheKey)!;
+    if (!key || !index) return null;
+
+    let cache = perIndexCache.get(index);
+    if (!cache) {
+      cache = new Map<string, string>();
+      perIndexCache.set(index, cache);
     }
-    
-    // Try direct lookup
+
+    const ck = `${dataVersion}:${key.toLowerCase()}`;
+    if (cache.has(ck)) {
+      const v = cache.get(ck)!;
+      // Guardrail: detect poisoned cache (should never happen now)
+      if (!v) {
+        console.warn('[CACHE_NULL_HIT]', { key, dataVersion, indexSize: index.size });
+      }
+      return v;
+    }
+
     const normalized = key.toLowerCase();
     const hit = index.get(normalized);
-    
     if (hit) {
-      cache.set(cacheKey, hit);
+      cache.set(ck, hit);
       return hit;
     }
-    
-    // Log miss (but don't spam)
+
+    // NOTE: do NOT cache null; allow future lookups after index grows/changes
     if (Math.random() < 0.1) {
-      console.warn('[KEY_RESOLUTION][MISS]', { 
-        key, 
-        normalized,
-        indexSize: index.size,
-        dataVersion 
+      console.warn('[KEY_RESOLUTION][MISS]', {
+        key, normalized, indexSize: index.size, dataVersion
       });
     }
-    
-    cache.set(cacheKey, null);
     return null;
   };
 }

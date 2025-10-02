@@ -4,35 +4,25 @@
  */
 
 import React from 'react';
+import type { Node } from '@xyflow/react';
 
-interface GatePlaceholderProps {
+interface GatePlaceholderData {
   gateId: string;
   reason: string;
-  position: { x: number; y: number };
 }
 
-export const GatePlaceholder: React.FC<GatePlaceholderProps> = ({ gateId, reason, position }) => {
+export const GatePlaceholder: React.FC<{ data: GatePlaceholderData }> = ({ data }) => {
   return (
     <div
-      className="gate--placeholder absolute pointer-events-none opacity-40"
+      className="gate--placeholder rounded-xl border border-dashed border-border/40 bg-background/30 px-4 py-2 shadow-sm opacity-40 pointer-events-none"
       style={{
-        left: position.x,
-        top: position.y,
-        transform: 'translate(-50%, -50%)',
-        width: 120,
-        height: 24,
-        border: '1px dashed hsl(var(--border))',
-        borderRadius: 4,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        fontSize: 10,
-        color: 'hsl(var(--muted-foreground))',
-        backgroundColor: 'transparent'
+        minWidth: 180,
       }}
-      title={`Gate placeholder: ${reason}`}
+      title={`Gate placeholder: ${data.reason}`}
     >
-      {gateId}
+      <div className="text-xs text-muted-foreground text-center">
+        {data.gateId.replace('gate-', '').replace('-', ' ')}
+      </div>
     </div>
   );
 };

@@ -838,7 +838,9 @@ export function applyManualLayout(
   dataVersion?: string,
   optionsByBlock?: Map<string, any[]>,
   transferRulesByBlock?: Map<string, any[]>,
-  userPlanSelections?: any[]
+  userPlanSelections?: any[],
+  index?: Map<string, string>,
+  resolve?: (key: string, index: Map<string, string>) => string | null
 ): void {
   console.log('[ManualLayout] Applying direct positions for', blocks.length, 'blocks', 
     useGridAnchors ? '(with grid anchors)' : '(manual positions)',

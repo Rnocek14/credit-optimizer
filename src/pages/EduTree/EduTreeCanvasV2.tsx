@@ -431,6 +431,7 @@ const GateNode = ({ data }: { data: V2NodeData }) => {
 const nodeTypes = {
   requirement: RequirementNode,
   gate: GateNode,
+  gatePlaceholder: GatePlaceholder,
   header: HeaderNode,
   emptyYear: EmptyYearNode
 };
@@ -1147,7 +1148,19 @@ function EduTreeCanvasV2Content({
         // Apply gate positioning decisions with proper guards and dimming
         const withGatePlacement = (nodes: typeof newNodes) => nodes.map(n => {
           if (n.id === 'gate-y2-programs') {
-            if (!gatePositions.showPG || gatePositions.pgX == null) return { ...n, hidden: true };
+            if (!gatePositions.showPG || gatePositions.pgX == null) {
+              // Render placeholder instead of hiding to prevent lane collapse
+              return {
+                ...n,
+                position: { x: gatePositions.pgX ?? 440, y: GATE_Y },
+                type: 'gatePlaceholder',
+                data: {
+                  ...n.data,
+                  gateId: 'gate-y2-programs',
+                  reason: 'Program gate hidden in current mode'
+                }
+              };
+            }
             return { ...n, position: { x: gatePositions.pgX, y: GATE_Y }, hidden: false };
           }
           if (n.id === 'gate-y3-tracks') {
@@ -1160,7 +1173,17 @@ function EduTreeCanvasV2Content({
               programs.some(p => p === 'bs_it'); // IT has no tracks, CS has tracks
               
             if (isComparingProgramsWithDifferentTrackStructure || !gatePositions.showTG || gatePositions.tgX == null) {
-              return { ...n, hidden: true };
+              // Render placeholder instead of hiding to prevent lane collapse
+              return {
+                ...n,
+                position: { x: gatePositions.tgX ?? 1160, y: GATE_Y },
+                type: 'gatePlaceholder',
+                data: {
+                  ...n.data,
+                  gateId: 'gate-y3-tracks',
+                  reason: 'Track gate hidden in current mode'
+                }
+              };
             }
             return { ...n, position: { x: gatePositions.tgX, y: GATE_Y }, hidden: false };
           }
@@ -1169,18 +1192,20 @@ function EduTreeCanvasV2Content({
         
         // Apply grid layout if conditions met
         const finalNodes = usePlan ? withGatePlacement(newNodes).map(n => {
-          // Skip header nodes - they don't have phaseAPlan
-          if (n.type === 'header') {
+          // Skip header nodes and placeholder nodes - they don't have phaseAPlan
+          if (n.type === 'header' || n.type === 'gatePlaceholder') {
             return n;
           }
-          if (n.data?.isVirtual) {
+          // Type guard for V2NodeData
+          const nodeData = n.data as V2NodeData;
+          if (nodeData?.isVirtual) {
             // Add singleRailStraight flag to gate nodes
             return { 
               ...n, 
-              data: { ...n.data, singleRailStraight } 
+              data: { ...nodeData, singleRailStraight } 
             };
           }
-          const p = (n.data as V2NodeData)?.phaseAPlan;
+          const p = nodeData?.phaseAPlan;
           if (!p) { 
             console.warn('[V2] Missing phaseAPlan for', n.id); 
             return n; 
@@ -1188,7 +1213,7 @@ function EduTreeCanvasV2Content({
           return { 
             ...n, 
             position: { x: p.x, y: p.y }, 
-            data: { ...n.data, hasGridLayout: true, singleRailStraight } 
+            data: { ...nodeData, hasGridLayout: true, singleRailStraight } 
           };
         }) : withGatePlacement(newNodes).map(n => ({ ...n, data: { ...n.data, singleRailStraight } }));
         
@@ -1315,9 +1340,11 @@ function EduTreeCanvasV2Content({
       dataVersion, // Course-aware: data version for node identity
       optionsByBlock, // Course-aware: options per block
       rulesByBlock, // Course-aware: transfer rules per block
-      userPlanSelections // Course-aware: user selections
+      userPlanSelections, // Course-aware: user selections
+      index, // Pre-built index for stable resolution
+      resolver // Cached resolver for consistent lookups
     );
-  }, [blocksKey, edges, isV2Mode, setNodes, setEdges, effectiveFlags.eduTreeV2Grid, effectiveFlags.eduTreeLayoutMode, usePlan, singleRailStraight, effectiveFilterMode, flags.eduTreeV2EdgeKinds, gatePositions, selectedPrograms]);
+  }, [blocksKey, edges, isV2Mode, setNodes, setEdges, effectiveFlags.eduTreeV2Grid, effectiveFlags.eduTreeLayoutMode, usePlan, singleRailStraight, effectiveFilterMode, flags.eduTreeV2EdgeKinds, gatePositions, selectedPrograms, index, resolver]);
   
   // Update handle internals using useLayoutEffect to prevent micro "pop"
   useLayoutEffect(() => {
