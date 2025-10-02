@@ -196,49 +196,6 @@ export function blocksToNodes(
     // Build marketplace signature for reliable re-render detection
     const oc = asNum((block as any).optionsCount);
     
-    /**
-     * PHASE 2 FIX: Generate comprehensive block aliases
-     * Maps common variants for gates and cores that appear in different contexts
-     */
-    const getBlockAliases = (id: string, slug?: string): string[] => {
-      const aliases: string[] = [];
-      const idLower = id.toLowerCase();
-      const slugLower = (slug || '').toLowerCase();
-      
-      // Gate aliases
-      if (idLower.includes('gate') || idLower.includes('program') || idLower.includes('track')) {
-        aliases.push('program-gate', 'program-choice', 'y2-program-gate', 'y2-programs');
-        aliases.push('track-gate', 'track-choice', 'y3-track-gate', 'y3-tracks');
-      }
-      
-      // Core block aliases (Year 3 track-specific cores)
-      if (idLower.includes('core') || slugLower.includes('core')) {
-        aliases.push('se-core', 'software-engineering-core', 'core-iii-se', 'year3-se-core', 'y3-se-core');
-        aliases.push('ds-core', 'data-science-core', 'core-iii-ds', 'year3-ds-core', 'y3-ds-core');
-      }
-      
-      // Elective aliases
-      if (idLower.includes('elec') || slugLower.includes('elec')) {
-        aliases.push('cs-elec', 'y2-cs-elec', 'it-elec', 'y2-it-elec');
-        aliases.push('se-elec', 'y3-se-elec', 'ds-elec', 'y3-ds-elec');
-      }
-      
-      // Capstone aliases
-      if (idLower.includes('cap') || slugLower.includes('cap')) {
-        aliases.push('se-cap', 'y4-se-cap', 'ds-cap', 'y4-ds-cap', 'it-cap', 'y4-it-cap');
-      }
-      
-      // BSN Program aliases - restore missing nursing blocks
-      if (idLower.includes('bsn') || slugLower.includes('bsn') || slugLower.includes('nursing')) {
-        aliases.push('bsn-found', 'y1-bsn-found', 'bsn-foundations');
-        aliases.push('bsn-core', 'y2-bsn-core', 'bsn-core-courses');
-        aliases.push('bsn-clinical', 'y3-bsn-clinical', 'bsn-clinical-practice');
-        aliases.push('bsn-capstone', 'y4-bsn-capstone', 'bsn-capstone-project');
-      }
-      
-      return aliases;
-    };
-    
     // Course-aware: Get options and transfer rules for this block
     // Use the SAME key generation logic as useBatchRequirementOptions for consistency
     const candidateKeys = marketplaceKeysFromNodeId(block.id);
@@ -254,8 +211,43 @@ export function blocksToNodes(
       }
     }
     
-    // Add comprehensive aliases for known blocks (PHASE 2 FIX: Gates and cores)
-    const blockAliases = getBlockAliases(block.id, block.slug);
+    // Generate block aliases inline (simple version)
+    const blockAliases: string[] = [];
+    const idLower = block.id.toLowerCase();
+    const slugLower = (block.slug || '').toLowerCase();
+    
+    // Gate aliases
+    if (idLower.includes('gate') || idLower.includes('program') || idLower.includes('track')) {
+      blockAliases.push('program-gate', 'program-choice', 'y2-program-gate', 'y2-programs');
+      blockAliases.push('track-gate', 'track-choice', 'y3-track-gate', 'y3-tracks');
+    }
+    
+    // Core block aliases
+    if (idLower.includes('core') || slugLower.includes('core')) {
+      blockAliases.push('se-core', 'software-engineering-core', 'core-iii-se', 'year3-se-core', 'y3-se-core');
+      blockAliases.push('ds-core', 'data-science-core', 'core-iii-ds', 'year3-ds-core', 'y3-ds-core');
+    }
+    
+    // Elective aliases
+    if (idLower.includes('elec') || slugLower.includes('elec')) {
+      blockAliases.push('cs-elec', 'y2-cs-elec', 'it-elec', 'y2-it-elec');
+      blockAliases.push('se-elec', 'y3-se-elec', 'ds-elec', 'y3-ds-elec');
+    }
+    
+    // Capstone aliases
+    if (idLower.includes('cap') || slugLower.includes('cap')) {
+      blockAliases.push('se-cap', 'y4-se-cap', 'ds-cap', 'y4-ds-cap', 'it-cap', 'y4-it-cap');
+    }
+    
+    // BSN Program aliases
+    if (idLower.includes('bsn') || slugLower.includes('bsn') || slugLower.includes('nursing')) {
+      blockAliases.push('bsn-found', 'y1-bsn-found', 'bsn-foundations');
+      blockAliases.push('bsn-core', 'y2-bsn-core', 'bsn-core-courses');
+      blockAliases.push('bsn-clinical', 'y3-bsn-clinical', 'bsn-clinical-practice');
+      blockAliases.push('bsn-capstone', 'y4-bsn-capstone', 'bsn-capstone-project');
+    }
+    
+    // Add aliases to candidate keys
     candidateKeys.push(...blockAliases);
     
     const pickFromMap = <T,>(m?: Map<string, T>): T | undefined => {

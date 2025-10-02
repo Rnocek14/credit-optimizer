@@ -70,6 +70,8 @@ import { ComparisonLegend as HudComparisonLegend } from './components/HUD/Compar
 import { useUserPlan } from '@/hooks/useUserPlan';
 import { ENV } from '@/config/env';
 import { marketplaceKeysFromNodeId } from './helpers/marketplaceKeys';
+import { useBlockIndex } from './hooks/useBlockIndex';
+import { GatePlaceholder } from './components/GatePlaceholder';
 
 // Export marketplace helpers globally for diagnostics
 if (typeof window !== 'undefined') {
