@@ -198,9 +198,6 @@ export function blocksToNodes(
     
     // Build marketplace signature for reliable re-render detection (removed old guard - now at function level)
     
-    // Import nk helper for consistent key normalization
-    const nk = (s?: string | null) => (s ?? '').trim().toLowerCase();
-    
     // Use centralized resolver - try slug first, then uuid, then id
     const resolvedId = 
       (block.slug && resolve(block.slug, index)) ??
@@ -936,11 +933,13 @@ export function applyManualLayout(
     
     // DIAGNOSTIC: Log marketplace data being set
     if (isDev2 && rawOptions.length > 0 && Math.random() < 0.1) {
+      const dv = dataVersion ?? 'dv0';
+      const selectedCourse = (node as any).data?.selectedCourse;
       console.log('[MP→BLOCKS] Merged options into marketplace:', {
         blockId: block.id,
         rawCount: rawOptions.length,
         mergedCount: mergedOptions.length,
-        signature: `v1|${dataVersion}|${block.id}|${rawOptions.length}|${mergedOptions.slice(0, 2).map(o => o.code ?? o.id ?? '').join(',')}...`
+        signature: mkSig(['v1', dv, block.id, rawOptions.length, selectedCourse?.code])
       });
     }
     
