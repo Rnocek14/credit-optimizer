@@ -529,6 +529,11 @@ function EduTreeCanvasV2Content({
   const { index, isReady } = useBlockIndex(blocks, dataVersion);
   const resolver = useMemo(() => createCachedResolver(dataVersion), [dataVersion]);
   
+  // Gate tree rendering until index is ready
+  if (!isReady) {
+    return <TreeSkeleton />;
+  }
+  
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [flowEdges, setEdges, onEdgesChange] = useEdgesState([]);
   const { fitView } = useReactFlow();
@@ -1103,6 +1108,8 @@ function EduTreeCanvasV2Content({
     applyManualLayout(
       filteredBlocks,
       edges,
+      index,
+      resolver,
       (newNodes, newEdges) => {
         // DEBUG: Check IT nodes in final rendering
         const itNodes = newNodes.filter(n => {
@@ -1340,11 +1347,9 @@ function EduTreeCanvasV2Content({
       dataVersion, // Course-aware: data version for node identity
       optionsByBlock, // Course-aware: options per block
       rulesByBlock, // Course-aware: transfer rules per block
-      userPlanSelections, // Course-aware: user selections
-      index, // Pre-built index for stable resolution
-      resolver // Cached resolver for consistent lookups
+      userPlanSelections // Course-aware: user selections
     );
-  }, [blocksKey, edges, isV2Mode, setNodes, setEdges, effectiveFlags.eduTreeV2Grid, effectiveFlags.eduTreeLayoutMode, usePlan, singleRailStraight, effectiveFilterMode, flags.eduTreeV2EdgeKinds, gatePositions, selectedPrograms, index, resolver]);
+  }, [blocksKey, edges, isV2Mode, setNodes, setEdges, effectiveFlags.eduTreeV2Grid, effectiveFlags.eduTreeLayoutMode, usePlan, singleRailStraight, effectiveFilterMode, flags.eduTreeV2EdgeKinds, gatePositions, selectedPrograms, dataVersion, optionsByBlock, rulesByBlock, userPlanSelections, index, resolver]);
   
   // Update handle internals using useLayoutEffect to prevent micro "pop"
   useLayoutEffect(() => {

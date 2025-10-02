@@ -53,9 +53,9 @@ export function useBlockIndex(blocks: V2RequirementBlock[], dataVersion: string)
     if (index.size > 0 && !isReady) {
       setIsReady(true);
       console.log('[INDEX_READY]', { 
-        size: index.size, 
-        dataVersion,
-        sampleKeys: Array.from(index.keys()).slice(0, 10)
+        version: dataVersion,
+        size: index.size,
+        first10: Array.from(index.keys()).slice(0, 10)
       });
     }
   }, [index.size, isReady, dataVersion]);

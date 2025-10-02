@@ -97,7 +97,9 @@ export interface V2NodeData {
  * No layout computation - just applies stored coordinates
  */
 export function blocksToNodes(
-  blocks: V2RequirementBlock[], 
+  blocks: V2RequirementBlock[],
+  index: Map<string, string>,
+  resolve: (key: string, index: Map<string, string>) => string | null,
   singleRailStraight: boolean = false,
   selectedPrograms?: string[],
   dataVersion?: string,
@@ -196,114 +198,39 @@ export function blocksToNodes(
     // Build marketplace signature for reliable re-render detection
     const oc = asNum((block as any).optionsCount);
     
-    // Course-aware: Get options and transfer rules for this block
-    // Use the SAME key generation logic as useBatchRequirementOptions for consistency
-    const candidateKeys = marketplaceKeysFromNodeId(block.id);
-    
-    // Also add uuid and slug if available
-    if (block.uuid) candidateKeys.unshift(block.uuid.toLowerCase());
-    if (block.slug) {
-      candidateKeys.unshift(block.slug.toLowerCase());
-      // Try slug without year prefix too
-      const slugNoYear = block.slug.replace(/^y\d-/, '').toLowerCase();
-      if (slugNoYear !== block.slug.toLowerCase()) {
-        candidateKeys.splice(2, 0, slugNoYear);
-      }
+    // Guard: ensure index is available before resolving
+    if (!index || index.size === 0) {
+      console.warn('[RESOLVE_GUARD] Attempt to resolve with empty index', { blockId: block.id, dataVersion });
+      return {
+        ...baseNode,
+        type: 'requirement',
+        data: {
+          title: block.title,
+          ruleType: block.rule_type,
+          levelYear: block.level_year,
+          area: block.area,
+          creditsNeeded: block.credits_needed,
+          trackId: block.track_id,
+          programId: block.program_id,
+          track_id: block.track_id,
+          program_id: block.program_id,
+          __v: dataVersion,
+          marketplace: { options: [], optionIds: [], count: 0, resolved: 0, sticky: 0, allow: false, show: false, signature: '' }
+        } as V2NodeData
+      };
     }
     
-    // Generate block aliases inline (simple version)
-    const blockAliases: string[] = [];
-    const idLower = block.id.toLowerCase();
-    const slugLower = (block.slug || '').toLowerCase();
+    // Use centralized resolver - try slug first, then uuid, then id
+    const resolvedId = 
+      (block.slug ? resolve(block.slug, index) : null) ??
+      (block.uuid ? resolve(block.uuid, index) : null) ??
+      resolve(block.id, index) ??
+      block.id;
     
-    // Gate aliases
-    if (idLower.includes('gate') || idLower.includes('program') || idLower.includes('track')) {
-      blockAliases.push('program-gate', 'program-choice', 'y2-program-gate', 'y2-programs');
-      blockAliases.push('track-gate', 'track-choice', 'y3-track-gate', 'y3-tracks');
-    }
-    
-    // Core block aliases
-    if (idLower.includes('core') || slugLower.includes('core')) {
-      blockAliases.push('se-core', 'software-engineering-core', 'core-iii-se', 'year3-se-core', 'y3-se-core');
-      blockAliases.push('ds-core', 'data-science-core', 'core-iii-ds', 'year3-ds-core', 'y3-ds-core');
-    }
-    
-    // Elective aliases
-    if (idLower.includes('elec') || slugLower.includes('elec')) {
-      blockAliases.push('cs-elec', 'y2-cs-elec', 'it-elec', 'y2-it-elec');
-      blockAliases.push('se-elec', 'y3-se-elec', 'ds-elec', 'y3-ds-elec');
-    }
-    
-    // Capstone aliases
-    if (idLower.includes('cap') || slugLower.includes('cap')) {
-      blockAliases.push('se-cap', 'y4-se-cap', 'ds-cap', 'y4-ds-cap', 'it-cap', 'y4-it-cap');
-    }
-    
-    // BSN Program aliases
-    if (idLower.includes('bsn') || slugLower.includes('bsn') || slugLower.includes('nursing')) {
-      blockAliases.push('bsn-found', 'y1-bsn-found', 'bsn-foundations');
-      blockAliases.push('bsn-core', 'y2-bsn-core', 'bsn-core-courses');
-      blockAliases.push('bsn-clinical', 'y3-bsn-clinical', 'bsn-clinical-practice');
-      blockAliases.push('bsn-capstone', 'y4-bsn-capstone', 'bsn-capstone-project');
-    }
-    
-    // Add aliases to candidate keys
-    candidateKeys.push(...blockAliases);
-    
-    const pickFromMap = <T,>(m?: Map<string, T>): T | undefined => {
-      if (!m) return undefined;
-      
-      let pickedKey: string | undefined;
-      let result: T | undefined;
-      
-      for (const k of candidateKeys) {
-        const v = m.get(k);
-        if (v) {
-          pickedKey = k;
-          result = v;
-          break;
-        }
-      }
-      
-      // STAGE 2: KEY_RESOLUTION (PHASE 2 FIX: Single definitive log)
-      if (pickedKey) {
-        // Determine resolution method
-        const via = 
-          pickedKey === block.id ? 'uuid' :
-          pickedKey === block.slug ? 'slug' :
-          blockAliases.includes(pickedKey) ? 'alias' :
-          'normalized';
-        
-        trace({
-          stage: 'KEY_RESOLUTION',
-          t: Date.now(),
-          dataVersion,
-          blockId: block.id,
-          slug: block.slug,
-          pickedKey,
-          via,
-          note: 'hit',
-        });
-      } else {
-        // Only log MISS if we truly have no match
-        trace({
-          stage: 'KEY_RESOLUTION',
-          t: Date.now(),
-          dataVersion,
-          blockId: block.id,
-          slug: block.slug,
-          keysTried: candidateKeys.slice(0, 5),
-          mapSize: m.size,
-          note: 'MISS',
-        });
-      }
-      
-      return result;
-    };
-    
-    const courseOptions = pickFromMap<CourseOption[]>(optionsByBlock) ?? [];
-    const transferRules = pickFromMap<any[]>(transferRulesByBlock) ?? [];
-    const selection = pickFromMap<any>(selectionsByBlock);
+    // Lookup using resolved ID
+    const courseOptions = (resolvedId && optionsByBlock?.get(resolvedId.toLowerCase())) ?? [];
+    const transferRules = (resolvedId && transferRulesByBlock?.get(resolvedId.toLowerCase())) ?? [];
+    const selection = (resolvedId && selectionsByBlock?.get(resolvedId.toLowerCase())) ?? undefined;
     
     // Build transfer rules map by course ID for efficient lookup
     const byCourse = new Map<string, any>();
@@ -827,8 +754,10 @@ function createHeaderNodes(opts: {
 export function applyManualLayout(
   blocks: V2RequirementBlock[],
   edges: V2Edge[],
+  index: Map<string, string>,
+  resolve: (key: string, index: Map<string, string>) => string | null,
   onApply: (nodes: Node[], edges: Edge[]) => void,
-  fitView: () => void,
+  fitView?: () => void,
   useGridAnchors: boolean = false,
   singleRailStraight: boolean = false,
   filterMode: string = '',
@@ -838,9 +767,7 @@ export function applyManualLayout(
   dataVersion?: string,
   optionsByBlock?: Map<string, any[]>,
   transferRulesByBlock?: Map<string, any[]>,
-  userPlanSelections?: any[],
-  index?: Map<string, string>,
-  resolve?: (key: string, index: Map<string, string>) => string | null
+  userPlanSelections?: any[]
 ): void {
   console.log('[ManualLayout] Applying direct positions for', blocks.length, 'blocks', 
     useGridAnchors ? '(with grid anchors)' : '(manual positions)',
@@ -883,7 +810,9 @@ export function applyManualLayout(
   
   // Create nodes with phase A planning data (blocks are pre-filtered)
   const processedNodes = blocksToNodes(
-    blocks, 
+    blocks,
+    index,
+    resolve,
     singleRailStraight, 
     selectedPrograms,
     dataVersion,
