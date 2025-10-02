@@ -659,8 +659,17 @@ export function edgesToReactFlowEdges(
     // Refined arrow styling - smaller arrows for cleaner appearance (14-16px as recommended)
     const arrowSize = { width: 15, height: 15 };
 
-    // Set targetHandle for gate-to-header edges
-    const targetHandle = (isGateEdge && isHeaderTarget) ? 'in' : undefined;
+    // Set targetHandle with intelligent defaults (PATCH 1: Edge Handle Defaults)
+    let targetHandle: string | undefined = undefined;
+    
+    if (isGateEdge && isHeaderTarget) {
+      // Gate → Header uses 'in' handle
+      targetHandle = 'in';
+    } else if (isGateEdge && !isHeaderTarget) {
+      // Gate → Requirement uses 'in' handle (fixes gate-y3-tracks → y3-se-core/y3-ds-core edges)
+      // RequirementNode exposes a single 'in' handle, not 'in-default'
+      targetHandle = 'in';
+    }
 
     // Debug logging for handle assignment (development only)
     if (import.meta.env.DEV && edge.source.includes('y3-se-core')) {
@@ -1503,4 +1512,50 @@ export function validateNoOverlaps(nodes: Node[]): { hasOverlaps: boolean; overl
     hasOverlaps: overlaps.length > 0,
     overlaps
   };
+}
+
+/**
+ * PATCH 3: Resolve overlapping nodes by auto-nudging them vertically
+ * Groups nodes by column (within tolerance) and ensures minimum vertical gap
+ */
+export function resolveOverlaps(nodes: Node[]): Node[] {
+  const NODE_HEIGHT = 80;
+  const MIN_GAP = 24;      // 24px minimum vertical gap
+  const COL_TOLERANCE = 60; // Nodes within 60px horizontally are in same column
+  const DEV = import.meta.env?.DEV;
+  
+  // Group nodes by column (round x to nearest COL_TOLERANCE)
+  const columnMap = new Map<number, Node[]>();
+  
+  for (const node of nodes) {
+    const colKey = Math.round(node.position.x / COL_TOLERANCE) * COL_TOLERANCE;
+    const col = columnMap.get(colKey) || [];
+    col.push(node);
+    columnMap.set(colKey, col);
+  }
+  
+  // Process each column: sort by Y and nudge overlaps
+  columnMap.forEach((col) => {
+    col.sort((a, b) => a.position.y - b.position.y);
+    
+    for (let i = 1; i < col.length; i++) {
+      const prev = col[i - 1];
+      const curr = col[i];
+      const minY = prev.position.y + NODE_HEIGHT + MIN_GAP;
+      
+      if (curr.position.y < minY) {
+        if (DEV) {
+          console.log('[AutoNudge] Nudging node:', {
+            id: curr.id,
+            oldY: curr.position.y,
+            newY: minY,
+            gap: minY - prev.position.y - NODE_HEIGHT
+          });
+        }
+        curr.position.y = minY;
+      }
+    }
+  });
+  
+  return nodes;
 }

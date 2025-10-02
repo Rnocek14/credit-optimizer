@@ -7,7 +7,7 @@ import React, { useCallback, useEffect, useLayoutEffect, useState, useMemo, useR
 import { ReactFlow, useNodesState, useEdgesState, useReactFlow, Background, Controls, MiniMap, MarkerType, Handle, Position, useUpdateNodeInternals } from '@xyflow/react';
 import { useEduTreeV2Data } from './hooks/useEduTreeV2Data';
 import { useApplyDimmingV2 } from './hooks/useApplyDimmingV2';
-import { applyManualLayout, validateNoOverlaps, type V2NodeData } from './utils/manualLayoutRenderer';
+import { applyManualLayout, validateNoOverlaps, resolveOverlaps, type V2NodeData } from './utils/manualLayoutRenderer';
 import { getProgramById } from './data/programMetadata';
 import { exposeGridValidation } from './utils/deterministicGrid';
 import { laneXs } from './utils/layoutTokens';
@@ -1193,7 +1193,7 @@ function EduTreeCanvasV2Content({
         });
         
         // Apply grid layout if conditions met
-        const finalNodes = usePlan ? withGatePlacement(newNodes).map(n => {
+        let finalNodes = usePlan ? withGatePlacement(newNodes).map(n => {
           // Skip header nodes and placeholder nodes - they don't have phaseAPlan
           if (n.type === 'header' || n.type === 'gatePlaceholder') {
             return n;
@@ -1310,10 +1310,19 @@ function EduTreeCanvasV2Content({
           }
         }
         
-        // Validate no overlaps (acceptance criteria)
+        // Validate no overlaps (acceptance criteria) + PATCH 3: Auto-nudge
         const validation = validateNoOverlaps(finalNodes);
         if (validation.hasOverlaps) {
-          console.warn('[EduTreeV2] Node overlaps detected:', validation.overlaps);
+          console.warn('[EduTreeV2] Node overlaps detected, applying auto-nudge:', validation.overlaps);
+          finalNodes = resolveOverlaps(finalNodes);
+          
+          // Re-validate after nudging
+          const postNudge = validateNoOverlaps(finalNodes);
+          if (postNudge.hasOverlaps) {
+            console.error('[EduTreeV2] ❌ Overlaps remain after auto-nudge:', postNudge.overlaps);
+          } else {
+            console.log('[EduTreeV2] ✓ Auto-nudge successful - no overlaps');
+          }
         } else {
           console.log('[EduTreeV2] ✓ No node overlaps - acceptance criteria met');
         }

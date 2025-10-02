@@ -33,6 +33,7 @@ type API = {
   // Dual selection support for compare-any
   primarySelection: Selection | null;
   secondarySelection: Selection | null;
+  isHydrated: boolean; // NEW: Signals URL params have been loaded
   
   preview: (key: HighlightKey | null) => void;
   clearPreview: () => void;
@@ -91,8 +92,20 @@ export function PathHighlightProvider({
   }, []);
   const [primarySelection, setPrimary] = React.useState<Selection | null>(urlSelections.primary);
   const [secondarySelection, setSecondary] = React.useState<Selection | null>(urlSelections.secondary);
+  const [isHydrated, setIsHydrated] = React.useState(false); // NEW: Track hydration completion
 
   const activeKey = lockedKey ?? hoveredKey;
+
+  // Hydrate from URL on mount (useLayoutEffect for synchronous execution before paint)
+  React.useLayoutEffect(() => {
+    // URL already parsed in useMemo, just mark as hydrated
+    setIsHydrated(true);
+    console.log('[PathHighlight] Hydration complete:', {
+      primary: urlSelections.primary,
+      secondary: urlSelections.secondary,
+      timestamp: new Date().toISOString()
+    });
+  }, []); // Run once on mount
 
   const parse = React.useCallback((key: HighlightKey | null) => {
     if (!key) return { kind: null as null, value: null as null };
@@ -239,21 +252,23 @@ export function PathHighlightProvider({
   const value = React.useMemo<API>(() => ({
     hoveredKey, lockedKey, activeKey,
     primarySelection, secondarySelection,
+    isHydrated, // NEW: Expose hydration flag
     preview, clearPreview, toggleLock,
     setPrimarySelection, setSecondarySelection, clearSecondarySelection,
     belongs, isNodeDimmed, isEdgeDimmed
-  }), [hoveredKey, lockedKey, activeKey, primarySelection, secondarySelection, preview, clearPreview, toggleLock, setPrimarySelection, setSecondarySelection, clearSecondarySelection, belongs, isNodeDimmed, isEdgeDimmed]);
+  }), [hoveredKey, lockedKey, activeKey, primarySelection, secondarySelection, isHydrated, preview, clearPreview, toggleLock, setPrimarySelection, setSecondarySelection, clearSecondarySelection, belongs, isNodeDimmed, isEdgeDimmed]);
 
   // Expose state for HUD debugging
   React.useEffect(() => {
     if (import.meta.env?.DEV) {
       (window as any).__highlight_state__ = { 
         hoveredKey, lockedKey, activeKey,
-        primarySelection, secondarySelection
+        primarySelection, secondarySelection,
+        isHydrated // NEW: Include hydration status in debug state
       };
       document.body.classList.toggle('edutree-highlight-active', !!(activeKey || primarySelection || secondarySelection));
     }
-  }, [hoveredKey, lockedKey, activeKey, primarySelection, secondarySelection]);
+  }, [hoveredKey, lockedKey, activeKey, primarySelection, secondarySelection, isHydrated]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

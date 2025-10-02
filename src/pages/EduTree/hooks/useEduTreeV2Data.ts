@@ -65,6 +65,7 @@ export interface UseEduTreeV2DataResult {
 export function useEduTreeV2Data(filterMode: FilterMode = null): UseEduTreeV2DataResult {
   const flags = useFeatureFlags();
   const pathHighlight = usePathHighlight();
+  const { isHydrated } = pathHighlight; // NEW: Extract hydration flag
   const queryClient = useQueryClient();
   
   const isV2Mode = flags.eduTreeV2Grid && flags.eduTreeLayoutMode === 'manual_v1';
@@ -174,6 +175,12 @@ export function useEduTreeV2Data(filterMode: FilterMode = null): UseEduTreeV2Dat
   
   // Auto-detect program vs program comparison using context selections
   const { effectiveFilterMode, isAutoMode } = useMemo(() => {
+    // CRITICAL: Block computation until URL hydration completes
+    if (!isHydrated) {
+      console.log('[EduTreeV2Data] ⏸️  Waiting for URL hydration...');
+      return { effectiveFilterMode: null, isAutoMode: false };
+    }
+    
     if (!filterMode || filterMode !== 'compare-any') {
       return { effectiveFilterMode: filterMode, isAutoMode: false };
     }
@@ -187,7 +194,8 @@ export function useEduTreeV2Data(filterMode: FilterMode = null): UseEduTreeV2Dat
     console.log('[EduTreeV2Data] Context-based auto-detection:', {
       primarySelection,
       secondarySelection,
-      bothPrograms
+      bothPrograms,
+      isHydrated
     });
     
     if (bothPrograms) {
@@ -196,7 +204,7 @@ export function useEduTreeV2Data(filterMode: FilterMode = null): UseEduTreeV2Dat
     }
     
     return { effectiveFilterMode: filterMode, isAutoMode: false };
-  }, [filterMode, pathHighlight.primarySelection, pathHighlight.secondarySelection]);
+  }, [filterMode, isHydrated, pathHighlight.primarySelection, pathHighlight.secondarySelection]);
   
   // Extract selected programs using context selections instead of URL parsing
   const selectedPrograms = useMemo(() => {

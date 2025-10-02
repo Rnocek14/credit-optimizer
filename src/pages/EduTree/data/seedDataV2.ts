@@ -53,6 +53,8 @@ export interface V2Edge {
   source: string;
   target: string;
   kind?: EdgeKind; // Educational edge type for styling and behavior
+  sourceHandle?: string; // Optional source handle for gate nodes (e.g., 'out-se', 'out-ds', 'out')
+  targetHandle?: string; // Optional target handle for requirement nodes (e.g., 'in')
 }
 
 // Coordinate constants for consistent positioning
@@ -324,17 +326,17 @@ export const GOLDEN_LAYOUT_SEED: {
     { source: "y2-cs-core", target: "gate-y3-tracks" },
     { source: "y2-cs-elec", target: "gate-y3-tracks" },
     
-    // Track Gate → Y3 CS Tracks
-    { source: "gate-y3-tracks", target: "y3-se-core" },
-    { source: "gate-y3-tracks", target: "y3-ds-core" },
+    // Track Gate → Y3 CS Tracks (PATCH 2: Explicit handles for clarity)
+    { source: "gate-y3-tracks", target: "y3-se-core", sourceHandle: "out-se", targetHandle: "in" },
+    { source: "gate-y3-tracks", target: "y3-ds-core", sourceHandle: "out-ds", targetHandle: "in" },
     
     // Y3 Track Connections
     { source: "y3-se-core", target: "y3-se-elec" },
     { source: "y3-ds-core", target: "y3-ds-elec" },
     
-    // Y3 → Y4 Capstones
-    { source: "y3-se-elec", target: "y4-se-cap" },
-    { source: "y3-ds-elec", target: "y4-ds-cap" },
+    // Y3 → Y4 Capstones (PATCH 2: Explicit handles)
+    { source: "y3-se-elec", target: "y4-se-cap", sourceHandle: "out", targetHandle: "in" },
+    { source: "y3-ds-elec", target: "y4-ds-cap", sourceHandle: "out", targetHandle: "in" },
     { source: "y2-it-elec", target: "y4-it-cap" },
     
     // BSN Program progression
