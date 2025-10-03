@@ -22,30 +22,52 @@ export function getSigRepairCount() {
   return __sigRepairCount;
 }
 
+// Hardened helpers used ONLY by the builder
+const stripPipes = (s?: string | null) => (s ?? '').replace(/\|+/g, '').trim();
+
+const normalizeDv = (dataVersion?: string | null) => {
+  const raw = stripPipes(dataVersion).toLowerCase();
+  if (!raw) return 'dv0';                      // default for empty
+  const dv = raw.replace(/^v/, 'dv');          // v123 -> dv123
+  return dv.startsWith('dv') ? dv : `dv${dv}`; // ensure dv prefix
+};
+
+const normalizeBlockId = (blockId?: string | null) => {
+  // preserve case, just remove pipes/whitespace
+  return stripPipes(blockId);
+};
+
+const normalizeSelectedCode = (code?: string | null) => {
+  // selected code is lowercase, no pipes
+  return stripPipes(code).toLowerCase();
+};
+
+const normalizeCount = (n: unknown) => {
+  const num = Number.isFinite(Number(n)) ? Math.max(0, Number(n)) : 0;
+  return String(num);
+};
+
 /**
  * Build a canonical marketplace signature
  * Format: v1|<dataVersion>|<blockId>|<count>|<selectedCode?>
+ * Assembles via token array to prevent pipe leaks
  */
-export function buildMarketplaceSig(params: {
-  dataVersion: string | null | undefined;
-  blockId: string | null | undefined;
-  count: number | null | undefined;
+export function buildMarketplaceSig(opts: {
+  dataVersion?: string | null;
+  blockId?: string | null;
+  count?: number | null | undefined;
   selectedCode?: string | null | undefined;
 }): string {
-  // CRITICAL FIX: Normalize dataVersion to dv*, idempotent if already dv-prefixed
-  // This fixes malformed sigs like "1|v181nfqo|..." or "|v181nfqo|..."
-  const rawDv = nk(params.dataVersion) || 'dv0';
-  // Replace ANY leading 'v' with 'dv', but keep if already starts with 'dv'
-  const dv = rawDv.startsWith('dv') ? rawDv : rawDv.replace(/^v/, 'dv');
-  
-  // PRESERVE blockId case (no lowercasing!)
-  const id = (params.blockId ?? '').trim();
-  const cnt = Number.isFinite(params.count as number) ? String(params.count) : '0';
-  const code = params.selectedCode ? nk(params.selectedCode) : undefined;
-  
-  // Manual construction to avoid mkSig lowercasing SIG_VERSION and blockId
-  const parts = [SIG_VERSION, dv, id, cnt, code].filter(p => p !== undefined && p !== '');
-  return parts.join('|');
+  const dv = normalizeDv(opts.dataVersion);
+  const bid = normalizeBlockId(opts.blockId);
+  const cnt = normalizeCount(opts.count);
+  const sc = normalizeSelectedCode(opts.selectedCode);
+
+  // Compose via array join — never via string concat/template
+  const tokens = [SIG_VERSION, dv, bid, cnt];
+  if (sc) tokens.push(sc);
+
+  return tokens.join('|');
 }
 
 type MpLike = {
