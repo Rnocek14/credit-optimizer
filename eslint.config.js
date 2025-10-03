@@ -30,6 +30,14 @@ export default tseslint.config(
         {
           selector: "Literal[value=/\\b(min-h|h)-(8|9|10|11)\\b/]",
           message: "Interactive targets must be ≥48px (use h-12/min-h-12)."
+        },
+        {
+          selector: "AssignmentExpression[left.property.name='signature'][right.type='TemplateLiteral']",
+          message: "Use buildMarketplaceSig() for marketplace.signature — no template literals."
+        },
+        {
+          selector: "AssignmentExpression[left.property.name='signature'][right.type='BinaryExpression']",
+          message: "Use buildMarketplaceSig() for marketplace.signature — no string concatenation."
         }
       ]
     },

@@ -10,6 +10,7 @@ import { marketplaceKeysFromNodeId } from '../helpers/marketplaceKeys';
 import { trace, assertDbg, mark, measure } from './debug';
 import { nk, mkSig } from './keys';
 import { buildMarketplaceSig, normalizeOrRebuildSig, assertSigShape } from './signature';
+import { guardSignatureWrite } from './guardSignatureWrite';
 import { DEV } from './constants';
 
 type RFNode = Node;
@@ -275,10 +276,7 @@ export function blocksToNodes(
     assertSigShape(signature, 'ENRICH_BLOCK');
     
     // Dev-time guard: block non-canonical writes immediately
-    if (process.env.NODE_ENV === 'development' && !signature.match(/^v1\|dv[a-z0-9]+\|[A-Za-z0-9_-]+\|\d+(?:\|[a-z0-9_-]+)?$/)) {
-      // eslint-disable-next-line no-console
-      console.error('[BLOCKED_NONCANONICAL_WRITE]', { stage: 'ENRICH_BLOCK', signature, blockId: resolvedId });
-    }
+    guardSignatureWrite(signature, 'ENRICH_BLOCK');
     
     const marketplace = {
       options,
@@ -1029,7 +1027,11 @@ export function applyManualLayout(
           optionIds: optionIds,
           allow: true,
           show: mergedOptions.length > 0,
-          signature: healedSig, // Use healed signature
+          signature: (() => {
+            // Dev-only guard: catch any non-canonical signature
+            guardSignatureWrite(healedSig, 'SET_NODES');
+            return healedSig;
+          })(),
         },
         phaseAPlan: { lane, col, x: gridCoords.x, y: gridCoords.y }
       }

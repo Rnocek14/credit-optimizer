@@ -5,6 +5,19 @@
 
 import { mkSig, nk } from './keys';
 
+// --- DEV DIAGNOSTICS (no-op in prod) ---------------------------------------
+// Unique module fingerprint to detect duplicate bundling / path alias issues
+// Logs once in development; harmless in prod.
+(globalThis as any).__SIG_IMPL_ID__ ??= `sig-impl-${Math.random()
+  .toString(36)
+  .slice(2, 10)}`;
+
+if (process.env.NODE_ENV === 'development') {
+  // eslint-disable-next-line no-console
+  console.log('[SIG_IMPL]', (globalThis as any).__SIG_IMPL_ID__);
+}
+// ---------------------------------------------------------------------------
+
 export const SIG_VERSION = 'v1' as const;
 
 // Canonical signature regex - single source of truth for validation
@@ -52,7 +65,7 @@ const normalizeCount = (n: unknown) => {
  * Format: v1|<dataVersion>|<blockId>|<count>|<selectedCode?>
  * Assembles via token array to prevent pipe leaks
  */
-export function buildMarketplaceSig(opts: {
+function _buildMarketplaceSigInternal(opts: {
   dataVersion?: string | null;
   blockId?: string | null;
   count?: number | null | undefined;
@@ -68,6 +81,38 @@ export function buildMarketplaceSig(opts: {
   if (sc) tokens.push(sc);
 
   return tokens.join('|');
+}
+
+/**
+ * Dev-only wrapper that logs every build and validates output
+ * Production builds will strip this completely
+ */
+export function buildMarketplaceSig(opts: {
+  dataVersion?: string | null;
+  blockId?: string | null;
+  count?: number | null | undefined;
+  selectedCode?: string | null | undefined;
+}): string {
+  const out = _buildMarketplaceSigInternal(opts);
+
+  if (process.env.NODE_ENV === 'development') {
+    const caller = new Error().stack?.split('\n')[2]?.trim() ?? 'unknown';
+    // eslint-disable-next-line no-console
+    console.debug('[BUILD_SIG]', {
+      out,
+      opts,
+      caller: caller.substring(0, 80),
+    });
+
+    if (!SIG_RE.test(out)) {
+      // eslint-disable-next-line no-console
+      console.error('[BUILD_SIG_MALFORMED]', { out, opts });
+      // eslint-disable-next-line no-debugger
+      debugger;
+    }
+  }
+
+  return out;
 }
 
 type MpLike = {
