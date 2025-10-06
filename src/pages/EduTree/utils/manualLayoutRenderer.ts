@@ -28,7 +28,18 @@ export function buildVisibleEdges(nodes: RFNode[], rawEdges: RFEdge[]) {
   return safeEdges;
 }
 import { applyDeterministicGrid, getReservedColsByYear, type Lane } from './deterministicGrid';
-import { laneXs, applyLanePackingFinal, NODE_HEIGHT, LANE_GAP, COL_W } from './layoutTokens';
+import { 
+  laneXs, 
+  applyLanePackingFinal, 
+  NODE_HEIGHT, 
+  LANE_GAP, 
+  COL_W,
+  REGION_GUTTER,
+  TRACK_GUTTER,
+  NODE_MAX_HEIGHT,
+  NODE_WIDTH_PX,
+  COL_TOLERANCE
+} from './layoutTokens';
 import { HeaderNodeData } from '../nodes/HeaderNode';
 import { type GatePositions } from './divergence';
 import { createGhostNodeData } from './ghostNodeInjector';
@@ -1506,13 +1517,63 @@ export function applyManualLayout(
 }
 
 /**
+ * Program region with corridor bounds for track separation
+ */
+type Corridor = { minY: number; maxY: number };
+type ProgramRegion = { minY: number; maxY: number; corridors: Record<string, Corridor> };
+
+/**
+ * Compute program regions with track corridors
+ * Each program gets vertical space divided into SE/DS corridors if it has tracks
+ */
+export function computeProgramRegions(nodes: Node[]): Map<string, ProgramRegion> {
+  const byProg = new Map<string, Node[]>();
+  for (const n of nodes) {
+    const pid = String(n.data?.programId ?? n.data?.program_id ?? 'unknown');
+    (byProg.get(pid) ?? byProg.set(pid, []).get(pid)!).push(n);
+  }
+
+  const out = new Map<string, ProgramRegion>();
+
+  byProg.forEach((arr, pid) => {
+    let minY = Infinity, maxY = -Infinity;
+    for (const n of arr) {
+      minY = Math.min(minY, n.position.y);
+      maxY = Math.max(maxY, n.position.y);
+    }
+    if (!isFinite(minY)) minY = 0;
+    if (!isFinite(maxY)) maxY = 0;
+
+    // Pad region and reserve space for tall nodes
+    minY = Math.max(0, minY - REGION_GUTTER);
+    maxY = maxY + REGION_GUTTER + NODE_MAX_HEIGHT;
+
+    const region: ProgramRegion = { minY, maxY, corridors: {} };
+
+    // Fork detection: split corridors for programs with tracks
+    const hasFork = arr.some(n => !!(n.data?.trackId ?? n.data?.track_id));
+    if (hasFork) {
+      const total = maxY - minY;
+      const mid = minY + total / 2;
+      region.corridors['se'] = { minY: minY + TRACK_GUTTER, maxY: mid - TRACK_GUTTER };
+      region.corridors['ds'] = { minY: mid + TRACK_GUTTER, maxY: maxY - TRACK_GUTTER };
+      region.corridors['any'] = { minY: minY + TRACK_GUTTER, maxY: maxY - TRACK_GUTTER };
+    } else {
+      region.corridors['any'] = { minY, maxY };
+    }
+
+    out.set(pid, region);
+  });
+
+  return out;
+}
+
+/**
  * Validate that no nodes overlap (acceptance criteria)
- * FIXED: Use correct dimensions from layoutTokens
+ * Uses layout tokens for accurate dimensions
  */
 export function validateNoOverlaps(nodes: Node[]): { hasOverlaps: boolean; overlaps: Array<{ node1: string; node2: string }> } {
   const overlaps: Array<{ node1: string; node2: string }> = [];
-  const NODE_WIDTH = 180;  // Match actual min-w-[180px] from RequirementNode
-  const MAX_NODE_HEIGHT = 250;  // Account for expanded nodes with course lists
   
   for (let i = 0; i < nodes.length; i++) {
     for (let j = i + 1; j < nodes.length; j++) {
@@ -1521,10 +1582,10 @@ export function validateNoOverlaps(nodes: Node[]): { hasOverlaps: boolean; overl
       
       // Check for overlap using bounding boxes
       const overlap = !(
-        node1.position.x + NODE_WIDTH < node2.position.x ||
-        node2.position.x + NODE_WIDTH < node1.position.x ||
-        node1.position.y + MAX_NODE_HEIGHT < node2.position.y ||
-        node2.position.y + MAX_NODE_HEIGHT < node1.position.y
+        node1.position.x + NODE_WIDTH_PX < node2.position.x ||
+        node2.position.x + NODE_WIDTH_PX < node1.position.x ||
+        node1.position.y + NODE_MAX_HEIGHT < node2.position.y ||
+        node2.position.y + NODE_MAX_HEIGHT < node1.position.y
       );
       
       if (overlap) {
@@ -1540,77 +1601,76 @@ export function validateNoOverlaps(nodes: Node[]): { hasOverlaps: boolean; overl
 }
 
 /**
- * PATCH 3: Resolve overlapping nodes by auto-nudging them vertically
- * Groups nodes by column (within tolerance) and ensures minimum vertical gap
- * Uses centralized layout tokens for accurate collision detection
- * IMPROVED: Accounts for expanded node heights with course content
+ * PHASE 2: Region-Aware Collision Resolver
+ * Nudges only within (column, program, track) groups and clamps to corridor bounds
+ * Ensures SE/DS stay in their vertical corridors and programs don't cross regions
  */
 export function resolveOverlaps(nodes: Node[]): Node[] {
-  // Use actual layout constants from layoutTokens + account for expanded nodes
-  const BASE_HEIGHT = NODE_HEIGHT; // 120px - base node height
-  const MAX_HEIGHT = 250;  // Maximum height when showing 5+ course options
-  const MIN_GAP = LANE_GAP;   // 60px - actual gap between nodes in same lane
-  const COL_TOLERANCE = 50;    // Tighter tolerance - nodes within 50px X are in same column
+  const regions = computeProgramRegions(nodes);
   
-  // Group nodes by column using both exact X position and tolerance-based grouping
-  const columnMap = new Map<number, Node[]>();
+  // Helper: bucket X position for column grouping
+  const bucketX = (x: number) => Math.round(x / COL_TOLERANCE) * COL_TOLERANCE;
   
-  for (const node of nodes) {
-    // Use exact X position first, fall back to tolerance-based grouping
-    let colKey = node.position.x;
-    
-    // Check if there's an existing column within tolerance
-    let foundCol = false;
-    for (const existingKey of columnMap.keys()) {
-      if (Math.abs(existingKey - node.position.x) < COL_TOLERANCE) {
-        colKey = existingKey;
-        foundCol = true;
-        break;
-      }
-    }
-    
-    if (!foundCol) {
-      // Create new column with this X position
-      colKey = node.position.x;
-    }
-    const col = columnMap.get(colKey) || [];
-    col.push(node);
-    columnMap.set(colKey, col);
+  // Helper: generate group key for (column, program, track)
+  const groupKey = (n: Node) => {
+    const col = bucketX(n.position.x);
+    const pid = String(n.data?.programId ?? n.data?.program_id ?? 'unknown');
+    const tid = String(n.data?.trackId ?? n.data?.track_id ?? 'any');
+    return `${col}|${pid}|${tid}`;
+  };
+  
+  // Group nodes by (column, program, track)
+  const groups = new Map<string, Node[]>();
+  for (const n of nodes) {
+    const key = groupKey(n);
+    (groups.get(key) ?? groups.set(key, []).get(key)!).push(n);
   }
   
-  // Process each column: sort by Y and nudge overlaps
-  columnMap.forEach((col, colKey) => {
-    col.sort((a, b) => a.position.y - b.position.y);
+  // Process each group: sort by Y, nudge overlaps, clamp to corridor
+  groups.forEach((arr, key) => {
+    arr.sort((a, b) => a.position.y - b.position.y);
     
-    if (DEV && col.length > 1) {
-      console.log('[AutoNudge] Processing column:', {
-        colKey,
-        nodeCount: col.length,
-        nodeIds: col.map(n => n.id)
-      });
-    }
+    const [, programId, trackKey] = key.split('|');
+    const region = regions.get(programId);
+    const corridor = region?.corridors?.[trackKey] ?? region?.corridors?.['any'] ?? { 
+      minY: 0, 
+      maxY: Number.MAX_SAFE_INTEGER 
+    };
     
-    for (let i = 1; i < col.length; i++) {
-      const prev = col[i - 1];
-      const curr = col[i];
-      // Use MAX_HEIGHT to be safe - accounts for nodes with many course options
-      const minY = prev.position.y + MAX_HEIGHT + MIN_GAP;
+    for (let i = 1; i < arr.length; i++) {
+      const prev = arr[i - 1];
+      const curr = arr[i];
+      const minY = prev.position.y + NODE_MAX_HEIGHT + LANE_GAP;
       
+      // Nudge if overlapping
       if (curr.position.y < minY) {
-        if (DEV) {
-          console.log('[AutoNudge] Nudging node:', {
-            id: curr.id,
-            oldY: curr.position.y,
-            newY: minY,
-            gap: MIN_GAP,
-            prevBottom: prev.position.y + MAX_HEIGHT,
-            using: 'MAX_HEIGHT=250px (accounts for expanded nodes)'
+        curr.position.y = minY;
+      }
+      
+      // Clamp to corridor bounds
+      if (curr.position.y < corridor.minY) {
+        curr.position.y = corridor.minY;
+      }
+      if (curr.position.y > corridor.maxY - NODE_MAX_HEIGHT) {
+        curr.position.y = corridor.maxY - NODE_MAX_HEIGHT;
+        if (import.meta.env.DEV) {
+          console.warn('[RegionClamp] Corridor overflow', { 
+            id: curr.id, 
+            programId, 
+            trackKey, 
+            corridor 
           });
         }
-        curr.position.y = minY;
       }
     }
   });
+  
+  if (DEV) {
+    console.log('[Phase2] Region-aware collision resolution complete', {
+      regions: regions.size,
+      groups: groups.size
+    });
+  }
   
   return nodes;
 }

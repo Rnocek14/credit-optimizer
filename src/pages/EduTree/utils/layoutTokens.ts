@@ -19,6 +19,14 @@ export const NODE_BASE_HEIGHT = 120;    // Compact baseline
 export const NODE_MAX_HEIGHT = 250;     // With expanded course lists
 export const COL_TOLERANCE = 48;        // X bucketing for column groups
 
+// NEW: Tidy baselines for SE/DS electives/capstones
+export const LANE_ROWS = {
+  Y3_SE_BASE: 160,   // Year 3 SE baseline
+  Y3_DS_BASE: 300,   // Year 3 DS baseline
+  Y4_SE_BASE: 160,   // Year 4 SE baseline
+  Y4_DS_BASE: 300,   // Year 4 DS baseline
+} as const;
+
 const snap8 = (n: number) => Math.round(n / GRID) * GRID;
 
 export interface LanePositions {

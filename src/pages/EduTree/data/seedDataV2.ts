@@ -184,7 +184,7 @@ export const GOLDEN_LAYOUT_SEED: {
       area: "track_core",
       credits_needed: 6,
       position_x: getTrackColumnX(LAYOUT_CONSTANTS.YEAR_COLUMNS.Y3, 'se'),
-      position_y: LAYOUT_CONSTANTS.LANE_ROWS.UP_TRACK_A - 40  // SE track: vertical stagger up
+      position_y: LAYOUT_CONSTANTS.LANE_ROWS.UP_TRACK_A
     },
     {
       id: "y3-se-elec",
@@ -196,7 +196,7 @@ export const GOLDEN_LAYOUT_SEED: {
       area: "elective_pool",
       credits_needed: 6,
       position_x: getTrackColumnX(LAYOUT_CONSTANTS.YEAR_COLUMNS.Y3, 'se'),
-      position_y: LAYOUT_CONSTANTS.LANE_ROWS.UP_TRACK_A_ELEC - 40 // SE track: vertical stagger up
+      position_y: LAYOUT_CONSTANTS.LANE_ROWS.UP_TRACK_A_ELEC
     },
 
     // Year 3 - CS Tracks: Data Science (Upper Track B Lane)
@@ -210,7 +210,7 @@ export const GOLDEN_LAYOUT_SEED: {
       area: "track_core",
       credits_needed: 6,
       position_x: getTrackColumnX(LAYOUT_CONSTANTS.YEAR_COLUMNS.Y3, 'ds'),
-      position_y: LAYOUT_CONSTANTS.LANE_ROWS.UP_TRACK_B + 40  // DS track: vertical stagger down
+      position_y: LAYOUT_CONSTANTS.LANE_ROWS.UP_TRACK_B
     },
     {
       id: "y3-ds-elec",
@@ -222,7 +222,7 @@ export const GOLDEN_LAYOUT_SEED: {
       area: "elective_pool",
       credits_needed: 6,
       position_x: getTrackColumnX(LAYOUT_CONSTANTS.YEAR_COLUMNS.Y3, 'ds'),
-      position_y: LAYOUT_CONSTANTS.LANE_ROWS.UP_TRACK_B_ELEC + 40 // DS track: vertical stagger down
+      position_y: LAYOUT_CONSTANTS.LANE_ROWS.UP_TRACK_B_ELEC
     },
 
     // Year 4 - Capstones
@@ -236,7 +236,7 @@ export const GOLDEN_LAYOUT_SEED: {
       area: "capstone",
       credits_needed: 3,
       position_x: getTrackColumnX(LAYOUT_CONSTANTS.YEAR_COLUMNS.Y4, 'se'),
-      position_y: LAYOUT_CONSTANTS.LANE_ROWS.UP_CAPSTONE - 40  // SE track: vertical stagger up
+      position_y: LAYOUT_CONSTANTS.LANE_ROWS.UP_CAPSTONE
     },
     {
       id: "y4-ds-cap",
@@ -248,7 +248,7 @@ export const GOLDEN_LAYOUT_SEED: {
       area: "capstone",
       credits_needed: 3,
       position_x: getTrackColumnX(LAYOUT_CONSTANTS.YEAR_COLUMNS.Y4, 'ds'),
-      position_y: LAYOUT_CONSTANTS.LANE_ROWS.UP_CAPSTONE_2 + 40 // DS track: vertical stagger down
+      position_y: LAYOUT_CONSTANTS.LANE_ROWS.UP_CAPSTONE_2
     },
     {
       id: "y4-it-cap",
