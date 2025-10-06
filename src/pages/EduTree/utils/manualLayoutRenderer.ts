@@ -1507,11 +1507,12 @@ export function applyManualLayout(
 
 /**
  * Validate that no nodes overlap (acceptance criteria)
+ * FIXED: Use correct dimensions from layoutTokens
  */
 export function validateNoOverlaps(nodes: Node[]): { hasOverlaps: boolean; overlaps: Array<{ node1: string; node2: string }> } {
   const overlaps: Array<{ node1: string; node2: string }> = [];
-  const NODE_WIDTH = 200;
-  const NODE_HEIGHT = 80;
+  const NODE_WIDTH = 180;  // Match actual min-w-[180px] from RequirementNode
+  const MAX_NODE_HEIGHT = 250;  // Account for expanded nodes with course lists
   
   for (let i = 0; i < nodes.length; i++) {
     for (let j = i + 1; j < nodes.length; j++) {
@@ -1522,8 +1523,8 @@ export function validateNoOverlaps(nodes: Node[]): { hasOverlaps: boolean; overl
       const overlap = !(
         node1.position.x + NODE_WIDTH < node2.position.x ||
         node2.position.x + NODE_WIDTH < node1.position.x ||
-        node1.position.y + NODE_HEIGHT < node2.position.y ||
-        node2.position.y + NODE_HEIGHT < node1.position.y
+        node1.position.y + MAX_NODE_HEIGHT < node2.position.y ||
+        node2.position.y + MAX_NODE_HEIGHT < node1.position.y
       );
       
       if (overlap) {
@@ -1542,11 +1543,12 @@ export function validateNoOverlaps(nodes: Node[]): { hasOverlaps: boolean; overl
  * PATCH 3: Resolve overlapping nodes by auto-nudging them vertically
  * Groups nodes by column (within tolerance) and ensures minimum vertical gap
  * Uses centralized layout tokens for accurate collision detection
- * IMPROVED: Better column detection and handling of exact same-position nodes
+ * IMPROVED: Accounts for expanded node heights with course content
  */
 export function resolveOverlaps(nodes: Node[]): Node[] {
-  // Use actual layout constants from layoutTokens
-  const HEIGHT = NODE_HEIGHT; // 120px - actual node height
+  // Use actual layout constants from layoutTokens + account for expanded nodes
+  const BASE_HEIGHT = NODE_HEIGHT; // 120px - base node height
+  const MAX_HEIGHT = 250;  // Maximum height when showing 5+ course options
   const MIN_GAP = LANE_GAP;   // 60px - actual gap between nodes in same lane
   const COL_TOLERANCE = 50;    // Tighter tolerance - nodes within 50px X are in same column
   
@@ -1591,7 +1593,8 @@ export function resolveOverlaps(nodes: Node[]): Node[] {
     for (let i = 1; i < col.length; i++) {
       const prev = col[i - 1];
       const curr = col[i];
-      const minY = prev.position.y + HEIGHT + MIN_GAP;
+      // Use MAX_HEIGHT to be safe - accounts for nodes with many course options
+      const minY = prev.position.y + MAX_HEIGHT + MIN_GAP;
       
       if (curr.position.y < minY) {
         if (DEV) {
@@ -1600,7 +1603,8 @@ export function resolveOverlaps(nodes: Node[]): Node[] {
             oldY: curr.position.y,
             newY: minY,
             gap: MIN_GAP,
-            prevBottom: prev.position.y + HEIGHT
+            prevBottom: prev.position.y + MAX_HEIGHT,
+            using: 'MAX_HEIGHT=250px (accounts for expanded nodes)'
           });
         }
         curr.position.y = minY;
