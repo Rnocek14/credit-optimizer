@@ -757,40 +757,13 @@
 }
 
 /* Visual V2 - Life Path Graph Hierarchy */
-/* Lock node box sizing - never change dimensions on highlight/compare */
-.react-flow__node {
-  position: relative;
-  box-sizing: border-box;
-}
-
-/* Use overlays for highlights - no sizing changes */
 .lp-node-on-path {
-  position: relative;
-}
-
-.lp-node-on-path::after {
-  content: "";
-  position: absolute;
-  inset: -2px;
-  pointer-events: none;
-  outline: 2px solid color-mix(in oklab, var(--primary) 60%, transparent);
-  box-shadow: 0 0 0 4px color-mix(in oklab, var(--primary) 25%, transparent);
-  border-radius: inherit;
-  z-index: -1;
+  box-shadow: var(--node-glow-on-path);
+  border-width: 2px;
 }
 
 .lp-node-related {
-  position: relative;
-}
-
-.lp-node-related::after {
-  content: "";
-  position: absolute;
-  inset: -1px;
-  pointer-events: none;
-  outline: 1px dashed color-mix(in oklab, var(--muted-foreground) 60%, transparent);
-  border-radius: inherit;
-  z-index: -1;
+  box-shadow: var(--node-glow-related);
 }
 
 .lp-node-off-path {

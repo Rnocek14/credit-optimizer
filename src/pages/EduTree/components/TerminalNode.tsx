@@ -57,7 +57,6 @@ export const TerminalNode: React.FC<NodeProps> = ({ id, data, selected }) => {
       data-node-type="terminal"
     >
       <Handle
-        id="in"
         type="target"
         position={Position.Left}
         className="w-3 h-3 bg-primary border-2 border-background"
@@ -93,12 +92,8 @@ export const TerminalNode: React.FC<NodeProps> = ({ id, data, selected }) => {
         <div className="absolute -top-1 -right-1 w-3 h-3 bg-primary rounded-full animate-pulse" />
       )}
       
-      <Handle 
-        id="out" 
-        type="source" 
-        position={Position.Right}
-        className="w-3 h-3 bg-primary border-2 border-background"
-      />
+      <Handle type="target" position={Position.Top} />
+      <Handle type="source" position={Position.Bottom} />
     </div>
   );
 };

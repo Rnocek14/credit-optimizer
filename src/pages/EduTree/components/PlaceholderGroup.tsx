@@ -34,9 +34,16 @@ export const PlaceholderGroup: React.FC<NodeProps> = ({ id, data, selected }) =>
       data-testid="placeholder-node"
       data-node-type="placeholder"
     >
-      {/* Handles for connections */}
-      <Handle id="in" type="target" position={Position.Top} />
-      <Handle id="out" type="source" position={Position.Bottom} />
+      <Handle
+        type="target"
+        position={Position.Left}
+        className="w-3 h-3 bg-muted-foreground border-2 border-background"
+      />
+      <Handle
+        type="source"
+        position={Position.Right}
+        className="w-3 h-3 bg-muted-foreground border-2 border-background"
+      />
       
       <div className="flex items-center gap-2 mb-2">
         <div className="p-1.5 rounded-full bg-muted-foreground/20">

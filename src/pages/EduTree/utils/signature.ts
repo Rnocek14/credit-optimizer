@@ -51,9 +51,8 @@ const normalizeDv = (dataVersion?: string | null) => {
 };
 
 const normalizeBlockId = (blockId?: string | null) => {
-  // preserve case, just remove pipes/whitespace, never return empty
-  const clean = stripPipes(blockId);
-  return clean || 'unknown';
+  // preserve case, just remove pipes/whitespace
+  return stripPipes(blockId);
 };
 
 const normalizeSelectedCode = (code?: string | null) => {
@@ -77,22 +76,16 @@ function _buildMarketplaceSigInternal(opts: {
   count?: number | null | undefined;
   selectedCode?: string | null | undefined;
 }): string {
-  const dv = normalizeDv(opts.dataVersion);            // always 'dv…' or 'dv0'
-  const bid = normalizeBlockId(opts.blockId);          // never empty now
-  const cnt = normalizeCount(opts.count);              // stringified non-negative int
-  const sc = normalizeSelectedCode(opts.selectedCode); // may be ''
+  const dv = normalizeDv(opts.dataVersion);
+  const bid = normalizeBlockId(opts.blockId);
+  const cnt = normalizeCount(opts.count);
+  const sc = normalizeSelectedCode(opts.selectedCode);
 
-  // Filter out any accidental empties before join
-  const toks = [SIG_VERSION || 'v1', dv, bid, cnt]
-    .map(x => String(x ?? ''))
-    .filter(t => t.length > 0);
-  if (sc) toks.push(sc);
+  // Compose via array join — never via string concat/template
+  const tokens = [SIG_VERSION, dv, bid, cnt];
+  if (sc) tokens.push(sc);
 
-  let out = toks.join('|');
-  // Final guard: ensure we start with 'v1|'
-  if (!out.startsWith('v1|')) out = `v1|${out.replace(/^(\|)+/, '')}`;
-
-  return out;
+  return tokens.join('|');
 }
 
 /**
