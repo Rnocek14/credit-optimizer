@@ -55,7 +55,7 @@ import './styles/gateAggregation.css';
 import '../../styles/eduTreeHud.css';
 import { auditSeeds, printAuditReport } from './utils/seedAuditor';
 import { DEV } from './utils/constants';
-import { getSigRepairCount, SIG_RE } from './utils/signature';
+import { getSigRepairCount } from './utils/signature';
 
 type DevOverrides = {
   filterMode?: FilterMode;
@@ -956,100 +956,6 @@ function EduTreeCanvasV2Content({
       (window as any).__filteredEdges__ = safeEdges;
     }
   }, [processedNodes, processedEdges, flowEdges, safeEdges]);
-  
-  // === RUNTIME DIAGNOSTICS === (Auto-runs 1 sec after nodes load)
-  useEffect(() => {
-    if (!safeNodes?.length || process.env.NODE_ENV !== 'development') return;
-    
-    const runDiagnostics = () => {
-      console.log('\n🔍 === RUNTIME DIAGNOSTICS START ===');
-      
-      // 1. Module fingerprint check
-      console.log('[SIG_IMPL]', (window as any).__SIG_IMPL_ID__ || 'NOT_FOUND');
-      
-      // 2. Signature census
-      try {
-        const sigs = safeNodes
-          .map((n: any) => n?.data?.marketplace?.signature)
-          .filter(Boolean);
-        
-        if (sigs.length === 0) {
-          console.warn('[CENSUS] No signatures found yet');
-        } else {
-          const leading = sigs.filter((s: string) => s.startsWith('|'));
-          const missingV1 = sigs.filter((s: string) => !s.startsWith('v1|'));
-          const doubles = sigs.filter((s: string) => s.includes('||'));
-          const shortDv = sigs.filter((s: string) => /\|dv[a-z0-9]{0,3}\|/.test(s));
-          const invalid = sigs.filter((s: string) => !SIG_RE.test(s));
-          
-          console.table([
-            { metric: 'total', value: sigs.length },
-            { metric: 'invalid', value: invalid.length },
-            { metric: 'leadingPipe', value: leading.length },
-            { metric: 'missingV1', value: missingV1.length },
-            { metric: 'doublePipe', value: doubles.length },
-            { metric: 'shortDv', value: shortDv.length },
-          ]);
-          
-          if (invalid.length > 0) {
-            console.log('❌ Invalid signature samples:', invalid.slice(0, 5));
-          } else {
-            console.log('✅ All signatures valid!');
-          }
-        }
-      } catch (err) {
-        console.error('[CENSUS] Error:', err);
-      }
-      
-      // 3. Collision detection
-      try {
-        const nodeElements = Array.from(document.querySelectorAll('.react-flow__node'));
-        if (nodeElements.length === 0) {
-          console.warn('[COLLISION] No rendered nodes found yet - DOM may not be ready');
-        } else {
-          const rects = nodeElements.map((el) => {
-            const r = el.getBoundingClientRect();
-            return {
-              id: el.getAttribute('data-id') || (el as HTMLElement).id || '(unknown)',
-              r,
-            };
-          });
-          
-          const collisions: [string, string][] = [];
-          for (let i = 0; i < rects.length; i++) {
-            for (let j = i + 1; j < rects.length; j++) {
-              const A = rects[i].r;
-              const B = rects[j].r;
-              const overlaps = !(
-                A.right <= B.left ||
-                A.left >= B.right ||
-                A.bottom <= B.top ||
-                A.top >= B.bottom
-              );
-              if (overlaps) {
-                collisions.push([rects[i].id, rects[j].id]);
-              }
-            }
-          }
-          
-          if (collisions.length > 0) {
-            console.warn(`⚠️ [COLLISION] ${collisions.length} node overlaps detected:`);
-            console.table(collisions.slice(0, 20).map(([a, b]) => ({ nodeA: a, nodeB: b })));
-          } else {
-            console.log('✅ No node collisions detected');
-          }
-        }
-      } catch (err) {
-        console.error('[COLLISION] Error:', err);
-      }
-      
-      console.log('🔍 === RUNTIME DIAGNOSTICS END ===\n');
-    };
-    
-    // Run diagnostics after a short delay to ensure DOM is ready
-    const timer = setTimeout(runDiagnostics, 1000);
-    return () => clearTimeout(timer);
-  }, [safeNodes]);
   
   // Calculate single-rail mode flags - handles both program and track level
   const presentTracks = new Set(blocks.map(b => b.track_id).filter(Boolean));
