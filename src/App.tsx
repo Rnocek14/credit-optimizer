@@ -131,6 +131,7 @@ import { MobileNavigation } from "./components/MobileNavigation";
 import { useEffect } from "react";
 import EduTree from "./pages/EduTree";
 import EduTreeV2Page from "./pages/EduTree/EduTreeV2Page";
+import EduTreeV3Route from "./pages/EduTree/v3";
 import { EduTreeError } from "./components/EduTreeError";
 import { PageLoader } from "./components/PageLoader";
 import { isFeatureEnabled } from "./lib/featureFlags";
@@ -289,6 +290,11 @@ const App = () => {
           <Route 
             path="/edu-tree-v2" 
             element={<EduTreeV2Page />}
+          />
+          {/* EduTree V3 - Week 1: Pure engine implementation */}
+          <Route 
+            path="/edu-tree-v3" 
+            element={<EduTreeV3Route />}
           />
           {/* Sandbox route for TrackOverlayPOC (dev only) */}
           <Route path="/sandbox/track-overlay" element={<TrackOverlayPOCPage />} />
