@@ -1542,18 +1542,35 @@ export function validateNoOverlaps(nodes: Node[]): { hasOverlaps: boolean; overl
  * PATCH 3: Resolve overlapping nodes by auto-nudging them vertically
  * Groups nodes by column (within tolerance) and ensures minimum vertical gap
  * Uses centralized layout tokens for accurate collision detection
+ * IMPROVED: Better column detection and handling of exact same-position nodes
  */
 export function resolveOverlaps(nodes: Node[]): Node[] {
   // Use actual layout constants from layoutTokens
   const HEIGHT = NODE_HEIGHT; // 120px - actual node height
   const MIN_GAP = LANE_GAP;   // 60px - actual gap between nodes in same lane
-  const COL_TOLERANCE = COL_W / 2; // 140px - half column width for proper grouping
+  const COL_TOLERANCE = 50;    // Tighter tolerance - nodes within 50px X are in same column
   
-  // Group nodes by column (round x to nearest COL_TOLERANCE)
+  // Group nodes by column using both exact X position and tolerance-based grouping
   const columnMap = new Map<number, Node[]>();
   
   for (const node of nodes) {
-    const colKey = Math.round(node.position.x / COL_TOLERANCE) * COL_TOLERANCE;
+    // Use exact X position first, fall back to tolerance-based grouping
+    let colKey = node.position.x;
+    
+    // Check if there's an existing column within tolerance
+    let foundCol = false;
+    for (const existingKey of columnMap.keys()) {
+      if (Math.abs(existingKey - node.position.x) < COL_TOLERANCE) {
+        colKey = existingKey;
+        foundCol = true;
+        break;
+      }
+    }
+    
+    if (!foundCol) {
+      // Create new column with this X position
+      colKey = node.position.x;
+    }
     const col = columnMap.get(colKey) || [];
     col.push(node);
     columnMap.set(colKey, col);

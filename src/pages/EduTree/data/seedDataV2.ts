@@ -195,7 +195,7 @@ export const GOLDEN_LAYOUT_SEED: {
       area: "elective_pool",
       credits_needed: 6,
       position_x: LAYOUT_CONSTANTS.YEAR_COLUMNS.Y3,
-      position_y: LAYOUT_CONSTANTS.LANE_ROWS.UP_TRACK_A
+      position_y: LAYOUT_CONSTANTS.LANE_ROWS.UP_TRACK_A_ELEC // Different Y position
     },
 
     // Year 3 - CS Tracks: Data Science (Upper Track B Lane)
@@ -221,7 +221,7 @@ export const GOLDEN_LAYOUT_SEED: {
       area: "elective_pool",
       credits_needed: 6,
       position_x: LAYOUT_CONSTANTS.YEAR_COLUMNS.Y3,
-      position_y: LAYOUT_CONSTANTS.LANE_ROWS.UP_TRACK_B
+      position_y: LAYOUT_CONSTANTS.LANE_ROWS.UP_TRACK_B_ELEC // Different Y position
     },
 
     // Year 4 - Capstones
@@ -247,7 +247,7 @@ export const GOLDEN_LAYOUT_SEED: {
       area: "capstone",
       credits_needed: 3,
       position_x: LAYOUT_CONSTANTS.YEAR_COLUMNS.Y4,
-      position_y: LAYOUT_CONSTANTS.LANE_ROWS.UP_CAPSTONE
+      position_y: LAYOUT_CONSTANTS.LANE_ROWS.UP_CAPSTONE_2 // Different Y position
     },
     {
       id: "y4-it-cap",

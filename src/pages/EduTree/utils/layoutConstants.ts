@@ -1,6 +1,7 @@
 /**
  * Layout constants for EduTree positioning
  * Separated to avoid circular imports
+ * PATCH 7: Fixed overlapping nodes by ensuring unique Y positions for each node
  */
 
 export const LAYOUT_CONSTANTS = {
@@ -11,8 +12,18 @@ export const LAYOUT_CONSTANTS = {
   },
   LANE_ROWS: {
     GATE_Y: 360,
-    // PATCH 6: Increased vertical padding for better visual separation (+12px gaps)
-    UP_CAPSTONE: 80, UP_ELECTIVES: 132, UP_TRACK_A: 172, UP_TRACK_B: 212, UP_CORE: 252,
-    DOWN_CORE: 492, DOWN_ELECTIVES: 612, DOWN_CAPSTONE: 652
+    // Upper lane (CS/SE/DS tracks) - sequential with 200px spacing
+    UP_CAPSTONE: 60,      // Y4 Capstones start higher
+    UP_CAPSTONE_2: 260,   // Second capstone (DS) 
+    UP_ELECTIVES: 120,    // Y2 CS Electives
+    UP_TRACK_A: 160,      // Y3 SE Core
+    UP_TRACK_A_ELEC: 360, // Y3 SE Electives (below SE Core)
+    UP_TRACK_B: 80,       // Y3 DS Core  
+    UP_TRACK_B_ELEC: 280, // Y3 DS Electives (below DS Core)
+    UP_CORE: 240,         // Y2 CS Core
+    // Lower lane (IT track) - sequential with 200px spacing
+    DOWN_CORE: 460,       // Y2 IT Core
+    DOWN_ELECTIVES: 660,  // Y2 IT Electives
+    DOWN_CAPSTONE: 560    // Y4 IT Capstone
   }
 };
