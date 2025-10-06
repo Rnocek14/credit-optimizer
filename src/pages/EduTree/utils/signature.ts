@@ -23,6 +23,11 @@ export const SIG_VERSION = 'v1' as const;
 // Canonical signature regex - single source of truth for validation
 export const SIG_RE = /^v1\|dv[a-z0-9]+\|[A-Za-z0-9_-]+\|\d+(?:\|[a-z0-9_-]+)?$/;
 
+// Expose for runtime diagnostics
+if (typeof window !== 'undefined') {
+  (window as any).__SIG_RE__ = SIG_RE;
+}
+
 // Runtime guard: ensure SIG_VERSION matches expected format
 if (process.env.NODE_ENV === 'development' && !/^v\d+$/.test(SIG_VERSION)) {
   console.error('[SIG_CONFIG_BAD] SIG_VERSION must match /^v\\d+$/', { actual: SIG_VERSION });
