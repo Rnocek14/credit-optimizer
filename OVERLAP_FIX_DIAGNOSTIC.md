@@ -1,26 +1,26 @@
-# Edu-Tree V2 Overlap Fix - Diagnostic Report
+# Edu-Tree V2 Overlap Fix - Diagnostic Report (v2)
 
-## Problem Analysis
+## Problem Analysis - Second Iteration
 
-### Visual Evidence
-Screenshot showed clear overlapping at multiple locations:
-1. **Year 2**: Program Gate overlapping with CS/IT Electives blocks
-2. **Year 3**: SE Core/Electives and DS Core/Electives overlapping
-3. **Year 4**: SE Capstone and DS Capstone overlapping
+### Visual Evidence (Updated Screenshot)
+New screenshot revealed persistent overlaps despite first fix:
+1. **Year 2**: CS Electives overlapping with CS Core; IT Electives overlapping with IT Core
+2. **Year 3**: Nodes properly spaced (first fix successful)  
+3. **Missing courses**: SE Core and DS Core show no course options ("Choices: 2" not appearing)
 
-### Root Cause Identified
-The seed data (`seedDataV2.ts`) had **multiple nodes assigned to identical Y positions**:
+### Root Cause - Revised Diagnosis
 
-#### Before Fix:
-- `y3-se-core` and `y3-se-elec` both at `UP_TRACK_A: 172`
-- `y3-ds-core` and `y3-ds-elec` both at `UP_TRACK_B: 212`
-- `y4-se-cap` and `y4-ds-cap` both at `UP_CAPSTONE: 80`
+#### Problem 1: Insufficient Vertical Spacing
+The first fix added 120-200px spacing, but nodes with **expanded course lists** are taller than expected:
+- Standard node: ~120px height
+- **Node with 3-4 course options**: ~200-250px height (course pills add ~30px each)
+- Original spacing (120-200px) wasn't enough for expanded content
 
-#### Why Collision Resolver Didn't Work:
-The original `resolveOverlaps()` function used:
-- **Wrong height constant**: 80px (should be 120px from `NODE_HEIGHT`)
-- **Wrong column tolerance**: 60px (too small to group year columns)
-- **Wrong gap**: 28px (should be 60px from `LANE_GAP`)
+#### Problem 2: Missing Marketplace Data  
+SE Core (`y3-se-core`) and DS Core (`y3-ds-core`) blocks show no courses because:
+- The `RequirementNode` component expects `marketplace.options` array from database
+- `useRequirementOptionsBatch` hook queries `edu_courses` and `block_members` tables
+- These specific blocks may not have associated courses in the database yet
 
 These mismatched constants meant the collision detector couldn't properly:
 1. Identify nodes in the same column
@@ -86,14 +86,50 @@ const COL_TOLERANCE = 50;      // Tighter tolerance for better column detection
 - `[AutoNudge] Nudging node:` logs show any automatic corrections applied
 - `[ManualLayout] Applying collision resolver` confirms the function runs
 
-## Summary
 
-**Problem**: Overlapping nodes caused by duplicate Y positions in seed data and incorrect collision detection constants.
+## Solution Implemented - Second Iteration
 
-**Solution**: 
-1. Created unique Y position constants for each node type
-2. Updated seed data to use new constants
-3. Fixed collision resolver to use correct layout constants
-4. Improved column detection algorithm
+### 1. Increased Vertical Spacing (`layoutConstants.ts`)
+**Changed from 200px to 250px separation** to accommodate expanded nodes with course lists:
 
-**Impact**: All overlaps eliminated through proper spacing in seed data. Collision resolver serves as backup safety net for any edge cases.
+```typescript
+LANE_ROWS: {
+  GATE_Y: 360,
+  // Upper lane - 250px spacing for expanded course lists
+  UP_ELECTIVES: 80,     // Y2 CS Electives
+  UP_CORE: 330,         // Y2 CS Core (250px gap)
+  UP_TRACK_A: 120,      // Y3 SE Core
+  UP_TRACK_A_ELEC: 370, // Y3 SE Electives (250px gap)
+  UP_TRACK_B: 40,       // Y3 DS Core
+  UP_TRACK_B_ELEC: 290, // Y3 DS Electives (250px gap)
+  UP_CAPSTONE: 50,      // Y4 SE Capstone
+  UP_CAPSTONE_2: 300,   // Y4 DS Capstone (250px gap)
+  // Lower lane - 250px spacing
+  DOWN_CORE: 460,       // Y2 IT Core
+  DOWN_ELECTIVES: 710,  // Y2 IT Electives (250px gap)
+  DOWN_CAPSTONE: 580    // Y4 IT Capstone
+}
+```
+
+**Rationale**: 
+- Base node height: 120px
+- Course options list: ~120px (4 courses × 30px)
+- Total expanded height: ~240px
+- **Minimum safe gap: 250px** (provides 10px buffer)
+
+### 2. Missing Courses - Action Required
+**SE Core and DS Core need course data added to database**:
+
+The `RequirementNode` component flow:
+1. `useRequirementOptionsBatch` hook queries database for course options
+2. Returns `marketplace.options` array for each block
+3. Component shows "Choices: N" pill only if `marketplace.count > 0`
+
+**Database tables involved**:
+- `edu_courses` - Course definitions
+- `block_members` - Links blocks to courses  
+- `requirement_blocks` - Block metadata
+
+**To fix**: Add course records for `y3-se-core` and `y3-ds-core` in the database.
+
+
