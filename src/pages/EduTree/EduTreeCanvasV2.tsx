@@ -1723,14 +1723,6 @@ function EduTreeCanvasV2Content({
         {/* Debug HUD (enable via ?debug=1) */}
         <DebugHUD blocks={blocks} />
 
-        {/* Debug info in bottom corner */}
-        <div className="absolute bottom-4 left-4 bg-background/90 border rounded p-2 text-xs text-muted-foreground">
-          <div>V2 Multi-Gate Mode • nodes {processedNodes.length} • edges {processedEdges.length}</div>
-          <div>Filter: {currentFilterMode || 'compare-tracks'}</div>
-          <div>Flags: V2Grid={String(effectiveFlags.eduTreeV2Grid)}, Mode={effectiveFlags.eduTreeLayoutMode}, EdgeKinds={String(flags.eduTreeV2EdgeKinds)}</div>
-          <div>Headers: {processedNodes.filter(n => n.type === 'header').length} • Gates: {processedNodes.filter(n => n.type === 'gate' && !n.hidden).length}</div>
-        </div>
-
 
         {/* Unified HUD System - No More Overlaps */}
         <HudLayer>
@@ -1746,14 +1738,11 @@ function EduTreeCanvasV2Content({
           </HudDock>
 
           {/* Bottom-Right Stack */}
-          <HudDock corner="BR" index={0}>
-            <TranscriptUploadDemo />
-          </HudDock>
-
-          <HudDock corner="BR" index={1} className="text-xs opacity-80 bg-background/80 text-foreground px-2 py-1 rounded backdrop-blur-sm">
-            Mode: {effectiveFlags.eduTreeLayoutMode} • Tracks: {([...new Set(blocks.map(b => b.track_id).filter(Boolean))]).join(',') || 'shared'} • Programs: {([...new Set(blocks.map(b => b.program_id).filter(Boolean))]).join(',') || 'shared'}
-            {isAutoMode && <span className="ml-2 text-primary">🤖 Auto</span>}
-          </HudDock>
+          {process.env.NODE_ENV === 'development' && (
+            <HudDock corner="BR" index={0}>
+              <TranscriptUploadDemo />
+            </HudDock>
+          )}
 
           {/* Top-Left Stack - Professional Compare Picker */}
           <HudDock corner="TL" index={0} className="w-auto max-w-[90vw]">
@@ -1793,16 +1782,7 @@ function EduTreeCanvasV2Content({
             />
           </HudDock>
 
-          <HudDock corner="BR" index={2}>
-            <ProgressIndicator
-              completed={processedNodes.filter(n => n.data?.completed).length}
-              inProgress={processedNodes.filter(n => n.data?.inProgress).length}
-              total={processedNodes.length}
-              trackName={presentTracks.size === 1 ? Array.from(presentTracks)[0]?.toUpperCase() : "Multiple Tracks"}
-              showDetails={true}
-              size="md"
-            />
-          </HudDock>
+          {/* Removed ProgressIndicator - redundant with EnhancedControls progressStats */}
 
           {/* Bottom-Left Stack - Dev Only */}
           {process.env.NODE_ENV === 'development' && (
