@@ -69,6 +69,14 @@
 
 .hl--primary {
   opacity: 1;
+  position: relative;
+  transition: all var(--motion-normal) var(--ease-standard);
+}
+
+.hl--primary::after {
+  content: "";
+  position: absolute;
+  inset: -2px;
   background-color: var(--track-primary-bg);
   border: 2px solid var(--track-primary-border);
   border-radius: 8px;
@@ -76,10 +84,8 @@
     0 0 0 1px var(--track-primary-bg),
     0 2px 8px oklch(0.60 0.15 142 / 0.2),
     inset 0 0 0 1px oklch(0.60 0.15 142 / 0.1);
-  transform: translateY(-1px);
-  transition: all var(--motion-normal) var(--ease-standard);
-  /* Ensure text is readable on light backgrounds */
-  color: oklch(0.20 0.10 142) !important;
+  pointer-events: none;
+  z-index: -1;
 }
 
 .hl--primary * {
@@ -88,6 +94,14 @@
 
 .hl--comparison {
   opacity: 1;
+  position: relative;
+  transition: all var(--motion-normal) var(--ease-standard);
+}
+
+.hl--comparison::after {
+  content: "";
+  position: absolute;
+  inset: -2px;
   background-color: var(--track-comparison-bg);
   border: 2px dashed var(--track-comparison-border);
   border-radius: 8px;
@@ -95,10 +109,8 @@
     0 0 0 1px var(--track-comparison-bg),
     0 2px 8px oklch(0.70 0.18 25 / 0.2),
     inset 0 0 0 1px oklch(0.70 0.18 25 / 0.1);
-  transform: translateY(-1px);
-  transition: all var(--motion-normal) var(--ease-standard);
-  /* Ensure text is readable on light backgrounds */
-  color: oklch(0.25 0.12 25) !important;
+  pointer-events: none;
+  z-index: -1;
 }
 
 .hl--comparison * {
@@ -107,6 +119,14 @@
 
 .hl--both {
   opacity: 1;
+  position: relative;
+  transition: all var(--motion-normal) var(--ease-standard);
+}
+
+.hl--both::after {
+  content: "";
+  position: absolute;
+  inset: -3px;
   background-color: var(--track-shared-bg);
   border: 3px solid var(--track-shared-border);
   border-radius: 8px;
@@ -114,10 +134,8 @@
     0 0 0 1px var(--track-shared-bg),
     0 4px 12px oklch(0.70 0.20 280 / 0.3),
     inset 0 0 0 1px oklch(0.70 0.20 280 / 0.15);
-  transform: translateY(-2px) scale(1.02);
-  transition: all var(--motion-normal) var(--ease-standard);
-  /* Ensure text is readable on light backgrounds */
-  color: oklch(0.25 0.15 280) !important;
+  pointer-events: none;
+  z-index: -1;
 }
 
 .hl--both * {
@@ -126,6 +144,14 @@
 
 .hl--ghost {
   opacity: 1;
+  position: relative;
+  transition: all var(--motion-normal) var(--ease-standard);
+}
+
+.hl--ghost::after {
+  content: "";
+  position: absolute;
+  inset: -2px;
   background-color: var(--track-ghost-bg);
   border: 2px dashed var(--track-ghost-border);
   border-radius: 8px;
@@ -133,10 +159,8 @@
     0 0 0 1px var(--track-ghost-bg),
     0 2px 8px oklch(0.65 0.18 190 / 0.2),
     inset 0 0 0 1px oklch(0.65 0.18 190 / 0.1);
-  transform: translateY(-1px);
-  transition: all var(--motion-normal) var(--ease-standard);
-  /* Ensure text is readable on light backgrounds */
-  color: oklch(0.25 0.12 190) !important;
+  pointer-events: none;
+  z-index: -1;
 }
 
 .hl--ghost * {
@@ -220,39 +244,47 @@
 }
 
 /* Enhanced interactive states with better feedback and accessibility */
-.hl--primary:hover {
-  transform: translateY(-2px) scale(1.02);
+.hl--primary:hover::after {
   box-shadow: 
     0 0 0 1px var(--track-primary-bg),
     0 4px 16px oklch(0.60 0.15 142 / 0.3),
     inset 0 0 0 1px oklch(0.60 0.15 142 / 0.15);
+}
+
+.hl--primary:hover {
   cursor: pointer;
 }
 
-.hl--comparison:hover {
-  transform: translateY(-2px) scale(1.02);
+.hl--comparison:hover::after {
   box-shadow: 
     0 0 0 1px var(--track-comparison-bg),
     0 4px 16px oklch(0.70 0.18 25 / 0.3),
     inset 0 0 0 1px oklch(0.70 0.18 25 / 0.15);
+}
+
+.hl--comparison:hover {
   cursor: pointer;
 }
 
-.hl--both:hover {
-  transform: translateY(-3px) scale(1.03);
+.hl--both:hover::after {
   box-shadow: 
     0 0 0 1px var(--track-shared-bg),
     0 6px 20px oklch(0.70 0.20 280 / 0.4),
     inset 0 0 0 1px oklch(0.70 0.20 280 / 0.2);
+}
+
+.hl--both:hover {
   cursor: pointer;
 }
 
-.hl--ghost:hover {
-  transform: translateY(-2px) scale(1.02);
+.hl--ghost:hover::after {
   box-shadow: 
     0 0 0 1px var(--track-ghost-bg),
     0 4px 16px oklch(0.65 0.18 190 / 0.3),
     inset 0 0 0 1px oklch(0.65 0.18 190 / 0.15);
+}
+
+.hl--ghost:hover {
   cursor: pointer;
 }
 
