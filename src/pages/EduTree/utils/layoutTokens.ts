@@ -12,7 +12,7 @@ export const LANE_GAP = 60;      // Gap between nodes in same lane (increased fo
 // Region-Aware Layout System Tokens (Phase 0)
 export const REGION_GUTTER = 24;        // Y padding around program regions
 export const TRACK_GUTTER = 16;         // Y padding between track corridors  
-export const TRACK_COLUMN_OFFSET = 40;  // ±X offset for SE/DS lanes at fork
+export const TRACK_COLUMN_OFFSET = 60;  // ±X offset for SE/DS lanes at fork (wider separation)
 
 export const NODE_WIDTH_PX = 180;       // Matches min-w-[180px] from RequirementNode
 export const NODE_BASE_HEIGHT = 120;    // Compact baseline
