@@ -9,6 +9,16 @@ export const GRID = 8;           // Grid snap unit
 export const NODE_HEIGHT = 120;  // Standard node height
 export const LANE_GAP = 60;      // Gap between nodes in same lane (increased for visibility)
 
+// Region-Aware Layout System Tokens (Phase 0)
+export const REGION_GUTTER = 24;        // Y padding around program regions
+export const TRACK_GUTTER = 16;         // Y padding between track corridors  
+export const TRACK_COLUMN_OFFSET = 40;  // ±X offset for SE/DS lanes at fork
+
+export const NODE_WIDTH_PX = 180;       // Matches min-w-[180px] from RequirementNode
+export const NODE_BASE_HEIGHT = 120;    // Compact baseline
+export const NODE_MAX_HEIGHT = 250;     // With expanded course lists
+export const COL_TOLERANCE = 48;        // X bucketing for column groups
+
 const snap8 = (n: number) => Math.round(n / GRID) * GRID;
 
 export interface LanePositions {
