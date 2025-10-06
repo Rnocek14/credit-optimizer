@@ -6,6 +6,7 @@
 import { PROGRAM_DEFINITIONS, getProgramById, doesProgramSkipYear } from './programMetadata';
 import { normalizeProgramCompareLanes } from "../utils/laneNormalize";
 import { LAYOUT_CONSTANTS } from '../utils/layoutConstants';
+import { getTrackColumnX } from '../utils/deterministicGrid';
 
 export interface V2RequirementBlock {
   id: string;
@@ -182,7 +183,7 @@ export const GOLDEN_LAYOUT_SEED: {
       level_year: 3,
       area: "track_core",
       credits_needed: 6,
-      position_x: LAYOUT_CONSTANTS.YEAR_COLUMNS.Y3,
+      position_x: getTrackColumnX(LAYOUT_CONSTANTS.YEAR_COLUMNS.Y3, 'se'),
       position_y: LAYOUT_CONSTANTS.LANE_ROWS.UP_TRACK_A
     },
     {
@@ -194,7 +195,7 @@ export const GOLDEN_LAYOUT_SEED: {
       level_year: 3,
       area: "elective_pool",
       credits_needed: 6,
-      position_x: LAYOUT_CONSTANTS.YEAR_COLUMNS.Y3,
+      position_x: getTrackColumnX(LAYOUT_CONSTANTS.YEAR_COLUMNS.Y3, 'se'),
       position_y: LAYOUT_CONSTANTS.LANE_ROWS.UP_TRACK_A_ELEC // Different Y position
     },
 
@@ -208,7 +209,7 @@ export const GOLDEN_LAYOUT_SEED: {
       level_year: 3,
       area: "track_core",
       credits_needed: 6,
-      position_x: LAYOUT_CONSTANTS.YEAR_COLUMNS.Y3,
+      position_x: getTrackColumnX(LAYOUT_CONSTANTS.YEAR_COLUMNS.Y3, 'ds'),
       position_y: LAYOUT_CONSTANTS.LANE_ROWS.UP_TRACK_B
     },
     {
@@ -220,7 +221,7 @@ export const GOLDEN_LAYOUT_SEED: {
       level_year: 3,
       area: "elective_pool",
       credits_needed: 6,
-      position_x: LAYOUT_CONSTANTS.YEAR_COLUMNS.Y3,
+      position_x: getTrackColumnX(LAYOUT_CONSTANTS.YEAR_COLUMNS.Y3, 'ds'),
       position_y: LAYOUT_CONSTANTS.LANE_ROWS.UP_TRACK_B_ELEC // Different Y position
     },
 
@@ -234,7 +235,7 @@ export const GOLDEN_LAYOUT_SEED: {
       level_year: 4,
       area: "capstone",
       credits_needed: 3,
-      position_x: LAYOUT_CONSTANTS.YEAR_COLUMNS.Y4,
+      position_x: getTrackColumnX(LAYOUT_CONSTANTS.YEAR_COLUMNS.Y4, 'se'),
       position_y: LAYOUT_CONSTANTS.LANE_ROWS.UP_CAPSTONE
     },
     {
@@ -246,7 +247,7 @@ export const GOLDEN_LAYOUT_SEED: {
       level_year: 4,
       area: "capstone",
       credits_needed: 3,
-      position_x: LAYOUT_CONSTANTS.YEAR_COLUMNS.Y4,
+      position_x: getTrackColumnX(LAYOUT_CONSTANTS.YEAR_COLUMNS.Y4, 'ds'),
       position_y: LAYOUT_CONSTANTS.LANE_ROWS.UP_CAPSTONE_2 // Different Y position
     },
     {

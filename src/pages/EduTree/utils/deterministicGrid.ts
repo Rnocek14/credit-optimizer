@@ -3,9 +3,26 @@
  * Uses centralized layout tokens for perfect symmetry
  */
 
-import { laneXs, LANE_Y_POSITIONS, snapToGrid, packLane } from './layoutTokens';
+import { laneXs, LANE_Y_POSITIONS, snapToGrid, packLane, TRACK_COLUMN_OFFSET } from './layoutTokens';
 
 export type Lane = 'up' | 'down';
+export type TrackId = 'se' | 'ds' | string | undefined;
+
+/**
+ * Calculate track-specific X offset for fork-year lanes
+ * Applies horizontal separation for SE/DS tracks to reduce visual clutter
+ * @param yearColX - Base X position for the year column
+ * @param trackId - Track identifier ('se', 'ds', or undefined for core/shared)
+ * @returns Adjusted X position with track offset applied
+ */
+export function getTrackColumnX(yearColX: number, trackId: TrackId): number {
+  if (!trackId) return yearColX;                                    // core/shared nodes stay centered
+  if (trackId === 'se') return yearColX - TRACK_COLUMN_OFFSET;      // SE track: left offset
+  if (trackId === 'ds') return yearColX + TRACK_COLUMN_OFFSET;      // DS track: right offset
+  // Future tracks: deterministic left/right spread by string hash
+  const hash = [...String(trackId)].reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  return yearColX + (hash % 2 === 0 ? -TRACK_COLUMN_OFFSET : TRACK_COLUMN_OFFSET);
+}
 
 /**
  * Get reserved column positions based on viewport width
