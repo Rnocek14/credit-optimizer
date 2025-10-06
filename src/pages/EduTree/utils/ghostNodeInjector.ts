@@ -171,8 +171,6 @@ export function addGhostNodeEdges(
         newEdges.push({
           source: y2Block.id,
           target: ghost.id,
-          sourceHandle: 'out',
-          targetHandle: 'in',
           kind: 'advisory' // Dashed line for ghost connections
         });
       }
@@ -182,8 +180,6 @@ export function addGhostNodeEdges(
         newEdges.push({
           source: ghost.id,
           target: y4ItBlock.id,
-          sourceHandle: 'out',
-          targetHandle: 'in',
           kind: 'advisory' // Dashed line for ghost connections
         });
       }

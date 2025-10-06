@@ -35,13 +35,11 @@ export const PlaceholderGroup: React.FC<NodeProps> = ({ id, data, selected }) =>
       data-node-type="placeholder"
     >
       <Handle
-        id="in"
         type="target"
         position={Position.Left}
         className="w-3 h-3 bg-muted-foreground border-2 border-background"
       />
       <Handle
-        id="out"
         type="source"
         position={Position.Right}
         className="w-3 h-3 bg-muted-foreground border-2 border-background"

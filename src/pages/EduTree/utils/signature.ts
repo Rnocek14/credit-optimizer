@@ -52,8 +52,7 @@ const normalizeDv = (dataVersion?: string | null) => {
 
 const normalizeBlockId = (blockId?: string | null) => {
   // preserve case, just remove pipes/whitespace
-  const clean = stripPipes(blockId);
-  return clean || 'unknown'; // prevent empty block IDs that cause leading pipes
+  return stripPipes(blockId);
 };
 
 const normalizeSelectedCode = (code?: string | null) => {
@@ -83,18 +82,10 @@ function _buildMarketplaceSigInternal(opts: {
   const sc = normalizeSelectedCode(opts.selectedCode);
 
   // Compose via array join — never via string concat/template
-  // Filter out any empty tokens before joining to prevent double pipes
-  const tokens = [SIG_VERSION, dv, bid, cnt].filter(t => t && String(t).length > 0);
+  const tokens = [SIG_VERSION, dv, bid, cnt];
   if (sc) tokens.push(sc);
 
-  let out = tokens.join('|');
-  
-  // Final guard: ensure we start with 'v1|'
-  if (!out.startsWith('v1|')) {
-    out = `v1|${out.replace(/^\|+/, '')}`;
-  }
-
-  return out;
+  return tokens.join('|');
 }
 
 /**

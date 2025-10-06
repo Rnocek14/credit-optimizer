@@ -63,7 +63,6 @@ export const BlockGroup: React.FC<NodeProps> = (props: NodeProps) => {
     <div className="relative" ref={nodeRef}>
       {/* Fixed connection handles for better edge routing */}
       <Handle
-        id="in"
         type="target"
         position={Position.Left}
         className="w-3 h-3 bg-primary border-2 border-background"
@@ -260,7 +259,6 @@ export const BlockGroup: React.FC<NodeProps> = (props: NodeProps) => {
 
       {/* Output handle for edges */}
       <Handle
-        id="out"
         type="source"
         position={Position.Right}
         className="w-3 h-3 bg-primary border-2 border-background"
