@@ -69,10 +69,8 @@
   stroke: hsl(var(--muted-foreground)) !important;
 }
 
-/* Node tiers */
-.lp-node-on-path { outline: 2px solid color-mix(in oklab, var(--primary) 60%, transparent) }
-.lp-node-related { outline: 1px dashed color-mix(in oklab, var(--muted-foreground) 60%, transparent) }
-.lp-node-off-path { opacity: 0.85 }
+/* Node tiers - use ::after overlays defined in index.css to avoid collision */
+/* Removed direct outline rules - using ::after pseudo-elements instead */
 
 /* Edge label styling */
 .lp-edge-label { 

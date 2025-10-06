@@ -79,9 +79,18 @@ export function DebugLogPanel() {
       try {
         const rf = (window as any).__rf || (window as any).ReactFlowInstance || {};
         const nodes = rf.getNodes?.() ?? [];
-        const sigs = nodes
+        let sigs = nodes
           .map((n: any) => n?.data?.marketplace?.signature)
           .filter(Boolean);
+        
+        // Fallback to pill logs if RF not ready
+        if (sigs.length === 0 && Array.isArray((window as any).__pillLogs__)) {
+          const recent = (window as any).__pillLogs__
+            .slice(-50)
+            .map((l: any) => l?.mp?.signature)
+            .filter(Boolean);
+          if (recent.length) sigs = recent;
+        }
         
         if (sigs.length > 0) {
           const leading = sigs.filter((s: string) => s.startsWith('|'));

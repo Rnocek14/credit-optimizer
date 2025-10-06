@@ -3,6 +3,7 @@
  * Single source of truth for displaying course options count on nodes
  */
 
+import React from 'react';
 import { trace } from '../utils/debug';
 import { normalizeOrRebuildSig, assertSigShape } from '../utils/signature';
 import { DEV } from '../utils/constants';
@@ -28,19 +29,18 @@ export function NodeOptionsPill({
   const mp0 = data?.marketplace ?? {};
   
   // Heal signature at read time (defensive against legacy/bad data)
+  const raw = mp0?.signature ?? '';
   const healed = normalizeOrRebuildSig(
     mp0,
     { dataVersion, blockId: nodeId, selectedCode: undefined }
   );
   
-  if (DEV && healed !== (mp0?.signature ?? '')) {
-    console.warn('[SIG_REPAIR][PILL]', { 
-      had: mp0?.signature, 
-      healed, 
-      blockId: nodeId, 
-      dataVersion 
-    });
-  }
+  // Log healing in development with proper detection
+  React.useEffect(() => {
+    if (DEV && raw && raw !== healed) {
+      console.warn('[PILL][SIG_REPAIR]', { blockId: nodeId, raw, healed });
+    }
+  }, [raw, healed, nodeId]);
   
   assertSigShape(healed, 'PILL_RENDER');
   

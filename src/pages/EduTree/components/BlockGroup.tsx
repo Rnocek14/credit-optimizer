@@ -257,8 +257,16 @@ export const BlockGroup: React.FC<NodeProps> = (props: NodeProps) => {
         </CardContent>
       </Card>
 
-      {/* Output handle for edges */}
+      {/* Input/Output handles for edges */}
       <Handle
+        id="in"
+        type="target"
+        position={Position.Left}
+        className="w-3 h-3 bg-primary border-2 border-background"
+        style={{ left: -6 }}
+      />
+      <Handle
+        id="out"
         type="source"
         position={Position.Right}
         className="w-3 h-3 bg-primary border-2 border-background"
