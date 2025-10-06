@@ -339,10 +339,10 @@ export const GOLDEN_LAYOUT_SEED: {
     { source: "y3-ds-elec", target: "y4-ds-cap", sourceHandle: "out", targetHandle: "in" },
     { source: "y2-it-elec", target: "y4-it-cap" },
     
-    // BSN Program progression
-    { source: "y1-bsn-found", target: "y2-bsn-core" },
-    { source: "y2-bsn-core", target: "y3-bsn-clinical" },
-    { source: "y3-bsn-clinical", target: "y4-bsn-capstone" },
+    // BSN Program progression (PRIORITY 0.2: Add default handles)
+    { source: "y1-bsn-found", target: "y2-bsn-core", sourceHandle: "out", targetHandle: "in" },
+    { source: "y2-bsn-core", target: "y3-bsn-clinical", sourceHandle: "out", targetHandle: "in" },
+    { source: "y3-bsn-clinical", target: "y4-bsn-capstone", sourceHandle: "out", targetHandle: "in" },
     
     // Removed hard-wired gate-to-header edges - dropdown is source of truth
   ],

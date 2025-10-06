@@ -276,6 +276,15 @@ export function useApplyDimmingV2({ nodes, edges }: UseApplyDimmingV2Props): Use
         return false;
       }
       
+      // PRIORITY 0.1: Filter edges to hidden header nodes
+      const targetNode = nodes.find(n => n.id === e.target);
+      if (targetNode?.data?.is_header && targetNode?.hidden === true) {
+        if (import.meta.env.DEV) {
+          console.log('[DIMMING] Filtered edge to hidden header:', { edgeId: e.id, target: e.target });
+        }
+        return false;
+      }
+      
       // 2. Comprehensive handle corruption detection
       const sourceHandle = e.sourceHandle;
       const targetHandle = e.targetHandle;

@@ -1485,6 +1485,11 @@ export function applyManualLayout(
     }
   }
   
+  // PRIORITY 1: Apply collision resolver before final delivery
+  // Nudge nodes down to prevent overlaps within columns
+  console.log('[ManualLayout] Applying collision resolver to prevent overlaps');
+  allNodes = resolveOverlaps(allNodes);
+  
   onApply(allNodes, sanitizedEdges);
   
   // Debug: expose to window for validation tests (development only)

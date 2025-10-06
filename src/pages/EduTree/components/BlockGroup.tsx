@@ -70,7 +70,7 @@ export const BlockGroup: React.FC<NodeProps> = (props: NodeProps) => {
       />
 
       <Card className={`
-        ${isDegreeNode ? 'w-[420px]' : 'w-[360px]'}
+        ${isDegreeNode ? 'w-[420px]' : 'w-[180px] max-w-[180px]'}
         ${!isUnlocked ? 'opacity-65' : ''}
         ${isDegreeNode && isDegreeComplete ? 'border-accent-gold bg-gradient-to-br from-accent-gold/20 to-accent-gold/10 ring-2 ring-accent-gold/50 shadow-lg shadow-accent-gold/20' :
           isDegreeNode ? 'border-accent-gold/60 bg-accent-gold/5 ring-1 ring-accent-gold/30' :
@@ -81,18 +81,20 @@ export const BlockGroup: React.FC<NodeProps> = (props: NodeProps) => {
       `}>
         <CardHeader className="pb-3 space-y-3">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-lg flex items-center gap-2">
+            <CardTitle className="text-sm flex items-center gap-1 truncate">
               {!isUnlocked && !isDegreeNode && (
-                <Lock className="w-4 h-4 text-muted-foreground opacity-80" />
+                <Lock className="w-3 h-3 text-muted-foreground opacity-80 flex-shrink-0" />
               )}
-              {isDegreeNode && <GraduationCap className={`w-5 h-5 ${isDegreeComplete ? 'text-accent-gold' : 'text-accent-gold/60'}`} />}
-              {isComplete && !isDegreeNode && <CheckCircle className="w-4 h-4 text-primary" />}
-              {isDegreeComplete && <CheckCircle className="w-4 h-4 text-accent-gold" />}
+              {isDegreeNode && <GraduationCap className={`w-4 h-4 flex-shrink-0 ${isDegreeComplete ? 'text-accent-gold' : 'text-accent-gold/60'}`} />}
+              {isComplete && !isDegreeNode && <CheckCircle className="w-3 h-3 text-primary flex-shrink-0" />}
+              {isDegreeComplete && <CheckCircle className="w-3 h-3 text-accent-gold flex-shrink-0" />}
               <span 
                 className={`
                   ${isDegreeNode ? 'text-accent-gold font-bold' : ''}
                   ${!isUnlocked && !isDegreeNode ? 'text-foreground/90' : 'text-foreground'}
+                  truncate
                 `}
+                title={block.title}
               >
                 {block.title}
               </span>
@@ -210,22 +212,16 @@ export const BlockGroup: React.FC<NodeProps> = (props: NodeProps) => {
             </div>
           )}
 
-          {/* Course grid with single column layout for better readability */}
-          {!isDegreeNode && (
-            <div className="grid grid-cols-1 gap-3 max-h-[300px] overflow-y-auto">
-              {block.courses.map((course) => (
-                <CourseNode
-                  key={course.id}
-                  course={course}
-                  isCompleted={completedCourseIds.has(course.id)}
-                  equivalencies={altCreditOptions.filter(opt => 
-                    // Match by course area or general alternative options
-                    course.area === opt.provider || !opt.provider
-                  )}
-                  onClick={onCourseClick}
-                />
-              ))}
-            </div>
+          {/* PRIORITY 1: Compact pill showing course count - details in modal */}
+          {!isDegreeNode && block.courses.length > 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full text-xs h-8"
+              onClick={() => onCourseClick?.(block)}
+            >
+              {block.courses.length} {block.courses.length === 1 ? 'Option' : 'Options'}
+            </Button>
           )}
 
           {/* Degree completion message */}
