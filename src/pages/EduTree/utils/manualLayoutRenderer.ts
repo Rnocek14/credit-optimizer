@@ -28,7 +28,7 @@ export function buildVisibleEdges(nodes: RFNode[], rawEdges: RFEdge[]) {
   return safeEdges;
 }
 import { applyDeterministicGrid, getReservedColsByYear, type Lane } from './deterministicGrid';
-import { laneXs, applyLanePackingFinal, NODE_HEIGHT, LANE_GAP } from './layoutTokens';
+import { laneXs, applyLanePackingFinal, NODE_HEIGHT, LANE_GAP, COL_W } from './layoutTokens';
 import { HeaderNodeData } from '../nodes/HeaderNode';
 import { type GatePositions } from './divergence';
 import { createGhostNodeData } from './ghostNodeInjector';
@@ -1541,11 +1541,13 @@ export function validateNoOverlaps(nodes: Node[]): { hasOverlaps: boolean; overl
 /**
  * PATCH 3: Resolve overlapping nodes by auto-nudging them vertically
  * Groups nodes by column (within tolerance) and ensures minimum vertical gap
+ * Uses centralized layout tokens for accurate collision detection
  */
 export function resolveOverlaps(nodes: Node[]): Node[] {
-  const NODE_HEIGHT = 80;
-  const MIN_GAP = 28;      // Increased from 24px to 28px minimum vertical gap
-  const COL_TOLERANCE = 60; // Nodes within 60px horizontally are in same column
+  // Use actual layout constants from layoutTokens
+  const HEIGHT = NODE_HEIGHT; // 120px - actual node height
+  const MIN_GAP = LANE_GAP;   // 60px - actual gap between nodes in same lane
+  const COL_TOLERANCE = COL_W / 2; // 140px - half column width for proper grouping
   
   // Group nodes by column (round x to nearest COL_TOLERANCE)
   const columnMap = new Map<number, Node[]>();
@@ -1558,13 +1560,21 @@ export function resolveOverlaps(nodes: Node[]): Node[] {
   }
   
   // Process each column: sort by Y and nudge overlaps
-  columnMap.forEach((col) => {
+  columnMap.forEach((col, colKey) => {
     col.sort((a, b) => a.position.y - b.position.y);
+    
+    if (DEV && col.length > 1) {
+      console.log('[AutoNudge] Processing column:', {
+        colKey,
+        nodeCount: col.length,
+        nodeIds: col.map(n => n.id)
+      });
+    }
     
     for (let i = 1; i < col.length; i++) {
       const prev = col[i - 1];
       const curr = col[i];
-      const minY = prev.position.y + NODE_HEIGHT + MIN_GAP;
+      const minY = prev.position.y + HEIGHT + MIN_GAP;
       
       if (curr.position.y < minY) {
         if (DEV) {
@@ -1572,7 +1582,8 @@ export function resolveOverlaps(nodes: Node[]): Node[] {
             id: curr.id,
             oldY: curr.position.y,
             newY: minY,
-            gap: minY - prev.position.y - NODE_HEIGHT
+            gap: MIN_GAP,
+            prevBottom: prev.position.y + HEIGHT
           });
         }
         curr.position.y = minY;
