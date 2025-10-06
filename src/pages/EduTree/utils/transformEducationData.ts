@@ -234,6 +234,8 @@ export function transformEducationData(
       id: `e-${sourceBlockId}-${targetBlockId}`,
       source: sourceBlockId,
       target: targetBlockId,
+      sourceHandle: 'out',
+      targetHandle: 'in',
       type: 'smoothstep',
       className: duplicates.length > 1 ? 'edge edge-consolidated' : 'edge',
       data: {
@@ -295,6 +297,8 @@ export function transformEducationData(
       id: 'capstone-to-degree',
       source: String(capstoneBlock.id),
       target: 'degree-completion',
+      sourceHandle: 'out',
+      targetHandle: 'in',
       type: 'smoothstep',
       className: 'edge degree-edge'
     });
@@ -304,6 +308,8 @@ export function transformEducationData(
       id: 'architecture-to-degree',
       source: String(architectureBlock.id),
       target: 'degree-completion',
+      sourceHandle: 'out',
+      targetHandle: 'in',
       type: 'smoothstep',
       className: 'edge degree-edge'
     });

@@ -65,6 +65,7 @@ export const EmptyYearNode: React.FC<NodeProps> = ({ data }) => {
       <div className="relative">
         {/* Target handle for incoming edges */}
         <Handle
+          id="in"
           type="target"
           position={Position.Left}
           className="w-3 h-3 bg-muted-foreground/60 border-2 border-background"
@@ -115,6 +116,7 @@ export const EmptyYearNode: React.FC<NodeProps> = ({ data }) => {
 
         {/* Source handle for outgoing edges */}
         <Handle
+          id="out"
           type="source"
           position={Position.Right}
           className="w-3 h-3 bg-muted-foreground/60 border-2 border-background"
