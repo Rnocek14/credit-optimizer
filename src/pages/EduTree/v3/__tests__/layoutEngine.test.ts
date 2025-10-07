@@ -24,4 +24,18 @@ describe('layoutEngine', () => {
     expect(out[0]?.position.x % LAYOUT_TOKENS.GRID).toBe(0);
     expect(out[0]?.position.y % LAYOUT_TOKENS.GRID).toBe(0);
   });
+
+  it('applies track lane offsets at Y3', () => {
+    const nodeWithTrack = (id: string, trackId?: 'se' | 'ds'): V3Node => 
+      ({ id, type: 'requirement', data: { year: 3, trackId }, position: { x: 0, y: 0 } });
+    
+    const se = nodeWithTrack('y3-se', 'se');
+    const ds = nodeWithTrack('y3-ds', 'ds');
+    const out = calculateLayout([se, ds], LAYOUT_TOKENS);
+    
+    expect(out.find(n => n.id === 'y3-se')?.position.x)
+      .toBe(LAYOUT_TOKENS.YEAR_COL.Y3 - LAYOUT_TOKENS.TRACK_COLUMN_OFFSET);
+    expect(out.find(n => n.id === 'y3-ds')?.position.x)
+      .toBe(LAYOUT_TOKENS.YEAR_COL.Y3 + LAYOUT_TOKENS.TRACK_COLUMN_OFFSET);
+  });
 });

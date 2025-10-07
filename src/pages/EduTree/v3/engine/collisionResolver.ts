@@ -1,5 +1,6 @@
 import { V3Node } from '../types/v3';
 import type { ProgramRegion } from './regionManager';
+import { snap } from './layoutEngine';
 
 const within = (a: number, b: number, tol: number) => Math.abs(a - b) <= tol;
 
@@ -49,18 +50,21 @@ export function resolveCollisions(
     }
   });
 
-  // horizontal micro-separation at same X
+  // guarantee minimum horizontal spacing if same year band
   for (let i = 0; i < out.length; i++) {
     for (let j = i + 1; j < out.length; j++) {
       const a = out[i], b = out[j];
-      const sameCol = within(a.position.x, b.position.x, t.COL_TOLERANCE / 2);
-      const yOverlap =
-        !(a.position.y + t.NODE_MAX_HEIGHT <= b.position.y ||
-          b.position.y + t.NODE_MAX_HEIGHT <= a.position.y);
-      if (sameCol && yOverlap) {
-        // nudge the later one horizontally by track offset hint
-        if (b.data.trackId === 'ds') b.position.x += Math.round(t.TRACK_COLUMN_OFFSET / 2);
-        else a.position.x -= Math.round(t.TRACK_COLUMN_OFFSET / 2);
+      const sameYear = (a.data.year ?? 0) === (b.data.year ?? 0);
+      if (!sameYear) continue;
+
+      const minDX = t.NODE_WIDTH + t.H_GAP; // 204px
+      const dx = b.position.x - a.position.x;
+
+      if (Math.abs(dx) < minDX) {
+        // Push the one on the right further right by the shortfall (snapped)
+        const push = snap(minDX - Math.abs(dx), t.GRID);
+        if (dx >= 0) b.position.x += push;
+        else a.position.x -= push;
       }
     }
   }

@@ -60,4 +60,16 @@ describe('collisionResolver', () => {
     const r2 = resolveCollisions([...nodes], regions, LAYOUT_TOKENS);
     expect(JSON.stringify(r1.map(n => n.position))).toBe(JSON.stringify(r2.map(n => n.position)));
   });
+
+  it('SE/DS at same Y do not overlap with lane offset', () => {
+    const y = 0;
+    const se = base('se', y, 'se');
+    const ds = base('ds', y, 'ds');
+    const regions = computeRegions([se, ds], LAYOUT_TOKENS);
+    const out = resolveCollisions([se, ds], regions, LAYOUT_TOKENS);
+
+    const { validateNoOverlaps } = require('../engine/overlapValidator');
+    const res = validateNoOverlaps(out, LAYOUT_TOKENS);
+    expect(res.hasOverlaps).toBe(false);
+  });
 });

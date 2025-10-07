@@ -12,8 +12,15 @@ export function calculateLayout(
   
   for (const n of out) {
     const year = n.data.year ?? 1;
-    const x = (t.YEAR_COL as any)[`Y${year}`] ?? t.YEAR_COL.Y1;
-    n.position.x = snap(x, t.GRID);
+    const baseX = (t.YEAR_COL as any)[`Y${year}`] ?? t.YEAR_COL.Y1;
+    
+    // Apply track lane offset for SE/DS
+    const laneX =
+      n.data.trackId === 'se' ? baseX - t.TRACK_COLUMN_OFFSET
+    : n.data.trackId === 'ds' ? baseX + t.TRACK_COLUMN_OFFSET
+    : baseX;
+    
+    n.position.x = snap(laneX, t.GRID);
 
     // basic stacking by track corridor seed (upper/lower bias)
     const laneSeed = n.data.trackId === 'ds' ? 1 : 0;
