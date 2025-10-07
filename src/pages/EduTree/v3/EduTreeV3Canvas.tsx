@@ -126,6 +126,14 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
       yearColumns: LAYOUT_TOKENS.YEAR_COL,
       trackOffset: LAYOUT_TOKENS.TRACK_COLUMN_OFFSET
     });
+    
+    // Expose debug utility
+    (window as any).__dumpV3 = () => ({
+      nodes: positionedCollapsed.nodes,
+      edges: positionedCollapsed.edges,
+      tokens: LAYOUT_TOKENS,
+      stepY: LAYOUT_TOKENS.NODE_MAX_HEIGHT + LAYOUT_TOKENS.LANE_GAP
+    });
   }, [enableMetrics]);
 
   const { nodes, edges } = currentGraph ?? { nodes: [], edges: [] };

@@ -4,6 +4,14 @@ export function snap(n: number, unit: number) {
   return Math.round(n / unit) * unit;
 }
 
+// Position enum for handle positions (matches ReactFlow)
+export const Position = {
+  Top: 'top',
+  Bottom: 'bottom',
+  Left: 'left',
+  Right: 'right',
+} as const;
+
 export function calculateLayout(
   nodes: V3Node[], 
   t: typeof import('../utils/layoutTokensV3').LAYOUT_TOKENS
@@ -55,12 +63,13 @@ export function calculateLayout(
       
       // Use year-based rows for collapsed bundles (i=0 for single bundle per year)
       // If expanded: stack multiple nodes vertically
+      const isCollapsedBundle = n.type === 'track-bundle';
       const rowY = yearRow(year) * stepY;
-      n.position.y = snap(rowY + (i * stepY), t.GRID);
+      n.position.y = snap(rowY + (isCollapsedBundle ? 0 : i * stepY), t.GRID);
       
       // Spine flow: horizontal left→right between years
-      n.sourcePosition = 'right';
-      n.targetPosition = 'left';
+      n.sourcePosition = Position.Right;
+      n.targetPosition = Position.Left;
     });
   }
 
@@ -78,8 +87,8 @@ export function calculateLayout(
     gate.data.anchorX = centerX;
     
     // Gates connect vertically: bottom→top for year transitions
-    gate.sourcePosition = 'bottom';
-    gate.targetPosition = 'top';
+    gate.sourcePosition = Position.Bottom;
+    gate.targetPosition = Position.Top;
   }
   
   return out;

@@ -30,7 +30,7 @@ export default function V3TrackBundleNode({ data }: Props) {
         className={
           "rounded-xl border-2 " +
           color +
-          " px-3 py-2 shadow-md select-none"
+          " px-3 py-2 shadow-md select-none w-full overflow-hidden"
         }
       >
       <Handle type="target" position={Position.Left} />
