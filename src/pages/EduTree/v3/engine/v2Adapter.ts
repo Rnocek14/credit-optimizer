@@ -24,8 +24,8 @@ export function adaptSeedDataV2(seed: {
       id: block.id,
       type: 'requirement',
       data: {
-        year: block.level_year as 1 | 2 | 3 | 4,
-        programId: block.program_id || 'bs_cs',
+        year: (block.level_year || 1) as 1 | 2 | 3 | 4, // NEVER undefined
+        programId: block.program_id ?? 'bs_cs',         // NEVER undefined
         trackId: block.track_id === 'se' ? 'se' : block.track_id === 'ds' ? 'ds' : undefined,
         title: block.title
       },
@@ -41,8 +41,8 @@ export function adaptSeedDataV2(seed: {
       id: junction.id,
       type: 'gate',
       data: {
-        year: junction.level_year as 1 | 2 | 3 | 4,
-        programId: 'bs_cs', // Infer from context or make configurable
+        year: (junction.level_year || 1) as 1 | 2 | 3 | 4, // NEVER undefined
+        programId: 'bs_cs',                                 // NEVER undefined
         title: junction.title
       },
       position: { x: 0, y: 0 }

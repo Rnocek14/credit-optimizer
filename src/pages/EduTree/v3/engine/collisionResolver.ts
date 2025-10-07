@@ -50,72 +50,10 @@ export function resolveCollisions(
     }
   });
 
-  // guarantee minimum horizontal spacing if same year band (skip gates - they're anchored)
-  for (let i = 0; i < out.length; i++) {
-    for (let j = i + 1; j < out.length; j++) {
-      const a = out[i], b = out[j];
-      
-      // Skip gates - they're handled by fork-group rule
-      if (a.type === 'gate' || b.type === 'gate') continue;
-      
-      const sameYear = (a.data.year ?? 0) === (b.data.year ?? 0);
-      if (!sameYear) continue;
+  // No horizontal nudging needed - lanes are strictly enforced at layout time
+  // Collision resolution is vertical-only with corridor clamping
 
-      const minDX = t.NODE_WIDTH + t.H_GAP; // 204px
-      const dx = b.position.x - a.position.x;
-
-      if (Math.abs(dx) < minDX) {
-        // Push the one on the right further right by the shortfall (snapped)
-        const push = snap(minDX - Math.abs(dx), t.GRID);
-        if (dx >= 0) b.position.x += push;
-        else a.position.x -= push;
-      }
-    }
-  }
-
-  // Ensure "any" (gates) never collide with track nodes in same year fork group
-  const yearBaseX = (year: number) => (t.YEAR_COL as any)[`Y${year}`] ?? t.YEAR_COL.Y1;
-  
-  for (let i = 0; i < out.length; i++) {
-    for (let j = i + 1; j < out.length; j++) {
-      const a = out[i], b = out[j];
-      const year = a.data.year ?? b.data.year ?? 0;
-      const sameYear = (a.data.year ?? 0) === (b.data.year ?? 0);
-      if (!sameYear || !year) continue;
-
-      const aAny = (a.data.trackId ?? 'any') === 'any';
-      const bAny = (b.data.trackId ?? 'any') === 'any';
-      if (!((aAny && !bAny) || (!aAny && bAny))) continue; // XOR: gate vs track only
-
-      // Consider them in the same fork group if both are within the fork band around baseX
-      const baseX = yearBaseX(year);
-      const inForkBand = (x: number) => Math.abs(x - baseX) <= (t.TRACK_COLUMN_OFFSET + t.GRID);
-      if (!(inForkBand(a.position.x) && inForkBand(b.position.x))) continue;
-
-      // Identify which is gate, which is track
-      const gateNode = aAny ? a : b;
-      const trackNode = aAny ? b : a;
-
-      // Minimum separation requirements
-      const minLaneDX = t.TRACK_COLUMN_OFFSET;  // 120
-      const minNodeDX = t.NODE_WIDTH + t.H_GAP; // 204
-
-      // 1) Push track to its proper lane if it drifted too close to center
-      const dxFromBase = trackNode.position.x - baseX;
-      if (Math.abs(dxFromBase) < minLaneDX) {
-        const dir = (trackNode.data.trackId === 'ds') ? +1 : -1;
-        const need = snap(minLaneDX - Math.abs(dxFromBase), t.GRID);
-        trackNode.position.x += dir * need;
-      }
-
-      // 2) Ensure gate <-> track clearance (only move track, gate stays anchored)
-      const needDx = minNodeDX - Math.abs(trackNode.position.x - gateNode.position.x);
-      if (needDx > 0) {
-        const dir = (trackNode.position.x > gateNode.position.x) ? +1 : -1;
-        trackNode.position.x += snap(needDx, t.GRID) * dir;
-      }
-    }
-  }
+  // Gate anchoring is enforced at layout time - no horizontal adjustments needed here
 
   // Final pass: snap gates back to their anchor positions
   for (const n of out) {

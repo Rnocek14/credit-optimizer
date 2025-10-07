@@ -32,21 +32,24 @@ export function calculateLayout(
     const year = Number(yStr.slice(1)) as 1 | 2 | 3 | 4;
     const baseX = (t.YEAR_COL as any)[`Y${year}`] ?? t.YEAR_COL.Y1;
 
-    const laneX =
-      trackKey === 'se' ? baseX - t.TRACK_COLUMN_OFFSET :
-      trackKey === 'ds' ? baseX + t.TRACK_COLUMN_OFFSET :
-      baseX;
+    // Strict lane centers - no drift allowed
+    const centers = {
+      any: snap(baseX, t.GRID),
+      se: snap(baseX - t.TRACK_COLUMN_OFFSET, t.GRID),
+      ds: snap(baseX + t.TRACK_COLUMN_OFFSET, t.GRID),
+    };
 
     // Stable sort to keep positions deterministic
     arr.sort((a, b) => a.id.localeCompare(b.id));
 
     arr.forEach((n, i) => {
-      n.position.x = snap(laneX, t.GRID);
+      const lane = (n.type === 'gate' || !n.data.trackId) ? 'any' : n.data.trackId;
+      n.position.x = centers[lane as 'any' | 'se' | 'ds'];
       n.position.y = snap(i * stepY, t.GRID);
       
       // Anchor gates at center so collision resolver never moves them horizontally
       if (n.type === 'gate' || n.id?.includes('gate')) {
-        n.data.anchorX = baseX;
+        n.data.anchorX = centers.any;
       }
     });
   }
