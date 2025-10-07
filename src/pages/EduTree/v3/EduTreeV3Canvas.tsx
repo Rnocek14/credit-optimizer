@@ -90,6 +90,42 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
     } else {
       console.log('[V3 Canvas] ✅ No overlaps in collapsed view');
     }
+    
+    // Diagnostic tables for layout verification
+    console.log('[V3 Diagnostics] Node positions:');
+    console.table(positionedCollapsed.nodes.map(n => ({
+      id: n.id,
+      type: n.type,
+      year: n.data.year ?? '-',
+      lane: n.data.trackId ?? 'any',
+      x: n.position.x,
+      y: n.position.y,
+      sourcePos: n.sourcePosition ?? '-',
+      targetPos: n.targetPosition ?? '-'
+    })));
+    
+    console.log('[V3 Diagnostics] Edge routing:');
+    console.table(positionedCollapsed.edges.map(e => {
+      const src = positionedCollapsed.nodes.find(n => n.id === e.source);
+      const tgt = positionedCollapsed.nodes.find(n => n.id === e.target);
+      const srcYear = src?.data.year ?? 0;
+      const tgtYear = tgt?.data.year ?? 0;
+      return {
+        id: e.id,
+        kind: e.kind,
+        source: e.source,
+        target: e.target,
+        directionOK: srcYear < tgtYear
+      };
+    }));
+    
+    console.log('[V3 Diagnostics] Layout summary:', {
+      visibleNodes: positionedCollapsed.nodes.length,
+      edges: positionedCollapsed.edges.length,
+      stepY: LAYOUT_TOKENS.NODE_MAX_HEIGHT + LAYOUT_TOKENS.LANE_GAP,
+      yearColumns: LAYOUT_TOKENS.YEAR_COL,
+      trackOffset: LAYOUT_TOKENS.TRACK_COLUMN_OFFSET
+    });
   }, [enableMetrics]);
 
   const { nodes, edges } = currentGraph ?? { nodes: [], edges: [] };
@@ -189,13 +225,14 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
   const reactFlowEdges: Edge[] = useMemo(() => {
     return edges.map((edge: V3EdgeType) => {
       const isGate = edge.kind === 'gate';
+      const isSpine = edge.kind === 'spine';
       const isFocused = focusedEdges.size === 0 || focusedEdges.has(edge.id);
       
       return {
         id: edge.id,
         source: edge.source,
         target: edge.target,
-        type: isGate ? 'smoothstep' : 'default',
+        type: isGate ? 'smoothstep' : isSpine ? 'step' : 'default',
         animated: isGate && isFocused,
         style: {
           stroke: isGate ? '#6366f1' : '#94a3b8',
@@ -409,6 +446,11 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
         fitView
         minZoom={0.1}
         maxZoom={2}
+        selectNodesOnDrag={false}
+        panOnDrag
+        elementsSelectable={false}
+        nodesDraggable={false}
+        nodesConnectable={false}
         defaultEdgeOptions={{
           style: { strokeWidth: 2 }
         }}

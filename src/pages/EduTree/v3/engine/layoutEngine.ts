@@ -58,9 +58,9 @@ export function calculateLayout(
       const rowY = yearRow(year) * stepY;
       n.position.y = snap(rowY + (i * stepY), t.GRID);
       
-      // Set connection points for clean vertical flow
-      n.sourcePosition = 'bottom';
-      n.targetPosition = 'top';
+      // Spine flow: horizontal left→right between years
+      n.sourcePosition = 'right';
+      n.targetPosition = 'left';
     });
   }
 
@@ -77,8 +77,8 @@ export function calculateLayout(
     gate.position.y = snap(gateMid, t.GRID);
     gate.data.anchorX = centerX;
     
-    // Gates connect top↔top for compact routing
-    gate.sourcePosition = 'top';
+    // Gates connect vertically: bottom→top for year transitions
+    gate.sourcePosition = 'bottom';
     gate.targetPosition = 'top';
   }
   
