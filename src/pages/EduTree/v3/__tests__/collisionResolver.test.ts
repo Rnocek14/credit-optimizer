@@ -47,7 +47,9 @@ describe('collisionResolver', () => {
     const region = regions.get('bs_cs')!;
     
     out.forEach(n => {
-      const corridor = n.data.trackId === 'ds' ? region.corridors.ds : region.corridors.se;
+      const year = (n.data.year ?? 3) as 1 | 2 | 3 | 4;
+      const lane = n.data.trackId === 'ds' ? 'ds' : 'se';
+      const corridor = region.perYear[year][lane];
       expect(n.position.y).toBeGreaterThanOrEqual(corridor.minY);
       expect(n.position.y).toBeLessThanOrEqual(corridor.maxY - LAYOUT_TOKENS.NODE_MAX_HEIGHT);
     });

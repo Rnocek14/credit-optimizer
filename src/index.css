@@ -208,6 +208,13 @@
     border: 1px dashed hsl(var(--border));
     color: inherit;
   }
+
+  /* V3 ReactFlow node width locking */
+  .react-flow__node {
+    width: var(--v3-node-w) !important;
+    box-sizing: border-box;
+    overflow: hidden;
+  }
 }
 
 @layer base {

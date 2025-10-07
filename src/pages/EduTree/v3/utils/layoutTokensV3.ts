@@ -20,7 +20,7 @@ export const LAYOUT_TOKENS = Object.freeze({
   NODE_WIDTH,
   NODE_BASE_HEIGHT: 120,
   NODE_MAX_HEIGHT: 250,     // collision safety
-  LANE_GAP: 60,
+  LANE_GAP: 72,             // ↑ increased to remove vertical squeezes
   YEAR_COL: { Y1: 300, Y2: 700, Y3: 1100, Y4: 1500 } as const,
   TRACK_COLUMN_OFFSET,      // SE left, DS right (computed: ensures NODE_WIDTH + H_GAP clearance)
   H_GAP,                    // horizontal safety gutter between adjacent columns

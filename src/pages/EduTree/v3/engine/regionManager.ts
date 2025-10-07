@@ -5,7 +5,11 @@ type Corridor = { minY: number; maxY: number };
 export type ProgramRegion = { 
   minY: number; 
   maxY: number; 
-  corridors: Record<'se' | 'ds' | 'any', Corridor>; 
+  perYear: Record<number, {
+    se: Corridor;
+    ds: Corridor;
+    any: Corridor;
+  }>;
 };
 
 export function computeRegions(
@@ -23,39 +27,56 @@ export function computeRegions(
   const stepY = t.NODE_MAX_HEIGHT + t.LANE_GAP;
   const regions = new Map<string, ProgramRegion>();
   
-  for (const [pid, arr] of byProgram.entries()) {
-    // Count nodes by track across all years to ensure corridors have capacity
-    const counts = { se: 0, ds: 0, any: 0 };
-    for (const n of arr) {
-      const tk = (n.type === 'gate' || !n.data.trackId ? 'any' : n.data.trackId) as 'se' | 'ds' | 'any';
-      counts[tk] = (counts[tk] ?? 0) + 1;
+  for (const [pid, group] of byProgram.entries()) {
+    // Count nodes by year + track for exact capacity allocation
+    const count: Record<1 | 2 | 3 | 4, { se: number; ds: number; any: number }> = {
+      1: { se: 0, ds: 0, any: 0 },
+      2: { se: 0, ds: 0, any: 0 },
+      3: { se: 0, ds: 0, any: 0 },
+      4: { se: 0, ds: 0, any: 0 }
+    };
+    
+    for (const n of group) {
+      const year = (n.data.year ?? 1) as 1 | 2 | 3 | 4;
+      const lane = (n.type === 'gate' || !n.data.trackId) ? 'any' : n.data.trackId as 'se' | 'ds';
+      count[year][lane] += 1;
     }
 
-    // Calculate required space for each track
-    const neededSe = Math.max(1, counts.se) * stepY;
-    const neededDs = Math.max(1, counts.ds) * stepY;
-    const needed = neededSe + t.TRACK_GUTTER + neededDs;
+    // Allocate per-year corridors vertically stacked (no cross-year collisions)
+    let cursor: number = t.REGION_GUTTER; // top of region
+    const perYear: Record<number, { se: Corridor; ds: Corridor; any: Corridor }> = {};
 
-    const minY = 0;
-    const maxY = needed + t.REGION_GUTTER * 2;
+    ([1, 2, 3, 4] as const).forEach(year => {
+      const needSe = Math.max(1, count[year].se) * stepY;
+      const needDs = Math.max(1, count[year].ds) * stepY;
+      const gutter = t.TRACK_GUTTER;
 
-    regions.set(pid, {
-      minY, 
-      maxY,
-      corridors: {
-        se:  { 
-          minY: minY + t.REGION_GUTTER, 
-          maxY: minY + t.REGION_GUTTER + neededSe 
+      const yearBlockHeight = needSe + gutter + needDs + 2 * t.REGION_GUTTER;
+      const top = cursor;
+      const bottom = top + yearBlockHeight;
+
+      perYear[year] = {
+        se: { 
+          minY: top + t.REGION_GUTTER, 
+          maxY: top + t.REGION_GUTTER + needSe 
         },
-        ds:  { 
-          minY: minY + t.REGION_GUTTER + neededSe + t.TRACK_GUTTER,
-          maxY: minY + t.REGION_GUTTER + neededSe + t.TRACK_GUTTER + neededDs 
+        ds: { 
+          minY: top + t.REGION_GUTTER + needSe + gutter,
+          maxY: top + t.REGION_GUTTER + needSe + gutter + needDs 
         },
         any: { 
-          minY: minY + t.TRACK_GUTTER, 
-          maxY: maxY - t.TRACK_GUTTER 
+          minY: top + t.TRACK_GUTTER, 
+          maxY: bottom - t.TRACK_GUTTER 
         }
-      }
+      };
+
+      cursor = bottom; // next year starts below
+    });
+
+    regions.set(pid, { 
+      minY: 0 as number, 
+      maxY: cursor + t.REGION_GUTTER as number, 
+      perYear 
     });
   }
   

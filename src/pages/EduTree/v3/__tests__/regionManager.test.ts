@@ -27,26 +27,26 @@ describe('regionManager', () => {
     expect(region!.maxY).toBeGreaterThan(region!.minY);
   });
 
-  it('creates separate corridors for SE, DS, and ANY', () => {
+  it('creates separate corridors for SE, DS, and ANY per year', () => {
     const nodes = [node('y3-se', 3, 'se'), node('y3-ds', 3, 'ds')];
     const regions = computeRegions(nodes, LAYOUT_TOKENS);
     const region = regions.get('bs_cs')!;
     
-    expect(region.corridors.se).toBeDefined();
-    expect(region.corridors.ds).toBeDefined();
-    expect(region.corridors.any).toBeDefined();
+    expect(region.perYear[3].se).toBeDefined();
+    expect(region.perYear[3].ds).toBeDefined();
+    expect(region.perYear[3].any).toBeDefined();
     
-    // SE should be in upper half, DS in lower half
-    expect(region.corridors.se.maxY).toBeLessThanOrEqual(region.corridors.ds.minY);
+    // SE should be in upper half, DS in lower half for year 3
+    expect(region.perYear[3].se.maxY).toBeLessThanOrEqual(region.perYear[3].ds.minY);
   });
 
-  it('ensures corridors have minimum height', () => {
+  it('ensures corridors have minimum height per year', () => {
     const nodes = [node('single', 1)];
     const regions = computeRegions(nodes, LAYOUT_TOKENS);
     const region = regions.get('bs_cs')!;
     
-    const seHeight = region.corridors.se.maxY - region.corridors.se.minY;
-    const dsHeight = region.corridors.ds.maxY - region.corridors.ds.minY;
+    const seHeight = region.perYear[1].se.maxY - region.perYear[1].se.minY;
+    const dsHeight = region.perYear[1].ds.maxY - region.perYear[1].ds.minY;
     
     expect(seHeight).toBeGreaterThanOrEqual(LAYOUT_TOKENS.NODE_MAX_HEIGHT);
     expect(dsHeight).toBeGreaterThanOrEqual(LAYOUT_TOKENS.NODE_MAX_HEIGHT);
@@ -78,7 +78,7 @@ describe('regionManager', () => {
     expect(region.maxY).toBeGreaterThan(region.minY);
   });
 
-  it('allocates corridors with capacity for bucket sizes', () => {
+  it('allocates corridors with capacity for bucket sizes per year', () => {
     const many = (n: number, trackId: 'se' | 'ds') => 
       Array.from({ length: n }, (_, i) => ({
         id: `y3-${trackId}-${i}`,
@@ -92,10 +92,10 @@ describe('regionManager', () => {
     const region = regions.get('bs_cs')!;
     
     const stepY = LAYOUT_TOKENS.NODE_MAX_HEIGHT + LAYOUT_TOKENS.LANE_GAP;
-    const seHeight = region.corridors.se.maxY - region.corridors.se.minY;
-    const dsHeight = region.corridors.ds.maxY - region.corridors.ds.minY;
+    const seHeight = region.perYear[3].se.maxY - region.perYear[3].se.minY;
+    const dsHeight = region.perYear[3].ds.maxY - region.perYear[3].ds.minY;
     
-    // Each corridor should have enough space for its bucket
+    // Each corridor should have enough space for its bucket in year 3
     expect(seHeight).toBeGreaterThanOrEqual(6 * stepY);
     expect(dsHeight).toBeGreaterThanOrEqual(5 * stepY);
   });

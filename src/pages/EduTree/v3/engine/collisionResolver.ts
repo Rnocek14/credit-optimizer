@@ -31,7 +31,6 @@ export function resolveCollisions(
 
     const [, programId, trackKey] = key.split('|');
     const region = regions.get(programId);
-    const corridor = region?.corridors?.[trackKey as 'se' | 'ds' | 'any'] ?? region?.corridors?.any;
 
     for (let i = 1; i < arr.length; i++) {
       const prev = arr[i - 1];
@@ -40,11 +39,17 @@ export function resolveCollisions(
       const minY = prev.position.y + t.NODE_MAX_HEIGHT + t.LANE_GAP;
       if (curr.position.y < minY) curr.position.y = minY;
 
-      // clamp to corridor
-      if (corridor) {
-        if (curr.position.y < corridor.minY) curr.position.y = corridor.minY;
-        if (curr.position.y > corridor.maxY - t.NODE_MAX_HEIGHT) {
-          curr.position.y = corridor.maxY - t.NODE_MAX_HEIGHT;
+      // Clamp to per-year corridor
+      if (region?.perYear) {
+        const year = (curr.data.year ?? 1) as 1 | 2 | 3 | 4;
+        const lane = trackKey as 'se' | 'ds' | 'any';
+        const corridor = region.perYear[year]?.[lane];
+        
+        if (corridor) {
+          if (curr.position.y < corridor.minY) curr.position.y = corridor.minY;
+          if (curr.position.y > corridor.maxY - t.NODE_MAX_HEIGHT) {
+            curr.position.y = corridor.maxY - t.NODE_MAX_HEIGHT;
+          }
         }
       }
     }
