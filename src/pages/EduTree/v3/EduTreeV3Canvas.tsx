@@ -1,25 +1,27 @@
-import React, { useMemo, useState, useCallback } from 'react';
+import React, { useMemo, useState, useCallback, useEffect } from 'react';
 import { ReactFlow, Background, Controls, MiniMap, Node, Edge, ReactFlowProvider, useReactFlow } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { validateNoOverlaps } from './engine/overlapValidator';
 import { buildEduTreeGraph, buildEduTreeGraphWithMetrics } from './engine/buildGraph';
+import { createCollapsedView, expandBundle, collapseBundle, BundleCard } from './engine/progressiveDisclosure';
 import { adaptSeedDataV2 } from './engine/v2Adapter';
 import { LAYOUT_TOKENS } from './utils/layoutTokensV3';
-import { V3Node as V3NodeType, V3Edge as V3EdgeType } from './types/v3';
+import { V3Node as V3NodeType, V3Edge as V3EdgeType, V3Graph } from './types/v3';
 import { GOLDEN_LAYOUT_SEED } from '../data/seedDataV2';
 
 // V3-specific node components
 import V3RequirementNode from './components/V3RequirementNode';
 import V3GateNode from './components/V3GateNode';
 import V3YearNode from './components/V3YearNode';
+import { V3TrackBundleNode } from './components/V3TrackBundleNode';
 
 const nodeTypes = {
   requirement: V3RequirementNode,
   gate: V3GateNode,
   year: V3YearNode,
-  'track-bundle': V3RequirementNode // Fallback
+  'track-bundle': V3TrackBundleNode,
 };
 
 interface EduTreeV3CanvasProps {
@@ -32,9 +34,12 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
   const [domMetrics, setDomMetrics] = useState<any>(null);
   const [focusedEdges, setFocusedEdges] = useState<Set<string>>(new Set());
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  const [fullGraph, setFullGraph] = useState<V3Graph | null>(null);
+  const [bundles, setBundles] = useState<Map<string, BundleCard>>(new Map());
+  const [currentGraph, setCurrentGraph] = useState<V3Graph | null>(null);
 
-  // Build graph from V2 seed data
-  const { nodes, edges } = useMemo(() => {
+  // Build full graph and create collapsed view
+  useEffect(() => {
     console.log('[V3 Canvas] Building graph from seed data...');
     
     // Adapt V2 seed to V3 format
@@ -45,16 +50,39 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
       edgeCount: v3Graph.edges.length
     });
     
-    // Run layout engine
+    // Run layout engine on full graph
+    const positioned = enableMetrics 
+      ? buildEduTreeGraphWithMetrics(v3Graph).graph
+      : buildEduTreeGraph(v3Graph);
+    
+    setFullGraph(positioned);
+    
+    // Create collapsed view (progressive disclosure)
+    const { visibleNodes, visibleEdges, bundles: bundleMap } = createCollapsedView(positioned);
+    
+    console.log('[V3 Canvas] Progressive disclosure:', {
+      fullNodes: positioned.nodes.length,
+      visibleNodes: visibleNodes.length,
+      bundles: bundleMap.size
+    });
+    
+    // Position the collapsed view
+    const collapsedGraph = { nodes: visibleNodes, edges: visibleEdges };
+    const positionedCollapsed = enableMetrics
+      ? buildEduTreeGraphWithMetrics(collapsedGraph).graph
+      : buildEduTreeGraph(collapsedGraph);
+    
+    setBundles(bundleMap);
+    setCurrentGraph(positionedCollapsed);
+    
     if (enableMetrics) {
-      const { graph, metrics } = buildEduTreeGraphWithMetrics(v3Graph);
+      const { metrics } = buildEduTreeGraphWithMetrics(collapsedGraph);
       setLayoutMetrics(metrics);
       console.log('[V3 Canvas] Layout metrics:', metrics);
-      return graph;
-    } else {
-      return buildEduTreeGraph(v3Graph);
     }
   }, [enableMetrics]);
+
+  const { nodes, edges } = currentGraph ?? { nodes: [], edges: [] };
 
   // Convert V3 nodes to ReactFlow nodes
   const reactFlowNodes: Node[] = useMemo(() => {
@@ -115,6 +143,31 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
     setSelectedNodeId(null);
     setFocusedEdges(new Set());
   }, []);
+
+  // Handle bundle expansion/collapse
+  const handleBundleToggle = useCallback((bundleId: string) => {
+    if (!fullGraph || !currentGraph) return;
+    
+    const bundle = bundles.get(bundleId);
+    if (!bundle) return;
+    
+    const isExpanded = !currentGraph.nodes.some(n => n.id === bundleId);
+    
+    let newGraph: V3Graph;
+    if (isExpanded) {
+      // Collapse
+      newGraph = collapseBundle(bundleId, currentGraph, bundles);
+      console.log('[V3 Canvas] Collapsed bundle:', bundleId);
+    } else {
+      // Expand
+      newGraph = expandBundle(bundleId, currentGraph, fullGraph, bundles);
+      console.log('[V3 Canvas] Expanded bundle:', bundleId);
+    }
+    
+    // Re-position after expansion/collapse
+    const positioned = buildEduTreeGraph(newGraph);
+    setCurrentGraph(positioned);
+  }, [fullGraph, currentGraph, bundles]);
 
   const handleValidateOverlaps = useCallback(() => {
     const result = validateNoOverlaps(nodes, LAYOUT_TOKENS);
