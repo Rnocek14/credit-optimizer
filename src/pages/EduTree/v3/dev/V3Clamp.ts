@@ -20,6 +20,7 @@ const snap = (n: number, g: number) => Math.round(n / g) * g;
 const stepY = (t: Tokens) => t.NODE_MAX_HEIGHT + t.LANE_GAP;
 const yearRowY = (y: number, t: Tokens) => (y - 1) * stepY(t);
 const gateSlotY = (y: number, t: Tokens) => yearRowY(y, t) + stepY(t) / 2;
+const TRACK_SPLIT_OFFSET = 24; // snap-safe (multiple of GRID)
 
 const laneX = (node: V3Node, t: Tokens) => {
   const y = (node.data?.year ?? 1) as 1 | 2 | 3 | 4;
@@ -55,7 +56,14 @@ function clampNode(n: V3Node, t: Tokens): V3Node {
     out.targetPosition = 'top';
   } else if (isBundle(out)) {
     const yr = (out.data?.year ?? 1) as 1 | 2 | 3 | 4;
-    out.position.y = snap(yearRowY(yr, t), t.GRID);
+    let y = yearRowY(yr, t);
+    
+    // Preserve fork visual for Y3 tracks
+    if (yr === 3 && out.data?.trackId) {
+      y += out.data.trackId === 'se' ? -TRACK_SPLIT_OFFSET : TRACK_SPLIT_OFFSET;
+    }
+    
+    out.position.y = snap(y, t.GRID);
     // bundles connect left→right along the spine
     out.sourcePosition = 'right';
     out.targetPosition = 'left';

@@ -33,7 +33,13 @@ export default function V3TrackBundleNode({ data }: Props) {
           " px-3 py-2 shadow-md select-none w-full overflow-hidden"
         }
       >
-      <Handle type="target" position={Position.Left} />
+      {/* Spine handles (horizontal) */}
+      <Handle id="west" type="target" position={Position.Left} />
+      <Handle id="east" type="source" position={Position.Right} />
+      
+      {/* Gate handles (vertical) */}
+      <Handle id="north" type="target" position={Position.Top} />
+      <Handle id="south" type="source" position={Position.Bottom} />
       
       <div className="flex items-center justify-between gap-2">
         <div className="font-semibold text-sm truncate">{title}</div>
@@ -59,8 +65,6 @@ export default function V3TrackBundleNode({ data }: Props) {
           </>
         )}
       </div>
-      
-        <Handle type="source" position={Position.Right} />
       </div>
     </div>
   );

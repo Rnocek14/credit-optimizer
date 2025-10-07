@@ -276,19 +276,24 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
       const isSpine = edge.kind === 'spine';
       const isFocused = focusedEdges.size === 0 || focusedEdges.has(edge.id);
       
+      // For gate edges, connect vertically: bundle.south -> gate.north or gate.south -> bundle.north
+      // For spine edges, connect horizontally: bundle.east -> bundle.west
+      const handleProps = isGate
+        ? { sourceHandle: 'south', targetHandle: 'north', type: 'smoothstep' as const, pathOptions: { borderRadius: 8 } }
+        : { sourceHandle: 'east',  targetHandle: 'west',  type: 'step' as const,       pathOptions: { borderRadius: 12 } };
+      
       return {
         id: edge.id,
         source: edge.source,
         target: edge.target,
-        type: isGate ? 'smoothstep' : isSpine ? 'step' : 'default',
-        pathOptions: isSpine ? { borderRadius: 12 } : { borderRadius: 8 },
+        ...handleProps,
         markerEnd: { 
           type: MarkerType.ArrowClosed, 
           width: 18, 
           height: 18,
           color: isGate ? '#6366f1' : '#94a3b8'
         },
-        animated: isGate && isFocused,
+        animated: isGate,
         style: {
           stroke: isGate ? '#6366f1' : '#94a3b8',
           strokeWidth: 2,
