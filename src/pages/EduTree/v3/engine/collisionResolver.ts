@@ -69,28 +69,49 @@ export function resolveCollisions(
     }
   }
 
-  // Ensure "any" (gates) never collide with track nodes in same year & column
+  // Ensure "any" (gates) never collide with track nodes in same year fork group
+  const yearBaseX = (year: number) => (t.YEAR_COL as any)[`Y${year}`] ?? t.YEAR_COL.Y1;
+  
   for (let i = 0; i < out.length; i++) {
     for (let j = i + 1; j < out.length; j++) {
       const a = out[i], b = out[j];
+      const year = a.data.year ?? b.data.year ?? 0;
       const sameYear = (a.data.year ?? 0) === (b.data.year ?? 0);
-
-      // same coarse column
-      const sameCol = within(a.position.x, b.position.x, t.COL_TOLERANCE * 2);
-      if (!sameYear || !sameCol) continue;
+      if (!sameYear || !year) continue;
 
       const aAny = (a.data.trackId ?? 'any') === 'any';
       const bAny = (b.data.trackId ?? 'any') === 'any';
-      if (!(aAny !== bAny)) continue; // only handle any-vs-track (XOR)
+      if (!((aAny && !bAny) || (!aAny && bAny))) continue; // XOR: gate vs track only
 
-      // Guarantee min horizontal separation
-      const minDX = t.NODE_WIDTH + t.H_GAP;
-      const dx = b.position.x - a.position.x;
+      // Consider them in the same fork group if both are within the fork band around baseX
+      const baseX = yearBaseX(year);
+      const inForkBand = (x: number) => Math.abs(x - baseX) <= (t.TRACK_COLUMN_OFFSET + t.GRID);
+      if (!(inForkBand(a.position.x) && inForkBand(b.position.x))) continue;
 
-      if (Math.abs(dx) < minDX) {
-        const push = snap(minDX - Math.abs(dx), t.GRID);
-        if (dx >= 0) b.position.x += push;
-        else a.position.x -= push;
+      // Identify which is gate, which is track
+      const gateNode = aAny ? a : b;
+      const trackNode = aAny ? b : a;
+
+      // Minimum separation requirements
+      const minLaneDX = t.TRACK_COLUMN_OFFSET;  // 120
+      const minNodeDX = t.NODE_WIDTH + t.H_GAP; // 204
+
+      // 1) Push track to its proper lane if it drifted too close to center
+      const dxFromBase = trackNode.position.x - baseX;
+      if (Math.abs(dxFromBase) < minLaneDX) {
+        const dir = (trackNode.data.trackId === 'ds') ? +1 : -1;
+        const need = snap(minLaneDX - Math.abs(dxFromBase), t.GRID);
+        trackNode.position.x += dir * need;
+      }
+
+      // 2) If still too close to each other, separate further
+      const dx = Math.abs(trackNode.position.x - gateNode.position.x);
+      if (dx < minNodeDX) {
+        const need = snap(minNodeDX - dx, t.GRID);
+        const half = Math.floor(need / 2);
+        const dir = (trackNode.position.x > gateNode.position.x) ? -1 : +1;
+        gateNode.position.x += -dir * half;           // small nudge toward center
+        trackNode.position.x += dir * (need - half);  // larger nudge outward
       }
     }
   }

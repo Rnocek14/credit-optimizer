@@ -73,17 +73,17 @@ describe('collisionResolver', () => {
     expect(res.hasOverlaps).toBe(false);
   });
 
-  it('gate in center column does not overlap SE/DS after resolve', () => {
+  it('gate centered at Y3 never overlaps SE/DS after resolution', () => {
     const gate: V3Node = { 
       id: 'gate-track', 
       type: 'gate', 
-      data: { year: 3 }, 
+      data: { year: 3, programId: 'bs_cs' }, 
       position: { x: LAYOUT_TOKENS.YEAR_COL.Y3, y: 0 } 
     };
     const se: V3Node = { 
       id: 'y3-se', 
       type: 'requirement', 
-      data: { year: 3, trackId: 'se' }, 
+      data: { year: 3, programId: 'bs_cs', trackId: 'se' }, 
       position: { x: LAYOUT_TOKENS.YEAR_COL.Y3 - LAYOUT_TOKENS.TRACK_COLUMN_OFFSET, y: 0 } 
     };
     const nodes = [gate, se];
