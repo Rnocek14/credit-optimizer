@@ -13,6 +13,14 @@ export interface V3NodeData {
   trackId?: TrackId;
   title?: string;
   anchorX?: number; // For gates: locked X position to prevent drift
+  
+  // Bundle-specific fields
+  childCount?: number;
+  totalCredits?: number;
+  isExpanded?: boolean;
+  
+  // Requirement-specific fields  
+  credits_needed?: number;
 }
 
 export interface V3Node {
@@ -26,7 +34,7 @@ export interface V3Edge {
   id: string;
   source: string;
   target: string;
-  kind: 'prereq' | 'gate' | 'advisory' | 'coreq';
+  kind: 'prereq' | 'gate' | 'advisory' | 'coreq' | 'spine';
 }
 
 export interface V3Graph {
