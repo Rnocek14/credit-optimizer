@@ -112,23 +112,36 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
 
   // Convert V3 nodes to ReactFlow nodes (wire onToggle to bundle nodes)
   const reactFlowNodes: Node[] = useMemo(() => {
-    return nodes.map((node: V3NodeType) => ({
-      id: node.id,
-      type: node.type,
-      position: node.position,
-      data: {
+    return nodes.map((node: V3NodeType) => {
+      const baseData = {
         ...node.data,
         label: node.data.title || node.id,
-        onToggle: node.type === 'track-bundle' 
-          ? () => handleBundleToggle(node.id) 
-          : undefined,
-        // Add any additional data needed by V2 components
         area: 'core',
         credits_needed: node.data.credits_needed ?? 3,
         rule_type: 'ALL'
+      };
+      
+      // Only add onToggle if handleBundleToggle is ready
+      if (node.type === 'track-bundle' && fullGraph && currentGraph) {
+        return {
+          id: node.id,
+          type: node.type,
+          position: node.position,
+          data: {
+            ...baseData,
+            onToggle: () => handleBundleToggle(node.id)
+          }
+        };
       }
-    }));
-  }, [nodes, handleBundleToggle]);
+      
+      return {
+        id: node.id,
+        type: node.type,
+        position: node.position,
+        data: baseData
+      };
+    });
+  }, [nodes, handleBundleToggle, fullGraph, currentGraph]);
 
   // Convert V3 edges to ReactFlow edges with focus mode
   const reactFlowEdges: Edge[] = useMemo(() => {
