@@ -291,9 +291,14 @@ const App = () => {
             path="/edu-tree-v2" 
             element={<EduTreeV2Page />}
           />
-          {/* EduTree V3 - Week 1: Pure engine implementation */}
+          {/* EduTree V3 - Redirect to flag-based route */}
           <Route 
             path="/edu-tree-v3" 
+            element={<Navigate to="/edu-tree?v3=1" replace />}
+          />
+          {/* EduTree V3 Harness - Dev-only Week-1 engine demo */}
+          <Route 
+            path="/edu-tree-v3-harness" 
             element={<EduTreeV3Route />}
           />
           {/* Sandbox route for TrackOverlayPOC (dev only) */}
