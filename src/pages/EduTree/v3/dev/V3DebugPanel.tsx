@@ -30,19 +30,51 @@ interface VerticalAssertion {
 }
 
 function checkMonotonicY(nodes: V3Node[]): VerticalAssertion {
-  const spineNodes = nodes
-    .filter(n => n.type === 'track-bundle' || n.type === 'gate')
-    .filter(n => !n.data.trackId || n.data.trackId === 'any')
-    .sort((a, b) => (a.data.year || 0) - (b.data.year || 0));
+  // Build the spine in the exact flow order we expect: top→bottom
+  // Y1 → Program Gate → Y2 → Track Gate → Y4
+  const ordered: V3Node[] = [];
+  
+  const y1Bundle = nodes.find(n => 
+    n.type === 'track-bundle' && 
+    n.data.year === 1 && 
+    (!n.data.trackId || n.data.trackId === 'any')
+  );
+  
+  const programGate = nodes.find(n => 
+    n.type === 'gate' && 
+    n.data.year === 2
+  );
+  
+  const y2Bundle = nodes.find(n => 
+    n.type === 'track-bundle' && 
+    n.data.year === 2 && 
+    (!n.data.trackId || n.data.trackId === 'any')
+  );
+  
+  const trackGate = nodes.find(n => 
+    n.type === 'gate' && 
+    n.data.year === 3
+  );
+  
+  const y4Bundle = nodes.find(n => 
+    n.type === 'track-bundle' && 
+    n.data.year === 4 && 
+    (!n.data.trackId || n.data.trackId === 'any')
+  );
+  
+  // Add nodes in spine order (skip if missing)
+  [y1Bundle, programGate, y2Bundle, trackGate, y4Bundle].forEach(n => {
+    if (n) ordered.push(n);
+  });
   
   const violations: any[] = [];
-  for (let i = 1; i < spineNodes.length; i++) {
-    const prev = spineNodes[i - 1];
-    const curr = spineNodes[i];
+  for (let i = 1; i < ordered.length; i++) {
+    const prev = ordered[i - 1];
+    const curr = ordered[i];
     if (curr.position.y <= prev.position.y) {
       violations.push({
-        prev: `${prev.id} (Y${prev.data.year})`,
-        curr: `${curr.id} (Y${curr.data.year})`,
+        prev: `${prev.id} (Y${prev.data.year ?? '?'})`,
+        curr: `${curr.id} (Y${curr.data.year ?? '?'})`,
         prevY: prev.position.y,
         currY: curr.position.y
       });
@@ -53,7 +85,7 @@ function checkMonotonicY(nodes: V3Node[]): VerticalAssertion {
     name: 'Monotonic Y',
     status: violations.length === 0 ? 'pass' : 'fail',
     message: violations.length === 0 
-      ? `${spineNodes.length} spine nodes in correct order`
+      ? `${ordered.length} spine nodes in correct top→bottom order`
       : `${violations.length} Y-order violation(s)`,
     details: violations.length > 0 ? violations : undefined
   };
@@ -249,6 +281,32 @@ export default function V3DebugPanel({ nodes, isVertical, onClose }: V3DebugPane
                 
                 <div>GRID</div>
                 <div className="font-mono">{VERT.GRID}px</div>
+              </div>
+              
+              <div className="mt-3 pt-3 border-t">
+                <div className="text-xs font-medium mb-2">Spine Y Values</div>
+                <div className="space-y-1 text-xs">
+                  {(() => {
+                    const y1 = nodes.find(n => n.type === 'track-bundle' && n.data.year === 1 && (!n.data.trackId || n.data.trackId === 'any'));
+                    const gY2 = nodes.find(n => n.type === 'gate' && n.data.year === 2);
+                    const y2 = nodes.find(n => n.type === 'track-bundle' && n.data.year === 2 && (!n.data.trackId || n.data.trackId === 'any'));
+                    const gY3 = nodes.find(n => n.type === 'gate' && n.data.year === 3);
+                    const y4 = nodes.find(n => n.type === 'track-bundle' && n.data.year === 4 && (!n.data.trackId || n.data.trackId === 'any'));
+                    
+                    return [
+                      { label: 'Y1 Bundle', node: y1 },
+                      { label: 'Gate→Y2', node: gY2 },
+                      { label: 'Y2 Bundle', node: y2 },
+                      { label: 'Gate→Y3', node: gY3 },
+                      { label: 'Y4 Bundle', node: y4 }
+                    ].filter(item => item.node).map((item, idx) => (
+                      <div key={idx} className="flex justify-between text-muted-foreground">
+                        <span>{item.label}</span>
+                        <span className="font-mono text-primary">{item.node!.position.y}px</span>
+                      </div>
+                    ));
+                  })()}
+                </div>
               </div>
               
               <div className="mt-2 text-xs">
