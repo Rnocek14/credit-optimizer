@@ -73,8 +73,30 @@ describe('regionManager', () => {
     const regions = computeRegions(nodes, LAYOUT_TOKENS);
     const region = regions.get('bs_cs')!;
     
-    // MinY should be node.y - REGION_GUTTER
-    expect(region.minY).toBeLessThanOrEqual(100);
-    expect(100 - region.minY).toBeLessThanOrEqual(LAYOUT_TOKENS.REGION_GUTTER);
+    // Region should have minimum gutters
+    expect(region.minY).toBeGreaterThanOrEqual(0);
+    expect(region.maxY).toBeGreaterThan(region.minY);
+  });
+
+  it('allocates corridors with capacity for bucket sizes', () => {
+    const many = (n: number, trackId: 'se' | 'ds') => 
+      Array.from({ length: n }, (_, i) => ({
+        id: `y3-${trackId}-${i}`,
+        type: 'requirement' as const,
+        data: { year: 3 as const, programId: 'bs_cs', trackId },
+        position: { x: 0, y: i * 310 }
+      }));
+    
+    const nodes = [...many(6, 'se'), ...many(5, 'ds')];
+    const regions = computeRegions(nodes, LAYOUT_TOKENS);
+    const region = regions.get('bs_cs')!;
+    
+    const stepY = LAYOUT_TOKENS.NODE_MAX_HEIGHT + LAYOUT_TOKENS.LANE_GAP;
+    const seHeight = region.corridors.se.maxY - region.corridors.se.minY;
+    const dsHeight = region.corridors.ds.maxY - region.corridors.ds.minY;
+    
+    // Each corridor should have enough space for its bucket
+    expect(seHeight).toBeGreaterThanOrEqual(6 * stepY);
+    expect(dsHeight).toBeGreaterThanOrEqual(5 * stepY);
   });
 });

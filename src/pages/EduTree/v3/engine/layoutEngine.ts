@@ -9,32 +9,46 @@ export function calculateLayout(
   t: typeof import('../utils/layoutTokensV3').LAYOUT_TOKENS
 ): V3Node[] {
   const out = nodes.map(n => ({ ...n }));
-  
-  for (const n of out) {
-    const year = n.data.year ?? 1;
-    const baseX = (t.YEAR_COL as any)[`Y${year}`] ?? t.YEAR_COL.Y1;
-    
-    // Apply track lane offset for SE/DS; gates stay centered
-    const laneX =
-      n.data.trackId === 'se' ? baseX - t.TRACK_COLUMN_OFFSET
-    : n.data.trackId === 'ds' ? baseX + t.TRACK_COLUMN_OFFSET
-    : baseX;
-    
-    n.position.x = snap(laneX, t.GRID);
+  const stepY = t.NODE_MAX_HEIGHT + t.LANE_GAP;
 
-    // Y seed: SE upper, DS lower, gates between
-    const isGate = n.type === 'gate' || n.id?.includes('gate');
-    
-    if (isGate) {
-      // Position gates vertically between SE and DS lanes
-      n.position.y = snap(Math.floor((t.NODE_BASE_HEIGHT + t.LANE_GAP) * 0.5), t.GRID);
-      // Anchor gates in X so collision resolver never moves them horizontally
-      n.data.anchorX = n.position.x;
-    } else {
-      // Track-based stacking: SE upper (idx=0), DS lower (idx=1)
-      const laneSeed = n.data.trackId === 'ds' ? 1 : 0;
-      n.position.y = snap((t.NODE_BASE_HEIGHT + t.LANE_GAP) * laneSeed, t.GRID);
-    }
+  // Bucket by (program, year, track) for deterministic stacking
+  const buckets = new Map<string, V3Node[]>();
+  const bucketKey = (n: V3Node) => {
+    const pid = n.data.programId ?? 'unknown';
+    const year = n.data.year ?? 1;
+    const trackKey = n.type === 'gate' || !n.data.trackId ? 'any' : n.data.trackId;
+    return `${pid}|Y${year}|${trackKey}`;
+  };
+
+  for (const n of out) {
+    const key = bucketKey(n);
+    if (!buckets.has(key)) buckets.set(key, []);
+    buckets.get(key)!.push(n);
+  }
+
+  // Assign X and stacked Y inside each bucket
+  for (const [key, arr] of buckets) {
+    const [, yStr, trackKey] = key.split('|');
+    const year = Number(yStr.slice(1)) as 1 | 2 | 3 | 4;
+    const baseX = (t.YEAR_COL as any)[`Y${year}`] ?? t.YEAR_COL.Y1;
+
+    const laneX =
+      trackKey === 'se' ? baseX - t.TRACK_COLUMN_OFFSET :
+      trackKey === 'ds' ? baseX + t.TRACK_COLUMN_OFFSET :
+      baseX;
+
+    // Stable sort to keep positions deterministic
+    arr.sort((a, b) => a.id.localeCompare(b.id));
+
+    arr.forEach((n, i) => {
+      n.position.x = snap(laneX, t.GRID);
+      n.position.y = snap(i * stepY, t.GRID);
+      
+      // Anchor gates at center so collision resolver never moves them horizontally
+      if (n.type === 'gate' || n.id?.includes('gate')) {
+        n.data.anchorX = baseX;
+      }
+    });
   }
   
   return out;

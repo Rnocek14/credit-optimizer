@@ -20,32 +20,41 @@ export function computeRegions(
     byProgram.get(pid)!.push(n);
   }
 
+  const stepY = t.NODE_MAX_HEIGHT + t.LANE_GAP;
   const regions = new Map<string, ProgramRegion>();
   
   for (const [pid, arr] of byProgram.entries()) {
-    let minY = Infinity, maxY = -Infinity;
-    
+    // Count nodes by track across all years to ensure corridors have capacity
+    const counts = { se: 0, ds: 0, any: 0 };
     for (const n of arr) {
-      minY = Math.min(minY, n.position.y);
-      maxY = Math.max(maxY, n.position.y);
+      const tk = (n.type === 'gate' || !n.data.trackId ? 'any' : n.data.trackId) as 'se' | 'ds' | 'any';
+      counts[tk] = (counts[tk] ?? 0) + 1;
     }
-    
-    if (!isFinite(minY)) minY = 0;
-    if (!isFinite(maxY)) maxY = 0;
 
-    minY = Math.max(0, minY - t.REGION_GUTTER);
-    maxY = maxY + t.REGION_GUTTER + t.NODE_MAX_HEIGHT;
+    // Calculate required space for each track
+    const neededSe = Math.max(1, counts.se) * stepY;
+    const neededDs = Math.max(1, counts.ds) * stepY;
+    const needed = neededSe + t.TRACK_GUTTER + neededDs;
 
-    const total = Math.max(t.NODE_MAX_HEIGHT * 2 + t.TRACK_GUTTER * 4, maxY - minY);
-    const mid = minY + total / 2;
+    const minY = 0;
+    const maxY = needed + t.REGION_GUTTER * 2;
 
     regions.set(pid, {
       minY, 
       maxY,
       corridors: {
-        se:  { minY: minY + t.TRACK_GUTTER, maxY: mid - t.TRACK_GUTTER },
-        ds:  { minY: mid  + t.TRACK_GUTTER, maxY: maxY - t.TRACK_GUTTER },
-        any: { minY: minY + t.TRACK_GUTTER, maxY: maxY - t.TRACK_GUTTER }
+        se:  { 
+          minY: minY + t.REGION_GUTTER, 
+          maxY: minY + t.REGION_GUTTER + neededSe 
+        },
+        ds:  { 
+          minY: minY + t.REGION_GUTTER + neededSe + t.TRACK_GUTTER,
+          maxY: minY + t.REGION_GUTTER + neededSe + t.TRACK_GUTTER + neededDs 
+        },
+        any: { 
+          minY: minY + t.TRACK_GUTTER, 
+          maxY: maxY - t.TRACK_GUTTER 
+        }
       }
     });
   }

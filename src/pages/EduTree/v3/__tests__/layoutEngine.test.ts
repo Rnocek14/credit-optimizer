@@ -38,4 +38,31 @@ describe('layoutEngine', () => {
     expect(out.find(n => n.id === 'y3-ds')?.position.x)
       .toBe(LAYOUT_TOKENS.YEAR_COL.Y3 + LAYOUT_TOKENS.TRACK_COLUMN_OFFSET);
   });
+
+  it('stacks multiple nodes in same bucket deterministically', () => {
+    const many = (n: number, trackId: 'se' | 'ds') => 
+      Array.from({ length: n }, (_, i) => ({
+        id: `y3-${trackId}-${i}`,
+        type: 'requirement' as const,
+        data: { year: 3 as const, programId: 'bs_cs', trackId },
+        position: { x: 0, y: 0 }
+      }));
+    
+    const nodes = [...many(6, 'se'), ...many(5, 'ds')];
+    const out = calculateLayout(nodes, LAYOUT_TOKENS);
+    
+    // Verify Y positions are stacked with proper spacing
+    const seNodes = out.filter(n => n.data.trackId === 'se').sort((a, b) => a.position.y - b.position.y);
+    const dsNodes = out.filter(n => n.data.trackId === 'ds').sort((a, b) => a.position.y - b.position.y);
+    
+    const stepY = LAYOUT_TOKENS.NODE_MAX_HEIGHT + LAYOUT_TOKENS.LANE_GAP;
+    
+    seNodes.forEach((n, i) => {
+      expect(n.position.y).toBe(i * stepY);
+    });
+    
+    dsNodes.forEach((n, i) => {
+      expect(n.position.y).toBe(i * stepY);
+    });
+  });
 });
