@@ -258,7 +258,7 @@ function ensureHUD() {
   el.innerHTML = `
     <div style="opacity:.85">V3 HUD</div>
     <div id="v3hud-body"></div>
-    <div style="margin-top:6px;opacity:.6">Shift+D to toggle • Shift+O overlaps • Shift+M measure</div>
+    <div style="margin-top:6px;opacity:.6">Shift+D toggle • Shift+O overlaps • Shift+M measure • Shift+C copy report</div>
   `;
   document.body.appendChild(el);
   state.hudEl = el;
@@ -290,6 +290,15 @@ function installKeybinds(graphGetter: ()=>V3Graph | null, tokensGetter: ()=>Toke
     }
     if (e.key.toLowerCase()==='o') assertNoOverlaps(g.nodes, t);
     if (e.key.toLowerCase()==='m') dom.measureWidths();
+    if (e.key.toLowerCase()==='c') {
+      const report = generateReport(g, t);
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(report).then(() => {
+          console.log('📋 Report copied to clipboard!');
+        });
+      }
+      console.log(report);
+    }
   });
 }
 
@@ -323,6 +332,83 @@ function wrapBuild(fn: (g:V3Graph)=>{ graph:V3Graph, metrics?:any }) {
     const out = perf.withTiming('buildEduTreeGraph', () => fn(g));
     return out;
   };
+}
+
+// ---------- copyable report ----------
+function generateReport(graph: V3Graph, tokens: Tokens): string {
+  const sy = stepY(tokens);
+  const overlaps = detectOverlaps(graph.nodes, tokens);
+  const widths = dom.measureWidths();
+  
+  const bundles = graph.nodes.filter(n => n.type === 'track-bundle');
+  const gates = graph.nodes.filter(n => n.type === 'gate' || String(n.id).includes('gate'));
+  
+  const nodeTable = graph.nodes.map(n => 
+    `${n.id.padEnd(20)} | ${n.type.padEnd(15)} | Y${n.data?.year || '-'} | ${(n.data?.trackId || 'any').padEnd(4)} | x:${n.position.x.toString().padStart(5)} y:${n.position.y.toString().padStart(5)} | ${n.sourcePosition || '-'}→${n.targetPosition || '-'}`
+  ).join('\n');
+  
+  const edgeTable = graph.edges.map(e => {
+    const src = graph.nodes.find(n => n.id === e.source);
+    const tgt = graph.nodes.find(n => n.id === e.target);
+    const sy = src?.data?.year ?? 0;
+    const ty = tgt?.data?.year ?? 99;
+    const ok = e.kind === 'spine' ? (sy < ty ? '✅' : '❌') : '-';
+    return `${e.id.padEnd(25)} | ${(e.kind || '-').padEnd(6)} | ${e.source.padEnd(20)} → ${e.target.padEnd(20)} | ${ok}`;
+  }).join('\n');
+  
+  return `
+═══════════════════════════════════════════════════════════
+V3 LAYOUT DIAGNOSTIC REPORT
+═══════════════════════════════════════════════════════════
+
+TOKENS:
+  NODE_WIDTH: ${tokens.NODE_WIDTH}
+  NODE_MAX_HEIGHT: ${tokens.NODE_MAX_HEIGHT}
+  LANE_GAP: ${tokens.LANE_GAP}
+  TRACK_COLUMN_OFFSET: ${tokens.TRACK_COLUMN_OFFSET}
+  GRID: ${tokens.GRID}
+  stepY: ${sy}
+  YEAR_COL: Y1:${tokens.YEAR_COL.Y1} Y2:${tokens.YEAR_COL.Y2} Y3:${tokens.YEAR_COL.Y3} Y4:${tokens.YEAR_COL.Y4}
+
+GRAPH SUMMARY:
+  Total nodes: ${graph.nodes.length}
+  Total edges: ${graph.edges.length}
+  Bundles: ${bundles.length}
+  Gates: ${gates.length}
+  Overlaps: ${overlaps.length}
+
+BUNDLE POSITIONS (expected row alignment):
+${bundles.map(n => {
+  const yr = (n.data?.year ?? 1) as 1|2|3|4;
+  const exp = yearRow(yr, tokens);
+  const drift = Math.abs(n.position.y - exp);
+  return `  ${n.id.padEnd(20)} Y${yr} | x:${n.position.x.toString().padStart(5)} y:${n.position.y.toString().padStart(5)} | expected y:${exp.toString().padStart(5)} | drift:${drift.toFixed(1)} ${drift > tokens.GRID ? '❌' : '✅'}`;
+}).join('\n')}
+
+GATE POSITIONS (expected mid-slot):
+${gates.map(n => {
+  const yr = (n.data?.year ?? 1) as 1|2|3|4;
+  const exp = gateSlot(yr, tokens);
+  const drift = Math.abs(n.position.y - exp);
+  return `  ${n.id.padEnd(20)} Y${yr} | x:${n.position.x.toString().padStart(5)} y:${n.position.y.toString().padStart(5)} | expected y:${exp.toString().padStart(5)} | drift:${drift.toFixed(1)} ${drift > tokens.GRID ? '❌' : '✅'}`;
+}).join('\n')}
+
+ALL NODES:
+  id                   | type            | yr | lane | position       | handles
+  ${nodeTable}
+
+EDGES:
+  id                        | kind   | source               → target               | ok
+  ${edgeTable}
+
+${overlaps.length > 0 ? `OVERLAPS (${overlaps.length}):\n${overlaps.map(o => `  ❌ ${o.A} ↔ ${o.B}`).join('\n')}` : '✅ NO OVERLAPS'}
+
+DOM WIDTHS:
+  Min: ${widths.min}px | Avg: ${widths.avg}px | Max: ${widths.max}px
+  ${widths.max > tokens.NODE_WIDTH ? '❌ Some nodes exceed NODE_WIDTH!' : '✅ All nodes within NODE_WIDTH'}
+
+═══════════════════════════════════════════════════════════
+`;
 }
 
 // ---------- public API ----------
@@ -365,6 +451,27 @@ const api = {
   dom,
   perf,
   snap,
+  copyReport() {
+    const graph = (window as any).__V3DBG_lastGraph;
+    if (!graph || !state.tokens) {
+      console.warn('No graph or tokens available. Ensure afterRender() was called.');
+      return '';
+    }
+    const report = generateReport(graph, state.tokens);
+    
+    // Copy to clipboard
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(report).then(() => {
+        console.log('📋 Report copied to clipboard!');
+      }).catch(err => {
+        console.error('Failed to copy:', err);
+      });
+    }
+    
+    // Also log it
+    console.log(report);
+    return report;
+  }
 };
 
 // install HUD keybinds (you can replace getters with your own closures)
