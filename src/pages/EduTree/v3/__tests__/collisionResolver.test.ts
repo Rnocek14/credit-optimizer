@@ -35,4 +35,29 @@ describe('collisionResolver', () => {
     expect(seNode).toBeDefined();
     expect(dsNode).toBeDefined();
   });
+
+  it('keeps nodes inside their corridor', () => {
+    const nodes = [
+      base('seA', 0, 'se'),
+      base('seB', 10, 'se'),
+      base('dsA', 0, 'ds'),
+    ];
+    const regions = computeRegions(nodes, LAYOUT_TOKENS);
+    const out = resolveCollisions(nodes, regions, LAYOUT_TOKENS);
+    const region = regions.get('bs_cs')!;
+    
+    out.forEach(n => {
+      const corridor = n.data.trackId === 'ds' ? region.corridors.ds : region.corridors.se;
+      expect(n.position.y).toBeGreaterThanOrEqual(corridor.minY);
+      expect(n.position.y).toBeLessThanOrEqual(corridor.maxY - LAYOUT_TOKENS.NODE_MAX_HEIGHT);
+    });
+  });
+
+  it('is deterministic (same input -> same positions)', () => {
+    const nodes = [base('A', 0, 'se'), base('B', 0, 'se')];
+    const regions = computeRegions(nodes, LAYOUT_TOKENS);
+    const r1 = resolveCollisions([...nodes], regions, LAYOUT_TOKENS);
+    const r2 = resolveCollisions([...nodes], regions, LAYOUT_TOKENS);
+    expect(JSON.stringify(r1.map(n => n.position))).toBe(JSON.stringify(r2.map(n => n.position)));
+  });
 });
