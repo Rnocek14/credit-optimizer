@@ -102,14 +102,14 @@ export function createCollapsedView(fullGraph: V3Graph): {
   const y1 = idOf("y1-bundle");
   const y2 = idOf("y2-bundle");
   const programGate = gates.find((g) => g.data.year === 1)?.id;
-  add(y1, programGate, "spine");
+  add(y1, programGate, "gate"); // Gate edges, not spine
   add(programGate, y2, "gate");
 
   // y2 -> trackGate -> y3-se / y3-ds
   const trackGate = gates.find((g) => g.data.year === 2)?.id;
   const y3se = idOf("y3-se-bundle");
   const y3ds = idOf("y3-ds-bundle");
-  add(y2, trackGate, "spine");
+  add(y2, trackGate, "gate"); // Gate edges, not spine
   add(trackGate, y3se, "gate");
   add(trackGate, y3ds, "gate");
 

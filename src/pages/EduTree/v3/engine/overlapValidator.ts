@@ -44,13 +44,20 @@ export function validateNoOverlaps(
   const overlaps: Array<{ a: string; b: string }> = [];
   const diagnostics: OverlapDiagnostic[] = [];
   
+  // Helper to get per-type heights
+  const getHeight = (node: V3Node) => 
+    node.type === 'gate' ? t.GATE_HEIGHT : t.NODE_MAX_HEIGHT;
+  
   for (let i = 0; i < nodes.length; i++) {
     for (let j = i + 1; j < nodes.length; j++) {
       const A = nodes[i], B = nodes[j];
+      const heightA = getHeight(A);
+      const heightB = getHeight(B);
+      
       const xOverlap = !(A.position.x + t.NODE_WIDTH <= B.position.x ||
                          B.position.x + t.NODE_WIDTH <= A.position.x);
-      const yOverlap = !(A.position.y + t.NODE_MAX_HEIGHT <= B.position.y ||
-                         B.position.y + t.NODE_MAX_HEIGHT <= A.position.y);
+      const yOverlap = !(A.position.y + heightA <= B.position.y ||
+                         B.position.y + heightB <= A.position.y);
       
       if (xOverlap && yOverlap) {
         overlaps.push({ a: A.id, b: B.id });
@@ -64,14 +71,17 @@ export function validateNoOverlaps(
         const xDriftA = Math.abs(A.position.x - laneCenterA) > t.GRID / 2;
         const xDriftB = Math.abs(B.position.x - laneCenterB) > t.GRID / 2;
         
+        const heightA = getHeight(A);
+        const heightB = getHeight(B);
+        
         const horizontalGap = Math.min(
           Math.abs(A.position.x - (B.position.x + t.NODE_WIDTH)),
           Math.abs(B.position.x - (A.position.x + t.NODE_WIDTH))
         );
         
         const verticalGap = Math.min(
-          Math.abs(A.position.y - (B.position.y + t.NODE_MAX_HEIGHT)),
-          Math.abs(B.position.y - (A.position.y + t.NODE_MAX_HEIGHT))
+          Math.abs(A.position.y - (B.position.y + heightA)),
+          Math.abs(B.position.y - (A.position.y + heightB))
         );
         
         diagnostics.push({
@@ -79,8 +89,8 @@ export function validateNoOverlaps(
           b: B.id,
           aX: [A.position.x, A.position.x + t.NODE_WIDTH],
           bX: [B.position.x, B.position.x + t.NODE_WIDTH],
-          aY: [A.position.y, A.position.y + t.NODE_MAX_HEIGHT],
-          bY: [B.position.y, B.position.y + t.NODE_MAX_HEIGHT],
+          aY: [A.position.y, A.position.y + heightA],
+          bY: [B.position.y, B.position.y + heightB],
           yearA: A.data.year,
           yearB: B.data.year,
           programA: A.data.programId,

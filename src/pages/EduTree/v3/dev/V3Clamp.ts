@@ -6,6 +6,7 @@ import type { V3Node, V3Edge, V3Graph } from '../types/v3';
 export type Tokens = {
   NODE_WIDTH: number;
   NODE_MAX_HEIGHT: number;
+  GATE_HEIGHT: number;
   LANE_GAP: number;
   H_GAP: number;
   TRACK_COLUMN_OFFSET: number;
@@ -45,7 +46,10 @@ function clampNode(n: V3Node, t: Tokens): V3Node {
   // 2) Snap Y:
   if (isGate(out)) {
     const yr = (out.data?.year ?? 1) as 1 | 2 | 3 | 4;
-    out.position.y = snap(gateSlotY(yr, t), t.GRID);
+    // Gates centered in gutter: bottom of year row + (gutter - gate height) / 2
+    const rowY = yearRowY(yr, t);
+    const gateY = rowY + t.NODE_MAX_HEIGHT + (t.LANE_GAP - t.GATE_HEIGHT) / 2;
+    out.position.y = snap(gateY, t.GRID);
     // gates connect vertically (between rows)
     out.sourcePosition = 'bottom';
     out.targetPosition = 'top';

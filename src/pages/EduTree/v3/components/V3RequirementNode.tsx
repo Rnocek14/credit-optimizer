@@ -24,7 +24,7 @@ export default function V3RequirementNode({ data, selected }: V3RequirementNodeP
     'border-border';
 
   return (
-    <div className="w-[var(--v3-node-w)]">
+    <div className="w-[var(--v3-node-w)] min-w-[var(--v3-node-w)] max-w-[var(--v3-node-w)] box-border">
       <Handle type="target" position={Position.Left} id="in" />
       
       <Card className={`p-3 ${trackColor} ${selected ? 'ring-2 ring-primary' : ''} w-full overflow-hidden`}>

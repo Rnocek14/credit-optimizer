@@ -6,6 +6,7 @@ const TOKENS = {
   NODE_WIDTH: 232,
   NODE_BASE_HEIGHT: 200,
   NODE_MAX_HEIGHT: 250,
+  GATE_HEIGHT: 48,
   LANE_GAP: 72,
   H_GAP: 24,
   TRACK_COLUMN_OFFSET: 136,
@@ -19,7 +20,8 @@ const TOKENS = {
 const snap = (n: number) => Math.round(n / TOKENS.GRID) * TOKENS.GRID;
 const stepY = TOKENS.NODE_MAX_HEIGHT + TOKENS.LANE_GAP; // 322
 const rowY = (year: 1|2|3|4) => (year - 1) * stepY;      // Y1:0, Y2:322, Y3:644, Y4:966
-const gateY = (year: 1|2) => rowY(year) + stepY / 2;     // Y1:161, Y2:483
+// Gates centered in gutter: bottom of year row + (gutter - gate height) / 2
+const gateY = (year: 1|2) => rowY(year) + TOKENS.NODE_MAX_HEIGHT + (TOKENS.LANE_GAP - TOKENS.GATE_HEIGHT) / 2;
 
 const laneX = (year: 1|2|3|4, track?: 'se'|'ds'|null) => {
   const base = TOKENS.YEAR_COL[`Y${year as 1|2|3|4}`];
@@ -27,12 +29,15 @@ const laneX = (year: 1|2|3|4, track?: 'se'|'ds'|null) => {
   return snap(track === 'se' ? base - TOKENS.TRACK_COLUMN_OFFSET : base + TOKENS.TRACK_COLUMN_OFFSET);
 };
 
-const rectFor = (n: V3Node) => ({
-  x1: n.position.x,
-  x2: n.position.x + TOKENS.NODE_WIDTH,
-  y1: n.position.y,
-  y2: n.position.y + TOKENS.NODE_MAX_HEIGHT,
-});
+const rectFor = (n: V3Node) => {
+  const h = n.type === 'gate' ? TOKENS.GATE_HEIGHT : TOKENS.NODE_MAX_HEIGHT;
+  return {
+    x1: n.position.x,
+    x2: n.position.x + TOKENS.NODE_WIDTH,
+    y1: n.position.y,
+    y2: n.position.y + h,
+  };
+};
 
 const intersects = (a: ReturnType<typeof rectFor>, b: ReturnType<typeof rectFor>) =>
   a.x1 < b.x2 && a.x2 > b.x1 && a.y1 < b.y2 && a.y2 > b.y1;

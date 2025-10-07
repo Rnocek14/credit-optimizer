@@ -68,15 +68,16 @@
   --v3-node-w: 232px;
   --v3-node-h-base: 120px;
   --v3-node-h-max: 250px;
+  --v3-gate-h: 48px; /* Gate cards fit in gutter (LANE_GAP=72px) */
 }
 
 /* React Flow V3 node width lock - prevent horizontal drift */
 .react-flow__node {
   width: var(--v3-node-w) !important;
+  min-width: var(--v3-node-w) !important;
+  max-width: var(--v3-node-w) !important;
   box-sizing: border-box;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 /* Quiet hover - subtle lift instead of scale */
@@ -221,6 +222,8 @@
   /* V3 ReactFlow node width locking */
   .react-flow__node {
     width: var(--v3-node-w) !important;
+    min-width: var(--v3-node-w) !important;
+    max-width: var(--v3-node-w) !important;
     box-sizing: border-box;
     overflow: hidden;
   }

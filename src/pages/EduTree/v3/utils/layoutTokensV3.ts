@@ -18,6 +18,7 @@ export const LAYOUT_TOKENS = Object.freeze({
   NODE_WIDTH,
   NODE_BASE_HEIGHT: 120,
   NODE_MAX_HEIGHT: 250,
+  GATE_HEIGHT: 48, // Gate cards fit in the 72px gutter with margin
   LANE_GAP: 72,
   H_GAP,
   TRACK_COLUMN_OFFSET,

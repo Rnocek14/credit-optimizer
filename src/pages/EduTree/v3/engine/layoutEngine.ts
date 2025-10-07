@@ -73,17 +73,18 @@ export function calculateLayout(
     });
   }
 
-  // Position gates BETWEEN year rows (midpoints)
+  // Position gates BETWEEN year rows (centered in gutter with proper height)
   for (const gate of gates) {
-    const year = gate.data.year ?? 1;
+    const year = (gate.data.year ?? 1) as 1 | 2 | 3 | 4;
     const baseX = (t.YEAR_COL as any)[`Y${year}`] ?? t.YEAR_COL.Y1;
     const centerX = snap(baseX, t.GRID);
     
-    // Gates at midpoints: ProgramGate (Y1) between rows 0↔1, TrackGate (Y2) between rows 1↔2
-    const gateMid = yearRow(year) * stepY + 0.5 * stepY;
+    // Place gate centered in the gutter: bottom of year row + (gutter - gate height) / 2
+    const rowY = yearRow(year) * stepY;
+    const gateY = rowY + t.NODE_MAX_HEIGHT + (t.LANE_GAP - t.GATE_HEIGHT) / 2;
     
     gate.position.x = centerX;
-    gate.position.y = snap(gateMid, t.GRID);
+    gate.position.y = snap(gateY, t.GRID);
     gate.data.anchorX = centerX;
     
     // Gates connect vertically: bottom→top for year transitions

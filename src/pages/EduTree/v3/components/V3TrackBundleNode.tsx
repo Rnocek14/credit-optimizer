@@ -25,7 +25,7 @@ export default function V3TrackBundleNode({ data }: Props) {
       : "border-slate-400 bg-slate-50 dark:bg-slate-800/40";
 
   return (
-    <div className="w-[var(--v3-node-w)]">
+    <div className="w-[var(--v3-node-w)] min-w-[var(--v3-node-w)] max-w-[var(--v3-node-w)] box-border">
       <div
         className={
           "rounded-xl border-2 " +
