@@ -11,13 +11,21 @@ export function resolveCollisions(
 ): V3Node[] {
   const out = nodes.map(n => ({ ...n }));
 
-  // bucket by column + program + track
+  // Skip collision resolution for gates and collapsed bundles (already positioned correctly)
+  const needsResolution = (n: V3Node) => 
+    n.type !== 'gate' && 
+    n.type !== 'track-bundle' && 
+    !n.id?.includes('gate');
+
+  // bucket by column + program + track (only nodes that need collision resolution)
   type Key = string;
   const groups = new Map<Key, V3Node[]>();
 
   const bucketX = (x: number) => Math.round(x / t.COL_TOLERANCE) * t.COL_TOLERANCE;
 
   for (const n of out) {
+    if (!needsResolution(n)) continue; // Skip gates and bundles
+    
     const col = bucketX(n.position.x);
     const pid = String(n.data.programId ?? 'unknown');
     const tid = String(n.data.trackId ?? 'any');

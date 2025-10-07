@@ -127,12 +127,37 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
       trackOffset: LAYOUT_TOKENS.TRACK_COLUMN_OFFSET
     });
     
+    // Runtime assertion: verify bundles are on correct rows
+    const stepY = LAYOUT_TOKENS.NODE_MAX_HEIGHT + LAYOUT_TOKENS.LANE_GAP;
+    const bundleRows = new Map<number, number>();
+    for (const n of positionedCollapsed.nodes) {
+      if (n.type === 'track-bundle') {
+        const yr = n.data.year ?? 0;
+        const expected = (yr - 1) * stepY;
+        const actual = n.position.y;
+        const drift = Math.abs(actual - expected);
+        bundleRows.set(yr, actual);
+        
+        if (drift > LAYOUT_TOKENS.GRID) {
+          console.error(`❌ [V3 Row Check] Y${yr} bundle misaligned:`, {
+            expected,
+            actual,
+            drift,
+            bundleId: n.id
+          });
+        } else {
+          console.log(`✅ [V3 Row Check] Y${yr} bundle correctly positioned at y=${actual}`);
+        }
+      }
+    }
+    
     // Expose debug utility
     (window as any).__dumpV3 = () => ({
       nodes: positionedCollapsed.nodes,
       edges: positionedCollapsed.edges,
       tokens: LAYOUT_TOKENS,
-      stepY: LAYOUT_TOKENS.NODE_MAX_HEIGHT + LAYOUT_TOKENS.LANE_GAP
+      stepY: LAYOUT_TOKENS.NODE_MAX_HEIGHT + LAYOUT_TOKENS.LANE_GAP,
+      bundleRows: Object.fromEntries(bundleRows)
     });
   }, [enableMetrics]);
 
