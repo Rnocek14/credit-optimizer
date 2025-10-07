@@ -12,6 +12,8 @@ import { V3Node as V3NodeType, V3Edge as V3EdgeType, V3Graph } from './types/v3'
 import { GOLDEN_LAYOUT_SEED } from '../data/seedDataV2';
 import V3Clamp from './dev/V3Clamp';
 import V3DBG from './dev/V3Debug';
+import V3DebugPanel from './dev/V3DebugPanel';
+import { useV3KeyboardShortcuts } from './dev/KeyboardShortcuts';
 
 // Vertical flow imports
 import { calculateVerticalLayout } from './engine/layoutEngineVertical';
@@ -62,6 +64,25 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
   // Comparison UI state
   const [showComparison, setShowComparison] = useState(false);
   const [compareDrawerOpen, setCompareDrawerOpen] = useState(false);
+  
+  // Debug panel state
+  const [showDebugPanel, setShowDebugPanel] = useState(() => {
+    return localStorage.getItem('flags.showV3Debug') === 'true';
+  });
+  
+  // Keyboard shortcuts (Shift+D for debug, Shift+C for compare)
+  useV3KeyboardShortcuts({
+    onToggleDebug: () => {
+      setShowDebugPanel(prev => {
+        const next = !prev;
+        localStorage.setItem('flags.showV3Debug', String(next));
+        return next;
+      });
+    },
+    onToggleCompare: useVerticalLayout && selectedNodeId === 'gate-y3-tracks'
+      ? () => setShowComparison(prev => !prev)
+      : undefined
+  });
 
   // Build full graph and create collapsed view (Step 1: Ship collapsed view only)
   useEffect(() => {
@@ -185,24 +206,26 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
       const verticalNodes = calculateVerticalLayout(positionedCollapsed.nodes, VERT);
       finalGraph = { nodes: verticalNodes, edges: positionedCollapsed.edges };
       
-      // Add comparison data to Track Gate
+      // Add comparison data to Track Gate (always available, visibility controlled by showComparison)
       const trackGate = finalGraph.nodes.find(n => n.id === 'gate-y3-tracks');
-      if (trackGate && showComparison) {
-        // Mock comparison data (in production, fetch from seed data or API)
+      if (trackGate) {
+        const y3SE = finalGraph.nodes.find(n => n.data.year === 3 && n.data.trackId === 'se');
+        const y3DS = finalGraph.nodes.find(n => n.data.year === 3 && n.data.trackId === 'ds');
+        
         trackGate.data = {
           ...trackGate.data,
-          showCompare: true,
+          showCompare: showComparison,
           se: {
-            courses: 12,
-            credits: 48,
+            courses: y3SE?.data.childCount || 12,
+            credits: y3SE?.data.totalCredits || 48,
             durationWeeks: 32,
-            outcomes: ['Full-stack development', 'Cloud architecture'],
+            outcomes: ['Full-stack development', 'Cloud architecture', 'DevOps practices'],
           },
           ds: {
-            courses: 10,
-            credits: 40,
+            courses: y3DS?.data.childCount || 10,
+            credits: y3DS?.data.totalCredits || 40,
             durationWeeks: 28,
-            outcomes: ['Machine learning', 'Data pipelines'],
+            outcomes: ['Machine learning', 'Data pipelines', 'Analytics'],
           },
         };
       }
@@ -491,6 +514,30 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
     <div className="relative w-full h-screen">
       {/* HUD Controls */}
       <div className="absolute top-4 left-4 z-10 flex flex-col gap-2">
+        {/* Layout Indicator */}
+        {useVerticalLayout && (
+          <div className="bg-primary/10 text-primary px-3 py-2 rounded-lg border border-primary/20 text-xs font-medium">
+            📐 Vertical Flow Active
+          </div>
+        )}
+        
+        {/* Debug Panel Toggle (Vertical only) */}
+        {useVerticalLayout && (
+          <Button 
+            onClick={() => {
+              setShowDebugPanel(prev => {
+                const next = !prev;
+                localStorage.setItem('flags.showV3Debug', String(next));
+                return next;
+              });
+            }}
+            variant={showDebugPanel ? 'default' : 'secondary'}
+            size="sm"
+          >
+            {showDebugPanel ? '🔍 Hide Debug' : '🔍 Show Debug'}
+          </Button>
+        )}
+        
         <Button 
           onClick={handleValidateOverlaps}
           variant="secondary"
@@ -610,6 +657,68 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
           pannable
         />
       </ReactFlow>
+      
+      {/* Debug Panel (Vertical Flow only) */}
+      {showDebugPanel && useVerticalLayout && (
+        <V3DebugPanel
+          nodes={nodes}
+          isVertical={useVerticalLayout}
+          onClose={() => {
+            setShowDebugPanel(false);
+            localStorage.setItem('flags.showV3Debug', 'false');
+          }}
+        />
+      )}
+      
+      {/* Comparison Toggle (Vertical Flow + Track Gate selected) */}
+      {useVerticalLayout && selectedNodeId === 'gate-y3-tracks' && (
+        <div className="fixed top-4 right-4 z-40">
+          <CompareToggle
+            enabled={showComparison}
+            onToggle={() => setShowComparison(!showComparison)}
+          />
+        </div>
+      )}
+      
+      {/* Mini Compare Cards (appears below Track Gate when showComparison is true) */}
+      {useVerticalLayout && showComparison && selectedNodeId === 'gate-y3-tracks' && (() => {
+        const trackGate = nodes.find(n => n.id === 'gate-y3-tracks');
+        if (trackGate?.data.se && trackGate?.data.ds) {
+          return (
+            <div 
+              style={{
+                position: 'absolute',
+                left: `${trackGate.position.x}px`,
+                top: `${trackGate.position.y + VERT.GATE_HEIGHT + 8}px`,
+                zIndex: 10,
+                pointerEvents: 'none'
+              }}
+            >
+              <CompareMiniCards
+                se={{
+                  id: 'se',
+                  title: 'Software Engineering',
+                  courses: trackGate.data.se.courses,
+                  credits: trackGate.data.se.credits,
+                  durationWeeks: trackGate.data.se.durationWeeks,
+                  outcomes: trackGate.data.se.outcomes,
+                  color: 'blue'
+                }}
+                ds={{
+                  id: 'ds',
+                  title: 'Data Science',
+                  courses: trackGate.data.ds.courses,
+                  credits: trackGate.data.ds.credits,
+                  durationWeeks: trackGate.data.ds.durationWeeks,
+                  outcomes: trackGate.data.ds.outcomes,
+                  color: 'purple'
+                }}
+              />
+            </div>
+          );
+        }
+        return null;
+      })()}
     </div>
   );
 }
