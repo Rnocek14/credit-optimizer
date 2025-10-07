@@ -31,7 +31,18 @@ describe('fuzz tests', () => {
       const result = validateNoOverlaps(resolved, LAYOUT_TOKENS);
       
       if (result.hasOverlaps) {
-        console.error(`Run ${run} failed with ${result.overlaps.length} overlaps:`, result.overlaps.slice(0, 5));
+        console.error(`Run ${run} failed with ${result.overlaps.length} overlaps:`);
+        console.table(result.overlaps.slice(0, 6).map(({a, b}) => {
+          const A = resolved.find(n => n.id === a)!;
+          const B = resolved.find(n => n.id === b)!;
+          return {
+            pair: `${a} ↔ ${b}`,
+            Ax: `${A.position.x}..${A.position.x + LAYOUT_TOKENS.NODE_WIDTH}`,
+            Bx: `${B.position.x}..${B.position.x + LAYOUT_TOKENS.NODE_WIDTH}`,
+            Ay: `${A.position.y}..${A.position.y + LAYOUT_TOKENS.NODE_MAX_HEIGHT}`,
+            By: `${B.position.y}..${B.position.y + LAYOUT_TOKENS.NODE_MAX_HEIGHT}`
+          };
+        }));
       }
       
       expect(result.hasOverlaps).toBe(false);

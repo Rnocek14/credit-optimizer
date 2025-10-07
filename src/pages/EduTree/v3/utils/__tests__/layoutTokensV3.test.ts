@@ -41,4 +41,11 @@ describe('layoutTokensV3 constraints', () => {
     expect(NODE_WIDTH).toBeGreaterThan(0);
     expect(NODE_MAX_HEIGHT).toBeGreaterThanOrEqual(NODE_BASE_HEIGHT);
   });
+
+  it('column tolerance is safely below half minDX to avoid bucketing errors', () => {
+    const minDX = LAYOUT_TOKENS.NODE_WIDTH + LAYOUT_TOKENS.H_GAP;
+    const halfMinDX = minDX / 2;
+    
+    expect(LAYOUT_TOKENS.COL_TOLERANCE).toBeLessThan(halfMinDX);
+  });
 });
