@@ -212,18 +212,44 @@ function assertEdges(graph: V3Graph, nodes: V3Node[]) {
 // ---------- DOM probes ----------
 const dom = {
   nodes: () => [...document.querySelectorAll<HTMLElement>('.react-flow__node')],
+  
+  getRFZoom: () => {
+    const vp = document.querySelector<HTMLElement>('.react-flow__viewport');
+    if (!vp) return 1;
+    // Expect transform like: matrix(a,b,c,d,tx,ty)
+    const m = getComputedStyle(vp).transform;
+    if (!m || m === 'none') return 1;
+    const match = m.match(/matrix\(([^,]+)/);
+    if (!match) return 1;
+    const a = Number(match[1].trim());
+    return isFinite(a) && a > 0 ? a : 1;
+  },
+  
+  probeComputedWidth: (el: HTMLElement) => {
+    // Try to find a stable inner container to check computed width
+    const inner = el.querySelector<HTMLElement>('[data-v3-node-body], .v3-node-body, .card, [data-rf-nodetype]');
+    if (!inner) return null;
+    const cs = getComputedStyle(inner);
+    const px = parseFloat(cs.width);
+    return Number.isFinite(px) ? Math.round(px) : null;
+  },
+  
   measureWidths: () => {
-    const rows = dom.nodes().map(el => ({
-      id: el.dataset.id || '(unknown)',
-      w: Math.round(el.getBoundingClientRect().width),
-      h: Math.round(el.getBoundingClientRect().height)
-    }));
+    const zoom = dom.getRFZoom();
+    const rows = dom.nodes().map(el => {
+      const rect = el.getBoundingClientRect();
+      // Unscale back to graph CSS pixels
+      const w = Math.round(rect.width / zoom);
+      const h = Math.round(rect.height / zoom);
+      const cw = dom.probeComputedWidth(el);
+      return { id: el.dataset.id || '(unknown)', w, h, cw };
+    });
     const widths = rows.map(r => r.w);
     const min = Math.min(...widths), max = Math.max(...widths);
     const avg = Math.round(widths.reduce((a,b)=>a+b,0)/Math.max(1,widths.length));
     console.table(rows);
-    console.log('DOM Widths → min:',min,' avg:',avg,' max:',max);
-    return { rows, min, avg, max };
+    console.log('DOM Widths (unscaled) → min:',min,' avg:',avg,' max:',max,' zoom:',zoom.toFixed(3));
+    return { rows, min, avg, max, zoom };
   }
 };
 
@@ -362,7 +388,7 @@ function generateReport(graph: V3Graph, tokens: Tokens): string {
   const { overlaps, minGap } = detectOverlaps(graph.nodes, tokens);
   const widths = dom.measureWidths();
   
-  // 1. DOM vs Token Width Strict Check
+  // 1. DOM vs Token Width Strict Check (using unscaled widths)
   const strictWidthOK =
     Math.abs(widths.avg - tokens.NODE_WIDTH) <= 1 &&
     widths.max <= tokens.NODE_WIDTH &&
@@ -370,6 +396,10 @@ function generateReport(graph: V3Graph, tokens: Tokens): string {
   const widthStatus = strictWidthOK
     ? '✅ DOM width matches NODE_WIDTH'
     : `❌ DOM width drift: avg=${widths.avg}, min=${widths.min}, max=${widths.max}, token=${tokens.NODE_WIDTH}`;
+  
+  const computedWidthStatus = widths.rows.some(r => r.cw && Math.abs(r.cw - tokens.NODE_WIDTH) > 1)
+    ? '❌ Some computed widths != NODE_WIDTH'
+    : '✅ Computed widths match NODE_WIDTH (if probed)';
   
   // 2. Column Drift Table
   const snap = (v: number) => gridSnap(v, tokens.GRID);
@@ -490,6 +520,10 @@ BUILD INFO:
   DPR: ${dpr}
   Timestamp: ${new Date().toISOString()}
 
+VIEWPORT:
+  ReactFlow zoom: ${widths.zoom.toFixed(3)}
+  Tip: DOM rects are visually scaled by zoom; report normalizes widths by dividing by RF zoom.
+
 GRAPH SUMMARY:
   Total nodes: ${graph.nodes.length}
   Total edges: ${graph.edges.length}
@@ -536,11 +570,12 @@ EDGES:
   ${edgeTable}
 
 ${overlaps.length > 0 ? `OVERLAPS (${overlaps.length}):\n${overlaps.map((o: any) => `  ❌ ${o.A} ↔ ${o.B}`).join('\n')}` : '✅ NO OVERLAPS'}
-  Min gap between any two nodes: ${minGap.toFixed(1)}px
+  Min gap (graph coords): ${minGap.toFixed(1)}px (H_GAP=${tokens.H_GAP}px expected between lanes)
 
-DOM WIDTHS:
-  Min: ${widths.min}px | Avg: ${widths.avg}px | Max: ${widths.max}px
+DOM WIDTHS (unscaled):
+  Min: ${widths.min}px | Avg: ${widths.avg}px | Max: ${widths.max}px | Zoom: ${widths.zoom.toFixed(3)}
   ${widthStatus}
+  ${computedWidthStatus}
 
 RESOLVER/CLAMP IMPACT:
 ${resolverSummary}
