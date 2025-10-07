@@ -10,6 +10,8 @@ import { adaptSeedDataV2 } from './engine/v2Adapter';
 import { LAYOUT_TOKENS } from './utils/layoutTokensV3';
 import { V3Node as V3NodeType, V3Edge as V3EdgeType, V3Graph } from './types/v3';
 import { GOLDEN_LAYOUT_SEED } from '../data/seedDataV2';
+import V3Clamp from './dev/V3Clamp';
+import V3DBG from './dev/V3Debug';
 
 // V3-specific node components
 import V3RequirementNode from './components/V3RequirementNode';
@@ -151,14 +153,23 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
       }
     }
     
+    // Apply final-pass clamp to enforce exact layout
+    const clamped = V3Clamp.clampCollapsed(positionedCollapsed, LAYOUT_TOKENS);
+    
     // Expose debug utility
+    (window as any).__V3DBG_lastGraph = clamped;
     (window as any).__dumpV3 = () => ({
-      nodes: positionedCollapsed.nodes,
-      edges: positionedCollapsed.edges,
+      nodes: clamped.nodes,
+      edges: clamped.edges,
       tokens: LAYOUT_TOKENS,
       stepY: LAYOUT_TOKENS.NODE_MAX_HEIGHT + LAYOUT_TOKENS.LANE_GAP,
       bundleRows: Object.fromEntries(bundleRows)
     });
+    
+    // Run V3Debug assertions
+    V3DBG.afterRender(clamped, LAYOUT_TOKENS);
+    
+    setCurrentGraph(clamped);
   }, [enableMetrics]);
 
   const { nodes, edges } = currentGraph ?? { nodes: [], edges: [] };
