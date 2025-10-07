@@ -7,7 +7,7 @@ const TOKENS = {
   NODE_BASE_HEIGHT: 200,
   NODE_MAX_HEIGHT: 250,
   GATE_HEIGHT: 48,
-  LANE_GAP: 72,
+  LANE_GAP: 70, // stepY = 320 (grid-aligned)
   H_GAP: 24,
   TRACK_COLUMN_OFFSET: 136,
   COL_TOLERANCE: 40,
@@ -18,8 +18,8 @@ const TOKENS = {
 } as const;
 
 const snap = (n: number) => Math.round(n / TOKENS.GRID) * TOKENS.GRID;
-const stepY = TOKENS.NODE_MAX_HEIGHT + TOKENS.LANE_GAP; // 322
-const rowY = (year: 1|2|3|4) => (year - 1) * stepY;      // Y1:0, Y2:322, Y3:644, Y4:966
+const stepY = TOKENS.NODE_MAX_HEIGHT + TOKENS.LANE_GAP; // 320 (grid-aligned)
+const rowY = (year: 1|2|3|4) => (year - 1) * stepY;      // Y1:0, Y2:320, Y3:640, Y4:960
 // Gates centered in gutter: bottom of year row + (gutter - gate height) / 2
 const gateY = (year: 1|2) => rowY(year) + TOKENS.NODE_MAX_HEIGHT + (TOKENS.LANE_GAP - TOKENS.GATE_HEIGHT) / 2;
 

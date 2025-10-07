@@ -18,8 +18,8 @@ export const LAYOUT_TOKENS = Object.freeze({
   NODE_WIDTH,
   NODE_BASE_HEIGHT: 120,
   NODE_MAX_HEIGHT: 250,
-  GATE_HEIGHT: 48, // Gate cards fit in the 72px gutter with margin
-  LANE_GAP: 72,
+  GATE_HEIGHT: 48, // Gate cards fit in the 70px gutter with margin
+  LANE_GAP: 70, // stepY = 250 + 70 = 320 (grid-aligned)
   H_GAP,
   TRACK_COLUMN_OFFSET,
   YEAR_COL: { Y1: 300, Y2: 700, Y3: 1100, Y4: 1500 } as const,
