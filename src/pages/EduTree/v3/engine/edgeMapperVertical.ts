@@ -14,6 +14,7 @@ import type { V3Edge } from '../types/v3';
 export function mapEdgesVertical(edges: V3Edge[]): Edge[] {
   return edges.map(e => {
     const isGate = e.kind === 'gate';
+    const isMerge = e.source.includes('y3-') && e.target.includes('y4-');
     
     return {
       id: e.id,
@@ -24,9 +25,9 @@ export function mapEdgesVertical(edges: V3Edge[]): Edge[] {
       sourceHandle: 'south',
       targetHandle: 'north',
       
-      // Uniform smoothstep with gentle curves
+      // Uniform smoothstep with gentle curves (softer for merge)
       type: 'smoothstep' as const,
-      pathOptions: { borderRadius: 12 },
+      pathOptions: { borderRadius: isMerge ? 24 : 12 },
       
       // Arrowheads for all edges
       markerEnd: { 

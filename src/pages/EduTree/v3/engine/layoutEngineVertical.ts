@@ -81,14 +81,28 @@ export function calculateVerticalLayout(
   placeCenter(trackGate, t.GATE_HEIGHT);
 
   // 5. Year 3 split (SE and DS side-by-side, same Y row)
+  // Single-track mode: center the lone track
   const y3RowY = snap(cursorY, t.GRID);
-  if (y3se) {
+  const hasSE = !!y3se;
+  const hasDS = !!y3ds;
+  
+  if (hasSE && hasDS) {
+    // Both tracks: side-by-side
     y3se.position.x = snap(t.CENTER_X - t.H_SPACING / 2, t.GRID);
     y3se.position.y = y3RowY;
-  }
-  if (y3ds) {
     y3ds.position.x = snap(t.CENTER_X + t.H_SPACING / 2, t.GRID);
     y3ds.position.y = y3RowY;
+  } else {
+    // Single track: center it on the spine
+    const solo = y3se ?? y3ds;
+    if (solo) {
+      solo.position.x = snap(t.CENTER_X, t.GRID);
+      solo.position.y = y3RowY;
+    }
+    // Hide comparison UI for single-track mode
+    if (trackGate && solo) {
+      trackGate.data = { ...trackGate.data, showCompare: false };
+    }
   }
   cursorY += t.NODE_HEIGHT + t.VERTICAL_GAP;
 

@@ -145,6 +145,41 @@ function checkGridAlignment(nodes: V3Node[], tokens: VerticalTokens): VerticalAs
   };
 }
 
+function checkSpineCompleteness(nodes: V3Node[]): VerticalAssertion {
+  const need = {
+    y1: nodes.find(n => n.type==='track-bundle' && n.data.year===1 && (!n.data.trackId || n.data.trackId==='any')),
+    g2: nodes.find(n => n.type==='gate' && n.data.year===2),
+    y2: nodes.find(n => n.type==='track-bundle' && n.data.year===2 && (!n.data.trackId || n.data.trackId==='any')),
+    g3: nodes.find(n => n.type==='gate' && n.data.year===3),
+    y4: nodes.find(n => n.type==='track-bundle' && n.data.year===4 && (!n.data.trackId || n.data.trackId==='any')),
+  };
+  const missing = Object.entries(need).filter(([,n]) => !n).map(([k])=>k);
+  return {
+    name: 'Spine Completeness',
+    status: missing.length ? 'skip' : 'pass',
+    message: missing.length ? `Missing: ${missing.join(', ')}` : 'All spine stages present',
+  };
+}
+
+function checkMinVerticalGap(nodes: V3Node[], t: VerticalTokens): VerticalAssertion {
+  const order = ['y1-bundle','gate-y2-programs','y2-bundle','gate-y3-tracks','y4-bundle']
+    .map(id => nodes.find(n => n.id===id))
+    .filter(Boolean) as V3Node[];
+  const bad: any[] = [];
+  for (let i=1; i<order.length; i++){
+    const prev = order[i-1], curr = order[i];
+    const gap = curr.position.y - prev.position.y;
+    if (gap < t.VERTICAL_GAP/2) bad.push({ prev: prev.id, curr: curr.id, gap });
+  }
+  return {
+    name: 'Vertical Spacing',
+    status: bad.length ? 'fail' : 'pass',
+    message: bad.length ? `${bad.length} too-tight gap(s)` : 'Gaps OK',
+    details: bad.length ? bad : undefined,
+  };
+}
+
+
 function checkNoOverlaps(nodes: V3Node[], tokens: VerticalTokens): VerticalAssertion {
   const overlaps: any[] = [];
   
@@ -188,7 +223,9 @@ export default function V3DebugPanel({ nodes, isVertical, onClose }: V3DebugPane
     checkMonotonicY(nodes),
     checkForkGeometry(nodes, VERT),
     checkGridAlignment(nodes, VERT),
-    checkNoOverlaps(nodes, VERT)
+    checkNoOverlaps(nodes, VERT),
+    checkSpineCompleteness(nodes),
+    checkMinVerticalGap(nodes, VERT)
   ];
   
   const passed = assertions.filter(a => a.status === 'pass').length;
