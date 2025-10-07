@@ -63,6 +63,11 @@
 /* Subtle hover system - no more "jumping" pages */
 :root { 
   --hover-scale: 1.001; /* ~0.1% max */
+  
+  /* V3 EduTree layout dimensions - single source of truth */
+  --v3-node-w: 232px;
+  --v3-node-h-base: 120px;
+  --v3-node-h-max: 250px;
 }
 
 /* Quiet hover - subtle lift instead of scale */

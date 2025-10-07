@@ -29,6 +29,9 @@ interface EduTreeV3CanvasProps {
 function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
   const { fitView } = useReactFlow();
   const [layoutMetrics, setLayoutMetrics] = useState<any>(null);
+  const [domMetrics, setDomMetrics] = useState<any>(null);
+  const [focusedEdges, setFocusedEdges] = useState<Set<string>>(new Set());
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
 
   // Build graph from V2 seed data
   const { nodes, edges } = useMemo(() => {
@@ -70,20 +73,48 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
     }));
   }, [nodes]);
 
-  // Convert V3 edges to ReactFlow edges
+  // Convert V3 edges to ReactFlow edges with focus mode
   const reactFlowEdges: Edge[] = useMemo(() => {
-    return edges.map((edge: V3EdgeType) => ({
-      id: edge.id,
-      source: edge.source,
-      target: edge.target,
-      type: edge.kind === 'gate' ? 'smoothstep' : 'default',
-      animated: edge.kind === 'gate',
-      style: {
-        stroke: edge.kind === 'gate' ? '#6366f1' : '#94a3b8',
-        strokeWidth: 2
-      }
-    }));
-  }, [edges]);
+    return edges.map((edge: V3EdgeType) => {
+      const isGate = edge.kind === 'gate';
+      const isFocused = focusedEdges.size === 0 || focusedEdges.has(edge.id);
+      
+      return {
+        id: edge.id,
+        source: edge.source,
+        target: edge.target,
+        type: isGate ? 'smoothstep' : 'default',
+        animated: isGate && isFocused,
+        style: {
+          stroke: isGate ? '#6366f1' : '#94a3b8',
+          strokeWidth: 2,
+          opacity: isFocused ? 1 : 0.15
+        }
+      };
+    });
+  }, [edges, focusedEdges]);
+
+  // Handle node selection for edge focusing
+  const handleNodeClick = useCallback((event: any, node: Node) => {
+    const nodeId = node.id;
+    setSelectedNodeId(prev => prev === nodeId ? null : nodeId);
+    
+    if (selectedNodeId === nodeId) {
+      // Deselect - show all edges
+      setFocusedEdges(new Set());
+    } else {
+      // Select - show only connected edges
+      const connectedEdges = edges.filter(
+        e => e.source === nodeId || e.target === nodeId
+      );
+      setFocusedEdges(new Set(connectedEdges.map(e => e.id)));
+    }
+  }, [edges, selectedNodeId]);
+
+  const handlePaneClick = useCallback(() => {
+    setSelectedNodeId(null);
+    setFocusedEdges(new Set());
+  }, []);
 
   const handleValidateOverlaps = useCallback(() => {
     const result = validateNoOverlaps(nodes, LAYOUT_TOKENS);
@@ -93,13 +124,82 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
         description: result.overlaps.slice(0, 3).map(o => `${o.a} ↔ ${o.b}`).join(', ')
       });
       
-      console.table(result.overlaps.slice(0, 10));
+      console.log('[V3 Diagnostics] Detailed overlap analysis:');
+      console.table(result.diagnostics.slice(0, 10));
     } else {
       toast.success('No overlaps detected! ✅');
     }
-    
-    console.log('[V3 Canvas] Overlap validation:', result);
   }, [nodes]);
+
+  const handleMeasureDOM = useCallback(() => {
+    const nodeElements = document.querySelectorAll('.react-flow__node');
+    
+    if (nodeElements.length === 0) {
+      toast.error('No nodes found in DOM');
+      return;
+    }
+    
+    const measurements = Array.from(nodeElements).map(el => {
+      const rect = el.getBoundingClientRect();
+      const computed = window.getComputedStyle(el);
+      return {
+        id: el.getAttribute('data-id') || 'unknown',
+        width: rect.width,
+        height: rect.height,
+        boxSizing: computed.boxSizing,
+        paddingLeft: computed.paddingLeft,
+        paddingRight: computed.paddingRight,
+        borderLeft: computed.borderLeftWidth,
+        borderRight: computed.borderRightWidth
+      };
+    });
+    
+    const widths = measurements.map(m => m.width);
+    const heights = measurements.map(m => m.height);
+    
+    const metrics = {
+      count: measurements.length,
+      width: {
+        min: Math.min(...widths),
+        max: Math.max(...widths),
+        avg: widths.reduce((a, b) => a + b, 0) / widths.length
+      },
+      height: {
+        min: Math.min(...heights),
+        max: Math.max(...heights),
+        avg: heights.reduce((a, b) => a + b, 0) / heights.length
+      },
+      tokenWidth: LAYOUT_TOKENS.NODE_WIDTH,
+      tokenMaxHeight: LAYOUT_TOKENS.NODE_MAX_HEIGHT,
+      widthExceedsToken: measurements.filter(m => m.width > LAYOUT_TOKENS.NODE_WIDTH),
+      heightExceedsToken: measurements.filter(m => m.height > LAYOUT_TOKENS.NODE_MAX_HEIGHT)
+    };
+    
+    setDomMetrics(metrics);
+    
+    console.log('[V3 DOM Metrics] Node dimension analysis:');
+    console.table({
+      'Width (min)': metrics.width.min.toFixed(1),
+      'Width (avg)': metrics.width.avg.toFixed(1),
+      'Width (max)': metrics.width.max.toFixed(1),
+      'Width (token)': metrics.tokenWidth,
+      'Height (min)': metrics.height.min.toFixed(1),
+      'Height (avg)': metrics.height.avg.toFixed(1),
+      'Height (max)': metrics.height.max.toFixed(1),
+      'Height (token)': metrics.tokenMaxHeight
+    });
+    
+    if (metrics.widthExceedsToken.length > 0) {
+      console.warn('[V3 DOM] Nodes exceeding token width:', metrics.widthExceedsToken);
+    }
+    if (metrics.heightExceedsToken.length > 0) {
+      console.warn('[V3 DOM] Nodes exceeding token height:', metrics.heightExceedsToken);
+    }
+    
+    toast.success('DOM metrics logged to console', {
+      description: `${metrics.count} nodes measured`
+    });
+  }, []);
 
   const handleFitView = useCallback(() => {
     fitView({ padding: 0.2, duration: 300 });
@@ -124,11 +224,27 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
         </Button>
         
         <Button 
+          onClick={handleMeasureDOM}
+          variant="secondary"
+          size="sm"
+        >
+          Measure DOM
+        </Button>
+        
+        <Button 
           onClick={handleFitView}
           variant="secondary"
           size="sm"
         >
           Fit View
+        </Button>
+        
+        <Button 
+          onClick={() => setFocusedEdges(new Set())}
+          variant={focusedEdges.size === 0 ? 'default' : 'secondary'}
+          size="sm"
+        >
+          {focusedEdges.size === 0 ? 'All Edges' : 'Focus Mode'}
         </Button>
         
         {layoutMetrics && (
@@ -141,6 +257,19 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
             {layoutMetrics.hasOverlaps && (
               <div className="text-destructive">
                 Overlaps: {layoutMetrics.overlapCount}
+              </div>
+            )}
+          </div>
+        )}
+        
+        {domMetrics && (
+          <div className="bg-card p-3 rounded-lg border text-xs space-y-1 mt-2">
+            <div className="font-semibold">DOM Metrics</div>
+            <div>Width: {domMetrics.width.min.toFixed(0)}-{domMetrics.width.max.toFixed(0)}px</div>
+            <div>Token: {domMetrics.tokenWidth}px</div>
+            {domMetrics.widthExceedsToken.length > 0 && (
+              <div className="text-destructive">
+                {domMetrics.widthExceedsToken.length} exceed width
               </div>
             )}
           </div>
@@ -162,6 +291,8 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
         nodes={reactFlowNodes}
         edges={reactFlowEdges}
         nodeTypes={nodeTypes}
+        onNodeClick={handleNodeClick}
+        onPaneClick={handlePaneClick}
         fitView
         minZoom={0.1}
         maxZoom={2}

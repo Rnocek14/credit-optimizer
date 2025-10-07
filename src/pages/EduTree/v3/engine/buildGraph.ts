@@ -37,20 +37,19 @@ export function buildEduTreeGraph(
   const validation = validateNoOverlaps(resolved, LAYOUT_TOKENS);
   
   if (validation.hasOverlaps && import.meta?.env?.DEV) {
-    console.warn('[V3 buildGraph] Overlaps detected:', validation.overlaps.slice(0, 10));
+    console.warn('[V3 buildGraph] Overlaps detected:', validation.overlaps.length);
+    console.log('[V3 Overlap Diagnostics] Root cause analysis:');
+    console.table(validation.diagnostics.slice(0, 10));
     
-    // Log detailed collision info for debugging
-    console.table(validation.overlaps.slice(0, 5).map(({ a, b }) => {
-      const nodeA = resolved.find(n => n.id === a)!;
-      const nodeB = resolved.find(n => n.id === b)!;
-      return {
-        pair: `${a} vs ${b}`,
-        Ax: `${nodeA.position.x}-${nodeA.position.x + LAYOUT_TOKENS.NODE_WIDTH}`,
-        Ay: `${nodeA.position.y}-${nodeA.position.y + LAYOUT_TOKENS.NODE_MAX_HEIGHT}`,
-        Bx: `${nodeB.position.x}-${nodeB.position.x + LAYOUT_TOKENS.NODE_WIDTH}`,
-        By: `${nodeB.position.y}-${nodeB.position.y + LAYOUT_TOKENS.NODE_MAX_HEIGHT}`
-      };
-    }));
+    // Summary of root causes
+    const causes = {
+      xDrift: validation.diagnostics.filter(d => d.xDrift).length,
+      tooNarrowLanes: validation.diagnostics.filter(d => d.tooNarrowLanes).length,
+      tooShortStepY: validation.diagnostics.filter(d => d.tooShortStepY).length,
+      gateXNotCenter: validation.diagnostics.filter(d => d.gateXNotCenter).length,
+      missingYearOrProgram: validation.diagnostics.filter(d => d.missingYearOrProgram).length
+    };
+    console.log('[V3 Root Causes]', causes);
   }
   
   return {

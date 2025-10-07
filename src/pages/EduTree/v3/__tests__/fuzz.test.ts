@@ -32,17 +32,16 @@ describe('fuzz tests', () => {
       
       if (result.hasOverlaps) {
         console.error(`Run ${run} failed with ${result.overlaps.length} overlaps:`);
-        console.table(result.overlaps.slice(0, 6).map(({a, b}) => {
-          const A = resolved.find(n => n.id === a)!;
-          const B = resolved.find(n => n.id === b)!;
-          return {
-            pair: `${a} ↔ ${b}`,
-            Ax: `${A.position.x}..${A.position.x + LAYOUT_TOKENS.NODE_WIDTH}`,
-            Bx: `${B.position.x}..${B.position.x + LAYOUT_TOKENS.NODE_WIDTH}`,
-            Ay: `${A.position.y}..${A.position.y + LAYOUT_TOKENS.NODE_MAX_HEIGHT}`,
-            By: `${B.position.y}..${B.position.y + LAYOUT_TOKENS.NODE_MAX_HEIGHT}`
-          };
-        }));
+        console.table(result.diagnostics.slice(0, 6).map(d => ({
+          pair: `${d.a} ↔ ${d.b}`,
+          Ax: `${d.aX[0]}..${d.aX[1]}`,
+          Bx: `${d.bX[0]}..${d.bX[1]}`,
+          Ay: `${d.aY[0]}..${d.aY[1]}`,
+          By: `${d.bY[0]}..${d.bY[1]}`,
+          xDrift: d.xDrift,
+          tooNarrow: d.tooNarrowLanes,
+          tooShort: d.tooShortStepY
+        })));
       }
       
       expect(result.hasOverlaps).toBe(false);

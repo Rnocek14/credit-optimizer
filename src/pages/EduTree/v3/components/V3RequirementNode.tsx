@@ -24,12 +24,14 @@ export default function V3RequirementNode({ data, selected }: V3RequirementNodeP
     'border-border';
 
   return (
-    <div className="min-w-[180px]">
+    <div style={{ width: 'var(--v3-node-w, 232px)' }}>
       <Handle type="target" position={Position.Left} id="in" />
       
       <Card className={`p-3 ${trackColor} ${selected ? 'ring-2 ring-primary' : ''}`}>
         <div className="space-y-1">
-          <div className="font-semibold text-sm">{data.title || 'Requirement'}</div>
+          <div className="font-semibold text-sm whitespace-nowrap overflow-hidden text-ellipsis">
+            {data.title || 'Requirement'}
+          </div>
           
           {data.credits_needed && (
             <div className="text-xs text-muted-foreground">

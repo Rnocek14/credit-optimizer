@@ -55,10 +55,30 @@ export function resolveCollisions(
 
   // Gate anchoring is enforced at layout time - no horizontal adjustments needed here
 
-  // Final pass: snap gates back to their anchor positions
+  // Final pass: ensure all nodes are on their lane centers (no drift allowed)
   for (const n of out) {
-    if ((n.type === 'gate' || n.id?.includes('gate')) && typeof n.data.anchorX === 'number') {
-      n.position.x = snap(n.data.anchorX, t.GRID);
+    // Gates must stay at center
+    if (n.type === 'gate' || n.id?.includes('gate')) {
+      if (typeof n.data.anchorX === 'number') {
+        n.position.x = snap(n.data.anchorX, t.GRID);
+      }
+    } else {
+      // Track nodes must stay on their lane centers
+      const year = n.data.year ?? 1;
+      const baseX = (t.YEAR_COL as any)[`Y${year}`] ?? t.YEAR_COL.Y1;
+      const lane = n.data.trackId === 'se' ? 'se' : n.data.trackId === 'ds' ? 'ds' : 'any';
+      
+      const expectedX = 
+        lane === 'se' ? snap(baseX - t.TRACK_COLUMN_OFFSET, t.GRID) :
+        lane === 'ds' ? snap(baseX + t.TRACK_COLUMN_OFFSET, t.GRID) :
+        snap(baseX, t.GRID);
+      
+      // Dev-only assertion: detect drift
+      if (import.meta?.env?.DEV && Math.abs(n.position.x - expectedX) > t.GRID / 2) {
+        console.warn(`[V3 Collision] X drift detected for ${n.id}: ${n.position.x} → ${expectedX}`);
+      }
+      
+      n.position.x = expectedX;
     }
   }
 
