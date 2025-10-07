@@ -14,7 +14,6 @@ import { UserJourneyProvider } from "./contexts/UserJourneyContext";
 import { UnifiedDataProvider } from "./contexts/UnifiedDataContext";
 import TutorialProvider from "./tutorial/TutorialProvider";
 import { DevMenu } from "./components/dev/DevMenu";
-import DemoLauncher from "./components/DemoLauncher";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import DevLogin from "./pages/DevLogin";
@@ -845,7 +844,6 @@ const App = () => {
                 <MobileNavigation className="block md:hidden" />
                 <XPCelebrationOverlay />
                 {process.env.NODE_ENV !== 'production' && <DevMenu />}
-                <DemoLauncher />
               </BrowserRouter>
              </EnhancedErrorBoundary>
                    </UnifiedDataProvider>
