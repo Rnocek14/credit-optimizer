@@ -36,6 +36,7 @@ type Tokens = {
   NODE_WIDTH: number;
   NODE_BASE_HEIGHT: number;
   NODE_MAX_HEIGHT: number;
+  GATE_HEIGHT: number;
   LANE_GAP: number;
   H_GAP: number;
   TRACK_COLUMN_OFFSET: number;
@@ -139,27 +140,48 @@ function assertColumns(nodes: V3Node[], t: Tokens) {
 }
 
 function detectOverlaps(nodes: V3Node[], t: Tokens) {
-  const W = t.NODE_WIDTH, H = t.NODE_MAX_HEIGHT;
+  const W = t.NODE_WIDTH;
   const boxes = nodes.map(n => ({
-    id:n.id, type:n.type, x:n.position.x, y:n.position.y, w:W, h:H
+    id: n.id,
+    type: n.type,
+    x: n.position.x,
+    y: n.position.y,
+    w: W,
+    h: n.type === 'gate' ? t.GATE_HEIGHT : t.NODE_MAX_HEIGHT
   }));
-  const overlaps:any[] = [];
-  for (let i=0;i<boxes.length;i++){
-    for (let j=i+1;j<boxes.length;j++){
-      const a=boxes[i], b=boxes[j];
+  const overlaps: any[] = [];
+  let minGap = Infinity;
+  
+  for (let i = 0; i < boxes.length; i++) {
+    for (let j = i + 1; j < boxes.length; j++) {
+      const a = boxes[i], b = boxes[j];
       const xOver = !(a.x + a.w <= b.x || b.x + b.w <= a.x);
       const yOver = !(a.y + a.h <= b.y || b.y + b.h <= a.y);
-      if (xOver && yOver) overlaps.push({ A:a.id, B:b.id });
+      
+      // Calculate gaps
+      const xGap = Math.min(
+        Math.abs(a.x - (b.x + b.w)),
+        Math.abs(b.x - (a.x + a.w))
+      );
+      const yGap = Math.min(
+        Math.abs(a.y - (b.y + b.h)),
+        Math.abs(b.y - (a.y + a.h))
+      );
+      const gap = Math.min(xGap, yGap);
+      if (gap < minGap) minGap = gap;
+      
+      if (xOver && yOver) overlaps.push({ A: a.id, B: b.id });
     }
   }
-  return overlaps;
+  
+  return { overlaps, minGap: minGap === Infinity ? 0 : minGap };
 }
 
 function assertNoOverlaps(nodes: V3Node[], t: Tokens) {
-  const ov = detectOverlaps(nodes, t);
-  if (ov.length) {
-    console.groupCollapsed(`❌ Overlaps: ${ov.length}`);
-    console.table(ov);
+  const { overlaps } = detectOverlaps(nodes, t);
+  if (overlaps.length) {
+    console.groupCollapsed(`❌ Overlaps: ${overlaps.length}`);
+    console.table(overlaps);
     console.groupEnd();
     if (state.config.failFast) throw new Error('Overlaps detected');
   } else {
@@ -337,8 +359,99 @@ function wrapBuild(fn: (g:V3Graph)=>{ graph:V3Graph, metrics?:any }) {
 // ---------- copyable report ----------
 function generateReport(graph: V3Graph, tokens: Tokens): string {
   const sy = stepY(tokens);
-  const overlaps = detectOverlaps(graph.nodes, tokens);
+  const { overlaps, minGap } = detectOverlaps(graph.nodes, tokens);
   const widths = dom.measureWidths();
+  
+  // 1. DOM vs Token Width Strict Check
+  const strictWidthOK =
+    Math.abs(widths.avg - tokens.NODE_WIDTH) <= 1 &&
+    widths.max <= tokens.NODE_WIDTH &&
+    widths.min >= tokens.NODE_WIDTH - 1;
+  const widthStatus = strictWidthOK
+    ? '✅ DOM width matches NODE_WIDTH'
+    : `❌ DOM width drift: avg=${widths.avg}, min=${widths.min}, max=${widths.max}, token=${tokens.NODE_WIDTH}`;
+  
+  // 2. Column Drift Table
+  const snap = (v: number) => gridSnap(v, tokens.GRID);
+  const expectedX = (n: V3Node) => {
+    const y = (n.data?.year ?? 1) as 1 | 2 | 3 | 4;
+    const base = (tokens.YEAR_COL as any)[`Y${y}`] ?? tokens.YEAR_COL.Y1;
+    return snap(
+      n.type === 'gate' || !n.data?.trackId
+        ? base
+        : n.data.trackId === 'se'
+        ? base - tokens.TRACK_COLUMN_OFFSET
+        : base + tokens.TRACK_COLUMN_OFFSET
+    );
+  };
+  
+  const colDriftRows = graph.nodes.map(n => {
+    const exp = expectedX(n);
+    const drift = Math.abs(n.position.x - exp);
+    return `  ${n.id.padEnd(20)} x:${String(n.position.x).padStart(5)} | expected:${String(exp).padStart(5)} | drift:${String(drift).padStart(2)} ${drift <= tokens.GRID ? '✅' : '❌'}`;
+  }).join('\n');
+  
+  // 3. Grid Compliance
+  const offGrid = graph.nodes.filter(n => 
+    (n.position.x % tokens.GRID) !== 0 || (n.position.y % tokens.GRID) !== 0
+  );
+  const gridSummary = `Grid compliance: ${graph.nodes.length - offGrid.length}/${graph.nodes.length} nodes on-grid${
+    offGrid.length ? ` • Off-grid: ${offGrid.map(n => n.id).join(', ')}` : ''
+  }`;
+  
+  // 4. Edge Kind Distribution + Direction Matrix
+  const kinds = graph.edges.reduce((a, e) => {
+    const k = e.kind || 'unknown';
+    a[k] = (a[k] || 0) + 1;
+    return a;
+  }, {} as Record<string, number>);
+  
+  const yearOf = (id: string) => (graph.nodes.find(n => n.id === id)?.data?.year ?? 0) as number;
+  const spine = graph.edges.filter(e => e.kind === 'spine');
+  const dirRows = spine.map(e => {
+    const sy = yearOf(e.source), ty = yearOf(e.target);
+    const ok = sy < ty ? '✅' : '❌';
+    return `  ${e.id.padEnd(30)} Y${sy}→Y${ty} ${ok}`;
+  }).join('\n');
+  
+  // 5. Resolver/Clamp Impact
+  const lastSnap = state.lastSnap;
+  let resolverSummary = '(No prior snapshot)';
+  if (lastSnap) {
+    const prevMap = byId(lastSnap.nodes);
+    const moved = graph.nodes
+      .filter(n => n.type === 'track-bundle' || n.type === 'gate')
+      .map(n => {
+        const prev = prevMap.get(n.id);
+        if (!prev) return null;
+        const dx = n.position.x - prev.position.x;
+        const dy = n.position.y - prev.position.y;
+        return dx || dy ? { id: n.id, dx, dy } : null;
+      })
+      .filter(Boolean);
+    
+    resolverSummary = moved.length
+      ? `❌ Resolver/clamp moved ${moved.length} immutable nodes:\n${moved.map((m: any) => `  ${m.id}: Δx=${m.dx}, Δy=${m.dy}`).join('\n')}`
+      : '✅ Resolver/clamp did not move bundles or gates';
+  }
+  
+  // 6. Handle Orientation Audit
+  const handleRow = (n: V3Node) => {
+    const expect = n.type === 'gate' ? 'bottom→top' : 'right→left';
+    const has = `${n.sourcePosition || '-'}→${n.targetPosition || '-'}`;
+    const ok = has === expect ? '✅' : '❌';
+    return `  ${n.id.padEnd(20)} ${has.padEnd(11)} expected ${expect.padEnd(11)} ${ok}`;
+  };
+  
+  const handlesAudit = graph.nodes
+    .filter(n => n.type === 'gate' || n.type === 'track-bundle')
+    .map(handleRow)
+    .join('\n');
+  
+  // 7. Token Consistency Hash
+  const tokenHash = hash(tokens);
+  const ua = navigator.userAgent.slice(0, 60);
+  const dpr = window.devicePixelRatio || 1;
   
   const bundles = graph.nodes.filter(n => n.type === 'track-bundle');
   const gates = graph.nodes.filter(n => n.type === 'gate' || String(n.id).includes('gate'));
@@ -352,8 +465,8 @@ function generateReport(graph: V3Graph, tokens: Tokens): string {
     const tgt = graph.nodes.find(n => n.id === e.target);
     const sy = src?.data?.year ?? 0;
     const ty = tgt?.data?.year ?? 99;
-    const ok = e.kind === 'spine' ? (sy < ty ? '✅' : '❌') : '-';
-    return `${e.id.padEnd(25)} | ${(e.kind || '-').padEnd(6)} | ${e.source.padEnd(20)} → ${e.target.padEnd(20)} | ${ok}`;
+    const ok = e.kind === 'spine' ? (sy < ty ? '✅' : '❌') : e.kind === 'gate' ? '✅' : '-';
+    return `${e.id.padEnd(30)} | ${(e.kind || '-').padEnd(6)} | ${e.source.padEnd(20)} → ${e.target.padEnd(20)} | ${ok}`;
   }).join('\n');
   
   return `
@@ -364,48 +477,73 @@ V3 LAYOUT DIAGNOSTIC REPORT
 TOKENS:
   NODE_WIDTH: ${tokens.NODE_WIDTH}
   NODE_MAX_HEIGHT: ${tokens.NODE_MAX_HEIGHT}
+  GATE_HEIGHT: ${tokens.GATE_HEIGHT}
   LANE_GAP: ${tokens.LANE_GAP}
   TRACK_COLUMN_OFFSET: ${tokens.TRACK_COLUMN_OFFSET}
   GRID: ${tokens.GRID}
   stepY: ${sy}
   YEAR_COL: Y1:${tokens.YEAR_COL.Y1} Y2:${tokens.YEAR_COL.Y2} Y3:${tokens.YEAR_COL.Y3} Y4:${tokens.YEAR_COL.Y4}
+  Hash: ${tokenHash}
+
+BUILD INFO:
+  UserAgent: ${ua}
+  DPR: ${dpr}
+  Timestamp: ${new Date().toISOString()}
 
 GRAPH SUMMARY:
   Total nodes: ${graph.nodes.length}
   Total edges: ${graph.edges.length}
   Bundles: ${bundles.length}
   Gates: ${gates.length}
-  Overlaps: ${overlaps.length}
+
+${gridSummary}
 
 BUNDLE POSITIONS (expected row alignment):
 ${bundles.map(n => {
-  const yr = (n.data?.year ?? 1) as 1|2|3|4;
+  const yr = (n.data?.year ?? 1) as 1 | 2 | 3 | 4;
   const exp = yearRow(yr, tokens);
   const drift = Math.abs(n.position.y - exp);
   return `  ${n.id.padEnd(20)} Y${yr} | x:${n.position.x.toString().padStart(5)} y:${n.position.y.toString().padStart(5)} | expected y:${exp.toString().padStart(5)} | drift:${drift.toFixed(1)} ${drift > tokens.GRID ? '❌' : '✅'}`;
 }).join('\n')}
 
-GATE POSITIONS (expected mid-slot):
+GATE POSITIONS (centered in gutter):
 ${gates.map(n => {
-  const yr = (n.data?.year ?? 1) as 1|2|3|4;
-  const exp = gateSlot(yr, tokens);
+  const yr = (n.data?.year ?? 1) as 1 | 2 | 3 | 4;
+  const rowY = yearRow(yr, tokens);
+  const exp = rowY + tokens.NODE_MAX_HEIGHT + (tokens.LANE_GAP - tokens.GATE_HEIGHT) / 2;
   const drift = Math.abs(n.position.y - exp);
   return `  ${n.id.padEnd(20)} Y${yr} | x:${n.position.x.toString().padStart(5)} y:${n.position.y.toString().padStart(5)} | expected y:${exp.toString().padStart(5)} | drift:${drift.toFixed(1)} ${drift > tokens.GRID ? '❌' : '✅'}`;
 }).join('\n')}
+
+COLUMN DRIFT:
+  id                   x     | expected | drift ok
+${colDriftRows}
+
+HANDLES:
+${handlesAudit}
 
 ALL NODES:
   id                   | type            | yr | lane | position       | handles
   ${nodeTable}
 
+EDGE KINDS: ${JSON.stringify(kinds)}
+
+SPINE DIRECTIONS:
+${dirRows || '  (none)'}
+
 EDGES:
-  id                        | kind   | source               → target               | ok
+  id                             | kind   | source               → target               | ok
   ${edgeTable}
 
-${overlaps.length > 0 ? `OVERLAPS (${overlaps.length}):\n${overlaps.map(o => `  ❌ ${o.A} ↔ ${o.B}`).join('\n')}` : '✅ NO OVERLAPS'}
+${overlaps.length > 0 ? `OVERLAPS (${overlaps.length}):\n${overlaps.map((o: any) => `  ❌ ${o.A} ↔ ${o.B}`).join('\n')}` : '✅ NO OVERLAPS'}
+  Min gap between any two nodes: ${minGap.toFixed(1)}px
 
 DOM WIDTHS:
   Min: ${widths.min}px | Avg: ${widths.avg}px | Max: ${widths.max}px
-  ${widths.max > tokens.NODE_WIDTH ? '❌ Some nodes exceed NODE_WIDTH!' : '✅ All nodes within NODE_WIDTH'}
+  ${widthStatus}
+
+RESOLVER/CLAMP IMPACT:
+${resolverSummary}
 
 ═══════════════════════════════════════════════════════════
 `;
