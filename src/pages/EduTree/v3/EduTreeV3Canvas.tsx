@@ -153,23 +153,27 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
       }
     }
     
-    // Apply final-pass clamp to enforce exact layout
-    const clamped = V3Clamp.clampCollapsed(positionedCollapsed, LAYOUT_TOKENS);
-    
-    // Expose debug utility
-    (window as any).__V3DBG_lastGraph = clamped;
-    (window as any).__dumpV3 = () => ({
-      nodes: clamped.nodes,
-      edges: clamped.edges,
-      tokens: LAYOUT_TOKENS,
-      stepY: LAYOUT_TOKENS.NODE_MAX_HEIGHT + LAYOUT_TOKENS.LANE_GAP,
-      bundleRows: Object.fromEntries(bundleRows)
-    });
-    
-    // Run V3Debug assertions
-    V3DBG.afterRender(clamped, LAYOUT_TOKENS);
-    
-    setCurrentGraph(clamped);
+    // Apply final-pass clamp and debug instrumentation (dev only)
+    if (process.env.NODE_ENV !== 'production') {
+      const clamped = V3Clamp.clampCollapsed(positionedCollapsed, LAYOUT_TOKENS);
+      
+      // Expose debug utilities globally
+      (window as any).__V3DBG_lastGraph = clamped;
+      (window as any).__dumpV3 = () => ({
+        nodes: clamped.nodes,
+        edges: clamped.edges,
+        tokens: LAYOUT_TOKENS,
+        stepY: LAYOUT_TOKENS.NODE_MAX_HEIGHT + LAYOUT_TOKENS.LANE_GAP,
+        bundleRows: Object.fromEntries(bundleRows)
+      });
+      
+      // Run HUD + assertions (this activates the debugger!)
+      V3DBG.afterRender(clamped, LAYOUT_TOKENS);
+      
+      setCurrentGraph(clamped);
+    } else {
+      setCurrentGraph(positionedCollapsed);
+    }
   }, [enableMetrics]);
 
   const { nodes, edges } = currentGraph ?? { nodes: [], edges: [] };
