@@ -1,12 +1,27 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { resolveEduTreeFlag, canBypassEduTreeFlag } from '@/lib/eduTreeFlags';
 import { DisabledFeature } from '@/components/DisabledFeature';
 import { EduTreeCanvas } from './EduTreeCanvas';
 import EduTreeCanvasV2 from './EduTreeCanvasV2';
+import EduTreeV3Canvas from './v3/EduTreeV3Canvas';
 import type { FilterMode } from './data/seedDataV2';
 
 export default function EduTree() {
   console.log('[EduTree] Component mounting...');
+  const [searchParams] = useSearchParams();
+  
+  // Check for V3 flag
+  const useV3 = useMemo(() => {
+    return searchParams.get('v3') === '1' || localStorage.getItem('flags.eduTreeV3') === 'true';
+  }, [searchParams]);
+  
+  // If V3 flag is set, render V3 canvas immediately
+  if (useV3) {
+    console.log('[EduTree] Using V3 Canvas (Week 2)...');
+    return <EduTreeV3Canvas enableMetrics={searchParams.get('metrics') === '1'} />;
+  }
+  
   
   const enabled = resolveEduTreeFlag();
   

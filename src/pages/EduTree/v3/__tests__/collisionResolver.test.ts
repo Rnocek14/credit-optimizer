@@ -56,9 +56,10 @@ describe('collisionResolver', () => {
   it('is deterministic (same input -> same positions)', () => {
     const nodes = [base('A', 0, 'se'), base('B', 0, 'se')];
     const regions = computeRegions(nodes, LAYOUT_TOKENS);
-    const r1 = resolveCollisions([...nodes], regions, LAYOUT_TOKENS);
-    const r2 = resolveCollisions([...nodes], regions, LAYOUT_TOKENS);
-    expect(JSON.stringify(r1.map(n => n.position))).toBe(JSON.stringify(r2.map(n => n.position)));
+    const r1 = resolveCollisions([...nodes.map(n => ({ ...n }))], regions, LAYOUT_TOKENS);
+    const r2 = resolveCollisions([...nodes.map(n => ({ ...n }))], regions, LAYOUT_TOKENS);
+    expect(JSON.stringify(r1.map(n => ({ id: n.id, x: n.position.x, y: n.position.y }))))
+      .toBe(JSON.stringify(r2.map(n => ({ id: n.id, x: n.position.x, y: n.position.y }))));
   });
 
   it('SE/DS at same Y do not overlap with lane offset', () => {
