@@ -1,0 +1,62 @@
+/**
+ * Visual Debug Utilities for V3 Layout
+ * 
+ * Uncomment the rules below to add visual debugging overlays:
+ * - Node outlines to spot overlaps at a glance
+ * - Different colors for different node types
+ * - Width/height markers
+ * 
+ * Usage: Import this file in EduTreeV3Canvas.tsx when debugging
+ * import './dev/VisualDebug.css';
+ */
+
+/* Uncomment to enable visual debugging */
+
+/*
+.react-flow__node {
+  outline: 1px dashed rgba(99, 102, 241, 0.5) !important;
+  background: rgba(99, 102, 241, 0.05) !important;
+}
+
+.react-flow__node[data-type="gate"] {
+  outline-color: #22d3ee !important;
+  background: rgba(34, 211, 238, 0.05) !important;
+}
+
+.react-flow__node[data-type="track-bundle"] {
+  outline: 2px solid rgba(251, 191, 36, 0.6) !important;
+  background: rgba(251, 191, 36, 0.05) !important;
+}
+
+.react-flow__node[data-type="requirement"] {
+  outline-color: rgba(168, 85, 247, 0.5) !important;
+  background: rgba(168, 85, 247, 0.05) !important;
+}
+*/
+
+/* Width verification overlay - shows if any node exceeds 232px */
+/*
+.react-flow__node::after {
+  content: attr(data-id) " " attr(data-width) "px";
+  position: absolute;
+  top: -20px;
+  left: 0;
+  font-size: 10px;
+  color: red;
+  background: white;
+  padding: 2px 4px;
+  border-radius: 2px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+*/
+
+/* Grid overlay to verify snap alignment */
+/*
+.react-flow__pane {
+  background-image: 
+    linear-gradient(to right, rgba(0, 0, 0, 0.1) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(0, 0, 0, 0.1) 1px, transparent 1px);
+  background-size: 8px 8px;
+}
+*/

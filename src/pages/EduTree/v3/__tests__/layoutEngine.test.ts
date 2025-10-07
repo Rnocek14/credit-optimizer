@@ -65,4 +65,52 @@ describe('layoutEngine', () => {
       expect(n.position.y).toBe(i * stepY);
     });
   });
+
+  it('gates and bundles are on strict lane centers', () => {
+    const snap = (n: number) => Math.round(n / LAYOUT_TOKENS.GRID) * LAYOUT_TOKENS.GRID;
+    
+    const mixedNodes: V3Node[] = [
+      { id: 'y1-req', type: 'requirement', data: { year: 1, programId: 'bs_cs' }, position: { x: 0, y: 0 } },
+      { id: 'gate1', type: 'gate', data: { year: 1, programId: 'bs_cs' }, position: { x: 0, y: 0 } },
+      { id: 'y3-se', type: 'requirement', data: { year: 3, programId: 'bs_cs', trackId: 'se' }, position: { x: 0, y: 0 } },
+      { id: 'y3-ds', type: 'requirement', data: { year: 3, programId: 'bs_cs', trackId: 'ds' }, position: { x: 0, y: 0 } },
+      { id: 'gate2', type: 'gate', data: { year: 2, programId: 'bs_cs' }, position: { x: 0, y: 0 } },
+    ];
+    
+    const out = calculateLayout(mixedNodes, LAYOUT_TOKENS);
+    
+    for (const n of out) {
+      const baseX = (LAYOUT_TOKENS.YEAR_COL as any)[`Y${n.data.year ?? 1}`] ?? LAYOUT_TOKENS.YEAR_COL.Y1;
+      const expected =
+        n.type === 'gate' || !n.data.trackId ? snap(baseX) :
+        n.data.trackId === 'se' ? snap(baseX - LAYOUT_TOKENS.TRACK_COLUMN_OFFSET) :
+                                   snap(baseX + LAYOUT_TOKENS.TRACK_COLUMN_OFFSET);
+      
+      expect(n.position.x).toBe(expected);
+      
+      // Gates should have anchorX set
+      if (n.type === 'gate') {
+        expect(n.data.anchorX).toBe(expected);
+      }
+    }
+  });
+
+  it('gates are positioned in vertical slots between year groups', () => {
+    const gates: V3Node[] = [
+      { id: 'programGate', type: 'gate', data: { year: 1, programId: 'bs_cs' }, position: { x: 0, y: 0 } },
+      { id: 'trackGate', type: 'gate', data: { year: 2, programId: 'bs_cs' }, position: { x: 0, y: 0 } },
+    ];
+    
+    const out = calculateLayout(gates, LAYOUT_TOKENS);
+    const stepY = LAYOUT_TOKENS.NODE_MAX_HEIGHT + LAYOUT_TOKENS.LANE_GAP;
+    
+    const programGate = out.find(n => n.id === 'programGate');
+    const trackGate = out.find(n => n.id === 'trackGate');
+    
+    // Program gate (Y1) at 1.5 * stepY
+    expect(programGate?.position.y).toBe(Math.round(stepY * 1.5 / LAYOUT_TOKENS.GRID) * LAYOUT_TOKENS.GRID);
+    
+    // Track gate (Y2) at 3.5 * stepY
+    expect(trackGate?.position.y).toBe(Math.round(stepY * 3.5 / LAYOUT_TOKENS.GRID) * LAYOUT_TOKENS.GRID);
+  });
 });
