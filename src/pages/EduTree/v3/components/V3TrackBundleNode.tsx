@@ -25,13 +25,14 @@ export default function V3TrackBundleNode({ data }: Props) {
       : "border-slate-400 bg-slate-50 dark:bg-slate-800/40";
 
   return (
-    <div
-      className={
-        "rounded-xl border-2 " +
-        color +
-        " px-3 py-2 shadow-md w-[var(--v3-node-w)] select-none"
-      }
-    >
+    <div className="w-[var(--v3-node-w)]">
+      <div
+        className={
+          "rounded-xl border-2 " +
+          color +
+          " px-3 py-2 shadow-md select-none"
+        }
+      >
       <Handle type="target" position={Position.Left} />
       
       <div className="flex items-center justify-between gap-2">
@@ -59,7 +60,8 @@ export default function V3TrackBundleNode({ data }: Props) {
         )}
       </div>
       
-      <Handle type="source" position={Position.Right} />
+        <Handle type="source" position={Position.Right} />
+      </div>
     </div>
   );
 }

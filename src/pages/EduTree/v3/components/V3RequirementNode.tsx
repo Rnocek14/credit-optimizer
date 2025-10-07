@@ -27,7 +27,7 @@ export default function V3RequirementNode({ data, selected }: V3RequirementNodeP
     <div className="w-[var(--v3-node-w)]">
       <Handle type="target" position={Position.Left} id="in" />
       
-      <Card className={`p-3 ${trackColor} ${selected ? 'ring-2 ring-primary' : ''}`}>
+      <Card className={`p-3 ${trackColor} ${selected ? 'ring-2 ring-primary' : ''} w-full overflow-hidden`}>
         <div className="space-y-1">
           <div className="font-semibold text-sm whitespace-nowrap overflow-hidden text-ellipsis">
             {data.title || 'Requirement'}

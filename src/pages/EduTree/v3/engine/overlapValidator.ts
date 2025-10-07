@@ -20,6 +20,8 @@ export interface OverlapDiagnostic {
   tooShortStepY: boolean;
   gateXNotCenter: boolean;
   missingYearOrProgram: boolean;
+  horizontalGap: number;
+  verticalGap: number;
 }
 
 function getLane(node: V3Node): 'any' | 'se' | 'ds' {
@@ -91,7 +93,9 @@ export function validateNoOverlaps(
           tooNarrowLanes: horizontalGap < t.H_GAP,
           tooShortStepY: verticalGap < t.LANE_GAP,
           gateXNotCenter: (A.type === 'gate' && xDriftA) || (B.type === 'gate' && xDriftB),
-          missingYearOrProgram: !A.data.year || !A.data.programId || !B.data.year || !B.data.programId
+          missingYearOrProgram: !A.data.year || !A.data.programId || !B.data.year || !B.data.programId,
+          horizontalGap,
+          verticalGap
         });
       }
     }

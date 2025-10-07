@@ -11,7 +11,11 @@ export function calculateLayout(
   const out = nodes.map(n => ({ ...n }));
   const stepY = t.NODE_MAX_HEIGHT + t.LANE_GAP;
 
-  // Bucket by (program, year, track) for deterministic stacking
+  // Separate gates from bundles - gates need vertical spacing between year groups
+  const gates = out.filter(n => n.type === 'gate' || n.id?.includes('gate'));
+  const regularNodes = out.filter(n => n.type !== 'gate' && !n.id?.includes('gate'));
+
+  // Bucket regular nodes by (program, year, track) for deterministic stacking
   const buckets = new Map<string, V3Node[]>();
   const bucketKey = (n: V3Node) => {
     const pid = n.data.programId ?? 'unknown';
@@ -20,7 +24,7 @@ export function calculateLayout(
     return `${pid}|Y${year}|${trackKey}`;
   };
 
-  for (const n of out) {
+  for (const n of regularNodes) {
     const key = bucketKey(n);
     if (!buckets.has(key)) buckets.set(key, []);
     buckets.get(key)!.push(n);
@@ -46,12 +50,21 @@ export function calculateLayout(
       const lane = (n.type === 'gate' || !n.data.trackId) ? 'any' : n.data.trackId;
       n.position.x = centers[lane as 'any' | 'se' | 'ds'];
       n.position.y = snap(i * stepY, t.GRID);
-      
-      // Anchor gates at center so collision resolver never moves them horizontally
-      if (n.type === 'gate' || n.id?.includes('gate')) {
-        n.data.anchorX = centers.any;
-      }
     });
+  }
+
+  // Position gates BETWEEN year bundles to prevent overlaps
+  for (const gate of gates) {
+    const year = gate.data.year ?? 1;
+    const baseX = (t.YEAR_COL as any)[`Y${year}`] ?? t.YEAR_COL.Y1;
+    const centerX = snap(baseX, t.GRID);
+    
+    // Place gates in vertical slots between year groups
+    const gateY = year === 1 ? stepY * 1.5 : stepY * 3.5;
+    
+    gate.position.x = centerX;
+    gate.position.y = snap(gateY, t.GRID);
+    gate.data.anchorX = centerX;
   }
   
   return out;
