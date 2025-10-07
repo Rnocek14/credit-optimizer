@@ -28,6 +28,8 @@ export interface V3Node {
   type: NodeType;
   data: V3NodeData;
   position: Position;      // set by layout engine
+  sourcePosition?: 'top' | 'bottom' | 'left' | 'right';  // edge connection point
+  targetPosition?: 'top' | 'bottom' | 'left' | 'right';  // edge connection point
 }
 
 export interface V3Edge {

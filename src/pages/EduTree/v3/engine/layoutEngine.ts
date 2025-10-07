@@ -10,6 +10,9 @@ export function calculateLayout(
 ): V3Node[] {
   const out = nodes.map(n => ({ ...n }));
   const stepY = t.NODE_MAX_HEIGHT + t.LANE_GAP;
+  
+  // Helper: year to row index (Y1=0, Y2=1, Y3=2, Y4=3)
+  const yearRow = (year: 1 | 2 | 3 | 4) => year - 1;
 
   // Separate gates from bundles - gates need vertical spacing between year groups
   const gates = out.filter(n => n.type === 'gate' || n.id?.includes('gate'));
@@ -30,7 +33,7 @@ export function calculateLayout(
     buckets.get(key)!.push(n);
   }
 
-  // Assign X and stacked Y inside each bucket
+  // Assign X and Y based on year rows (collapsed view: one bundle per year)
   for (const [key, arr] of buckets) {
     const [, yStr, trackKey] = key.split('|');
     const year = Number(yStr.slice(1)) as 1 | 2 | 3 | 4;
@@ -49,22 +52,34 @@ export function calculateLayout(
     arr.forEach((n, i) => {
       const lane = (n.type === 'gate' || !n.data.trackId) ? 'any' : n.data.trackId;
       n.position.x = centers[lane as 'any' | 'se' | 'ds'];
-      n.position.y = snap(i * stepY, t.GRID);
+      
+      // Use year-based rows for collapsed bundles (i=0 for single bundle per year)
+      // If expanded: stack multiple nodes vertically
+      const rowY = yearRow(year) * stepY;
+      n.position.y = snap(rowY + (i * stepY), t.GRID);
+      
+      // Set connection points for clean vertical flow
+      n.sourcePosition = 'bottom';
+      n.targetPosition = 'top';
     });
   }
 
-  // Position gates BETWEEN year bundles to prevent overlaps
+  // Position gates BETWEEN year rows (midpoints)
   for (const gate of gates) {
     const year = gate.data.year ?? 1;
     const baseX = (t.YEAR_COL as any)[`Y${year}`] ?? t.YEAR_COL.Y1;
     const centerX = snap(baseX, t.GRID);
     
-    // Place gates in vertical slots between year groups
-    const gateY = year === 1 ? stepY * 1.5 : stepY * 3.5;
+    // Gates at midpoints: ProgramGate (Y1) between rows 0↔1, TrackGate (Y2) between rows 1↔2
+    const gateMid = yearRow(year) * stepY + 0.5 * stepY;
     
     gate.position.x = centerX;
-    gate.position.y = snap(gateY, t.GRID);
+    gate.position.y = snap(gateMid, t.GRID);
     gate.data.anchorX = centerX;
+    
+    // Gates connect top↔top for compact routing
+    gate.sourcePosition = 'top';
+    gate.targetPosition = 'top';
   }
   
   return out;

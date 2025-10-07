@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useCallback, useEffect } from 'react';
-import { ReactFlow, Background, Controls, MiniMap, Node, Edge, ReactFlowProvider, useReactFlow } from '@xyflow/react';
+import { ReactFlow, Background, Controls, MiniMap, Node, Edge, ReactFlowProvider, useReactFlow, Position } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
@@ -135,7 +135,7 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
     setCurrentGraph(positioned);
   }, [fullGraph, currentGraph, bundles]);
 
-  // Step 3: Convert V3 nodes to ReactFlow nodes with guarded toggle
+  // Step 3: Convert V3 nodes to ReactFlow nodes with guarded toggle and connection points
   const reactFlowNodes: Node[] = useMemo(() => {
     return nodes.map((node: V3NodeType) => {
       const baseData = {
@@ -146,12 +146,27 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
         rule_type: 'ALL'
       };
       
+      // Map sourcePosition/targetPosition strings to ReactFlow Position enum
+      const sourcePos = node.sourcePosition === 'bottom' ? Position.Bottom :
+                        node.sourcePosition === 'top' ? Position.Top :
+                        node.sourcePosition === 'left' ? Position.Left :
+                        node.sourcePosition === 'right' ? Position.Right :
+                        undefined;
+      
+      const targetPos = node.targetPosition === 'bottom' ? Position.Bottom :
+                        node.targetPosition === 'top' ? Position.Top :
+                        node.targetPosition === 'left' ? Position.Left :
+                        node.targetPosition === 'right' ? Position.Right :
+                        undefined;
+      
       // Add onToggle ONLY when graphs are ready and it's a bundle
       if (node.type === 'track-bundle' && fullGraph && currentGraph) {
         return {
           id: node.id,
           type: node.type,
           position: node.position,
+          sourcePosition: sourcePos,
+          targetPosition: targetPos,
           data: {
             ...baseData,
             onToggle: () => handleBundleToggle(node.id)
@@ -163,12 +178,14 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
         id: node.id,
         type: node.type,
         position: node.position,
+        sourcePosition: sourcePos,
+        targetPosition: targetPos,
         data: baseData
       };
     });
   }, [nodes, fullGraph, currentGraph, handleBundleToggle]);
 
-  // Convert V3 edges to ReactFlow edges with focus mode
+  // Convert V3 edges to ReactFlow edges with proper routing and focus mode
   const reactFlowEdges: Edge[] = useMemo(() => {
     return edges.map((edge: V3EdgeType) => {
       const isGate = edge.kind === 'gate';
