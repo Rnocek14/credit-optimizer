@@ -38,7 +38,7 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
   const [bundles, setBundles] = useState<Map<string, BundleCard>>(new Map());
   const [currentGraph, setCurrentGraph] = useState<V3Graph | null>(null);
 
-  // Build full graph and create collapsed view
+  // Build full graph and create collapsed view (Step 1: Ship collapsed view only)
   useEffect(() => {
     console.log('[V3 Canvas] Building graph from seed data...');
     
@@ -50,23 +50,24 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
       edgeCount: v3Graph.edges.length
     });
     
-    // Run layout engine on full graph
-    const positioned = enableMetrics 
+    // Run layout engine on full graph (for later expansions)
+    const positionedFull = enableMetrics 
       ? buildEduTreeGraphWithMetrics(v3Graph).graph
       : buildEduTreeGraph(v3Graph);
     
-    setFullGraph(positioned);
+    setFullGraph(positionedFull);
     
-    // Create collapsed view (progressive disclosure)
-    const { visibleNodes, visibleEdges, bundles: bundleMap } = createCollapsedView(positioned);
+    // Create collapsed view IMMEDIATELY (progressive disclosure - Step 1)
+    const { visibleNodes, visibleEdges, bundles: bundleMap } = createCollapsedView(positionedFull);
     
-    console.log('[V3 Canvas] Progressive disclosure:', {
-      fullNodes: positioned.nodes.length,
+    console.log('[V3 Canvas] Progressive disclosure (collapsed view):', {
+      fullNodes: positionedFull.nodes.length,
       visibleNodes: visibleNodes.length,
-      bundles: bundleMap.size
+      bundles: bundleMap.size,
+      mode: 'COLLAPSED - bundles + gates only'
     });
     
-    // Position the collapsed view
+    // Position the collapsed view (Step 5: spine edges only)
     const collapsedGraph = { nodes: visibleNodes, edges: visibleEdges };
     const positionedCollapsed = enableMetrics
       ? buildEduTreeGraphWithMetrics(collapsedGraph).graph
@@ -78,18 +79,34 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
     if (enableMetrics) {
       const { metrics } = buildEduTreeGraphWithMetrics(collapsedGraph);
       setLayoutMetrics(metrics);
-      console.log('[V3 Canvas] Layout metrics:', metrics);
+      console.log('[V3 Canvas] Layout metrics (collapsed):', metrics);
+    }
+    
+    // Step 6: Validate on collapsed view
+    const validation = validateNoOverlaps(positionedCollapsed.nodes, LAYOUT_TOKENS);
+    if (validation.hasOverlaps) {
+      console.error('[V3 Canvas] OVERLAPS IN COLLAPSED VIEW:', validation.overlaps.length);
+      console.table(validation.diagnostics.slice(0, 5));
+    } else {
+      console.log('[V3 Canvas] ✅ No overlaps in collapsed view');
     }
   }, [enableMetrics]);
 
   const { nodes, edges } = currentGraph ?? { nodes: [], edges: [] };
 
-  // Handle bundle expansion/collapse (FIXED: correct toggle logic)
+  // Step 3: Guard the toggle handler (prevents early render issues)
   const handleBundleToggle = useCallback((bundleId: string) => {
-    if (!fullGraph || !currentGraph) return;
+    // Early return if graphs aren't ready
+    if (!fullGraph || !currentGraph) {
+      console.warn('[V3 Canvas] Toggle called before graphs ready');
+      return;
+    }
     
     const bundle = bundles.get(bundleId);
-    if (!bundle) return;
+    if (!bundle) {
+      console.warn('[V3 Canvas] Bundle not found:', bundleId);
+      return;
+    }
     
     // isCollapsed = bundle node is still visible
     const isCollapsed = currentGraph.nodes.some(n => n.id === bundleId);
@@ -98,7 +115,7 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
     if (isCollapsed) {
       // Expand: replace bundle with its children
       newGraph = expandBundle(bundleId, currentGraph, fullGraph, bundles);
-      console.log('[V3 Canvas] Expanded bundle:', bundleId, '→', bundle.childCount, 'nodes');
+      console.log('[V3 Canvas] Expanded bundle:', bundleId, '→', bundle.childCount, 'child nodes');
     } else {
       // Collapse: remove children, restore bundle
       newGraph = collapseBundle(bundleId, currentGraph, bundles);
@@ -107,10 +124,18 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
     
     // Re-layout after expansion/collapse
     const positioned = buildEduTreeGraph(newGraph);
+    
+    // Validate after toggle
+    const validation = validateNoOverlaps(positioned.nodes, LAYOUT_TOKENS);
+    if (validation.hasOverlaps) {
+      console.error('[V3 Canvas] OVERLAPS AFTER TOGGLE:', validation.overlaps.length);
+      console.table(validation.diagnostics.slice(0, 5));
+    }
+    
     setCurrentGraph(positioned);
   }, [fullGraph, currentGraph, bundles]);
 
-  // Convert V3 nodes to ReactFlow nodes (wire onToggle to bundle nodes)
+  // Step 3: Convert V3 nodes to ReactFlow nodes with guarded toggle
   const reactFlowNodes: Node[] = useMemo(() => {
     return nodes.map((node: V3NodeType) => {
       const baseData = {
@@ -121,7 +146,7 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
         rule_type: 'ALL'
       };
       
-      // Only add onToggle if handleBundleToggle is ready
+      // Add onToggle ONLY when graphs are ready and it's a bundle
       if (node.type === 'track-bundle' && fullGraph && currentGraph) {
         return {
           id: node.id,
@@ -141,7 +166,7 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
         data: baseData
       };
     });
-  }, [nodes, handleBundleToggle, fullGraph, currentGraph]);
+  }, [nodes, fullGraph, currentGraph, handleBundleToggle]);
 
   // Convert V3 edges to ReactFlow edges with focus mode
   const reactFlowEdges: Edge[] = useMemo(() => {
@@ -346,13 +371,14 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
         )}
       </div>
 
-      {/* Debug Info */}
+      {/* Debug Info - Step 1 verification */}
       <div className="absolute top-4 right-4 z-10 bg-card p-3 rounded-lg border text-xs">
         <div className="font-semibold mb-1">V3 Engine Active</div>
-        <div>Nodes: {reactFlowNodes.length}</div>
+        <div>Mode: <span className="text-primary font-semibold">COLLAPSED</span></div>
+        <div>Visible: {reactFlowNodes.length} nodes</div>
         <div>Edges: {reactFlowEdges.length}</div>
         <div className="text-muted-foreground text-[10px] mt-1">
-          Week 2: Renderer Integration
+          Progressive Disclosure View
         </div>
       </div>
 

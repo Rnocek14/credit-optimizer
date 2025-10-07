@@ -24,7 +24,7 @@ export default function V3RequirementNode({ data, selected }: V3RequirementNodeP
     'border-border';
 
   return (
-    <div style={{ width: 'var(--v3-node-w, 232px)' }}>
+    <div className="w-[var(--v3-node-w)]">
       <Handle type="target" position={Position.Left} id="in" />
       
       <Card className={`p-3 ${trackColor} ${selected ? 'ring-2 ring-primary' : ''}`}>
