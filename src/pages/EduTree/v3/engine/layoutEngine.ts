@@ -14,7 +14,7 @@ export function calculateLayout(
     const year = n.data.year ?? 1;
     const baseX = (t.YEAR_COL as any)[`Y${year}`] ?? t.YEAR_COL.Y1;
     
-    // Apply track lane offset for SE/DS
+    // Apply track lane offset for SE/DS; gates stay centered
     const laneX =
       n.data.trackId === 'se' ? baseX - t.TRACK_COLUMN_OFFSET
     : n.data.trackId === 'ds' ? baseX + t.TRACK_COLUMN_OFFSET
@@ -22,10 +22,17 @@ export function calculateLayout(
     
     n.position.x = snap(laneX, t.GRID);
 
-    // basic stacking by track corridor seed (upper/lower bias)
-    const laneSeed = n.data.trackId === 'ds' ? 1 : 0;
-    const idx = laneSeed; // Week 1 dummy packing (no hierarchy yet)
-    n.position.y = snap((t.NODE_BASE_HEIGHT + t.LANE_GAP) * idx, t.GRID);
+    // Y seed: SE upper, DS lower, gates between
+    const isGate = n.type === 'gate' || n.id?.includes('gate');
+    
+    if (isGate) {
+      // Position gates vertically between SE and DS lanes
+      n.position.y = snap(Math.floor((t.NODE_BASE_HEIGHT + t.LANE_GAP) * 0.5), t.GRID);
+    } else {
+      // Track-based stacking: SE upper (idx=0), DS lower (idx=1)
+      const laneSeed = n.data.trackId === 'ds' ? 1 : 0;
+      n.position.y = snap((t.NODE_BASE_HEIGHT + t.LANE_GAP) * laneSeed, t.GRID);
+    }
   }
   
   return out;

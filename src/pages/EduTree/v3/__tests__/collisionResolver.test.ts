@@ -72,4 +72,25 @@ describe('collisionResolver', () => {
     const res = validateNoOverlaps(out, LAYOUT_TOKENS);
     expect(res.hasOverlaps).toBe(false);
   });
+
+  it('gate in center column does not overlap SE/DS after resolve', () => {
+    const gate: V3Node = { 
+      id: 'gate-track', 
+      type: 'gate', 
+      data: { year: 3 }, 
+      position: { x: LAYOUT_TOKENS.YEAR_COL.Y3, y: 0 } 
+    };
+    const se: V3Node = { 
+      id: 'y3-se', 
+      type: 'requirement', 
+      data: { year: 3, trackId: 'se' }, 
+      position: { x: LAYOUT_TOKENS.YEAR_COL.Y3 - LAYOUT_TOKENS.TRACK_COLUMN_OFFSET, y: 0 } 
+    };
+    const nodes = [gate, se];
+    const regions = computeRegions(nodes, LAYOUT_TOKENS);
+    const out = resolveCollisions(nodes, regions, LAYOUT_TOKENS);
+
+    const { validateNoOverlaps } = require('../engine/overlapValidator');
+    expect(validateNoOverlaps(out, LAYOUT_TOKENS).hasOverlaps).toBe(false);
+  });
 });

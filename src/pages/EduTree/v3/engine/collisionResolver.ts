@@ -69,5 +69,31 @@ export function resolveCollisions(
     }
   }
 
+  // Ensure "any" (gates) never collide with track nodes in same year & column
+  for (let i = 0; i < out.length; i++) {
+    for (let j = i + 1; j < out.length; j++) {
+      const a = out[i], b = out[j];
+      const sameYear = (a.data.year ?? 0) === (b.data.year ?? 0);
+
+      // same coarse column
+      const sameCol = within(a.position.x, b.position.x, t.COL_TOLERANCE * 2);
+      if (!sameYear || !sameCol) continue;
+
+      const aAny = (a.data.trackId ?? 'any') === 'any';
+      const bAny = (b.data.trackId ?? 'any') === 'any';
+      if (!(aAny !== bAny)) continue; // only handle any-vs-track (XOR)
+
+      // Guarantee min horizontal separation
+      const minDX = t.NODE_WIDTH + t.H_GAP;
+      const dx = b.position.x - a.position.x;
+
+      if (Math.abs(dx) < minDX) {
+        const push = snap(minDX - Math.abs(dx), t.GRID);
+        if (dx >= 0) b.position.x += push;
+        else a.position.x -= push;
+      }
+    }
+  }
+
   return out;
 }
