@@ -2,7 +2,7 @@ import { HubNavigation } from "@/components/HubNavigation";
 import { TodayDashboard } from "@/components/TodayDashboard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { BookOpen, Route } from "lucide-react";
+import { BookOpen, Route, Workflow } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 
@@ -43,6 +43,12 @@ export default function TodayDashboardPage() {
                 <Link to="/skilltree3">
                   <Route className="mr-2 h-4 w-4" />
                   Life Path Graph
+                </Link>
+              </Button>
+              <Button variant="secondary" className="justify-start" asChild>
+                <Link to="/edu-tree-v3-vertical">
+                  <Workflow className="mr-2 h-4 w-4" />
+                  EduTree V3 Vertical (Test)
                 </Link>
               </Button>
             </div>
