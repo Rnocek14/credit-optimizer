@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useCallback, useEffect } from 'react';
-import { ReactFlow, Background, Controls, MiniMap, Node, Edge, ReactFlowProvider, useReactFlow, Position } from '@xyflow/react';
+import { ReactFlow, Background, Controls, MiniMap, Node, Edge, ReactFlowProvider, useReactFlow, Position, MarkerType } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
@@ -281,6 +281,13 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
         source: edge.source,
         target: edge.target,
         type: isGate ? 'smoothstep' : isSpine ? 'step' : 'default',
+        pathOptions: isSpine ? { borderRadius: 12 } : { borderRadius: 8 },
+        markerEnd: { 
+          type: MarkerType.ArrowClosed, 
+          width: 18, 
+          height: 18,
+          color: isGate ? '#6366f1' : '#94a3b8'
+        },
         animated: isGate && isFocused,
         style: {
           stroke: isGate ? '#6366f1' : '#94a3b8',

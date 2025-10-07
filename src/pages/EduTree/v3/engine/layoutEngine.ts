@@ -65,7 +65,14 @@ export function calculateLayout(
       // If expanded: stack multiple nodes vertically
       const isCollapsedBundle = n.type === 'track-bundle';
       const rowY = yearRow(year) * stepY;
-      n.position.y = snap(rowY + (isCollapsedBundle ? 0 : i * stepY), t.GRID);
+      
+      // Y3 split: offset SE/DS tracks vertically for visual clarity
+      let yOffset = 0;
+      if (year === 3 && n.type === 'track-bundle' && n.data.trackId) {
+        yOffset = n.data.trackId === 'se' ? -24 : 24; // ±24px from centerline
+      }
+      
+      n.position.y = snap(rowY + yOffset + (isCollapsedBundle ? 0 : i * stepY), t.GRID);
       
       // Spine flow: horizontal left→right between years
       n.sourcePosition = Position.Right;
