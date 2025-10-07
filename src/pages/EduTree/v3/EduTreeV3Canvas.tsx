@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { validateNoOverlaps } from './engine/overlapValidator';
 import { buildEduTreeGraph, buildEduTreeGraphWithMetrics } from './engine/buildGraph';
-import { createCollapsedView, expandBundle, collapseBundle, BundleCard } from './engine/progressiveDisclosure';
+import { createCollapsedView, expandBundle, collapseBundle, BundleCard } from './engine/createCollapsedView';
 import { adaptSeedDataV2 } from './engine/v2Adapter';
 import { LAYOUT_TOKENS } from './utils/layoutTokensV3';
 import { V3Node as V3NodeType, V3Edge as V3EdgeType, V3Graph } from './types/v3';
@@ -15,7 +15,7 @@ import { GOLDEN_LAYOUT_SEED } from '../data/seedDataV2';
 import V3RequirementNode from './components/V3RequirementNode';
 import V3GateNode from './components/V3GateNode';
 import V3YearNode from './components/V3YearNode';
-import { V3TrackBundleNode } from './components/V3TrackBundleNode';
+import V3TrackBundleNode from './components/V3TrackBundleNode';
 
 const nodeTypes = {
   requirement: V3RequirementNode,
@@ -84,7 +84,33 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
 
   const { nodes, edges } = currentGraph ?? { nodes: [], edges: [] };
 
-  // Convert V3 nodes to ReactFlow nodes
+  // Handle bundle expansion/collapse (FIXED: correct toggle logic)
+  const handleBundleToggle = useCallback((bundleId: string) => {
+    if (!fullGraph || !currentGraph) return;
+    
+    const bundle = bundles.get(bundleId);
+    if (!bundle) return;
+    
+    // isCollapsed = bundle node is still visible
+    const isCollapsed = currentGraph.nodes.some(n => n.id === bundleId);
+    
+    let newGraph: V3Graph;
+    if (isCollapsed) {
+      // Expand: replace bundle with its children
+      newGraph = expandBundle(bundleId, currentGraph, fullGraph, bundles);
+      console.log('[V3 Canvas] Expanded bundle:', bundleId, '→', bundle.childCount, 'nodes');
+    } else {
+      // Collapse: remove children, restore bundle
+      newGraph = collapseBundle(bundleId, currentGraph, bundles);
+      console.log('[V3 Canvas] Collapsed bundle:', bundleId);
+    }
+    
+    // Re-layout after expansion/collapse
+    const positioned = buildEduTreeGraph(newGraph);
+    setCurrentGraph(positioned);
+  }, [fullGraph, currentGraph, bundles]);
+
+  // Convert V3 nodes to ReactFlow nodes (wire onToggle to bundle nodes)
   const reactFlowNodes: Node[] = useMemo(() => {
     return nodes.map((node: V3NodeType) => ({
       id: node.id,
@@ -93,13 +119,16 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
       data: {
         ...node.data,
         label: node.data.title || node.id,
+        onToggle: node.type === 'track-bundle' 
+          ? () => handleBundleToggle(node.id) 
+          : undefined,
         // Add any additional data needed by V2 components
         area: 'core',
-        credits_needed: 3,
+        credits_needed: node.data.credits_needed ?? 3,
         rule_type: 'ALL'
       }
     }));
-  }, [nodes]);
+  }, [nodes, handleBundleToggle]);
 
   // Convert V3 edges to ReactFlow edges with focus mode
   const reactFlowEdges: Edge[] = useMemo(() => {
@@ -143,31 +172,6 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
     setSelectedNodeId(null);
     setFocusedEdges(new Set());
   }, []);
-
-  // Handle bundle expansion/collapse
-  const handleBundleToggle = useCallback((bundleId: string) => {
-    if (!fullGraph || !currentGraph) return;
-    
-    const bundle = bundles.get(bundleId);
-    if (!bundle) return;
-    
-    const isExpanded = !currentGraph.nodes.some(n => n.id === bundleId);
-    
-    let newGraph: V3Graph;
-    if (isExpanded) {
-      // Collapse
-      newGraph = collapseBundle(bundleId, currentGraph, bundles);
-      console.log('[V3 Canvas] Collapsed bundle:', bundleId);
-    } else {
-      // Expand
-      newGraph = expandBundle(bundleId, currentGraph, fullGraph, bundles);
-      console.log('[V3 Canvas] Expanded bundle:', bundleId);
-    }
-    
-    // Re-position after expansion/collapse
-    const positioned = buildEduTreeGraph(newGraph);
-    setCurrentGraph(positioned);
-  }, [fullGraph, currentGraph, bundles]);
 
   const handleValidateOverlaps = useCallback(() => {
     const result = validateNoOverlaps(nodes, LAYOUT_TOKENS);

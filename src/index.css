@@ -70,6 +70,15 @@
   --v3-node-h-max: 250px;
 }
 
+/* React Flow V3 node width lock - prevent horizontal drift */
+.react-flow__node {
+  width: var(--v3-node-w) !important;
+  box-sizing: border-box;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* Quiet hover - subtle lift instead of scale */
 .hover-quiet { 
   transform: translateY(0px); 
