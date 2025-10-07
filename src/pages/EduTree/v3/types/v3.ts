@@ -7,20 +7,35 @@ export interface Position {
   y: number; 
 }
 
+export interface CompareInfo {
+  courses: number;
+  credits: number;
+  list?: string[];
+  outcomes?: string[];
+  durationWeeks?: number;
+}
+
 export interface V3NodeData {
   year?: 1 | 2 | 3 | 4;
   programId?: string;
   trackId?: TrackId;
   title?: string;
   anchorX?: number; // For gates: locked X position to prevent drift
+  junctionType?: 'program' | 'track';
   
   // Bundle-specific fields
   childCount?: number;
   totalCredits?: number;
   isExpanded?: boolean;
+  onToggle?: () => void;
   
   // Requirement-specific fields  
   credits_needed?: number;
+  
+  // Comparison fields (for Track Gate)
+  showCompare?: boolean;
+  se?: CompareInfo;
+  ds?: CompareInfo;
 }
 
 export interface V3Node {

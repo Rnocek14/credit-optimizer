@@ -13,6 +13,14 @@ import { GOLDEN_LAYOUT_SEED } from '../data/seedDataV2';
 import V3Clamp from './dev/V3Clamp';
 import V3DBG from './dev/V3Debug';
 
+// Vertical flow imports
+import { calculateVerticalLayout } from './engine/layoutEngineVertical';
+import { mapEdgesVertical } from './engine/edgeMapperVertical';
+import { VERT } from './utils/layoutTokensVertical';
+import CompareMiniCards from './components/CompareMiniCards';
+import TrackCompareDrawer from './components/TrackCompareDrawer';
+import CompareToggle from './components/CompareToggle';
+
 // V3-specific node components
 import V3RequirementNode from './components/V3RequirementNode';
 import V3GateNode from './components/V3GateNode';
@@ -39,6 +47,21 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
   const [fullGraph, setFullGraph] = useState<V3Graph | null>(null);
   const [bundles, setBundles] = useState<Map<string, BundleCard>>(new Map());
   const [currentGraph, setCurrentGraph] = useState<V3Graph | null>(null);
+  
+  // Vertical flow feature flag (read from URL or localStorage)
+  const [useVerticalLayout, setUseVerticalLayout] = useState(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('layout') === 'vertical') return true;
+      return localStorage.getItem('flags.verticalLayout') === 'true';
+    } catch {
+      return false;
+    }
+  });
+  
+  // Comparison UI state
+  const [showComparison, setShowComparison] = useState(false);
+  const [compareDrawerOpen, setCompareDrawerOpen] = useState(false);
 
   // Build full graph and create collapsed view (Step 1: Ship collapsed view only)
   useEffect(() => {
@@ -153,28 +176,66 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
       }
     }
     
-    // Apply final-pass clamp and debug instrumentation (dev only)
-    if (process.env.NODE_ENV !== 'production') {
-      const clamped = V3Clamp.clampCollapsed(positionedCollapsed, LAYOUT_TOKENS);
+    // Apply layout based on feature flag
+    let finalGraph: V3Graph;
+    
+    if (useVerticalLayout) {
+      // Vertical flow: pure top-to-bottom layout
+      console.log('[V3 Canvas] Using VERTICAL layout engine');
+      const verticalNodes = calculateVerticalLayout(positionedCollapsed.nodes, VERT);
+      finalGraph = { nodes: verticalNodes, edges: positionedCollapsed.edges };
       
-      // Expose debug utilities globally
-      (window as any).__V3DBG_lastGraph = clamped;
+      // Add comparison data to Track Gate
+      const trackGate = finalGraph.nodes.find(n => n.id === 'gate-y3-tracks');
+      if (trackGate && showComparison) {
+        // Mock comparison data (in production, fetch from seed data or API)
+        trackGate.data = {
+          ...trackGate.data,
+          showCompare: true,
+          se: {
+            courses: 12,
+            credits: 48,
+            durationWeeks: 32,
+            outcomes: ['Full-stack development', 'Cloud architecture'],
+          },
+          ds: {
+            courses: 10,
+            credits: 40,
+            durationWeeks: 28,
+            outcomes: ['Machine learning', 'Data pipelines'],
+          },
+        };
+      }
+    } else {
+      // Horizontal flow: legacy year-column layout
+      console.log('[V3 Canvas] Using HORIZONTAL layout engine (legacy)');
+      if (process.env.NODE_ENV !== 'production') {
+        const clamped = V3Clamp.clampCollapsed(positionedCollapsed, LAYOUT_TOKENS);
+        finalGraph = clamped;
+      } else {
+        finalGraph = positionedCollapsed;
+      }
+    }
+    
+    // Debug instrumentation (dev only)
+    if (process.env.NODE_ENV !== 'production') {
+      (window as any).__V3DBG_lastGraph = finalGraph;
       (window as any).__dumpV3 = () => ({
-        nodes: clamped.nodes,
-        edges: clamped.edges,
-        tokens: LAYOUT_TOKENS,
-        stepY: LAYOUT_TOKENS.NODE_MAX_HEIGHT + LAYOUT_TOKENS.LANE_GAP,
+        nodes: finalGraph.nodes,
+        edges: finalGraph.edges,
+        tokens: useVerticalLayout ? VERT : LAYOUT_TOKENS,
+        layout: useVerticalLayout ? 'vertical' : 'horizontal',
         bundleRows: Object.fromEntries(bundleRows)
       });
       
-      // Run HUD + assertions (this activates the debugger!)
-      V3DBG.afterRender(clamped, LAYOUT_TOKENS);
-      
-      setCurrentGraph(clamped);
-    } else {
-      setCurrentGraph(positionedCollapsed);
+      // Run HUD + assertions (skip for vertical until we adapt V3DBG)
+      if (!useVerticalLayout) {
+        V3DBG.afterRender(finalGraph, LAYOUT_TOKENS);
+      }
     }
-  }, [enableMetrics]);
+    
+    setCurrentGraph(finalGraph);
+  }, [enableMetrics, useVerticalLayout, showComparison]);
 
   const { nodes, edges } = currentGraph ?? { nodes: [], edges: [] };
 
@@ -271,6 +332,12 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
 
   // Convert V3 edges to ReactFlow edges with proper routing and focus mode
   const reactFlowEdges: Edge[] = useMemo(() => {
+    if (useVerticalLayout) {
+      // Vertical flow: uniform top-to-bottom edges
+      return mapEdgesVertical(edges);
+    }
+    
+    // Horizontal flow: gate edges vertical, spine edges horizontal
     return edges.map((edge: V3EdgeType) => {
       const isGate = edge.kind === 'gate';
       const isSpine = edge.kind === 'spine';
@@ -301,7 +368,7 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
         }
       };
     });
-  }, [edges, focusedEdges]);
+  }, [edges, focusedEdges, useVerticalLayout]);
 
   // Handle node selection for edge focusing
   const handleNodeClick = useCallback((event: any, node: Node) => {

@@ -18,6 +18,7 @@ interface V3GateNodeProps {
 export default function V3GateNode({ data, selected }: V3GateNodeProps) {
   const gateType = data.junctionType || (data.title?.includes('Program') ? 'program' : 'track');
   const gateLabel = data?.title ?? (data?.year === 2 ? 'Program Gate' : 'Track Gate');
+  const showCompare = data?.showCompare && data?.se && data?.ds;
   
   return (
     <div className="w-[var(--v3-node-w)] min-w-[var(--v3-node-w)] max-w-[var(--v3-node-w)] box-border relative">
