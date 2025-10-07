@@ -28,6 +28,8 @@ export function calculateLayout(
     if (isGate) {
       // Position gates vertically between SE and DS lanes
       n.position.y = snap(Math.floor((t.NODE_BASE_HEIGHT + t.LANE_GAP) * 0.5), t.GRID);
+      // Anchor gates in X so collision resolver never moves them horizontally
+      n.data.anchorX = n.position.x;
     } else {
       // Track-based stacking: SE upper (idx=0), DS lower (idx=1)
       const laneSeed = n.data.trackId === 'ds' ? 1 : 0;

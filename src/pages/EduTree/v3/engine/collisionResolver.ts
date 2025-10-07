@@ -50,10 +50,14 @@ export function resolveCollisions(
     }
   });
 
-  // guarantee minimum horizontal spacing if same year band
+  // guarantee minimum horizontal spacing if same year band (skip gates - they're anchored)
   for (let i = 0; i < out.length; i++) {
     for (let j = i + 1; j < out.length; j++) {
       const a = out[i], b = out[j];
+      
+      // Skip gates - they're handled by fork-group rule
+      if (a.type === 'gate' || b.type === 'gate') continue;
+      
       const sameYear = (a.data.year ?? 0) === (b.data.year ?? 0);
       if (!sameYear) continue;
 
@@ -104,15 +108,19 @@ export function resolveCollisions(
         trackNode.position.x += dir * need;
       }
 
-      // 2) If still too close to each other, separate further
-      const dx = Math.abs(trackNode.position.x - gateNode.position.x);
-      if (dx < minNodeDX) {
-        const need = snap(minNodeDX - dx, t.GRID);
-        const half = Math.floor(need / 2);
-        const dir = (trackNode.position.x > gateNode.position.x) ? -1 : +1;
-        gateNode.position.x += -dir * half;           // small nudge toward center
-        trackNode.position.x += dir * (need - half);  // larger nudge outward
+      // 2) Ensure gate <-> track clearance (only move track, gate stays anchored)
+      const needDx = minNodeDX - Math.abs(trackNode.position.x - gateNode.position.x);
+      if (needDx > 0) {
+        const dir = (trackNode.position.x > gateNode.position.x) ? +1 : -1;
+        trackNode.position.x += snap(needDx, t.GRID) * dir;
       }
+    }
+  }
+
+  // Final pass: snap gates back to their anchor positions
+  for (const n of out) {
+    if ((n.type === 'gate' || n.id?.includes('gate')) && typeof n.data.anchorX === 'number') {
+      n.position.x = snap(n.data.anchorX, t.GRID);
     }
   }
 

@@ -12,6 +12,7 @@ export interface V3NodeData {
   programId?: string;
   trackId?: TrackId;
   title?: string;
+  anchorX?: number; // For gates: locked X position to prevent drift
 }
 
 export interface V3Node {
