@@ -444,6 +444,26 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
           {focusedEdges.size === 0 ? 'All Edges' : 'Focus Mode'}
         </Button>
         
+        {process.env.NODE_ENV !== 'production' && (
+          <button
+            onClick={() => (window as any).__V3DBG?.copyReport?.()}
+            style={{
+              padding: '8px 10px',
+              borderRadius: 8,
+              border: '1px solid hsl(var(--border))',
+              background: 'hsl(var(--card))',
+              color: 'hsl(var(--card-foreground))',
+              fontFamily: 'ui-monospace, monospace',
+              fontSize: 12,
+              boxShadow: '0 1px 3px rgba(0,0,0,.1)',
+              cursor: 'pointer'
+            }}
+            title="Copy V3 diagnostic report to clipboard"
+          >
+            📋 Copy V3 Report
+          </button>
+        )}
+        
         {layoutMetrics && (
           <div className="bg-card p-3 rounded-lg border text-xs space-y-1">
             <div className="font-semibold">Layout Metrics</div>
