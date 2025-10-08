@@ -66,6 +66,24 @@ describe('Phase 2 Bridge: lifepath source (no visual change)', () => {
     });
   });
 
+  it('prevents alternative edges from rendering (Phase 2 guard)', () => {
+    cy.window().then(win => {
+      const dump = (win as any).__dumpV3?.();
+      const edgeKinds = dump.edges.map((e: any) => e.kind);
+      
+      // CRITICAL: No 'alternative' edges should render in Phase 2
+      expect(edgeKinds).to.not.include('alternative');
+      
+      // All edges should be allowed Phase 2 kinds
+      const allowedKinds = ['spine', 'prereq', 'gate', 'advisory', 'coreq'];
+      edgeKinds.forEach((kind: string) => {
+        expect(allowedKinds).to.include(kind, `Unexpected edge kind: ${kind}`);
+      });
+      
+      cy.log(`Edge kinds rendered: ${[...new Set(edgeKinds)].join(', ')}`);
+    });
+  });
+
   it('maintains node count baseline (≥7 nodes, same as seed)', () => {
     cy.get('[data-rf-node]').then($nodes => {
       const nodeCount = $nodes.length;
