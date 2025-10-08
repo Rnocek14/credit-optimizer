@@ -46,9 +46,15 @@ export function injectCheckpoints(
     if (!sourceNode) continue;
 
     const altCount = meta.alternativesByNode[nodeId];
-    
-    // Create checkpoint node positioned just after the source node
     const checkpointId = `checkpoint-${nodeId}`;
+    
+    // Idempotency guard: skip if checkpoint already exists
+    if (newNodes.some(n => n.id === checkpointId)) {
+      console.log(`[Checkpoints] Skipping duplicate checkpoint for ${nodeId}`);
+      continue;
+    }
+    
+    // Create checkpoint node - let layout engine position it
     const checkpointNode: V3Node = {
       id: checkpointId,
       type: 'checkpoint',
@@ -62,13 +68,23 @@ export function injectCheckpoints(
         showAlternatives: true,
       },
       position: {
-        // Position below source node (will be adjusted by layout engine)
-        x: sourceNode.position.x,
-        y: sourceNode.position.y + VERT.TIER_SPACING_PX,
+        // Layout engine will assign final position
+        x: 0,
+        y: 0,
       },
     };
 
     newNodes.push(checkpointNode);
+    
+    // Create spine edge from source → checkpoint
+    const spineEdge: V3Edge = {
+      id: `${nodeId}-to-${checkpointId}`,
+      source: nodeId,
+      target: checkpointId,
+      kind: 'spine',
+    };
+    
+    newEdges.push(spineEdge);
     checkpointsAdded++;
 
     console.log(`[Checkpoints] Added checkpoint for ${nodeId} with ${altCount} alternatives`);

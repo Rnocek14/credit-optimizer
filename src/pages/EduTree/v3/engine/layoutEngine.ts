@@ -22,9 +22,14 @@ export function calculateLayout(
   // Helper: year to row index (Y1=0, Y2=1, Y3=2, Y4=3)
   const yearRow = (year: 1 | 2 | 3 | 4) => year - 1;
 
-  // Separate gates from bundles - gates need vertical spacing between year groups
+  // Separate special node types that need custom positioning
   const gates = out.filter(n => n.type === 'gate' || n.id?.includes('gate'));
-  const regularNodes = out.filter(n => n.type !== 'gate' && !n.id?.includes('gate'));
+  const checkpoints = out.filter(n => n.type === 'checkpoint');
+  const regularNodes = out.filter(n => 
+    n.type !== 'gate' && 
+    n.type !== 'checkpoint' && 
+    !n.id?.includes('gate')
+  );
 
   // Bucket regular nodes by (program, year, track) for deterministic stacking
   const buckets = new Map<string, V3Node[]>();
@@ -97,6 +102,23 @@ export function calculateLayout(
     // Gates connect vertically: bottom→top for year transitions
     gate.sourcePosition = Position.Bottom;
     gate.targetPosition = Position.Top;
+  }
+  
+  // Position checkpoint nodes: place immediately after source node
+  for (const checkpoint of checkpoints) {
+    const sourceId = checkpoint.data.sourceNodeId;
+    if (!sourceId) continue;
+    
+    const sourceNode = out.find(n => n.id === sourceId);
+    if (!sourceNode) continue;
+    
+    // Position checkpoint below source with tier spacing offset
+    checkpoint.position.x = sourceNode.position.x;
+    checkpoint.position.y = snap(sourceNode.position.y + 160, t.GRID); // 160px tier spacing
+    
+    // Checkpoints connect vertically
+    checkpoint.sourcePosition = Position.Bottom;
+    checkpoint.targetPosition = Position.Top;
   }
   
   return out;

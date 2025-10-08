@@ -4,10 +4,14 @@ import { calculateLayout } from './layoutEngine';
 import { computeRegions } from './regionManager';
 import { resolveCollisions } from './collisionResolver';
 import { validateNoOverlaps } from './overlapValidator';
+import { injectCheckpoints } from './checkpointManager';
+import type { BridgeMeta } from '../data/lifePathBridge';
 
 export interface EnrichmentContext {
   marketplace?: any;
   userPlan?: any;
+  enableCheckpoints?: boolean;
+  meta?: BridgeMeta;
 }
 
 /**
@@ -21,8 +25,17 @@ export function buildEduTreeGraph(
   graph: V3Graph,
   context?: EnrichmentContext
 ): V3Graph {
+  // 0) Phase 3: Inject checkpoints if enabled and meta provided
+  let workingGraph = graph;
+  
+  if (context?.enableCheckpoints && context?.meta && Object.keys(context.meta.alternativesByNode).length > 0) {
+    const result = injectCheckpoints(graph.nodes, graph.edges, context.meta);
+    workingGraph = { nodes: result.nodes, edges: result.edges };
+    console.log(`[buildEduTreeGraph] Injected ${result.checkpointsAdded} checkpoint nodes`);
+  }
+  
   // 1) Enrich nodes with external data (if provided)
-  const enrichedNodes = graph.nodes.map(node => enrichNode(node, context));
+  const enrichedNodes = workingGraph.nodes.map(node => enrichNode(node, context));
   
   // 2) Calculate initial layout (year columns, track lanes)
   const positioned = calculateLayout(enrichedNodes, LAYOUT_TOKENS);
@@ -54,7 +67,7 @@ export function buildEduTreeGraph(
   
   return {
     nodes: resolved,
-    edges: graph.edges
+    edges: workingGraph.edges
   };
 }
 
@@ -89,8 +102,17 @@ export function buildEduTreeGraphWithMetrics(
 ): { graph: V3Graph; metrics: LayoutMetrics } {
   const startTotal = performance.now();
   
+  // 0) Phase 3: Inject checkpoints if enabled and meta provided
+  let workingGraph = graph;
+  
+  if (context?.enableCheckpoints && context?.meta && Object.keys(context.meta.alternativesByNode).length > 0) {
+    const result = injectCheckpoints(graph.nodes, graph.edges, context.meta);
+    workingGraph = { nodes: result.nodes, edges: result.edges };
+    console.log(`[buildEduTreeGraphWithMetrics] Injected ${result.checkpointsAdded} checkpoint nodes`);
+  }
+  
   const enrichStart = performance.now();
-  const enrichedNodes = graph.nodes.map(node => enrichNode(node, context));
+  const enrichedNodes = workingGraph.nodes.map(node => enrichNode(node, context));
   const enrichDuration = performance.now() - enrichStart;
   
   const layoutStart = performance.now();
@@ -112,10 +134,10 @@ export function buildEduTreeGraphWithMetrics(
   const totalDuration = performance.now() - startTotal;
   
   return {
-    graph: { nodes: resolved, edges: graph.edges },
+    graph: { nodes: resolved, edges: workingGraph.edges },
     metrics: {
-      nodeCount: graph.nodes.length,
-      edgeCount: graph.edges.length,
+      nodeCount: workingGraph.nodes.length,
+      edgeCount: workingGraph.edges.length,
       enrichDuration,
       layoutDuration,
       regionDuration,

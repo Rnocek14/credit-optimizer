@@ -7,13 +7,22 @@ import { validateNoOverlaps } from './overlapValidator';
 import { injectCheckpoints } from './checkpointManager';
 import type { BridgeMeta } from '../data/lifePathBridge';
 
-export function buildGraph(graph: V3Graph, meta?: BridgeMeta): V3Graph {
-  // 0) Phase 3: Inject checkpoints if meta provided
+export function buildGraph(
+  graph: V3Graph, 
+  meta?: BridgeMeta,
+  options?: { enableCheckpoints?: boolean }
+): V3Graph {
+  // 0) Phase 3: Inject checkpoints if meta provided and flag enabled
   let workingNodes = graph.nodes;
   let workingEdges = graph.edges;
   
-  if (meta && Object.keys(meta.alternativesByNode).length > 0) {
-    const result = injectCheckpoints(graph.nodes, graph.edges, meta);
+  const shouldInjectCheckpoints = 
+    options?.enableCheckpoints && 
+    meta && 
+    Object.keys(meta.alternativesByNode).length > 0;
+  
+  if (shouldInjectCheckpoints) {
+    const result = injectCheckpoints(graph.nodes, graph.edges, meta!);
     workingNodes = result.nodes;
     workingEdges = result.edges;
     console.log(`[V3 Engine] Injected ${result.checkpointsAdded} checkpoint nodes`);

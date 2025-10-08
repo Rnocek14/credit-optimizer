@@ -30,12 +30,14 @@ import V3RequirementNode from './components/V3RequirementNode';
 import V3GateNode from './components/V3GateNode';
 import V3YearNode from './components/V3YearNode';
 import V3TrackBundleNode from './components/V3TrackBundleNode';
+import { V3CheckpointNode } from './components/V3CheckpointNode';
 
 const nodeTypes = {
   requirement: V3RequirementNode,
   gate: V3GateNode,
   year: V3YearNode,
   'track-bundle': V3TrackBundleNode,
+  checkpoint: V3CheckpointNode,
 };
 
 interface EduTreeV3CanvasProps {
@@ -98,6 +100,9 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
   const params = new URLSearchParams(window.location.search);
   const useLifePathSource = params.get('source') === 'lifepath';
   
+  // === Phase 3: Checkpoint feature flag - read ?checkpoints=1 flag ===
+  const enableCheckpoints = params.get('checkpoints') === '1';
+  
   // Conditional: use Life Path Graph or seed data
   const lifePathGraph = useLifePathSource ? useLifePathGraph('goal-software-engineer') : null;
   
@@ -134,9 +139,10 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
     });
     
     // Run layout engine on full graph (for later expansions)
+    // Phase 3: Pass checkpoint options and metadata to buildGraph
     const positionedFull = enableMetrics 
-      ? buildEduTreeGraphWithMetrics(v3Graph).graph
-      : buildEduTreeGraph(v3Graph);
+      ? buildEduTreeGraphWithMetrics(v3Graph, { enableCheckpoints, meta: sourceMeta }).graph
+      : buildEduTreeGraph(v3Graph, { enableCheckpoints, meta: sourceMeta });
     
     setFullGraph(positionedFull);
     
@@ -153,14 +159,14 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
     // Position the collapsed view (Step 5: spine edges only)
     const collapsedGraph = { nodes: visibleNodes, edges: visibleEdges };
     const positionedCollapsed = enableMetrics
-      ? buildEduTreeGraphWithMetrics(collapsedGraph).graph
-      : buildEduTreeGraph(collapsedGraph);
+      ? buildEduTreeGraphWithMetrics(collapsedGraph, { enableCheckpoints, meta: sourceMeta }).graph
+      : buildEduTreeGraph(collapsedGraph, { enableCheckpoints, meta: sourceMeta });
     
     setBundles(bundleMap);
     setCurrentGraph(positionedCollapsed);
     
     if (enableMetrics) {
-      const { metrics } = buildEduTreeGraphWithMetrics(collapsedGraph);
+      const { metrics } = buildEduTreeGraphWithMetrics(collapsedGraph, { enableCheckpoints, meta: sourceMeta });
       setLayoutMetrics(metrics);
       console.log('[V3 Canvas] Layout metrics (collapsed):', metrics);
     }
@@ -375,7 +381,7 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
     }
     
     // Re-layout after expansion/collapse
-    const positioned = buildEduTreeGraph(newGraph);
+    const positioned = buildEduTreeGraph(newGraph, { enableCheckpoints, meta: sourceMeta });
     
     // Validate after toggle
     const validation = validateNoOverlaps(positioned.nodes, LAYOUT_TOKENS);

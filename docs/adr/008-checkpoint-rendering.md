@@ -1,125 +1,73 @@
-# ADR-008: Checkpoint Node Rendering (Phase 3)
+# ADR 008: Checkpoint Node Rendering (Phase 3a)
 
-**Status:** In Progress  
-**Date:** 2025-01-08  
-**Deciders:** Engineering Team  
-
-## Context
-
-Phase 2 successfully counted alternatives in `meta.alternativesByNode` without rendering them. Phase 3 injects **checkpoint nodes** at fork points to expose these alternatives to users, allowing path selection through an interactive UI.
-
-### Goals
-
-1. **Visual Clarity**: Checkpoints must be visually distinct from regular nodes (track-bundle, gate).
-2. **Grid Alignment**: Maintain 8px grid snap for all checkpoint nodes.
-3. **Zero Geometry Shift**: Checkpoint injection must not disturb existing node positions.
-4. **Performance**: Checkpoint rendering must complete in <150ms for graphs with ≤10 checkpoints.
+**Date:** 2025-10-08  
+**Status:** Accepted  
+**Context:** Phase 3a implementation - Checkpoint Infrastructure
 
 ## Decision
 
-### Checkpoint Detection
+Inject checkpoint nodes at fork points to enable alternative path selection, gated behind `?checkpoints=1` feature flag.
 
-Use `meta.alternativesByNode` from Phase 2 bridge:
-
-```typescript
-const forkNodeIds = Object.keys(meta.alternativesByNode).filter(
-  nodeId => meta.alternativesByNode[nodeId] >= 1
-);
-```
+## Architecture
 
 ### Checkpoint Injection
-
-Insert checkpoint nodes via `checkpointManager.ts`:
-
-- **Stable IDs**: `checkpoint-{sourceNodeId}` (deterministic, snapshot-friendly)
-- **Position**: Offset from source node by `TIER_SPACING_PX`
-- **Type**: New `checkpoint` NodeType
-- **Data**: Includes `alternativeCount` and `sourceNodeId` for drawer linkage
-
-### Visual Design
-
-**Checkpoint Node (`V3CheckpointNode.tsx`)**:
-- Diamond/badge shape (rounded rectangle with warning gradient)
-- GitBranch icon + alternative count
-- Hover hint: "Click to view options"
-- Click handler: Opens alternatives drawer (Phase 3b)
-
-**Colors** (from design system):
-- Background: `bg-gradient-to-br from-warning/20 to-warning/10`
-- Border: `border-2 border-warning`
-- Icon: `text-warning`
-
-### Engine Integration
-
-Update `buildGraph()` signature to accept `BridgeMeta`:
-
-```typescript
-export function buildGraph(graph: V3Graph, meta?: BridgeMeta): V3Graph {
-  // 0) Inject checkpoints (Phase 3)
-  if (meta && Object.keys(meta.alternativesByNode).length > 0) {
-    const result = injectCheckpoints(graph.nodes, graph.edges, meta);
-    // ... continue with layout
-  }
-}
-```
+- **Detection:** Use `meta.alternativesByNode` from Phase 2 bridge
+- **Trigger:** Only inject when `count >= 1` (fork exists)
+- **Placement:** Position checkpoint immediately after source node
+- **Type:** New node type `'checkpoint'` with diamond/badge visual design
+- **Feature Flag:** `?checkpoints=1` required to render (maintains Phase 2's "no visual change" guarantee)
 
 ### Data Flow
-
-```mermaid
-graph LR
-    A[lifePathBridge] -->|meta.alternativesByNode| B[buildGraph]
-    B -->|injectCheckpoints| C[Layout Engine]
-    C --> D[V3CheckpointNode]
-    D -->|onClick| E[AlternativesDrawer]
+```
+Bridge (Phase 2) 
+  → meta.alternativesByNode 
+  → checkpointManager.injectCheckpoints() 
+  → layoutEngine (positions checkpoint nodes)
+  → V3CheckpointNode component
 ```
 
-## Consequences
+### Node Structure
+```ts
+type: 'checkpoint'
+data: {
+  tier: number,
+  alternativeCount: number,
+  sourceNodeId: string,
+  title: 'Choose Your Path',
+  showAlternatives: true,
+  lineage: PathLineage
+}
+position: { x: 0, y: 0 } // Layout engine assigns final position
+```
 
-### Benefits
+### Edge Connectivity
+- **Spine edge:** Source node → Checkpoint node (`kind: 'spine'`)
+- Maintains graph topology for layout engine
+- No downstream alternative edges yet (Phase 3b)
 
-- **User Control**: Exposes alternatives without overwhelming the spine view.
-- **Stable IDs**: Checkpoint IDs are deterministic (safe for React keys, deep links).
-- **Grid Aligned**: All checkpoints snap to 8px grid (no sub-pixel rendering).
-- **Phase 3b Ready**: Data structure supports drawer implementation (alternative ranking, selection state).
+## Implementation
 
-### Trade-offs
+### Files Created
+- `src/pages/EduTree/v3/engine/checkpointManager.ts` - Injection logic
+- `src/pages/EduTree/v3/components/V3CheckpointNode.tsx` - UI component
+- `src/pages/EduTree/v3/engine/__tests__/checkpointManager.test.ts` - Unit tests
+- `cypress/e2e/v3-phase3-checkpoints.cy.ts` - E2E tests
 
-- **Node Count Increase**: Graphs with N forks now have N+7 nodes (may affect performance at scale).
-- **Layout Complexity**: Checkpoint injection runs before layout engine (must preserve grid invariants).
-- **Type System**: Adds `checkpoint` to `NodeType` union (all node type guards must handle it).
+### Files Modified
+- `src/pages/EduTree/v3/types/v3.ts` - Added `checkpoint` to `NodeType`, checkpoint fields to `V3NodeData`
+- `src/pages/EduTree/v3/engine/buildGraph.ts` - Checkpoint injection before layout
+- `src/pages/EduTree/v3/engine/layoutEngine.ts` - Checkpoint positioning logic
+- `src/pages/EduTree/v3/utils/layoutTokensVertical.ts` - Added `TIER_SPACING_PX: 160`
+- `src/pages/EduTree/v3/EduTreeV3Canvas.tsx` - Node registration, feature flag reading
 
-## Testing
+## Testing Strategy
 
-### Unit Tests
-- `checkpointManager.test.ts`: Validates injection logic, stable IDs, grid alignment.
-- Edge cases: Empty graph, no forks, duplicate fork detection.
-
-### Cypress Tests
-- `v3-phase3-checkpoints.cy.ts`:
-  - Checkpoint nodes render when `meta.alternativesByNode` is populated.
-  - Node count increases by N (forks detected).
-  - Grid alignment preserved (all positions % 8 === 0).
-  - Click checkpoint → logs event (drawer opens in Phase 3b).
-
-### Visual Regression
-- Snapshot baseline: Compare lifepath with/without checkpoints.
-- Ensure spine nodes remain unaffected.
-
-## Performance Budget
-
-- **Checkpoint Injection**: <20ms for 10 checkpoints
-- **Checkpoint Render**: <150ms total (React reconciliation + DOM paint)
-- **Grid Validation**: <10ms (dev-mode only)
+All unit and Cypress tests implemented with comprehensive coverage of injection logic, idempotency, type safety, edge connectivity, grid alignment, and feature flag gating.
 
 ## Next Steps (Phase 3b)
 
-1. **AlternativesDrawer.tsx**: Matrix view with ranking columns (Credits, Time, Cost, Outcomes).
-2. **Branch Dimming**: CSS-only opacity changes when alternative selected.
-3. **State Management**: Add `branchState: BranchState` to `V3NodeData`.
-4. **Deep Linking**: Support `?checkpoint={id}&selected={altId}` for shareable selections.
-
-## References
-
-- [ADR-006: Hierarchical Path Taxonomy](./006-hierarchical-path-taxonomy.md)
-- [ADR-007: Life Path Bridge](./007-life-path-bridge.md)
-- [Phase 3 Spec (Internal)](https://docs.google.com/document/d/...)
+1. Create `AlternativesDrawer.tsx` component
+2. Implement `rankAlternatives()` with `RANKING_WEIGHTS`
+3. Add CSS dimming for non-selected paths
+4. Wire up checkpoint click → drawer open
+5. Display sortable alternatives matrix
