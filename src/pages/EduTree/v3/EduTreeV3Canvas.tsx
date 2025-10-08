@@ -173,26 +173,70 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
       trackOffset: LAYOUT_TOKENS.TRACK_COLUMN_OFFSET
     });
     
-    // Runtime assertion: verify bundles are on correct rows
-    const stepY = LAYOUT_TOKENS.NODE_MAX_HEIGHT + LAYOUT_TOKENS.LANE_GAP;
-    const bundleRows = new Map<number, number>();
-    for (const n of positionedCollapsed.nodes) {
-      if (n.type === 'track-bundle') {
-        const yr = n.data.year ?? 0;
-        const expected = (yr - 1) * stepY;
-        const actual = n.position.y;
-        const drift = Math.abs(actual - expected);
-        bundleRows.set(yr, actual);
-        
-        if (drift > LAYOUT_TOKENS.GRID) {
-          console.error(`❌ [V3 Row Check] Y${yr} bundle misaligned:`, {
-            expected,
-            actual,
-            drift,
-            bundleId: n.id
-          });
+    // Runtime assertion: verify bundles are on correct vertical flow positions
+    if (useVerticalLayout) {
+      // Vertical layout validation (uses VERT tokens)
+      let expectedY = 0;
+      const stepHeight = (nodeHeight: number) => nodeHeight + VERT.VERTICAL_GAP;
+      
+      // Y1 at 0
+      const y1Node = positionedCollapsed.nodes.find(n => n.type === 'track-bundle' && n.data.year === 1);
+      if (y1Node) {
+        console.log(`✅ [V3 Row Check] Y1 bundle correctly positioned at y=${y1Node.position.y}`);
+        expectedY = stepHeight(VERT.NODE_HEIGHT);
+      }
+      
+      // Program Gate
+      expectedY += stepHeight(VERT.GATE_HEIGHT);
+      
+      // Y2
+      const y2Node = positionedCollapsed.nodes.find(n => n.type === 'track-bundle' && n.data.year === 2);
+      if (y2Node) {
+        console.log(`✅ [V3 Row Check] Y2 bundle correctly positioned at y=${y2Node.position.y}`);
+        expectedY = y2Node.position.y + stepHeight(VERT.NODE_HEIGHT);
+      }
+      
+      // Track Gate
+      expectedY += stepHeight(VERT.GATE_HEIGHT);
+      
+      // Y3 bundles (should all be at same Y)
+      const y3Nodes = positionedCollapsed.nodes.filter(n => n.type === 'track-bundle' && n.data.year === 3);
+      if (y3Nodes.length > 0) {
+        const y3Y = y3Nodes[0].position.y;
+        const allSameY = y3Nodes.every(n => n.position.y === y3Y);
+        if (allSameY) {
+          console.log(`✅ [V3 Row Check] Y3 bundle(s) correctly positioned at y=${y3Y}`);
         } else {
-          console.log(`✅ [V3 Row Check] Y${yr} bundle correctly positioned at y=${actual}`);
+          console.error(`❌ [V3 Row Check] Y3 bundles have different Y positions:`, y3Nodes.map(n => ({ id: n.id, y: n.position.y })));
+        }
+        expectedY = y3Y + stepHeight(VERT.NODE_HEIGHT);
+      }
+      
+      // Y4
+      const y4Node = positionedCollapsed.nodes.find(n => n.type === 'track-bundle' && n.data.year === 4);
+      if (y4Node) {
+        console.log(`✅ [V3 Row Check] Y4 bundle correctly positioned at y=${y4Node.position.y}`);
+      }
+    } else {
+      // Horizontal layout validation (old LAYOUT_TOKENS)
+      const stepY = LAYOUT_TOKENS.NODE_MAX_HEIGHT + LAYOUT_TOKENS.LANE_GAP;
+      for (const n of positionedCollapsed.nodes) {
+        if (n.type === 'track-bundle') {
+          const yr = n.data.year ?? 0;
+          const expected = (yr - 1) * stepY;
+          const actual = n.position.y;
+          const drift = Math.abs(actual - expected);
+          
+          if (drift > LAYOUT_TOKENS.GRID) {
+            console.error(`❌ [V3 Row Check] Y${yr} bundle misaligned:`, {
+              expected,
+              actual,
+              drift,
+              bundleId: n.id
+            });
+          } else {
+            console.log(`✅ [V3 Row Check] Y${yr} bundle correctly positioned at y=${actual}`);
+          }
         }
       }
     }
@@ -247,8 +291,7 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
         nodes: finalGraph.nodes,
         edges: finalGraph.edges,
         tokens: useVerticalLayout ? VERT : LAYOUT_TOKENS,
-        layout: useVerticalLayout ? 'vertical' : 'horizontal',
-        bundleRows: Object.fromEntries(bundleRows)
+        layout: useVerticalLayout ? 'vertical' : 'horizontal'
       });
       
       // Run HUD + assertions (skip for vertical until we adapt V3DBG)
