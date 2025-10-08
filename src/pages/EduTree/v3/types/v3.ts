@@ -80,6 +80,10 @@ export interface V3NodeData {
   showAlternatives?: boolean;                   // NEW: whether to show alternative branches
   alternatives?: CheckpointOptionPreview[];     // NEW: available path options at this checkpoint
   
+  // === Phase 3: Checkpoint-specific fields ===
+  alternativeCount?: number;   // Number of alternatives at this checkpoint
+  sourceNodeId?: string;       // Original node that has alternatives (for checkpoint nodes)
+  
   // === Existing fields ===
   programId?: string;
   trackId?: TrackId;

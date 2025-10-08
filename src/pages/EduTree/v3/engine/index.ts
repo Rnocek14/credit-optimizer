@@ -4,10 +4,23 @@ import { calculateLayout } from './layoutEngine';
 import { computeRegions } from './regionManager';
 import { resolveCollisions } from './collisionResolver';
 import { validateNoOverlaps } from './overlapValidator';
+import { injectCheckpoints } from './checkpointManager';
+import type { BridgeMeta } from '../data/lifePathBridge';
 
-export function buildGraph(graph: V3Graph): V3Graph {
+export function buildGraph(graph: V3Graph, meta?: BridgeMeta): V3Graph {
+  // 0) Phase 3: Inject checkpoints if meta provided
+  let workingNodes = graph.nodes;
+  let workingEdges = graph.edges;
+  
+  if (meta && Object.keys(meta.alternativesByNode).length > 0) {
+    const result = injectCheckpoints(graph.nodes, graph.edges, meta);
+    workingNodes = result.nodes;
+    workingEdges = result.edges;
+    console.log(`[V3 Engine] Injected ${result.checkpointsAdded} checkpoint nodes`);
+  }
+
   // 1) place nodes
-  const positioned: V3Node[] = calculateLayout(graph.nodes, LAYOUT_TOKENS);
+  const positioned: V3Node[] = calculateLayout(workingNodes, LAYOUT_TOKENS);
 
   // 2) region bounds (program/track corridors)
   const regions = computeRegions(positioned, LAYOUT_TOKENS);
@@ -29,5 +42,5 @@ export function buildGraph(graph: V3Graph): V3Graph {
     };
   }
 
-  return { nodes: resolved, edges: graph.edges };
+  return { nodes: resolved, edges: workingEdges };
 }
