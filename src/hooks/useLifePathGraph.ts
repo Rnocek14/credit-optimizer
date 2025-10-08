@@ -18,7 +18,7 @@ export interface LifePathGraph {
   edges: GraphEdge[];
 }
 
-export function useLifePathGraph(goalId?: string, scoringConfig?: ScoringConfig) {
+export function useLifePathGraph(goalId?: string | null, scoringConfig?: ScoringConfig) {
   const [graph, setGraph] = useState<LifePathGraph>({ nodes: [], edges: [] });
   const [pathfindingResult, setPathfindingResult] = useState<PathfindingResult | null>(null);
   const [loading, setLoading] = useState(true);
@@ -27,6 +27,12 @@ export function useLifePathGraph(goalId?: string, scoringConfig?: ScoringConfig)
 
   // Load graph data
   useEffect(() => {
+    // Skip loading if no goalId provided
+    if (!goalId) {
+      setLoading(false);
+      return;
+    }
+    
     const loadGraph = async () => {
       try {
         console.log('📊 Loading Life Path Graph data...');

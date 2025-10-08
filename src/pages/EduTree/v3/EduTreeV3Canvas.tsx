@@ -101,8 +101,8 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
   const params = new URLSearchParams(window.location.search);
   const useLifePathSource = params.get('source') === 'lifepath';
   
-  // CRITICAL: Always call useLifePathGraph unconditionally (React Hook rule)
-  const lifePathGraph = useLifePathGraph('goal-software-engineer');
+  // CRITICAL: Only load Life Path data when explicitly requested
+  const lifePathGraph = useLifePathGraph(useLifePathSource ? 'goal-software-engineer' : null);
   
   // === Phase 3: Checkpoint feature flag - read ?checkpoints=1 flag ===
   const [enableCheckpoints, setEnableCheckpoints] = React.useState(() => {
@@ -177,12 +177,31 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
       nodeCount: v3Graph.nodes.length,
       edgeCount: v3Graph.edges.length
     });
+
+    // Validate adapted graph
+    if (v3Graph.nodes.length === 0) {
+      console.error('[V3 Canvas] CRITICAL: Adapted graph has 0 nodes!');
+      console.log('[V3 Canvas] Seed data:', GOLDEN_LAYOUT_SEED);
+      toast.error('Failed to load graph data');
+      return;
+    }
+
+    // Check for year/track distribution
+    const yearCounts = new Map<number, number>();
+    v3Graph.nodes.forEach(n => {
+      const year = n.data.year ?? 0;
+      yearCounts.set(year, (yearCounts.get(year) ?? 0) + 1);
+    });
+    console.log('[V3 Canvas] Node distribution by year:', Object.fromEntries(yearCounts));
     
     // Run layout engine on full graph (for later expansions)
     // Phase 3: Pass checkpoint options and metadata to buildGraph
-    const positionedFull = enableMetrics 
-      ? buildEduTreeGraphWithMetrics(v3Graph, { enableCheckpoints, meta: sourceMeta }).graph
-      : buildEduTreeGraph(v3Graph, { enableCheckpoints, meta: sourceMeta });
+    // Skip horizontal layout for vertical mode - let vertical engine handle positioning
+    const positionedFull = useVerticalLayout
+      ? v3Graph  // Keep raw nodes, let vertical engine handle positioning
+      : (enableMetrics 
+          ? buildEduTreeGraphWithMetrics(v3Graph, { enableCheckpoints, meta: sourceMeta }).graph
+          : buildEduTreeGraph(v3Graph, { enableCheckpoints, meta: sourceMeta }));
     
     setFullGraph(positionedFull);
     
@@ -198,9 +217,12 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
     
     // Position the collapsed view (Step 5: spine edges only)
     const collapsedGraph = { nodes: visibleNodes, edges: visibleEdges };
-    const positionedCollapsed = enableMetrics
-      ? buildEduTreeGraphWithMetrics(collapsedGraph, { enableCheckpoints, meta: sourceMeta }).graph
-      : buildEduTreeGraph(collapsedGraph, { enableCheckpoints, meta: sourceMeta });
+    // Skip second layout pass for vertical mode
+    const positionedCollapsed = useVerticalLayout
+      ? collapsedGraph  // Keep raw collapsed nodes
+      : (enableMetrics
+          ? buildEduTreeGraphWithMetrics(collapsedGraph, { enableCheckpoints, meta: sourceMeta }).graph
+          : buildEduTreeGraph(collapsedGraph, { enableCheckpoints, meta: sourceMeta }));
     
     setBundles(bundleMap);
     setCurrentGraph(positionedCollapsed);
@@ -391,7 +413,7 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
   }, [bridgedData, enableCheckpoints, sourceMeta, enableMetrics, useVerticalLayout, showComparison]);
 
   // Loading guard: show loading state while Life Path data loads
-  if (useLifePathSource && lifePathGraph.loading) {
+  if (useLifePathSource && lifePathGraph?.loading) {
     return (
       <div className="flex items-center justify-center h-screen bg-background">
         <div className="text-center space-y-2">

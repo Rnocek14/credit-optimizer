@@ -59,7 +59,17 @@ export function createCollapsedView(fullGraph: V3Graph): {
   const makeBundle = (id: string, year: 1 | 2 | 3 | 4, trackId?: TrackId) => {
     const key = trackId ? `y${year}-${trackId}` : `y${year}`;
     const kids = byYearTrack.get(key) ?? [];
-    if (kids.length === 0) return;
+    
+    console.log(`[Collapsed View] Creating bundle ${id}:`, {
+      key,
+      childCount: kids.length,
+      childIds: kids.map(n => n.id)
+    });
+    
+    if (kids.length === 0) {
+      console.warn(`[Collapsed View] No children for bundle ${id}, skipping`);
+      return;
+    }
 
     const title = trackId
       ? `Year ${year} ${trackId.toUpperCase()} Track`
