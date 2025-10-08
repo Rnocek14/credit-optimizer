@@ -101,8 +101,12 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
   const params = new URLSearchParams(window.location.search);
   const useLifePathSource = params.get('source') === 'lifepath';
   
+  // CRITICAL: Always call useLifePathGraph unconditionally (React Hook rule)
+  const lifePathGraph = useLifePathGraph('goal-software-engineer');
+  
   // === Phase 3: Checkpoint feature flag - read ?checkpoints=1 flag ===
   const [enableCheckpoints, setEnableCheckpoints] = React.useState(() => {
+    const params = new URLSearchParams(window.location.search);
     const flag = params.get('checkpoints') === '1';
     // Guard: checkpoints require vertical layout
     if (flag && !useVerticalLayout) {
@@ -116,6 +120,12 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
   const handleToggleCheckpoints = useCallback(() => {
     if (!useVerticalLayout) {
       toast.error('Checkpoints require vertical layout');
+      return;
+    }
+    
+    // Check if data is ready
+    if (!lifePathGraph?.graph?.nodes?.length) {
+      toast.error('Life Path data still loading...');
       return;
     }
     
@@ -134,10 +144,7 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
     window.history.pushState({}, '', url.toString());
     
     toast.success(`Checkpoints ${newValue ? 'enabled' : 'disabled'}`);
-  }, [enableCheckpoints, useVerticalLayout]);
-  
-  // Conditional: use Life Path Graph or seed data
-  const lifePathGraph = useLifePathSource ? useLifePathGraph('goal-software-engineer') : null;
+  }, [enableCheckpoints, useVerticalLayout, lifePathGraph?.graph]);
   
   // Bridge Life Path Graph to V3 format if enabled
   const bridgedData = useMemo(() => {
@@ -381,7 +388,19 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
     }
     
     setCurrentGraph(finalGraph);
-  }, [enableMetrics, useVerticalLayout, showComparison]);
+  }, [bridgedData, enableCheckpoints, sourceMeta, enableMetrics, useVerticalLayout, showComparison]);
+
+  // Loading guard: show loading state while Life Path data loads
+  if (useLifePathSource && lifePathGraph.loading) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-background">
+        <div className="text-center space-y-2">
+          <div className="text-lg font-medium">Loading Life Path data...</div>
+          <div className="text-sm text-muted-foreground">Preparing checkpoint nodes</div>
+        </div>
+      </div>
+    );
+  }
 
   const { nodes, edges } = currentGraph ?? { nodes: [], edges: [] };
 
