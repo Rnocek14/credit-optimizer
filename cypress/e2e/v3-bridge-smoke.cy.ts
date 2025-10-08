@@ -45,6 +45,10 @@ describe('Phase 2 Bridge: lifepath source (no visual change)', () => {
       expect(dump.meta.tiers).to.be.a('number');
       expect(dump.meta.slugsUsed).to.be.an('array');
       expect(dump.meta.alternativesByNode).to.be.an('object');
+
+      // Validate meta.tiers is reasonable
+      expect(dump.meta.tiers).to.be.greaterThan(0);
+      expect(dump.meta.tiers).to.be.lessThanOrEqual(10); // sanity upper bound
     });
   });
 
@@ -117,28 +121,34 @@ describe('Phase 2 Bridge: lifepath source (no visual change)', () => {
 
   it('validates grid alignment (all positions divisible by 8)', () => {
     cy.get('[data-rf-node]').should('exist');
-    
+
     cy.window().then(win => {
       const dump = (win as any).__dumpV3?.();
       const nodes = dump.nodes;
-      
+
       nodes.forEach((node: any) => {
         expect(node.position.x % 8).to.equal(0, `Node ${node.id} X not grid-aligned`);
         expect(node.position.y % 8).to.equal(0, `Node ${node.id} Y not grid-aligned`);
       });
+
+      cy.log(`✅ All ${nodes.length} nodes are grid-aligned (8px)`);
     });
   });
 
   it('logs bridge activity in console (dev mode)', () => {
-    // Verify bridge was called (log presence)
+    // Indirectly verify bridge ran via meta
     cy.window().then(win => {
-      // Can't directly check console logs in Cypress, but verify dump indicates bridge ran
       const dump = (win as any).__dumpV3?.();
       expect(dump.meta).to.exist;
-      
-      // If forksDetected > 0, bridge definitely ran
+
+      // Verify meta contains expected data structure
+      expect(dump.meta.forksDetected).to.be.a('number').and.to.be.at.least(0);
+      expect(dump.meta.tiers).to.be.a('number').and.to.be.greaterThan(0);
+
       if (dump.meta.forksDetected > 0) {
-        cy.log('✅ Bridge successfully mapped Life Path Graph');
+        cy.log(`✅ Bridge successfully mapped Life Path Graph (${dump.meta.forksDetected} alternatives detected)`);
+      } else {
+        cy.log('ℹ️ Bridge ran but no alternatives detected in current graph');
       }
     });
   });
