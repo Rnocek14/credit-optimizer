@@ -172,7 +172,7 @@ function mapEdgeType(lpType: string): V3Edge['kind'] {
     case 'qualifiesFor':
       return 'gate';
     case 'equivalentTo':
-      return 'alternative'; // Will be used in Phase 3
+      return 'advisory'; // Phase 2: render as advisory (not alternative yet)
     case 'creditTransfersTo':
       return 'advisory';
     default:
