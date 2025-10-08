@@ -421,12 +421,7 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
     }
     
     setCurrentGraph(finalGraph);
-    
-    // Force ReactFlow to fit view after graph is set
-    setTimeout(() => {
-      fitView({ duration: 200, padding: 0.2 });
-    }, 100);
-  }, [bridgedData, enableCheckpoints, sourceMeta, enableMetrics, useVerticalLayout, showComparison, fitView]);
+  }, [bridgedData, enableCheckpoints, sourceMeta, enableMetrics, useVerticalLayout, showComparison]);
 
   // Loading guard: show loading state while Life Path data loads
   if (useLifePathSource && lifePathGraph?.loading) {
@@ -448,6 +443,37 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
     hasMetrics: !!layoutMetrics,
     firstNode: nodes[0] ? { id: nodes[0].id, pos: nodes[0].position } : null
   });
+
+  // Debug viewport and node bounds
+  useEffect(() => {
+    if (nodes.length > 0) {
+      const nodeWidth = useVerticalLayout ? VERT.NODE_WIDTH : LAYOUT_TOKENS.NODE_WIDTH;
+      const nodeHeight = useVerticalLayout ? VERT.NODE_HEIGHT : LAYOUT_TOKENS.NODE_BASE_HEIGHT;
+      
+      const bounds = nodes.reduce((acc, node) => ({
+        minX: Math.min(acc.minX, node.position.x),
+        maxX: Math.max(acc.maxX, node.position.x + nodeWidth),
+        minY: Math.min(acc.minY, node.position.y),
+        maxY: Math.max(acc.maxY, node.position.y + nodeHeight),
+      }), { minX: Infinity, maxX: -Infinity, minY: Infinity, maxY: -Infinity });
+      
+      console.log('[V3 Canvas] Node bounds:', bounds);
+      console.log('[V3 Canvas] First 3 nodes:', nodes.slice(0, 3).map(n => ({
+        id: n.id,
+        type: n.type,
+        x: n.position.x,
+        y: n.position.y
+      })));
+    }
+  }, [nodes, useVerticalLayout]);
+
+  // Handle ReactFlow initialization
+  const handleReactFlowInit = useCallback(() => {
+    console.log('[V3 Canvas] ReactFlow initialized, fitting view...');
+    setTimeout(() => {
+      fitView({ duration: 300, padding: 0.2 });
+    }, 150);
+  }, [fitView]);
 
   // Step 3: Guard the toggle handler (prevents early render issues)
   const handleBundleToggle = useCallback((bundleId: string) => {
@@ -835,7 +861,9 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
         nodeTypes={nodeTypes}
         onNodeClick={handleNodeClick}
         onPaneClick={handlePaneClick}
-        fitView
+        onInit={handleReactFlowInit}
+        defaultViewport={{ x: 0, y: 0, zoom: 0.8 }}
+        fitViewOptions={{ padding: 0.2, duration: 300 }}
         minZoom={0.1}
         maxZoom={2}
         selectNodesOnDrag={false}
