@@ -290,10 +290,10 @@ const App = () => {
             path="/edu-tree-v2" 
             element={<EduTreeV2Page />}
           />
-          {/* EduTree V3 - Redirect to flag-based route */}
+          {/* EduTree V3 - Redirect to vertical layout (checkpoints require vertical) */}
           <Route 
             path="/edu-tree-v3" 
-            element={<Navigate to="/edu-tree?v3=1" replace />}
+            element={<Navigate to="/edu-tree?v3=1&layout=vertical" replace />}
           />
           {/* EduTree V3 Vertical Flow - Direct access */}
           <Route 

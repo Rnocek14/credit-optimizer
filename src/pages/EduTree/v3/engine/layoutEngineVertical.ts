@@ -114,6 +114,17 @@ export function calculateVerticalLayout(
   // 6. Year 4 (merge point, back to center)
   placeCenter(y4, t.NODE_HEIGHT);
 
+  // 7. Position checkpoint nodes (Phase 3a)
+  // Checkpoints appear above their source nodes, centered on spine
+  const checkpoints = out.filter(n => n.type === 'checkpoint');
+  checkpoints.forEach(cp => {
+    const sourceNode = out.find(n => n.id === cp.data?.sourceNodeId);
+    if (sourceNode) {
+      cp.position.x = snap(t.CENTER_X, t.GRID);
+      cp.position.y = snap(sourceNode.position.y - t.TIER_SPACING_PX, t.GRID);
+    }
+  });
+
   return out;
 }
 

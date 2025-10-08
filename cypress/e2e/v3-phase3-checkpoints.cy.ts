@@ -26,6 +26,19 @@ describe('EduTree V3 - Phase 3: Checkpoint Nodes', () => {
       
       cy.log('✅ Checkpoints rendered with flag enabled');
     });
+
+    it('should ignore checkpoint flag without vertical layout', () => {
+      cy.visit('/edu-tree?v3=1&checkpoints=1'); // no layout=vertical
+      cy.wait(500);
+
+      cy.window().then((win) => {
+        const dump = (win as any).__dumpV3?.();
+        const checkpoints = dump?.nodes.filter((n: any) => n.type === 'checkpoint') || [];
+        expect(checkpoints).to.have.length(0);
+      });
+      
+      cy.log('✅ Checkpoints rejected in horizontal layout');
+    });
   });
 
   describe('Checkpoint node rendering', () => {

@@ -45,6 +45,12 @@ position: { x: 0, y: 0 } // Layout engine assigns final position
 - Maintains graph topology for layout engine
 - No downstream alternative edges yet (Phase 3b)
 
+## Constraints
+
+- **Layout Dependency:** Checkpoints require `layout=vertical` (Phase 3a hardening)
+- Attempting to use `?checkpoints=1` without `layout=vertical` results in silent rejection with console warning
+- Future: May expand to horizontal layout in Phase 4 if demand exists
+
 ## Implementation
 
 ### Files Created
@@ -62,7 +68,12 @@ position: { x: 0, y: 0 } // Layout engine assigns final position
 
 ## Testing Strategy
 
-All unit and Cypress tests implemented with comprehensive coverage of injection logic, idempotency, type safety, edge connectivity, grid alignment, and feature flag gating.
+All unit and Cypress tests implemented with comprehensive coverage of:
+- Injection logic and idempotency
+- Type safety and edge connectivity
+- Grid alignment (8px snapping)
+- Feature flag gating (`?checkpoints=1`)
+- Layout guard (rejects checkpoints in horizontal layout)
 
 ## Next Steps (Phase 3b)
 

@@ -101,7 +101,13 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
   const useLifePathSource = params.get('source') === 'lifepath';
   
   // === Phase 3: Checkpoint feature flag - read ?checkpoints=1 flag ===
-  const enableCheckpoints = params.get('checkpoints') === '1';
+  let enableCheckpoints = params.get('checkpoints') === '1';
+  
+  // Guard: checkpoints require vertical layout
+  if (enableCheckpoints && !useVerticalLayout) {
+    console.warn('[V3] Checkpoints require layout=vertical, ignoring ?checkpoints=1');
+    enableCheckpoints = false;
+  }
   
   // Conditional: use Life Path Graph or seed data
   const lifePathGraph = useLifePathSource ? useLifePathGraph('goal-software-engineer') : null;
