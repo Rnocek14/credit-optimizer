@@ -14,6 +14,8 @@ import V3Clamp from './dev/V3Clamp';
 import V3DBG from './dev/V3Debug';
 import V3DebugPanel from './dev/V3DebugPanel';
 import { useV3KeyboardShortcuts } from './dev/KeyboardShortcuts';
+import { useLifePathGraph } from '@/hooks/useLifePathGraph';
+import { lifePathToV3, BridgeMeta } from './data/lifePathBridge';
 
 // Vertical flow imports
 import { calculateVerticalLayout } from './engine/layoutEngineVertical';
@@ -92,12 +94,39 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
     console.log('[RF instance]', instanceIdRef.current);
   }, []);
 
+  // === Phase 2: Bridge support - read ?source=lifepath flag ===
+  const params = new URLSearchParams(window.location.search);
+  const useLifePathSource = params.get('source') === 'lifepath';
+  
+  // Conditional: use Life Path Graph or seed data
+  const lifePathGraph = useLifePathSource ? useLifePathGraph('goal-software-engineer') : null;
+  
+  // Bridge Life Path Graph to V3 format if enabled
+  const bridgedData = useMemo(() => {
+    if (!useLifePathSource || !lifePathGraph?.graph?.nodes) {
+      return null;
+    }
+    
+    console.log('[V3 Canvas] Bridging Life Path Graph to V3 format');
+    return lifePathToV3(lifePathGraph.graph, { showAlternatives: false });
+  }, [useLifePathSource, lifePathGraph?.graph]);
+  
+  // Bridge metadata for __dumpV3()
+  const sourceMeta: BridgeMeta = bridgedData?.meta ?? {
+    forksDetected: 0,
+    tiers: 4,
+    slugsUsed: [],
+    alternativesByNode: {}
+  };
+
   // Build full graph and create collapsed view (Step 1: Ship collapsed view only)
   useEffect(() => {
     console.log('[V3 Canvas] Building graph from seed data...');
     
-    // Adapt V2 seed to V3 format
-    const v3Graph = adaptSeedDataV2(GOLDEN_LAYOUT_SEED);
+    // Use bridged data if available, otherwise adapt V2 seed
+    const v3Graph = bridgedData 
+      ? { nodes: bridgedData.nodes, edges: bridgedData.edges }
+      : adaptSeedDataV2(GOLDEN_LAYOUT_SEED);
     
     console.log('[V3 Canvas] Adapted graph:', {
       nodeCount: v3Graph.nodes.length,
@@ -302,7 +331,8 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
         tokens: useVerticalLayout ? VERT : LAYOUT_TOKENS,
         layout: useVerticalLayout ? 'vertical' : 'horizontal',
         instanceId: instanceIdRef.current, // Phase 1: include in dump
-        branchState: { kind: 'unselected' } // Phase 1: placeholder for Phase 3
+        branchState: { kind: 'unselected' }, // Phase 1: placeholder for Phase 3
+        meta: sourceMeta, // Phase 2: expose bridge metadata
       });
       
       // Run HUD + assertions (skip for vertical until we adapt V3DBG)
