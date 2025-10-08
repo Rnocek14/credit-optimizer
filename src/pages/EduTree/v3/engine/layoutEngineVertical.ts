@@ -99,9 +99,14 @@ export function calculateVerticalLayout(
       solo.position.x = snap(t.CENTER_X, t.GRID);
       solo.position.y = y3RowY;
     }
-    // Hide comparison UI for single-track mode
+    // Hide comparison UI and enable single-track mode
     if (trackGate && solo) {
-      trackGate.data = { ...trackGate.data, showCompare: false };
+      trackGate.data = { 
+        ...trackGate.data, 
+        showCompare: false,
+        singleTrackMode: true,
+        activeTrack: solo.data.trackId as 'se' | 'ds'
+      };
     }
   }
   cursorY += t.NODE_HEIGHT + t.VERTICAL_GAP;

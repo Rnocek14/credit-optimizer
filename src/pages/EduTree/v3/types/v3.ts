@@ -36,6 +36,10 @@ export interface V3NodeData {
   showCompare?: boolean;
   se?: CompareInfo;
   ds?: CompareInfo;
+  
+  // Single-track mode (for gates)
+  singleTrackMode?: boolean;
+  activeTrack?: 'se' | 'ds';
 }
 
 export interface V3Node {
