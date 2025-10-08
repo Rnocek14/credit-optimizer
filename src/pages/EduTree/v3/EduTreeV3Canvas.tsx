@@ -295,11 +295,14 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
     // Debug instrumentation (dev only)
     if (process.env.NODE_ENV !== 'production') {
       (window as any).__V3DBG_lastGraph = finalGraph;
+      (window as any).__rfInstanceId = instanceIdRef.current; // Phase 1: expose instance ID
       (window as any).__dumpV3 = () => ({
         nodes: finalGraph.nodes,
         edges: finalGraph.edges,
         tokens: useVerticalLayout ? VERT : LAYOUT_TOKENS,
-        layout: useVerticalLayout ? 'vertical' : 'horizontal'
+        layout: useVerticalLayout ? 'vertical' : 'horizontal',
+        instanceId: instanceIdRef.current, // Phase 1: include in dump
+        branchState: { kind: 'unselected' } // Phase 1: placeholder for Phase 3
       });
       
       // Run HUD + assertions (skip for vertical until we adapt V3DBG)

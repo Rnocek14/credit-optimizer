@@ -1,4 +1,54 @@
-export type NodeType = 'year' | 'track-bundle' | 'requirement' | 'gate';
+// === Phase 1: Type System & Contracts ===
+
+/**
+ * Path taxonomy levels for hierarchical path identity
+ * Maps to the Life Path Graph structure
+ */
+export type PathLevelType = 'degree_level' | 'degree_type' | 'major' | 'track' | 'emphasis';
+
+/**
+ * Canonical lineage for stable path identification
+ * Used for deep links, analytics, merge detection
+ * 
+ * Example: BS → CS → SE = { 
+ *   levels: [
+ *     { type: 'degree_level', slug: 'bs', label: 'Bachelor of Science' },
+ *     { type: 'major', slug: 'cs', label: 'Computer Science' },
+ *     { type: 'track', slug: 'se', label: 'Software Engineering' }
+ *   ],
+ *   canonicalSlug: 'bs/cs/se'
+ * }
+ */
+export interface PathLineage {
+  levels: Array<{ type: PathLevelType; slug: string; label: string }>;
+  canonicalSlug: string; // Stable ID for this path (never derived from labels)
+}
+
+/**
+ * Branch selection state machine
+ * Controls UI dimming and checkpoint drawer
+ */
+export type BranchState =
+  | { kind: 'unselected' }                          // Default: all paths visible
+  | { kind: 'preview'; checkpointId: string }       // Drawer open; dim non-siblings
+  | { kind: 'selected'; pathSlug: string };         // User chose a branch; dim others
+
+/**
+ * Preview card for checkpoint alternatives
+ * Used in drawer matrix and inline comparisons
+ */
+export interface CheckpointOptionPreview {
+  pathSlug: string;        // Canonical slug for this alternative
+  name: string;            // Display name
+  courses: number;         // Course count
+  credits: number;         // Credit hours
+  costUsd?: number;        // Optional cost estimate
+  durationWeeks?: number;  // Optional duration estimate
+  badges?: string[];       // Optional badges (ACE, CLEP, etc.)
+  score?: number;          // Ranking score (for deterministic top-2)
+}
+
+export type NodeType = 'year' | 'track-bundle' | 'requirement' | 'gate' | 'checkpoint';
 
 export type TrackId = 'se' | 'ds' | 'any' | undefined;
 
@@ -16,7 +66,20 @@ export interface CompareInfo {
 }
 
 export interface V3NodeData {
-  year?: 1 | 2 | 3 | 4;
+  // === Legacy fields (DEPRECATED in Phase 3: Flexible Tiers) ===
+  year?: 1 | 2 | 3 | 4; // DEPRECATED: use tier instead
+  
+  // === Phase 1: Flexible hierarchy support ===
+  tier?: number;         // NEW: flexible tier (0-based, replaces year)
+  tierLabel?: string;    // NEW: display label (e.g., "Year 1" or "Associate Entry")
+  type?: 'bundle' | 'gate' | 'checkpoint'; // NEW: node semantic type
+  
+  // === Phase 1: Multipath support ===
+  lineage?: PathLineage;                        // NEW: canonical path identity
+  showAlternatives?: boolean;                   // NEW: whether to show alternative branches
+  alternatives?: CheckpointOptionPreview[];     // NEW: available path options at this checkpoint
+  
+  // === Existing fields ===
   programId?: string;
   trackId?: TrackId;
   title?: string;
@@ -55,7 +118,11 @@ export interface V3Edge {
   id: string;
   source: string;
   target: string;
-  kind: 'prereq' | 'gate' | 'advisory' | 'coreq' | 'spine';
+  kind: 'prereq' | 'gate' | 'advisory' | 'coreq' | 'spine' | 'alternative'; // Phase 1: added 'alternative'
+  data?: {
+    merge?: boolean;        // Phase 1: marks converging paths (≥2 incoming from siblings)
+    transferRate?: number;  // Phase 1: optional credit transfer percentage
+  };
 }
 
 export interface V3Graph {
