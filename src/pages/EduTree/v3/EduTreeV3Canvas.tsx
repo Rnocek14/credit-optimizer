@@ -217,15 +217,26 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
     
     // Position the collapsed view (Step 5: spine edges only)
     const collapsedGraph = { nodes: visibleNodes, edges: visibleEdges };
-    // Skip second layout pass for vertical mode
+    
+    // CRITICAL FIX: Apply vertical layout immediately for collapsed graph
     const positionedCollapsed = useVerticalLayout
-      ? collapsedGraph  // Keep raw collapsed nodes
+      ? { 
+          nodes: calculateVerticalLayout(collapsedGraph.nodes, VERT), 
+          edges: collapsedGraph.edges 
+        }
       : (enableMetrics
           ? buildEduTreeGraphWithMetrics(collapsedGraph, { enableCheckpoints, meta: sourceMeta }).graph
           : buildEduTreeGraph(collapsedGraph, { enableCheckpoints, meta: sourceMeta }));
     
+    // Debug: Log bundle positions after vertical layout
+    if (useVerticalLayout) {
+      const bundles = positionedCollapsed.nodes.filter(n => n.type === 'track-bundle');
+      console.log('[V3 Canvas] Bundle positions after vertical layout:', 
+        bundles.map(n => ({ id: n.id, year: n.data.year, x: n.position.x, y: n.position.y }))
+      );
+    }
+    
     setBundles(bundleMap);
-    setCurrentGraph(positionedCollapsed);
     
     if (enableMetrics) {
       const { metrics } = buildEduTreeGraphWithMetrics(collapsedGraph, { enableCheckpoints, meta: sourceMeta });
@@ -233,127 +244,14 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
       console.log('[V3 Canvas] Layout metrics (collapsed):', metrics);
     }
     
-    // Step 6: Validate on collapsed view
-    const validation = validateNoOverlaps(positionedCollapsed.nodes, LAYOUT_TOKENS);
-    if (validation.hasOverlaps) {
-      console.error('[V3 Canvas] OVERLAPS IN COLLAPSED VIEW:', validation.overlaps.length);
-      console.table(validation.diagnostics.slice(0, 5));
-    } else {
-      console.log('[V3 Canvas] ✅ No overlaps in collapsed view');
-    }
-    
-    // Diagnostic tables for layout verification
-    console.log('[V3 Diagnostics] Node positions:');
-    console.table(positionedCollapsed.nodes.map(n => ({
-      id: n.id,
-      type: n.type,
-      year: n.data.year ?? '-',
-      lane: n.data.trackId ?? 'any',
-      x: n.position.x,
-      y: n.position.y,
-      sourcePos: n.sourcePosition ?? '-',
-      targetPos: n.targetPosition ?? '-'
-    })));
-    
-    console.log('[V3 Diagnostics] Edge routing:');
-    console.table(positionedCollapsed.edges.map(e => {
-      const src = positionedCollapsed.nodes.find(n => n.id === e.source);
-      const tgt = positionedCollapsed.nodes.find(n => n.id === e.target);
-      const srcYear = src?.data.year ?? 0;
-      const tgtYear = tgt?.data.year ?? 0;
-      return {
-        id: e.id,
-        kind: e.kind,
-        source: e.source,
-        target: e.target,
-        directionOK: srcYear < tgtYear
-      };
-    }));
-    
-    console.log('[V3 Diagnostics] Layout summary:', {
-      visibleNodes: positionedCollapsed.nodes.length,
-      edges: positionedCollapsed.edges.length,
-      stepY: LAYOUT_TOKENS.NODE_MAX_HEIGHT + LAYOUT_TOKENS.LANE_GAP,
-      yearColumns: LAYOUT_TOKENS.YEAR_COL,
-      trackOffset: LAYOUT_TOKENS.TRACK_COLUMN_OFFSET
-    });
-    
-    // Runtime assertion: verify bundles are on correct vertical flow positions
-    if (useVerticalLayout) {
-      // Vertical layout validation (uses VERT tokens)
-      let expectedY = 0;
-      const stepHeight = (nodeHeight: number) => nodeHeight + VERT.VERTICAL_GAP;
-      
-      // Y1 at 0
-      const y1Node = positionedCollapsed.nodes.find(n => n.type === 'track-bundle' && n.data.year === 1);
-      if (y1Node) {
-        console.log(`✅ [V3 Row Check] Y1 bundle correctly positioned at y=${y1Node.position.y}`);
-        expectedY = stepHeight(VERT.NODE_HEIGHT);
-      }
-      
-      // Program Gate
-      expectedY += stepHeight(VERT.GATE_HEIGHT);
-      
-      // Y2
-      const y2Node = positionedCollapsed.nodes.find(n => n.type === 'track-bundle' && n.data.year === 2);
-      if (y2Node) {
-        console.log(`✅ [V3 Row Check] Y2 bundle correctly positioned at y=${y2Node.position.y}`);
-        expectedY = y2Node.position.y + stepHeight(VERT.NODE_HEIGHT);
-      }
-      
-      // Track Gate
-      expectedY += stepHeight(VERT.GATE_HEIGHT);
-      
-      // Y3 bundles (should all be at same Y)
-      const y3Nodes = positionedCollapsed.nodes.filter(n => n.type === 'track-bundle' && n.data.year === 3);
-      if (y3Nodes.length > 0) {
-        const y3Y = y3Nodes[0].position.y;
-        const allSameY = y3Nodes.every(n => n.position.y === y3Y);
-        if (allSameY) {
-          console.log(`✅ [V3 Row Check] Y3 bundle(s) correctly positioned at y=${y3Y}`);
-        } else {
-          console.error(`❌ [V3 Row Check] Y3 bundles have different Y positions:`, y3Nodes.map(n => ({ id: n.id, y: n.position.y })));
-        }
-        expectedY = y3Y + stepHeight(VERT.NODE_HEIGHT);
-      }
-      
-      // Y4
-      const y4Node = positionedCollapsed.nodes.find(n => n.type === 'track-bundle' && n.data.year === 4);
-      if (y4Node) {
-        console.log(`✅ [V3 Row Check] Y4 bundle correctly positioned at y=${y4Node.position.y}`);
-      }
-    } else {
-      // Horizontal layout validation (old LAYOUT_TOKENS)
-      const stepY = LAYOUT_TOKENS.NODE_MAX_HEIGHT + LAYOUT_TOKENS.LANE_GAP;
-      for (const n of positionedCollapsed.nodes) {
-        if (n.type === 'track-bundle') {
-          const yr = n.data.year ?? 0;
-          const expected = (yr - 1) * stepY;
-          const actual = n.position.y;
-          const drift = Math.abs(actual - expected);
-          
-          if (drift > LAYOUT_TOKENS.GRID) {
-            console.error(`❌ [V3 Row Check] Y${yr} bundle misaligned:`, {
-              expected,
-              actual,
-              drift,
-              bundleId: n.id
-            });
-          } else {
-            console.log(`✅ [V3 Row Check] Y${yr} bundle correctly positioned at y=${actual}`);
-          }
-        }
-      }
-    }
-    
     // Apply layout based on feature flag
     let finalGraph: V3Graph;
     
     if (useVerticalLayout) {
-      // Vertical flow: pure top-to-bottom layout
+      // Vertical flow: pure top-to-bottom layout (already applied above)
       console.log('[V3 Canvas] Using VERTICAL layout engine');
-      const verticalNodes = calculateVerticalLayout(positionedCollapsed.nodes, VERT);
-      finalGraph = { nodes: verticalNodes, edges: positionedCollapsed.edges };
+      // Use positionedCollapsed directly (already has vertical positions)
+      finalGraph = positionedCollapsed;
       
       // Add comparison data to Track Gate (always available, visibility controlled by showComparison)
       const trackGate = finalGraph.nodes.find(n => n.id === 'gate-y3-tracks');
@@ -406,6 +304,119 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
       // Run HUD + assertions (skip for vertical until we adapt V3DBG)
       if (!useVerticalLayout) {
         V3DBG.afterRender(finalGraph, LAYOUT_TOKENS);
+      }
+    }
+    
+    // === POST-LAYOUT VALIDATION (moved here to validate final rendered positions) ===
+    const validation = validateNoOverlaps(finalGraph.nodes, LAYOUT_TOKENS);
+    if (validation.hasOverlaps) {
+      console.error('[V3 Canvas] OVERLAPS IN FINAL GRAPH:', validation.overlaps.length);
+      console.table(validation.diagnostics.slice(0, 5));
+    } else {
+      console.log('[V3 Canvas] ✅ No overlaps in final graph');
+    }
+    
+    // Diagnostic tables for layout verification
+    console.log('[V3 Diagnostics] Node positions:');
+    console.table(finalGraph.nodes.map(n => ({
+      id: n.id,
+      type: n.type,
+      year: n.data.year ?? '-',
+      lane: n.data.trackId ?? 'any',
+      x: n.position.x,
+      y: n.position.y,
+      sourcePos: n.sourcePosition ?? '-',
+      targetPos: n.targetPosition ?? '-'
+    })));
+    
+    console.log('[V3 Diagnostics] Edge routing:');
+    console.table(finalGraph.edges.map(e => {
+      const src = finalGraph.nodes.find(n => n.id === e.source);
+      const tgt = finalGraph.nodes.find(n => n.id === e.target);
+      const srcYear = src?.data.year ?? 0;
+      const tgtYear = tgt?.data.year ?? 0;
+      return {
+        id: e.id,
+        kind: e.kind,
+        source: e.source,
+        target: e.target,
+        directionOK: srcYear < tgtYear
+      };
+    }));
+    
+    console.log('[V3 Diagnostics] Layout summary:', {
+      visibleNodes: finalGraph.nodes.length,
+      edges: finalGraph.edges.length,
+      stepY: useVerticalLayout ? VERT.VERTICAL_GAP : (LAYOUT_TOKENS.NODE_MAX_HEIGHT + LAYOUT_TOKENS.LANE_GAP),
+      yearColumns: useVerticalLayout ? 'N/A (vertical)' : LAYOUT_TOKENS.YEAR_COL,
+      trackOffset: useVerticalLayout ? VERT.H_SPACING : LAYOUT_TOKENS.TRACK_COLUMN_OFFSET
+    });
+    
+    // Runtime assertion: verify bundles are on correct vertical flow positions
+    if (useVerticalLayout) {
+      // Vertical layout validation (uses VERT tokens)
+      let expectedY = 0;
+      const stepHeight = (nodeHeight: number) => nodeHeight + VERT.VERTICAL_GAP;
+      
+      // Y1 at 0
+      const y1Node = finalGraph.nodes.find(n => n.type === 'track-bundle' && n.data.year === 1);
+      if (y1Node) {
+        console.log(`✅ [V3 Row Check] Y1 bundle correctly positioned at y=${y1Node.position.y}`);
+        expectedY = stepHeight(VERT.NODE_HEIGHT);
+      }
+      
+      // Program Gate
+      expectedY += stepHeight(VERT.GATE_HEIGHT);
+      
+      // Y2
+      const y2Node = finalGraph.nodes.find(n => n.type === 'track-bundle' && n.data.year === 2);
+      if (y2Node) {
+        console.log(`✅ [V3 Row Check] Y2 bundle correctly positioned at y=${y2Node.position.y}`);
+        expectedY = y2Node.position.y + stepHeight(VERT.NODE_HEIGHT);
+      }
+      
+      // Track Gate
+      expectedY += stepHeight(VERT.GATE_HEIGHT);
+      
+      // Y3 bundles (should all be at same Y)
+      const y3Nodes = finalGraph.nodes.filter(n => n.type === 'track-bundle' && n.data.year === 3);
+      if (y3Nodes.length > 0) {
+        const y3Y = y3Nodes[0].position.y;
+        const allSameY = y3Nodes.every(n => n.position.y === y3Y);
+        if (allSameY) {
+          console.log(`✅ [V3 Row Check] Y3 bundle(s) correctly positioned at y=${y3Y}`);
+        } else {
+          console.error(`❌ [V3 Row Check] Y3 bundles have different Y positions:`, y3Nodes.map(n => ({ id: n.id, y: n.position.y })));
+        }
+        expectedY = y3Y + stepHeight(VERT.NODE_HEIGHT);
+      }
+      
+      // Y4
+      const y4Node = finalGraph.nodes.find(n => n.type === 'track-bundle' && n.data.year === 4);
+      if (y4Node) {
+        console.log(`✅ [V3 Row Check] Y4 bundle correctly positioned at y=${y4Node.position.y}`);
+      }
+    } else {
+      // Horizontal layout validation (old LAYOUT_TOKENS)
+      const stepY = LAYOUT_TOKENS.NODE_MAX_HEIGHT + LAYOUT_TOKENS.LANE_GAP;
+      for (const n of finalGraph.nodes) {
+        if (n.type === 'track-bundle') {
+          const yr = n.data.year ?? 0;
+          const expected = (yr - 1) * stepY;
+          const actual = n.position.y;
+          const drift = Math.abs(actual - expected);
+          
+          if (drift > LAYOUT_TOKENS.GRID) {
+            console.error(`❌ [V3 Row Check] Y${yr} bundle misaligned:`, {
+              expected,
+              actual,
+              drift,
+              bundleId: n.id
+            });
+          } else {
+            console.log(`✅ [V3 Row Check] Y${yr} bundle correctly positioned at y=${actual}`);
+          }
+        }
       }
     }
     
@@ -521,7 +532,8 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
   const reactFlowEdges: Edge[] = useMemo(() => {
     if (useVerticalLayout) {
       // Vertical flow: uniform top-to-bottom edges
-      return mapEdgesVertical(edges);
+      // CRITICAL FIX: Pass nodes to edge mapper for validation
+      return mapEdgesVertical(edges, nodes);
     }
     
     // Horizontal flow: gate edges vertical, spine edges horizontal
