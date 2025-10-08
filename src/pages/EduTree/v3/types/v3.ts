@@ -67,7 +67,8 @@ export interface CompareInfo {
 
 export interface V3NodeData {
   // === Legacy fields (DEPRECATED in Phase 3: Flexible Tiers) ===
-  year?: 1 | 2 | 3 | 4; // DEPRECATED: use tier instead
+  /** @deprecated Use `tier` instead (will be removed in Phase 4) */
+  year?: 1 | 2 | 3 | 4;
   
   // === Phase 1: Flexible hierarchy support ===
   tier?: number;         // NEW: flexible tier (0-based, replaces year)

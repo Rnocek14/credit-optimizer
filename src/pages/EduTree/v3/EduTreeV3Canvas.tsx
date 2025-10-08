@@ -282,9 +282,9 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
         };
       }
     } else {
-      // Horizontal flow: legacy year-column layout
+    // Horizontal flow: legacy year-column layout
       console.log('[V3 Canvas] Using HORIZONTAL layout engine (legacy)');
-      if (process.env.NODE_ENV !== 'production') {
+      if (import.meta.env.DEV) {
         const clamped = V3Clamp.clampCollapsed(positionedCollapsed, LAYOUT_TOKENS);
         finalGraph = clamped;
       } else {
@@ -293,7 +293,7 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
     }
     
     // Debug instrumentation (dev only)
-    if (process.env.NODE_ENV !== 'production') {
+    if (import.meta.env.DEV) {
       (window as any).__V3DBG_lastGraph = finalGraph;
       (window as any).__rfInstanceId = instanceIdRef.current; // Phase 1: expose instance ID
       (window as any).__dumpV3 = () => ({
@@ -612,6 +612,7 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
           onClick={handleFitView}
           variant="secondary"
           size="sm"
+          data-testid="fit-view"
         >
           Fit View
         </Button>

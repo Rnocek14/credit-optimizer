@@ -238,5 +238,21 @@ describe('Phase 1: Type System Contracts', () => {
 
       expect(types).toContain('checkpoint');
     });
+
+    it('creates a V3Node with type checkpoint', () => {
+      const node: import('../types/v3').V3Node = {
+        id: 'checkpoint-math',
+        type: 'checkpoint',
+        data: {
+          type: 'checkpoint',
+          tier: 1,
+          tierLabel: 'Math Entry'
+        },
+        position: { x: 0, y: 0 }
+      };
+
+      expect(node.type).toBe('checkpoint');
+      expect(node.data.type).toBe('checkpoint');
+    });
   });
 });

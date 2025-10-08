@@ -39,6 +39,15 @@ export default tseslint.config(
           selector: "AssignmentExpression[left.property.name='signature'][right.type='BinaryExpression']",
           message: "Use buildMarketplaceSig() for marketplace.signature — no string concatenation."
         }
+      ],
+      // Block new usage of deprecated V3NodeData.year field
+      "no-restricted-properties": [
+        "error",
+        {
+          object: "*",
+          property: "year",
+          message: "Use 'tier' instead of deprecated 'year' field (V3NodeData). Phase 4 will remove 'year'."
+        }
       ]
     },
   }
