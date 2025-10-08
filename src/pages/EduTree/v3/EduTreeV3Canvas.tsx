@@ -421,7 +421,12 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
     }
     
     setCurrentGraph(finalGraph);
-  }, [bridgedData, enableCheckpoints, sourceMeta, enableMetrics, useVerticalLayout, showComparison]);
+    
+    // Force ReactFlow to fit view after graph is set
+    setTimeout(() => {
+      fitView({ duration: 200, padding: 0.2 });
+    }, 100);
+  }, [bridgedData, enableCheckpoints, sourceMeta, enableMetrics, useVerticalLayout, showComparison, fitView]);
 
   // Loading guard: show loading state while Life Path data loads
   if (useLifePathSource && lifePathGraph?.loading) {
@@ -436,6 +441,13 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
   }
 
   const { nodes, edges } = currentGraph ?? { nodes: [], edges: [] };
+  
+  console.log('[V3 Canvas] Rendering:', {
+    nodeCount: nodes.length,
+    edgeCount: edges.length,
+    hasMetrics: !!layoutMetrics,
+    firstNode: nodes[0] ? { id: nodes[0].id, pos: nodes[0].position } : null
+  });
 
   // Step 3: Guard the toggle handler (prevents early render issues)
   const handleBundleToggle = useCallback((bundleId: string) => {
