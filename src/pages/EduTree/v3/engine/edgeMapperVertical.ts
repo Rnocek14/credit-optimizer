@@ -11,41 +11,68 @@
 import type { Edge, MarkerType } from '@xyflow/react';
 import type { V3Edge } from '../types/v3';
 
-export function mapEdgesVertical(edges: V3Edge[]): Edge[] {
-  return edges.map(e => {
-    const isGate = e.kind === 'gate';
-    const isMerge = e.source.includes('y3-') && e.target.includes('y4-');
-    
-    return {
-      id: e.id,
-      source: e.source,
-      target: e.target,
+export function mapEdgesVertical(edges: V3Edge[], nodes?: any[]): Edge[] {
+  // Build node map for validation (optional)
+  const nodeMap = nodes ? new Map(nodes.map(n => [n.id, n])) : null;
+  
+  return edges
+    .filter(e => {
+      // Dev guard: filter invalid edges
+      if (nodeMap) {
+        const hasSource = nodeMap.has(e.source);
+        const hasTarget = nodeMap.has(e.target);
+        const selfLoop = e.source === e.target;
+        
+        if (!hasSource || !hasTarget || selfLoop) {
+          if (import.meta.env.DEV) {
+            console.error('[EdgeMapper] Invalid edge:', { 
+              id: e.id, 
+              source: e.source, 
+              target: e.target,
+              hasSource,
+              hasTarget,
+              selfLoop 
+            });
+          }
+          return false;
+        }
+      }
+      return true;
+    })
+    .map(e => {
+      const isGate = e.kind === 'gate';
+      const isMerge = e.source.includes('y3-') && e.target.includes('y4-');
       
-      // All edges connect top-to-bottom
-      sourceHandle: 'south',
-      targetHandle: 'north',
-      
-      // Uniform smoothstep with gentle curves (softer for merge)
-      type: 'smoothstep' as const,
-      pathOptions: { borderRadius: isMerge ? 24 : 12 },
-      
-      // Arrowheads for all edges
-      markerEnd: { 
-        type: 'arrowclosed' as MarkerType,
-        width: 18, 
-        height: 18,
-        color: isGate ? '#6366f1' : '#94a3b8'
-      },
-      
-      // Subtle animation for gate edges only
-      animated: isGate,
-      
-      // Consistent styling
-      style: {
-        stroke: isGate ? '#6366f1' : '#94a3b8',
-        strokeWidth: 2,
-        opacity: 1,
-      },
-    };
-  });
+      return {
+        id: e.id,
+        source: e.source,
+        target: e.target,
+        
+        // All edges connect top-to-bottom
+        sourceHandle: 'south',
+        targetHandle: 'north',
+        
+        // Uniform smoothstep with gentle curves (softer for merge)
+        type: 'smoothstep' as const,
+        pathOptions: { borderRadius: isMerge ? 24 : 12 },
+        
+        // Arrowheads for all edges
+        markerEnd: { 
+          type: 'arrowclosed' as MarkerType,
+          width: 18, 
+          height: 18,
+          color: isGate ? '#6366f1' : '#94a3b8'
+        },
+        
+        // Subtle animation for gate edges only
+        animated: isGate,
+        
+        // Consistent styling
+        style: {
+          stroke: isGate ? '#6366f1' : '#94a3b8',
+          strokeWidth: 2,
+          opacity: 1,
+        },
+      };
+    });
 }

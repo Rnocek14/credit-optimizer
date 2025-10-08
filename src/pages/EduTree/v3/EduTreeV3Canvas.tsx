@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useCallback, useEffect } from 'react';
+import React, { useMemo, useState, useCallback, useEffect, useRef } from 'react';
 import { ReactFlow, Background, Controls, MiniMap, Node, Edge, ReactFlowProvider, useReactFlow, Position, MarkerType } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { Button } from '@/components/ui/button';
@@ -50,6 +50,9 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
   const [bundles, setBundles] = useState<Map<string, BundleCard>>(new Map());
   const [currentGraph, setCurrentGraph] = useState<V3Graph | null>(null);
   
+  // Instance-id probe to verify no ReactFlow remounts
+  const instanceIdRef = useRef(crypto.randomUUID());
+  
   // Vertical flow feature flag (read from URL or localStorage)
   const [useVerticalLayout, setUseVerticalLayout] = useState(() => {
     try {
@@ -83,6 +86,11 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
       ? () => setShowComparison(prev => !prev)
       : undefined
   });
+  
+  // Log ReactFlow instance on mount (detect remounts)
+  useEffect(() => {
+    console.log('[RF instance]', instanceIdRef.current);
+  }, []);
 
   // Build full graph and create collapsed view (Step 1: Ship collapsed view only)
   useEffect(() => {
