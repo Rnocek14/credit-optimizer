@@ -16,6 +16,7 @@ import V3DebugPanel from './dev/V3DebugPanel';
 import { useV3KeyboardShortcuts } from './dev/KeyboardShortcuts';
 import { useLifePathGraph } from '@/hooks/useLifePathGraph';
 import { lifePathToV3, BridgeMeta } from './data/lifePathBridge';
+import { DevToolbar } from './dev/DevToolbar';
 
 // Vertical flow imports
 import { calculateVerticalLayout } from './engine/layoutEngineVertical';
@@ -101,13 +102,39 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
   const useLifePathSource = params.get('source') === 'lifepath';
   
   // === Phase 3: Checkpoint feature flag - read ?checkpoints=1 flag ===
-  let enableCheckpoints = params.get('checkpoints') === '1';
+  const [enableCheckpoints, setEnableCheckpoints] = React.useState(() => {
+    const flag = params.get('checkpoints') === '1';
+    // Guard: checkpoints require vertical layout
+    if (flag && !useVerticalLayout) {
+      console.warn('[V3] Checkpoints require layout=vertical, ignoring ?checkpoints=1');
+      return false;
+    }
+    return flag;
+  });
   
-  // Guard: checkpoints require vertical layout
-  if (enableCheckpoints && !useVerticalLayout) {
-    console.warn('[V3] Checkpoints require layout=vertical, ignoring ?checkpoints=1');
-    enableCheckpoints = false;
-  }
+  // Handler to toggle checkpoints
+  const handleToggleCheckpoints = useCallback(() => {
+    if (!useVerticalLayout) {
+      toast.error('Checkpoints require vertical layout');
+      return;
+    }
+    
+    const newValue = !enableCheckpoints;
+    setEnableCheckpoints(newValue);
+    
+    // Update URL
+    const url = new URL(window.location.href);
+    if (newValue) {
+      url.searchParams.set('checkpoints', '1');
+      url.searchParams.set('source', 'lifepath'); // checkpoints need lifepath data
+      url.searchParams.set('layout', 'vertical');
+    } else {
+      url.searchParams.delete('checkpoints');
+    }
+    window.history.pushState({}, '', url.toString());
+    
+    toast.success(`Checkpoints ${newValue ? 'enabled' : 'disabled'}`);
+  }, [enableCheckpoints, useVerticalLayout]);
   
   // Conditional: use Life Path Graph or seed data
   const lifePathGraph = useLifePathSource ? useLifePathGraph('goal-software-engineer') : null;
@@ -726,6 +753,15 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
           Progressive Disclosure View
         </div>
       </div>
+
+      {/* Dev Toolbar (DEV mode only) */}
+      {import.meta.env.DEV && (
+        <DevToolbar 
+          nodes={nodes}
+          checkpointsEnabled={enableCheckpoints}
+          onToggleCheckpoints={handleToggleCheckpoints}
+        />
+      )}
 
       {/* ReactFlow Canvas */}
       <ReactFlow
