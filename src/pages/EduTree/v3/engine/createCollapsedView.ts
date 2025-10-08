@@ -29,6 +29,12 @@ export function createCollapsedView(fullGraph: V3Graph): {
 
   for (const n of fullGraph.nodes) {
     if (n.type === "gate") {
+      console.log('[Collapsed View] Found gate node:', { 
+        id: n.id, 
+        type: n.type, 
+        year: n.data?.year,
+        data: n.data 
+      });
       gates.push(n);
       continue;
     }
@@ -95,7 +101,8 @@ export function createCollapsedView(fullGraph: V3Graph): {
   makeBundle("y3-ds-bundle", 3, "ds");
   makeBundle("y4-bundle", 4);
 
-  // Always include gates
+  // Always include gates (with validation)
+  console.log('[Collapsed View] Adding gates to visible nodes:', gates.map(g => ({ id: g.id, hasYear: !!g.data?.year })));
   visibleNodes.push(...gates);
 
   // Spine edges only (no raw prereq spaghetti)

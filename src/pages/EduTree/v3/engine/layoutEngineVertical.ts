@@ -58,11 +58,27 @@ export function calculateVerticalLayout(
   const y3ds = out.find(n => isBundle(n) && n.data?.year === 3 && trackKey(n) === 'ds');
   const y4 = out.find(n => isBundle(n) && n.data?.year === 4 && trackKey(n) === 'any');
 
+  // Debug: Log what we found
+  console.log('[Vertical Layout] Node lookup results:', {
+    y1: y1?.id,
+    programGate: programGate?.id,
+    y2: y2?.id,
+    trackGate: trackGate?.id,
+    y3se: y3se?.id,
+    y3ds: y3ds?.id,
+    y4: y4?.id,
+    allNodes: out.map(n => ({ id: n.id, type: n.type, year: n.data?.year }))
+  });
+
   let cursorY = 0;
 
   // Helper: center a node on the spine and advance cursor
   const placeCenter = (node: V3Node | undefined, height: number) => {
-    if (!node) return;
+    if (!node) {
+      console.warn('[Vertical Layout] placeCenter called with undefined node');
+      return;
+    }
+    console.log(`[Vertical Layout] Placing ${node.id} at y=${cursorY}`);
     node.position.x = snap(t.CENTER_X, t.GRID);
     node.position.y = snap(cursorY, t.GRID);
     cursorY += height + t.VERTICAL_GAP;
