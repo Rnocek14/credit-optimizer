@@ -502,7 +502,7 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
     
     const graphForRF = SAFE_MODE ? staticSafeGraph : finalGraph;
     safeSetCurrentGraph(graphForRF, SAFE_MODE ? 'safe:static' : (useVerticalLayout ? 'initial:vertical' : 'initial:horizontal'));
-  }, [useVerticalLayout, enableCheckpoints, sourceMeta, SAFE_MODE, bridgedData, enableMetrics, showComparison, safeSetCurrentGraph]);
+  }, []); // Empty deps = run once on mount (graph building is deterministic)
 
   // Loading guard: show loading state while Life Path data loads
   if (useLifePathSource && lifePathGraph?.loading) {
