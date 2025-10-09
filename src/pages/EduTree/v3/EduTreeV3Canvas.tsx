@@ -46,6 +46,9 @@ interface EduTreeV3CanvasProps {
 }
 
 function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
+  // 🛡️ SAFE_MODE: Set to true to render a static 3-node graph for diagnosis
+  const SAFE_MODE = true;
+  
   const { fitView } = useReactFlow();
   const [layoutMetrics, setLayoutMetrics] = useState<any>(null);
   const [domMetrics, setDomMetrics] = useState<any>(null);
@@ -451,7 +454,36 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
       }
     }
     
-    safeSetCurrentGraph(finalGraph, useVerticalLayout ? 'initial:vertical' : 'initial:horizontal');
+    // 🛡️ SAFE_MODE: Static fallback graph for diagnosis
+    const staticSafeGraph: V3Graph = {
+      nodes: [
+        { 
+          id: 'demo-y1', 
+          type: 'track-bundle' as const,
+          data: { title: 'Year 1 (Safe)', year: 1 }, 
+          position: { x: 680, y: 0 } 
+        },
+        { 
+          id: 'demo-g2', 
+          type: 'gate' as const,
+          data: { year: 2, title: 'Gate (Safe)' }, 
+          position: { x: 680, y: 200 } 
+        },
+        { 
+          id: 'demo-y2', 
+          type: 'track-bundle' as const,
+          data: { title: 'Year 2 (Safe)', year: 2 }, 
+          position: { x: 680, y: 360 } 
+        },
+      ],
+      edges: [
+        { id: 'e1', source: 'demo-y1', target: 'demo-g2', kind: 'spine' as const },
+        { id: 'e2', source: 'demo-g2', target: 'demo-y2', kind: 'spine' as const }
+      ],
+    };
+    
+    const graphForRF = SAFE_MODE ? staticSafeGraph : finalGraph;
+    safeSetCurrentGraph(graphForRF, SAFE_MODE ? 'safe:static' : (useVerticalLayout ? 'initial:vertical' : 'initial:horizontal'));
   }, [bridgedData, enableCheckpoints, sourceMeta, enableMetrics, useVerticalLayout, showComparison]);
 
   // Loading guard: show loading state while Life Path data loads
@@ -931,6 +963,13 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
           </div>
         )}
       </div>
+
+      {/* 🛡️ SAFE MODE Indicator */}
+      {SAFE_MODE && (
+        <div className="absolute top-20 right-4 z-10 bg-yellow-500 text-black p-2 rounded font-bold text-xs">
+          🛡️ SAFE MODE ACTIVE
+        </div>
+      )}
 
       {/* Debug Info - Step 1 verification */}
       <div className="absolute top-4 right-4 z-10 bg-card p-3 rounded-lg border text-xs">
