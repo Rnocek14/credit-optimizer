@@ -28,6 +28,8 @@ if (typeof window !== 'undefined') {
 
 const queryClient = new QueryClient();
 
+// FIX #6: Temporarily disable StrictMode for V3 diagnosis
+// Re-enable after confirming layout stability
 createRoot(document.getElementById("root")!).render(
   <QueryClientProvider client={queryClient}>
     <UnifiedDataProvider>

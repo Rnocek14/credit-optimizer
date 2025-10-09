@@ -58,6 +58,21 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
   // Instance-id probe to verify no ReactFlow remounts
   const instanceIdRef = useRef(crypto.randomUUID());
   
+  // FIX #1: Safe graph setter with tracking
+  const safeSetCurrentGraph = useCallback(
+    (g: V3Graph, tag: string) => {
+      const n = g?.nodes?.length ?? 0;
+      const e = g?.edges?.length ?? 0;
+      console.log(`[setCurrentGraph] ${tag}:`, { nodes: n, edges: e });
+
+      if (import.meta.env.DEV && (n === 0 || !Array.isArray(g.nodes) || !Array.isArray(g.edges))) {
+        console.trace('[setCurrentGraph] EMPTY/INVALID graph pushed from:', tag);
+      }
+      setCurrentGraph(g);
+    },
+    []
+  );
+  
   // Vertical flow feature flag (read from URL or localStorage)
   const [useVerticalLayout, setUseVerticalLayout] = useState(() => {
     try {
@@ -436,7 +451,7 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
       }
     }
     
-    setCurrentGraph(finalGraph);
+    safeSetCurrentGraph(finalGraph, useVerticalLayout ? 'initial:vertical' : 'initial:horizontal');
   }, [bridgedData, enableCheckpoints, sourceMeta, enableMetrics, useVerticalLayout, showComparison]);
 
   // Loading guard: show loading state while Life Path data loads
@@ -483,17 +498,19 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
     }
   }, [nodes, useVerticalLayout]);
 
-  // FIX #2 & #4: Debounced fitView to prevent race condition in Strict Mode
-  // Remove fitView from deps to prevent unnecessary re-runs
+  // FIX #3: One-time fitView with DOM presence guard
+  const didFitRef = useRef(false);
   useEffect(() => {
-    if (nodes.length > 0) {
-      const timer = setTimeout(() => {
-        requestAnimationFrame(() => {
-          fitView({ padding: 0.6, includeHiddenNodes: true });
-        });
-      }, 100);
-      return () => clearTimeout(timer);
-    }
+    if (didFitRef.current || nodes.length === 0) return;
+
+    const hasNodesInDOM = document.querySelectorAll('.react-flow__node').length > 0;
+    if (!hasNodesInDOM) return;
+
+    didFitRef.current = true;
+    const timer = setTimeout(() => {
+      requestAnimationFrame(() => fitView({ padding: 0.6, includeHiddenNodes: true }));
+    }, 120);
+    return () => clearTimeout(timer);
   }, [nodes.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // FIX #5: Enhanced DOM probe with visibility checks
@@ -528,6 +545,9 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
 
   // Step 3: Guard the toggle handler (prevents early render issues)
   const handleBundleToggle = useCallback((bundleId: string) => {
+    // FIX #4: Capture layout flag at handler start to prevent mid-handler changes
+    const isVertical = useVerticalLayout;
+    
     // Early return if graphs aren't ready
     if (!fullGraph || !currentGraph) {
       console.warn('[V3 Canvas] Toggle called before graphs ready');
@@ -554,8 +574,8 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
       console.log('[V3 Canvas] Collapsed bundle:', bundleId);
     }
     
-    // FIX #2: Re-layout after expansion/collapse using correct layout engine
-    const positioned = useVerticalLayout
+    // Re-layout after expansion/collapse using correct layout engine
+    const positioned = isVertical
       ? { 
           nodes: calculateVerticalLayout(newGraph.nodes, VERT), 
           edges: newGraph.edges 
@@ -565,17 +585,26 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
     // Validate after toggle with correct tokens
     const validation = validateNoOverlaps(
       positioned.nodes, 
-      useVerticalLayout ? VERT : LAYOUT_TOKENS
+      isVertical ? VERT : LAYOUT_TOKENS
     );
     if (validation.hasOverlaps) {
       console.error('[V3 Canvas] OVERLAPS AFTER TOGGLE:', validation.overlaps.length);
       console.table(validation.diagnostics.slice(0, 5));
     }
     
-    setCurrentGraph(positioned);
-  }, [fullGraph, currentGraph, bundles, useVerticalLayout, enableCheckpoints, sourceMeta]);
+    safeSetCurrentGraph(positioned, 'toggle:bundle');
+  }, [fullGraph, currentGraph, bundles, useVerticalLayout, enableCheckpoints, sourceMeta, safeSetCurrentGraph]);
 
-  // FIX #3: Memoize defaultViewport to prevent unnecessary ReactFlow updates
+  // FIX #2: Memoize nodeTypes to prevent ReactFlow prop identity changes
+  const memoizedNodeTypes = useMemo(() => ({
+    requirement: V3RequirementNode,
+    gate: V3GateNode,
+    year: V3YearNode,
+    'track-bundle': V3TrackBundleNode,
+    checkpoint: V3CheckpointNode,
+  }), []);
+
+  // Memoize defaultViewport to prevent unnecessary ReactFlow updates
   const defaultViewport = useMemo(() => ({ x: -400, y: -200, zoom: 0.5 }), []);
 
   // Step 3: Convert V3 nodes to ReactFlow nodes with guarded toggle and connection points
@@ -668,6 +697,11 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
       };
     });
   }, [edges, focusedEdges, useVerticalLayout]);
+
+  // FIX #5: Track viewport movements for debugging
+  const handleMoveEnd = useCallback((_event: any, viewport: { x: number; y: number; zoom: number }) => {
+    console.log('[Viewport]', viewport);
+  }, []);
 
   // Handle node selection for edge focusing
   const handleNodeClick = useCallback((event: any, node: Node) => {
@@ -922,9 +956,10 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
         <ReactFlow
           nodes={reactFlowNodes}
           edges={reactFlowEdges}
-          nodeTypes={nodeTypes}
+          nodeTypes={memoizedNodeTypes}
           onNodeClick={handleNodeClick}
           onPaneClick={handlePaneClick}
+          onMoveEnd={handleMoveEnd}
           defaultViewport={defaultViewport}
           fitViewOptions={{ padding: 0.2, duration: 300 }}
           minZoom={0.1}
@@ -934,6 +969,8 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
           elementsSelectable={false}
           nodesDraggable={false}
           nodesConnectable={false}
+          onlyRenderVisibleElements={false}
+          translateExtent={[[-100000, -100000], [100000, 100000]]}
           defaultEdgeOptions={{
             style: { strokeWidth: 2 }
           }}
