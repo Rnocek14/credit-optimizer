@@ -47,6 +47,15 @@ export function lifePathToV3(
       existing.push(ge);
       altMap.set(ge.sourceId, existing);
       forksDetected++;
+      
+      if (import.meta.env.DEV) {
+        console.log('[Bridge] Alternative edge detected:', {
+          edgeId: ge.id,
+          sourceId: ge.sourceId,
+          targetId: ge.targetId,
+          forksDetected
+        });
+      }
     }
   }
 
@@ -67,6 +76,14 @@ export function lifePathToV3(
     const altCount = altMap.get(gn.id)?.length ?? 0;
     if (altCount > 0) {
       alternativesByNode[gn.id] = altCount;
+      
+      if (import.meta.env.DEV) {
+        console.log('[Bridge] Node with alternatives:', {
+          nodeId: gn.id,
+          altCount,
+          alternativesByNode: alternativesByNode[gn.id]
+        });
+      }
     }
 
     // Map node type: keep visuals identical in Phase 2

@@ -48,6 +48,16 @@ export function injectCheckpoints(
     const altCount = meta.alternativesByNode[nodeId];
     const checkpointId = `checkpoint-${nodeId}`;
     
+    if (import.meta.env.DEV) {
+      console.log('[Checkpoints] Processing fork:', {
+        nodeId,
+        altCount,
+        sourceNodeFound: !!sourceNode,
+        sourceNodeType: sourceNode?.type,
+        checkpointId
+      });
+    }
+    
     // Idempotency guard: skip if checkpoint already exists
     if (newNodes.some(n => n.id === checkpointId)) {
       console.log(`[Checkpoints] Skipping duplicate checkpoint for ${nodeId}`);
@@ -75,6 +85,15 @@ export function injectCheckpoints(
     };
 
     newNodes.push(checkpointNode);
+    
+    if (import.meta.env.DEV) {
+      console.log('[Checkpoints] Checkpoint created:', {
+        id: checkpointNode.id,
+        sourceNodeId: checkpointNode.data.sourceNodeId,
+        alternativeCount: checkpointNode.data.alternativeCount,
+        position: checkpointNode.position
+      });
+    }
     
     // Create spine edge from source → checkpoint
     const spineEdge: V3Edge = {

@@ -253,6 +253,19 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
     if (useVerticalLayout && checkpointsOn && sourceMeta) {
       const forkCount = Object.keys(sourceMeta.alternativesByNode || {}).length;
       
+      if (import.meta.env.DEV) {
+        console.log('[V3 Canvas] Fork detection check:', {
+          checkpointsOn,
+          useVerticalLayout,
+          sourceMeta: {
+            forksDetected: sourceMeta?.forksDetected,
+            alternativesByNode: sourceMeta?.alternativesByNode,
+            forkKeys: Object.keys(sourceMeta?.alternativesByNode || {})
+          },
+          forkCount
+        });
+      }
+      
       if (forkCount > 0) {
         console.log(`[V3 Canvas] Injecting checkpoints on FULL graph (${forkCount} forks detected)`);
         const result = injectCheckpoints(
