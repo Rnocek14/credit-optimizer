@@ -97,21 +97,38 @@ export function lifePathToV3(
       canonicalSlug
     };
 
+    const nodeData: Record<string, any> = {
+      tier,
+      tierLabel: `Tier ${tier}`,
+      title: gn.title,
+      lineage,
+      showAlternatives: false,
+      alternatives: undefined,
+      totalCredits: gn.credits,
+    };
+
+    // For gate nodes, infer year from tier (gates typically at tier boundaries)
+    if (nodeType === 'gate') {
+      // Map tier to academic year (0-1 → Y1, 2-3 → Y2, 4-5 → Y3, 6+ → Y4)
+      const inferredYear = Math.min(Math.floor(tier / 2) + 1, 4) as 1 | 2 | 3 | 4;
+      nodeData.year = inferredYear;
+      nodeData.programId = 'lifepath';
+      
+      if (import.meta.env.DEV) {
+        console.log('[Bridge] Gate node with inferred year:', {
+          id: gn.id,
+          tier,
+          year: inferredYear,
+          title: gn.title
+        });
+      }
+    }
+
     nodes.push({
       id: gn.id,
       type: nodeType,
-      data: {
-        tier,
-        tierLabel: `Tier ${tier}`, // Simple fallback, attributes.tierLabel doesn't exist on GraphNode
-        title: gn.title,
-        lineage,
-        // Phase 2: Don't show alternatives yet (keep visuals identical)
-        showAlternatives: false,
-        alternatives: undefined,
-        // Keep totalCredits if available
-        totalCredits: gn.credits,
-      },
-      position: { x: 0, y: 0 }, // Layout engine will place
+      data: nodeData,
+      position: { x: 0, y: 0 },
     });
   }
 

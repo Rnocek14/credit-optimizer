@@ -220,20 +220,26 @@ export function createCollapsedView(fullGraph: V3Graph): {
     edges.push({ id: `${source}->${target}`, source, target, kind });
   };
 
-  // y1 -> programGate -> y2
+  // y1 -> programGate -> y2 (with fallback to first available gate)
   const y1 = idOf("y1-bundle");
   const y2 = idOf("y2-bundle");
-  const programGate = gates.find((g) => g.data.year === 2)?.id; // gate-y2-programs
-  add(y1, programGate, "gate");
-  add(programGate, y2, "gate");
+  const programGate = gates.find((g) => g.data.year === 2)?.id || gates[0]?.id;
+  const trackGate = gates.find((g) => g.data.year === 3)?.id || gates[1]?.id;
+  
+  if (programGate) {
+    add(y1, programGate, "gate");
+    add(programGate, y2, "gate");
+  }
 
   // y2 -> trackGate -> y3-se / y3-ds
-  const trackGate = gates.find((g) => g.data.year === 3)?.id; // gate-y3-tracks
   const y3se = idOf("y3-se-bundle");
   const y3ds = idOf("y3-ds-bundle");
-  add(y2, trackGate, "gate");
-  add(trackGate, y3se, "gate");
-  add(trackGate, y3ds, "gate");
+  
+  if (trackGate) {
+    add(y2, trackGate, "gate");
+    add(trackGate, y3se, "gate");
+    add(trackGate, y3ds, "gate");
+  }
 
   // y3 -> y4
   const y4 = idOf("y4-bundle");
