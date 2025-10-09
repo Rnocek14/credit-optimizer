@@ -387,11 +387,11 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
     // Position the collapsed view (Step 5: spine edges only)
     const collapsedGraph = { nodes: visibleNodes, edges: visibleEdges };
     
-    // Apply vertical layout to collapsed graph
+    // FIX #2: Apply vertical layout to collapsed graph - MUST use visibleEdges
     const positionedCollapsed = useVerticalLayout
       ? { 
-          nodes: calculateVerticalLayout(collapsedGraph.nodes, VERT), 
-          edges: collapsedGraph.edges 
+          nodes: calculateVerticalLayout(visibleNodes, VERT), 
+          edges: visibleEdges  // Use visibleEdges directly, not collapsedGraph.edges
         }
       : (enableMetrics
           ? buildEduTreeGraphWithMetrics(collapsedGraph, { enableCheckpoints: false }).graph
@@ -443,6 +443,25 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
           count: checkpointEdges.length,
           edges: checkpointEdges.map(e => ({ id: e.id, source: e.source, target: e.target }))
         });
+      }
+      
+      // FIX #3: One-line sanity edge (temporary, DEV-only)
+      if (import.meta.env.DEV && enableCheckpoints) {
+        const y1 = positionedCollapsed.nodes.find(n => n.id === 'y1-bundle');
+        const cp = positionedCollapsed.nodes.find(n => n.type === 'checkpoint');
+        if (y1 && cp) {
+          validEdges.push({ 
+            id: 'ckpt:TEST', 
+            source: y1.id, 
+            target: cp.id, 
+            kind: 'spine', 
+            data: { isCheckpointEdge: true } 
+          });
+          console.log('[V3 Canvas] Added test checkpoint edge:', {
+            source: y1.id,
+            target: cp.id
+          });
+        }
       }
       
       finalGraph = {

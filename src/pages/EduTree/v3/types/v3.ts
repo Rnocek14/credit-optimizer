@@ -125,8 +125,10 @@ export interface V3Edge {
   target: string;
   kind: 'prereq' | 'gate' | 'advisory' | 'coreq' | 'spine' | 'alternative'; // Phase 1: added 'alternative'
   data?: {
-    merge?: boolean;        // Phase 1: marks converging paths (≥2 incoming from siblings)
-    transferRate?: number;  // Phase 1: optional credit transfer percentage
+    merge?: boolean;              // Phase 1: marks converging paths (≥2 incoming from siblings)
+    transferRate?: number;        // Phase 1: optional credit transfer percentage
+    isCheckpointEdge?: boolean;   // Phase 3: marks edges connected to checkpoint nodes
+    forceSpineStyle?: boolean;    // Phase 3: force spine styling regardless of kind
   };
 }
 

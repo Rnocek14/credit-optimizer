@@ -17,7 +17,20 @@ export function mapEdgesVertical(edges: V3Edge[], nodes?: any[]): Edge[] {
   
   return edges
     .filter(e => {
-      // Dev guard: filter invalid edges
+      // FIX #1: Never drop checkpoint edges - preserve them before validation
+      const isCheckpoint = (e.data as any)?.isCheckpointEdge || e.id.startsWith('ckpt:');
+      if (isCheckpoint) {
+        if (import.meta.env.DEV) {
+          console.log('[EdgeMapper] Preserving checkpoint edge:', { 
+            id: e.id, 
+            source: e.source, 
+            target: e.target 
+          });
+        }
+        return true; // Always keep checkpoint edges
+      }
+      
+      // Dev guard: filter OTHER invalid edges
       if (nodeMap) {
         const hasSource = nodeMap.has(e.source);
         const hasTarget = nodeMap.has(e.target);
@@ -40,7 +53,7 @@ export function mapEdgesVertical(edges: V3Edge[], nodes?: any[]): Edge[] {
       return true;
     })
     .map(e => {
-      // FIX #2: Detect checkpoint edges and style them as spine (not gate)
+      // Detect checkpoint edges and style them as spine (not gate)
       const isCheckpoint = (e.data as any)?.isCheckpointEdge || e.id.startsWith('ckpt:');
       const isGate = !isCheckpoint && e.kind === 'gate';
       const isMerge = e.source.includes('y3-') && e.target.includes('y4-');
