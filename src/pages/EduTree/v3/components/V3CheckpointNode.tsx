@@ -13,6 +13,15 @@ import { GitBranch } from 'lucide-react';
 
 export const V3CheckpointNode = memo(({ data, id }: NodeProps) => {
   const altCount = (data as any).alternativeCount ?? 0;
+  const sourceNodeId = (data as any).sourceNodeId ?? '';
+  const onCheckpointClick = (data as any).onCheckpointClick;
+
+  const handleClick = () => {
+    console.log(`[Checkpoint] Clicked: ${id}, alternatives: ${altCount}, sourceNodeId: ${sourceNodeId}`);
+    if (onCheckpointClick && sourceNodeId) {
+      onCheckpointClick(String(id), String(sourceNodeId));
+    }
+  };
 
   return (
     <div className="relative">
@@ -34,10 +43,7 @@ export const V3CheckpointNode = memo(({ data, id }: NodeProps) => {
                    cursor-pointer group
                    overflow-hidden"
         style={{ width: '232px', minHeight: '120px' }}
-        onClick={() => {
-          console.log(`[Checkpoint] Clicked: ${id}, alternatives: ${altCount}`);
-          // Phase 3: Will open drawer here
-        }}
+        onClick={handleClick}
       >
         {/* Icon */}
         <div className="flex items-center justify-center w-10 h-10 rounded-full bg-warning/20">

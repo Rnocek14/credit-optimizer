@@ -27,6 +27,8 @@ import { VERT } from './utils/layoutTokensVertical';
 import CompareMiniCards from './components/CompareMiniCards';
 import TrackCompareDrawer from './components/TrackCompareDrawer';
 import CompareToggle from './components/CompareToggle';
+import { AlternativesDrawer } from './components/AlternativesDrawer';
+import { getAlternativesForNode } from './engine/getAlternatives';
 
 // V3-specific node components
 import V3RequirementNode from './components/V3RequirementNode';
@@ -91,6 +93,10 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
   // Comparison UI state
   const [showComparison, setShowComparison] = useState(false);
   const [compareDrawerOpen, setCompareDrawerOpen] = useState(false);
+  
+  // Phase 3b: Alternatives drawer state
+  const [alternativesDrawerOpen, setAlternativesDrawerOpen] = useState(false);
+  const [selectedCheckpoint, setSelectedCheckpoint] = useState<{ id: string; sourceNodeId: string } | null>(null);
   
   // Debug panel state
   const [showDebugPanel, setShowDebugPanel] = useState(() => {
@@ -846,6 +852,13 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
   // Memoize defaultViewport to prevent unnecessary ReactFlow updates
   const defaultViewport = useMemo(() => ({ x: -400, y: -200, zoom: 0.5 }), []);
 
+  // Phase 3b: Checkpoint click handler
+  const handleCheckpointClick = useCallback((checkpointId: string, sourceNodeId: string) => {
+    console.log('[V3 Canvas] Checkpoint clicked:', { checkpointId, sourceNodeId });
+    setSelectedCheckpoint({ id: checkpointId, sourceNodeId });
+    setAlternativesDrawerOpen(true);
+  }, []);
+
   // Step 3: Convert V3 nodes to ReactFlow nodes with guarded toggle and connection points
   const reactFlowNodes: Node[] = useMemo(() => {
     return nodes.map((node: V3NodeType) => {
@@ -885,6 +898,21 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
         };
       }
       
+      // Add checkpoint click handler for checkpoint nodes
+      if (node.type === 'checkpoint') {
+        return {
+          id: node.id,
+          type: node.type,
+          position: node.position,
+          sourcePosition: sourcePos,
+          targetPosition: targetPos,
+          data: {
+            ...baseData,
+            onCheckpointClick: handleCheckpointClick
+          }
+        };
+      }
+      
       return {
         id: node.id,
         type: node.type,
@@ -894,7 +922,7 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
         data: baseData
       };
     });
-  }, [nodes, fullGraph, currentGraph, handleBundleToggle]);
+  }, [nodes, fullGraph, currentGraph, handleBundleToggle, handleCheckpointClick]);
 
   // Convert V3 edges to ReactFlow edges with proper routing and focus mode
   const reactFlowEdges: Edge[] = useMemo(() => {
@@ -1293,6 +1321,51 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
           );
         }
         return null;
+      })()}
+      
+      {/* Alternatives Drawer (Phase 3b) */}
+      {alternativesDrawerOpen && selectedCheckpoint && (() => {
+        // Get the source node details
+        const sourceNode = nodes.find(n => n.id === selectedCheckpoint.sourceNodeId);
+        
+        if (!sourceNode || !lifePathGraph?.graph) {
+          console.warn('[Alternatives Drawer] Source node or graph not found');
+          return null;
+        }
+        
+        // Get alternatives for this node
+        const alternatives = getAlternativesForNode(
+          selectedCheckpoint.sourceNodeId,
+          lifePathGraph.graph.nodes,
+          lifePathGraph.graph.edges,
+          [] // TODO: Add completed nodes from user state
+        );
+        
+        return (
+          <AlternativesDrawer
+            open={alternativesDrawerOpen}
+            onClose={() => {
+              setAlternativesDrawerOpen(false);
+              setSelectedCheckpoint(null);
+            }}
+            sourceNode={{
+              id: selectedCheckpoint.sourceNodeId,
+              title: sourceNode.data.title || sourceNode.id,
+            }}
+            alternatives={alternatives}
+            onSelectAlternative={(nodeId) => {
+              console.log('[V3 Canvas] Alternative selected:', nodeId);
+              toast.success('Alternative path selected');
+              setAlternativesDrawerOpen(false);
+              setSelectedCheckpoint(null);
+              // TODO: Apply alternative in Phase 3c
+            }}
+            onPreviewAlternative={(nodeId) => {
+              console.log('[V3 Canvas] Preview alternative:', nodeId);
+              // TODO: Show preview overlay in Phase 3c
+            }}
+          />
+        );
       })()}
     </div>
   );
