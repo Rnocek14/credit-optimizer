@@ -131,13 +131,27 @@ export function calculateVerticalLayout(
   placeCenter(y4, t.NODE_HEIGHT);
 
   // 7. Position checkpoint nodes (Phase 3a)
-  // Checkpoints appear BELOW their source nodes, centered on spine
+  // FIX #2: Checkpoints appear BELOW their source nodes, centered on spine
   const checkpoints = out.filter(n => n.type === 'checkpoint');
   checkpoints.forEach(cp => {
     const sourceNode = out.find(n => n.id === cp.data?.sourceNodeId);
     if (sourceNode) {
       cp.position.x = snap(t.CENTER_X, t.GRID);
+      // Place BELOW (add, not subtract) source node
       cp.position.y = snap(sourceNode.position.y + t.TIER_SPACING_PX, t.GRID);
+      if (import.meta.env.DEV) {
+        console.log('[Vertical Layout] Positioned checkpoint:', {
+          checkpointId: cp.id,
+          sourceId: sourceNode.id,
+          sourceY: sourceNode.position.y,
+          checkpointY: cp.position.y
+        });
+      }
+    } else if (import.meta.env.DEV) {
+      console.warn('[Vertical Layout] Checkpoint missing source node:', {
+        checkpointId: cp.id,
+        missingSourceId: cp.data?.sourceNodeId
+      });
     }
   });
 

@@ -295,11 +295,12 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
       let demoMeta = sourceMeta;
       
       if (import.meta.env.DEV && demoCkpt && forkCount === 0) {
-        console.warn('[V3 DEV] No forks detected - injecting demo checkpoint for y2-bundle');
+        // FIX #3: Use raw node ID (not bundle ID) for injection - collapse will remap it
+        console.warn('[V3 DEV] No forks detected - injecting demo checkpoint for y2-cs-core');
         demoMeta = {
           ...sourceMeta,
           forksDetected: 1,
-          alternativesByNode: { 'y2-bundle': 2 }
+          alternativesByNode: { 'y2-cs-core': 2 }
         };
       }
       

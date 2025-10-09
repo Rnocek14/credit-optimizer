@@ -43,7 +43,18 @@ export function injectCheckpoints(
   // For each fork point, inject a checkpoint node
   for (const nodeId of forkNodeIds) {
     const sourceNode = nodes.find(n => n.id === nodeId);
-    if (!sourceNode) continue;
+    
+    // FIX #4: Add validation logging for ID mismatches
+    if (!sourceNode) {
+      if (import.meta.env.DEV) {
+        console.warn('[Checkpoints] Source node not found for fork:', {
+          nodeId,
+          availableIds: nodes.map(n => n.id).slice(0, 5),
+          hint: 'ID mismatch? Check if nodeId is raw LifePath ID vs adapted V3 ID'
+        });
+      }
+      continue;
+    }
 
     const altCount = meta.alternativesByNode[nodeId];
     const checkpointId = `checkpoint-${nodeId}`;

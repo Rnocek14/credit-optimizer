@@ -117,6 +117,31 @@ export function createCollapsedView(fullGraph: V3Graph): {
   visibleNodes.push(...gates);
   visibleNodes.push(...checkpoints);
 
+  // FIX #1: Remap checkpoint sourceNodeId from raw node → bundle (if source was collapsed)
+  const childToBundle = new Map<string, string>();
+  for (const [bundleId, bundle] of bundles.entries()) {
+    for (const childId of bundle.childIds || []) {
+      childToBundle.set(childId, bundleId);
+    }
+  }
+
+  checkpoints.forEach(cp => {
+    const rawSourceId = cp.data?.sourceNodeId;
+    if (!rawSourceId) return;
+    
+    const bundleId = childToBundle.get(rawSourceId);
+    if (bundleId) {
+      if (import.meta.env.DEV) {
+        console.log('[Collapsed View] Remapping checkpoint source:', {
+          checkpointId: cp.id,
+          rawSource: rawSourceId,
+          bundleTarget: bundleId
+        });
+      }
+      cp.data = { ...cp.data, sourceNodeId: bundleId };
+    }
+  });
+
   // Preserve checkpoint edges (CRITICAL: prevent orphaned checkpoints)
   const checkpointIds = new Set(checkpoints.map(c => c.id));
   const checkpointEdges = fullGraph.edges.filter(e => 
