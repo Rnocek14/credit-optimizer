@@ -83,13 +83,9 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
   
   // Vertical flow feature flag (read from URL or localStorage)
   const [useVerticalLayout, setUseVerticalLayout] = useState(() => {
-    try {
-      const params = new URLSearchParams(window.location.search);
-      if (params.get('layout') === 'vertical') return true;
-      return localStorage.getItem('flags.verticalLayout') === 'true';
-    } catch {
-      return false;
-    }
+    // On initial mount, check localStorage first
+    // URL params will be synced in the effect below
+    return localStorage.getItem('flags.verticalLayout') === 'true';
   });
   
   // Comparison UI state
@@ -128,15 +124,38 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
   const lifePathGraph = useLifePathGraph(useLifePathSource ? 'goal-software-engineer' : null);
   
   // === Phase 3: Checkpoint feature flag - STATE AS SOURCE OF TRUTH ===
-  const [enableCheckpoints, setEnableCheckpoints] = React.useState(() => {
-    const initialFromUrl = searchParams.get('checkpoints') === '1';
-    // Guard: checkpoints require vertical layout
-    if (initialFromUrl && !useVerticalLayout) {
-      console.warn('[V3] Checkpoints require layout=vertical, ignoring ?checkpoints=1');
-      return false;
+  const [enableCheckpoints, setEnableCheckpoints] = React.useState(false);
+  
+  // Sync layout state with URL params (reactive)
+  useEffect(() => {
+    const layoutFromUrl = searchParams.get('layout') === 'vertical';
+    if (layoutFromUrl !== useVerticalLayout) {
+      setUseVerticalLayout(layoutFromUrl);
+      if (import.meta.env.DEV) {
+        console.log('[V3 Canvas] Layout synced from URL:', layoutFromUrl ? 'vertical' : 'horizontal');
+      }
     }
-    return initialFromUrl;
-  });
+  }, [searchParams, useVerticalLayout]);
+  
+  // Sync checkpoint state with URL (after layout is synced)
+  useEffect(() => {
+    const checkpointsFromUrl = searchParams.get('checkpoints') === '1';
+    
+    if (checkpointsFromUrl && !useVerticalLayout) {
+      if (import.meta.env.DEV) {
+        console.warn('[V3] Checkpoints require layout=vertical, ignoring ?checkpoints=1');
+      }
+      setEnableCheckpoints(false);
+      return;
+    }
+    
+    if (checkpointsFromUrl !== enableCheckpoints) {
+      setEnableCheckpoints(checkpointsFromUrl);
+      if (import.meta.env.DEV) {
+        console.log('[V3 Canvas] Checkpoints synced from URL:', checkpointsFromUrl);
+      }
+    }
+  }, [searchParams, useVerticalLayout, enableCheckpoints]);
   
   // Handler to toggle checkpoints
   const handleToggleCheckpoints = useCallback(() => {
@@ -266,15 +285,34 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
         });
       }
       
-      if (forkCount > 0) {
-        console.log(`[V3 Canvas] Injecting checkpoints on FULL graph (${forkCount} forks detected)`);
+      // DEV ONLY: Force demo checkpoint when ?ckpt_demo=1
+      const demoCkpt = searchParams.get('ckpt_demo') === '1';
+      let demoMeta = sourceMeta;
+      
+      if (import.meta.env.DEV && demoCkpt && forkCount === 0) {
+        console.warn('[V3 DEV] No forks detected - injecting demo checkpoint for y2-bundle');
+        demoMeta = {
+          ...sourceMeta,
+          forksDetected: 1,
+          alternativesByNode: { 'y2-bundle': 2 }
+        };
+      }
+      
+      const finalForkCount = Object.keys(demoMeta.alternativesByNode || {}).length;
+      
+      if (finalForkCount > 0) {
+        console.log(`[V3 Canvas] Injecting checkpoints on FULL graph (${finalForkCount} forks detected)`);
         const result = injectCheckpoints(
           fullGraphWithCheckpoints.nodes,
           fullGraphWithCheckpoints.edges,
-          sourceMeta
+          demoMeta
         );
         fullGraphWithCheckpoints = { nodes: result.nodes, edges: result.edges };
         console.log(`[V3 Canvas] Checkpoint injection: ${result.checkpointsAdded} added`);
+        
+        if (demoCkpt && import.meta.env.DEV) {
+          console.log('[V3 DEV SHIM] Demo checkpoint injected');
+        }
       } else {
         console.log('[V3 Canvas] No forks detected; skipping checkpoint injection');
       }
@@ -552,7 +590,16 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
     
     const graphForRF = SAFE_MODE ? staticSafeGraph : finalGraph;
     safeSetCurrentGraph(graphForRF, SAFE_MODE ? 'safe:static' : `build:${buildKey}`);
-  }, [buildKey]); // React to build key changes (layout, data source, checkpoints)
+    
+    // DEV: Expose dump function for diagnostics
+    if (import.meta.env.DEV) {
+      (window as any).__dumpV3 = () => ({
+        nodes: graphForRF.nodes,
+        edges: graphForRF.edges,
+        meta: sourceMeta
+      });
+    }
+  }, [buildKey, sourceMeta]); // React to build key changes (layout, data source, checkpoints)
 
   // Loading guard: show loading state while Life Path data loads
   if (useLifePathSource && lifePathGraph?.loading) {
