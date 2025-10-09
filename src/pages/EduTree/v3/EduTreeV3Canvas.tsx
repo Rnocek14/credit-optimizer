@@ -69,12 +69,26 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
       console.log(`[setCurrentGraph] ${tag}:`, { nodes: n, edges: e });
 
       if (import.meta.env.DEV && (n === 0 || !Array.isArray(g.nodes) || !Array.isArray(g.edges))) {
-        console.trace('[setCurrentGraph] EMPTY/INVALID graph pushed from:', tag);
+        console.trace('[setCurrentGraph] IGNORE empty/invalid graph from:', tag, g);
+        return; // 🔒 CRITICAL: do not commit empties
       }
       setCurrentGraph(g);
     },
     []
   );
+
+  // 🛡️ Freeze graph after first good render (temporary guard for diagnosis)
+  const hasStableGraphRef = useRef(false);
+
+  const commitStable = useCallback((g: V3Graph, tag: string) => {
+    const n = g?.nodes?.length ?? 0;
+    if (hasStableGraphRef.current && n > 0) {
+      console.warn('[commitStable] blocked subsequent overwrite:', tag);
+      return; // block late overwrites while we debug
+    }
+    if (n > 0) hasStableGraphRef.current = true;
+    safeSetCurrentGraph(g, tag);
+  }, [safeSetCurrentGraph]);
   
   // Vertical flow feature flag (read from URL or localStorage)
   const [useVerticalLayout, setUseVerticalLayout] = useState(() => {
@@ -483,7 +497,7 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
     };
     
     const graphForRF = SAFE_MODE ? staticSafeGraph : finalGraph;
-    safeSetCurrentGraph(graphForRF, SAFE_MODE ? 'safe:static' : (useVerticalLayout ? 'initial:vertical' : 'initial:horizontal'));
+    commitStable(graphForRF, SAFE_MODE ? 'safe:static' : (useVerticalLayout ? 'initial:vertical' : 'initial:horizontal'));
   }, [bridgedData, enableCheckpoints, sourceMeta, enableMetrics, useVerticalLayout, showComparison]);
 
   // Loading guard: show loading state while Life Path data loads
