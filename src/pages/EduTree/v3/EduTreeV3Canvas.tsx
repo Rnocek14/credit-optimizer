@@ -48,7 +48,7 @@ interface EduTreeV3CanvasProps {
 
 function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
   // 🛡️ SAFE_MODE: Set to true to render a static 3-node graph for diagnosis
-  const SAFE_MODE = true;
+  const SAFE_MODE = false;
   
   const { fitView } = useReactFlow();
   const [layoutMetrics, setLayoutMetrics] = useState<any>(null);
