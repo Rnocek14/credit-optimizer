@@ -22,7 +22,7 @@ export default function V3GateNode({ data, selected }: V3GateNodeProps) {
   const isSingleTrack = data.singleTrackMode && data.activeTrack;
   
   return (
-    <div className="w-[var(--v3-node-w)] min-w-[var(--v3-node-w)] max-w-[var(--v3-node-w)] box-border relative">
+    <div className="w-[232px] min-w-[232px] max-w-[232px] box-border relative">
       {/* Gate handles (vertical connections) */}
       <Handle id="north" type="target" position={Position.Top} />
       <Handle id="south" type="source" position={Position.Bottom} />

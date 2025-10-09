@@ -476,16 +476,32 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
     }
   }, [nodes.length, fitView]);
 
-  // FIX #5: DOM probe logging
+  // FIX #5: Enhanced DOM probe with visibility checks
   useEffect(() => {
     const domNodes = document.querySelectorAll('.react-flow__node');
     console.log('[V3 Canvas] DOM nodes found:', domNodes.length);
     if (domNodes.length > 0) {
       const firstNode = domNodes[0] as HTMLElement;
+      const rect = firstNode.getBoundingClientRect();
+      const styles = getComputedStyle(firstNode);
+      
       console.log('[V3 Canvas] First node styles:', {
         width: firstNode.offsetWidth,
         height: firstNode.offsetHeight,
-        transform: getComputedStyle(firstNode).transform
+        transform: styles.transform,
+        opacity: styles.opacity,
+        zIndex: styles.zIndex,
+        visibility: styles.visibility
+      });
+      
+      console.log('[V3 Canvas] First node viewport position:', {
+        top: rect.top,
+        left: rect.left,
+        bottom: rect.bottom,
+        right: rect.right,
+        inViewport: rect.top >= 0 && rect.left >= 0 && 
+                    rect.bottom <= window.innerHeight && 
+                    rect.right <= window.innerWidth
       });
     }
   }, [nodes.length]);
@@ -740,7 +756,7 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
   });
 
   return (
-    <div className="relative w-full h-screen">
+    <div className="w-full h-screen relative bg-background">
       {/* HUD Controls */}
       <div className="absolute top-4 left-4 z-10 flex flex-col gap-2">
         {/* Layout Indicator */}
@@ -870,8 +886,8 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
       )}
 
       {/* ReactFlow Canvas */}
-      {/* FIX #1: Explicit height container for ReactFlow */}
-      <div className="w-full h-full absolute inset-0" style={{ height: 'calc(100vh - 0px)' }}>
+      {/* FIX A: Explicit height container with z-index */}
+      <div className="w-full h-full absolute inset-0 z-0" style={{ height: '100vh' }}>
         <ReactFlow
           key={useVerticalLayout ? 'vertical' : 'horizontal'} // FIX #4: Force remount on layout change
           nodes={reactFlowNodes}
@@ -879,7 +895,7 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
           nodeTypes={nodeTypes}
           onNodeClick={handleNodeClick}
           onPaneClick={handlePaneClick}
-          defaultViewport={{ x: 0, y: 0, zoom: 0.8 }}
+          defaultViewport={{ x: -400, y: -200, zoom: 0.5 }}
           fitViewOptions={{ padding: 0.2, duration: 300 }}
           minZoom={0.1}
           maxZoom={2}
