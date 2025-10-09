@@ -117,11 +117,22 @@ export function createCollapsedView(fullGraph: V3Graph): {
   visibleNodes.push(...gates);
   visibleNodes.push(...checkpoints);
 
+  // Preserve checkpoint edges (CRITICAL: prevent orphaned checkpoints)
+  const checkpointIds = new Set(checkpoints.map(c => c.id));
+  const checkpointEdges = fullGraph.edges.filter(e => 
+    checkpointIds.has(e.source) || checkpointIds.has(e.target)
+  );
+  console.log('[Collapsed View] Preserving checkpoint edges:', checkpointEdges.map(e => ({ id: e.id, source: e.source, target: e.target })));
+
   // Spine edges only (no raw prereq spaghetti)
   const idOf = (want: BundleId) =>
     visibleNodes.find((n) => n.id === want)?.id;
 
   const edges: V3Edge[] = [];
+  
+  // Add checkpoint edges FIRST (before bundle edges)
+  edges.push(...checkpointEdges);
+  
   const add = (source?: string, target?: string, kind: V3Edge["kind"] = "spine") => {
     if (!source || !target) return;
     edges.push({ id: `${source}->${target}`, source, target, kind });

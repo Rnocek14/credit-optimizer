@@ -1,5 +1,6 @@
 import React, { useMemo, useState, useCallback, useEffect, useRef } from 'react';
 import { ReactFlow, Background, Controls, MiniMap, Node, Edge, ReactFlowProvider, useReactFlow, Position, MarkerType } from '@xyflow/react';
+import { useSearchParams } from 'react-router-dom';
 import '@xyflow/react/dist/style.css';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
@@ -120,22 +121,21 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
   }, []);
 
   // === Phase 2: Bridge support - read ?source=lifepath flag ===
-  const params = new URLSearchParams(window.location.search);
-  const useLifePathSource = params.get('source') === 'lifepath';
+  const [searchParams, setSearchParams] = useSearchParams();
+  const useLifePathSource = searchParams.get('source') === 'lifepath';
   
   // CRITICAL: Only load Life Path data when explicitly requested
   const lifePathGraph = useLifePathGraph(useLifePathSource ? 'goal-software-engineer' : null);
   
-  // === Phase 3: Checkpoint feature flag - read ?checkpoints=1 flag ===
+  // === Phase 3: Checkpoint feature flag - STATE AS SOURCE OF TRUTH ===
   const [enableCheckpoints, setEnableCheckpoints] = React.useState(() => {
-    const params = new URLSearchParams(window.location.search);
-    const flag = params.get('checkpoints') === '1';
+    const initialFromUrl = searchParams.get('checkpoints') === '1';
     // Guard: checkpoints require vertical layout
-    if (flag && !useVerticalLayout) {
+    if (initialFromUrl && !useVerticalLayout) {
       console.warn('[V3] Checkpoints require layout=vertical, ignoring ?checkpoints=1');
       return false;
     }
-    return flag;
+    return initialFromUrl;
   });
   
   // Handler to toggle checkpoints
@@ -154,16 +154,16 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
     const newValue = !enableCheckpoints;
     setEnableCheckpoints(newValue);
     
-    // Update URL
-    const url = new URL(window.location.href);
+    // Mirror state to URL using React Router (reactive)
+    const newParams = new URLSearchParams(searchParams);
     if (newValue) {
-      url.searchParams.set('checkpoints', '1');
-      url.searchParams.set('source', 'lifepath'); // checkpoints need lifepath data
-      url.searchParams.set('layout', 'vertical');
+      newParams.set('checkpoints', '1');
+      newParams.set('source', 'lifepath'); // checkpoints need lifepath data
+      newParams.set('layout', 'vertical');
     } else {
-      url.searchParams.delete('checkpoints');
+      newParams.delete('checkpoints');
     }
-    window.history.pushState({}, '', url.toString());
+    setSearchParams(newParams, { replace: true });
     
     toast.success(`Checkpoints ${newValue ? 'enabled' : 'disabled'}`);
   }, [enableCheckpoints, useVerticalLayout, lifePathGraph?.graph]);
@@ -187,10 +187,11 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
   };
 
   // Compute stable build key from primitive values only (reactive to toggles + data loading)
+  // STATE IS SOURCE OF TRUTH - no URL mixing to prevent reactivity bugs
   const isVertical = useVerticalLayout;
-  const isLifePath = params.get('source') === 'lifepath';
-  const checkpointsOn = params.get('checkpoints') === '1' || enableCheckpoints;
+  const isLifePath = searchParams.get('source') === 'lifepath';
   const lifepathReady = !!lifePathGraph?.graph?.nodes?.length;
+  const checkpointsOn = enableCheckpoints; // Pure state, no URL param mixing
 
   const buildKey = [
     isVertical ? 'V' : 'H',
@@ -199,6 +200,15 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
   ].join('|');
 
   console.log('[V3 Canvas] buildKey:', buildKey);
+  
+  // Diagnostic: Log alternatives data when ready
+  if (import.meta.env.DEV && isLifePath && lifepathReady) {
+    console.log('[V3 Canvas] LifePath alternatives:', {
+      forksDetected: sourceMeta.forksDetected,
+      alternativesByNode: sourceMeta.alternativesByNode,
+      totalAlternatives: Object.keys(sourceMeta.alternativesByNode || {}).length
+    });
+  }
 
   // Build full graph and create collapsed view (Step 1: Ship collapsed view only)
   useEffect(() => {
@@ -207,6 +217,7 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
     // Guard: don't build until LifePath graph is ready
     if (isLifePath && !lifepathReady) {
       console.log('[V3 Canvas] LifePath data still loading, skipping build');
+      toast.info('Loading Life Path data...', { duration: 2000 });
       return;
     }
     
@@ -239,7 +250,7 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
     // Phase 3: Inject checkpoints on FULL graph BEFORE collapse (vertical mode only)
     let fullGraphWithCheckpoints = v3Graph;
     
-    if (useVerticalLayout && enableCheckpoints && sourceMeta) {
+    if (useVerticalLayout && checkpointsOn && sourceMeta) {
       const forkCount = Object.keys(sourceMeta.alternativesByNode || {}).length;
       
       if (forkCount > 0) {
