@@ -186,9 +186,29 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
     alternativesByNode: {}
   };
 
+  // Compute stable build key from primitive values only (reactive to toggles + data loading)
+  const isVertical = useVerticalLayout;
+  const isLifePath = params.get('source') === 'lifepath';
+  const checkpointsOn = params.get('checkpoints') === '1' || enableCheckpoints;
+  const lifepathReady = !!lifePathGraph?.graph?.nodes?.length;
+
+  const buildKey = [
+    isVertical ? 'V' : 'H',
+    isLifePath ? (lifepathReady ? 'LP:ready' : 'LP:loading') : 'SEED',
+    checkpointsOn ? 'CKPT:1' : 'CKPT:0'
+  ].join('|');
+
+  console.log('[V3 Canvas] buildKey:', buildKey);
+
   // Build full graph and create collapsed view (Step 1: Ship collapsed view only)
   useEffect(() => {
-    console.log('[V3 Canvas] Building graph from seed data...');
+    console.log('[V3 Canvas] Building graph from seed/data…');
+
+    // Guard: don't build until LifePath graph is ready
+    if (isLifePath && !lifepathReady) {
+      console.log('[V3 Canvas] LifePath data still loading, skipping build');
+      return;
+    }
     
     // Use bridged data if available, otherwise adapt V2 seed
     const v3Graph = bridgedData 
@@ -507,8 +527,8 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
     };
     
     const graphForRF = SAFE_MODE ? staticSafeGraph : finalGraph;
-    safeSetCurrentGraph(graphForRF, SAFE_MODE ? 'safe:static' : (useVerticalLayout ? 'initial:vertical' : 'initial:horizontal'));
-  }, []); // Empty deps = run once on mount (graph building is deterministic)
+    safeSetCurrentGraph(graphForRF, SAFE_MODE ? 'safe:static' : `build:${buildKey}`);
+  }, [buildKey]); // React to build key changes (layout, data source, checkpoints)
 
   // Loading guard: show loading state while Life Path data loads
   if (useLifePathSource && lifePathGraph?.loading) {
