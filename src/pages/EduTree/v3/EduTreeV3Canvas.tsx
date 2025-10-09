@@ -483,7 +483,8 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
     }
   }, [nodes, useVerticalLayout]);
 
-  // FIX #2: Debounced fitView to prevent race condition in Strict Mode
+  // FIX #2 & #4: Debounced fitView to prevent race condition in Strict Mode
+  // Remove fitView from deps to prevent unnecessary re-runs
   useEffect(() => {
     if (nodes.length > 0) {
       const timer = setTimeout(() => {
@@ -493,7 +494,7 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
       }, 100);
       return () => clearTimeout(timer);
     }
-  }, [nodes.length, fitView]);
+  }, [nodes.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // FIX #5: Enhanced DOM probe with visibility checks
   useEffect(() => {
@@ -553,18 +554,29 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
       console.log('[V3 Canvas] Collapsed bundle:', bundleId);
     }
     
-    // Re-layout after expansion/collapse
-    const positioned = buildEduTreeGraph(newGraph, { enableCheckpoints, meta: sourceMeta });
+    // FIX #2: Re-layout after expansion/collapse using correct layout engine
+    const positioned = useVerticalLayout
+      ? { 
+          nodes: calculateVerticalLayout(newGraph.nodes, VERT), 
+          edges: newGraph.edges 
+        }
+      : buildEduTreeGraph(newGraph, { enableCheckpoints, meta: sourceMeta });
     
-    // Validate after toggle
-    const validation = validateNoOverlaps(positioned.nodes, LAYOUT_TOKENS);
+    // Validate after toggle with correct tokens
+    const validation = validateNoOverlaps(
+      positioned.nodes, 
+      useVerticalLayout ? VERT : LAYOUT_TOKENS
+    );
     if (validation.hasOverlaps) {
       console.error('[V3 Canvas] OVERLAPS AFTER TOGGLE:', validation.overlaps.length);
       console.table(validation.diagnostics.slice(0, 5));
     }
     
     setCurrentGraph(positioned);
-  }, [fullGraph, currentGraph, bundles]);
+  }, [fullGraph, currentGraph, bundles, useVerticalLayout, enableCheckpoints, sourceMeta]);
+
+  // FIX #3: Memoize defaultViewport to prevent unnecessary ReactFlow updates
+  const defaultViewport = useMemo(() => ({ x: -400, y: -200, zoom: 0.5 }), []);
 
   // Step 3: Convert V3 nodes to ReactFlow nodes with guarded toggle and connection points
   const reactFlowNodes: Node[] = useMemo(() => {
@@ -908,13 +920,12 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
       {/* FIX A: Explicit height container with z-index */}
       <div className="w-full h-full absolute inset-0 z-0" style={{ height: '100vh' }}>
         <ReactFlow
-          key={useVerticalLayout ? 'vertical' : 'horizontal'} // FIX #4: Force remount on layout change
           nodes={reactFlowNodes}
           edges={reactFlowEdges}
           nodeTypes={nodeTypes}
           onNodeClick={handleNodeClick}
           onPaneClick={handlePaneClick}
-          defaultViewport={{ x: -400, y: -200, zoom: 0.5 }}
+          defaultViewport={defaultViewport}
           fitViewOptions={{ padding: 0.2, duration: 300 }}
           minZoom={0.1}
           maxZoom={2}
