@@ -20,6 +20,7 @@ export const V3CheckpointNode = memo(({ data, id }: NodeProps) => {
       <Handle
         type="target"
         position={Position.Top}
+        id="north"
         className="w-3 h-3 !bg-primary"
       />
 
@@ -65,6 +66,7 @@ export const V3CheckpointNode = memo(({ data, id }: NodeProps) => {
       <Handle
         type="source"
         position={Position.Bottom}
+        id="south"
         className="w-3 h-3 !bg-primary"
       />
     </div>

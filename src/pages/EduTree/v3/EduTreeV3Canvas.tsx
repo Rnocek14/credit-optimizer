@@ -419,7 +419,20 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
     if (useVerticalLayout) {
       // Vertical flow: pure top-to-bottom layout (already applied above)
       console.log('[V3 Canvas] Using VERTICAL layout engine');
-      
+
+      // STEP 3: Pre-validate edges checkpoint
+      console.log('[V3 Canvas][pre-validate] edges:', positionedCollapsed.edges.map(e => e.id));
+      console.log('[V3 Canvas][pre-validate] ckpt edges:',
+        positionedCollapsed.edges.filter(e => e.id?.startsWith('ckpt:')).map(e => ({
+          id: e.id, 
+          src: e.source, 
+          tgt: e.target
+        }))
+      );
+      console.log('[V3 Canvas][pre-validate] node IDs:', 
+        positionedCollapsed.nodes.map(n => n.id)
+      );
+
       // FIX #5: Pre-validate edges to prevent orphan references
       const nodeIds = new Set(positionedCollapsed.nodes.map(n => n.id));
       const validEdges = positionedCollapsed.edges.filter(e => {
