@@ -250,8 +250,21 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
     if (useVerticalLayout) {
       // Vertical flow: pure top-to-bottom layout (already applied above)
       console.log('[V3 Canvas] Using VERTICAL layout engine');
-      // Use positionedCollapsed directly (already has vertical positions)
-      finalGraph = positionedCollapsed;
+      
+      // FIX #3: Pre-validate edges to prevent orphan references
+      const nodeIds = new Set(positionedCollapsed.nodes.map(n => n.id));
+      const validEdges = positionedCollapsed.edges.filter(e => {
+        const ok = nodeIds.has(e.source) && nodeIds.has(e.target);
+        if (!ok && import.meta.env.DEV) {
+          console.error('[V3 Canvas] Orphan edge filtered:', e.id, e.source, '→', e.target);
+        }
+        return ok;
+      });
+      
+      finalGraph = {
+        nodes: positionedCollapsed.nodes,
+        edges: validEdges
+      };
       
       // Add comparison data to Track Gate (always available, visibility controlled by showComparison)
       const trackGate = finalGraph.nodes.find(n => n.id === 'gate-y3-tracks');
@@ -308,7 +321,10 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
     }
     
     // === POST-LAYOUT VALIDATION (moved here to validate final rendered positions) ===
-    const validation = validateNoOverlaps(finalGraph.nodes, LAYOUT_TOKENS);
+    const validation = validateNoOverlaps(
+      finalGraph.nodes,
+      useVerticalLayout ? VERT : LAYOUT_TOKENS
+    );
     if (validation.hasOverlaps) {
       console.error('[V3 Canvas] OVERLAPS IN FINAL GRAPH:', validation.overlaps.length);
       console.table(validation.diagnostics.slice(0, 5));
@@ -467,12 +483,15 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
     }
   }, [nodes, useVerticalLayout]);
 
-  // FIX #2: Improved fitView timing - run after nodes are mounted
+  // FIX #2: Debounced fitView to prevent race condition in Strict Mode
   useEffect(() => {
     if (nodes.length > 0) {
-      requestAnimationFrame(() => {
-        fitView({ padding: 0.6, includeHiddenNodes: true });
-      });
+      const timer = setTimeout(() => {
+        requestAnimationFrame(() => {
+          fitView({ padding: 0.6, includeHiddenNodes: true });
+        });
+      }, 100);
+      return () => clearTimeout(timer);
     }
   }, [nodes.length, fitView]);
 

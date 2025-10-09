@@ -39,14 +39,17 @@ function getLaneCenter(node: V3Node, yearCol: number, offset: number, grid: numb
 
 export function validateNoOverlaps(
   nodes: V3Node[],
-  t: typeof import('../utils/layoutTokensV3').LAYOUT_TOKENS
+  t: typeof import('../utils/layoutTokensV3').LAYOUT_TOKENS | typeof import('../utils/layoutTokensVertical').VERT
 ): { hasOverlaps: boolean; overlaps: Array<{ a: string; b: string }>; diagnostics: OverlapDiagnostic[] } {
   const overlaps: Array<{ a: string; b: string }> = [];
   const diagnostics: OverlapDiagnostic[] = [];
   
-  // Helper to get per-type heights
-  const getHeight = (node: V3Node) => 
-    node.type === 'gate' ? t.GATE_HEIGHT : t.NODE_MAX_HEIGHT;
+  // Helper to get per-type heights (handle both token sets)
+  const getHeight = (node: V3Node) => {
+    if (node.type === 'gate') return t.GATE_HEIGHT;
+    // VERT uses NODE_HEIGHT, LAYOUT_TOKENS uses NODE_MAX_HEIGHT
+    return 'NODE_HEIGHT' in t ? t.NODE_HEIGHT : (t as any).NODE_MAX_HEIGHT;
+  };
   
   for (let i = 0; i < nodes.length; i++) {
     for (let j = i + 1; j < nodes.length; j++) {
@@ -62,11 +65,13 @@ export function validateNoOverlaps(
       if (xOverlap && yOverlap) {
         overlaps.push({ a: A.id, b: B.id });
         
-        // Compute diagnostic info
-        const yearColA = (t.YEAR_COL as any)[`Y${A.data.year || 1}`] ?? t.YEAR_COL.Y1;
-        const yearColB = (t.YEAR_COL as any)[`Y${B.data.year || 1}`] ?? t.YEAR_COL.Y1;
-        const laneCenterA = getLaneCenter(A, yearColA, t.TRACK_COLUMN_OFFSET, t.GRID);
-        const laneCenterB = getLaneCenter(B, yearColB, t.TRACK_COLUMN_OFFSET, t.GRID);
+        // Compute diagnostic info (only for horizontal layout with YEAR_COL)
+        const hasYearCol = 'YEAR_COL' in t;
+        const yearColA = hasYearCol ? ((t as any).YEAR_COL as any)[`Y${A.data.year || 1}`] ?? (t as any).YEAR_COL.Y1 : 0;
+        const yearColB = hasYearCol ? ((t as any).YEAR_COL as any)[`Y${B.data.year || 1}`] ?? (t as any).YEAR_COL.Y1 : 0;
+        const trackOffset = 'TRACK_COLUMN_OFFSET' in t ? (t as any).TRACK_COLUMN_OFFSET : 0;
+        const laneCenterA = getLaneCenter(A, yearColA, trackOffset, t.GRID);
+        const laneCenterB = getLaneCenter(B, yearColB, trackOffset, t.GRID);
         
         const xDriftA = Math.abs(A.position.x - laneCenterA) > t.GRID / 2;
         const xDriftB = Math.abs(B.position.x - laneCenterB) > t.GRID / 2;
@@ -100,8 +105,8 @@ export function validateNoOverlaps(
           laneCenterA,
           laneCenterB,
           xDrift: xDriftA || xDriftB,
-          tooNarrowLanes: horizontalGap < t.H_GAP,
-          tooShortStepY: verticalGap < t.LANE_GAP,
+          tooNarrowLanes: horizontalGap < ('H_GAP' in t ? (t as any).H_GAP : 24),
+          tooShortStepY: verticalGap < ('LANE_GAP' in t ? (t as any).LANE_GAP : ('VERTICAL_GAP' in t ? t.VERTICAL_GAP : 80)),
           gateXNotCenter: (A.type === 'gate' && xDriftA) || (B.type === 'gate' && xDriftB),
           missingYearOrProgram: !A.data.year || !A.data.programId || !B.data.year || !B.data.programId,
           horizontalGap,
