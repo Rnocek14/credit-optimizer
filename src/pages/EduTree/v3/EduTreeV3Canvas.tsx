@@ -214,7 +214,26 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
   // STATE IS SOURCE OF TRUTH - no URL mixing to prevent reactivity bugs
   const isVertical = useVerticalLayout;
   const isLifePath = searchParams.get('source') === 'lifepath';
-  const lifepathReady = !!lifePathGraph?.graph?.nodes?.length;
+  
+  // Robust readiness detector with diagnostic logging
+  const lifepathReady = useMemo(() => {
+    if (!isLifePath) return false;
+    
+    const hasGraphNodes = Array.isArray(lifePathGraph?.graph?.nodes) && lifePathGraph.graph.nodes.length > 0;
+    const ready = hasGraphNodes && !lifePathGraph?.loading;
+    
+    if (import.meta.env.DEV) {
+      console.log('[V3] LifePath readiness:', {
+        hasGraphNodes,
+        nodeCount: lifePathGraph?.graph?.nodes?.length ?? 0,
+        ready,
+        loading: lifePathGraph?.loading
+      });
+    }
+    
+    return ready;
+  }, [isLifePath, lifePathGraph]);
+  
   const checkpointsOn = enableCheckpoints; // Pure state, no URL param mixing
 
   const buildKey = [
@@ -223,7 +242,15 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
     checkpointsOn ? 'CKPT:1' : 'CKPT:0'
   ].join('|');
 
-  console.log('[V3 Canvas] buildKey:', buildKey);
+  if (import.meta.env.DEV) {
+    console.log('[V3] Build state:', {
+      buildKey,
+      isLifePath,
+      lifepathReady,
+      nodeCount: lifePathGraph?.graph?.nodes?.length ?? 0,
+      loading: lifePathGraph?.loading
+    });
+  }
   
   // Diagnostic: Log alternatives data when ready
   if (import.meta.env.DEV && isLifePath && lifepathReady) {
