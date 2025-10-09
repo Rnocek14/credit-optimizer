@@ -23,15 +23,16 @@ export const V3CheckpointNode = memo(({ data, id }: NodeProps) => {
         className="w-3 h-3 !bg-primary"
       />
 
-      {/* Checkpoint card - diamond/badge shape */}
+      {/* FIX #3: Checkpoint card with overflow-hidden */}
       <div
         data-testid="checkpoint"
         className="relative flex flex-col items-center justify-center gap-2 px-6 py-4 
                    bg-gradient-to-br from-warning/20 to-warning/10 
                    border-2 border-warning rounded-lg
                    shadow-lg hover:shadow-xl transition-all duration-200
-                   cursor-pointer group"
-        style={{ width: '232px' }}
+                   cursor-pointer group
+                   overflow-hidden"
+        style={{ width: '232px', minHeight: '120px' }}
         onClick={() => {
           console.log(`[Checkpoint] Clicked: ${id}, alternatives: ${altCount}`);
           // Phase 3: Will open drawer here

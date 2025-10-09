@@ -40,7 +40,9 @@ export function mapEdgesVertical(edges: V3Edge[], nodes?: any[]): Edge[] {
       return true;
     })
     .map(e => {
-      const isGate = e.kind === 'gate';
+      // FIX #2: Detect checkpoint edges and style them as spine (not gate)
+      const isCheckpoint = (e.data as any)?.isCheckpointEdge || e.id.startsWith('ckpt:');
+      const isGate = !isCheckpoint && e.kind === 'gate';
       const isMerge = e.source.includes('y3-') && e.target.includes('y4-');
       
       return {
@@ -64,10 +66,10 @@ export function mapEdgesVertical(edges: V3Edge[], nodes?: any[]): Edge[] {
           color: isGate ? '#6366f1' : '#94a3b8'
         },
         
-        // Subtle animation for gate edges only
+        // Subtle animation for gate edges only (NOT checkpoints)
         animated: isGate,
         
-        // Consistent styling
+        // Consistent styling (checkpoint edges use spine color)
         style: {
           stroke: isGate ? '#6366f1' : '#94a3b8',
           strokeWidth: 2,

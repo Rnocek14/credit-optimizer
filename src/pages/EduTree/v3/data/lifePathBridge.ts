@@ -107,18 +107,27 @@ export function lifePathToV3(
       totalCredits: gn.credits,
     };
 
-    // For gate nodes, infer year from tier (gates typically at tier boundaries)
+    // FIX #4: For gate nodes, only assign year to non-job gates (academic milestones)
     if (nodeType === 'gate') {
-      // Map tier to academic year (0-1 → Y1, 2-3 → Y2, 4-5 → Y3, 6+ → Y4)
-      const inferredYear = Math.min(Math.floor(tier / 2) + 1, 4) as 1 | 2 | 3 | 4;
-      nodeData.year = inferredYear;
-      nodeData.programId = 'lifepath';
+      const isJobGate = gn.type === 'job' || gn.type === 'jobGoal';
+      
+      if (!isJobGate) {
+        // Academic gates get year assignment
+        const inferredYear = Math.min(Math.floor(tier / 2) + 1, 4) as 1 | 2 | 3 | 4;
+        nodeData.year = inferredYear;
+        nodeData.programId = 'academic';
+      } else {
+        // Job gates don't get year (will be filtered in collapsed view)
+        nodeData.programId = 'lifepath';
+      }
       
       if (import.meta.env.DEV) {
-        console.log('[Bridge] Gate node with inferred year:', {
+        console.log('[Bridge] Gate node:', {
           id: gn.id,
+          type: gn.type,
           tier,
-          year: inferredYear,
+          year: nodeData.year,
+          programId: nodeData.programId,
           title: gn.title
         });
       }

@@ -71,7 +71,7 @@ export function createCollapsedView(fullGraph: V3Graph): {
     position: { x: 0, y: 0 },
   });
 
-  const visibleNodes: V3Node[] = [];
+  let visibleNodes: V3Node[] = [];
   const makeBundle = (id: string, year: 1 | 2 | 3 | 4, trackId?: TrackId) => {
     const key = trackId ? `y${year}-${trackId}` : `y${year}`;
     const kids = byYearTrack.get(key) ?? [];
@@ -111,11 +111,34 @@ export function createCollapsedView(fullGraph: V3Graph): {
   makeBundle("y3-ds-bundle", 3, "ds");
   makeBundle("y4-bundle", 4);
 
-  // Always include gates and checkpoints (with validation)
-  console.log('[Collapsed View] Adding gates to visible nodes:', gates.map(g => ({ id: g.id, hasYear: !!g.data?.year })));
+  // FIX #1: Whitelist - Filter gates to only include academic year gates (not job gates)
+  const academicGates = gates.filter(g => {
+    const hasYear = typeof g.data.year === 'number' && g.data.year >= 1 && g.data.year <= 4;
+    const isAcademicGate = g.data.programId !== 'lifepath' || hasYear;
+    return isAcademicGate;
+  });
+
+  if (import.meta.env.DEV) {
+    const filtered = gates.filter(g => !academicGates.includes(g));
+    if (filtered.length > 0) {
+      console.warn('[Collapsed View] Filtered non-academic gates:', filtered.map(g => ({
+        id: g.id,
+        year: g.data.year,
+        programId: g.data.programId,
+        title: g.data.title
+      })));
+    }
+  }
+
+  // Always include academic gates and checkpoints (with validation)
+  console.log('[Collapsed View] Adding gates to visible nodes:', academicGates.map(g => ({ id: g.id, hasYear: !!g.data?.year })));
   console.log('[Collapsed View] Adding checkpoints to visible nodes:', checkpoints.map(c => ({ id: c.id, sourceNodeId: c.data?.sourceNodeId })));
-  visibleNodes.push(...gates);
+  visibleNodes.push(...academicGates);
   visibleNodes.push(...checkpoints);
+
+  // FIX #1: WHITELIST - Only allow collapsed-mode node types
+  const ALLOWED_TYPES = new Set(['track-bundle', 'gate', 'checkpoint']);
+  visibleNodes = visibleNodes.filter(n => ALLOWED_TYPES.has(n.type));
 
   // FIX #1: Remap checkpoint sourceNodeId from raw node → bundle (if source was collapsed)
   const childToBundle = new Map<string, string>();
@@ -164,7 +187,12 @@ export function createCollapsedView(fullGraph: V3Graph): {
         id: newId,
         source: newSource,
         target: newTarget,
-        kind: 'spine' as const, // Ensure these survive "spine only" filtering
+        kind: 'spine' as const,
+        data: {
+          ...(e.data || {}),
+          isCheckpointEdge: true,
+          forceSpineStyle: true
+        }
       };
     })
     .filter(e => e.source && e.target && e.source !== e.target);
@@ -245,6 +273,17 @@ export function createCollapsedView(fullGraph: V3Graph): {
   const y4 = idOf("y4-bundle");
   add(y3se, y4, "spine");
   add(y3ds, y4, "spine");
+
+  // FIX #5: Edge validation logging
+  if (import.meta.env.DEV) {
+    console.log('[Collapsed View] Final spine edges:', {
+      total: edges.length,
+      checkpointEdges: edges.filter(e => e.id.startsWith('ckpt:')).length,
+      gateEdges: edges.filter(e => e.kind === 'gate').length,
+      spineEdges: edges.filter(e => e.kind === 'spine').length,
+      edgeBreakdown: edges.map(e => ({ id: e.id, kind: e.kind, isCheckpoint: !!(e.data as any)?.isCheckpointEdge }))
+    });
+  }
 
   return { visibleNodes, visibleEdges: edges, bundles };
 }
