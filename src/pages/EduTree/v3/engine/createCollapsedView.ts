@@ -142,12 +142,69 @@ export function createCollapsedView(fullGraph: V3Graph): {
     }
   });
 
-  // Preserve checkpoint edges (CRITICAL: prevent orphaned checkpoints)
+  // FIX #2: Preserve + REMAP checkpoint edges so they point to bundle IDs
   const checkpointIds = new Set(checkpoints.map(c => c.id));
-  const checkpointEdges = fullGraph.edges.filter(e => 
+  
+  // Edges that touch a checkpoint in the full graph
+  const checkpointEdgesRaw = fullGraph.edges.filter(e => 
     checkpointIds.has(e.source) || checkpointIds.has(e.target)
   );
-  console.log('[Collapsed View] Preserving checkpoint edges:', checkpointEdges.map(e => ({ id: e.id, source: e.source, target: e.target })));
+  
+  // Remap endpoints from raw child IDs → bundle IDs (if collapsed)
+  const remappedCheckpointEdges = checkpointEdgesRaw
+    .map(e => {
+      const newSource = childToBundle.get(e.source) ?? e.source;
+      const newTarget = childToBundle.get(e.target) ?? e.target;
+      
+      // Namespace the ID to avoid collisions and reflect remap
+      const newId = `ckpt:${newSource}->${newTarget}`;
+      
+      return {
+        ...e,
+        id: newId,
+        source: newSource,
+        target: newTarget,
+        kind: 'spine' as const, // Ensure these survive "spine only" filtering
+      };
+    })
+    .filter(e => e.source && e.target && e.source !== e.target);
+  
+  // Dedupe by ID just in case
+  const seen = new Set<string>();
+  const dedupedCheckpointEdges = remappedCheckpointEdges.filter(e => {
+    if (seen.has(e.id)) return false;
+    seen.add(e.id);
+    return true;
+  });
+  
+  if (import.meta.env.DEV) {
+    console.log('[Collapsed View] Remapped checkpoint edges:', dedupedCheckpointEdges.map(e => ({
+      id: e.id,
+      source: e.source,
+      target: e.target,
+      kind: e.kind
+    })));
+  }
+  
+  // Validate all checkpoint edges have valid endpoints
+  if (import.meta.env.DEV) {
+    const visibleIds = new Set(visibleNodes.map(n => n.id));
+    const invalidEdges = dedupedCheckpointEdges.filter(e => 
+      !visibleIds.has(e.source) || !visibleIds.has(e.target)
+    );
+    
+    if (invalidEdges.length > 0) {
+      console.error('[Collapsed View] Invalid checkpoint edges detected:', invalidEdges.map(e => ({
+        id: e.id,
+        source: e.source,
+        sourceExists: visibleIds.has(e.source),
+        target: e.target,
+        targetExists: visibleIds.has(e.target)
+      })));
+    } else {
+      console.log('[Collapsed View] ✅ All checkpoint edges valid');
+    }
+  }
 
   // Spine edges only (no raw prereq spaghetti)
   const idOf = (want: BundleId) =>
@@ -155,8 +212,8 @@ export function createCollapsedView(fullGraph: V3Graph): {
 
   const edges: V3Edge[] = [];
   
-  // Add checkpoint edges FIRST (before bundle edges)
-  edges.push(...checkpointEdges);
+  // Add remapped checkpoint edges FIRST (before bundle edges)
+  edges.push(...dedupedCheckpointEdges);
   
   const add = (source?: string, target?: string, kind: V3Edge["kind"] = "spine") => {
     if (!source || !target) return;
