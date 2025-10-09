@@ -78,18 +78,7 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
     []
   );
 
-  // 🛡️ Freeze graph after first good render (temporary guard for diagnosis)
-  const hasStableGraphRef = useRef(false);
-
-  const commitStable = useCallback((g: V3Graph, tag: string) => {
-    const n = g?.nodes?.length ?? 0;
-    if (hasStableGraphRef.current && n > 0) {
-      console.warn('[commitStable] blocked subsequent overwrite:', tag);
-      return; // block late overwrites while we debug
-    }
-    if (n > 0) hasStableGraphRef.current = true;
-    safeSetCurrentGraph(g, tag);
-  }, [safeSetCurrentGraph]);
+  // Removed freeze guards - allowing natural React state updates
   
   // Vertical flow feature flag (read from URL or localStorage)
   const [useVerticalLayout, setUseVerticalLayout] = useState(() => {
@@ -198,12 +187,7 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
   };
 
   // Build full graph and create collapsed view (Step 1: Ship collapsed view only)
-  const hasBuiltGraphRef = useRef(false);
-
   useEffect(() => {
-    if (hasBuiltGraphRef.current) return; // ONE-SHOT: prevent re-runs
-    hasBuiltGraphRef.current = true;
-    
     console.log('[V3 Canvas] Building graph from seed data...');
     
     // Use bridged data if available, otherwise adapt V2 seed
@@ -517,8 +501,8 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
     };
     
     const graphForRF = SAFE_MODE ? staticSafeGraph : finalGraph;
-    commitStable(graphForRF, SAFE_MODE ? 'safe:static' : (useVerticalLayout ? 'initial:vertical' : 'initial:horizontal'));
-  }, [bridgedData, enableCheckpoints, sourceMeta, enableMetrics, useVerticalLayout, showComparison]);
+    safeSetCurrentGraph(graphForRF, SAFE_MODE ? 'safe:static' : (useVerticalLayout ? 'initial:vertical' : 'initial:horizontal'));
+  }, [useVerticalLayout, enableCheckpoints, sourceMeta, SAFE_MODE, bridgedData, enableMetrics, showComparison, safeSetCurrentGraph]);
 
   // Loading guard: show loading state while Life Path data loads
   if (useLifePathSource && lifePathGraph?.loading) {
