@@ -216,53 +216,59 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
     });
     console.log('[V3 Canvas] Node distribution by year:', Object.fromEntries(yearCounts));
     
+    // Phase 3: Inject checkpoints on FULL graph BEFORE collapse (vertical mode only)
+    let fullGraphWithCheckpoints = v3Graph;
+    
+    if (useVerticalLayout && enableCheckpoints && sourceMeta) {
+      const forkCount = Object.keys(sourceMeta.alternativesByNode || {}).length;
+      
+      if (forkCount > 0) {
+        console.log(`[V3 Canvas] Injecting checkpoints on FULL graph (${forkCount} forks detected)`);
+        const result = injectCheckpoints(
+          fullGraphWithCheckpoints.nodes,
+          fullGraphWithCheckpoints.edges,
+          sourceMeta
+        );
+        fullGraphWithCheckpoints = { nodes: result.nodes, edges: result.edges };
+        console.log(`[V3 Canvas] Checkpoint injection: ${result.checkpointsAdded} added`);
+      } else {
+        console.log('[V3 Canvas] No forks detected; skipping checkpoint injection');
+      }
+    }
+    
     // Run layout engine on full graph (for later expansions)
-    // Phase 3: DO NOT inject checkpoints yet - wait until after positioning
     const positionedFull = useVerticalLayout
-      ? v3Graph  // Keep raw nodes, vertical engine will position them
+      ? fullGraphWithCheckpoints  // Use graph with checkpoints if injected
       : (enableMetrics 
-          ? buildEduTreeGraphWithMetrics(v3Graph, { enableCheckpoints, meta: sourceMeta }).graph
-          : buildEduTreeGraph(v3Graph, { enableCheckpoints, meta: sourceMeta }));
+          ? buildEduTreeGraphWithMetrics(fullGraphWithCheckpoints, { enableCheckpoints, meta: sourceMeta }).graph
+          : buildEduTreeGraph(fullGraphWithCheckpoints, { enableCheckpoints, meta: sourceMeta }));
     
     setFullGraph(positionedFull);
     
-    // Create collapsed view IMMEDIATELY (progressive disclosure - Step 1)
+    // Create collapsed view (progressive disclosure - Step 1)
+    // Collapsed view will preserve checkpoint nodes (already implemented in createCollapsedView)
     const { visibleNodes, visibleEdges, bundles: bundleMap } = createCollapsedView(positionedFull);
     
     console.log('[V3 Canvas] Progressive disclosure (collapsed view):', {
       fullNodes: positionedFull.nodes.length,
       visibleNodes: visibleNodes.length,
       bundles: bundleMap.size,
-      mode: 'COLLAPSED - bundles + gates only'
+      checkpoints: visibleNodes.filter(n => n.type === 'checkpoint').length,
+      mode: 'COLLAPSED - bundles + gates + checkpoints'
     });
     
     // Position the collapsed view (Step 5: spine edges only)
     const collapsedGraph = { nodes: visibleNodes, edges: visibleEdges };
     
-    // CRITICAL FIX: Apply vertical layout immediately for collapsed graph
-    let positionedCollapsed = useVerticalLayout
+    // Apply vertical layout to collapsed graph
+    const positionedCollapsed = useVerticalLayout
       ? { 
           nodes: calculateVerticalLayout(collapsedGraph.nodes, VERT), 
           edges: collapsedGraph.edges 
         }
       : (enableMetrics
           ? buildEduTreeGraphWithMetrics(collapsedGraph, { enableCheckpoints: false }).graph
-          : buildEduTreeGraph(collapsedGraph, { enableCheckpoints: false }));
-    
-    // Phase 3: Inject checkpoints AFTER vertical positioning (not before collapse)
-    if (useVerticalLayout && enableCheckpoints && sourceMeta) {
-      console.log('[V3 Canvas] Injecting checkpoints AFTER vertical layout...');
-      const withCheckpoints = injectCheckpoints(
-        positionedCollapsed.nodes, 
-        positionedCollapsed.edges, 
-        sourceMeta
-      );
-      console.log('[V3 Canvas] Re-positioning graph with checkpoints...');
-      positionedCollapsed = {
-        nodes: calculateVerticalLayout(withCheckpoints.nodes, VERT),
-        edges: withCheckpoints.edges
-      };
-    }
+          : buildEduTreeGraph(collapsedGraph, { enableCheckpoints: false }))
     
     // Debug: Log bundle positions after vertical layout
     if (useVerticalLayout) {
