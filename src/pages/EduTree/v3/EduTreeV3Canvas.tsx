@@ -467,13 +467,28 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
     }
   }, [nodes, useVerticalLayout]);
 
-  // Handle ReactFlow initialization
-  const handleReactFlowInit = useCallback(() => {
-    console.log('[V3 Canvas] ReactFlow initialized, fitting view...');
-    setTimeout(() => {
-      fitView({ duration: 300, padding: 0.2 });
-    }, 150);
-  }, [fitView]);
+  // FIX #2: Improved fitView timing - run after nodes are mounted
+  useEffect(() => {
+    if (nodes.length > 0) {
+      requestAnimationFrame(() => {
+        fitView({ padding: 0.6, includeHiddenNodes: true });
+      });
+    }
+  }, [nodes.length, fitView]);
+
+  // FIX #5: DOM probe logging
+  useEffect(() => {
+    const domNodes = document.querySelectorAll('.react-flow__node');
+    console.log('[V3 Canvas] DOM nodes found:', domNodes.length);
+    if (domNodes.length > 0) {
+      const firstNode = domNodes[0] as HTMLElement;
+      console.log('[V3 Canvas] First node styles:', {
+        width: firstNode.offsetWidth,
+        height: firstNode.offsetHeight,
+        transform: getComputedStyle(firstNode).transform
+      });
+    }
+  }, [nodes.length]);
 
   // Step 3: Guard the toggle handler (prevents early render issues)
   const handleBundleToggle = useCallback((bundleId: string) => {
@@ -855,34 +870,37 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
       )}
 
       {/* ReactFlow Canvas */}
-      <ReactFlow
-        nodes={reactFlowNodes}
-        edges={reactFlowEdges}
-        nodeTypes={nodeTypes}
-        onNodeClick={handleNodeClick}
-        onPaneClick={handlePaneClick}
-        onInit={handleReactFlowInit}
-        defaultViewport={{ x: 0, y: 0, zoom: 0.8 }}
-        fitViewOptions={{ padding: 0.2, duration: 300 }}
-        minZoom={0.1}
-        maxZoom={2}
-        selectNodesOnDrag={false}
-        panOnDrag
-        elementsSelectable={false}
-        nodesDraggable={false}
-        nodesConnectable={false}
-        defaultEdgeOptions={{
-          style: { strokeWidth: 2 }
-        }}
-      >
-        <Background />
-        <Controls />
-        <MiniMap 
-          nodeStrokeWidth={3}
-          zoomable
-          pannable
-        />
-      </ReactFlow>
+      {/* FIX #1: Explicit height container for ReactFlow */}
+      <div className="w-full h-full absolute inset-0" style={{ height: 'calc(100vh - 0px)' }}>
+        <ReactFlow
+          key={useVerticalLayout ? 'vertical' : 'horizontal'} // FIX #4: Force remount on layout change
+          nodes={reactFlowNodes}
+          edges={reactFlowEdges}
+          nodeTypes={nodeTypes}
+          onNodeClick={handleNodeClick}
+          onPaneClick={handlePaneClick}
+          defaultViewport={{ x: 0, y: 0, zoom: 0.8 }}
+          fitViewOptions={{ padding: 0.2, duration: 300 }}
+          minZoom={0.1}
+          maxZoom={2}
+          selectNodesOnDrag={false}
+          panOnDrag
+          elementsSelectable={false}
+          nodesDraggable={false}
+          nodesConnectable={false}
+          defaultEdgeOptions={{
+            style: { strokeWidth: 2 }
+          }}
+        >
+          <Background />
+          <Controls />
+          <MiniMap 
+            nodeStrokeWidth={3}
+            zoomable
+            pannable
+          />
+        </ReactFlow>
+      </div>
       
       {/* Debug Panel (Vertical Flow only) */}
       {showDebugPanel && useVerticalLayout && (
