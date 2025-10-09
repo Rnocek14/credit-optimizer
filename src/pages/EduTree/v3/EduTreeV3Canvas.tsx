@@ -129,13 +129,14 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
   // Sync layout state with URL params (reactive)
   useEffect(() => {
     const layoutFromUrl = searchParams.get('layout') === 'vertical';
-    if (layoutFromUrl !== useVerticalLayout) {
-      setUseVerticalLayout(layoutFromUrl);
+    setUseVerticalLayout(prev => {
+      if (prev === layoutFromUrl) return prev; // No-op if same
       if (import.meta.env.DEV) {
         console.log('[V3 Canvas] Layout synced from URL:', layoutFromUrl ? 'vertical' : 'horizontal');
       }
-    }
-  }, [searchParams, useVerticalLayout]);
+      return layoutFromUrl;
+    });
+  }, [searchParams]); // Only depend on URL params
   
   // Sync checkpoint state with URL (after layout is synced)
   useEffect(() => {
@@ -149,13 +150,14 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
       return;
     }
     
-    if (checkpointsFromUrl !== enableCheckpoints) {
-      setEnableCheckpoints(checkpointsFromUrl);
+    setEnableCheckpoints(prev => {
+      if (prev === checkpointsFromUrl) return prev; // No-op if same
       if (import.meta.env.DEV) {
         console.log('[V3 Canvas] Checkpoints synced from URL:', checkpointsFromUrl);
       }
-    }
-  }, [searchParams, useVerticalLayout, enableCheckpoints]);
+      return checkpointsFromUrl;
+    });
+  }, [searchParams, useVerticalLayout]); // Don't include enableCheckpoints
   
   // Handler to toggle checkpoints
   const handleToggleCheckpoints = useCallback(() => {
@@ -198,12 +200,15 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
   }, [useLifePathSource, lifePathGraph?.graph]);
   
   // Bridge metadata for __dumpV3()
-  const sourceMeta: BridgeMeta = bridgedData?.meta ?? {
-    forksDetected: 0,
-    tiers: 4,
-    slugsUsed: [],
-    alternativesByNode: {}
-  };
+  // Memoize to prevent object churn triggering re-renders
+  const sourceMeta: BridgeMeta = useMemo(() => {
+    return bridgedData?.meta ?? {
+      forksDetected: 0,
+      tiers: 4,
+      slugsUsed: [],
+      alternativesByNode: {}
+    };
+  }, [bridgedData]);
 
   // Compute stable build key from primitive values only (reactive to toggles + data loading)
   // STATE IS SOURCE OF TRUTH - no URL mixing to prevent reactivity bugs
@@ -599,7 +604,7 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
         meta: sourceMeta
       });
     }
-  }, [buildKey, sourceMeta]); // React to build key changes (layout, data source, checkpoints)
+  }, [buildKey]); // React to build key changes only
 
   // Loading guard: show loading state while Life Path data loads
   if (useLifePathSource && lifePathGraph?.loading) {
@@ -740,7 +745,7 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
     }
     
     safeSetCurrentGraph(positioned, 'toggle:bundle');
-  }, [fullGraph, currentGraph, bundles, useVerticalLayout, enableCheckpoints, sourceMeta, safeSetCurrentGraph]);
+  }, [fullGraph, currentGraph, bundles, useVerticalLayout, enableCheckpoints, safeSetCurrentGraph]);
 
   // FIX #2: Memoize nodeTypes to prevent ReactFlow prop identity changes
   const memoizedNodeTypes = useMemo(() => ({
