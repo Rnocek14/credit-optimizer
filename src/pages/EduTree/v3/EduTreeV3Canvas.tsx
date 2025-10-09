@@ -198,7 +198,12 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
   };
 
   // Build full graph and create collapsed view (Step 1: Ship collapsed view only)
+  const hasBuiltGraphRef = useRef(false);
+
   useEffect(() => {
+    if (hasBuiltGraphRef.current) return; // ONE-SHOT: prevent re-runs
+    hasBuiltGraphRef.current = true;
+    
     console.log('[V3 Canvas] Building graph from seed data...');
     
     // Use bridged data if available, otherwise adapt V2 seed
@@ -228,24 +233,17 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
     console.log('[V3 Canvas] Node distribution by year:', Object.fromEntries(yearCounts));
     
     // Run layout engine on full graph (for later expansions)
-    // Phase 3: CRITICAL - Inject checkpoints BEFORE collapsing (vertical mode)
+    // Phase 3: DO NOT inject checkpoints yet - wait until after positioning
     const positionedFull = useVerticalLayout
-      ? (enableCheckpoints && sourceMeta
-          ? injectCheckpoints(v3Graph.nodes, v3Graph.edges, sourceMeta)
-          : { nodes: v3Graph.nodes, edges: v3Graph.edges, checkpointsAdded: 0 })
+      ? v3Graph  // Keep raw nodes, vertical engine will position them
       : (enableMetrics 
           ? buildEduTreeGraphWithMetrics(v3Graph, { enableCheckpoints, meta: sourceMeta }).graph
           : buildEduTreeGraph(v3Graph, { enableCheckpoints, meta: sourceMeta }));
     
-    // Convert to V3Graph format for vertical mode
-    const fullGraphForState = useVerticalLayout
-      ? { nodes: positionedFull.nodes, edges: positionedFull.edges }
-      : positionedFull;
-    
-    setFullGraph(fullGraphForState);
+    setFullGraph(positionedFull);
     
     // Create collapsed view IMMEDIATELY (progressive disclosure - Step 1)
-    const { visibleNodes, visibleEdges, bundles: bundleMap } = createCollapsedView(fullGraphForState);
+    const { visibleNodes, visibleEdges, bundles: bundleMap } = createCollapsedView(positionedFull);
     
     console.log('[V3 Canvas] Progressive disclosure (collapsed view):', {
       fullNodes: positionedFull.nodes.length,
@@ -258,8 +256,7 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
     const collapsedGraph = { nodes: visibleNodes, edges: visibleEdges };
     
     // CRITICAL FIX: Apply vertical layout immediately for collapsed graph
-    // Phase 3: DO NOT re-inject checkpoints on collapsed view (already done on full graph)
-    const positionedCollapsed = useVerticalLayout
+    let positionedCollapsed = useVerticalLayout
       ? { 
           nodes: calculateVerticalLayout(collapsedGraph.nodes, VERT), 
           edges: collapsedGraph.edges 
@@ -267,6 +264,21 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
       : (enableMetrics
           ? buildEduTreeGraphWithMetrics(collapsedGraph, { enableCheckpoints: false }).graph
           : buildEduTreeGraph(collapsedGraph, { enableCheckpoints: false }));
+    
+    // Phase 3: Inject checkpoints AFTER vertical positioning (not before collapse)
+    if (useVerticalLayout && enableCheckpoints && sourceMeta) {
+      console.log('[V3 Canvas] Injecting checkpoints AFTER vertical layout...');
+      const withCheckpoints = injectCheckpoints(
+        positionedCollapsed.nodes, 
+        positionedCollapsed.edges, 
+        sourceMeta
+      );
+      console.log('[V3 Canvas] Re-positioning graph with checkpoints...');
+      positionedCollapsed = {
+        nodes: calculateVerticalLayout(withCheckpoints.nodes, VERT),
+        edges: withCheckpoints.edges
+      };
+    }
     
     // Debug: Log bundle positions after vertical layout
     if (useVerticalLayout) {

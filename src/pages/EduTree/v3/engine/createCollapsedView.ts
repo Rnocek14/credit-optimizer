@@ -26,6 +26,7 @@ export function createCollapsedView(fullGraph: V3Graph): {
 } {
   const byYearTrack = new Map<string, V3Node[]>();
   const gates: V3Node[] = [];
+  const checkpoints: V3Node[] = [];
 
   for (const n of fullGraph.nodes) {
     if (n.type === "gate") {
@@ -36,6 +37,15 @@ export function createCollapsedView(fullGraph: V3Graph): {
         data: n.data 
       });
       gates.push(n);
+      continue;
+    }
+    if (n.type === "checkpoint") {
+      console.log('[Collapsed View] Found checkpoint node:', { 
+        id: n.id, 
+        sourceNodeId: n.data?.sourceNodeId,
+        alternativeCount: n.data?.alternativeCount
+      });
+      checkpoints.push(n);
       continue;
     }
     const y = (n.data.year ?? 1) as 1 | 2 | 3 | 4;
@@ -101,9 +111,11 @@ export function createCollapsedView(fullGraph: V3Graph): {
   makeBundle("y3-ds-bundle", 3, "ds");
   makeBundle("y4-bundle", 4);
 
-  // Always include gates (with validation)
+  // Always include gates and checkpoints (with validation)
   console.log('[Collapsed View] Adding gates to visible nodes:', gates.map(g => ({ id: g.id, hasYear: !!g.data?.year })));
+  console.log('[Collapsed View] Adding checkpoints to visible nodes:', checkpoints.map(c => ({ id: c.id, sourceNodeId: c.data?.sourceNodeId })));
   visibleNodes.push(...gates);
+  visibleNodes.push(...checkpoints);
 
   // Spine edges only (no raw prereq spaghetti)
   const idOf = (want: BundleId) =>
