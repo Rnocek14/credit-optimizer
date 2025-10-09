@@ -420,15 +420,30 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
       // Vertical flow: pure top-to-bottom layout (already applied above)
       console.log('[V3 Canvas] Using VERTICAL layout engine');
       
-      // FIX #3: Pre-validate edges to prevent orphan references
+      // FIX #5: Pre-validate edges to prevent orphan references
       const nodeIds = new Set(positionedCollapsed.nodes.map(n => n.id));
       const validEdges = positionedCollapsed.edges.filter(e => {
         const ok = nodeIds.has(e.source) && nodeIds.has(e.target);
         if (!ok && import.meta.env.DEV) {
-          console.error('[V3 Canvas] Orphan edge filtered:', e.id, e.source, '→', e.target);
+          console.error('[V3 Canvas] Orphan edge filtered:', {
+            id: e.id,
+            source: e.source,
+            sourceExists: nodeIds.has(e.source),
+            target: e.target,
+            targetExists: nodeIds.has(e.target),
+            isCheckpoint: e.id.startsWith('ckpt:')
+          });
         }
         return ok;
       });
+      
+      if (import.meta.env.DEV) {
+        const checkpointEdges = validEdges.filter(e => e.id.startsWith('ckpt:'));
+        console.log('[V3 Canvas] Checkpoint edges after validation:', {
+          count: checkpointEdges.length,
+          edges: checkpointEdges.map(e => ({ id: e.id, source: e.source, target: e.target }))
+        });
+      }
       
       finalGraph = {
         nodes: positionedCollapsed.nodes,

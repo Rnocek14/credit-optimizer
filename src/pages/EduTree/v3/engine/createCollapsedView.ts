@@ -251,8 +251,8 @@ export function createCollapsedView(fullGraph: V3Graph): {
   // y1 -> programGate -> y2 (with fallback to first available gate)
   const y1 = idOf("y1-bundle");
   const y2 = idOf("y2-bundle");
-  const programGate = gates.find((g) => g.data.year === 2)?.id || gates[0]?.id;
-  const trackGate = gates.find((g) => g.data.year === 3)?.id || gates[1]?.id;
+  const programGate = academicGates.find((g) => g.data.year === 2)?.id || academicGates[0]?.id;
+  const trackGate = academicGates.find((g) => g.data.year === 3)?.id || academicGates[1]?.id;
   
   if (programGate) {
     add(y1, programGate, "gate");
@@ -274,18 +274,51 @@ export function createCollapsedView(fullGraph: V3Graph): {
   add(y3se, y4, "spine");
   add(y3ds, y4, "spine");
 
+  // FIX #4: Final edge merge - ensure checkpoint edges survive
+  const visibleIds = new Set(visibleNodes.map(n => n.id));
+
+  // Rebuild checkpoint edges from full graph one more time
+  const finalCkptEdges = checkpointEdgesRaw
+    .map(e => {
+      const src = childToBundle.get(e.source) ?? e.source;
+      const tgt = childToBundle.get(e.target) ?? e.target;
+      return {
+        ...e,
+        id: `ckpt:${src}->${tgt}`,
+        source: src,
+        target: tgt,
+        kind: 'spine' as const,
+        data: { ...(e.data||{}), isCheckpointEdge: true, forceSpineStyle: true }
+      };
+    })
+    .filter(e => visibleIds.has(e.source) && visibleIds.has(e.target) && e.source !== e.target);
+
+  // Dedupe: merge checkpoint edges with spine edges by ID
+  const edgeById = new Map(edges.map(e => [e.id, e]));
+  for (const e of finalCkptEdges) {
+    edgeById.set(e.id, e);
+  }
+  const finalEdges = Array.from(edgeById.values());
+
   // FIX #5: Edge validation logging
   if (import.meta.env.DEV) {
+    console.log('[Collapsed View] Final edge merge:', {
+      spineEdges: edges.length,
+      checkpointEdgesAdded: finalCkptEdges.length,
+      totalAfterMerge: finalEdges.length,
+      checkpointEdgeIds: finalCkptEdges.map(e => e.id)
+    });
+    
     console.log('[Collapsed View] Final spine edges:', {
-      total: edges.length,
-      checkpointEdges: edges.filter(e => e.id.startsWith('ckpt:')).length,
-      gateEdges: edges.filter(e => e.kind === 'gate').length,
-      spineEdges: edges.filter(e => e.kind === 'spine').length,
-      edgeBreakdown: edges.map(e => ({ id: e.id, kind: e.kind, isCheckpoint: !!(e.data as any)?.isCheckpointEdge }))
+      total: finalEdges.length,
+      checkpointEdges: finalEdges.filter(e => e.id.startsWith('ckpt:')).length,
+      gateEdges: finalEdges.filter(e => e.kind === 'gate').length,
+      spineEdges: finalEdges.filter(e => e.kind === 'spine').length,
+      edgeBreakdown: finalEdges.map(e => ({ id: e.id, kind: e.kind, isCheckpoint: !!(e.data as any)?.isCheckpointEdge }))
     });
   }
 
-  return { visibleNodes, visibleEdges: edges, bundles };
+  return { visibleNodes, visibleEdges: finalEdges, bundles };
 }
 
 /** Expand a bundle: replace bundle node with its child requirement nodes */

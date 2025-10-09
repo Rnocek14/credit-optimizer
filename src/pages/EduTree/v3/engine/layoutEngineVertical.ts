@@ -72,15 +72,17 @@ export function calculateVerticalLayout(
 
   let cursorY = 0;
 
-  // Helper: center a node on the spine and advance cursor
+  // FIX #2: Helper - center a node on the spine and advance cursor
+  // FORCE centerline position (ignore any previous x from horizontal layout)
   const placeCenter = (node: V3Node | undefined, height: number) => {
     if (!node) {
       console.warn('[Vertical Layout] placeCenter called with undefined node');
       return;
     }
-    console.log(`[Vertical Layout] Placing ${node.id} at y=${cursorY}`);
+    // FORCE centerline X position
     node.position.x = snap(t.CENTER_X, t.GRID);
     node.position.y = snap(cursorY, t.GRID);
+    console.log(`[Vertical Layout] Placing ${node.id} at (${node.position.x}, ${node.position.y})`);
     cursorY += height + t.VERTICAL_GAP;
   };
 
@@ -131,20 +133,21 @@ export function calculateVerticalLayout(
   placeCenter(y4, t.NODE_HEIGHT);
 
   // 7. Position checkpoint nodes (Phase 3a)
-  // FIX #2: Checkpoints appear BELOW their source nodes, centered on spine
+  // FIX #3: Checkpoints INHERIT source node X position for perfect alignment
   const checkpoints = out.filter(n => n.type === 'checkpoint');
   checkpoints.forEach(cp => {
     const sourceNode = out.find(n => n.id === cp.data?.sourceNodeId);
     if (sourceNode) {
-      cp.position.x = snap(t.CENTER_X, t.GRID);
-      // Place BELOW (add, not subtract) source node
+      // INHERIT source X position (ensures alignment even if source isn't centered)
+      cp.position.x = sourceNode.position.x;
       cp.position.y = snap(sourceNode.position.y + t.TIER_SPACING_PX, t.GRID);
+      
       if (import.meta.env.DEV) {
         console.log('[Vertical Layout] Positioned checkpoint:', {
           checkpointId: cp.id,
           sourceId: sourceNode.id,
-          sourceY: sourceNode.position.y,
-          checkpointY: cp.position.y
+          sourcePos: { x: sourceNode.position.x, y: sourceNode.position.y },
+          checkpointPos: { x: cp.position.x, y: cp.position.y }
         });
       }
     } else if (import.meta.env.DEV) {
