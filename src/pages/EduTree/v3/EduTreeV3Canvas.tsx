@@ -698,9 +698,11 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
     });
   }, [edges, focusedEdges, useVerticalLayout]);
 
-  // FIX #5: Track viewport movements for debugging
+  // FIX #5: Viewport movement tracker (diagnostic aid)
   const handleMoveEnd = useCallback((_event: any, viewport: { x: number; y: number; zoom: number }) => {
-    console.log('[Viewport]', viewport);
+    if (import.meta.env.DEV) {
+      console.log('[Viewport]', viewport);
+    }
   }, []);
 
   // Handle node selection for edge focusing
