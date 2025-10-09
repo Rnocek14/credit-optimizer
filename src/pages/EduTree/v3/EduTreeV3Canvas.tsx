@@ -159,6 +159,28 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
     });
   }, [searchParams, useVerticalLayout]); // Don't include enableCheckpoints
   
+  // Compute readiness flags BEFORE toggle handler uses them
+  const isLifePath = searchParams.get('source') === 'lifepath';
+  
+  // Robust readiness detector with diagnostic logging
+  const lifepathReady = useMemo(() => {
+    if (!isLifePath) return false;
+    
+    const hasGraphNodes = Array.isArray(lifePathGraph?.graph?.nodes) && lifePathGraph.graph.nodes.length > 0;
+    const ready = hasGraphNodes && !lifePathGraph?.loading;
+    
+    if (import.meta.env.DEV) {
+      console.log('[V3] LifePath readiness:', {
+        hasGraphNodes,
+        nodeCount: lifePathGraph?.graph?.nodes?.length ?? 0,
+        ready,
+        loading: lifePathGraph?.loading
+      });
+    }
+    
+    return ready;
+  }, [isLifePath, lifePathGraph]);
+  
   // Handler to toggle checkpoints
   const handleToggleCheckpoints = useCallback(() => {
     if (!useVerticalLayout) {
@@ -166,10 +188,20 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
       return;
     }
     
-    // Check if data is ready
-    if (!lifePathGraph?.graph?.nodes?.length) {
+    // Check if data is ready (use canonical lifepathReady flag)
+    if (isLifePath && !lifepathReady) {
       toast.error('Life Path data still loading...');
       return;
+    }
+    
+    if (import.meta.env.DEV) {
+      console.log('[Toggle] Checkpoint state:', {
+        current: enableCheckpoints,
+        new: !enableCheckpoints,
+        isLifePath,
+        lifepathReady,
+        hasGraphNodes: lifePathGraph?.graph?.nodes?.length ?? 0
+      });
     }
     
     const newValue = !enableCheckpoints;
@@ -187,7 +219,7 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
     setSearchParams(newParams, { replace: true });
     
     toast.success(`Checkpoints ${newValue ? 'enabled' : 'disabled'}`);
-  }, [enableCheckpoints, useVerticalLayout, lifePathGraph?.graph]);
+  }, [enableCheckpoints, useVerticalLayout, isLifePath, lifepathReady]);
   
   // Bridge Life Path Graph to V3 format if enabled
   const bridgedData = useMemo(() => {
@@ -213,26 +245,6 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
   // Compute stable build key from primitive values only (reactive to toggles + data loading)
   // STATE IS SOURCE OF TRUTH - no URL mixing to prevent reactivity bugs
   const isVertical = useVerticalLayout;
-  const isLifePath = searchParams.get('source') === 'lifepath';
-  
-  // Robust readiness detector with diagnostic logging
-  const lifepathReady = useMemo(() => {
-    if (!isLifePath) return false;
-    
-    const hasGraphNodes = Array.isArray(lifePathGraph?.graph?.nodes) && lifePathGraph.graph.nodes.length > 0;
-    const ready = hasGraphNodes && !lifePathGraph?.loading;
-    
-    if (import.meta.env.DEV) {
-      console.log('[V3] LifePath readiness:', {
-        hasGraphNodes,
-        nodeCount: lifePathGraph?.graph?.nodes?.length ?? 0,
-        ready,
-        loading: lifePathGraph?.loading
-      });
-    }
-    
-    return ready;
-  }, [isLifePath, lifePathGraph]);
   
   const checkpointsOn = enableCheckpoints; // Pure state, no URL param mixing
 
