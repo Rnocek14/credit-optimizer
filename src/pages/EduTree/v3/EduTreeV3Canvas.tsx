@@ -412,40 +412,59 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
       setSelectedAlternatives([]);
     }
     
-    // Create collapsed view (progressive disclosure - Step 1)
-    // Collapsed view will preserve checkpoint nodes (already implemented in createCollapsedView)
-    const { visibleNodes, visibleEdges, bundles: bundleMap } = createCollapsedView(positionedFull);
+    // Phase 4: Choose collapsed vs full graph based on checkpoints flag
+    let visibleNodes = positionedFull.nodes;
+    let visibleEdges = positionedFull.edges;
+    let bundleMap: Map<string, BundleCard> | null = null;
+
+    // Only run progressive disclosure (collapsed) when checkpoints are ON
+    if (useVerticalLayout && checkpointsOn) {
+      const collapsed = createCollapsedView(positionedFull);
+      visibleNodes = collapsed.visibleNodes;
+      visibleEdges = collapsed.visibleEdges;
+      bundleMap = collapsed.bundles;
+      
+      console.log('[V3 Canvas] Progressive disclosure (collapsed view):', {
+        fullNodes: positionedFull.nodes.length,
+        visibleNodes: visibleNodes.length,
+        bundles: bundleMap.size,
+        checkpoints: visibleNodes.filter(n => n.type === 'checkpoint').length,
+        mode: 'COLLAPSED - bundles + gates + checkpoints'
+      });
+    } else {
+      console.log('[V3 Canvas] Full graph view (checkpoints OFF):', {
+        totalNodes: visibleNodes.length,
+        totalEdges: visibleEdges.length,
+        mode: 'FULL - all nodes visible'
+      });
+    }
     
-    console.log('[V3 Canvas] Progressive disclosure (collapsed view):', {
-      fullNodes: positionedFull.nodes.length,
-      visibleNodes: visibleNodes.length,
-      bundles: bundleMap.size,
-      checkpoints: visibleNodes.filter(n => n.type === 'checkpoint').length,
-      mode: 'COLLAPSED - bundles + gates + checkpoints'
-    });
-    
-    // Position the collapsed view (Step 5: spine edges only)
+    // Position the view (collapsed or full depending on checkpoint state)
     const collapsedGraph = { nodes: visibleNodes, edges: visibleEdges };
     
-    // FIX #2: Apply vertical layout to collapsed graph - MUST use visibleEdges
+    // Apply vertical layout
     const positionedCollapsed = useVerticalLayout
       ? { 
           nodes: calculateVerticalLayout(visibleNodes, VERT), 
-          edges: visibleEdges  // Use visibleEdges directly, not collapsedGraph.edges
+          edges: visibleEdges
         }
       : (enableMetrics
           ? buildEduTreeGraphWithMetrics(collapsedGraph, { enableCheckpoints: false }).graph
           : buildEduTreeGraph(collapsedGraph, { enableCheckpoints: false }))
     
     // Debug: Log bundle positions after vertical layout
-    if (useVerticalLayout) {
+    if (useVerticalLayout && bundleMap) {
       const bundles = positionedCollapsed.nodes.filter(n => n.type === 'track-bundle');
       console.log('[V3 Canvas] Bundle positions after vertical layout:', 
         bundles.map(n => ({ id: n.id, year: n.data.year, x: n.position.x, y: n.position.y }))
       );
     }
     
-    setBundles(bundleMap);
+    if (bundleMap) {
+      setBundles(bundleMap);
+    } else {
+      setBundles(null); // Clear bundles when in full view
+    }
     
     if (enableMetrics) {
       const { metrics } = buildEduTreeGraphWithMetrics(collapsedGraph, { enableCheckpoints: false });
@@ -956,10 +975,14 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
         ? injectCheckpoints(bridgeResult.nodes, bridgeResult.edges, bridgeResult.meta)
         : { nodes: bridgeResult.nodes, edges: bridgeResult.edges, checkpointsAdded: 0 };
       
-      // 5. Create collapsed view (same as initial render)
-      const { visibleNodes, visibleEdges, bundles: bundleMap } = createCollapsedView(
-        { nodes: withCheckpoints.nodes, edges: withCheckpoints.edges }
-      );
+      // 5. Create collapsed view (same as initial render) - ONLY when checkpoints ON
+      const { visibleNodes, visibleEdges, bundles: bundleMap } = checkpointsOn
+        ? createCollapsedView({ nodes: withCheckpoints.nodes, edges: withCheckpoints.edges })
+        : { 
+            visibleNodes: withCheckpoints.nodes, 
+            visibleEdges: withCheckpoints.edges, 
+            bundles: new Map<string, BundleCard>() 
+          };
       
       // 6. Apply vertical layout
       const positioned: V3Graph = useVerticalLayout
