@@ -29,6 +29,7 @@ import TrackCompareDrawer from './components/TrackCompareDrawer';
 import CompareToggle from './components/CompareToggle';
 import { AlternativesDrawer } from './components/AlternativesDrawer';
 import { getAlternativesForNode } from './engine/getAlternatives';
+import { applyAlternative, type AlternativeSelection } from './engine/applyAlternative';
 
 // V3-specific node components
 import V3RequirementNode from './components/V3RequirementNode';
@@ -44,6 +45,32 @@ const nodeTypes = {
   'track-bundle': V3TrackBundleNode,
   checkpoint: V3CheckpointNode,
 };
+
+/**
+ * Preserves positions of unaffected nodes during graph updates
+ * Prevents jarring jumps when applying alternatives
+ */
+function preservePositions<T extends { id: string; position: { x: number; y: number } }>(
+  nextNodes: T[],
+  prevNodes: T[] | undefined,
+  affectedNodeIds: string[]
+): T[] {
+  if (!prevNodes) return nextNodes;
+  
+  const prevPositions = new Map(
+    prevNodes.map(n => [n.id, n.position])
+  );
+  
+  return nextNodes.map(node => {
+    // Re-layout affected nodes, preserve others
+    if (affectedNodeIds.includes(node.id)) {
+      return node;
+    }
+    
+    const prevPos = prevPositions.get(node.id);
+    return prevPos ? { ...node, position: prevPos } : node;
+  });
+}
 
 interface EduTreeV3CanvasProps {
   enableMetrics?: boolean;
@@ -97,6 +124,7 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
   // Phase 3b: Alternatives drawer state
   const [alternativesDrawerOpen, setAlternativesDrawerOpen] = useState(false);
   const [selectedCheckpoint, setSelectedCheckpoint] = useState<{ id: string; sourceNodeId: string } | null>(null);
+  const [selectedAlternatives, setSelectedAlternatives] = useState<AlternativeSelection[]>([]);
   
   // Debug panel state
   const [showDebugPanel, setShowDebugPanel] = useState(() => {
@@ -855,9 +883,104 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
   // Phase 3b: Checkpoint click handler
   const handleCheckpointClick = useCallback((checkpointId: string, sourceNodeId: string) => {
     console.log('[V3 Canvas] Checkpoint clicked:', { checkpointId, sourceNodeId });
+    
+    // Guard: Validate source node and graph exist
+    const sourceNode = currentGraph?.nodes?.find(n => n.id === sourceNodeId);
+    const lp = lifePathGraph?.graph;
+    
+    if (!sourceNode || !lp) {
+      console.warn('[Checkpoint] Missing source or graph:', { sourceNodeId, hasGraph: !!lp });
+      toast.error('That checkpoint has no alternatives right now.');
+      setAlternativesDrawerOpen(false);
+      setSelectedCheckpoint(null);
+      return;
+    }
+    
     setSelectedCheckpoint({ id: checkpointId, sourceNodeId });
     setAlternativesDrawerOpen(true);
-  }, []);
+  }, [currentGraph?.nodes, lifePathGraph?.graph]);
+
+  // Phase 3b: Apply alternative selection
+  const handleSelectAlternative = useCallback(
+    (sourceNodeId: string, selectedNodeId: string) => {
+      if (!lifePathGraph?.graph) {
+        console.error('[Select Alt] No LifePath graph available');
+        toast.error('Unable to apply alternative. Please refresh.');
+        return;
+      }
+      
+      console.log('[V3 Canvas] Applying alternative:', { sourceNodeId, selectedNodeId });
+      
+      // 1. Create selection record
+      const selection: AlternativeSelection = {
+        sourceNodeId,
+        selectedNodeId,
+        timestamp: Date.now()
+      };
+      
+      // 2. Apply to LifePath graph
+      const { updatedGraph, affectedNodeIds } = applyAlternative(
+        lifePathGraph.graph,
+        selection
+      );
+      
+      // 3. Bridge LifePath → V3
+      const bridgeResult = lifePathToV3(updatedGraph, { showAlternatives: false });
+      
+      // 4. Re-inject checkpoints
+      const withCheckpoints = enableCheckpoints
+        ? injectCheckpoints(bridgeResult.nodes, bridgeResult.edges, bridgeResult.meta)
+        : { nodes: bridgeResult.nodes, edges: bridgeResult.edges, checkpointsAdded: 0 };
+      
+      // 5. Create collapsed view (same as initial render)
+      const { visibleNodes, visibleEdges, bundles: bundleMap } = createCollapsedView(
+        { nodes: withCheckpoints.nodes, edges: withCheckpoints.edges }
+      );
+      
+      // 6. Apply vertical layout
+      const positioned: V3Graph = useVerticalLayout
+        ? {
+            nodes: calculateVerticalLayout(visibleNodes, VERT),
+            edges: visibleEdges  // Use V3Edge[] directly
+          }
+        : buildEduTreeGraph({ nodes: visibleNodes, edges: visibleEdges }, { enableCheckpoints, meta: bridgeResult.meta });
+      
+      // 7. Preserve positions of unaffected nodes
+      const nodesWithPositions = preservePositions(
+        positioned.nodes,
+        currentGraph?.nodes,
+        affectedNodeIds
+      );
+      
+      // 8. Update state
+      safeSetCurrentGraph(
+        { nodes: nodesWithPositions, edges: positioned.edges },
+        'apply-alternative'
+      );
+      
+      setSelectedAlternatives(prev => [...prev, selection]);
+      setBundles(bundleMap);
+      
+      // 9. Close drawer + feedback
+      setAlternativesDrawerOpen(false);
+      setSelectedCheckpoint(null);
+      toast.success('Alternative path applied!');
+      
+      console.log('[V3 Canvas] Alternative applied successfully:', {
+        selection,
+        affectedNodes: affectedNodeIds.length,
+        newNodeCount: nodesWithPositions.length,
+        newEdgeCount: positioned.edges.length
+      });
+    },
+    [
+      lifePathGraph?.graph,
+      enableCheckpoints,
+      useVerticalLayout,
+      currentGraph?.nodes,
+      safeSetCurrentGraph
+    ]
+  );
 
   // Step 3: Convert V3 nodes to ReactFlow nodes with guarded toggle and connection points
   const reactFlowNodes: Node[] = useMemo(() => {
@@ -1353,13 +1476,7 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
               title: sourceNode.data.title || sourceNode.id,
             }}
             alternatives={alternatives}
-            onSelectAlternative={(nodeId) => {
-              console.log('[V3 Canvas] Alternative selected:', nodeId);
-              toast.success('Alternative path selected');
-              setAlternativesDrawerOpen(false);
-              setSelectedCheckpoint(null);
-              // TODO: Apply alternative in Phase 3c
-            }}
+            onSelectAlternative={(nodeId) => handleSelectAlternative(selectedCheckpoint.sourceNodeId, nodeId)}
             onPreviewAlternative={(nodeId) => {
               console.log('[V3 Canvas] Preview alternative:', nodeId);
               // TODO: Show preview overlay in Phase 3c

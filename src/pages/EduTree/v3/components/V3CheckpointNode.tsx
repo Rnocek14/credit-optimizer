@@ -12,15 +12,15 @@ import { Handle, Position, type NodeProps } from '@xyflow/react';
 import { GitBranch } from 'lucide-react';
 
 export const V3CheckpointNode = memo(({ data, id }: NodeProps) => {
-  const altCount = (data as any).alternativeCount ?? 0;
+  const title = (data as any).title ?? 'Choose Your Path';
+  const alternativeCount = (data as any).alternativeCount ?? 0;
   const sourceNodeId = (data as any).sourceNodeId ?? '';
   const onCheckpointClick = (data as any).onCheckpointClick;
 
   const handleClick = () => {
-    console.log(`[Checkpoint] Clicked: ${id}, alternatives: ${altCount}, sourceNodeId: ${sourceNodeId}`);
-    if (onCheckpointClick && sourceNodeId) {
-      onCheckpointClick(String(id), String(sourceNodeId));
-    }
+    console.log(`[Checkpoint] Clicked: ${id}, alternatives: ${alternativeCount}, sourceNodeId: ${sourceNodeId}`);
+    if (!sourceNodeId) return;
+    onCheckpointClick?.(String(id), sourceNodeId);
   };
 
   return (
@@ -53,10 +53,10 @@ export const V3CheckpointNode = memo(({ data, id }: NodeProps) => {
         {/* Title */}
         <div className="text-center">
           <div className="text-sm font-semibold text-foreground">
-            {(data as any).title || 'Choose Your Path'}
+            {title}
           </div>
           <div className="text-xs text-muted-foreground mt-1">
-            {altCount} alternative{altCount !== 1 ? 's' : ''} available
+            {alternativeCount} alternative{alternativeCount !== 1 ? 's' : ''} available
           </div>
         </div>
 

@@ -6,7 +6,7 @@
  */
 
 import type { GraphNode, GraphEdge } from '@/types/lifePathGraph';
-import { VERT } from '../utils/layoutTokensVertical';
+import { RANKING_WEIGHTS } from './rankingWeights';
 
 export interface RankedAlternative {
   node: GraphNode;
@@ -89,8 +89,6 @@ export function getAlternativesForNode(
  * Higher score = better option
  */
 function calculateScore(node: GraphNode): number {
-  const weights = VERT.RANKING_WEIGHTS;
-
   // Normalize credits (0-1, higher is better)
   const creditsScore = Math.min((node.credits ?? 0) / 120, 1);
 
@@ -105,10 +103,10 @@ function calculateScore(node: GraphNode): number {
 
   // Weighted sum
   const score =
-    weights.CREDITS_KEPT * creditsScore +
-    weights.TIME_WEEKS * timeScore +
-    weights.COST_USD * costScore +
-    weights.OUTCOME_ALIGNMENT * outcomeScore;
+    RANKING_WEIGHTS.CREDITS_KEPT * creditsScore +
+    RANKING_WEIGHTS.TIME_WEEKS * timeScore +
+    RANKING_WEIGHTS.COST_USD * costScore +
+    RANKING_WEIGHTS.OUTCOME_ALIGNMENT * outcomeScore;
 
   return score;
 }
@@ -122,8 +120,8 @@ function checkPrerequisites(
   allEdges: GraphEdge[],
   completedNodeIds: string[]
 ): { status: 'ready' | 'locked' | 'waiver'; missing: string[] } {
-  // Check for waiver tags
-  const hasWaiver = node.tags.some(tag => 
+  // Check for waiver tags (null-safe)
+  const hasWaiver = (node.tags ?? []).some(tag => 
     tag.includes('waiver') || tag.includes('clep') || tag.includes('ace')
   );
 
