@@ -398,7 +398,10 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
     
     // Run layout engine on full graph (for later expansions)
     const positionedFull = useVerticalLayout
-      ? fullGraphWithCheckpoints  // Use graph with checkpoints if injected
+      ? {
+          nodes: calculateVerticalLayout(fullGraphWithCheckpoints.nodes, VERT),
+          edges: fullGraphWithCheckpoints.edges
+        }
       : (enableMetrics 
           ? buildEduTreeGraphWithMetrics(fullGraphWithCheckpoints, { enableCheckpoints, meta: sourceMeta }).graph
           : buildEduTreeGraph(fullGraphWithCheckpoints, { enableCheckpoints, meta: sourceMeta }));
