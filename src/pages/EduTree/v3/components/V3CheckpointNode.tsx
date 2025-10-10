@@ -19,13 +19,12 @@ export interface CheckpointNodeData {
 }
 
 export const V3CheckpointNode = memo(({ id, data }: NodeProps) => {
-  const typedData = data as CheckpointNodeData | undefined;
   const {
     title = 'Choose Your Path',
     alternativeCount = 0,
     sourceNodeId = '',
     onCheckpointClick,
-  } = typedData ?? {};
+  } = (data ?? {}) as CheckpointNodeData;
 
   const handleClick = () => {
     console.log(`[Checkpoint] Clicked: ${id}, alternatives: ${alternativeCount}, sourceNodeId: ${sourceNodeId}`);
