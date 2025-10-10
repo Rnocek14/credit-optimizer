@@ -5,6 +5,7 @@
  * Displays ranked alternatives with prerequisite status
  */
 
+import { useEffect } from 'react';
 import { X, CheckCircle2, Lock, AlertTriangle, TrendingUp, Clock, DollarSign, Award } from 'lucide-react';
 import type { GraphNode } from '@/types/lifePathGraph';
 import { Button } from '@/components/ui/button';
@@ -39,6 +40,16 @@ export function AlternativesDrawer({
   onSelectAlternative,
   onPreviewAlternative,
 }: AlternativesDrawerProps) {
+  // ESC to close
+  useEffect(() => {
+    if (!open) return;
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, [open, onClose]);
+
   if (!open) return null;
 
   return (

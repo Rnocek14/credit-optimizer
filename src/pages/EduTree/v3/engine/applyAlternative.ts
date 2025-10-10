@@ -65,7 +65,7 @@ export function applyAlternative(
     edges[spineIdx] = {
       ...altEdge,
       type: 'stacksInto',  // Convert to spine type
-      id: `${sourceNodeId}::alt::${selectedNodeId}`
+      id: `stacks:${sourceNodeId}->${selectedNodeId}`
     };
     
     console.log('[ApplyAlt] Replaced spine edge:', {
@@ -77,7 +77,7 @@ export function applyAlternative(
     edges.push({
       ...altEdge,
       type: 'stacksInto',
-      id: `${sourceNodeId}::alt::${selectedNodeId}`
+      id: `stacks:${sourceNodeId}->${selectedNodeId}`
     });
     
     console.log('[ApplyAlt] Added new spine edge:', {
