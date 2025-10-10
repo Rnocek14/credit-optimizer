@@ -417,43 +417,58 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
       setSelectedAlternatives([]);
     }
     
-    // Phase 4: Choose collapsed vs full graph based on checkpoints flag
+    // Phase 4: Choose layout path based on vertical + checkpoint state
     let visibleNodes = positionedFull.nodes;
     let visibleEdges = positionedFull.edges;
     let bundleMap: Map<string, BundleCard> | null = null;
 
-    // Only run progressive disclosure (collapsed) when checkpoints are ON
+    // THREE DISTINCT PATHS:
     if (useVerticalLayout && checkpointsOn) {
+      // PATH A: Vertical + Checkpoints ON → Collapsed bundle view
       const collapsed = createCollapsedView(positionedFull);
       visibleNodes = collapsed.visibleNodes;
       visibleEdges = collapsed.visibleEdges;
       bundleMap = collapsed.bundles;
       
-      console.log('[V3 Canvas] Progressive disclosure (collapsed view):', {
+      console.log('[V3 Canvas] PATH A: Vertical collapsed view (checkpoints ON):', {
         fullNodes: positionedFull.nodes.length,
         visibleNodes: visibleNodes.length,
         bundles: bundleMap.size,
-        checkpoints: visibleNodes.filter(n => n.type === 'checkpoint').length,
-        mode: 'COLLAPSED - bundles + gates + checkpoints'
+        checkpoints: visibleNodes.filter(n => n.type === 'checkpoint').length
+      });
+    } else if (useVerticalLayout && !checkpointsOn) {
+      // PATH B: Vertical + Checkpoints OFF → Block and use horizontal fallback
+      console.warn('[V3 Canvas] PATH B BLOCKED: Vertical layout requires checkpoints');
+      toast.error('Vertical layout requires checkpoints - using horizontal layout');
+      
+      // Already have horizontal positioned nodes from positionedFull
+      console.log('[V3 Canvas] Using horizontal fallback:', {
+        totalNodes: visibleNodes.length,
+        totalEdges: visibleEdges.length
       });
     } else {
-      console.log('[V3 Canvas] Full graph view (checkpoints OFF):', {
+      // PATH C: Horizontal layout (legacy)
+      console.log('[V3 Canvas] PATH C: Horizontal layout (full tree):', {
         totalNodes: visibleNodes.length,
-        totalEdges: visibleEdges.length,
-        mode: 'FULL - all nodes visible'
+        totalEdges: visibleEdges.length
       });
     }
     
     // Position the view (collapsed or full depending on checkpoint state)
     const collapsedGraph = { nodes: visibleNodes, edges: visibleEdges };
     
-    // Apply vertical layout only when in checkpoint mode (already positioned otherwise)
+    // Apply layout based on mode - NO DOUBLE POSITIONING
     const positionedCollapsed = (useVerticalLayout && checkpointsOn)
       ? { 
+          // PATH A: Re-position collapsed bundles with vertical layout
           nodes: calculateVerticalLayout(visibleNodes, VERT), 
           edges: visibleEdges
         }
-      : positionedFull; // Use already-positioned full graph
+      : {
+          // PATH B/C: Already positioned by horizontal layout
+          nodes: visibleNodes,
+          edges: visibleEdges
+        };
     
     // Debug: Log bundle positions after vertical layout
     if (useVerticalLayout && bundleMap) {
@@ -478,9 +493,9 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
     // Apply layout based on feature flag
     let finalGraph: V3Graph;
     
-    if (useVerticalLayout) {
-      // Vertical flow: pure top-to-bottom layout (already applied above)
-      console.log('[V3 Canvas] Using VERTICAL layout engine');
+    if (useVerticalLayout && checkpointsOn) {
+      // PATH A ONLY: Vertical flow with collapsed bundles
+      console.log('[V3 Canvas] Using VERTICAL layout engine (PATH A)');
 
       // STEP 3: Pre-validate edges checkpoint
       console.log('[V3 Canvas][pre-validate] edges:', positionedCollapsed.edges.map(e => e.id));
@@ -1099,13 +1114,13 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
 
   // Convert V3 edges to ReactFlow edges with proper routing and focus mode
   const reactFlowEdges: Edge[] = useMemo(() => {
-    if (useVerticalLayout) {
-      // Vertical flow: uniform top-to-bottom edges
+    if (useVerticalLayout && checkpointsOn) {
+      // PATH A: Vertical flow with top-to-bottom edges
       // CRITICAL FIX: Pass nodes to edge mapper for validation
       return mapEdgesVertical(edges, nodes);
     }
     
-    // Horizontal flow: gate edges vertical, spine edges horizontal
+    // PATH B/C: Horizontal flow - gate edges vertical, spine edges horizontal
     return edges.map((edge: V3EdgeType) => {
       const isGate = edge.kind === 'gate';
       const isSpine = edge.kind === 'spine';
@@ -1136,7 +1151,7 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
         }
       };
     });
-  }, [edges, focusedEdges, useVerticalLayout]);
+  }, [edges, focusedEdges, useVerticalLayout, checkpointsOn]);
 
   // FIX #5: Viewport movement tracker (diagnostic aid)
   const handleMoveEnd = useCallback((_event: any, viewport: { x: number; y: number; zoom: number }) => {
