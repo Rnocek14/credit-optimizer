@@ -8,23 +8,25 @@
  */
 
 import { memo } from 'react';
-import { Handle, Position, type NodeProps } from '@xyflow/react';
+import { Handle, Position, type NodeProps, type Node } from '@xyflow/react';
 import { GitBranch } from 'lucide-react';
 
-export interface CheckpointNodeData {
+type CheckpointNodeData = {
   title?: string;
   alternativeCount?: number;
   sourceNodeId?: string;
   onCheckpointClick?: (checkpointId: string, sourceNodeId: string) => void;
-}
+};
 
-export const V3CheckpointNode = memo(({ id, data }: NodeProps) => {
+type CheckpointNode = Node<CheckpointNodeData, 'checkpoint'>;
+
+export const V3CheckpointNode = memo(({ id, data }: NodeProps<CheckpointNode>) => {
   const {
     title = 'Choose Your Path',
     alternativeCount = 0,
     sourceNodeId = '',
     onCheckpointClick,
-  } = (data ?? {}) as CheckpointNodeData;
+  } = data;
 
   const handleClick = () => {
     console.log(`[Checkpoint] Clicked: ${id}, alternatives: ${alternativeCount}, sourceNodeId: ${sourceNodeId}`);
