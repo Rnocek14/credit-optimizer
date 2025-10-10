@@ -344,10 +344,13 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
     });
     console.log('[V3 Canvas] Node distribution by year:', Object.fromEntries(yearCounts));
     
-    // Phase 3: Inject checkpoints on FULL graph BEFORE collapse (vertical mode only)
-    let fullGraphWithCheckpoints = v3Graph;
-    
-    if (useVerticalLayout && checkpointsOn && sourceMeta) {
+    // Phase 3: ALWAYS start from clean v3Graph, conditionally inject checkpoints
+    const fullGraphWithCheckpoints = (() => {
+      // Start fresh from bridged data (never mutate v3Graph)
+      if (!useVerticalLayout || !checkpointsOn || !sourceMeta) {
+        return v3Graph; // No checkpoints - return clean graph
+      }
+      
       const forkCount = Object.keys(sourceMeta.alternativesByNode || {}).length;
       
       if (import.meta.env.DEV) {
@@ -368,7 +371,6 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
       let demoMeta = sourceMeta;
       
       if (import.meta.env.DEV && demoCkpt && forkCount === 0) {
-        // FIX #3: Use raw node ID (not bundle ID) for injection - collapse will remap it
         console.warn('[V3 DEV] No forks detected - injecting demo checkpoint for y2-cs-core');
         demoMeta = {
           ...sourceMeta,
@@ -381,21 +383,18 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
       
       if (finalForkCount > 0) {
         console.log(`[V3 Canvas] Injecting checkpoints on FULL graph (${finalForkCount} forks detected)`);
-        const result = injectCheckpoints(
-          fullGraphWithCheckpoints.nodes,
-          fullGraphWithCheckpoints.edges,
-          demoMeta
-        );
-        fullGraphWithCheckpoints = { nodes: result.nodes, edges: result.edges };
-        console.log(`[V3 Canvas] Checkpoint injection: ${result.checkpointsAdded} added`);
+        const result = injectCheckpoints(v3Graph.nodes, v3Graph.edges, demoMeta);
         
         if (demoCkpt && import.meta.env.DEV) {
           console.log('[V3 DEV SHIM] Demo checkpoint injected');
         }
-      } else {
-        console.log('[V3 Canvas] No forks detected; skipping checkpoint injection');
+        
+        return { nodes: result.nodes, edges: result.edges };
       }
-    }
+      
+      console.log('[V3 Canvas] No forks detected; skipping checkpoint injection');
+      return v3Graph;
+    })();
     
     // Run layout engine on full graph (for later expansions)
     const positionedFull = useVerticalLayout
@@ -405,6 +404,13 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
           : buildEduTreeGraph(fullGraphWithCheckpoints, { enableCheckpoints, meta: sourceMeta }));
     
     setFullGraph(positionedFull);
+    
+    // Reset checkpoint UI state when disabling checkpoints
+    if (!enableCheckpoints) {
+      setSelectedCheckpoint(null);
+      setAlternativesDrawerOpen(false);
+      setSelectedAlternatives([]);
+    }
     
     // Create collapsed view (progressive disclosure - Step 1)
     // Collapsed view will preserve checkpoint nodes (already implemented in createCollapsedView)
