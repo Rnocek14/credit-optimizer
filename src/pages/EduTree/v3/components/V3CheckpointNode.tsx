@@ -26,7 +26,7 @@ export const V3CheckpointNode = memo(({ id, data }: NodeProps<CheckpointNode>) =
     alternativeCount = 0,
     sourceNodeId = '',
     onCheckpointClick,
-  } = data;
+  } = data ?? {};
 
   const handleClick = () => {
     console.log(`[Checkpoint] Clicked: ${id}, alternatives: ${alternativeCount}, sourceNodeId: ${sourceNodeId}`);
