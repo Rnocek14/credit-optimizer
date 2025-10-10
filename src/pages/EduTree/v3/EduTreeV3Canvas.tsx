@@ -397,7 +397,9 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
     })();
     
     // Run layout engine on full graph (for later expansions)
-    const positionedFull = useVerticalLayout
+    // Only use vertical layout when checkpoints are ON (collapsed bundle view)
+    // Fall back to horizontal layout for full requirement node display
+    const positionedFull = (useVerticalLayout && checkpointsOn)
       ? {
           nodes: calculateVerticalLayout(fullGraphWithCheckpoints.nodes, VERT),
           edges: fullGraphWithCheckpoints.edges
@@ -445,15 +447,13 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
     // Position the view (collapsed or full depending on checkpoint state)
     const collapsedGraph = { nodes: visibleNodes, edges: visibleEdges };
     
-    // Apply vertical layout
-    const positionedCollapsed = useVerticalLayout
+    // Apply vertical layout only when in checkpoint mode (already positioned otherwise)
+    const positionedCollapsed = (useVerticalLayout && checkpointsOn)
       ? { 
           nodes: calculateVerticalLayout(visibleNodes, VERT), 
           edges: visibleEdges
         }
-      : (enableMetrics
-          ? buildEduTreeGraphWithMetrics(collapsedGraph, { enableCheckpoints: false }).graph
-          : buildEduTreeGraph(collapsedGraph, { enableCheckpoints: false }))
+      : positionedFull; // Use already-positioned full graph
     
     // Debug: Log bundle positions after vertical layout
     if (useVerticalLayout && bundleMap) {
