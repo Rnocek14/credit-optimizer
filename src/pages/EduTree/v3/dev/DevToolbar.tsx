@@ -7,9 +7,10 @@ interface DevToolbarProps {
   nodes: V3Node[];
   checkpointsEnabled?: boolean;
   onToggleCheckpoints?: () => void;
+  useVerticalLayout?: boolean;
 }
 
-export function DevToolbar({ nodes, checkpointsEnabled = false, onToggleCheckpoints }: DevToolbarProps) {
+export function DevToolbar({ nodes, checkpointsEnabled = false, onToggleCheckpoints, useVerticalLayout = false }: DevToolbarProps) {
   const onValidate = () => {
     const res = validateNoOverlaps(nodes, LAYOUT_TOKENS);
     alert(res.hasOverlaps ? `Overlaps: ${res.overlaps.length}` : 'No overlaps ✅');
@@ -23,7 +24,8 @@ export function DevToolbar({ nodes, checkpointsEnabled = false, onToggleCheckpoi
         Validate Overlaps
       </button>
       
-      {onToggleCheckpoints && (
+      {/* Phase 3B: Hide toggle in vertical mode */}
+      {onToggleCheckpoints && !useVerticalLayout && (
         <button 
           onClick={onToggleCheckpoints}
           className={`px-2 py-1 rounded transition-colors ${
@@ -37,6 +39,12 @@ export function DevToolbar({ nodes, checkpointsEnabled = false, onToggleCheckpoi
             <span className="ml-1 text-xs opacity-75">({checkpointCount})</span>
           )}
         </button>
+      )}
+      
+      {useVerticalLayout && (
+        <div className="text-xs text-gray-300 px-2 py-1 bg-blue-600/20 rounded border border-blue-500/30">
+          ℹ️ Checkpoints always enabled in vertical mode
+        </div>
       )}
     </div>
   );

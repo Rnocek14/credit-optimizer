@@ -49,6 +49,21 @@ export function AlternativesDrawer({
     window.addEventListener('keydown', handleEsc);
     return () => window.removeEventListener('keydown', handleEsc);
   }, [open, onClose]);
+  
+  // Phase 3B: Focus trap
+  useEffect(() => {
+    if (!open) return;
+    
+    const previousFocus = document.activeElement as HTMLElement;
+    const drawer = document.querySelector('[role="dialog"]');
+    const firstButton = drawer?.querySelector('button');
+    
+    (firstButton as HTMLElement)?.focus();
+    
+    return () => {
+      previousFocus?.focus();
+    };
+  }, [open]);
 
   if (!open) return null;
 
@@ -61,11 +76,17 @@ export function AlternativesDrawer({
       />
       
       {/* Drawer */}
-      <div className="relative w-full max-w-2xl h-[85vh] bg-card border-l border-t shadow-2xl rounded-tl-xl pointer-events-auto flex flex-col">
+      <div 
+        role="dialog"
+        aria-labelledby="drawer-title"
+        aria-modal="true"
+        data-testid="alternatives-drawer"
+        className="relative w-full max-w-2xl h-[85vh] bg-card border-l border-t shadow-2xl rounded-tl-xl pointer-events-auto flex flex-col"
+      >
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b bg-muted/50">
           <div className="flex-1">
-            <h2 className="text-xl font-semibold text-foreground">Choose Your Path</h2>
+            <h2 id="drawer-title" className="text-xl font-semibold text-foreground">Choose Your Path</h2>
             <p className="text-sm text-muted-foreground mt-1">
               From: <span className="font-medium text-foreground">{sourceNode.title}</span>
             </p>
@@ -150,7 +171,10 @@ function AlternativeCard({
   const StatusIcon = status.icon;
 
   return (
-    <div className="group relative bg-card border rounded-lg p-4 hover:border-primary/50 transition-all hover:shadow-md">
+    <div 
+      data-testid="alternative-card"
+      className="group relative bg-card border rounded-lg p-4 hover:border-primary/50 transition-all hover:shadow-md"
+    >
       {/* Rank Badge */}
       {rank <= 2 && (
         <div className="absolute -top-2 -right-2 bg-primary text-primary-foreground text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center shadow-md">

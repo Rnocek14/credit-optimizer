@@ -51,9 +51,10 @@ export const V3CheckpointNode = memo(({ id, data }: NodeProps<CheckpointNode>) =
         className="w-3 h-3 !bg-primary"
       />
 
-      {/* FIX #3: Checkpoint card with overflow-hidden */}
+      {/* Phase 3B: Checkpoint card with accessibility */}
       <div
         data-testid="checkpoint"
+        data-node-type="checkpoint"
         className="relative flex flex-col items-center justify-center gap-2 px-6 py-4 
                    bg-gradient-to-br from-warning/20 to-warning/10 
                    border-2 border-warning rounded-lg
@@ -65,6 +66,7 @@ export const V3CheckpointNode = memo(({ id, data }: NodeProps<CheckpointNode>) =
         onKeyDown={handleKeyDown}
         role="button"
         tabIndex={0}
+        aria-haspopup="dialog"
         aria-label={`${title}: ${alternativeCount} alternative${alternativeCount !== 1 ? 's' : ''} available`}
       >
         {/* Icon */}

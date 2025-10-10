@@ -2,6 +2,7 @@ import React, { useMemo, useState, useCallback, useEffect, useRef } from 'react'
 import { ReactFlow, Background, Controls, MiniMap, Node, Edge, ReactFlowProvider, useReactFlow, Position, MarkerType } from '@xyflow/react';
 import { useSearchParams } from 'react-router-dom';
 import '@xyflow/react/dist/style.css';
+import './styles/path-dimming.css';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { validateNoOverlaps } from './engine/overlapValidator';
@@ -125,6 +126,10 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
   const [alternativesDrawerOpen, setAlternativesDrawerOpen] = useState(false);
   const [selectedCheckpoint, setSelectedCheckpoint] = useState<{ id: string; sourceNodeId: string } | null>(null);
   const [selectedAlternatives, setSelectedAlternatives] = useState<AlternativeSelection[]>([]);
+  const [selectedAlternative, setSelectedAlternative] = useState<{
+    sourceId: string;
+    targetId: string;
+  } | null>(null);
   
   // Debug panel state
   const [showDebugPanel, setShowDebugPanel] = useState(() => {
@@ -192,6 +197,19 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
       return checkpointsFromUrl;
     });
   }, [searchParams, useVerticalLayout]); // Don't include enableCheckpoints
+  
+  // Phase 3B: Guard vertical mode - auto-enable checkpoints
+  useEffect(() => {
+    if (useVerticalLayout && !enableCheckpoints) {
+      if (import.meta.env.DEV) {
+        console.warn('[V3 Canvas] Vertical layout requires checkpoints - auto-enabling');
+      }
+      toast.info('Checkpoints enabled for vertical layout', {
+        description: 'Vertical mode requires checkpoints to be active'
+      });
+      setEnableCheckpoints(true);
+    }
+  }, [useVerticalLayout, enableCheckpoints]);
   
   // Compute readiness flags BEFORE toggle handler uses them
   const isLifePath = searchParams.get('source') === 'lifepath';
@@ -397,9 +415,12 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
       }
     }
     
-    // Run layout engine on full graph (for later expansions)
+    // Phase 3B FIX: Position full graph BEFORE collapse to prevent Line-402 bug
     const positionedFull = useVerticalLayout
-      ? fullGraphWithCheckpoints  // Use graph with checkpoints if injected
+      ? {
+          nodes: calculateVerticalLayout(fullGraphWithCheckpoints.nodes, VERT),
+          edges: fullGraphWithCheckpoints.edges,
+        }
       : (enableMetrics 
           ? buildEduTreeGraphWithMetrics(fullGraphWithCheckpoints, { enableCheckpoints, meta: sourceMeta }).graph
           : buildEduTreeGraph(fullGraphWithCheckpoints, { enableCheckpoints, meta: sourceMeta }));
@@ -929,6 +950,12 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
       
       console.log('[V3 Canvas] Applying alternative:', { sourceNodeId, selectedNodeId });
       
+      // Phase 3B: Store selection for dimming
+      setSelectedAlternative({
+        sourceId: sourceNodeId,
+        targetId: selectedNodeId
+      });
+      
       // 1. Create selection record
       const selection: AlternativeSelection = {
         sourceNodeId,
@@ -1024,6 +1051,22 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
                         node.targetPosition === 'right' ? Position.Right :
                         undefined;
       
+      // Phase 3B: Apply dimming classes based on selection
+      let className = '';
+      if (selectedAlternative) {
+        const isSource = node.id === selectedAlternative.sourceId;
+        const isTarget = node.id === selectedAlternative.targetId;
+        const isInSelectedPath = isSource || isTarget;
+        
+        if (!isInSelectedPath) {
+          className += ' v3-path-dimmed';
+        } else if (isTarget) {
+          className += ' v3-path-primary';
+        } else if (isSource) {
+          className += ' v3-path-both';
+        }
+      }
+      
       // Add onToggle ONLY when graphs are ready and it's a bundle
       if (node.type === 'track-bundle' && fullGraph && currentGraph) {
         return {
@@ -1032,6 +1075,7 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
           position: node.position,
           sourcePosition: sourcePos,
           targetPosition: targetPos,
+          className: className.trim(),
           data: {
             ...baseData,
             onToggle: () => handleBundleToggle(node.id)
@@ -1047,6 +1091,7 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
           position: node.position,
           sourcePosition: sourcePos,
           targetPosition: targetPos,
+          className: className.trim(),
           data: {
             ...baseData,
             onCheckpointClick: handleCheckpointClick
@@ -1060,17 +1105,36 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
         position: node.position,
         sourcePosition: sourcePos,
         targetPosition: targetPos,
+        className: className.trim(),
         data: baseData
       };
     });
-  }, [nodes, fullGraph, currentGraph, handleBundleToggle, handleCheckpointClick]);
+  }, [nodes, fullGraph, currentGraph, handleBundleToggle, handleCheckpointClick, selectedAlternative]);
 
   // Convert V3 edges to ReactFlow edges with proper routing and focus mode
   const reactFlowEdges: Edge[] = useMemo(() => {
     if (useVerticalLayout) {
       // Vertical flow: uniform top-to-bottom edges
       // CRITICAL FIX: Pass nodes to edge mapper for validation
-      return mapEdgesVertical(edges, nodes);
+      const baseEdges = mapEdgesVertical(edges, nodes);
+      
+      // Phase 3B: Apply dimming to edges
+      if (selectedAlternative) {
+        return baseEdges.map(edge => {
+          const touchesSelection = 
+            edge.source === selectedAlternative.sourceId ||
+            edge.target === selectedAlternative.targetId;
+          
+          const className = touchesSelection ? 'edge-primary' : 'edge-dimmed';
+          
+          return {
+            ...edge,
+            className
+          };
+        });
+      }
+      
+      return baseEdges;
     }
     
     // Horizontal flow: gate edges vertical, spine edges horizontal
@@ -1078,6 +1142,15 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
       const isGate = edge.kind === 'gate';
       const isSpine = edge.kind === 'spine';
       const isFocused = focusedEdges.size === 0 || focusedEdges.has(edge.id);
+      
+      // Phase 3B: Apply dimming for horizontal mode
+      let className = '';
+      if (selectedAlternative) {
+        const touchesSelection = 
+          edge.source === selectedAlternative.sourceId ||
+          edge.target === selectedAlternative.targetId;
+        className = touchesSelection ? 'edge-primary' : 'edge-dimmed';
+      }
       
       // For gate edges, connect vertically: bundle.south -> gate.north or gate.south -> bundle.north
       // For spine edges, connect horizontally: bundle.east -> bundle.west
@@ -1090,6 +1163,7 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
         source: edge.source,
         target: edge.target,
         ...handleProps,
+        className: className.trim(),
         markerEnd: { 
           type: MarkerType.ArrowClosed, 
           width: 18, 
@@ -1364,6 +1438,7 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
           nodes={nodes}
           checkpointsEnabled={enableCheckpoints}
           onToggleCheckpoints={handleToggleCheckpoints}
+          useVerticalLayout={useVerticalLayout}
         />
       )}
 

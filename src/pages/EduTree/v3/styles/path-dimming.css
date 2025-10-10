@@ -1,0 +1,58 @@
+/**
+ * Phase 3b: Path Dimming Visual States
+ * Applied when alternative selections are active
+ */
+
+/* Alternative path visual states */
+.v3-path-dimmed {
+  opacity: 0.35;
+  filter: grayscale(0.6);
+  transition: opacity 0.3s ease, filter 0.3s ease;
+  pointer-events: none;
+}
+
+.v3-path-primary {
+  font-weight: 600;
+  box-shadow: 0 0 0 2px hsl(var(--primary)) inset;
+  animation: path-pulse 2s ease-in-out infinite;
+}
+
+.v3-path-alt {
+  outline: 2px dashed hsl(var(--primary) / 0.5);
+  outline-offset: 3px;
+}
+
+.v3-path-both {
+  box-shadow: 0 0 0 3px hsl(var(--accent)) inset;
+  background: hsl(var(--accent) / 0.05);
+}
+
+@keyframes path-pulse {
+  0%, 100% { 
+    box-shadow: 0 0 0 2px hsl(var(--primary)) inset; 
+  }
+  50% { 
+    box-shadow: 0 0 0 3px hsl(var(--primary) / 0.7) inset; 
+  }
+}
+
+/* Dark mode adjustments (WCAG AA compliant) */
+.dark .v3-path-dimmed {
+  opacity: 0.25;
+  filter: grayscale(0.7);
+}
+
+.dark .v3-path-primary {
+  box-shadow: 0 0 0 2px hsl(var(--primary) / 0.9) inset;
+}
+
+/* Edge dimming */
+.react-flow__edge.edge-dimmed {
+  opacity: 0.2;
+  pointer-events: none;
+}
+
+.react-flow__edge.edge-primary {
+  stroke-width: 3;
+  stroke: hsl(var(--primary));
+}
