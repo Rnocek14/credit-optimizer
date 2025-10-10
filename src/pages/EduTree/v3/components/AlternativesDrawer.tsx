@@ -151,7 +151,7 @@ function AlternativeCard({
       <div className="flex items-start justify-between gap-4 mb-3">
         <div className="flex-1">
           <h3 className="font-semibold text-foreground group-hover:text-primary transition-colors">
-            {node.title}
+            {node.title ?? node.id}
           </h3>
           {node.description && (
             <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
@@ -170,13 +170,13 @@ function AlternativeCard({
       <div className="grid grid-cols-3 gap-3 mb-4">
         <div className="flex items-center gap-2 text-sm">
           <Clock className="h-4 w-4 text-muted-foreground" />
-          <span className="text-foreground font-medium">{node.estimatedHours}h</span>
+          <span className="text-foreground font-medium">{node.estimatedHours ?? 0}h</span>
         </div>
         <div className="flex items-center gap-2 text-sm">
           <DollarSign className="h-4 w-4 text-muted-foreground" />
-          <span className="text-foreground font-medium">${node.cost.toLocaleString()}</span>
+          <span className="text-foreground font-medium">${(node.cost ?? 0).toLocaleString()}</span>
         </div>
-        {node.credits && (
+        {(node.credits ?? 0) > 0 && (
           <div className="flex items-center gap-2 text-sm">
             <Award className="h-4 w-4 text-muted-foreground" />
             <span className="text-foreground font-medium">{node.credits} cr</span>

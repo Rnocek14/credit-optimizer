@@ -12,10 +12,10 @@ import { Handle, Position, type NodeProps } from '@xyflow/react';
 import { GitBranch } from 'lucide-react';
 
 export const V3CheckpointNode = memo(({ data, id }: NodeProps) => {
-  const title = (data as any).title ?? 'Choose Your Path';
-  const alternativeCount = (data as any).alternativeCount ?? 0;
-  const sourceNodeId = (data as any).sourceNodeId ?? '';
-  const onCheckpointClick = (data as any).onCheckpointClick;
+  const title = String(data?.title ?? 'Choose Your Path');
+  const alternativeCount = Number(data?.alternativeCount ?? 0);
+  const sourceNodeId = String(data?.sourceNodeId ?? '');
+  const onCheckpointClick = data?.onCheckpointClick as ((checkpointId: string, sourceNodeId: string) => void) | undefined;
 
   const handleClick = () => {
     console.log(`[Checkpoint] Clicked: ${id}, alternatives: ${alternativeCount}, sourceNodeId: ${sourceNodeId}`);

@@ -909,6 +909,24 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
         return;
       }
       
+      // Guard: Check if alternative is locked (missing prerequisites)
+      const alternatives = getAlternativesForNode(
+        sourceNodeId,
+        lifePathGraph.graph.nodes,
+        lifePathGraph.graph.edges,
+        [] // TODO: Add completed nodes from user state
+      );
+      
+      const selectedAlt = alternatives.find(alt => alt.node.id === selectedNodeId);
+      if (selectedAlt?.prerequisiteStatus === 'locked') {
+        console.warn('[Select Alt] Alternative is locked:', { 
+          nodeId: selectedNodeId, 
+          missingPrereqs: selectedAlt.missingPrereqs 
+        });
+        toast.error(`Cannot select this alternative. Missing prerequisites: ${selectedAlt.missingPrereqs?.join(', ')}`);
+        return;
+      }
+      
       console.log('[V3 Canvas] Applying alternative:', { sourceNodeId, selectedNodeId });
       
       // 1. Create selection record
