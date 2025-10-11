@@ -998,10 +998,17 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
         ? injectCheckpoints(bridgeResult.nodes, bridgeResult.edges, bridgeResult.meta)
         : { nodes: bridgeResult.nodes, edges: bridgeResult.edges, checkpointsAdded: 0 };
       
-      // 5. Create collapsed view (same as initial render)
-      const { visibleNodes, visibleEdges, bundles: bundleMap } = createCollapsedView(
-        { nodes: withCheckpoints.nodes, edges: withCheckpoints.edges }
-      );
+      // 5. Phase 3B: After alternative selection, show full expanded tree
+      // (with dimming applied via selectedAlternative state).
+      // Only use collapsed view on initial render or when no selection is active.
+      const shouldCollapse = !selectedAlternative; // Don't collapse after selection
+      const { visibleNodes, visibleEdges, bundles: bundleMap } = shouldCollapse
+        ? createCollapsedView({ nodes: withCheckpoints.nodes, edges: withCheckpoints.edges })
+        : {
+            visibleNodes: withCheckpoints.nodes,
+            visibleEdges: withCheckpoints.edges,
+            bundles: new Map() // Empty bundles when expanded
+          };
       
       // 6. Apply vertical layout
       const positioned: V3Graph = useVerticalLayout
