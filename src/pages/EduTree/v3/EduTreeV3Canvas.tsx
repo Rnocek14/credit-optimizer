@@ -449,16 +449,25 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
     setFullGraph(positionedFull);
     
     // Create collapsed view (progressive disclosure - Step 1)
-    // Collapsed view will preserve checkpoint nodes (already implemented in createCollapsedView)
-    const { visibleNodes, visibleEdges, bundles: bundleMap } = createCollapsedView(positionedFull);
+    // Skip collapsing for LifePath data (incompatible topology) or after alternative selection
+    const shouldCollapse = !useLifePathSource && !selectedAlternative;
+    const { visibleNodes, visibleEdges, bundles: bundleMap } = shouldCollapse
+      ? createCollapsedView(positionedFull)
+      : {
+          visibleNodes: positionedFull.nodes,
+          visibleEdges: positionedFull.edges,
+          bundles: new Map() // No bundles when expanded
+        };
     
-    console.log('[V3 Canvas] Progressive disclosure (collapsed view):', {
-      fullNodes: positionedFull.nodes.length,
-      visibleNodes: visibleNodes.length,
-      bundles: bundleMap.size,
-      checkpoints: visibleNodes.filter(n => n.type === 'checkpoint').length,
-      mode: 'COLLAPSED - bundles + gates + checkpoints'
-    });
+    if (import.meta.env.DEV) {
+      console.log('[Graph Build] Collapsed view decision:', {
+        useLifePathSource,
+        selectedAlternative: !!selectedAlternative,
+        shouldCollapse,
+        visibleNodeCount: visibleNodes.length,
+        mode: shouldCollapse ? 'COLLAPSED - bundles + gates + checkpoints' : 'EXPANDED - full tree'
+      });
+    }
     
     // Position the collapsed view (Step 5: spine edges only)
     const collapsedGraph = { nodes: visibleNodes, edges: visibleEdges };
