@@ -10,9 +10,11 @@ interface DevToolbarProps {
   useVerticalLayout?: boolean;
   useLifePathSource?: boolean;
   onToggleDataSource?: () => void;
+  lpBundlesEnabled?: boolean;
+  onToggleLpBundles?: () => void;
 }
 
-export function DevToolbar({ nodes, checkpointsEnabled = false, onToggleCheckpoints, useVerticalLayout = false, useLifePathSource = false, onToggleDataSource }: DevToolbarProps) {
+export function DevToolbar({ nodes, checkpointsEnabled = false, onToggleCheckpoints, useVerticalLayout = false, useLifePathSource = false, onToggleDataSource, lpBundlesEnabled = false, onToggleLpBundles }: DevToolbarProps) {
   const onValidate = () => {
     const res = validateNoOverlaps(nodes, LAYOUT_TOKENS);
     alert(res.hasOverlaps ? `Overlaps: ${res.overlaps.length}` : 'No overlaps ✅');
@@ -37,6 +39,20 @@ export function DevToolbar({ nodes, checkpointsEnabled = false, onToggleCheckpoi
           }`}
         >
           Data: {useLifePathSource ? 'LifePath' : 'Seed'}
+        </button>
+      )}
+      
+      {/* LifePath Bundle Toggle (beta feature gate) */}
+      {onToggleLpBundles && useLifePathSource && (
+        <button 
+          onClick={onToggleLpBundles}
+          className={`px-2 py-1 rounded transition-colors ${
+            lpBundlesEnabled 
+              ? 'bg-amber-600/80 hover:bg-amber-600' 
+              : 'bg-gray-600/80 hover:bg-gray-600'
+          }`}
+        >
+          Bundle LifePath {lpBundlesEnabled ? '(beta)' : 'OFF'}
         </button>
       )}
       

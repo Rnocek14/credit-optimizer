@@ -299,6 +299,25 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
     });
   }, [useLifePathSource, searchParams, setSearchParams]);
   
+  // Handler to toggle LifePath bundles (beta feature gate)
+  const handleToggleLpBundles = useCallback(() => {
+    const newParams = new URLSearchParams(searchParams);
+    const currentValue = newParams.get('lp_bundles') === '1';
+    
+    if (currentValue) {
+      newParams.delete('lp_bundles');
+    } else {
+      newParams.set('lp_bundles', '1');
+    }
+    setSearchParams(newParams);
+    
+    toast.success(`LifePath bundling ${currentValue ? 'disabled' : 'enabled (beta)'}`, {
+      description: currentValue 
+        ? 'Showing individual skills/courses' 
+        : 'Grouping by tier for cleaner view'
+    });
+  }, [searchParams, setSearchParams]);
+  
   // Bridge Life Path Graph to V3 format if enabled
   const bridgedData = useMemo(() => {
     if (!useLifePathSource || !lifePathGraph?.graph?.nodes) {
@@ -458,10 +477,16 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
     setFullGraph(positionedFull);
     
     // Create collapsed view (progressive disclosure - Step 1)
-    // Skip collapsing for LifePath data (incompatible topology) or after alternative selection
-    const shouldCollapse = !useLifePathSource && !selectedAlternative;
+    // Feature gate: lp_bundles=1 enables tier-based bundling for LifePath
+    const lpBundlesEnabled = useLifePathSource && searchParams.get('lp_bundles') === '1';
+    
+    // Collapse logic: always collapse unless alternative is selected
+    const shouldCollapse = !selectedAlternative;
     const { visibleNodes, visibleEdges, bundles: bundleMap } = shouldCollapse
-      ? createCollapsedView(positionedFull)
+      ? createCollapsedView(
+          positionedFull, 
+          lpBundlesEnabled ? 'tier' : (useLifePathSource ? undefined : 'year')
+        )
       : {
           visibleNodes: positionedFull.nodes,
           visibleEdges: positionedFull.edges,
@@ -471,10 +496,13 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
     if (import.meta.env.DEV) {
       console.log('[Graph Build] Collapsed view decision:', {
         useLifePathSource,
+        lpBundlesEnabled,
         selectedAlternative: !!selectedAlternative,
         shouldCollapse,
         visibleNodeCount: visibleNodes.length,
-        mode: shouldCollapse ? 'COLLAPSED - bundles + gates + checkpoints' : 'EXPANDED - full tree'
+        mode: shouldCollapse 
+          ? (lpBundlesEnabled ? 'TIER BUNDLES - LifePath grouped by tier' : 'COLLAPSED - bundles + gates + checkpoints')
+          : 'EXPANDED - full tree'
       });
     }
     
@@ -1491,6 +1519,8 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
           useVerticalLayout={useVerticalLayout}
           useLifePathSource={useLifePathSource}
           onToggleDataSource={handleToggleDataSource}
+          lpBundlesEnabled={searchParams.get('lp_bundles') === '1'}
+          onToggleLpBundles={handleToggleLpBundles}
         />
       )}
 

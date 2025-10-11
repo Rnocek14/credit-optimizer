@@ -19,11 +19,19 @@ export interface BundleCard {
   childIds: string[];
 }
 
-export function createCollapsedView(fullGraph: V3Graph): {
+export function createCollapsedView(
+  fullGraph: V3Graph,
+  mode: 'year' | 'tier' = 'year'
+): {
   visibleNodes: V3Node[];
   visibleEdges: V3Edge[];
   bundles: Map<string, BundleCard>;
 } {
+  if (mode === 'tier') {
+    console.log('[Collapsed View] Using tier-based bundling for LifePath');
+    return createTierBundles(fullGraph);
+  }
+  
   const byYearTrack = new Map<string, V3Node[]>();
   const gates: V3Node[] = [];
   const checkpoints: V3Node[] = [];
@@ -371,4 +379,135 @@ export function collapseBundle(
   );
 
   return { nodes, edges };
+}
+
+/** Create tier-based bundles for LifePath data */
+function createTierBundles(fullGraph: V3Graph): {
+  visibleNodes: V3Node[];
+  visibleEdges: V3Edge[];
+  bundles: Map<string, BundleCard>;
+} {
+  const byTier = new Map<number, V3Node[]>();
+  const gates: V3Node[] = [];
+  const checkpoints: V3Node[] = [];
+
+  // Group nodes by tier
+  for (const n of fullGraph.nodes) {
+    if (n.type === 'gate') {
+      gates.push(n);
+      continue;
+    }
+    if (n.type === 'checkpoint') {
+      checkpoints.push(n);
+      continue;
+    }
+    const rawTier = n.data?.tier ?? 0;
+    const tier = typeof rawTier === 'string' ? parseInt(rawTier, 10) : rawTier;
+    const safeTier = Number.isFinite(tier) ? tier : 0;
+    if (!byTier.has(safeTier)) byTier.set(safeTier, []);
+    byTier.get(safeTier)!.push(n);
+  }
+
+  // Create tier bundles
+  const bundles = new Map<string, BundleCard>();
+  const visibleNodes: V3Node[] = [];
+
+  for (const [tier, children] of byTier.entries()) {
+    if (children.length === 0) continue;
+
+    const bundleId = `tier-${tier}-bundle`;
+    const card: BundleCard = {
+      id: bundleId,
+      year: Math.min(tier + 1, 4) as 1|2|3|4, // Rough mapping for layout compatibility
+      title: children[0]?.data?.tierLabel || `Tier ${tier}`,
+      childCount: children.length,
+      totalCredits: children.reduce((s, n) => s + (n.data.totalCredits ?? 0), 0),
+      childIds: children.map(n => n.id)
+    };
+
+    bundles.set(bundleId, card);
+    visibleNodes.push({
+      id: bundleId,
+      type: 'track-bundle',
+      data: {
+        year: card.year,
+        title: card.title,
+        childCount: card.childCount,
+        totalCredits: card.totalCredits,
+        isExpanded: false,
+        tier // Preserve tier for layout
+      },
+      position: { x: 0, y: 0 }
+    });
+  }
+
+  // Add gates and checkpoints
+  visibleNodes.push(...gates, ...checkpoints);
+
+  // Remap checkpoint sourceNodeId (child → bundle)
+  const childToBundle = new Map<string, string>();
+  for (const [bundleId, bundle] of bundles.entries()) {
+    for (const childId of bundle.childIds) {
+      childToBundle.set(childId, bundleId);
+    }
+  }
+
+  checkpoints.forEach(cp => {
+    const rawSourceId = cp.data?.sourceNodeId;
+    if (rawSourceId) {
+      const bundleId = childToBundle.get(rawSourceId);
+      if (bundleId) {
+        if (import.meta.env.DEV) {
+          console.log('[Tier Bundles] Remapping checkpoint source:', {
+            checkpointId: cp.id,
+            rawSource: rawSourceId,
+            bundleTarget: bundleId
+          });
+        }
+        cp.data = { ...cp.data, sourceNodeId: bundleId };
+      }
+    }
+  });
+
+  // Create spine edges between tiers
+  const sortedTiers = Array.from(byTier.keys()).sort((a, b) => a - b);
+  const edges: V3Edge[] = [];
+
+  for (let i = 0; i < sortedTiers.length - 1; i++) {
+    const currTier = sortedTiers[i];
+    const nextTier = sortedTiers[i + 1];
+    edges.push({
+      id: `tier-${currTier}->tier-${nextTier}`,
+      source: `tier-${currTier}-bundle`,
+      target: `tier-${nextTier}-bundle`,
+      kind: 'spine'
+    });
+  }
+
+  // Add checkpoint edges (remapped)
+  const checkpointIds = new Set(checkpoints.map(c => c.id));
+  const checkpointEdges = fullGraph.edges
+    .filter(e => checkpointIds.has(e.source) || checkpointIds.has(e.target))
+    .map(e => ({
+      ...e,
+      id: `ckpt:${childToBundle.get(e.source) ?? e.source}->${childToBundle.get(e.target) ?? e.target}`,
+      source: childToBundle.get(e.source) ?? e.source,
+      target: childToBundle.get(e.target) ?? e.target,
+      kind: 'spine' as const,
+      data: { ...(e.data||{}), isCheckpointEdge: true }
+    }))
+    .filter(e => e.source !== e.target);
+
+  edges.push(...checkpointEdges);
+
+  if (import.meta.env.DEV) {
+    console.log('[Tier Bundles] Created tier bundles:', {
+      bundleCount: bundles.size,
+      tiers: Array.from(byTier.keys()).sort((a, b) => a - b),
+      checkpointCount: checkpoints.length,
+      edgeCount: edges.length
+    });
+  }
+
+  return { visibleNodes, visibleEdges: edges, bundles };
 }
