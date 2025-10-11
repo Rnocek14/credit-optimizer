@@ -74,6 +74,7 @@ export interface V3NodeData {
   tier?: number;         // NEW: flexible tier (0-based, replaces year)
   tierLabel?: string;    // NEW: display label (e.g., "Year 1" or "Associate Entry")
   type?: 'bundle' | 'gate' | 'checkpoint'; // NEW: node semantic type
+  lpType?: string;       // NEW: Original LifePath type (skill, course, credential, job, etc.)
   
   // === Phase 1: Multipath support ===
   lineage?: PathLineage;                        // NEW: canonical path identity

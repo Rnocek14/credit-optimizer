@@ -3,6 +3,7 @@ import { ReactFlow, Background, Controls, MiniMap, Node, Edge, ReactFlowProvider
 import { useSearchParams } from 'react-router-dom';
 import '@xyflow/react/dist/style.css';
 import './styles/path-dimming.css';
+import './styles/EduTreeV3.css';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { validateNoOverlaps } from './engine/overlapValidator';
@@ -275,6 +276,10 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
   
   // Handler to toggle data source
   const handleToggleDataSource = useCallback(() => {
+    // Clear selection state when switching data sources
+    setSelectedAlternative(null);
+    setSelectedCheckpoint(null);
+    
     const newSource = useLifePathSource ? null : 'lifepath';
     
     // Update URL params
@@ -439,7 +444,11 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
     // Phase 3B FIX: Position full graph BEFORE collapse to prevent Line-402 bug
     const positionedFull = useVerticalLayout
       ? {
-          nodes: calculateVerticalLayout(fullGraphWithCheckpoints.nodes, VERT),
+          nodes: calculateVerticalLayout(
+            fullGraphWithCheckpoints.nodes, 
+            VERT,
+            useLifePathSource ? 'tier' : undefined
+          ),
           edges: fullGraphWithCheckpoints.edges,
         }
       : (enableMetrics 
@@ -475,7 +484,11 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
     // FIX #2: Apply vertical layout to collapsed graph - MUST use visibleEdges
     const positionedCollapsed = useVerticalLayout
       ? { 
-          nodes: calculateVerticalLayout(visibleNodes, VERT), 
+          nodes: calculateVerticalLayout(
+            visibleNodes, 
+            VERT,
+            useLifePathSource ? 'tier' : undefined
+          ), 
           edges: visibleEdges  // Use visibleEdges directly, not collapsedGraph.edges
         }
       : (enableMetrics

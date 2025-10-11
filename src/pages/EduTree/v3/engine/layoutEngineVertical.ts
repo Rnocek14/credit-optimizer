@@ -42,6 +42,19 @@ function layoutByYear(nodes: V3Node[], t: VerticalTokens): V3Node[] {
   const y3se = nodes.find(n => isBundle(n) && n.data?.year === 3 && trackKey(n) === 'se');
   const y3ds = nodes.find(n => isBundle(n) && n.data?.year === 3 && trackKey(n) === 'ds');
   const y4 = nodes.find(n => isBundle(n) && n.data?.year === 4 && trackKey(n) === 'any');
+  
+  // Validate required nodes exist - fallback to tier layout if incomplete
+  const hasRequiredNodes = y1 && programGate && y2 && trackGate && (y3se || y3ds) && y4;
+  
+  if (!hasRequiredNodes) {
+    if (import.meta.env.DEV) {
+      console.warn('[Vertical Layout] Incomplete seed data, falling back to tier layout:', {
+        y1: !!y1, programGate: !!programGate, y2: !!y2, 
+        trackGate: !!trackGate, y3se: !!y3se, y3ds: !!y3ds, y4: !!y4
+      });
+    }
+    return layoutByTier(nodes, t);
+  }
 
   if (import.meta.env.DEV) {
     console.log('[Vertical Layout] Year-based layout (Seed mode):', {
@@ -128,15 +141,18 @@ function layoutByTier(nodes: V3Node[], t: VerticalTokens): V3Node[] {
     }
   });
   
-  // Group regular nodes by tier
+  // Group regular nodes by tier (with type coercion)
   const byTier = new Map<number, V3Node[]>();
   regularNodes.forEach(n => {
-    const tier = n.data?.tier ?? 0;
-    if (!byTier.has(tier)) byTier.set(tier, []);
-    byTier.get(tier)!.push(n);
+    const rawTier = n.data?.tier ?? 0;
+    const tier = typeof rawTier === 'string' ? parseInt(rawTier, 10) : rawTier;
+    const safeTier = Number.isFinite(tier) ? tier : 0;
+    if (!byTier.has(safeTier)) byTier.set(safeTier, []);
+    byTier.get(safeTier)!.push(n);
   });
   
-  const maxTier = Math.max(...Array.from(byTier.keys()), 0);
+  const tierKeys = Array.from(byTier.keys());
+  const maxTier = tierKeys.length > 0 ? Math.max(...tierKeys) : 0;
   let cursorY = 0;
   
   if (import.meta.env.DEV) {
@@ -210,7 +226,8 @@ function layoutByTier(nodes: V3Node[], t: VerticalTokens): V3Node[] {
  */
 export function calculateVerticalLayout(
   nodes: V3Node[],
-  tokens: VerticalTokens = VERT
+  tokens: VerticalTokens = VERT,
+  forceMode?: 'year' | 'tier'
 ): V3Node[] {
   const t = tokens;
   const out = nodes.map(n => ({ 
@@ -220,27 +237,30 @@ export function calculateVerticalLayout(
     targetPosition: 'top' as const,
   }));
 
-  // Detect layout mode: year-based (seed) vs tier-based (LifePath)
+  // Detect layout mode with explicit override
   const hasYearData = out.some(n => 
     typeof n.data?.year === 'number' && n.data.year >= 1 && n.data.year <= 4
   );
   
+  const useTierLayout = forceMode === 'tier' || (!forceMode && !hasYearData);
+  
   if (import.meta.env.DEV) {
-    console.log('[Vertical Layout] Mode detection:', {
+    console.log('[Vertical Layout] Mode selection:', {
+      forceMode,
       hasYearData,
-      mode: hasYearData ? 'YEAR-BASED (Seed)' : 'TIER-BASED (LifePath)',
+      selectedMode: useTierLayout ? 'TIER-BASED (LifePath)' : 'YEAR-BASED (Seed)',
       nodeCount: out.length,
       sampleNodes: out.slice(0, 3).map(n => ({ 
         id: n.id, 
         type: n.type,
         year: n.data?.year, 
         tier: n.data?.tier,
-        lpType: (n.data as any)?.lpType
+        lpType: n.data?.lpType
       }))
     });
   }
   
-  return hasYearData ? layoutByYear(out, t) : layoutByTier(out, t);
+  return useTierLayout ? layoutByTier(out, t) : layoutByYear(out, t);
 }
 
 /**
