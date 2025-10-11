@@ -31,6 +31,177 @@ function trackKey(n: V3Node): TrackKey {
 }
 
 /**
+ * Year-based layout for seed data (original logic)
+ */
+function layoutByYear(nodes: V3Node[], t: VerticalTokens): V3Node[] {
+  // Extract semantic nodes
+  const y1 = nodes.find(n => isBundle(n) && n.data?.year === 1 && trackKey(n) === 'any');
+  const programGate = nodes.find(n => isGate(n) && n.data?.year === 2);
+  const y2 = nodes.find(n => isBundle(n) && n.data?.year === 2 && trackKey(n) === 'any');
+  const trackGate = nodes.find(n => isGate(n) && n.data?.year === 3);
+  const y3se = nodes.find(n => isBundle(n) && n.data?.year === 3 && trackKey(n) === 'se');
+  const y3ds = nodes.find(n => isBundle(n) && n.data?.year === 3 && trackKey(n) === 'ds');
+  const y4 = nodes.find(n => isBundle(n) && n.data?.year === 4 && trackKey(n) === 'any');
+
+  if (import.meta.env.DEV) {
+    console.log('[Vertical Layout] Year-based layout (Seed mode):', {
+      y1: y1?.id,
+      programGate: programGate?.id,
+      y2: y2?.id,
+      trackGate: trackGate?.id,
+      y3se: y3se?.id,
+      y3ds: y3ds?.id,
+      y4: y4?.id
+    });
+  }
+
+  let cursorY = 0;
+
+  const placeCenter = (node: V3Node | undefined, height: number) => {
+    if (!node) return;
+    node.position.x = snap(t.CENTER_X, t.GRID);
+    node.position.y = snap(cursorY, t.GRID);
+    cursorY += height + t.VERTICAL_GAP;
+  };
+
+  // Year 1 → Program Gate → Year 2 → Track Gate
+  placeCenter(y1, t.NODE_HEIGHT);
+  placeCenter(programGate, t.GATE_HEIGHT);
+  placeCenter(y2, t.NODE_HEIGHT);
+  placeCenter(trackGate, t.GATE_HEIGHT);
+
+  // Year 3 split (SE/DS side-by-side)
+  const y3RowY = snap(cursorY, t.GRID);
+  const hasSE = !!y3se;
+  const hasDS = !!y3ds;
+  
+  if (hasSE && hasDS) {
+    y3se.position.x = snap(t.CENTER_X - t.H_SPACING / 2, t.GRID);
+    y3se.position.y = y3RowY;
+    y3ds.position.x = snap(t.CENTER_X + t.H_SPACING / 2, t.GRID);
+    y3ds.position.y = y3RowY;
+  } else {
+    const solo = y3se ?? y3ds;
+    if (solo) {
+      solo.position.x = snap(t.CENTER_X, t.GRID);
+      solo.position.y = y3RowY;
+    }
+    if (trackGate && solo) {
+      trackGate.data = { 
+        ...trackGate.data, 
+        showCompare: false,
+        singleTrackMode: true,
+        activeTrack: solo.data.trackId as 'se' | 'ds'
+      };
+    }
+  }
+  cursorY += t.NODE_HEIGHT + t.VERTICAL_GAP;
+
+  // Year 4 merge
+  placeCenter(y4, t.NODE_HEIGHT);
+
+  // Position checkpoints
+  const checkpoints = nodes.filter(n => n.type === 'checkpoint');
+  checkpoints.forEach(cp => {
+    const sourceNode = nodes.find(n => n.id === cp.data?.sourceNodeId);
+    if (sourceNode) {
+      cp.position.x = sourceNode.position.x;
+      cp.position.y = snap(sourceNode.position.y + t.TIER_SPACING_PX, t.GRID);
+    }
+  });
+
+  return nodes;
+}
+
+/**
+ * Tier-based layout for LifePath data
+ */
+function layoutByTier(nodes: V3Node[], t: VerticalTokens): V3Node[] {
+  const checkpoints: V3Node[] = [];
+  const regularNodes: V3Node[] = [];
+  
+  nodes.forEach(n => {
+    if (n.type === 'checkpoint') {
+      checkpoints.push(n);
+    } else {
+      regularNodes.push(n);
+    }
+  });
+  
+  // Group regular nodes by tier
+  const byTier = new Map<number, V3Node[]>();
+  regularNodes.forEach(n => {
+    const tier = n.data?.tier ?? 0;
+    if (!byTier.has(tier)) byTier.set(tier, []);
+    byTier.get(tier)!.push(n);
+  });
+  
+  const maxTier = Math.max(...Array.from(byTier.keys()), 0);
+  let cursorY = 0;
+  
+  if (import.meta.env.DEV) {
+    console.log('[Vertical Layout] Tier-based layout (LifePath mode):', {
+      tierCount: maxTier + 1,
+      checkpointCount: checkpoints.length,
+      tiersDetail: Array.from(byTier.entries()).map(([tier, ns]) => ({
+        tier,
+        count: ns.length,
+        nodes: ns.map(n => ({ id: n.id, type: n.type, lpType: (n.data as any)?.lpType }))
+      }))
+    });
+  }
+  
+  // Position each tier vertically
+  for (let tier = 0; tier <= maxTier; tier++) {
+    const tierNodes = byTier.get(tier) || [];
+    
+    if (tierNodes.length === 0) continue;
+    
+    if (tierNodes.length === 1) {
+      // Single node: center on spine
+      const node = tierNodes[0];
+      node.position.x = snap(t.CENTER_X, t.GRID);
+      node.position.y = snap(cursorY, t.GRID);
+    } else {
+      // Multiple nodes: spread horizontally around center
+      const totalWidth = (tierNodes.length - 1) * t.H_SPACING;
+      const startX = t.CENTER_X - totalWidth / 2;
+      
+      tierNodes.forEach((node, idx) => {
+        node.position.x = snap(startX + idx * t.H_SPACING, t.GRID);
+        node.position.y = snap(cursorY, t.GRID);
+      });
+    }
+    
+    cursorY += t.NODE_HEIGHT + t.VERTICAL_GAP;
+  }
+  
+  // Position checkpoints after their source nodes
+  checkpoints.forEach(cp => {
+    const sourceNode = nodes.find(n => n.id === cp.data?.sourceNodeId);
+    if (sourceNode) {
+      cp.position.x = sourceNode.position.x;
+      cp.position.y = snap(sourceNode.position.y + t.TIER_SPACING_PX, t.GRID);
+      
+      if (import.meta.env.DEV) {
+        console.log('[Vertical Layout] Checkpoint positioned:', {
+          checkpointId: cp.id,
+          sourceId: sourceNode.id,
+          pos: { x: cp.position.x, y: cp.position.y }
+        });
+      }
+    } else if (import.meta.env.DEV) {
+      console.warn('[Vertical Layout] Checkpoint missing source:', {
+        checkpointId: cp.id,
+        missingSourceId: cp.data?.sourceNodeId
+      });
+    }
+  });
+  
+  return nodes;
+}
+
+/**
  * Calculate vertical layout positions for all nodes
  * 
  * @param nodes - Input nodes (positions will be overwritten)
@@ -49,116 +220,27 @@ export function calculateVerticalLayout(
     targetPosition: 'top' as const,
   }));
 
-  // Extract semantic nodes
-  const y1 = out.find(n => isBundle(n) && n.data?.year === 1 && trackKey(n) === 'any');
-  const programGate = out.find(n => isGate(n) && n.data?.year === 2);
-  const y2 = out.find(n => isBundle(n) && n.data?.year === 2 && trackKey(n) === 'any');
-  const trackGate = out.find(n => isGate(n) && n.data?.year === 3);
-  const y3se = out.find(n => isBundle(n) && n.data?.year === 3 && trackKey(n) === 'se');
-  const y3ds = out.find(n => isBundle(n) && n.data?.year === 3 && trackKey(n) === 'ds');
-  const y4 = out.find(n => isBundle(n) && n.data?.year === 4 && trackKey(n) === 'any');
-
-  // Debug: Log what we found
-  console.log('[Vertical Layout] Node lookup results:', {
-    y1: y1?.id,
-    programGate: programGate?.id,
-    y2: y2?.id,
-    trackGate: trackGate?.id,
-    y3se: y3se?.id,
-    y3ds: y3ds?.id,
-    y4: y4?.id,
-    allNodes: out.map(n => ({ id: n.id, type: n.type, year: n.data?.year }))
-  });
-
-  let cursorY = 0;
-
-  // FIX #2: Helper - center a node on the spine and advance cursor
-  // FORCE centerline position (ignore any previous x from horizontal layout)
-  const placeCenter = (node: V3Node | undefined, height: number) => {
-    if (!node) {
-      console.warn('[Vertical Layout] placeCenter called with undefined node');
-      return;
-    }
-    // FORCE centerline X position
-    node.position.x = snap(t.CENTER_X, t.GRID);
-    node.position.y = snap(cursorY, t.GRID);
-    console.log(`[Vertical Layout] Placing ${node.id} at (${node.position.x}, ${node.position.y})`);
-    cursorY += height + t.VERTICAL_GAP;
-  };
-
-  // 1. Year 1 (top of spine)
-  placeCenter(y1, t.NODE_HEIGHT);
-
-  // 2. Program Gate (decision point: Y1 → Y2)
-  placeCenter(programGate, t.GATE_HEIGHT);
-
-  // 3. Year 2
-  placeCenter(y2, t.NODE_HEIGHT);
-
-  // 4. Track Gate (decision point: Y2 → Y3)
-  placeCenter(trackGate, t.GATE_HEIGHT);
-
-  // 5. Year 3 split (SE and DS side-by-side, same Y row)
-  // Single-track mode: center the lone track
-  const y3RowY = snap(cursorY, t.GRID);
-  const hasSE = !!y3se;
-  const hasDS = !!y3ds;
+  // Detect layout mode: year-based (seed) vs tier-based (LifePath)
+  const hasYearData = out.some(n => 
+    typeof n.data?.year === 'number' && n.data.year >= 1 && n.data.year <= 4
+  );
   
-  if (hasSE && hasDS) {
-    // Both tracks: side-by-side
-    y3se.position.x = snap(t.CENTER_X - t.H_SPACING / 2, t.GRID);
-    y3se.position.y = y3RowY;
-    y3ds.position.x = snap(t.CENTER_X + t.H_SPACING / 2, t.GRID);
-    y3ds.position.y = y3RowY;
-  } else {
-    // Single track: center it on the spine
-    const solo = y3se ?? y3ds;
-    if (solo) {
-      solo.position.x = snap(t.CENTER_X, t.GRID);
-      solo.position.y = y3RowY;
-    }
-    // Hide comparison UI and enable single-track mode
-    if (trackGate && solo) {
-      trackGate.data = { 
-        ...trackGate.data, 
-        showCompare: false,
-        singleTrackMode: true,
-        activeTrack: solo.data.trackId as 'se' | 'ds'
-      };
-    }
+  if (import.meta.env.DEV) {
+    console.log('[Vertical Layout] Mode detection:', {
+      hasYearData,
+      mode: hasYearData ? 'YEAR-BASED (Seed)' : 'TIER-BASED (LifePath)',
+      nodeCount: out.length,
+      sampleNodes: out.slice(0, 3).map(n => ({ 
+        id: n.id, 
+        type: n.type,
+        year: n.data?.year, 
+        tier: n.data?.tier,
+        lpType: (n.data as any)?.lpType
+      }))
+    });
   }
-  cursorY += t.NODE_HEIGHT + t.VERTICAL_GAP;
-
-  // 6. Year 4 (merge point, back to center)
-  placeCenter(y4, t.NODE_HEIGHT);
-
-  // 7. Position checkpoint nodes (Phase 3a)
-  // FIX #3: Checkpoints INHERIT source node X position for perfect alignment
-  const checkpoints = out.filter(n => n.type === 'checkpoint');
-  checkpoints.forEach(cp => {
-    const sourceNode = out.find(n => n.id === cp.data?.sourceNodeId);
-    if (sourceNode) {
-      // INHERIT source X position (ensures alignment even if source isn't centered)
-      cp.position.x = sourceNode.position.x;
-      cp.position.y = snap(sourceNode.position.y + t.TIER_SPACING_PX, t.GRID);
-      
-      if (import.meta.env.DEV) {
-        console.log('[Vertical Layout] Positioned checkpoint:', {
-          checkpointId: cp.id,
-          sourceId: sourceNode.id,
-          sourcePos: { x: sourceNode.position.x, y: sourceNode.position.y },
-          checkpointPos: { x: cp.position.x, y: cp.position.y }
-        });
-      }
-    } else if (import.meta.env.DEV) {
-      console.warn('[Vertical Layout] Checkpoint missing source node:', {
-        checkpointId: cp.id,
-        missingSourceId: cp.data?.sourceNodeId
-      });
-    }
-  });
-
-  return out;
+  
+  return hasYearData ? layoutByYear(out, t) : layoutByTier(out, t);
 }
 
 /**

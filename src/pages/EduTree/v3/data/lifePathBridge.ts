@@ -101,6 +101,7 @@ export function lifePathToV3(
       tier,
       tierLabel: `Tier ${tier}`,
       title: gn.title,
+      lpType: gn.type, // Preserve original LifePath type for semantic info
       lineage,
       showAlternatives: false,
       alternatives: undefined,
