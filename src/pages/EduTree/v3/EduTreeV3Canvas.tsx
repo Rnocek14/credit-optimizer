@@ -28,6 +28,7 @@ import { mapEdgesVertical } from './engine/edgeMapperVertical';
 import { VERT } from './utils/layoutTokensVertical';
 import CompareMiniCards from './components/CompareMiniCards';
 import TrackCompareDrawer from './components/TrackCompareDrawer';
+import { runV3HealthCheck } from './dev/runtimeChecks';
 import CompareToggle from './components/CompareToggle';
 import { AlternativesDrawer } from './components/AlternativesDrawer';
 import { getAlternativesForNode } from './engine/getAlternatives';
@@ -522,6 +523,23 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
       : (enableMetrics
           ? buildEduTreeGraphWithMetrics(collapsedGraph, { enableCheckpoints: false }).graph
           : buildEduTreeGraph(collapsedGraph, { enableCheckpoints: false }))
+    
+    // DEV: Freeze positions to detect mutations
+    if (import.meta.env.DEV && useVerticalLayout) {
+      positionedCollapsed.nodes.forEach(n => {
+        const originalY = n.position.y;
+        Object.defineProperty(n.position, 'y', {
+          get() { return originalY; },
+          set(val) {
+            if (val !== originalY) {
+              console.error('[MUTATION DETECTED]', n.id, 'y changed:', originalY, '→', val);
+              console.trace();
+            }
+          },
+          configurable: true
+        });
+      });
+    }
     
     // Debug: Log bundle positions after vertical layout
     if (useVerticalLayout) {
@@ -1664,6 +1682,13 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
 }
 
 export default function EduTreeV3Canvas(props: EduTreeV3CanvasProps) {
+  // Expose health check for dev console
+  useEffect(() => {
+    if (import.meta.env.DEV) {
+      (window as any).runV3HealthCheck = runV3HealthCheck;
+    }
+  }, []);
+
   return (
     <ReactFlowProvider>
       <EduTreeV3CanvasInner {...props} />

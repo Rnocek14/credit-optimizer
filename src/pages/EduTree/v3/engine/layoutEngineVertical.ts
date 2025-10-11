@@ -88,11 +88,29 @@ function layoutByYear(nodes: V3Node[], t: VerticalTokens): V3Node[] {
   const hasSE = !!y3se;
   const hasDS = !!y3ds;
   
+  if (import.meta.env.DEV) {
+    console.log('[Vertical Layout] Y3 positioning:', {
+      y3RowY,
+      hasSE,
+      hasDS,
+      beforeSE: y3se?.position,
+      beforeDS: y3ds?.position
+    });
+  }
+  
   if (hasSE && hasDS) {
     y3se.position.x = snap(t.CENTER_X - t.H_SPACING / 2, t.GRID);
-    y3se.position.y = y3RowY;
+    y3se.position.y = y3RowY;  // Force same Y
     y3ds.position.x = snap(t.CENTER_X + t.H_SPACING / 2, t.GRID);
-    y3ds.position.y = y3RowY;
+    y3ds.position.y = y3RowY;  // Force same Y
+    
+    if (import.meta.env.DEV) {
+      console.log('[Vertical Layout] Y3 after placement:', {
+        SE: { x: y3se.position.x, y: y3se.position.y },
+        DS: { x: y3ds.position.x, y: y3ds.position.y },
+        yMatch: y3se.position.y === y3ds.position.y
+      });
+    }
   } else {
     const solo = y3se ?? y3ds;
     if (solo) {
