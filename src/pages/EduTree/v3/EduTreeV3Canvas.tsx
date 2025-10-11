@@ -485,7 +485,7 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
     const { visibleNodes, visibleEdges, bundles: bundleMap } = shouldCollapse
       ? createCollapsedView(
           positionedFull, 
-          lpBundlesEnabled ? 'tier' : (useLifePathSource ? undefined : 'year')
+          lpBundlesEnabled ? 'tier' : 'year'
         )
       : {
           visibleNodes: positionedFull.nodes,
