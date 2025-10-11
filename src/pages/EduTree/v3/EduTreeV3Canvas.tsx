@@ -273,6 +273,27 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
     toast.success(`Checkpoints ${newValue ? 'enabled' : 'disabled'}`);
   }, [enableCheckpoints, useVerticalLayout, isLifePath, lifepathReady]);
   
+  // Handler to toggle data source
+  const handleToggleDataSource = useCallback(() => {
+    const newSource = useLifePathSource ? null : 'lifepath';
+    
+    // Update URL params
+    const newParams = new URLSearchParams(searchParams);
+    if (newSource) {
+      newParams.set('source', 'lifepath');
+    } else {
+      newParams.delete('source');
+    }
+    setSearchParams(newParams);
+    
+    // Show feedback
+    toast.success(`Switched to ${newSource ? 'LifePath' : 'Seed'} data`, {
+      description: newSource 
+        ? 'Loading real fork alternatives...' 
+        : 'Using demo seed data'
+    });
+  }, [useLifePathSource, searchParams, setSearchParams]);
+  
   // Bridge Life Path Graph to V3 format if enabled
   const bridgedData = useMemo(() => {
     if (!useLifePathSource || !lifePathGraph?.graph?.nodes) {
@@ -1439,6 +1460,8 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
           checkpointsEnabled={enableCheckpoints}
           onToggleCheckpoints={handleToggleCheckpoints}
           useVerticalLayout={useVerticalLayout}
+          useLifePathSource={useLifePathSource}
+          onToggleDataSource={handleToggleDataSource}
         />
       )}
 

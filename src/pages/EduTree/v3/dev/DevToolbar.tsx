@@ -8,9 +8,11 @@ interface DevToolbarProps {
   checkpointsEnabled?: boolean;
   onToggleCheckpoints?: () => void;
   useVerticalLayout?: boolean;
+  useLifePathSource?: boolean;
+  onToggleDataSource?: () => void;
 }
 
-export function DevToolbar({ nodes, checkpointsEnabled = false, onToggleCheckpoints, useVerticalLayout = false }: DevToolbarProps) {
+export function DevToolbar({ nodes, checkpointsEnabled = false, onToggleCheckpoints, useVerticalLayout = false, useLifePathSource = false, onToggleDataSource }: DevToolbarProps) {
   const onValidate = () => {
     const res = validateNoOverlaps(nodes, LAYOUT_TOKENS);
     alert(res.hasOverlaps ? `Overlaps: ${res.overlaps.length}` : 'No overlaps ✅');
@@ -24,6 +26,20 @@ export function DevToolbar({ nodes, checkpointsEnabled = false, onToggleCheckpoi
         Validate Overlaps
       </button>
       
+      {/* Data Source Toggle */}
+      {onToggleDataSource && (
+        <button 
+          onClick={onToggleDataSource}
+          className={`px-2 py-1 rounded transition-colors ${
+            useLifePathSource 
+              ? 'bg-purple-600/80 hover:bg-purple-600' 
+              : 'bg-gray-600/80 hover:bg-gray-600'
+          }`}
+        >
+          Data: {useLifePathSource ? 'LifePath' : 'Seed'}
+        </button>
+      )}
+      
       {/* Phase 3B: Hide toggle in vertical mode */}
       {onToggleCheckpoints && !useVerticalLayout && (
         <button 
@@ -34,7 +50,7 @@ export function DevToolbar({ nodes, checkpointsEnabled = false, onToggleCheckpoi
               : 'bg-gray-600/80 hover:bg-gray-600'
           }`}
         >
-          Demo: Checkpoints {checkpointsEnabled ? 'ON' : 'OFF'}
+          Checkpoints {checkpointsEnabled ? 'ON' : 'OFF'}
           {checkpointsEnabled && checkpointCount > 0 && (
             <span className="ml-1 text-xs opacity-75">({checkpointCount})</span>
           )}
