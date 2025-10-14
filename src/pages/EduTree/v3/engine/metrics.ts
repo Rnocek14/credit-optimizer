@@ -1,8 +1,15 @@
 // Type-aware aggregation utilities for LifePath bundles
 export type NodeLike = { data?: Record<string, any> };
 
+// Normalize type strings to handle camelCase and kebab-case variants
+function normalizeType(type: string): string {
+  return String(type || '')
+    .toLowerCase()
+    .replace(/[-_\s]/g, ''); // Strip separators: creditBlock → creditblock
+}
+
 const COURSE_LIKE = new Set([
-  'course', 'exam', 'assessment', 'module', 'requirement', 'class', 'subject'
+  'course', 'exam', 'assessment', 'module', 'requirement', 'class', 'subject', 'creditblock'
 ]);
 
 const CREDENTIAL_LIKE = new Set([
@@ -14,13 +21,13 @@ const SKILL_LIKE = new Set([
 ]);
 
 const JOB_LIKE = new Set([
-  'job', 'career', 'occupation', 'role'
+  'job', 'career', 'occupation', 'role', 'jobgoal'
 ]);
 
 /** Extract course-only credits (excludes credentials/jobs) */
 export function creditFromNode(n: NodeLike): number {
   const d = n?.data || {};
-  const lpType = String(d.lpType || '').toLowerCase();
+  const lpType = normalizeType(d.lpType);
 
   // Only sum course-like credits
   if (!COURSE_LIKE.has(lpType)) return 0;
@@ -37,7 +44,7 @@ export function creditFromNode(n: NodeLike): number {
 /** Extract time estimate (excludes jobs) */
 export function timeFromNode(n: NodeLike): number {
   const d = n?.data || {};
-  const lpType = String(d.lpType || '').toLowerCase();
+  const lpType = normalizeType(d.lpType);
 
   // Jobs don't contribute to time estimates
   if (JOB_LIKE.has(lpType)) return 0;
@@ -49,7 +56,7 @@ export function timeFromNode(n: NodeLike): number {
 /** Extract cost estimate (excludes jobs) */
 export function costFromNode(n: NodeLike): number {
   const d = n?.data || {};
-  const lpType = String(d.lpType || '').toLowerCase();
+  const lpType = normalizeType(d.lpType);
 
   // Jobs don't contribute to cost estimates
   if (JOB_LIKE.has(lpType)) return 0;
@@ -66,7 +73,7 @@ export function countByType(nodes: NodeLike[]): {
   jobs: number;
 } {
   return nodes.reduce((acc, n) => {
-    const lpType = String(n?.data?.lpType || '').toLowerCase();
+    const lpType = normalizeType(n?.data?.lpType);
     
     if (COURSE_LIKE.has(lpType)) acc.courses++;
     else if (CREDENTIAL_LIKE.has(lpType)) acc.credentials++;

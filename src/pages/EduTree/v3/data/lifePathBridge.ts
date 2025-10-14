@@ -97,15 +97,27 @@ export function lifePathToV3(
       canonicalSlug
     };
 
+    // Extract and normalize credits from various field aliases
+    const credits = gn.credits ?? gn.creditValue ?? 0;
+
     const nodeData: Record<string, any> = {
       tier,
       tierLabel: `Tier ${tier}`,
       title: gn.title,
-      lpType: gn.type, // Preserve original LifePath type for semantic info
+      lpType: gn.type, // ✅ CRITICAL: Keep original type for metrics.ts filtering
       lineage,
       showAlternatives: false,
       alternatives: undefined,
-      totalCredits: gn.credits,
+      
+      // Normalize all credit aliases so metrics.ts can find them
+      credits,              // ✅ Primary field that metrics.ts reads first
+      totalCredits: credits, // Legacy alias
+      creditValue: credits,  // Provider alias
+      
+      // Also normalize provider/time/cost fields
+      provider: gn.provider ?? gn.institution ?? gn.institutionId,
+      estimatedHours: gn.estimatedHours ?? 0,
+      cost: gn.cost ?? 0,
     };
 
     // FIX #4: For gate nodes, only assign year to non-job gates (academic milestones)
