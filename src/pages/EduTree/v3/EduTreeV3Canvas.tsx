@@ -842,18 +842,6 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
     }
   }, [buildKey]); // React to build key changes only
 
-  // Loading guard: show loading state while Life Path data loads
-  if (useLifePathSource && lifePathGraph?.loading) {
-    return (
-      <div className="flex items-center justify-center h-screen bg-background">
-        <div className="text-center space-y-2">
-          <div className="text-lg font-medium">Loading Life Path data...</div>
-          <div className="text-sm text-muted-foreground">Preparing checkpoint nodes</div>
-        </div>
-      </div>
-    );
-  }
-
   const { nodes, edges } = currentGraph ?? { nodes: [], edges: [] };
   
   console.log('[V3 Canvas] Rendering:', {
@@ -1404,6 +1392,18 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
     edgeCount: reactFlowEdges.length,
     hasMetrics: !!layoutMetrics
   });
+
+  // Phase 3 Fix: Loading guard AFTER all hooks
+  if (useLifePathSource && lifePathGraph?.loading) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-background">
+        <div className="text-center space-y-2">
+          <div className="text-lg font-medium">Loading Life Path data...</div>
+          <div className="text-sm text-muted-foreground">Preparing checkpoint nodes</div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full h-screen relative bg-background">
