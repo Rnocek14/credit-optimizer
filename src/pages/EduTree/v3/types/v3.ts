@@ -105,6 +105,7 @@ export interface V3NodeData {
   estimatedCost?: number;
   topItems?: Array<{ id: string; title: string; credits: number; provider: string }>;
   providers?: string[];
+  typeCounts?: { courses: number; credentials: number; skills: number; jobs: number };
   
   // Requirement-specific fields (multiple aliases for LifePath compatibility)
   credits_needed?: number;

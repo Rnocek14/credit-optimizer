@@ -1,5 +1,6 @@
 // src/pages/EduTree/v3/engine/createCollapsedView.ts
 import type { V3Graph, V3Node, V3Edge } from "../types/v3";
+import { creditFromNode, timeFromNode, costFromNode, countByType } from "./metrics";
 
 export type TrackId = "se" | "ds";
 export type BundleId =
@@ -21,6 +22,7 @@ export interface BundleCard {
   estimatedCost?: number;
   topItems?: Array<{ id: string; title: string; credits: number; provider: string }>;
   providers?: string[];
+  typeCounts?: { courses: number; credentials: number; skills: number; jobs: number };
 }
 
 export function createCollapsedView(
@@ -83,7 +85,8 @@ export function createCollapsedView(
       estimatedTime: b.estimatedTime,
       estimatedCost: b.estimatedCost,
       topItems: b.topItems,
-      providers: b.providers
+      providers: b.providers,
+      typeCounts: b.typeCounts
     },
     position: { x: 0, y: 0 },
   });
@@ -108,24 +111,16 @@ export function createCollapsedView(
       ? `Year ${year} ${trackId.toUpperCase()} Track`
       : `Year ${year}`;
 
-    // PRIORITY 1A & 1B: Fix credit aggregation + enrich with time/cost/provider data (year mode)
-    const totalCredits = kids.reduce((s, n) => {
-      const c = n.data?.credits ?? n.data?.totalCredits ?? n.data?.credits_needed ?? n.data?.creditValue ?? 0;
-      return s + (Number.isFinite(c) ? c : 0);
-    }, 0);
-    const estimatedTime = kids.reduce((s, n) => {
-      const t = n.data?.estimatedHours ?? n.data?.hours ?? n.data?.duration ?? 0;
-      return s + (Number.isFinite(t) ? t : 0);
-    }, 0);
-    const estimatedCost = kids.reduce((s, n) => {
-      const c = n.data?.cost ?? n.data?.price ?? n.data?.tuition ?? 0;
-      return s + (Number.isFinite(c) ? c : 0);
-    }, 0);
+    // PRIORITY 1A & 1B: Type-aware aggregation using metrics utilities
+    const totalCredits = kids.reduce((s, n) => s + creditFromNode(n), 0);
+    const estimatedTime = kids.reduce((s, n) => s + timeFromNode(n), 0);
+    const estimatedCost = kids.reduce((s, n) => s + costFromNode(n), 0);
+    const typeCounts = countByType(kids);
     
     const topItems = kids.slice(0, 3).map(n => ({
       id: n.id,
       title: n.data.title ?? n.id,
-      credits: n.data.credits ?? n.data.totalCredits ?? n.data.credits_needed ?? n.data.creditValue ?? 0,
+      credits: creditFromNode(n),
       provider: n.data.provider ?? n.data.slug?.split(':')[0] ?? 'Unknown'
     }));
     
@@ -144,7 +139,8 @@ export function createCollapsedView(
       estimatedTime,
       estimatedCost,
       topItems,
-      providers
+      providers,
+      typeCounts
     };
     bundles.set(id, card);
     visibleNodes.push(bundleNode(card));
@@ -455,25 +451,17 @@ function createTierBundles(fullGraph: V3Graph): {
 
     const bundleId = `tier-${tier}-bundle`;
     
-    // PRIORITY 1A & 1B: Fix credit aggregation + enrich with time/cost/provider data
-    const totalCredits = children.reduce((s, n) => {
-      const c = n.data?.credits ?? n.data?.totalCredits ?? n.data?.credits_needed ?? n.data?.creditValue ?? 0;
-      return s + (Number.isFinite(c) ? c : 0);
-    }, 0);
-    const estimatedTime = children.reduce((s, n) => {
-      const t = n.data?.estimatedHours ?? n.data?.hours ?? n.data?.duration ?? 0;
-      return s + (Number.isFinite(t) ? t : 0);
-    }, 0);
-    const estimatedCost = children.reduce((s, n) => {
-      const c = n.data?.cost ?? n.data?.price ?? n.data?.tuition ?? 0;
-      return s + (Number.isFinite(c) ? c : 0);
-    }, 0);
+    // PRIORITY 1A & 1B: Type-aware aggregation using metrics utilities
+    const totalCredits = children.reduce((s, n) => s + creditFromNode(n), 0);
+    const estimatedTime = children.reduce((s, n) => s + timeFromNode(n), 0);
+    const estimatedCost = children.reduce((s, n) => s + costFromNode(n), 0);
+    const typeCounts = countByType(children);
     
     // Top 3 items for preview
     const topItems = children.slice(0, 3).map(n => ({
       id: n.id,
       title: n.data.title ?? n.id,
-      credits: n.data.credits ?? n.data.totalCredits ?? n.data.credits_needed ?? n.data.creditValue ?? 0,
+      credits: creditFromNode(n),
       provider: n.data.provider ?? n.data.slug?.split(':')[0] ?? 'Unknown'
     }));
     
@@ -492,7 +480,8 @@ function createTierBundles(fullGraph: V3Graph): {
       estimatedTime,
       estimatedCost,
       topItems,
-      providers
+      providers,
+      typeCounts
     };
 
     bundles.set(bundleId, card);
