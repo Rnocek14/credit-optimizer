@@ -91,15 +91,26 @@ export interface V3NodeData {
   title?: string;
   anchorX?: number; // For gates: locked X position to prevent drift
   junctionType?: 'program' | 'track';
+  slug?: string; // Provider/course slug
+  provider?: string; // Provider name
+  description?: string;
   
   // Bundle-specific fields
   childCount?: number;
   totalCredits?: number;
   isExpanded?: boolean;
   onToggle?: () => void;
+  childIds?: string[];
+  estimatedTime?: number;
+  estimatedCost?: number;
+  topItems?: Array<{ id: string; title: string; credits: number; provider: string }>;
+  providers?: string[];
   
   // Requirement-specific fields  
   credits_needed?: number;
+  credits?: number;
+  estimatedHours?: number;
+  cost?: number;
   
   // Comparison fields (for Track Gate)
   showCompare?: boolean;
@@ -109,6 +120,9 @@ export interface V3NodeData {
   // Single-track mode (for gates)
   singleTrackMode?: boolean;
   activeTrack?: 'se' | 'ds';
+  
+  // Phase 1D: Path dimming state
+  pathState?: 'primary' | 'dimmed';
 }
 
 export interface V3Node {

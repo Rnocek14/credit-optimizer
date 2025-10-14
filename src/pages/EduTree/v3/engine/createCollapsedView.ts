@@ -17,6 +17,10 @@ export interface BundleCard {
   childCount: number;
   totalCredits: number;
   childIds: string[];
+  estimatedTime?: number;
+  estimatedCost?: number;
+  topItems?: Array<{ id: string; title: string; credits: number; provider: string }>;
+  providers?: string[];
 }
 
 export function createCollapsedView(
@@ -75,6 +79,11 @@ export function createCollapsedView(
       childCount: b.childCount,
       totalCredits: b.totalCredits,
       isExpanded: false,
+      childIds: b.childIds,
+      estimatedTime: b.estimatedTime,
+      estimatedCost: b.estimatedCost,
+      topItems: b.topItems,
+      providers: b.providers
     },
     position: { x: 0, y: 0 },
   });
@@ -99,14 +108,34 @@ export function createCollapsedView(
       ? `Year ${year} ${trackId.toUpperCase()} Track`
       : `Year ${year}`;
 
+    // PRIORITY 1A & 1B: Fix credit aggregation + enrich with time/cost/provider data (year mode)
+    const totalCredits = kids.reduce((s, n) => s + (n.data.credits ?? n.data.credits_needed ?? 0), 0);
+    const estimatedTime = kids.reduce((s, n) => s + (n.data.estimatedHours ?? 0), 0);
+    const estimatedCost = kids.reduce((s, n) => s + (n.data.cost ?? 0), 0);
+    
+    const topItems = kids.slice(0, 3).map(n => ({
+      id: n.id,
+      title: n.data.title ?? n.id,
+      credits: n.data.credits ?? n.data.credits_needed ?? 0,
+      provider: n.data.provider ?? n.data.slug?.split(':')[0] ?? 'Unknown'
+    }));
+    
+    const providers = Array.from(new Set(
+      kids.map(n => n.data.provider ?? n.data.slug?.split(':')[0]).filter(Boolean)
+    ));
+
     const card: BundleCard = {
       id,
       year,
       trackId,
       title,
       childCount: kids.length,
-      totalCredits: kids.reduce((s, n) => s + (n.data.credits_needed ?? 0), 0),
+      totalCredits,
       childIds: kids.map((n) => n.id),
+      estimatedTime,
+      estimatedCost,
+      topItems,
+      providers
     };
     bundles.set(id, card);
     visibleNodes.push(bundleNode(card));
@@ -416,13 +445,36 @@ function createTierBundles(fullGraph: V3Graph): {
     if (children.length === 0) continue;
 
     const bundleId = `tier-${tier}-bundle`;
+    
+    // PRIORITY 1A & 1B: Fix credit aggregation + enrich with time/cost/provider data
+    const totalCredits = children.reduce((s, n) => s + (n.data.credits ?? n.data.credits_needed ?? 0), 0);
+    const estimatedTime = children.reduce((s, n) => s + (n.data.estimatedHours ?? 0), 0);
+    const estimatedCost = children.reduce((s, n) => s + (n.data.cost ?? 0), 0);
+    
+    // Top 3 items for preview
+    const topItems = children.slice(0, 3).map(n => ({
+      id: n.id,
+      title: n.data.title ?? n.id,
+      credits: n.data.credits ?? n.data.credits_needed ?? 0,
+      provider: n.data.provider ?? n.data.slug?.split(':')[0] ?? 'Unknown'
+    }));
+    
+    // Unique providers
+    const providers = Array.from(new Set(
+      children.map(n => n.data.provider ?? n.data.slug?.split(':')[0]).filter(Boolean)
+    ));
+    
     const card: BundleCard = {
       id: bundleId,
-      year: Math.min(tier + 1, 4) as 1|2|3|4, // Rough mapping for layout compatibility
+      year: Math.min(tier + 1, 4) as 1|2|3|4,
       title: children[0]?.data?.tierLabel || `Tier ${tier}`,
       childCount: children.length,
-      totalCredits: children.reduce((s, n) => s + (n.data.totalCredits ?? 0), 0),
-      childIds: children.map(n => n.id)
+      totalCredits,
+      childIds: children.map(n => n.id),
+      estimatedTime,
+      estimatedCost,
+      topItems,
+      providers
     };
 
     bundles.set(bundleId, card);
@@ -435,10 +487,15 @@ function createTierBundles(fullGraph: V3Graph): {
         childCount: card.childCount,
         totalCredits: card.totalCredits,
         isExpanded: false,
-        tier, // Preserve tier for layout
-        trackId: undefined, // No track split in tier mode
-        programId: 'lifepath', // Semantic tag for debugging
-        lpType: 'tier-bundle' // Helps distinguish in logs
+        tier,
+        trackId: undefined,
+        programId: 'lifepath',
+        lpType: 'tier-bundle',
+        childIds: card.childIds,
+        estimatedTime: card.estimatedTime,
+        estimatedCost: card.estimatedCost,
+        topItems: card.topItems,
+        providers: card.providers
       },
       position: { x: 0, y: 0 }
     });
