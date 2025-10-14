@@ -11,9 +11,11 @@ export default function EduTree() {
   console.log('[EduTree] Component mounting...');
   const [searchParams] = useSearchParams();
   
-  // Check for V3 flag
+  // Phase 3 Fix: Check for V3 flag (include route path check)
   const useV3 = useMemo(() => {
-    return searchParams.get('v3') === '1' || localStorage.getItem('flags.eduTreeV3') === 'true';
+    const path = window.location.pathname;
+    const isVerticalRoute = path === '/edu-tree-v3-vertical';
+    return isVerticalRoute || searchParams.get('v3') === '1' || localStorage.getItem('flags.eduTreeV3') === 'true';
   }, [searchParams]);
   
   // If V3 flag is set, render V3 canvas immediately

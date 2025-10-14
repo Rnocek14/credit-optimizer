@@ -113,8 +113,11 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
 
   // Removed freeze guards - allowing natural React state updates
   
-  // Vertical flow feature flag (read from URL or localStorage)
+  // Phase 3 Fix: Vertical flow feature flag (check route path + URL + localStorage)
   const [useVerticalLayout, setUseVerticalLayout] = useState(() => {
+    const path = window.location.pathname;
+    if (path === '/edu-tree-v3-vertical') return true; // Force vertical for this route
+    
     // CRITICAL: Check URL first (route may have ?layout=vertical)
     const urlParams = new URLSearchParams(window.location.search);
     const layoutFromUrl = urlParams.get('layout');
@@ -607,24 +610,7 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
         });
       }
       
-      // FIX #3: One-line sanity edge (temporary, DEV-only)
-      if (import.meta.env.DEV && enableCheckpoints) {
-        const y1 = positionedCollapsed.nodes.find(n => n.id === 'y1-bundle');
-        const cp = positionedCollapsed.nodes.find(n => n.type === 'checkpoint');
-        if (y1 && cp) {
-          validEdges.push({ 
-            id: 'ckpt:TEST', 
-            source: y1.id, 
-            target: cp.id, 
-            kind: 'spine', 
-            data: { isCheckpointEdge: true } 
-          });
-          console.log('[V3 Canvas] Added test checkpoint edge:', {
-            source: y1.id,
-            target: cp.id
-          });
-        }
-      }
+      // Phase 4: Removed dev test edge (no longer needed)
       
       finalGraph = {
         nodes: positionedCollapsed.nodes,
@@ -874,22 +860,61 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
     }
   }, [nodes, useVerticalLayout]);
 
-  // FIX #3: One-time fitView with DOM presence guard
+  // Phase 1 Fix: Reliable fitView with proper timing
   const didFitRef = useRef(false);
   useEffect(() => {
-    if (didFitRef.current || nodes.length === 0) return;
-
-    const hasNodesInDOM = document.querySelectorAll('.react-flow__node').length > 0;
-    if (!hasNodesInDOM) return;
-
-    didFitRef.current = true;
-    const timer = setTimeout(() => {
-      requestAnimationFrame(() => fitView({ padding: 0.6, includeHiddenNodes: true }));
-    }, 120);
+    if (nodes.length === 0) return;
+    
+    // Wait for DOM nodes to be fully rendered
+    const checkAndFit = () => {
+      const domNodes = document.querySelectorAll('.react-flow__node');
+      if (domNodes.length > 0 && !didFitRef.current) {
+        didFitRef.current = true;
+        requestAnimationFrame(() => {
+          fitView({ padding: 0.2, duration: 300, includeHiddenNodes: true });
+          console.log('[V3 Canvas] ✅ Auto-fit executed');
+        });
+      }
+    };
+    
+    // Try immediately
+    checkAndFit();
+    
+    // Fallback: try again after ReactFlow settles
+    const timer = setTimeout(checkAndFit, 200);
     return () => clearTimeout(timer);
-  }, [nodes.length]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [nodes.length, fitView]);
 
-  // FIX #5: Enhanced DOM probe with visibility checks
+  // Phase 5 Fix: Viewport diagnostic logging
+  useEffect(() => {
+    if (nodes.length === 0) return;
+    
+    const rfInstance = (window as any).__reactFlowInstance;
+    if (rfInstance) {
+      const viewport = rfInstance.getViewport();
+      console.log('[V3 Canvas] Current viewport:', viewport);
+      
+      const bounds = {
+        minX: Math.min(...nodes.map(n => n.position.x)),
+        maxX: Math.max(...nodes.map(n => n.position.x)),
+        minY: Math.min(...nodes.map(n => n.position.y)),
+        maxY: Math.max(...nodes.map(n => n.position.y))
+      };
+      
+      console.log('[V3 Canvas] Node bounds vs viewport:', {
+        nodeBounds: bounds,
+        viewport,
+        nodesVisible: (
+          viewport.x < bounds.maxX &&
+          viewport.x + window.innerWidth / viewport.zoom > bounds.minX &&
+          viewport.y < bounds.maxY &&
+          viewport.y + window.innerHeight / viewport.zoom > bounds.minY
+        )
+      });
+    }
+  }, [nodes]);
+
+  // Legacy DOM probe (keeping for compatibility)
   useEffect(() => {
     const domNodes = document.querySelectorAll('.react-flow__node');
     console.log('[V3 Canvas] DOM nodes found:', domNodes.length);
@@ -980,8 +1005,20 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
     checkpoint: V3CheckpointNode,
   }), []);
 
-  // Memoize defaultViewport to prevent unnecessary ReactFlow updates
-  const defaultViewport = useMemo(() => ({ x: -400, y: -200, zoom: 0.5 }), []);
+  // Phase 2 Fix: Intelligent defaultViewport based on layout
+  const defaultViewport = useMemo(() => {
+    // For vertical layout, center viewport on spine (x=680, y=480 midpoint)
+    // At zoom 0.5, this puts y1-y4 bundles in view
+    if (useVerticalLayout) {
+      return { 
+        x: window.innerWidth / 2 - 680 * 0.5,  // Center x=680 in viewport
+        y: window.innerHeight / 2 - 480 * 0.5, // Center y=480 (midpoint of 0-960)
+        zoom: 0.5 
+      };
+    }
+    // Horizontal layout keeps legacy viewport
+    return { x: -400, y: -200, zoom: 0.5 };
+  }, [useVerticalLayout]);
 
   // Phase 3b: Checkpoint click handler
   const handleCheckpointClick = useCallback((checkpointId: string, sourceNodeId: string) => {

@@ -295,10 +295,10 @@ const App = () => {
             path="/edu-tree-v3" 
             element={<Navigate to="/edu-tree?v3=1&layout=vertical" replace />}
           />
-          {/* EduTree V3 Vertical Flow - Direct access */}
+          {/* EduTree V3 Vertical Flow - Direct access (Phase 3: No redirect) */}
           <Route 
             path="/edu-tree-v3-vertical" 
-            element={<Navigate to="/edu-tree?v3=1&layout=vertical" replace />}
+            element={<EduTree />}
           />
           {/* EduTree V3 Harness - Dev-only Week-1 engine demo */}
           <Route 
