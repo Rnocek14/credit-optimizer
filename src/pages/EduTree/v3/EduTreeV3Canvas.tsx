@@ -177,14 +177,33 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
   
   // Sync layout state with URL params (reactive)
   useEffect(() => {
-    const layoutFromUrl = searchParams.get('layout') === 'vertical';
-    setUseVerticalLayout(prev => {
-      if (prev === layoutFromUrl) return prev; // No-op if same
-      if (import.meta.env.DEV) {
-        console.log('[V3 Canvas] Layout synced from URL:', layoutFromUrl ? 'vertical' : 'horizontal');
-      }
-      return layoutFromUrl;
-    });
+    const path = window.location.pathname;
+    
+    // 1. If on /edu-tree-v3-vertical route, always use vertical
+    if (path === '/edu-tree-v3-vertical') {
+      setUseVerticalLayout(prev => {
+        if (prev === true) return prev; // Already correct
+        if (import.meta.env.DEV) {
+          console.log('[V3 Canvas] Layout forced to VERTICAL by route path');
+        }
+        return true;
+      });
+      return; // Don't check query params
+    }
+    
+    // 2. Otherwise, check query params
+    const layoutParam = searchParams.get('layout');
+    if (layoutParam === 'vertical' || layoutParam === 'horizontal') {
+      const layoutFromUrl = layoutParam === 'vertical';
+      setUseVerticalLayout(prev => {
+        if (prev === layoutFromUrl) return prev; // No-op if same
+        if (import.meta.env.DEV) {
+          console.log('[V3 Canvas] Layout synced from URL param:', layoutFromUrl ? 'vertical' : 'horizontal');
+        }
+        return layoutFromUrl;
+      });
+    }
+    // 3. If no layout param, respect localStorage or keep current state
   }, [searchParams]); // Only depend on URL params
   
   // Sync checkpoint state with URL (after layout is synced)
