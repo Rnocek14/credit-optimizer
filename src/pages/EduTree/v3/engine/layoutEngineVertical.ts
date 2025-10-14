@@ -216,18 +216,29 @@ function layoutByTier(nodes: V3Node[], t: VerticalTokens): V3Node[] {
     cursorY += t.NODE_HEIGHT + t.VERTICAL_GAP;
   }
   
-  // Position checkpoints after their source nodes
+  // Position checkpoints BELOW their source nodes (not overlapping)
   checkpoints.forEach(cp => {
     const sourceNode = nodes.find(n => n.id === cp.data?.sourceNodeId);
     if (sourceNode) {
+      const sourceHeight = isGate(sourceNode) ? t.GATE_HEIGHT : t.NODE_HEIGHT;
       cp.position.x = sourceNode.position.x;
-      cp.position.y = snap(sourceNode.position.y + t.TIER_SPACING_PX, t.GRID);
+      cp.position.y = snap(sourceNode.position.y + sourceHeight + t.VERTICAL_GAP, t.GRID);
       
       if (import.meta.env.DEV) {
         console.log('[Vertical Layout] Checkpoint positioned:', {
           checkpointId: cp.id,
           sourceId: sourceNode.id,
-          pos: { x: cp.position.x, y: cp.position.y }
+          sourceHeight,
+          pos: { x: cp.position.x, y: cp.position.y },
+          gap: cp.position.y - sourceNode.position.y
+        });
+      }
+      
+      // Validation: Ensure checkpoint is not at {0,0}
+      if (cp.position.x === 0 && cp.position.y === 0) {
+        console.error('[Vertical Layout] CRITICAL: Checkpoint positioned at {0,0}!', {
+          checkpointId: cp.id,
+          sourceNode: { id: sourceNode.id, pos: sourceNode.position }
         });
       }
     } else if (import.meta.env.DEV) {

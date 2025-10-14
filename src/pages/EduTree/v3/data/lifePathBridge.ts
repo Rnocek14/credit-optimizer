@@ -97,8 +97,22 @@ export function lifePathToV3(
       canonicalSlug
     };
 
-    // Extract and normalize credits from various field aliases
-    const credits = gn.credits ?? gn.creditValue ?? 0;
+    // Extract and normalize credits from ALL field aliases (with type safety)
+    const credits = gn.credits ?? gn.creditValue ?? (gn as any).totalCredits ?? (gn as any).credits_needed ?? (gn as any).creditHours ?? 0;
+
+    // DEV: Log zero-credit detections to diagnose missing data
+    if (import.meta.env.DEV && credits === 0 && gn.type && /course|credit/i.test(gn.type)) {
+      console.log('[Bridge] Zero credits detected for course-like node:', {
+        id: gn.id,
+        type: gn.type,
+        rawFields: { 
+          credits: gn.credits, 
+          creditValue: gn.creditValue, 
+          totalCredits: (gn as any).totalCredits,
+          credits_needed: (gn as any).credits_needed 
+        }
+      });
+    }
 
     const nodeData: Record<string, any> = {
       tier,

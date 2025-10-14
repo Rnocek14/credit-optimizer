@@ -75,7 +75,7 @@ export function injectCheckpoints(
       continue;
     }
     
-    // Create checkpoint node - let layout engine position it
+    // Create checkpoint node - layout engine will position it AFTER bundling
     const checkpointNode: V3Node = {
       id: checkpointId,
       type: 'checkpoint',
@@ -89,7 +89,8 @@ export function injectCheckpoints(
         showAlternatives: true,
       },
       position: {
-        // Layout engine will assign final position
+        // WARNING: Temporary position - layout engine MUST update this
+        // Using placeholder to detect if layout fails to position
         x: 0,
         y: 0,
       },
@@ -98,23 +99,17 @@ export function injectCheckpoints(
     newNodes.push(checkpointNode);
     
     if (import.meta.env.DEV) {
-      console.log('[Checkpoints] Checkpoint created:', {
+      console.log('[Checkpoints] Checkpoint created (position pending layout):', {
         id: checkpointNode.id,
         sourceNodeId: checkpointNode.data.sourceNodeId,
         alternativeCount: checkpointNode.data.alternativeCount,
-        position: checkpointNode.position
+        position: checkpointNode.position,
+        warning: 'Layout engine must update position'
       });
     }
     
-    // Create spine edge from source → checkpoint
-    const spineEdge: V3Edge = {
-      id: `${nodeId}-to-${checkpointId}`,
-      source: nodeId,
-      target: checkpointId,
-      kind: 'spine',
-    };
-    
-    newEdges.push(spineEdge);
+    // DON'T create edge here - createCollapsedView will handle remapping
+    // (source might get absorbed into bundle, so edge must be created after bundling)
     checkpointsAdded++;
 
     console.log(`[Checkpoints] Added checkpoint for ${nodeId} with ${altCount} alternatives`);

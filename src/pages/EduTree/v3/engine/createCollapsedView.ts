@@ -204,6 +204,28 @@ export function createCollapsedView(
         });
       }
       cp.data = { ...cp.data, sourceNodeId: bundleId };
+      
+      // Create spine edge: bundle → checkpoint (AFTER remapping)
+      visibleNodes.filter(n => n.type === 'track-bundle' && n.id === bundleId).forEach(bundle => {
+        const edgeId = `${bundleId}-to-${cp.id}`;
+        if (!edges.some(e => e.id === edgeId)) {
+          edges.push({
+            id: edgeId,
+            source: bundleId,
+            target: cp.id,
+            kind: 'spine',
+            data: { isCheckpointEdge: true, forceSpineStyle: true }
+          });
+          
+          if (import.meta.env.DEV) {
+            console.log('[Collapsed View] Created checkpoint edge after remap:', {
+              id: edgeId,
+              source: bundleId,
+              target: cp.id
+            });
+          }
+        }
+      });
     }
   });
 
