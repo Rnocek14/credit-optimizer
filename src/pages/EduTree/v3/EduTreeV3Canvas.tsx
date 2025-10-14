@@ -115,8 +115,13 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
   
   // Vertical flow feature flag (read from URL or localStorage)
   const [useVerticalLayout, setUseVerticalLayout] = useState(() => {
-    // On initial mount, check localStorage first
-    // URL params will be synced in the effect below
+    // CRITICAL: Check URL first (route may have ?layout=vertical)
+    const urlParams = new URLSearchParams(window.location.search);
+    const layoutFromUrl = urlParams.get('layout');
+    if (layoutFromUrl === 'vertical') return true;
+    if (layoutFromUrl === 'horizontal') return false;
+    
+    // Fall back to localStorage
     return localStorage.getItem('flags.verticalLayout') === 'true';
   });
   
