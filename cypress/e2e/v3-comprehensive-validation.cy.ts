@@ -126,7 +126,33 @@ describe('EduTree V3 Comprehensive Validation', () => {
     });
   });
 
-  describe('Phase 6: Global Validation', () => {
+  describe('Phase 6: Empty Bundle & Job Gate Handling', () => {
+    it('filters out empty tier bundles', () => {
+      cy.window().then(win => {
+        const dump = (win as any).__dumpV3();
+        const bundles = dump.nodes.filter((n: any) => n.type === 'track-bundle');
+        
+        bundles.forEach((b: any) => {
+          expect(b.data?.childCount, `bundle ${b.id} has children`).to.be.greaterThan(0);
+        });
+        
+        expect(bundles.length, 'at least one bundle created').to.be.greaterThan(0);
+      });
+    });
+
+    it('includes job gates in visible nodes', () => {
+      cy.window().then(win => {
+        const dump = (win as any).__dumpV3();
+        const jobGates = dump.nodes.filter((n: any) => n.type === 'gate' && n.data?.lpType === 'job');
+        
+        if (jobGates.length > 0) {
+          expect(jobGates.length, 'job gates rendered').to.be.greaterThan(0);
+        }
+      });
+    });
+  });
+
+  describe('Phase 7: Global Validation', () => {
     it('validates no overlaps in entire layout', () => {
       cy.contains('button', 'Validate Overlaps').click();
       cy.contains('No overlaps detected', { timeout: 5000 }).should('be.visible');

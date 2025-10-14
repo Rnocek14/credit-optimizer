@@ -91,7 +91,10 @@ export function createCollapsedView(
     position: { x: 0, y: 0 },
   });
 
+  // Phase 1 Fix: Declare edges at top of function scope (BEFORE any usage)
+  const edges: V3Edge[] = [];
   let visibleNodes: V3Node[] = [];
+  
   const makeBundle = (id: string, year: 1 | 2 | 3 | 4, trackId?: TrackId) => {
     const key = trackId ? `y${year}-${trackId}` : `y${year}`;
     const kids = byYearTrack.get(key) ?? [];
@@ -153,11 +156,22 @@ export function createCollapsedView(
   makeBundle("y3-ds-bundle", 3, "ds");
   makeBundle("y4-bundle", 4);
 
-  // FIX #1: Whitelist - Filter gates to only include academic year gates (not job gates)
+  // Phase 2 Fix: Filter out empty bundles before continuing
+  visibleNodes = visibleNodes.filter(n => {
+    if (n.type !== 'track-bundle') return true;
+    const hasChildren = n.data.childCount > 0;
+    if (!hasChildren && import.meta.env.DEV) {
+      console.warn(`[Collapsed View] Filtered empty bundle: ${n.id}`);
+    }
+    return hasChildren;
+  });
+
+  // Phase 3 Fix: Include job gates (lpType === 'job') in addition to academic gates
   const academicGates = gates.filter(g => {
     const hasYear = typeof g.data.year === 'number' && g.data.year >= 1 && g.data.year <= 4;
     const isAcademicGate = g.data.programId !== 'lifepath' || hasYear;
-    return isAcademicGate;
+    const isJobGate = g.data.lpType === 'job';
+    return isAcademicGate || isJobGate;
   });
 
   if (import.meta.env.DEV) {
@@ -302,8 +316,7 @@ export function createCollapsedView(
   const idOf = (want: BundleId) =>
     visibleNodes.find((n) => n.id === want)?.id;
 
-  const edges: V3Edge[] = [];
-  
+  // Phase 1 Fix: edges already declared at top of function (line 95)
   // Add remapped checkpoint edges FIRST (before bundle edges)
   edges.push(...dedupedCheckpointEdges);
   
@@ -364,7 +377,7 @@ export function createCollapsedView(
   }
   const finalEdges = Array.from(edgeById.values());
 
-  // FIX #5: Edge validation logging
+  // Phase 6: Comprehensive diagnostic logging
   if (import.meta.env.DEV) {
     console.log('[Collapsed View] Final edge merge:', {
       spineEdges: edges.length,
@@ -380,6 +393,31 @@ export function createCollapsedView(
       spineEdges: finalEdges.filter(e => e.kind === 'spine').length,
       edgeBreakdown: finalEdges.map(e => ({ id: e.id, kind: e.kind, isCheckpoint: !!(e.data as any)?.isCheckpointEdge }))
     });
+
+    console.log('[Collapsed View] Final graph summary:', {
+      visibleNodes: visibleNodes.length,
+      bundles: visibleNodes.filter(n => n.type === 'track-bundle').length,
+      checkpoints: visibleNodes.filter(n => n.type === 'checkpoint').length,
+      gates: visibleNodes.filter(n => n.type === 'gate').length,
+      jobGates: visibleNodes.filter(n => n.type === 'gate' && n.data?.lpType === 'job').length,
+      edges: finalEdges.length,
+      emptyBundleCheck: visibleNodes.filter(n => n.type === 'track-bundle' && n.data.childCount === 0).length
+    });
+
+    // Verify no orphan edges
+    const nodeIds = new Set(visibleNodes.map(n => n.id));
+    const orphanEdges = finalEdges.filter(e => !nodeIds.has(e.source) || !nodeIds.has(e.target));
+    if (orphanEdges.length > 0) {
+      console.error('[Collapsed View] ⚠️ Orphan edges detected:', orphanEdges.map(e => ({
+        id: e.id,
+        source: e.source,
+        sourceExists: nodeIds.has(e.source),
+        target: e.target,
+        targetExists: nodeIds.has(e.target)
+      })));
+    } else {
+      console.log('[Collapsed View] ✅ No orphan edges');
+    }
   }
 
   return { visibleNodes, visibleEdges: finalEdges, bundles };
