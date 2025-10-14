@@ -435,7 +435,10 @@ function createTierBundles(fullGraph: V3Graph): {
         childCount: card.childCount,
         totalCredits: card.totalCredits,
         isExpanded: false,
-        tier // Preserve tier for layout
+        tier, // Preserve tier for layout
+        trackId: undefined, // No track split in tier mode
+        programId: 'lifepath', // Semantic tag for debugging
+        lpType: 'tier-bundle' // Helps distinguish in logs
       },
       position: { x: 0, y: 0 }
     });
