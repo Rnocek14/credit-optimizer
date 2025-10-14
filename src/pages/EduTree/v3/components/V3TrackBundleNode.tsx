@@ -97,7 +97,7 @@ export default function V3TrackBundleNode({ data }: Props) {
       <div className="mt-1 text-xs text-muted-foreground">
         {data.tier !== undefined && <span>Tier {data.tier} • </span>}
         <span>{getItemLabel()}</span>
-        {typeCounts && typeCounts.courses > 0 && (
+        {totalCredits > 0 && (
           <span> • {totalCredits} credits</span>
         )}
         {getCredentialBadge() && (

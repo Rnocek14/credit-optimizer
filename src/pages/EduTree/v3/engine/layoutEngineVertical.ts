@@ -221,8 +221,9 @@ function layoutByTier(nodes: V3Node[], t: VerticalTokens): V3Node[] {
     const sourceNode = nodes.find(n => n.id === cp.data?.sourceNodeId);
     if (sourceNode) {
       const sourceHeight = isGate(sourceNode) ? t.GATE_HEIGHT : t.NODE_HEIGHT;
+      const checkpointOffset = sourceHeight + t.VERTICAL_GAP; // 120 + 88 = 208px
       cp.position.x = sourceNode.position.x;
-      cp.position.y = snap(sourceNode.position.y + sourceHeight + t.VERTICAL_GAP, t.GRID);
+      cp.position.y = snap(sourceNode.position.y + checkpointOffset, t.GRID);
       
       if (import.meta.env.DEV) {
         console.log('[Vertical Layout] Checkpoint positioned:', {
