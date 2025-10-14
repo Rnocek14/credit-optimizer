@@ -1,5 +1,6 @@
 import * as React from "react";
 import { Handle, Position } from '@xyflow/react';
+import { ChevronDown } from 'lucide-react';
 
 type TrackId = "se" | "ds" | undefined;
 
@@ -12,6 +13,7 @@ interface Props {
     totalCredits: number;
     isExpanded?: boolean;
     onToggle?: () => void;
+    tier?: number;
   };
 }
 
@@ -45,24 +47,20 @@ export default function V3TrackBundleNode({ data }: Props) {
         <div className="font-semibold text-sm truncate">{title}</div>
         <button
           onClick={onToggle}
-          className="text-xs px-2 py-1 rounded border border-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 flex-shrink-0"
+          className="text-xs px-2 py-1 rounded border border-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 flex-shrink-0 flex items-center gap-1"
           title={isExpanded ? "Collapse" : "Expand"}
         >
-          {isExpanded ? "−" : "+"}
+          {isExpanded ? "−" : <ChevronDown className="h-3 w-3" />}
         </button>
       </div>
 
-      <div className="mt-1 text-xs text-muted-foreground flex items-center gap-3">
-        <span>{childCount} courses</span>
-        <span className="opacity-60">•</span>
-        <span>{totalCredits} credits</span>
+      <div className="mt-1 text-xs text-muted-foreground">
+        {data.tier !== undefined && <span>Tier {data.tier} • </span>}
+        <span>{childCount} courses • {totalCredits} credits</span>
         {trackId && (
-          <>
-            <span className="opacity-60">•</span>
-            <span className="font-bold text-[10px] px-1.5 py-0.5 rounded bg-background/80">
-              {trackId.toUpperCase()}
-            </span>
-          </>
+          <span className="ml-2 font-bold text-[10px] px-1.5 py-0.5 rounded bg-background/80">
+            {trackId.toUpperCase()}
+          </span>
         )}
       </div>
       </div>

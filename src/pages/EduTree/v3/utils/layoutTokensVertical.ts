@@ -21,10 +21,10 @@ export const VERT = Object.freeze({
   GATE_HEIGHT: 80,
 
   // Vertical gap between items in the spine
-  VERTICAL_GAP: 80,
+  VERTICAL_GAP: 88,
   
   // Tier spacing for checkpoint injection (Phase 3)
-  TIER_SPACING_PX: 160,
+  TIER_SPACING_PX: 184,
 
   // Horizontal separation for Y3 SE/DS tracks (side-by-side)
   H_SPACING: 320,

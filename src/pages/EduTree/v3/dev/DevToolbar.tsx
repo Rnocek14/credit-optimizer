@@ -78,6 +78,26 @@ export function DevToolbar({ nodes, checkpointsEnabled = false, onToggleCheckpoi
           ℹ️ Checkpoints always enabled in vertical mode
         </div>
       )}
+      
+      <button 
+        className="px-3 py-1 rounded bg-muted hover:bg-muted/80 text-sm"
+        onClick={() => {
+          const dump = (window as any).__dumpV3?.();
+          if (!dump) return;
+          console.log('=== TIER BUNDLE DIAGNOSTIC ===');
+          console.table(dump.nodes.map((n: any) => ({
+            id: n.id,
+            type: n.type,
+            tier: n.data?.tier,
+            year: n.data?.year,
+            lpType: n.data?.lpType,
+            x: n.position?.x,
+            y: n.position?.y
+          })));
+        }}
+      >
+        Dump Tier Info
+      </button>
     </div>
   );
 }

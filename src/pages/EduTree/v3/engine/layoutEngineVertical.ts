@@ -196,8 +196,14 @@ function layoutByTier(nodes: V3Node[], t: VerticalTokens): V3Node[] {
       const node = tierNodes[0];
       node.position.x = snap(t.CENTER_X, t.GRID);
       node.position.y = snap(cursorY, t.GRID);
+    } else if (tierNodes.length === 2) {
+      // Two nodes: Y3-style split (symmetrical around center)
+      tierNodes[0].position.x = snap(t.CENTER_X - t.H_SPACING / 2, t.GRID);
+      tierNodes[0].position.y = snap(cursorY, t.GRID);
+      tierNodes[1].position.x = snap(t.CENTER_X + t.H_SPACING / 2, t.GRID);
+      tierNodes[1].position.y = snap(cursorY, t.GRID);
     } else {
-      // Multiple nodes: spread horizontally around center
+      // 3+ nodes: spread horizontally around center
       const totalWidth = (tierNodes.length - 1) * t.H_SPACING;
       const startX = t.CENTER_X - totalWidth / 2;
       
