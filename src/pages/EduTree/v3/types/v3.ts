@@ -106,11 +106,16 @@ export interface V3NodeData {
   topItems?: Array<{ id: string; title: string; credits: number; provider: string }>;
   providers?: string[];
   
-  // Requirement-specific fields  
+  // Requirement-specific fields (multiple aliases for LifePath compatibility)
   credits_needed?: number;
   credits?: number;
+  creditValue?: number;
   estimatedHours?: number;
+  hours?: number;
+  duration?: number;
   cost?: number;
+  price?: number;
+  tuition?: number;
   
   // Comparison fields (for Track Gate)
   showCompare?: boolean;

@@ -109,14 +109,23 @@ export function createCollapsedView(
       : `Year ${year}`;
 
     // PRIORITY 1A & 1B: Fix credit aggregation + enrich with time/cost/provider data (year mode)
-    const totalCredits = kids.reduce((s, n) => s + (n.data.credits ?? n.data.credits_needed ?? 0), 0);
-    const estimatedTime = kids.reduce((s, n) => s + (n.data.estimatedHours ?? 0), 0);
-    const estimatedCost = kids.reduce((s, n) => s + (n.data.cost ?? 0), 0);
+    const totalCredits = kids.reduce((s, n) => {
+      const c = n.data?.credits ?? n.data?.totalCredits ?? n.data?.credits_needed ?? n.data?.creditValue ?? 0;
+      return s + (Number.isFinite(c) ? c : 0);
+    }, 0);
+    const estimatedTime = kids.reduce((s, n) => {
+      const t = n.data?.estimatedHours ?? n.data?.hours ?? n.data?.duration ?? 0;
+      return s + (Number.isFinite(t) ? t : 0);
+    }, 0);
+    const estimatedCost = kids.reduce((s, n) => {
+      const c = n.data?.cost ?? n.data?.price ?? n.data?.tuition ?? 0;
+      return s + (Number.isFinite(c) ? c : 0);
+    }, 0);
     
     const topItems = kids.slice(0, 3).map(n => ({
       id: n.id,
       title: n.data.title ?? n.id,
-      credits: n.data.credits ?? n.data.credits_needed ?? 0,
+      credits: n.data.credits ?? n.data.totalCredits ?? n.data.credits_needed ?? n.data.creditValue ?? 0,
       provider: n.data.provider ?? n.data.slug?.split(':')[0] ?? 'Unknown'
     }));
     
@@ -447,15 +456,24 @@ function createTierBundles(fullGraph: V3Graph): {
     const bundleId = `tier-${tier}-bundle`;
     
     // PRIORITY 1A & 1B: Fix credit aggregation + enrich with time/cost/provider data
-    const totalCredits = children.reduce((s, n) => s + (n.data.credits ?? n.data.credits_needed ?? 0), 0);
-    const estimatedTime = children.reduce((s, n) => s + (n.data.estimatedHours ?? 0), 0);
-    const estimatedCost = children.reduce((s, n) => s + (n.data.cost ?? 0), 0);
+    const totalCredits = children.reduce((s, n) => {
+      const c = n.data?.credits ?? n.data?.totalCredits ?? n.data?.credits_needed ?? n.data?.creditValue ?? 0;
+      return s + (Number.isFinite(c) ? c : 0);
+    }, 0);
+    const estimatedTime = children.reduce((s, n) => {
+      const t = n.data?.estimatedHours ?? n.data?.hours ?? n.data?.duration ?? 0;
+      return s + (Number.isFinite(t) ? t : 0);
+    }, 0);
+    const estimatedCost = children.reduce((s, n) => {
+      const c = n.data?.cost ?? n.data?.price ?? n.data?.tuition ?? 0;
+      return s + (Number.isFinite(c) ? c : 0);
+    }, 0);
     
     // Top 3 items for preview
     const topItems = children.slice(0, 3).map(n => ({
       id: n.id,
       title: n.data.title ?? n.id,
-      credits: n.data.credits ?? n.data.credits_needed ?? 0,
+      credits: n.data.credits ?? n.data.totalCredits ?? n.data.credits_needed ?? n.data.creditValue ?? 0,
       provider: n.data.provider ?? n.data.slug?.split(':')[0] ?? 'Unknown'
     }));
     
