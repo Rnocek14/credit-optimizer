@@ -57,7 +57,7 @@ function CanvasInner({ nodes: initialNodes, edges: initialEdges, overlays, onNod
       // Convert to React Flow format
       const reactFlowNodes: Node[] = positioned.map(node => {
         const isGhostNode = node.className?.includes('ghost-node');
-        const isCourseNode = node.type === NodeType.Course;
+        const isCourseNode = [NodeType.Course, NodeType.Requirement, NodeType.Bundle].includes(node.type);
         
         return {
           id: node.id,
@@ -83,7 +83,7 @@ function CanvasInner({ nodes: initialNodes, edges: initialEdges, overlays, onNod
     }
 
     applyLayout();
-  }, [initialNodes, initialEdges, fitView]);
+  }, [initialNodes, initialEdges, fitView, onNodeClick]);
 
   // Manual ghost node positioning when Compare overlay is active
   useEffect(() => {
@@ -184,9 +184,12 @@ function CanvasInner({ nodes: initialNodes, edges: initialEdges, overlays, onNod
       maxZoom={2}
       defaultEdgeOptions={{ type: 'default' }}
       onNodeClick={(event, node) => {
-        // Only trigger for course nodes that have the onClick handler
+        // Trigger for all nodes that render as CourseNode component
+        const courseNodeTypes = [NodeType.Course, NodeType.Requirement, NodeType.Bundle];
         const nodeData = node.data as any;
-        if (node.type === NodeType.Course && typeof nodeData?.onClick === 'function') {
+        
+        if (courseNodeTypes.includes(node.type as NodeType) && typeof nodeData?.onClick === 'function') {
+          console.log('[V4 Canvas] Node clicked:', node.id, node.type);
           nodeData.onClick();
         }
       }}

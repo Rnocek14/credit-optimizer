@@ -3,7 +3,7 @@
  * Spine-first academic planner with overlay system
  */
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { ReactFlowProvider } from '@xyflow/react';
 import { Button } from '@/components/ui/button';
 import { seed60NodePlan } from './data/seed60NodePlan';
@@ -34,9 +34,10 @@ export default function EduTreeV4Page() {
     setOverlays(prev => ({ ...prev, [name]: !prev[name] }));
   };
 
-  const handleNodeClick = (nodeId: string) => {
+  const handleNodeClick = useCallback((nodeId: string) => {
+    console.log('[V4 Page] Opening node detail for:', nodeId);
     openNodeDetail(nodeId);
-  };
+  }, [openNodeDetail]);
 
   const handleSelectProvider = (institutionId: string, teacherId?: string) => {
     if (selectedNodeId) {

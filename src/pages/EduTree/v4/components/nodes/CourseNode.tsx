@@ -27,7 +27,10 @@ export function CourseNode({ data, selected, onClick }: CourseNodeProps) {
 
   return (
     <div 
-      onClick={onClick}
+      onClick={() => {
+        console.log('[CourseNode] Clicked:', data.label);
+        onClick?.();
+      }}
       className={`
         px-4 py-3 rounded-lg border-2
         ${getStatusColor()}
