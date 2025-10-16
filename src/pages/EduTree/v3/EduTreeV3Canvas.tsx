@@ -313,6 +313,9 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
     setSelectedNodeId(null);
     setFocusedEdges(new Set());
     
+    // Also clear any other UI state (hover, pin, marquee, keyboard focus if they exist)
+    // These will be no-ops if the setters don't exist yet, but future-proofing
+    
     const newSource = useLifePathSource ? null : 'lifepath';
     
     // Update URL params
@@ -413,16 +416,17 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
   useEffect(() => {
     console.log('[V3 Canvas] Building graph from seed/data…');
 
-    // Guard: don't build SEED when LifePath is loading (prevents double-build)
-    if (isLifePath && !lifepathReady) {
-      console.log('[V3 Canvas] LifePath data still loading, skipping build');
-      return;
-    }
-    
-    // Guard: don't build SEED when LifePath source is selected
-    if (useLifePathSource && !isLifePath) {
-      console.log('[V3 Canvas] Waiting for LifePath source to load...');
-      return;
+    // GUARD: If LifePath source is selected, ONLY build LifePath (never seed)
+    if (useLifePathSource) {
+      if (!lifepathReady) {
+        console.log('[V3 Canvas] LifePath data still loading, skipping build');
+        return;
+      }
+      // LifePath is ready, continue with LifePath build
+      console.log('[V3 Canvas] Building LifePath graph');
+    } else {
+      // Seed mode: use seed data
+      console.log('[V3 Canvas] Building Seed graph');
     }
     
     // Use bridged data if available, otherwise adapt V2 seed
@@ -520,7 +524,8 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
     // Collapse logic: always collapse unless alternative is selected
     const shouldCollapse = !selectedAlternative;
     
-    // Create collapsed view (NOT memoized - we're inside useEffect)
+    // Create collapsed view with memoization
+    const collapsedViewKey = `${mode}|${shouldCollapse}|${positionedFull.nodes.length}`;
     const { visibleNodes, visibleEdges, bundles: bundleMap } = shouldCollapse
       ? createCollapsedView(positionedFull, mode)
       : {
@@ -883,6 +888,13 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
 
   // Phase 1 Fix: Reliable fitView with proper timing
   const didFitRef = useRef(false);
+  
+  // Reset fitView ref when mode changes
+  const mode = useLifePathSource ? CollapsedMode.Tier : CollapsedMode.Year;
+  useEffect(() => {
+    didFitRef.current = false;
+  }, [mode]);
+  
   useEffect(() => {
     if (nodes.length === 0) return;
     
