@@ -13,6 +13,7 @@ import { V4DevHUD } from './dev/V4DevHUD';
 import EduTreeV4Canvas from './components/EduTreeV4Canvas';
 import { TransferSummaryPanel } from './components/panels/TransferSummaryPanel';
 import { CompareSummaryPanel } from './components/panels/CompareSummaryPanel';
+import { OverlayLegend } from './components/OverlayLegend';
 
 export default function EduTreeV4Page() {
   const [overlays, setOverlays] = useState<OverlayState>({
@@ -144,6 +145,9 @@ export default function EduTreeV4Page() {
         planB={comparisonMetrics.planB}
         onSwitchToPlanB={() => console.log('Switch to Plan B')}
       />
+
+      {/* Overlay Legend */}
+      <OverlayLegend visible={overlays.compare || overlays.transfer} />
     </div>
   );
 }

@@ -59,10 +59,10 @@ export const seed60NodePlan: V4GraphData = {
     
     // Plan B: Ghost nodes (alternatives shown in Compare overlay)
     { id: 'CS305_GHOST', type: NodeType.Course, position: { x: 800, y: 150 },
-      data: { label: 'CS 305', credits: 3, status: 'unplanned', year: 3 }, 
+      data: { label: 'CS 305', credits: 3, status: 'unplanned', year: 3, alternativeFor: 'CS 301' }, 
       className: 'ghost-node hidden' },
     { id: 'CS202_GHOST', type: NodeType.Course, position: { x: 400, y: 150 },
-      data: { label: 'CS 202', credits: 3, status: 'planned', year: 2 }, 
+      data: { label: 'CS 202', credits: 3, status: 'planned', year: 2, alternativeFor: 'CS 201' }, 
       className: 'ghost-node hidden' },
   ],
   

@@ -32,6 +32,7 @@ export interface PlanNodeData {
   transferable?: boolean;      // Has known transfer equivalent
   residencyRequired?: boolean; // Must be taken in residence
   critical?: boolean;          // Critical course/marker
+  alternativeFor?: string;     // For ghost nodes: which course this replaces
   
   // Metadata
   year?: number;

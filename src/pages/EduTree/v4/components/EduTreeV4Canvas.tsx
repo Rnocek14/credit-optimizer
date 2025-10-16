@@ -44,6 +44,7 @@ const edgeTypes = {
 function CanvasInner({ nodes: initialNodes, edges: initialEdges, overlays }: EduTreeV4CanvasProps) {
   const [nodes, setNodes] = useState<Node[]>([]);
   const [edges, setEdges] = useState<Edge[]>([]);
+  const [layoutedNodes, setLayoutedNodes] = useState<Node[]>([]);
   const { fitView } = useReactFlow();
 
   // Apply layout on mount
@@ -65,6 +66,7 @@ function CanvasInner({ nodes: initialNodes, edges: initialEdges, overlays }: Edu
         };
       });
 
+      setLayoutedNodes(reactFlowNodes);
       setNodes(reactFlowNodes);
       
       console.log('[V4 Canvas] Layout complete, fitted view');
@@ -76,7 +78,35 @@ function CanvasInner({ nodes: initialNodes, edges: initialEdges, overlays }: Edu
     }
 
     applyLayout();
-  }, [initialNodes, initialEdges, fitView, overlays.compare]);
+  }, [initialNodes, initialEdges, fitView]);
+
+  // Manual ghost node positioning when Compare overlay is active
+  useEffect(() => {
+    if (!overlays.compare || layoutedNodes.length === 0) return;
+    
+    const updatedNodes = layoutedNodes.map(node => {
+      const isGhost = node.type === 'ghost';
+      if (!isGhost) return node;
+      
+      // Find the source node this ghost replaces
+      const alternativeFor = node.data.alternativeFor;
+      if (!alternativeFor) return node;
+      
+      const sourceNode = layoutedNodes.find(n => n.data.label === alternativeFor);
+      if (!sourceNode) return node;
+      
+      // Position ghost node in the same column as source, offset below by 80px
+      return {
+        ...node,
+        position: {
+          x: sourceNode.position.x,
+          y: sourceNode.position.y + 80,
+        },
+      };
+    });
+    
+    setNodes(updatedNodes);
+  }, [overlays.compare, layoutedNodes]);
 
   // Update edge visibility based on overlays
   useEffect(() => {
