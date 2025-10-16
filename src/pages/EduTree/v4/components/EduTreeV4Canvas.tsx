@@ -82,7 +82,7 @@ function CanvasInner({ nodes: initialNodes, edges: initialEdges, overlays }: Edu
 
   // Manual ghost node positioning when Compare overlay is active
   useEffect(() => {
-    if (!overlays.compare || layoutedNodes.length === 0) return;
+    if (layoutedNodes.length === 0) return;
     
     const updatedNodes = layoutedNodes.map(node => {
       const isGhost = node.type === 'ghost';
@@ -102,6 +102,7 @@ function CanvasInner({ nodes: initialNodes, edges: initialEdges, overlays }: Edu
           x: sourceNode.position.x,
           y: sourceNode.position.y + 80,
         },
+        hidden: !overlays.compare, // Show when compare is active, hide otherwise
       };
     });
     
