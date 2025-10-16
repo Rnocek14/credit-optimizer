@@ -7,25 +7,31 @@ type TrackId = "se" | "ds" | undefined;
 interface Props {
   data: {
     title: string;
-    year: 1 | 2 | 3 | 4;
+    year?: 1 | 2 | 3 | 4;
     trackId?: TrackId;
     childCount: number;
     totalCredits: number;
     isExpanded?: boolean;
     onToggle?: () => void;
     tier?: number;
+    tierIndex?: number;
+    bundleKind?: 'year' | 'tier';
     typeCounts?: { courses: number; credentials: number; skills: number; jobs: number };
   };
 }
 
 export default function V3TrackBundleNode({ data }: Props) {
-  const { title, trackId, childCount, totalCredits, isExpanded, onToggle, typeCounts } = data;
-  const color =
-    trackId === "se"
+  const { title, trackId, childCount, totalCredits, isExpanded, onToggle, typeCounts, bundleKind, tierIndex } = data;
+  
+  const isTier = bundleKind === 'tier';
+  
+  const color = isTier
+    ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/20" // Tier styling
+    : trackId === "se"
       ? "border-blue-500 bg-blue-50 dark:bg-blue-950/20"
       : trackId === "ds"
-      ? "border-violet-500 bg-violet-50 dark:bg-violet-950/20"
-      : "border-slate-400 bg-slate-50 dark:bg-slate-800/40";
+        ? "border-violet-500 bg-violet-50 dark:bg-violet-950/20"
+        : "border-slate-400 bg-slate-50 dark:bg-slate-800/40";
 
   // Smart label based on content type
   const getItemLabel = () => {
@@ -95,7 +101,12 @@ export default function V3TrackBundleNode({ data }: Props) {
       </div>
 
       <div className="mt-1 text-xs text-muted-foreground">
-        {data.tier !== undefined && <span>Tier {data.tier} • </span>}
+        {isTier && tierIndex !== undefined && (
+          <span className="font-semibold text-emerald-700 dark:text-emerald-400">
+            Tier {tierIndex + 1} • 
+          </span>
+        )}
+        {!isTier && data.tier !== undefined && <span>Tier {data.tier} • </span>}
         <span>{getItemLabel()}</span>
         {totalCredits > 0 && (
           <span> • {totalCredits} credits</span>

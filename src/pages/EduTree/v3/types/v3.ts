@@ -106,6 +106,8 @@ export interface V3NodeData {
   topItems?: Array<{ id: string; title: string; credits: number; provider: string }>;
   providers?: string[];
   typeCounts?: { courses: number; credentials: number; skills: number; jobs: number };
+  bundleKind?: 'year' | 'tier'; // NEW: Distinguishes year bundles from tier bundles
+  tierIndex?: number; // NEW: 0-based tier index for tier bundles
   
   // Requirement-specific fields (multiple aliases for LifePath compatibility)
   credits_needed?: number;

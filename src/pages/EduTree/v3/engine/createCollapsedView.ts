@@ -38,6 +38,7 @@ export interface BundleCard {
   topItems?: Array<{ id: string; title: string; credits: number; provider: string }>;
   providers?: string[];
   typeCounts?: { courses: number; credentials: number; skills: number; jobs: number };
+  bundleKind?: 'year' | 'tier'; // Distinguishes year bundles from tier bundles
 }
 
 /**
@@ -114,7 +115,8 @@ function createCollapsedViewYear(fullGraph: V3Graph): {
       estimatedCost: b.estimatedCost,
       topItems: b.topItems,
       providers: b.providers,
-      typeCounts: b.typeCounts
+      typeCounts: b.typeCounts,
+      bundleKind: b.bundleKind // Pass through bundleKind
     },
     position: { x: 0, y: 0 },
   });
@@ -171,7 +173,8 @@ function createCollapsedViewYear(fullGraph: V3Graph): {
       estimatedCost,
       topItems,
       providers,
-      typeCounts
+      typeCounts,
+      bundleKind: 'year' // NEW: Mark as year bundle
     };
     bundles.set(id, card);
     visibleNodes.push(bundleNode(card));
@@ -540,7 +543,8 @@ function createCollapsedViewTier(fullGraph: V3Graph): {
   for (const [tier, children] of byTier.entries()) {
     if (children.length === 0) continue;
 
-    const bundleId = `tier-${tier}-bundle`;
+    const bundleId = `bundle:tier:${tier}`;
+    const title = `Tier ${tier + 1}`;
     
     // PRIORITY 1A & 1B: Type-aware aggregation using metrics utilities
     const totalCredits = children.reduce((s, n) => s + creditFromNode(n), 0);
@@ -563,8 +567,8 @@ function createCollapsedViewTier(fullGraph: V3Graph): {
     
     const card: BundleCard = {
       id: bundleId,
-      year: Math.min(tier + 1, 4) as 1|2|3|4,
-      title: children[0]?.data?.tierLabel || `Tier ${tier}`,
+      tier,
+      title,
       childCount: children.length,
       totalCredits,
       childIds: children.map(n => n.id),
@@ -572,7 +576,8 @@ function createCollapsedViewTier(fullGraph: V3Graph): {
       estimatedCost,
       topItems,
       providers,
-      typeCounts
+      typeCounts,
+      bundleKind: 'tier' // Mark as tier bundle
     };
 
     bundles.set(bundleId, card);
@@ -580,12 +585,13 @@ function createCollapsedViewTier(fullGraph: V3Graph): {
       id: bundleId,
       type: 'track-bundle',
       data: {
-        year: card.year,
-        title: card.title,
+        title,
+        bundleKind: 'tier',
+        tierIndex: tier,
+        tier,
         childCount: card.childCount,
         totalCredits: card.totalCredits,
         isExpanded: false,
-        tier,
         trackId: undefined,
         programId: 'lifepath',
         lpType: 'tier-bundle',
@@ -593,9 +599,17 @@ function createCollapsedViewTier(fullGraph: V3Graph): {
         estimatedTime: card.estimatedTime,
         estimatedCost: card.estimatedCost,
         topItems: card.topItems,
-        providers: card.providers
+        providers: card.providers,
+        typeCounts: card.typeCounts
       },
       position: { x: 0, y: 0 }
+    });
+    
+    console.log(`[Tier Bundles] Created bundle ${bundleId}:`, {
+      tier,
+      title,
+      childCount: children.length,
+      totalCredits
     });
   }
 

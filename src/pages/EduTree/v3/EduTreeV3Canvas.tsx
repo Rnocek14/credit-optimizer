@@ -326,8 +326,6 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
     
     // Force graph rebuild
     setCurrentGraph(null);
-    
-    // Show feedback with gentle fitView after render
     toast.success(`Switched to ${newSource ? 'LifePath' : 'Seed'} data`, {
       description: newSource 
         ? 'Loading real fork alternatives...' 
@@ -415,10 +413,15 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
   useEffect(() => {
     console.log('[V3 Canvas] Building graph from seed/data…');
 
-    // Guard: don't build until LifePath graph is ready
+    // Guard: don't build SEED when LifePath is loading (prevents double-build)
     if (isLifePath && !lifepathReady) {
       console.log('[V3 Canvas] LifePath data still loading, skipping build');
-      toast.info('Loading Life Path data...', { duration: 2000 });
+      return;
+    }
+    
+    // Guard: don't build SEED when LifePath source is selected
+    if (useLifePathSource && !isLifePath) {
+      console.log('[V3 Canvas] Waiting for LifePath source to load...');
       return;
     }
     
