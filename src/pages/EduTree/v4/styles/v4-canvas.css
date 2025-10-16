@@ -61,3 +61,23 @@
   stroke-dasharray: 8 4;
   opacity: 0.6;
 }
+
+/* Compare edges (Plan A → Plan B alternatives) */
+.compare-edge path {
+  stroke: #a855f7; /* purple-500 */
+  stroke-width: 2px;
+  stroke-dasharray: 6 4;
+  opacity: 1;
+  marker-end: url(#react-flow__arrowclosed);
+  transition: opacity 0.3s ease, stroke-width 0.2s ease;
+}
+
+.compare-edge.hidden path {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.compare-edge:hover path {
+  stroke: #c084fc; /* lighter purple */
+  stroke-width: 3px;
+}

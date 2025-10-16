@@ -12,6 +12,7 @@ import { useV4DebugTools } from './hooks/useV4DebugTools';
 import { V4DevHUD } from './dev/V4DevHUD';
 import EduTreeV4Canvas from './components/EduTreeV4Canvas';
 import { TransferSummaryPanel } from './components/panels/TransferSummaryPanel';
+import { CompareSummaryPanel } from './components/panels/CompareSummaryPanel';
 
 export default function EduTreeV4Page() {
   const [overlays, setOverlays] = useState<OverlayState>({
@@ -46,6 +47,24 @@ export default function EduTreeV4Page() {
       sources,
     };
   }, [nodes]);
+
+  // Calculate comparison metrics for Plan A vs Plan B
+  const comparisonMetrics = useMemo(() => {
+    return {
+      planA: {
+        name: 'Plan A',
+        totalCost: 45000,
+        completionTime: '4 years',
+        transferCredits: 4,
+      },
+      planB: {
+        name: 'Plan B',
+        totalCost: 42000,
+        completionTime: '3.5 years',
+        transferCredits: 12,
+      }
+    };
+  }, []);
 
   const residencyMetrics = useMemo(() => {
     const completedInResidence = nodes.filter(
@@ -113,9 +132,17 @@ export default function EduTreeV4Page() {
 
       {/* Transfer Summary Panel */}
       <TransferSummaryPanel 
-        visible={overlays.transfer} 
+        visible={overlays.transfer && !overlays.compare} 
         transferCredits={transferMetrics}
         residency={residencyMetrics}
+      />
+
+      {/* Compare Summary Panel */}
+      <CompareSummaryPanel
+        visible={overlays.compare}
+        planA={comparisonMetrics.planA}
+        planB={comparisonMetrics.planB}
+        onSwitchToPlanB={() => console.log('Switch to Plan B')}
       />
     </div>
   );

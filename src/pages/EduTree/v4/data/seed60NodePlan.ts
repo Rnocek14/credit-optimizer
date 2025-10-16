@@ -56,6 +56,14 @@ export const seed60NodePlan: V4GraphData = {
     // Year 4 courses
     { id: 'CS401', type: NodeType.Course, position: { x: 1200, y: 100 },
       data: { label: 'CS 401 Capstone', credits: 3, status: 'unplanned', year: 4, residencyRequired: true } },
+    
+    // Plan B: Ghost nodes (alternatives shown in Compare overlay)
+    { id: 'CS305_GHOST', type: NodeType.Course, position: { x: 800, y: 150 },
+      data: { label: 'CS 305', credits: 3, status: 'unplanned', year: 3 }, 
+      className: 'ghost-node hidden' },
+    { id: 'CS202_GHOST', type: NodeType.Course, position: { x: 400, y: 150 },
+      data: { label: 'CS 202', credits: 3, status: 'planned', year: 2 }, 
+      className: 'ghost-node hidden' },
   ],
   
   edges: [
@@ -78,5 +86,11 @@ export const seed60NodePlan: V4GraphData = {
     // Elective fulfillment
     { id: 'e-CS320-ELEC', source: 'CS320', target: 'ELEC_REQ', type: EdgeType.Fulfills, className: 'fulfill-edge' },
     { id: 'e-CS340-ELEC', source: 'CS340', target: 'ELEC_REQ', type: EdgeType.Fulfills, className: 'fulfill-edge' },
+    
+    // Compare edges (Plan A → Plan B alternatives, hidden by default)
+    { id: 'e-CS301-CS305', source: 'CS301', target: 'CS305_GHOST', type: EdgeType.Equivalency, 
+      className: 'compare-edge hidden', hidden: true },
+    { id: 'e-CS201-CS202', source: 'CS201', target: 'CS202_GHOST', type: EdgeType.Equivalency, 
+      className: 'compare-edge hidden', hidden: true },
   ]
 };

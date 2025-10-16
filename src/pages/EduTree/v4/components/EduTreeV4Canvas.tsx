@@ -15,8 +15,10 @@ import { PlanNode, PlanEdge, NodeType, EdgeType, OverlayState } from '../types/v
 import { layoutSpineGraph } from '../engine/layoutEngine';
 import { SpineNode } from './nodes/SpineNode';
 import { CourseNode } from './nodes/CourseNode';
+import { GhostCourseNode } from './nodes/GhostCourseNode';
 import { ExternalNode } from './nodes/ExternalNode';
 import { TransferEdge } from './edges/TransferEdge';
+import { CompareEdge } from './edges/CompareEdge';
 import '../styles/v4-canvas.css';
 
 interface EduTreeV4CanvasProps {
@@ -31,10 +33,12 @@ const nodeTypes = {
   [NodeType.External]: ExternalNode,
   [NodeType.Requirement]: CourseNode,
   [NodeType.Bundle]: CourseNode,
+  ghost: GhostCourseNode,
 };
 
 const edgeTypes = {
   transfer: TransferEdge,
+  compare: CompareEdge,
 };
 
 function CanvasInner({ nodes: initialNodes, edges: initialEdges, overlays }: EduTreeV4CanvasProps) {
@@ -49,12 +53,17 @@ function CanvasInner({ nodes: initialNodes, edges: initialEdges, overlays }: Edu
       const positioned = await layoutSpineGraph(initialNodes, initialEdges);
       
       // Convert to React Flow format
-      const reactFlowNodes: Node[] = positioned.map(node => ({
-        id: node.id,
-        type: node.type,
-        position: node.position,
-        data: { ...node.data },
-      }));
+      const reactFlowNodes: Node[] = positioned.map(node => {
+        const isGhostNode = node.className?.includes('ghost-node');
+        
+        return {
+          id: node.id,
+          type: isGhostNode ? 'ghost' : node.type,
+          position: node.position,
+          data: { ...node.data },
+          hidden: isGhostNode && !overlays.compare,
+        };
+      });
 
       setNodes(reactFlowNodes);
       
@@ -67,36 +76,61 @@ function CanvasInner({ nodes: initialNodes, edges: initialEdges, overlays }: Edu
     }
 
     applyLayout();
-  }, [initialNodes, initialEdges, fitView]);
+  }, [initialNodes, initialEdges, fitView, overlays.compare]);
 
   // Update edge visibility based on overlays
   useEffect(() => {
     const reactFlowEdges: Edge[] = initialEdges.map(edge => {
       const isEquivEdge = edge.type === EdgeType.Equivalency;
-      const shouldHide = isEquivEdge && !overlays.transfer;
+      const isCompareEdge = edge.className?.includes('compare-edge');
+      
+      // Determine visibility
+      const shouldHideTransfer = isEquivEdge && !isCompareEdge && !overlays.transfer;
+      const shouldHideCompare = isCompareEdge && !overlays.compare;
+      const shouldHide = shouldHideTransfer || shouldHideCompare;
+
+      // Determine edge type
+      let edgeType = 'default';
+      if (isEquivEdge && !isCompareEdge && overlays.transfer) {
+        edgeType = 'transfer';
+      } else if (isCompareEdge && overlays.compare) {
+        edgeType = 'compare';
+      }
+
+      // Determine label
+      let label = edge.label;
+      if (isEquivEdge && !isCompareEdge) {
+        label = 'Transfer: CLEP Exam';
+      } else if (isCompareEdge) {
+        label = 'Alternative';
+      }
 
       return {
         id: edge.id,
         source: edge.source,
         target: edge.target,
-        type: isEquivEdge && overlays.transfer ? 'transfer' : 'default',
+        type: edgeType,
         animated: edge.animated,
-        label: isEquivEdge ? 'Transfer: CLEP Exam' : edge.label,
-        labelStyle: isEquivEdge ? { 
+        label,
+        labelStyle: (isEquivEdge || isCompareEdge) ? { 
           fontSize: 11, 
           fill: 'hsl(var(--foreground))',
           fontWeight: 600 
         } : undefined,
-        data: isEquivEdge ? {
+        data: isEquivEdge && !isCompareEdge ? {
           policyText: "Transfer Credit: CLEP Calculus → MATH 151\nPolicy: Max 60 transfer credits. CLEP requires score ≥ 50.\nResidency: Must complete ≥30 credits in residence."
+        } : isCompareEdge ? {
+          comparisonText: "Plan B Alternative: Lighter prerequisites\nSaves 1 year completion time"
         } : undefined,
         className: `
           ${edge.type === EdgeType.Sequence ? 'spine-edge' : ''}
           ${edge.type === EdgeType.Prerequisite ? 'prereq-edge' : ''}
-          ${edge.type === EdgeType.Equivalency ? 'equiv-edge' : ''}
+          ${edge.type === EdgeType.Equivalency && !isCompareEdge ? 'equiv-edge' : ''}
+          ${isCompareEdge ? 'compare-edge' : ''}
           ${edge.type === EdgeType.Fulfills ? 'fulfill-edge' : ''}
           ${shouldHide ? 'hidden' : ''}
         `.trim(),
+        hidden: shouldHide,
       };
     });
 
