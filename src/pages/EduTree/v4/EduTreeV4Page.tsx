@@ -4,11 +4,13 @@
  */
 
 import { useState } from 'react';
+import { ReactFlowProvider } from '@xyflow/react';
 import { Button } from '@/components/ui/button';
 import { seed60NodePlan } from './data/seed60NodePlan';
 import { OverlayState } from './types/v4';
 import { useV4DebugTools } from './hooks/useV4DebugTools';
 import { V4DevHUD } from './dev/V4DevHUD';
+import EduTreeV4Canvas from './components/EduTreeV4Canvas';
 
 export default function EduTreeV4Page() {
   const [overlays, setOverlays] = useState<OverlayState>({
@@ -62,18 +64,15 @@ export default function EduTreeV4Page() {
         </Button>
       </div>
       
-      {/* Placeholder Canvas */}
-      <div className="flex items-center justify-center h-[calc(100vh-120px)]">
-        <div className="text-center space-y-4">
-          <div className="text-6xl">🌲</div>
-          <h2 className="text-xl font-semibold text-foreground">V4 Canvas Coming Soon</h2>
-          <p className="text-muted-foreground">
-            Loaded {nodes.length} nodes, {edges.length} edges
-          </p>
-          <p className="text-sm text-muted-foreground">
-            Active overlay: {debugTools.activeOverlay || 'none'}
-          </p>
-        </div>
+      {/* V4 Canvas */}
+      <div className="h-[calc(100vh-120px)] w-full">
+        <ReactFlowProvider>
+          <EduTreeV4Canvas 
+            nodes={nodes} 
+            edges={edges} 
+            overlays={overlays}
+          />
+        </ReactFlowProvider>
       </div>
     </div>
   );
