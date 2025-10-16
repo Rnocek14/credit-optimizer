@@ -20,7 +20,7 @@ export function V4DevHUD({ debugState }: V4DevHUDProps) {
   const validation = validateGraph();
 
   return (
-    <div className="fixed bottom-4 right-4 z-50 bg-background/95 border rounded-lg p-4 shadow-lg max-w-sm">
+    <div className="fixed top-4 right-4 z-50 bg-background/95 border rounded-lg p-4 shadow-lg max-w-sm">
       <div className="text-xs font-mono space-y-2">
         <div className="font-bold text-primary">V4 Debug HUD</div>
         
