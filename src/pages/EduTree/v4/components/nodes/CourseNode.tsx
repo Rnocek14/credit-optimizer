@@ -8,10 +8,9 @@ import { PlanNodeData } from '../../types/v4';
 interface CourseNodeProps {
   data: PlanNodeData;
   selected?: boolean;
-  onClick?: () => void;
 }
 
-export function CourseNode({ data, selected, onClick }: CourseNodeProps) {
+export function CourseNode({ data, selected }: CourseNodeProps) {
   const getStatusColor = () => {
     switch (data.status) {
       case 'completed':
@@ -29,7 +28,7 @@ export function CourseNode({ data, selected, onClick }: CourseNodeProps) {
     <div 
       onClick={() => {
         console.log('[CourseNode] Clicked:', data.label);
-        onClick?.();
+        data.onClick?.();
       }}
       className={`
         px-4 py-3 rounded-lg border-2
@@ -37,7 +36,7 @@ export function CourseNode({ data, selected, onClick }: CourseNodeProps) {
         transition-all duration-200
         min-w-[100px]
         ${selected ? 'ring-2 ring-primary ring-offset-2' : ''}
-        ${onClick ? 'cursor-pointer hover-scale' : ''}
+        ${data.onClick ? 'cursor-pointer hover-scale' : ''}
         ${data.selectedProviderId ? 'ring-1 ring-primary ring-offset-1' : ''}
       `}
     >

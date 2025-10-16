@@ -47,6 +47,9 @@ export interface PlanNodeData {
   // Selected provider (when user chooses alternate)
   selectedProviderId?: string;
   selectedTeacherId?: string;
+  
+  // Event handlers (injected at layout time)
+  onClick?: () => void;
 }
 
 export interface PlanNode {
