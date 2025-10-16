@@ -19,11 +19,39 @@ export const seed60NodePlan: V4GraphData = {
     
     // Year 1 courses
     { id: 'CS101', type: NodeType.Course, position: { x: 0, y: 100 },
-      data: { label: 'CS 101', credits: 3, status: 'completed', year: 1 } },
+      data: { 
+        label: 'CS 101', 
+        credits: 3, 
+        status: 'completed', 
+        year: 1,
+        skillTags: ['programming', 'python', 'computer-science'],
+        difficulty: 'beginner',
+        estimatedHours: 120,
+      } 
+    },
     { id: 'MATH151', type: NodeType.Course, position: { x: 0, y: 200 },
-      data: { label: 'MATH 151', credits: 4, status: 'completed', year: 1, transferable: true } },
+      data: { 
+        label: 'MATH 151', 
+        credits: 4, 
+        status: 'completed', 
+        year: 1, 
+        transferable: true,
+        skillTags: ['calculus', 'mathematics'],
+        difficulty: 'intermediate',
+        estimatedHours: 150,
+      } 
+    },
     { id: 'ENG101', type: NodeType.Course, position: { x: 0, y: 300 },
-      data: { label: 'ENG 101', credits: 3, status: 'completed', year: 1 } },
+      data: { 
+        label: 'ENG 101', 
+        credits: 3, 
+        status: 'completed', 
+        year: 1,
+        skillTags: ['writing', 'composition', 'english'],
+        difficulty: 'beginner',
+        estimatedHours: 100,
+      } 
+    },
     
     // Transfer equivalency for MATH151
     { id: 'MATH151_CLEP', type: NodeType.External, position: { x: -150, y: 200 },
@@ -32,17 +60,63 @@ export const seed60NodePlan: V4GraphData = {
     
     // Year 2 courses
     { id: 'CS201', type: NodeType.Course, position: { x: 400, y: 100 },
-      data: { label: 'CS 201', credits: 3, status: 'planned', year: 2 } },
+      data: { 
+        label: 'CS 201', 
+        credits: 3, 
+        status: 'planned', 
+        year: 2,
+        skillTags: ['data-structures', 'algorithms', 'programming'],
+        difficulty: 'intermediate',
+        estimatedHours: 140,
+      } 
+    },
     { id: 'CS205', type: NodeType.Course, position: { x: 400, y: 200 },
-      data: { label: 'CS 205', credits: 3, status: 'planned', year: 2 } },
+      data: { 
+        label: 'CS 205', 
+        credits: 3, 
+        status: 'planned', 
+        year: 2,
+        skillTags: ['software-engineering', 'programming'],
+        difficulty: 'intermediate',
+        estimatedHours: 130,
+      } 
+    },
     { id: 'MATH251', type: NodeType.Course, position: { x: 400, y: 300 },
-      data: { label: 'MATH 251', credits: 4, status: 'planned', year: 2 } },
+      data: { 
+        label: 'MATH 251', 
+        credits: 4, 
+        status: 'planned', 
+        year: 2,
+        skillTags: ['calculus', 'mathematics', 'linear-algebra'],
+        difficulty: 'intermediate',
+        estimatedHours: 160,
+      } 
+    },
     
     // Year 3 courses
     { id: 'CS301', type: NodeType.Course, position: { x: 800, y: 100 },
-      data: { label: 'CS 301', credits: 3, status: 'unplanned', year: 3, critical: true } },
+      data: { 
+        label: 'CS 301', 
+        credits: 3, 
+        status: 'unplanned', 
+        year: 3, 
+        critical: true,
+        skillTags: ['database', 'sql', 'data-management'],
+        difficulty: 'advanced',
+        estimatedHours: 150,
+      } 
+    },
     { id: 'CS310', type: NodeType.Course, position: { x: 800, y: 200 },
-      data: { label: 'CS 310', credits: 3, status: 'unplanned', year: 3 } },
+      data: { 
+        label: 'CS 310', 
+        credits: 3, 
+        status: 'unplanned', 
+        year: 3,
+        skillTags: ['operating-systems', 'computer-architecture'],
+        difficulty: 'advanced',
+        estimatedHours: 160,
+      } 
+    },
     
     // Elective requirement bundle
     { id: 'ELEC_REQ', type: NodeType.Requirement, position: { x: 800, y: 350 },

@@ -7,12 +7,14 @@ import { useState, useMemo } from 'react';
 import { ReactFlowProvider } from '@xyflow/react';
 import { Button } from '@/components/ui/button';
 import { seed60NodePlan } from './data/seed60NodePlan';
-import { OverlayState, NodeType } from './types/v4';
+import { OverlayState, NodeType, PlanNode } from './types/v4';
 import { useV4DebugTools } from './hooks/useV4DebugTools';
+import { useNodeSelection } from './hooks/useNodeSelection';
 import { V4DevHUD } from './dev/V4DevHUD';
 import EduTreeV4Canvas from './components/EduTreeV4Canvas';
 import { TransferSummaryPanel } from './components/panels/TransferSummaryPanel';
 import { CompareSummaryPanel } from './components/panels/CompareSummaryPanel';
+import { NodeDetailPanel } from './components/panels/NodeDetailPanel';
 import { OverlayLegend } from './components/OverlayLegend';
 
 export default function EduTreeV4Page() {
@@ -21,13 +23,29 @@ export default function EduTreeV4Page() {
     compare: false,
     optimize: false
   });
-
-  const { nodes, edges } = seed60NodePlan;
+  
+  const [nodes, setNodes] = useState<PlanNode[]>(seed60NodePlan.nodes);
+  const { edges } = seed60NodePlan;
+  
+  const { selectedNodeId, isPanelOpen, openNodeDetail, closeNodeDetail, updateNodeProvider } = useNodeSelection();
   const debugTools = useV4DebugTools(nodes, edges, overlays);
 
   const toggleOverlay = (name: keyof OverlayState) => {
     setOverlays(prev => ({ ...prev, [name]: !prev[name] }));
   };
+
+  const handleNodeClick = (nodeId: string) => {
+    openNodeDetail(nodeId);
+  };
+
+  const handleSelectProvider = (institutionId: string, teacherId?: string) => {
+    if (selectedNodeId) {
+      const updatedNodes = updateNodeProvider(nodes, selectedNodeId, institutionId, teacherId);
+      setNodes(updatedNodes);
+    }
+  };
+
+  const selectedNode = selectedNodeId ? nodes.find(n => n.id === selectedNodeId) : null;
 
   // Calculate transfer metrics from seed data
   const transferMetrics = useMemo(() => {
@@ -127,6 +145,7 @@ export default function EduTreeV4Page() {
             nodes={nodes} 
             edges={edges} 
             overlays={overlays}
+            onNodeClick={handleNodeClick}
           />
         </ReactFlowProvider>
       </div>
@@ -148,6 +167,14 @@ export default function EduTreeV4Page() {
 
       {/* Overlay Legend */}
       <OverlayLegend visible={overlays.compare || overlays.transfer} />
+
+      {/* Node Detail Panel */}
+      <NodeDetailPanel
+        isOpen={isPanelOpen}
+        nodeData={selectedNode?.data || null}
+        onClose={closeNodeDetail}
+        onSelectProvider={handleSelectProvider}
+      />
     </div>
   );
 }

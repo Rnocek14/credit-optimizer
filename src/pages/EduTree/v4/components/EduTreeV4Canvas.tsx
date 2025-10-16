@@ -25,6 +25,7 @@ interface EduTreeV4CanvasProps {
   nodes: PlanNode[];
   edges: PlanEdge[];
   overlays: OverlayState;
+  onNodeClick?: (nodeId: string) => void;
 }
 
 const nodeTypes = {
@@ -41,7 +42,7 @@ const edgeTypes = {
   compare: CompareEdge,
 };
 
-function CanvasInner({ nodes: initialNodes, edges: initialEdges, overlays }: EduTreeV4CanvasProps) {
+function CanvasInner({ nodes: initialNodes, edges: initialEdges, overlays, onNodeClick }: EduTreeV4CanvasProps) {
   const [nodes, setNodes] = useState<Node[]>([]);
   const [edges, setEdges] = useState<Edge[]>([]);
   const [layoutedNodes, setLayoutedNodes] = useState<Node[]>([]);
@@ -56,12 +57,16 @@ function CanvasInner({ nodes: initialNodes, edges: initialEdges, overlays }: Edu
       // Convert to React Flow format
       const reactFlowNodes: Node[] = positioned.map(node => {
         const isGhostNode = node.className?.includes('ghost-node');
+        const isCourseNode = node.type === NodeType.Course;
         
         return {
           id: node.id,
           type: isGhostNode ? 'ghost' : node.type,
           position: node.position,
-          data: { ...node.data },
+          data: { 
+            ...node.data,
+            onClick: isCourseNode && onNodeClick ? () => onNodeClick(node.id) : undefined,
+          },
           hidden: isGhostNode && !overlays.compare,
         };
       });

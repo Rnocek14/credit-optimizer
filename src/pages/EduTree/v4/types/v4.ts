@@ -38,6 +38,15 @@ export interface PlanNodeData {
   year?: number;
   term?: string;
   expiresOn?: string;         // For expired credits
+  
+  // Provider matching fields
+  skillTags?: string[];        // Skills required for matching providers
+  difficulty?: 'beginner' | 'intermediate' | 'advanced';
+  estimatedHours?: number;     // Typical completion time
+  
+  // Selected provider (when user chooses alternate)
+  selectedProviderId?: string;
+  selectedTeacherId?: string;
 }
 
 export interface PlanNode {
