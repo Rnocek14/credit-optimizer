@@ -517,18 +517,14 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
     // Collapse logic: always collapse unless alternative is selected
     const shouldCollapse = !selectedAlternative;
     
-    // Memoized collapsed view with proper cache invalidation
-    const { visibleNodes, visibleEdges, bundles: bundleMap } = useMemo(() => {
-      if (!shouldCollapse) {
-        return {
+    // Create collapsed view (NOT memoized - we're inside useEffect)
+    const { visibleNodes, visibleEdges, bundles: bundleMap } = shouldCollapse
+      ? createCollapsedView(positionedFull, mode)
+      : {
           visibleNodes: positionedFull.nodes,
           visibleEdges: positionedFull.edges,
           bundles: new Map()
         };
-      }
-      
-      return createCollapsedView(positionedFull, mode);
-    }, [positionedFull, shouldCollapse, mode]);
     
     if (import.meta.env.DEV) {
       console.log('[Graph Build] Collapsed view decision:', {
