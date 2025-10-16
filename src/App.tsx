@@ -131,6 +131,7 @@ import { useEffect } from "react";
 import EduTree from "./pages/EduTree";
 import EduTreeV2Page from "./pages/EduTree/EduTreeV2Page";
 import EduTreeV3Route from "./pages/EduTree/v3";
+import EduTreeV4Route from "./pages/EduTree/v4";
 import { EduTreeError } from "./components/EduTreeError";
 import { PageLoader } from "./components/PageLoader";
 import { isFeatureEnabled } from "./lib/featureFlags";
@@ -304,6 +305,17 @@ const App = () => {
           <Route 
             path="/edu-tree-v3-harness" 
             element={<EduTreeV3Route />}
+          />
+          {/* EduTree V4 - Spine-first planner with overlay system */}
+          <Route 
+            path="/edu-tree-v4" 
+            element={
+              <EnhancedErrorBoundary fallback={<EduTreeError />}>
+                <React.Suspense fallback={<PageLoader message="Loading V4 planner..." />}>
+                  <EduTreeV4Route />
+                </React.Suspense>
+              </EnhancedErrorBoundary>
+            }
           />
           {/* Sandbox route for TrackOverlayPOC (dev only) */}
           <Route path="/sandbox/track-overlay" element={<TrackOverlayPOCPage />} />
