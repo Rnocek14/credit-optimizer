@@ -16,6 +16,7 @@ import { layoutSpineGraph } from '../engine/layoutEngine';
 import { SpineNode } from './nodes/SpineNode';
 import { CourseNode } from './nodes/CourseNode';
 import { ExternalNode } from './nodes/ExternalNode';
+import { TransferEdge } from './edges/TransferEdge';
 import '../styles/v4-canvas.css';
 
 interface EduTreeV4CanvasProps {
@@ -30,6 +31,10 @@ const nodeTypes = {
   [NodeType.External]: ExternalNode,
   [NodeType.Requirement]: CourseNode,
   [NodeType.Bundle]: CourseNode,
+};
+
+const edgeTypes = {
+  transfer: TransferEdge,
 };
 
 function CanvasInner({ nodes: initialNodes, edges: initialEdges, overlays }: EduTreeV4CanvasProps) {
@@ -74,9 +79,17 @@ function CanvasInner({ nodes: initialNodes, edges: initialEdges, overlays }: Edu
         id: edge.id,
         source: edge.source,
         target: edge.target,
-        type: 'default',
+        type: isEquivEdge && overlays.transfer ? 'transfer' : 'default',
         animated: edge.animated,
-        label: edge.label,
+        label: isEquivEdge ? 'Transfer: CLEP Exam' : edge.label,
+        labelStyle: isEquivEdge ? { 
+          fontSize: 11, 
+          fill: 'hsl(var(--foreground))',
+          fontWeight: 600 
+        } : undefined,
+        data: isEquivEdge ? {
+          policyText: "Transfer Credit: CLEP Calculus → MATH 151\nPolicy: Max 60 transfer credits. CLEP requires score ≥ 50.\nResidency: Must complete ≥30 credits in residence."
+        } : undefined,
         className: `
           ${edge.type === EdgeType.Sequence ? 'spine-edge' : ''}
           ${edge.type === EdgeType.Prerequisite ? 'prereq-edge' : ''}
@@ -95,6 +108,7 @@ function CanvasInner({ nodes: initialNodes, edges: initialEdges, overlays }: Edu
       nodes={nodes}
       edges={edges}
       nodeTypes={nodeTypes}
+      edgeTypes={edgeTypes}
       fitView
       minZoom={0.1}
       maxZoom={2}

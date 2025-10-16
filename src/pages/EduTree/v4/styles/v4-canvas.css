@@ -29,7 +29,7 @@
   stroke-dasharray: 6 4;
   opacity: 1;
   marker-end: url(#react-flow__arrowclosed);
-  transition: opacity 0.3s ease;
+  transition: opacity 0.3s ease, stroke-width 0.2s ease;
 }
 
 .equiv-edge.hidden path {

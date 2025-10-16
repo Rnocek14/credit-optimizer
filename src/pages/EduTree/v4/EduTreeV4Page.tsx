@@ -3,14 +3,15 @@
  * Spine-first academic planner with overlay system
  */
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { ReactFlowProvider } from '@xyflow/react';
 import { Button } from '@/components/ui/button';
 import { seed60NodePlan } from './data/seed60NodePlan';
-import { OverlayState } from './types/v4';
+import { OverlayState, NodeType } from './types/v4';
 import { useV4DebugTools } from './hooks/useV4DebugTools';
 import { V4DevHUD } from './dev/V4DevHUD';
 import EduTreeV4Canvas from './components/EduTreeV4Canvas';
+import { TransferSummaryPanel } from './components/panels/TransferSummaryPanel';
 
 export default function EduTreeV4Page() {
   const [overlays, setOverlays] = useState<OverlayState>({
@@ -25,6 +26,41 @@ export default function EduTreeV4Page() {
   const toggleOverlay = (name: keyof OverlayState) => {
     setOverlays(prev => ({ ...prev, [name]: !prev[name] }));
   };
+
+  // Calculate transfer metrics from seed data
+  const transferMetrics = useMemo(() => {
+    const externalNodes = nodes.filter(n => n.type === NodeType.External);
+    const transferUsed = externalNodes.reduce((sum, n) => sum + (n.data.credits || 0), 0);
+    
+    const sources = {
+      CLEP: externalNodes
+        .filter(n => n.data.source === 'exam')
+        .reduce((sum, n) => sum + (n.data.credits || 0), 0),
+      AP: 0, // Add when you have AP nodes
+      ACE: 0, // Add when you have ACE nodes
+    };
+    
+    return {
+      used: transferUsed,
+      cap: 60, // Policy: max 60 transfer credits
+      sources,
+    };
+  }, [nodes]);
+
+  const residencyMetrics = useMemo(() => {
+    const completedInResidence = nodes.filter(
+      n => n.type === NodeType.Course && n.data.status === 'completed'
+    );
+    const residencyCredits = completedInResidence.reduce(
+      (sum, n) => sum + (n.data.credits || 0), 
+      0
+    );
+    
+    return {
+      required: 30, // Policy: must complete 30 credits in residence
+      met: residencyCredits,
+    };
+  }, [nodes]);
 
   return (
     <div className="h-screen w-full bg-background">
@@ -74,6 +110,13 @@ export default function EduTreeV4Page() {
           />
         </ReactFlowProvider>
       </div>
+
+      {/* Transfer Summary Panel */}
+      <TransferSummaryPanel 
+        visible={overlays.transfer} 
+        transferCredits={transferMetrics}
+        residency={residencyMetrics}
+      />
     </div>
   );
 }
