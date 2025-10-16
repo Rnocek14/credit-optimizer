@@ -10,7 +10,9 @@ export function CompareEdge({
   targetX, 
   targetY, 
   data,
-  ...props
+  style,
+  markerEnd,
+  markerStart,
 }: EdgeProps) {
   const [edgePath] = getStraightPath({ sourceX, sourceY, targetX, targetY });
   
@@ -19,7 +21,13 @@ export function CompareEdge({
   
   return (
     <>
-      <BaseEdge id={id} path={edgePath} {...props} />
+      <BaseEdge 
+        id={id} 
+        path={edgePath}
+        style={style}
+        markerEnd={markerEnd}
+        markerStart={markerStart}
+      />
       <title>{comparisonText}</title>
     </>
   );

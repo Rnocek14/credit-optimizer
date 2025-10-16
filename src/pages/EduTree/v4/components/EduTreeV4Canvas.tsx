@@ -183,6 +183,13 @@ function CanvasInner({ nodes: initialNodes, edges: initialEdges, overlays, onNod
       minZoom={0.1}
       maxZoom={2}
       defaultEdgeOptions={{ type: 'default' }}
+      onNodeClick={(event, node) => {
+        // Only trigger for course nodes that have the onClick handler
+        const nodeData = node.data as any;
+        if (node.type === NodeType.Course && typeof nodeData?.onClick === 'function') {
+          nodeData.onClick();
+        }
+      }}
     >
       <Background />
       <Controls />
