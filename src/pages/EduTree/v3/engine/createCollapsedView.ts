@@ -2,17 +2,32 @@
 import type { V3Graph, V3Node, V3Edge } from "../types/v3";
 import { creditFromNode, timeFromNode, costFromNode, countByType } from "./metrics";
 
+// Type-safe mode enum to prevent string drift
+export enum CollapsedMode {
+  Year = 'year',
+  Tier = 'tier'
+}
+
 export type TrackId = "se" | "ds";
 export type BundleId =
   | "y1-bundle"
   | "y2-bundle"
   | "y3-se-bundle"
   | "y3-ds-bundle"
-  | "y4-bundle";
+  | "y4-bundle"
+  | `bundle:tier:${number}`; // Tier bundle IDs
+
+// Precise bundle typing for memoization and rendering
+export type Bundle = {
+  id: BundleId;
+  nodeIds: string[];
+  meta: BundleCard;
+};
 
 export interface BundleCard {
   id: BundleId | string;
-  year: 1 | 2 | 3 | 4;
+  year?: 1 | 2 | 3 | 4;
+  tier?: number;
   trackId?: TrackId;
   title: string;
   childCount: number;
@@ -25,19 +40,32 @@ export interface BundleCard {
   typeCounts?: { courses: number; credentials: number; skills: number; jobs: number };
 }
 
+/**
+ * Router: delegates to year-based or tier-based bundling
+ * Ensures complete separation of bundling logic
+ */
 export function createCollapsedView(
   fullGraph: V3Graph,
-  mode: 'year' | 'tier' = 'year'
+  mode: CollapsedMode = CollapsedMode.Year
 ): {
   visibleNodes: V3Node[];
   visibleEdges: V3Edge[];
   bundles: Map<string, BundleCard>;
 } {
-  if (mode === 'tier') {
-    console.log('[Collapsed View] Using tier-based bundling for LifePath');
-    return createTierBundles(fullGraph);
-  }
+  return mode === CollapsedMode.Tier
+    ? createCollapsedViewTier(fullGraph)
+    : createCollapsedViewYear(fullGraph);
+}
   
+/**
+ * Year-based bundling (seed data)
+ * Bundles nodes by academic year with track gates
+ */
+function createCollapsedViewYear(fullGraph: V3Graph): {
+  visibleNodes: V3Node[];
+  visibleEdges: V3Edge[];
+  bundles: Map<string, BundleCard>;
+} {
   const byYearTrack = new Map<string, V3Node[]>();
   const gates: V3Node[] = [];
   const checkpoints: V3Node[] = [];
@@ -475,8 +503,11 @@ export function collapseBundle(
   return { nodes, edges };
 }
 
-/** Create tier-based bundles for LifePath data */
-function createTierBundles(fullGraph: V3Graph): {
+/**
+ * Tier-based bundling (LifePath data)
+ * Bundles nodes by tier with linear progression (no track gates)
+ */
+function createCollapsedViewTier(fullGraph: V3Graph): {
   visibleNodes: V3Node[];
   visibleEdges: V3Edge[];
   bundles: Map<string, BundleCard>;

@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { validateNoOverlaps } from './engine/overlapValidator';
 import { buildEduTreeGraph, buildEduTreeGraphWithMetrics } from './engine/buildGraph';
-import { createCollapsedView, expandBundle, collapseBundle, BundleCard } from './engine/createCollapsedView';
+import { createCollapsedView, expandBundle, collapseBundle, BundleCard, CollapsedMode } from './engine/createCollapsedView';
 import { injectCheckpoints } from './engine/checkpointManager';
 import { adaptSeedDataV2 } from './engine/v2Adapter';
 import { LAYOUT_TOKENS } from './utils/layoutTokensV3';
@@ -304,9 +304,14 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
   
   // Handler to toggle data source
   const handleToggleDataSource = useCallback(() => {
-    // Clear selection state when switching data sources
+    // Clear ALL transient UI state when switching modes
     setSelectedAlternative(null);
     setSelectedCheckpoint(null);
+    setAlternativesDrawerOpen(false);
+    setShowComparison(false);
+    setCompareDrawerOpen(false);
+    setSelectedNodeId(null);
+    setFocusedEdges(new Set());
     
     const newSource = useLifePathSource ? null : 'lifepath';
     
@@ -319,13 +324,21 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
     }
     setSearchParams(newParams);
     
-    // Show feedback
+    // Force graph rebuild
+    setCurrentGraph(null);
+    
+    // Show feedback with gentle fitView after render
     toast.success(`Switched to ${newSource ? 'LifePath' : 'Seed'} data`, {
       description: newSource 
         ? 'Loading real fork alternatives...' 
         : 'Using demo seed data'
     });
-  }, [useLifePathSource, searchParams, setSearchParams]);
+    
+    // Gentle fitView after mode switch (400ms animation)
+    setTimeout(() => {
+      fitView({ duration: 400, padding: 0.1 });
+    }, 100);
+  }, [useLifePathSource, searchParams, setSearchParams, fitView]);
   
   // Handler to toggle LifePath bundles (beta feature gate)
   const handleToggleLpBundles = useCallback(() => {
@@ -488,14 +501,11 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
       }
     }
     
-    // Phase 3B FIX: Position full graph BEFORE collapse to prevent Line-402 bug
+    // Position full graph BEFORE collapse
+    const mode = useLifePathSource ? CollapsedMode.Tier : CollapsedMode.Year;
     const positionedFull = useVerticalLayout
       ? {
-          nodes: calculateVerticalLayout(
-            fullGraphWithCheckpoints.nodes, 
-            VERT,
-            useLifePathSource ? 'tier' : undefined
-          ),
+          nodes: calculateVerticalLayout(fullGraphWithCheckpoints.nodes, VERT, mode),
           edges: fullGraphWithCheckpoints.edges,
         }
       : (enableMetrics 
@@ -504,48 +514,41 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
     
     setFullGraph(positionedFull);
     
-    // Create collapsed view (progressive disclosure - Step 1)
-    // Feature gate: lp_bundles=1 enables tier-based bundling for LifePath
-    const lpBundlesEnabled = useLifePathSource && searchParams.get('lp_bundles') === '1';
-    
     // Collapse logic: always collapse unless alternative is selected
     const shouldCollapse = !selectedAlternative;
-    const { visibleNodes, visibleEdges, bundles: bundleMap } = shouldCollapse
-      ? createCollapsedView(
-          positionedFull, 
-          lpBundlesEnabled ? 'tier' : 'year'
-        )
-      : {
+    
+    // Memoized collapsed view with proper cache invalidation
+    const { visibleNodes, visibleEdges, bundles: bundleMap } = useMemo(() => {
+      if (!shouldCollapse) {
+        return {
           visibleNodes: positionedFull.nodes,
           visibleEdges: positionedFull.edges,
-          bundles: new Map() // No bundles when expanded
+          bundles: new Map()
         };
+      }
+      
+      return createCollapsedView(positionedFull, mode);
+    }, [positionedFull, shouldCollapse, mode]);
     
     if (import.meta.env.DEV) {
       console.log('[Graph Build] Collapsed view decision:', {
         useLifePathSource,
-        lpBundlesEnabled,
+        mode: mode === CollapsedMode.Tier ? 'TIER' : 'YEAR',
         selectedAlternative: !!selectedAlternative,
         shouldCollapse,
         visibleNodeCount: visibleNodes.length,
-        mode: shouldCollapse 
-          ? (lpBundlesEnabled ? 'TIER BUNDLES - LifePath grouped by tier' : 'COLLAPSED - bundles + gates + checkpoints')
-          : 'EXPANDED - full tree'
+        bundleCount: bundleMap.size
       });
     }
     
     // Position the collapsed view (Step 5: spine edges only)
     const collapsedGraph = { nodes: visibleNodes, edges: visibleEdges };
     
-    // FIX #2: Apply vertical layout to collapsed graph - MUST use visibleEdges
+    // Apply vertical layout with explicit mode parameter
     const positionedCollapsed = useVerticalLayout
       ? { 
-          nodes: calculateVerticalLayout(
-            visibleNodes, 
-            VERT,
-            useLifePathSource ? 'tier' : undefined
-          ), 
-          edges: visibleEdges  // Use visibleEdges directly, not collapsedGraph.edges
+          nodes: calculateVerticalLayout(visibleNodes, VERT, mode), 
+          edges: visibleEdges
         }
       : (enableMetrics
           ? buildEduTreeGraphWithMetrics(collapsedGraph, { enableCheckpoints: false }).graph
@@ -995,9 +998,10 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
     }
     
     // Re-layout after expansion/collapse using correct layout engine
+    const layoutMode = useLifePathSource ? CollapsedMode.Tier : CollapsedMode.Year;
     const positioned = isVertical
       ? { 
-          nodes: calculateVerticalLayout(newGraph.nodes, VERT), 
+          nodes: calculateVerticalLayout(newGraph.nodes, VERT, layoutMode), 
           edges: newGraph.edges 
         }
       : buildEduTreeGraph(newGraph, { enableCheckpoints, meta: sourceMeta });
@@ -1128,9 +1132,10 @@ function EduTreeV3CanvasInner({ enableMetrics = false }: EduTreeV3CanvasProps) {
           };
       
       // 6. Apply vertical layout
+      const layoutMode = useLifePathSource ? CollapsedMode.Tier : CollapsedMode.Year;
       const positioned: V3Graph = useVerticalLayout
         ? {
-            nodes: calculateVerticalLayout(visibleNodes, VERT),
+            nodes: calculateVerticalLayout(visibleNodes, VERT, layoutMode),
             edges: visibleEdges  // Use V3Edge[] directly
           }
         : buildEduTreeGraph({ nodes: visibleNodes, edges: visibleEdges }, { enableCheckpoints, meta: bridgeResult.meta });

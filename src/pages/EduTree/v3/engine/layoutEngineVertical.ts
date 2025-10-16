@@ -13,6 +13,7 @@
 
 import type { V3Node } from '../types/v3';
 import { VERT, type VerticalTokens } from '../utils/layoutTokensVertical';
+import { CollapsedMode } from './createCollapsedView';
 
 const snap = (n: number, grid: number) => Math.round(n / grid) * grid;
 
@@ -136,8 +137,10 @@ function layoutByYear(nodes: V3Node[], t: VerticalTokens): V3Node[] {
   checkpoints.forEach(cp => {
     const sourceNode = nodes.find(n => n.id === cp.data?.sourceNodeId);
     if (sourceNode) {
+      const sourceHeight = isGate(sourceNode) ? t.GATE_HEIGHT : t.NODE_HEIGHT;
+      const checkpointOffset = sourceHeight + t.VERTICAL_GAP; // Year mode: 120 + 88 = 208px
       cp.position.x = sourceNode.position.x;
-      cp.position.y = snap(sourceNode.position.y + t.TIER_SPACING_PX, t.GRID);
+      cp.position.y = snap(sourceNode.position.y + checkpointOffset, t.GRID);
     }
   });
 
@@ -258,12 +261,13 @@ function layoutByTier(nodes: V3Node[], t: VerticalTokens): V3Node[] {
  * 
  * @param nodes - Input nodes (positions will be overwritten)
  * @param tokens - Layout constants (defaults to VERT)
+ * @param mode - Layout mode (Year or Tier)
  * @returns New array of positioned nodes
  */
 export function calculateVerticalLayout(
   nodes: V3Node[],
   tokens: VerticalTokens = VERT,
-  forceMode?: 'year' | 'tier'
+  mode: CollapsedMode = CollapsedMode.Year
 ): V3Node[] {
   const t = tokens;
   const out = nodes.map(n => ({ 
@@ -273,17 +277,12 @@ export function calculateVerticalLayout(
     targetPosition: 'top' as const,
   }));
 
-  // Detect layout mode with explicit override
-  const hasYearData = out.some(n => 
-    typeof n.data?.year === 'number' && n.data.year >= 1 && n.data.year <= 4
-  );
-  
-  const useTierLayout = forceMode === 'tier' || (!forceMode && !hasYearData);
+  // Use mode parameter to select layout algorithm
+  const useTierLayout = mode === CollapsedMode.Tier;
   
   if (import.meta.env.DEV) {
     console.log('[Vertical Layout] Mode selection:', {
-      forceMode,
-      hasYearData,
+      mode,
       selectedMode: useTierLayout ? 'TIER-BASED (LifePath)' : 'YEAR-BASED (Seed)',
       nodeCount: out.length,
       sampleNodes: out.slice(0, 3).map(n => ({ 
