@@ -58,6 +58,9 @@ function CanvasInner({ nodes: initialNodes, edges: initialEdges, overlays, onNod
       const reactFlowNodes: Node[] = positioned.map(node => {
         const isGhostNode = node.className?.includes('ghost-node');
         const isCourseNode = [NodeType.Course, NodeType.Requirement, NodeType.Bundle].includes(node.type);
+        const onClick = isCourseNode && onNodeClick ? () => onNodeClick(node.id) : undefined;
+        
+        console.log(`[Layout] ${node.id}: type=${node.type}, isCourseNode=${isCourseNode}, onClick=${!!onClick}`);
         
         return {
           id: node.id,
@@ -65,7 +68,7 @@ function CanvasInner({ nodes: initialNodes, edges: initialEdges, overlays, onNod
           position: node.position,
           data: { 
             ...node.data,
-            onClick: isCourseNode && onNodeClick ? () => onNodeClick(node.id) : undefined,
+            onClick,
           },
           hidden: isGhostNode && !overlays.compare,
         };
@@ -91,7 +94,10 @@ function CanvasInner({ nodes: initialNodes, edges: initialEdges, overlays, onNod
     
     const updatedNodes = layoutedNodes.map(node => {
       const isGhost = node.type === 'ghost';
-      if (!isGhost) return node;
+      if (!isGhost) {
+        console.log(`[Ghost Effect] ${node.id}: non-ghost, preserving, onClick=${!!node.data.onClick}`);
+        return node;
+      }
       
       // Find the source node this ghost replaces
       const alternativeFor = node.data.alternativeFor;
@@ -187,6 +193,14 @@ function CanvasInner({ nodes: initialNodes, edges: initialEdges, overlays, onNod
         // Trigger for all nodes that render as CourseNode component
         const courseNodeTypes = [NodeType.Course, NodeType.Requirement, NodeType.Bundle];
         const nodeData = node.data as any;
+        
+        console.log('[RF onNodeClick]', {
+          id: node.id,
+          type: node.type,
+          isCourseType: courseNodeTypes.includes(node.type as NodeType),
+          hasOnClick: typeof nodeData?.onClick === 'function',
+          data: nodeData
+        });
         
         if (courseNodeTypes.includes(node.type as NodeType) && typeof nodeData?.onClick === 'function') {
           console.log('[V4 Canvas] Node clicked:', node.id, node.type);
