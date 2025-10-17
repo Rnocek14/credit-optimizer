@@ -1,6 +1,6 @@
 /**
- * 60-node seed data for V4 testing
- * Simulates 4-year plan with transfer credits and prerequisites
+ * Full 4-year CS degree plan with 40+ courses
+ * Total: 120 credits across all categories
  */
 
 import { PlanNode, PlanEdge, NodeType, EdgeType, V4GraphData } from '../types/v4';
@@ -17,26 +17,30 @@ export const seed60NodePlan: V4GraphData = {
     { id: 'year4', type: NodeType.Year, position: { x: 1200, y: 0 }, 
       data: { label: 'Year 4' }, className: 'spine-node' },
     
-    // Year 1 courses
+    // ===== YEAR 1 (30 credits) =====
+    // Fall Semester (15 cr)
     { id: 'CS101', type: NodeType.Course, position: { x: 0, y: 100 },
       data: { 
-        label: 'CS 101', 
+        label: 'CS 101 Intro to CS', 
         credits: 3, 
+        category: 'coreCS',
         status: 'completed', 
         year: 1,
         semester: 'fall',
-        skillTags: ['programming', 'python', 'computer-science'],
+        skillTags: ['programming', 'python'],
         difficulty: 'beginner',
         estimatedHours: 120,
+        fulfills: ['coreCS-foundations'],
       } 
     },
     { id: 'MATH151', type: NodeType.Course, position: { x: 0, y: 200 },
       data: { 
-        label: 'MATH 151', 
+        label: 'MATH 151 Calculus I', 
         credits: 4, 
+        category: 'math',
         status: 'completed', 
         year: 1,
-        semester: 'spring',
+        semester: 'fall',
         transferable: true,
         skillTags: ['calculus', 'mathematics'],
         difficulty: 'intermediate',
@@ -45,115 +49,555 @@ export const seed60NodePlan: V4GraphData = {
     },
     { id: 'ENG101', type: NodeType.Course, position: { x: 0, y: 300 },
       data: { 
-        label: 'ENG 101', 
+        label: 'ENG 101 Composition I', 
         credits: 3, 
+        category: 'genEd',
         status: 'completed', 
         year: 1,
         semester: 'fall',
-        skillTags: ['writing', 'composition', 'english'],
+        skillTags: ['writing', 'composition'],
         difficulty: 'beginner',
         estimatedHours: 100,
       } 
     },
+    { id: 'HIST101', type: NodeType.Course, position: { x: 0, y: 400 },
+      data: { 
+        label: 'HIST 101 World History', 
+        credits: 3, 
+        category: 'genEd',
+        status: 'completed', 
+        year: 1,
+        semester: 'fall',
+        skillTags: ['history', 'humanities'],
+        difficulty: 'beginner',
+        estimatedHours: 90,
+      } 
+    },
+    { id: 'PE101', type: NodeType.Course, position: { x: 0, y: 500 },
+      data: { 
+        label: 'PE 101 Wellness', 
+        credits: 2, 
+        category: 'genEd',
+        status: 'completed', 
+        year: 1,
+        semester: 'fall',
+        difficulty: 'beginner',
+        estimatedHours: 40,
+      } 
+    },
     
-    // Transfer equivalency for MATH151
+    // Spring Semester (15 cr)
+    { id: 'CS150', type: NodeType.Course, position: { x: 0, y: 100 },
+      data: { 
+        label: 'CS 150 Discrete Math', 
+        credits: 3, 
+        category: 'coreCS',
+        status: 'completed', 
+        year: 1,
+        semester: 'spring',
+        skillTags: ['logic', 'mathematics', 'proofs'],
+        difficulty: 'intermediate',
+        estimatedHours: 130,
+      } 
+    },
+    { id: 'MATH152', type: NodeType.Course, position: { x: 0, y: 200 },
+      data: { 
+        label: 'MATH 152 Calculus II', 
+        credits: 4, 
+        category: 'math',
+        status: 'completed', 
+        year: 1,
+        semester: 'spring',
+        skillTags: ['calculus', 'integration'],
+        difficulty: 'intermediate',
+        estimatedHours: 160,
+      } 
+    },
+    { id: 'ENG102', type: NodeType.Course, position: { x: 0, y: 300 },
+      data: { 
+        label: 'ENG 102 Composition II', 
+        credits: 3, 
+        category: 'genEd',
+        status: 'completed', 
+        year: 1,
+        semester: 'spring',
+        skillTags: ['writing', 'research'],
+        difficulty: 'beginner',
+        estimatedHours: 100,
+      } 
+    },
+    { id: 'PHIL105', type: NodeType.Course, position: { x: 0, y: 400 },
+      data: { 
+        label: 'PHIL 105 Logic', 
+        credits: 3, 
+        category: 'genEd',
+        status: 'completed', 
+        year: 1,
+        semester: 'spring',
+        skillTags: ['logic', 'philosophy'],
+        difficulty: 'intermediate',
+        estimatedHours: 110,
+      } 
+    },
+    { id: 'SPCH101', type: NodeType.Course, position: { x: 0, y: 500 },
+      data: { 
+        label: 'SPCH 101 Public Speaking', 
+        credits: 2, 
+        category: 'genEd',
+        status: 'completed', 
+        year: 1,
+        semester: 'spring',
+        difficulty: 'beginner',
+        estimatedHours: 60,
+      } 
+    },
+    
+    // Transfer credit (CLEP)
     { id: 'MATH151_CLEP', type: NodeType.External, position: { x: 0, y: 0 },
       data: { 
         label: 'CLEP Calculus', 
         credits: 4, 
+        category: 'transfer',
         status: 'completed', 
         source: 'exam',
         year: 1,
         semester: 'spring',
         transferable: true,
       }, 
-      className: 'external-node' },
+      className: 'external-node' 
+    },
     
-    // Year 2 courses
+    // ===== YEAR 2 (30 credits) =====
+    // Fall Semester (16 cr)
     { id: 'CS201', type: NodeType.Course, position: { x: 400, y: 100 },
       data: { 
-        label: 'CS 201', 
+        label: 'CS 201 Data Structures', 
         credits: 3, 
-        status: 'planned', 
+        category: 'coreCS',
+        status: 'in-progress', 
         year: 2,
         semester: 'fall',
-        skillTags: ['data-structures', 'algorithms', 'programming'],
+        skillTags: ['data-structures', 'algorithms'],
         difficulty: 'intermediate',
         estimatedHours: 140,
       } 
     },
-    { id: 'CS205', type: NodeType.Course, position: { x: 400, y: 200 },
+    { id: 'MATH251', type: NodeType.Course, position: { x: 400, y: 200 },
       data: { 
-        label: 'CS 205', 
+        label: 'MATH 251 Linear Algebra', 
+        credits: 4, 
+        category: 'math',
+        status: 'in-progress', 
+        year: 2,
+        semester: 'fall',
+        skillTags: ['linear-algebra', 'matrices'],
+        difficulty: 'intermediate',
+        estimatedHours: 160,
+      } 
+    },
+    { id: 'PHYS211', type: NodeType.Course, position: { x: 400, y: 300 },
+      data: { 
+        label: 'PHYS 211 Physics I', 
+        credits: 4, 
+        category: 'math',
+        status: 'in-progress', 
+        year: 2,
+        semester: 'fall',
+        skillTags: ['physics', 'mechanics'],
+        difficulty: 'intermediate',
+        estimatedHours: 150,
+      } 
+    },
+    { id: 'SOC101', type: NodeType.Course, position: { x: 400, y: 400 },
+      data: { 
+        label: 'SOC 101 Sociology', 
         credits: 3, 
+        category: 'genEd',
+        status: 'in-progress', 
+        year: 2,
+        semester: 'fall',
+        skillTags: ['social-science'],
+        difficulty: 'beginner',
+        estimatedHours: 80,
+      } 
+    },
+    { id: 'ART101', type: NodeType.Course, position: { x: 400, y: 500 },
+      data: { 
+        label: 'ART 101 Art History', 
+        credits: 2, 
+        category: 'genEd',
+        status: 'in-progress', 
+        year: 2,
+        semester: 'fall',
+        difficulty: 'beginner',
+        estimatedHours: 60,
+      } 
+    },
+    
+    // Spring Semester (14 cr)
+    { id: 'CS205', type: NodeType.Course, position: { x: 400, y: 100 },
+      data: { 
+        label: 'CS 205 Software Eng', 
+        credits: 3, 
+        category: 'coreCS',
         status: 'planned', 
         year: 2,
         semester: 'spring',
-        skillTags: ['software-engineering', 'programming'],
+        skillTags: ['software-engineering', 'design-patterns'],
         difficulty: 'intermediate',
         estimatedHours: 130,
       } 
     },
-    { id: 'MATH251', type: NodeType.Course, position: { x: 400, y: 300 },
+    { id: 'STAT220', type: NodeType.Course, position: { x: 400, y: 200 },
       data: { 
-        label: 'MATH 251', 
-        credits: 4, 
+        label: 'STAT 220 Statistics', 
+        credits: 3, 
+        category: 'math',
         status: 'planned', 
         year: 2,
-        semester: 'fall',
-        skillTags: ['calculus', 'mathematics', 'linear-algebra'],
+        semester: 'spring',
+        skillTags: ['statistics', 'probability'],
         difficulty: 'intermediate',
-        estimatedHours: 160,
+        estimatedHours: 120,
+      } 
+    },
+    { id: 'PHYS212', type: NodeType.Course, position: { x: 400, y: 300 },
+      data: { 
+        label: 'PHYS 212 Physics II', 
+        credits: 4, 
+        category: 'math',
+        status: 'planned', 
+        year: 2,
+        semester: 'spring',
+        skillTags: ['physics', 'electromagnetism'],
+        difficulty: 'intermediate',
+        estimatedHours: 150,
+      } 
+    },
+    { id: 'PSY101', type: NodeType.Course, position: { x: 400, y: 400 },
+      data: { 
+        label: 'PSY 101 Psychology', 
+        credits: 3, 
+        category: 'genEd',
+        status: 'planned', 
+        year: 2,
+        semester: 'spring',
+        skillTags: ['psychology'],
+        difficulty: 'beginner',
+        estimatedHours: 80,
+      } 
+    },
+    { id: 'MUS101', type: NodeType.Course, position: { x: 400, y: 500 },
+      data: { 
+        label: 'MUS 101 Music Appreciation', 
+        credits: 1, 
+        category: 'genEd',
+        status: 'planned', 
+        year: 2,
+        semester: 'spring',
+        difficulty: 'beginner',
+        estimatedHours: 40,
       } 
     },
     
-    // Year 3 courses
+    // ===== YEAR 3 (30 credits) =====
+    // Fall Semester (15 cr)
     { id: 'CS301', type: NodeType.Course, position: { x: 800, y: 100 },
       data: { 
-        label: 'CS 301', 
+        label: 'CS 301 Databases', 
         credits: 3, 
+        category: 'coreCS',
         status: 'unplanned', 
         year: 3,
         semester: 'fall',
         critical: true,
-        skillTags: ['database', 'sql', 'data-management'],
+        skillTags: ['database', 'sql'],
         difficulty: 'advanced',
         estimatedHours: 150,
       } 
     },
-    { id: 'CS310', type: NodeType.Course, position: { x: 800, y: 200 },
+    { id: 'CS305', type: NodeType.Course, position: { x: 800, y: 200 },
       data: { 
-        label: 'CS 310', 
+        label: 'CS 305 Computer Arch', 
         credits: 3, 
+        category: 'coreCS',
+        status: 'unplanned', 
+        year: 3,
+        semester: 'fall',
+        skillTags: ['computer-architecture', 'assembly'],
+        difficulty: 'advanced',
+        estimatedHours: 140,
+      } 
+    },
+    { id: 'CS320', type: NodeType.Course, position: { x: 800, y: 300 },
+      data: { 
+        label: 'CS 320 Web Dev', 
+        credits: 3, 
+        category: 'elective',
+        status: 'unplanned', 
+        year: 3,
+        semester: 'fall',
+        skillTags: ['web-development', 'javascript'],
+        difficulty: 'intermediate',
+        estimatedHours: 120,
+      } 
+    },
+    { id: 'ECON201', type: NodeType.Course, position: { x: 800, y: 400 },
+      data: { 
+        label: 'ECON 201 Microeconomics', 
+        credits: 3, 
+        category: 'genEd',
+        status: 'unplanned', 
+        year: 3,
+        semester: 'fall',
+        skillTags: ['economics'],
+        difficulty: 'intermediate',
+        estimatedHours: 90,
+      } 
+    },
+    { id: 'ELEC301', type: NodeType.Course, position: { x: 800, y: 500 },
+      data: { 
+        label: 'Free Elective', 
+        credits: 3, 
+        category: 'elective',
+        status: 'unplanned', 
+        year: 3,
+        semester: 'fall',
+        difficulty: 'beginner',
+        estimatedHours: 80,
+      } 
+    },
+    
+    // Spring Semester (15 cr)
+    { id: 'CS310', type: NodeType.Course, position: { x: 800, y: 100 },
+      data: { 
+        label: 'CS 310 Operating Systems', 
+        credits: 3, 
+        category: 'coreCS',
         status: 'unplanned', 
         year: 3,
         semester: 'spring',
-        skillTags: ['operating-systems', 'computer-architecture'],
+        skillTags: ['operating-systems', 'concurrency'],
         difficulty: 'advanced',
         estimatedHours: 160,
       } 
     },
+    { id: 'CS340', type: NodeType.Course, position: { x: 800, y: 200 },
+      data: { 
+        label: 'CS 340 AI/ML', 
+        credits: 3, 
+        category: 'elective',
+        status: 'unplanned', 
+        year: 3,
+        semester: 'spring',
+        skillTags: ['machine-learning', 'ai'],
+        difficulty: 'advanced',
+        estimatedHours: 150,
+      } 
+    },
+    { id: 'BUS220', type: NodeType.Course, position: { x: 800, y: 300 },
+      data: { 
+        label: 'BUS 220 Business Law', 
+        credits: 3, 
+        category: 'genEd',
+        status: 'unplanned', 
+        year: 3,
+        semester: 'spring',
+        skillTags: ['business', 'law'],
+        difficulty: 'beginner',
+        estimatedHours: 80,
+      } 
+    },
+    { id: 'ELEC302', type: NodeType.Course, position: { x: 800, y: 400 },
+      data: { 
+        label: 'Free Elective', 
+        credits: 3, 
+        category: 'elective',
+        status: 'unplanned', 
+        year: 3,
+        semester: 'spring',
+        difficulty: 'beginner',
+        estimatedHours: 80,
+      } 
+    },
+    { id: 'COMM201', type: NodeType.Course, position: { x: 800, y: 500 },
+      data: { 
+        label: 'COMM 201 Communication', 
+        credits: 3, 
+        category: 'genEd',
+        status: 'unplanned', 
+        year: 3,
+        semester: 'spring',
+        difficulty: 'beginner',
+        estimatedHours: 70,
+      } 
+    },
     
-    // Elective requirement bundle
-    { id: 'ELEC_REQ', type: NodeType.Requirement, position: { x: 800, y: 350 },
+    // Elective requirement bundle (kept for comparison overlay testing)
+    { id: 'ELEC_REQ', type: NodeType.Requirement, position: { x: 800, y: 600 },
       data: { label: 'Technical Elective (Choose 1)', status: 'unplanned', year: 3, semester: 'spring' }, 
-      className: 'bundle-node' },
-    { id: 'CS320', type: NodeType.Course, position: { x: 700, y: 450 },
-      data: { label: 'CS 320', credits: 3, status: 'unplanned', year: 3, semester: 'spring' } },
-    { id: 'CS340', type: NodeType.Course, position: { x: 900, y: 450 },
-      data: { label: 'CS 340', credits: 3, status: 'unplanned', year: 3, semester: 'spring' } },
+      className: 'bundle-node' 
+    },
     
-    // Year 4 courses
+    // ===== YEAR 4 (30 credits) =====
+    // Fall Semester (15 cr)
     { id: 'CS401', type: NodeType.Course, position: { x: 1200, y: 100 },
-      data: { label: 'CS 401 Capstone', credits: 3, status: 'unplanned', year: 4, semester: 'fall', residencyRequired: true } },
+      data: { 
+        label: 'CS 401 Capstone I', 
+        credits: 3, 
+        category: 'capstone',
+        status: 'unplanned', 
+        year: 4,
+        semester: 'fall',
+        residencyRequired: true,
+        critical: true,
+        skillTags: ['project-management', 'team-work'],
+        difficulty: 'advanced',
+        estimatedHours: 180,
+      } 
+    },
+    { id: 'CS410', type: NodeType.Course, position: { x: 1200, y: 200 },
+      data: { 
+        label: 'CS 410 Networks', 
+        credits: 3, 
+        category: 'coreCS',
+        status: 'unplanned', 
+        year: 4,
+        semester: 'fall',
+        skillTags: ['networking', 'protocols'],
+        difficulty: 'advanced',
+        estimatedHours: 140,
+      } 
+    },
+    { id: 'CS420', type: NodeType.Course, position: { x: 1200, y: 300 },
+      data: { 
+        label: 'CS 420 Security', 
+        credits: 3, 
+        category: 'elective',
+        status: 'unplanned', 
+        year: 4,
+        semester: 'fall',
+        skillTags: ['security', 'cryptography'],
+        difficulty: 'advanced',
+        estimatedHours: 150,
+      } 
+    },
+    { id: 'ELEC401', type: NodeType.Course, position: { x: 1200, y: 400 },
+      data: { 
+        label: 'Free Elective', 
+        credits: 3, 
+        category: 'elective',
+        status: 'unplanned', 
+        year: 4,
+        semester: 'fall',
+        difficulty: 'beginner',
+        estimatedHours: 80,
+      } 
+    },
+    { id: 'MGMT301', type: NodeType.Course, position: { x: 1200, y: 500 },
+      data: { 
+        label: 'MGMT 301 Leadership', 
+        credits: 3, 
+        category: 'genEd',
+        status: 'unplanned', 
+        year: 4,
+        semester: 'fall',
+        difficulty: 'beginner',
+        estimatedHours: 70,
+      } 
+    },
+    
+    // Spring Semester (15 cr)
+    { id: 'CS490', type: NodeType.Course, position: { x: 1200, y: 100 },
+      data: { 
+        label: 'CS 490 Capstone II', 
+        credits: 3, 
+        category: 'capstone',
+        status: 'unplanned', 
+        year: 4,
+        semester: 'spring',
+        residencyRequired: true,
+        critical: true,
+        skillTags: ['project-development', 'presentation'],
+        difficulty: 'advanced',
+        estimatedHours: 180,
+      } 
+    },
+    { id: 'CS450', type: NodeType.Course, position: { x: 1200, y: 200 },
+      data: { 
+        label: 'CS 450 Cloud Computing', 
+        credits: 3, 
+        category: 'elective',
+        status: 'unplanned', 
+        year: 4,
+        semester: 'spring',
+        skillTags: ['cloud', 'devops'],
+        difficulty: 'advanced',
+        estimatedHours: 140,
+      } 
+    },
+    { id: 'ELEC402', type: NodeType.Course, position: { x: 1200, y: 300 },
+      data: { 
+        label: 'Free Elective', 
+        credits: 3, 
+        category: 'elective',
+        status: 'unplanned', 
+        year: 4,
+        semester: 'spring',
+        difficulty: 'beginner',
+        estimatedHours: 80,
+      } 
+    },
+    { id: 'ELEC403', type: NodeType.Course, position: { x: 1200, y: 400 },
+      data: { 
+        label: 'Free Elective', 
+        credits: 3, 
+        category: 'elective',
+        status: 'unplanned', 
+        year: 4,
+        semester: 'spring',
+        difficulty: 'beginner',
+        estimatedHours: 80,
+      } 
+    },
+    { id: 'PHIL301', type: NodeType.Course, position: { x: 1200, y: 500 },
+      data: { 
+        label: 'PHIL 301 Ethics', 
+        credits: 3, 
+        category: 'genEd',
+        status: 'unplanned', 
+        year: 4,
+        semester: 'spring',
+        difficulty: 'intermediate',
+        estimatedHours: 90,
+      } 
+    },
     
     // Plan B: Ghost nodes (alternatives shown in Compare overlay)
     { id: 'CS305_GHOST', type: NodeType.Course, position: { x: 800, y: 150 },
-      data: { label: 'CS 305', credits: 3, status: 'unplanned', year: 3, semester: 'fall', alternativeFor: 'CS 301' }, 
-      className: 'ghost-node hidden' },
+      data: { 
+        label: 'CS 305', 
+        credits: 3, 
+        category: 'coreCS',
+        status: 'unplanned', 
+        year: 3,
+        semester: 'fall',
+        alternativeFor: 'CS 301' 
+      }, 
+      className: 'ghost-node hidden' 
+    },
     { id: 'CS202_GHOST', type: NodeType.Course, position: { x: 400, y: 150 },
-      data: { label: 'CS 202', credits: 3, status: 'planned', year: 2, semester: 'fall', alternativeFor: 'CS 201' }, 
-      className: 'ghost-node hidden' },
+      data: { 
+        label: 'CS 202', 
+        credits: 3, 
+        category: 'coreCS',
+        status: 'planned', 
+        year: 2,
+        semester: 'fall',
+        alternativeFor: 'CS 201' 
+      }, 
+      className: 'ghost-node hidden' 
+    },
   ],
   
   edges: [
@@ -165,9 +609,12 @@ export const seed60NodePlan: V4GraphData = {
     // Prerequisites
     { id: 'e-CS101-CS201', source: 'CS101', target: 'CS201', type: EdgeType.Prerequisite, className: 'prereq-edge' },
     { id: 'e-CS201-CS301', source: 'CS201', target: 'CS301', type: EdgeType.Prerequisite, className: 'prereq-edge' },
+    { id: 'e-CS201-CS310', source: 'CS201', target: 'CS310', type: EdgeType.Prerequisite, className: 'prereq-edge' },
     { id: 'e-MATH151-MATH251', source: 'MATH151', target: 'MATH251', type: EdgeType.Prerequisite, className: 'prereq-edge' },
     { id: 'e-CS205-CS310', source: 'CS205', target: 'CS310', type: EdgeType.Prerequisite, className: 'prereq-edge' },
     { id: 'e-CS301-CS401', source: 'CS301', target: 'CS401', type: EdgeType.Prerequisite, className: 'prereq-edge' },
+    { id: 'e-CS310-CS410', source: 'CS310', target: 'CS410', type: EdgeType.Prerequisite, className: 'prereq-edge' },
+    { id: 'e-CS401-CS490', source: 'CS401', target: 'CS490', type: EdgeType.Prerequisite, className: 'prereq-edge' },
     
     // Transfer equivalency (hidden by default)
     { id: 'e-CLEP-MATH151', source: 'MATH151_CLEP', target: 'MATH151', type: EdgeType.Equivalency, 

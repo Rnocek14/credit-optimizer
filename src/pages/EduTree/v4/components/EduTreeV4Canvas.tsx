@@ -1,7 +1,7 @@
 /**
  * EduTree V4 Canvas - React Flow canvas with ELK layout
  */
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { 
   ReactFlow, 
   Background, 
@@ -11,8 +11,10 @@ import {
   useReactFlow
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { PlanNode, PlanEdge, NodeType, EdgeType, OverlayState } from '../types/v4';
-import { hybridSpineLayout } from '../engine/layoutEngine';
+import { PlanNode, PlanEdge, NodeType, EdgeType, OverlayState, DegreeRequirements } from '../types/v4';
+import { hybridSpineLayout, enrichYearNodesWithSummaries } from '../engine/layoutEngine';
+import { validateDegree } from '../engine/degreeValidator';
+import { DegreeValidationPanel } from './DegreeValidationPanel';
 import { SpineNode } from './nodes/SpineNode';
 import { CourseNode } from './nodes/CourseNode';
 import { GhostCourseNode } from './nodes/GhostCourseNode';
@@ -21,6 +23,19 @@ import { TransferEdge } from './edges/TransferEdge';
 import { CompareEdge } from './edges/CompareEdge';
 import '../styles/v4-canvas.css';
 import '../styles/EduTreeV4.css';
+
+// CS Degree Requirements
+const CS_DEGREE_REQUIREMENTS: DegreeRequirements = {
+  totalCredits: 120,
+  categories: {
+    coreCS: { required: 45, label: 'Core CS' },
+    math: { required: 18, label: 'Math & Science' },
+    genEd: { required: 30, label: 'General Education' },
+    elective: { required: 21, label: 'Electives' },
+    capstone: { required: 6, label: 'Capstone' }
+  },
+  residencyMinimum: 30
+};
 
 interface EduTreeV4CanvasProps {
   nodes: PlanNode[];
@@ -49,14 +64,22 @@ function CanvasInner({ nodes: initialNodes, edges: initialEdges, overlays, onNod
   const [layoutedNodes, setLayoutedNodes] = useState<Node[]>([]);
   const { fitView } = useReactFlow();
 
+  // Validate degree requirements
+  const validation = useMemo(() => 
+    validateDegree(initialNodes, CS_DEGREE_REQUIREMENTS),
+    [initialNodes]
+  );
+
   // Apply layout on mount
   useEffect(() => {
     async function applyLayout() {
       console.log('[V4 Canvas] Applying Hybrid layout...');
+      // First apply layout, then enrich year nodes with summaries
       const positioned = hybridSpineLayout(initialNodes);
+      const enriched = enrichYearNodesWithSummaries(positioned);
       
       // Convert to React Flow format
-    const reactFlowNodes: Node[] = positioned.map(node => {
+    const reactFlowNodes: Node[] = enriched.map(node => {
       const isGhostNode = node.className?.includes('ghost-node');
       const nodeType = isGhostNode ? 'ghost' : node.type;
       
@@ -253,6 +276,11 @@ function CanvasInner({ nodes: initialNodes, edges: initialEdges, overlays, onNod
 
   return (
     <div className="relative w-full h-full">
+      {/* Validation Panel */}
+      <div className="absolute top-4 right-4 z-10 w-80">
+        <DegreeValidationPanel validation={validation} />
+      </div>
+      
       {/* Semester column separators */}
       <div className="semester-separators">
         {nodes

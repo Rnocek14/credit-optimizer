@@ -44,6 +44,10 @@ export interface PlanNodeData {
   term?: string;
   expiresOn?: string;         // For expired credits
   
+  // Course categorization for degree validation
+  category?: 'coreCS' | 'math' | 'genEd' | 'elective' | 'capstone' | 'transfer';
+  fulfills?: string[];        // Array of requirement IDs this course satisfies
+  
   // Provider matching fields
   skillTags?: string[];        // Skills required for matching providers
   difficulty?: 'beginner' | 'intermediate' | 'advanced';
@@ -52,6 +56,15 @@ export interface PlanNodeData {
   // Selected provider (when user chooses alternate)
   selectedProviderId?: string;
   selectedTeacherId?: string;
+  
+  // Year node summary data (for SpineNode)
+  creditsSummary?: {
+    planned: number;
+    required: number;
+    byCategory: Record<string, number>;
+  };
+  loadHealth?: 'underloaded' | 'balanced' | 'overloaded';
+  missingRequirements?: string[];
   
   // Event handlers (injected at layout time)
   onClick?: () => void;
@@ -93,4 +106,24 @@ export interface V4DebugState {
   layoutHash: string;
   lastFitView?: number;
   memoryUsage?: number;
+}
+
+export interface DegreeRequirements {
+  totalCredits: number;
+  categories: {
+    coreCS: { required: number; label: string };
+    math: { required: number; label: string };
+    genEd: { required: number; label: string };
+    elective: { required: number; label: string };
+    capstone: { required: number; label: string };
+  };
+  residencyMinimum?: number;
+}
+
+export interface ValidationResult {
+  totalCredits: { planned: number; required: number };
+  byCategory: Map<string, { planned: number; required: number }>;
+  missing: string[];
+  warnings: string[];
+  isValid: boolean;
 }

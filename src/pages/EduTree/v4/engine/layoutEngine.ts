@@ -295,3 +295,55 @@ export function hybridSpineLayout(
   
   return positioned;
 }
+
+/**
+ * Enrich year nodes with credit summaries and load health
+ */
+export function enrichYearNodesWithSummaries(
+  nodes: PlanNode[]
+): PlanNode[] {
+  const yearNodes = nodes.filter(n => n.type === NodeType.Year);
+  const courseNodes = nodes.filter(n => 
+    n.type === NodeType.Course && 
+    !n.className?.includes('ghost-node')
+  );
+  
+  return nodes.map(node => {
+    if (node.type !== NodeType.Year) return node;
+    
+    const yearMatch = node.data.label?.match(/Year (\d+)/);
+    if (!yearMatch) return node;
+    
+    const year = parseInt(yearMatch[1]);
+    const yearCourses = courseNodes.filter(n => n.data.year === year);
+    
+    const planned = yearCourses.reduce((sum, n) => sum + (n.data.credits || 0), 0);
+    const required = 30; // Standard full-time load per year
+    
+    const byCategory: Record<string, number> = {};
+    yearCourses.forEach(n => {
+      const cat = n.data.category || 'other';
+      byCategory[cat] = (byCategory[cat] || 0) + (n.data.credits || 0);
+    });
+    
+    const loadHealth: 'underloaded' | 'balanced' | 'overloaded' = 
+      planned < 24 ? 'underloaded' : 
+      planned > 36 ? 'overloaded' : 'balanced';
+    
+    // Detect missing requirements per year (basic check)
+    const missingRequirements: string[] = [];
+    if (year <= 2 && !yearCourses.some(c => c.data.category === 'genEd')) {
+      missingRequirements.push('Need Gen Ed');
+    }
+    
+    return {
+      ...node,
+      data: {
+        ...node.data,
+        creditsSummary: { planned, required, byCategory },
+        loadHealth,
+        missingRequirements: missingRequirements.length > 0 ? missingRequirements : undefined
+      }
+    };
+  });
+}

@@ -32,6 +32,40 @@ export function CourseNode({ data, selected }: CourseNodeProps) {
     }
   };
 
+  const getCategoryColor = () => {
+    switch(data.category) {
+      case 'coreCS': return 'border-blue-500';
+      case 'math': return 'border-green-500';
+      case 'genEd': return 'border-gray-400';
+      case 'elective': return 'border-yellow-500';
+      case 'capstone': return 'border-purple-600';
+      case 'transfer': return 'border-orange-500 border-dashed';
+      default: return '';
+    }
+  };
+
+  const getCategoryBadge = () => {
+    if (!data.category) return null;
+    
+    const badges = {
+      coreCS: { icon: '💻', label: 'Core' },
+      math: { icon: '📐', label: 'Math' },
+      genEd: { icon: '📚', label: 'Gen Ed' },
+      elective: { icon: '🎯', label: 'Elective' },
+      capstone: { icon: '🎓', label: 'Capstone' },
+      transfer: { icon: '🔁', label: 'Transfer' },
+    };
+    
+    const badge = badges[data.category];
+    if (!badge) return null;
+    
+    return (
+      <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+        {badge.icon} {badge.label}
+      </Badge>
+    );
+  };
+
   const getDifficultyBadge = () => {
     if (!data.difficulty) return null;
     
@@ -60,6 +94,7 @@ export function CourseNode({ data, selected }: CourseNodeProps) {
         relative
         rounded-lg border-2
         ${getStatusColor()}
+        ${getCategoryColor()}
         transition-all duration-200
         min-w-[200px]
         ${selected ? 'ring-2 ring-primary ring-offset-2' : ''}
@@ -91,11 +126,12 @@ export function CourseNode({ data, selected }: CourseNodeProps) {
           )}
         </div>
         
-        {/* Credits + Difficulty Row */}
+        {/* Credits + Category + Difficulty Row */}
         <div className="flex items-center gap-2 flex-wrap">
           {data.credits && (
             <span className="text-xs font-medium opacity-90">{data.credits} cr</span>
           )}
+          {getCategoryBadge()}
           {getDifficultyBadge()}
           {data.transferable && (
             <Badge className="text-[10px] px-1.5 py-0 bg-purple-500/20 text-purple-700 dark:text-purple-300">
