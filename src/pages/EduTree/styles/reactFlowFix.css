@@ -80,3 +80,8 @@
 .react-flow__attribution {
   pointer-events: auto !important;
 }
+
+/* Ensure connector handles don't block clicks on nodes */
+.react-flow__handle {
+  pointer-events: none !important;
+}
