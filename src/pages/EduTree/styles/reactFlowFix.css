@@ -66,8 +66,11 @@
   pointer-events: none !important;
 }
 
-/* Ensure absolutely positioned overlays don't block canvas */
-.react-flow [style*="position: absolute"] {
+/* Target specific overlay elements that should not block clicks */
+.react-flow .hud-overlay,
+.react-flow .debug-overlay,
+.react-flow .comparison-legend,
+.react-flow .enhanced-controls {
   pointer-events: none !important;
 }
 
