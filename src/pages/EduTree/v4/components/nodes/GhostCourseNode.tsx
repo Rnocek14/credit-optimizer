@@ -23,25 +23,28 @@ export function GhostCourseNode({ data, selected }: GhostCourseNodeProps) {
         <TooltipTrigger asChild>
           <div 
             className={`
-              px-4 py-3 rounded-lg border-2 border-dashed
+              rounded-lg border-2 border-dashed
               bg-purple-500/10 border-purple-500/50 text-purple-700 dark:text-purple-300
               transition-all duration-200
-              min-w-[100px]
+              min-w-[200px]
               opacity-60
               cursor-help
               ${selected ? 'ring-2 ring-purple-500 ring-offset-2' : ''}
             `}
           >
             <Handle type="target" position={Position.Top} className="opacity-0" />
-            <div className="text-center">
-              <div className="text-[10px] font-semibold uppercase mb-1 opacity-75">
+            
+            {/* Header */}
+            <div className="px-3 py-2 space-y-1">
+              <div className="text-[10px] font-semibold uppercase opacity-75">
                 Alternative
               </div>
-              <div className="font-semibold text-sm">{data.label}</div>
+              <div className="font-semibold text-sm leading-tight">{data.label}</div>
               {data.credits && (
-                <div className="text-xs opacity-75 mt-1">{data.credits} cr</div>
+                <span className="text-xs font-medium opacity-90">{data.credits} cr</span>
               )}
             </div>
+            
             <Handle type="source" position={Position.Bottom} className="opacity-0" />
           </div>
         </TooltipTrigger>

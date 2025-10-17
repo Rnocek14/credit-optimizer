@@ -38,8 +38,8 @@
 .edu-tree-v4 .react-flow__node[data-type="course"],
 .edu-tree-v4 .react-flow__node[data-type="requirement"],
 .edu-tree-v4 .react-flow__node[data-type="bundle"] {
-  min-width: 100px !important;
-  max-width: 400px !important;
+  min-width: 200px !important;
+  max-width: 350px !important;
   width: auto !important;
 }
 
