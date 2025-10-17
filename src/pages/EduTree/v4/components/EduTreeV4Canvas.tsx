@@ -24,7 +24,7 @@ import { CompareEdge } from './edges/CompareEdge';
 import '../styles/v4-canvas.css';
 import '../styles/EduTreeV4.css';
 
-// CS Degree Requirements
+// CS Degree Requirements with granular sub-requirements
 const CS_DEGREE_REQUIREMENTS: DegreeRequirements = {
   totalCredits: 120,
   categories: {
@@ -34,7 +34,86 @@ const CS_DEGREE_REQUIREMENTS: DegreeRequirements = {
     elective: { required: 21, label: 'Electives' },
     capstone: { required: 6, label: 'Capstone' }
   },
-  residencyMinimum: 30
+  residencyMinimum: 30,
+  subRequirements: [
+    // Core CS breakdown
+    {
+      id: 'cs-foundations',
+      label: 'CS Foundations',
+      category: 'coreCS',
+      type: 'all-required',
+      courseIds: ['CS101', 'CS102', 'CS201', 'CS202', 'CS205']
+    },
+    {
+      id: 'cs-systems',
+      label: 'Systems Track',
+      category: 'coreCS',
+      type: 'select-n',
+      requiredCount: 2,
+      courseIds: ['CS301', 'CS302', 'CS305']
+    },
+    {
+      id: 'cs-theory',
+      label: 'Theory Core',
+      category: 'coreCS',
+      type: 'all-required',
+      courseIds: ['CS303', 'CS304']
+    },
+    
+    // Math breakdown
+    {
+      id: 'math-calculus',
+      label: 'Calculus Sequence',
+      category: 'math',
+      type: 'all-required',
+      courseIds: ['MATH151', 'MATH152']
+    },
+    {
+      id: 'math-advanced',
+      label: 'Advanced Math',
+      category: 'math',
+      type: 'select-n',
+      requiredCount: 1,
+      courseIds: ['MATH251', 'MATH301']
+    },
+    
+    // Gen Ed breakdown
+    {
+      id: 'genEd-humanities',
+      label: 'Humanities Breadth',
+      category: 'genEd',
+      type: 'select-n',
+      requiredCount: 2,
+      courseIds: ['ENGL101', 'PHIL201', 'HIST101', 'ART150']
+    },
+    {
+      id: 'genEd-social',
+      label: 'Social Sciences',
+      category: 'genEd',
+      type: 'select-n',
+      requiredCount: 2,
+      courseIds: ['PSYC101', 'SOC101', 'ECON201', 'POLI150']
+    },
+    
+    // Capstone
+    {
+      id: 'capstone-project',
+      label: 'Senior Capstone',
+      category: 'capstone',
+      type: 'all-required',
+      courseIds: ['CS497', 'CS498']
+    },
+    
+    // Electives
+    {
+      id: 'upper-electives',
+      label: 'Upper Division Electives',
+      category: 'elective',
+      type: 'select-any',
+      minCredits: 21,
+      tag: 'elective'
+    }
+  ]
 };
 
 interface EduTreeV4CanvasProps {

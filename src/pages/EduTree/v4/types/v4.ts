@@ -108,6 +108,29 @@ export interface V4DebugState {
   memoryUsage?: number;
 }
 
+export type SubRequirementType = 'all-required' | 'select-n' | 'select-any';
+
+export interface SubRequirement {
+  id: string;
+  label: string;
+  category: string;
+  type: SubRequirementType;
+  requiredCount?: number; // For 'select-n': how many courses needed
+  minCredits?: number;    // For 'select-any': minimum credits needed
+  courseIds?: string[];   // For 'all-required' and 'select-n': specific courses
+  tag?: string;           // For 'select-any': tag to match (e.g., 'elective', 'upper-div')
+}
+
+export interface SubRequirementStatus {
+  subReqId: string;
+  label: string;
+  completed: string[];    // Course IDs that satisfy this sub-requirement
+  missing: string[];      // Course IDs still needed (for 'all-required' and 'select-n')
+  creditsEarned: number;  // For 'select-any' type
+  creditsNeeded: number;  // For 'select-any' type
+  isComplete: boolean;
+}
+
 export interface DegreeRequirements {
   totalCredits: number;
   categories: {
@@ -118,6 +141,7 @@ export interface DegreeRequirements {
     capstone: { required: number; label: string };
   };
   residencyMinimum?: number;
+  subRequirements?: SubRequirement[]; // Optional granular requirements
 }
 
 export interface ValidationResult {
@@ -126,4 +150,5 @@ export interface ValidationResult {
   missing: string[];
   warnings: string[];
   isValid: boolean;
+  bySubRequirement?: SubRequirementStatus[]; // Optional granular status
 }
