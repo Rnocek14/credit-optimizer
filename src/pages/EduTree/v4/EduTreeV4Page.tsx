@@ -102,7 +102,7 @@ export default function EduTreeV4Page() {
   }, [nodes]);
 
   return (
-    <div className="h-screen w-full bg-background edu-tree-v4" data-version="v4">
+    <div className="h-screen w-full bg-background">
       {/* Debug HUD */}
       <V4DevHUD debugState={debugTools} />
       

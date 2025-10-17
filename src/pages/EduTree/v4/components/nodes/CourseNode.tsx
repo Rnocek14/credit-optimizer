@@ -27,12 +27,8 @@ export function CourseNode({ data, selected }: CourseNodeProps) {
   return (
     <div 
       onClick={() => {
-        console.log('[CourseNode] Clicked:', data.label, 'hasOnClick:', !!data.onClick);
-        if (data.onClick) {
-          data.onClick();
-        } else {
-          console.warn('[CourseNode] No onClick handler for:', data.label);
-        }
+        console.log('[CourseNode] Clicked:', data.label);
+        data.onClick?.();
       }}
       className={`
         px-4 py-3 rounded-lg border-2

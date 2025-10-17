@@ -10,8 +10,8 @@
   animation: none !important; 
 }
 
-/* Optional: Disable node position transitions during layout - SCOPED TO V3 */
-.edu-tree-v3 .react-flow__node {
+/* Optional: Disable node position transitions during layout */
+.react-flow__node {
   transition: none !important;
 }
 

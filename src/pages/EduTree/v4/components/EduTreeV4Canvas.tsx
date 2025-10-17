@@ -20,7 +20,6 @@ import { ExternalNode } from './nodes/ExternalNode';
 import { TransferEdge } from './edges/TransferEdge';
 import { CompareEdge } from './edges/CompareEdge';
 import '../styles/v4-canvas.css';
-import '../styles/EduTreeV4.css';
 
 interface EduTreeV4CanvasProps {
   nodes: PlanNode[];
@@ -59,9 +58,6 @@ function CanvasInner({ nodes: initialNodes, edges: initialEdges, overlays, onNod
       const reactFlowNodes: Node[] = positioned.map(node => {
         const isGhostNode = node.className?.includes('ghost-node');
         const isCourseNode = [NodeType.Course, NodeType.Requirement, NodeType.Bundle].includes(node.type);
-        const onClick = isCourseNode && onNodeClick ? () => onNodeClick(node.id) : undefined;
-        
-        console.log(`[Layout] ${node.id}: type=${node.type}, isCourseNode=${isCourseNode}, onClick=${!!onClick}`);
         
         return {
           id: node.id,
@@ -69,7 +65,7 @@ function CanvasInner({ nodes: initialNodes, edges: initialEdges, overlays, onNod
           position: node.position,
           data: { 
             ...node.data,
-            onClick,
+            onClick: isCourseNode && onNodeClick ? () => onNodeClick(node.id) : undefined,
           },
           hidden: isGhostNode && !overlays.compare,
         };
@@ -93,18 +89,9 @@ function CanvasInner({ nodes: initialNodes, edges: initialEdges, overlays, onNod
   useEffect(() => {
     if (layoutedNodes.length === 0) return;
     
-    // Skip ghost positioning if Compare overlay is not active
-    if (!overlays.compare) {
-      setNodes(layoutedNodes); // Use original layouted nodes directly
-      return;
-    }
-    
     const updatedNodes = layoutedNodes.map(node => {
       const isGhost = node.type === 'ghost';
-      if (!isGhost) {
-        console.log(`[Ghost Effect] ${node.id}: non-ghost, preserving, onClick=${!!node.data.onClick}`);
-        return node;
-      }
+      if (!isGhost) return node;
       
       // Find the source node this ghost replaces
       const alternativeFor = node.data.alternativeFor;
@@ -200,14 +187,6 @@ function CanvasInner({ nodes: initialNodes, edges: initialEdges, overlays, onNod
         // Trigger for all nodes that render as CourseNode component
         const courseNodeTypes = [NodeType.Course, NodeType.Requirement, NodeType.Bundle];
         const nodeData = node.data as any;
-        
-        console.log('[RF onNodeClick]', {
-          id: node.id,
-          type: node.type,
-          isCourseType: courseNodeTypes.includes(node.type as NodeType),
-          hasOnClick: typeof nodeData?.onClick === 'function',
-          data: nodeData
-        });
         
         if (courseNodeTypes.includes(node.type as NodeType) && typeof nodeData?.onClick === 'function') {
           console.log('[V4 Canvas] Node clicked:', node.id, node.type);

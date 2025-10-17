@@ -66,11 +66,8 @@
   pointer-events: none !important;
 }
 
-/* Target specific overlay elements that should not block clicks */
-.react-flow .hud-overlay,
-.react-flow .debug-overlay,
-.react-flow .comparison-legend,
-.react-flow .enhanced-controls {
+/* Ensure absolutely positioned overlays don't block canvas */
+.react-flow [style*="position: absolute"] {
   pointer-events: none !important;
 }
 
@@ -79,9 +76,4 @@
 .react-flow__minimap,
 .react-flow__attribution {
   pointer-events: auto !important;
-}
-
-/* Ensure connector handles don't block clicks on nodes */
-.react-flow__handle {
-  pointer-events: none !important;
 }
