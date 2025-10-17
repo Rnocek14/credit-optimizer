@@ -14,6 +14,11 @@ interface CourseNodeProps {
 }
 
 export function CourseNode({ data, selected }: CourseNodeProps) {
+  const getSemesterEmoji = () => {
+    if (data.semester === 'fall') return '🍂';
+    if (data.semester === 'spring') return '🌸';
+    return null;
+  };
   const getStatusColor = () => {
     switch (data.status) {
       case 'completed':
@@ -52,6 +57,7 @@ export function CourseNode({ data, selected }: CourseNodeProps) {
         data.onClick?.();
       }}
       className={`
+        relative
         rounded-lg border-2
         ${getStatusColor()}
         transition-all duration-200
@@ -63,6 +69,16 @@ export function CourseNode({ data, selected }: CourseNodeProps) {
       `}
     >
       <Handle type="target" position={Position.Top} className="opacity-0" />
+      
+      {/* Semester badge - top right */}
+      {data.semester && (
+        <Badge 
+          variant="outline" 
+          className="absolute -top-2 -right-2 text-xs px-2 py-0.5 bg-background border-border shadow-sm z-10"
+        >
+          {getSemesterEmoji()} {data.semester === 'fall' ? 'Fall' : 'Spring'}
+        </Badge>
+      )}
       
       {/* Header: Title + Status Badges */}
       <div className="px-3 py-2 space-y-1">

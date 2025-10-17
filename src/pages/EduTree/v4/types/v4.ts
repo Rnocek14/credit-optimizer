@@ -40,6 +40,7 @@ export interface PlanNodeData {
   // Metadata
   year?: number;
   semester?: 'fall' | 'spring'; // Semester assignment for 2-column layout
+  tier?: number;               // Tier/depth for tier-based layout (future use)
   term?: string;
   expiresOn?: string;         // For expired credits
   

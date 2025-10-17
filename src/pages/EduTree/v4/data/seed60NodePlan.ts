@@ -57,8 +57,16 @@ export const seed60NodePlan: V4GraphData = {
     },
     
     // Transfer equivalency for MATH151
-    { id: 'MATH151_CLEP', type: NodeType.External, position: { x: -200, y: 300 },
-      data: { label: 'CLEP Calculus', credits: 4, status: 'completed', source: 'exam' }, 
+    { id: 'MATH151_CLEP', type: NodeType.External, position: { x: 0, y: 0 },
+      data: { 
+        label: 'CLEP Calculus', 
+        credits: 4, 
+        status: 'completed', 
+        source: 'exam',
+        year: 1,
+        semester: 'spring',
+        transferable: true,
+      }, 
       className: 'external-node' },
     
     // Year 2 courses

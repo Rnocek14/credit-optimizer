@@ -251,13 +251,18 @@ export function hybridSpineLayout(
     
     // Calculate total width of 2-column grid
     const gridWidth = COLUMNS * BASE_NODE_WIDTH + (COLUMNS - 1) * H_GAP;
-    // Center the grid around baseX
-    const gridStartX = baseX - gridWidth / 2;
+    // Left-align grid, keep year node centered
+    const gridStartX = baseX - 90;
     
     // Position Fall courses (left column)
     fallCourses.forEach((node, index) => {
-      const x = gridStartX;
+      let x = gridStartX;
       const y = startY + index * (BASE_NODE_HEIGHT + V_GAP);
+      
+      // External nodes (CLEP, transfer credits) - offset slightly to the left
+      if (node.type === NodeType.External) {
+        x = x - 30;  // Slight left offset to visually distinguish from main courses
+      }
       
       positioned.push({
         ...node,
@@ -267,8 +272,13 @@ export function hybridSpineLayout(
     
     // Position Spring courses (right column)
     springCourses.forEach((node, index) => {
-      const x = gridStartX + BASE_NODE_WIDTH + H_GAP;
+      let x = gridStartX + BASE_NODE_WIDTH + H_GAP;
       const y = startY + index * (BASE_NODE_HEIGHT + V_GAP);
+      
+      // External nodes (CLEP, transfer credits) - offset slightly to the left
+      if (node.type === NodeType.External) {
+        x = x - 30;  // Slight left offset to visually distinguish from main courses
+      }
       
       positioned.push({
         ...node,
