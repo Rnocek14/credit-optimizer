@@ -217,9 +217,9 @@ export function hybridSpineLayout(
   
   // Phase 3: Position courses in 3-column grid per year with dynamic spacing
   const COLUMNS = 3;
-  const BASE_NODE_WIDTH = 250;  // Average width for spacing calculations
+  const BASE_NODE_WIDTH = 280;  // Wider to accommodate rich metadata
   const BASE_NODE_HEIGHT = 180; // Average height including metadata
-  const H_GAP = 40;  // Horizontal gap between columns
+  const H_GAP = 60;  // More breathing room between columns
   const V_GAP = 40;  // Vertical gap between rows
   
   coursesByYear.forEach((courses, year) => {
@@ -238,7 +238,12 @@ export function hybridSpineLayout(
       const row = Math.floor(index / COLUMNS);
       
       // Calculate position with collision avoidance
-      const x = baseX + col * (BASE_NODE_WIDTH + H_GAP) - (COLUMNS - 1) * (BASE_NODE_WIDTH + H_GAP) / 2;
+      // Calculate total width of 3-column grid
+      const gridWidth = COLUMNS * BASE_NODE_WIDTH + (COLUMNS - 1) * H_GAP;
+      // Center the grid around baseX
+      const gridStartX = baseX - gridWidth / 2;
+      // Position node in its column
+      const x = gridStartX + col * (BASE_NODE_WIDTH + H_GAP);
       const y = startY + row * (BASE_NODE_HEIGHT + V_GAP);
       
       positioned.push({

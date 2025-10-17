@@ -56,24 +56,29 @@ function CanvasInner({ nodes: initialNodes, edges: initialEdges, overlays, onNod
       const positioned = hybridSpineLayout(initialNodes);
       
       // Convert to React Flow format
-      const reactFlowNodes: Node[] = positioned.map(node => {
-        const isGhostNode = node.className?.includes('ghost-node');
-        const isCourseNode = [NodeType.Course, NodeType.Requirement, NodeType.Bundle].includes(node.type);
-        const nodeType = isGhostNode ? 'ghost' : node.type;
-        
-        return {
-          id: node.id,
-          type: nodeType,
-          position: node.position,
-          data: { 
-            ...node.data,
-            onClick: isCourseNode && onNodeClick ? () => onNodeClick(node.id) : undefined,
-            type: nodeType, // CRITICAL: Pass type to data for CSS [data-type] selector
-          },
-          draggable: false,
-          hidden: isGhostNode && !overlays.compare,
-        };
-      });
+    const reactFlowNodes: Node[] = positioned.map(node => {
+      const isGhostNode = node.className?.includes('ghost-node');
+      const nodeType = isGhostNode ? 'ghost' : node.type;
+      
+      // ✅ Pass onClick to ALL course-like nodes (Course, Requirement, Bundle)
+      const shouldHaveClick = [NodeType.Course, NodeType.Requirement, NodeType.Bundle].includes(node.type as NodeType);
+      
+      return {
+        id: node.id,
+        type: nodeType,
+        position: node.position,
+        data: { 
+          ...node.data,
+          onClick: shouldHaveClick && onNodeClick ? () => {
+            console.log('[V4 Canvas] Click handler for:', node.id);
+            onNodeClick(node.id);
+          } : undefined,
+          type: nodeType, // CRITICAL: Pass type to data for CSS [data-type] selector
+        },
+        draggable: false,
+        hidden: isGhostNode && !overlays.compare,
+      };
+    });
 
       // Debug: Check for overlaps
       const checkCollisions = (nodes: Node[]) => {

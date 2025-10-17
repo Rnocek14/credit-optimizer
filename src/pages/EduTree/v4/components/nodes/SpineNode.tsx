@@ -13,6 +13,7 @@ interface SpineNodeProps {
 export function SpineNode({ data, selected }: SpineNodeProps) {
   return (
     <div 
+      data-type={data.type || 'year'}
       className={`
         px-6 py-3 rounded-lg border-2
         bg-primary/10 border-primary

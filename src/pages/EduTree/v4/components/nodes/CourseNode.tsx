@@ -57,7 +57,7 @@ export function CourseNode({ data, selected }: CourseNodeProps) {
         transition-all duration-200
         min-w-[200px]
         ${selected ? 'ring-2 ring-primary ring-offset-2' : ''}
-        ${data.onClick ? 'cursor-pointer hover-scale' : ''}
+        cursor-pointer hover-scale
         ${data.selectedProviderId ? 'ring-2 ring-blue-500 ring-offset-1' : ''}
         ${data.critical ? 'shadow-lg shadow-red-500/20' : ''}
       `}

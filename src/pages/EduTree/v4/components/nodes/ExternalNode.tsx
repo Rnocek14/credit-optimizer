@@ -13,6 +13,8 @@ interface ExternalNodeProps {
 export function ExternalNode({ data, selected }: ExternalNodeProps) {
   return (
     <div 
+      data-type={data.type || 'external'}
+      onClick={() => data.onClick?.()}
       className={`
         px-3 py-2 rounded-lg border-2
         bg-amber-500/20 border-amber-500
@@ -20,6 +22,7 @@ export function ExternalNode({ data, selected }: ExternalNodeProps) {
         transition-all duration-200
         min-w-[90px]
         ${selected ? 'ring-2 ring-primary ring-offset-2' : ''}
+        ${data.onClick ? 'cursor-pointer hover-scale' : ''}
       `}
     >
       <Handle type="target" position={Position.Top} className="opacity-0" />
