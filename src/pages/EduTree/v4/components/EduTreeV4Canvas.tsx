@@ -67,6 +67,7 @@ function CanvasInner({ nodes: initialNodes, edges: initialEdges, overlays, onNod
             ...node.data,
             onClick: isCourseNode && onNodeClick ? () => onNodeClick(node.id) : undefined,
           },
+          draggable: false,
           hidden: isGhostNode && !overlays.compare,
         };
       });
@@ -179,6 +180,7 @@ function CanvasInner({ nodes: initialNodes, edges: initialEdges, overlays, onNod
       edges={edges}
       nodeTypes={nodeTypes}
       edgeTypes={edgeTypes}
+      nodesDraggable={false}
       fitView
       minZoom={0.1}
       maxZoom={2}
