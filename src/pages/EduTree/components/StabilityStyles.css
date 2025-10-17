@@ -11,7 +11,7 @@
 }
 
 /* Optional: Disable node position transitions during layout */
-.react-flow__node {
+.edu-tree-v3 .react-flow__node {
   transition: none !important;
 }
 

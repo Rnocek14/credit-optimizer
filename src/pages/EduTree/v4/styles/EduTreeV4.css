@@ -1,0 +1,100 @@
+/**
+ * V4-Specific React Flow Styles
+ * Complete CSS isolation from V3
+ * Namespace: .edu-tree-v4
+ */
+
+/* ========================================
+   V4 Node Sizing - Natural Width
+   ======================================== */
+.edu-tree-v4 .react-flow__node {
+  /* Override V3's fixed 232px width */
+  width: auto !important;
+  min-width: 100px !important;
+  max-width: 400px !important;
+  
+  /* Critical: Allow content to determine size */
+  box-sizing: border-box;
+  overflow: visible !important;  /* DO NOT clip content */
+  
+  /* Stacking context */
+  z-index: 2;
+  
+  /* Ensure nodes are interactive */
+  pointer-events: all !important;
+}
+
+/* ========================================
+   Node Type-Specific Sizing
+   ======================================== */
+
+/* Spine/Year nodes */
+.edu-tree-v4 .react-flow__node[data-type="year"] {
+  min-width: 120px !important;
+  max-width: 180px !important;
+}
+
+/* Course nodes with rich metadata */
+.edu-tree-v4 .react-flow__node[data-type="course"],
+.edu-tree-v4 .react-flow__node[data-type="requirement"],
+.edu-tree-v4 .react-flow__node[data-type="bundle"] {
+  min-width: 100px !important;
+  max-width: 400px !important;
+  width: auto !important;
+}
+
+/* External/transfer nodes */
+.edu-tree-v4 .react-flow__node[data-type="external"] {
+  min-width: 120px !important;
+  max-width: 250px !important;
+}
+
+/* ========================================
+   Handles - Block Click Interception
+   ======================================== */
+.edu-tree-v4 .react-flow__handle {
+  pointer-events: none !important;
+  opacity: 0;
+}
+
+/* ========================================
+   Z-Index Hierarchy
+   ======================================== */
+.edu-tree-v4 .react-flow__edge {
+  z-index: 1;
+}
+
+.edu-tree-v4 .react-flow__node {
+  z-index: 2;
+}
+
+.edu-tree-v4 .react-flow__node[data-type="checkpoint"] {
+  z-index: 3 !important;
+}
+
+/* ========================================
+   Smooth Interactions - Re-enable
+   ======================================== */
+.edu-tree-v4 .react-flow__node {
+  transition: transform 200ms ease, box-shadow 200ms ease !important;
+}
+
+/* Hover scale effect support */
+.edu-tree-v4 .hover-scale {
+  transition: transform 200ms ease, box-shadow 200ms ease;
+}
+
+.edu-tree-v4 .hover-scale:hover {
+  transform: scale(1.03);
+}
+
+/* ========================================
+   Edge Interactions
+   ======================================== */
+.edu-tree-v4 .react-flow__edge path {
+  transition: stroke-width 200ms ease, opacity 200ms ease !important;
+}
+
+.edu-tree-v4 .react-flow__edge:hover path {
+  stroke-width: 3px;
+}

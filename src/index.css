@@ -72,7 +72,8 @@
 }
 
 /* React Flow V3 node width lock - prevent horizontal drift */
-.react-flow__node {
+.edu-tree-v3 .react-flow__node,
+[data-version="v3"] .react-flow__node {
   width: var(--v3-node-w) !important;
   min-width: var(--v3-node-w) !important;
   max-width: var(--v3-node-w) !important;
@@ -220,7 +221,8 @@
   }
 
   /* V3 ReactFlow node width locking */
-  .react-flow__node {
+  .edu-tree-v3 .react-flow__node,
+  [data-version="v3"] .react-flow__node {
     width: var(--v3-node-w) !important;
     min-width: var(--v3-node-w) !important;
     max-width: var(--v3-node-w) !important;

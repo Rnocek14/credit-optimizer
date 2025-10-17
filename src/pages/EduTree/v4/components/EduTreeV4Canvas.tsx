@@ -20,6 +20,7 @@ import { ExternalNode } from './nodes/ExternalNode';
 import { TransferEdge } from './edges/TransferEdge';
 import { CompareEdge } from './edges/CompareEdge';
 import '../styles/v4-canvas.css';
+import '../styles/EduTreeV4.css';
 
 interface EduTreeV4CanvasProps {
   nodes: PlanNode[];
