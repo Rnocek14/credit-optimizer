@@ -92,6 +92,12 @@ function CanvasInner({ nodes: initialNodes, edges: initialEdges, overlays, onNod
   useEffect(() => {
     if (layoutedNodes.length === 0) return;
     
+    // Skip ghost positioning if Compare overlay is not active
+    if (!overlays.compare) {
+      setNodes(layoutedNodes); // Use original layouted nodes directly
+      return;
+    }
+    
     const updatedNodes = layoutedNodes.map(node => {
       const isGhost = node.type === 'ghost';
       if (!isGhost) {
