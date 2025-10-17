@@ -80,8 +80,10 @@ function CanvasInner({ nodes: initialNodes, edges: initialEdges, overlays, onNod
       };
     });
 
-      // Debug: Check for overlaps
+      // Debug: Check for overlaps with correct dimensions
       const checkCollisions = (nodes: Node[]) => {
+        const BASE_NODE_WIDTH = 360;  // Match layout engine
+        const BASE_NODE_HEIGHT = 180;
         const overlaps: Array<{a: string, b: string}> = [];
         
         for (let i = 0; i < nodes.length; i++) {
@@ -91,16 +93,16 @@ function CanvasInner({ nodes: initialNodes, edges: initialEdges, overlays, onNod
             
             const aBox = {
               x1: a.position.x,
-              x2: a.position.x + 250,  // Average width
+              x2: a.position.x + BASE_NODE_WIDTH,
               y1: a.position.y,
-              y2: a.position.y + 180,  // Average height
+              y2: a.position.y + BASE_NODE_HEIGHT,
             };
             
             const bBox = {
               x1: b.position.x,
-              x2: b.position.x + 250,
+              x2: b.position.x + BASE_NODE_WIDTH,
               y1: b.position.y,
-              y2: b.position.y + 180,
+              y2: b.position.y + BASE_NODE_HEIGHT,
             };
             
             const xOverlap = aBox.x1 < bBox.x2 && aBox.x2 > bBox.x1;
@@ -113,10 +115,12 @@ function CanvasInner({ nodes: initialNodes, edges: initialEdges, overlays, onNod
         }
         
         if (overlaps.length > 0) {
-          console.warn('[V4 Canvas] ⚠️ Overlaps detected:', overlaps);
+          console.error('[V4 Canvas] ❌ CRITICAL: Layout has overlaps!', overlaps);
         } else {
           console.log('[V4 Canvas] ✅ No overlaps detected');
         }
+        
+        return overlaps;
       };
 
       checkCollisions(reactFlowNodes);

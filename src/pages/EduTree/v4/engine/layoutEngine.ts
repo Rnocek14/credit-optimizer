@@ -202,7 +202,7 @@ export function hybridSpineLayout(
   const positioned: PlanNode[] = spineNodes.map((node, index) => ({
     ...node,
     position: { 
-      x: index * 500,  // 500px per year (generous for overlaps)
+      x: index * 1200,  // 1200px per year to prevent grid overlaps
       y: 0 
     }
   }));
@@ -215,19 +215,19 @@ export function hybridSpineLayout(
     coursesByYear.get(year)!.push(node);
   });
   
-  // Phase 3: Position courses in 3-column grid per year with dynamic spacing
-  const COLUMNS = 3;
-  const BASE_NODE_WIDTH = 280;  // Wider to accommodate rich metadata
+  // Phase 3: Position courses in 2-column grid per year with dynamic spacing
+  const COLUMNS = 2;
+  const BASE_NODE_WIDTH = 360;  // Match CSS max-width: 350px + 10px buffer
   const BASE_NODE_HEIGHT = 180; // Average height including metadata
-  const H_GAP = 60;  // More breathing room between columns
-  const V_GAP = 40;  // Vertical gap between rows
+  const H_GAP = 80;  // Generous breathing room between columns
+  const V_GAP = 60;  // Increased vertical spacing for metadata-rich nodes
   
   coursesByYear.forEach((courses, year) => {
     const yearIndex = year - 1;
     const yearNode = spineNodes[yearIndex];
     if (!yearNode) return;
     
-    const baseX = yearIndex * 500;
+    const baseX = yearIndex * 1200;
     const startY = 120; // Start below year node
     
     // Sort for deterministic layout

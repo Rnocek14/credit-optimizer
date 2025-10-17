@@ -88,6 +88,11 @@
   transform: scale(1.03);
 }
 
+/* Bring hovered node to front for accessibility */
+.edu-tree-v4 .react-flow__node:hover {
+  z-index: 100 !important;
+}
+
 /* ========================================
    Edge Interactions
    ======================================== */
