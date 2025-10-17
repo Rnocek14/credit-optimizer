@@ -27,7 +27,7 @@ export function GhostCourseNode({ data, selected }: GhostCourseNodeProps) {
               rounded-lg border-2 border-dashed
               bg-purple-500/10 border-purple-500/50 text-purple-700 dark:text-purple-300
               transition-all duration-200
-              min-w-[200px]
+              min-w-[200px] min-h-[180px]
               opacity-60
               cursor-help
               ${selected ? 'ring-2 ring-purple-500 ring-offset-2' : ''}

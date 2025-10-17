@@ -80,29 +80,40 @@ function CanvasInner({ nodes: initialNodes, edges: initialEdges, overlays, onNod
       };
     });
 
-      // Debug: Check for overlaps with correct dimensions
+      // Debug: Check for overlaps with variable node dimensions
       const checkCollisions = (nodes: Node[]) => {
-        const BASE_NODE_WIDTH = 360;  // Match layout engine
-        const BASE_NODE_HEIGHT = 180;
         const overlaps: Array<{a: string, b: string}> = [];
+        
+        const getNodeDimensions = (node: Node) => {
+          const isGhost = node.type === 'ghost';
+          const isYear = node.type === NodeType.Year;
+          
+          return {
+            width: isYear ? 180 : (isGhost ? 200 : 360),
+            height: isYear ? 80 : 180,  // All non-year nodes same height
+          };
+        };
         
         for (let i = 0; i < nodes.length; i++) {
           for (let j = i + 1; j < nodes.length; j++) {
             const a = nodes[i];
             const b = nodes[j];
             
+            const aDim = getNodeDimensions(a);
+            const bDim = getNodeDimensions(b);
+            
             const aBox = {
               x1: a.position.x,
-              x2: a.position.x + BASE_NODE_WIDTH,
+              x2: a.position.x + aDim.width,
               y1: a.position.y,
-              y2: a.position.y + BASE_NODE_HEIGHT,
+              y2: a.position.y + aDim.height,
             };
             
             const bBox = {
               x1: b.position.x,
-              x2: b.position.x + BASE_NODE_WIDTH,
+              x2: b.position.x + bDim.width,
               y1: b.position.y,
-              y2: b.position.y + BASE_NODE_HEIGHT,
+              y2: b.position.y + bDim.height,
             };
             
             const xOverlap = aBox.x1 < bBox.x2 && aBox.x2 > bBox.x1;
@@ -149,17 +160,30 @@ function CanvasInner({ nodes: initialNodes, edges: initialEdges, overlays, onNod
       
       // Find the source node this ghost replaces
       const alternativeFor = node.data.alternativeFor;
-      if (!alternativeFor) return node;
+      if (!alternativeFor) {
+        console.warn(`[V4 Canvas] ⚠️ Ghost node ${node.id} missing alternativeFor`);
+        return node;
+      }
       
       const sourceNode = layoutedNodes.find(n => n.data.label === alternativeFor);
-      if (!sourceNode) return node;
+      if (!sourceNode) {
+        console.warn(`[V4 Canvas] ⚠️ Ghost node ${node.id} cannot find source "${alternativeFor}"`);
+        return node;
+      }
       
-      // Position ghost node in the same column as source, offset below by 80px
+      console.log(`[V4 Canvas] 👻 Positioning ghost ${node.id}:`, {
+        source: sourceNode.id,
+        sourcePos: sourceNode.position,
+        ghostPos: { x: sourceNode.position.x, y: sourceNode.position.y + 240 },
+        offset: 240
+      });
+      
+      // Position ghost node in the same column as source, offset below by 240px
       return {
         ...node,
         position: {
           x: sourceNode.position.x,
-          y: sourceNode.position.y + 80,
+          y: sourceNode.position.y + 240,  // 180px node height + 60px V_GAP = 240px
         },
         hidden: !overlays.compare, // Show when compare is active, hide otherwise
       };

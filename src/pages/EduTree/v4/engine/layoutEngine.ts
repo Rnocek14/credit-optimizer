@@ -196,7 +196,10 @@ export function hybridSpineLayout(
   const opts = { ...DEFAULT_OPTIONS, ...options };
   
   const spineNodes = nodes.filter(n => n.type === NodeType.Year);
-  const branchNodes = nodes.filter(n => n.type !== NodeType.Year);
+  const branchNodes = nodes.filter(n => 
+    n.type !== NodeType.Year && 
+    !n.className?.includes('ghost-node')  // ✅ Exclude ghost nodes from grid layout
+  );
   
   // Phase 1: Position spine horizontally with generous spacing
   const positioned: PlanNode[] = spineNodes.map((node, index) => ({
@@ -238,7 +241,7 @@ export function hybridSpineLayout(
       const row = Math.floor(index / COLUMNS);
       
       // Calculate position with collision avoidance
-      // Calculate total width of 3-column grid
+      // Calculate total width of 2-column grid
       const gridWidth = COLUMNS * BASE_NODE_WIDTH + (COLUMNS - 1) * H_GAP;
       // Center the grid around baseX
       const gridStartX = baseX - gridWidth / 2;

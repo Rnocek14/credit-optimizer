@@ -1,7 +1,7 @@
 /**
  * CompareEdge - Shows substitution relationship between Plan A and Plan B courses
  */
-import { BaseEdge, EdgeProps, getStraightPath } from '@xyflow/react';
+import { BaseEdge, EdgeProps, getSmoothStepPath } from '@xyflow/react';
 
 export function CompareEdge({
   id, 
@@ -14,7 +14,13 @@ export function CompareEdge({
   markerEnd,
   markerStart,
 }: EdgeProps) {
-  const [edgePath] = getStraightPath({ sourceX, sourceY, targetX, targetY });
+  const [edgePath] = getSmoothStepPath({ 
+    sourceX, 
+    sourceY, 
+    targetX, 
+    targetY,
+    borderRadius: 8  // Smooth corners for professional look
+  });
   
   const comparisonText = (data as any)?.comparisonText || 
     "Alternative course option in Plan B\nCompare: cost, difficulty, and prerequisites";
