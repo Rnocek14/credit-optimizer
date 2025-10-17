@@ -218,12 +218,12 @@ export function hybridSpineLayout(
     coursesByYear.get(year)!.push(node);
   });
   
-  // Phase 3: Position courses in 2-column grid per year with dynamic spacing
-  const COLUMNS = 2;
+  // Phase 3: Position courses in 2-column semester grid per year with dynamic spacing
+  const COLUMNS = 2;  // Fall / Spring
   const BASE_NODE_WIDTH = 360;  // Match CSS max-width: 350px + 10px buffer
   const BASE_NODE_HEIGHT = 180; // Average height including metadata
-  const H_GAP = 80;  // Generous breathing room between columns
-  const V_GAP = 60;  // Increased vertical spacing for metadata-rich nodes
+  const H_GAP = 120;  // Increased spacing between semester columns
+  const V_GAP = 80;   // Increased vertical spacing for metadata-rich nodes
   
   coursesByYear.forEach((courses, year) => {
     const yearIndex = year - 1;
@@ -231,23 +231,44 @@ export function hybridSpineLayout(
     if (!yearNode) return;
     
     const baseX = yearIndex * 1200;
-    const startY = 120; // Start below year node
+    const startY = 180; // Start below year node and semester labels
     
-    // Sort for deterministic layout
+    // Sort for deterministic layout (fallback if no semester specified)
     courses.sort((a, b) => a.id.localeCompare(b.id));
     
-    courses.forEach((node, index) => {
-      const col = index % COLUMNS;
-      const row = Math.floor(index / COLUMNS);
+    // Group by semester first
+    const fallCourses: PlanNode[] = [];
+    const springCourses: PlanNode[] = [];
+    
+    courses.forEach(node => {
+      const semester = node.data.semester ?? (fallCourses.length <= springCourses.length ? 'fall' : 'spring');
+      if (semester === 'fall') {
+        fallCourses.push(node);
+      } else {
+        springCourses.push(node);
+      }
+    });
+    
+    // Calculate total width of 2-column grid
+    const gridWidth = COLUMNS * BASE_NODE_WIDTH + (COLUMNS - 1) * H_GAP;
+    // Center the grid around baseX
+    const gridStartX = baseX - gridWidth / 2;
+    
+    // Position Fall courses (left column)
+    fallCourses.forEach((node, index) => {
+      const x = gridStartX;
+      const y = startY + index * (BASE_NODE_HEIGHT + V_GAP);
       
-      // Calculate position with collision avoidance
-      // Calculate total width of 2-column grid
-      const gridWidth = COLUMNS * BASE_NODE_WIDTH + (COLUMNS - 1) * H_GAP;
-      // Center the grid around baseX
-      const gridStartX = baseX - gridWidth / 2;
-      // Position node in its column
-      const x = gridStartX + col * (BASE_NODE_WIDTH + H_GAP);
-      const y = startY + row * (BASE_NODE_HEIGHT + V_GAP);
+      positioned.push({
+        ...node,
+        position: { x, y }
+      });
+    });
+    
+    // Position Spring courses (right column)
+    springCourses.forEach((node, index) => {
+      const x = gridStartX + BASE_NODE_WIDTH + H_GAP;
+      const y = startY + index * (BASE_NODE_HEIGHT + V_GAP);
       
       positioned.push({
         ...node,

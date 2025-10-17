@@ -17,6 +17,7 @@ import { SpineNode } from './nodes/SpineNode';
 import { CourseNode } from './nodes/CourseNode';
 import { GhostCourseNode } from './nodes/GhostCourseNode';
 import { ExternalNode } from './nodes/ExternalNode';
+import { SemesterLabel } from './nodes/SemesterLabel';
 import { TransferEdge } from './edges/TransferEdge';
 import { CompareEdge } from './edges/CompareEdge';
 import '../styles/v4-canvas.css';
@@ -251,31 +252,106 @@ function CanvasInner({ nodes: initialNodes, edges: initialEdges, overlays, onNod
     setEdges(reactFlowEdges);
   }, [initialEdges, overlays]);
 
+  // Calculate semester label positions
+  const semesterLabels = React.useMemo(() => {
+    const yearNodes = nodes.filter(n => n.type === NodeType.Year);
+    const labels: Array<{ semester: 'fall' | 'spring'; position: { x: number; y: number }; yearId: string }> = [];
+    
+    yearNodes.forEach(yearNode => {
+      const baseX = yearNode.position.x;
+      const labelY = 80; // Position between year node and courses
+      
+      // Calculate grid positioning (same as layout engine)
+      const BASE_NODE_WIDTH = 360;
+      const H_GAP = 120;
+      const COLUMNS = 2;
+      const gridWidth = COLUMNS * BASE_NODE_WIDTH + (COLUMNS - 1) * H_GAP;
+      const gridStartX = baseX - gridWidth / 2;
+      
+      labels.push({
+        semester: 'fall',
+        position: { x: gridStartX + BASE_NODE_WIDTH / 2, y: labelY },
+        yearId: yearNode.id,
+      });
+      
+      labels.push({
+        semester: 'spring',
+        position: { x: gridStartX + BASE_NODE_WIDTH + H_GAP + BASE_NODE_WIDTH / 2, y: labelY },
+        yearId: yearNode.id,
+      });
+    });
+    
+    return labels;
+  }, [nodes]);
+
   return (
-    <ReactFlow
-      nodes={nodes}
-      edges={edges}
-      nodeTypes={nodeTypes}
-      edgeTypes={edgeTypes}
-      nodesDraggable={false}
-      fitView
-      minZoom={0.1}
-      maxZoom={2}
-      defaultEdgeOptions={{ type: 'default' }}
-      onNodeClick={(event, node) => {
-        // Trigger for all nodes that render as CourseNode component
-        const courseNodeTypes = [NodeType.Course, NodeType.Requirement, NodeType.Bundle];
-        const nodeData = node.data as any;
-        
-        if (courseNodeTypes.includes(node.type as NodeType) && typeof nodeData?.onClick === 'function') {
-          console.log('[V4 Canvas] Node clicked:', node.id, node.type);
-          nodeData.onClick();
-        }
-      }}
-    >
-      <Background />
-      <Controls />
-    </ReactFlow>
+    <div className="relative w-full h-full">
+      {/* Semester labels overlay */}
+      {semesterLabels.map((label, idx) => (
+        <SemesterLabel
+          key={`${label.yearId}-${label.semester}-${idx}`}
+          semester={label.semester}
+          position={label.position}
+        />
+      ))}
+      
+      {/* Semester column separators */}
+      <div className="semester-separators">
+        {nodes
+          .filter(n => n.type === NodeType.Year)
+          .map(yearNode => {
+            const baseX = yearNode.position.x;
+            const BASE_NODE_WIDTH = 360;
+            const H_GAP = 120;
+            const COLUMNS = 2;
+            const gridWidth = COLUMNS * BASE_NODE_WIDTH + (COLUMNS - 1) * H_GAP;
+            const gridStartX = baseX - gridWidth / 2;
+            const separatorX = gridStartX + BASE_NODE_WIDTH + H_GAP / 2;
+            
+            return (
+              <div
+                key={`separator-${yearNode.id}`}
+                className="semester-separator"
+                style={{
+                  position: 'absolute',
+                  left: separatorX,
+                  top: 60,
+                  width: '1px',
+                  height: '2000px',
+                  background: 'linear-gradient(to bottom, transparent, hsl(var(--border) / 0.2) 100px, hsl(var(--border) / 0.2) 90%, transparent)',
+                  pointerEvents: 'none',
+                  zIndex: 1,
+                }}
+              />
+            );
+          })}
+      </div>
+      
+      <ReactFlow
+        nodes={nodes}
+        edges={edges}
+        nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
+        nodesDraggable={false}
+        fitView
+        minZoom={0.1}
+        maxZoom={2}
+        defaultEdgeOptions={{ type: 'default' }}
+        onNodeClick={(event, node) => {
+          // Trigger for all nodes that render as CourseNode component
+          const courseNodeTypes = [NodeType.Course, NodeType.Requirement, NodeType.Bundle];
+          const nodeData = node.data as any;
+          
+          if (courseNodeTypes.includes(node.type as NodeType) && typeof nodeData?.onClick === 'function') {
+            console.log('[V4 Canvas] Node clicked:', node.id, node.type);
+            nodeData.onClick();
+          }
+        }}
+      >
+        <Background />
+        <Controls />
+      </ReactFlow>
+    </div>
   );
 }
 
