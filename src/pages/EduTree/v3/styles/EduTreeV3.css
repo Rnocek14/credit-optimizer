@@ -6,8 +6,8 @@
   pointer-events: auto;
 }
 
-/* Regular nodes */
-.react-flow__node {
+/* Regular nodes - SCOPED TO V3 */
+.edu-tree-v3 .react-flow__node {
   z-index: 2;
 }
 

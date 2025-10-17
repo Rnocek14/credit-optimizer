@@ -1,0 +1,42 @@
+/**
+ * V4-Specific React Flow Overrides
+ * Namespace: .edu-tree-v4
+ */
+
+/* V4 node sizing - natural width with constraints */
+.edu-tree-v4 .react-flow__node {
+  width: auto !important;
+  min-width: 100px !important;
+  max-width: 300px !important;
+  box-sizing: border-box;
+  z-index: 2;
+  pointer-events: all !important;
+}
+
+/* Spine nodes need more space */
+.edu-tree-v4 .react-flow__node[data-type="year"] {
+  min-width: 120px !important;
+}
+
+/* Course nodes natural sizing */
+.edu-tree-v4 .react-flow__node[data-type="course"],
+.edu-tree-v4 .react-flow__node[data-type="requirement"],
+.edu-tree-v4 .react-flow__node[data-type="bundle"] {
+  min-width: 100px !important;
+  width: auto !important;
+}
+
+/* Ensure handles don't block clicks */
+.edu-tree-v4 .react-flow__handle {
+  pointer-events: none !important;
+}
+
+/* Ensure nodes are above edges */
+.edu-tree-v4 .react-flow__edge {
+  z-index: 1;
+}
+
+/* Re-enable transitions for smooth interactions */
+.edu-tree-v4 .react-flow__node {
+  transition: transform 200ms ease, box-shadow 200ms ease !important;
+}
