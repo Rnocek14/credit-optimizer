@@ -22,6 +22,7 @@ export function GhostCourseNode({ data, selected }: GhostCourseNodeProps) {
       <Tooltip>
         <TooltipTrigger asChild>
           <div 
+            data-type={data.type || 'ghost'}
             className={`
               rounded-lg border-2 border-dashed
               bg-purple-500/10 border-purple-500/50 text-purple-700 dark:text-purple-300

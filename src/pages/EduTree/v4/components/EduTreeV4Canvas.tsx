@@ -12,7 +12,7 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { PlanNode, PlanEdge, NodeType, EdgeType, OverlayState } from '../types/v4';
-import { layoutSpineGraph } from '../engine/layoutEngine';
+import { hybridSpineLayout } from '../engine/layoutEngine';
 import { SpineNode } from './nodes/SpineNode';
 import { CourseNode } from './nodes/CourseNode';
 import { GhostCourseNode } from './nodes/GhostCourseNode';
@@ -52,26 +52,69 @@ function CanvasInner({ nodes: initialNodes, edges: initialEdges, overlays, onNod
   // Apply layout on mount
   useEffect(() => {
     async function applyLayout() {
-      console.log('[V4 Canvas] Applying ELK layout...');
-      const positioned = await layoutSpineGraph(initialNodes, initialEdges);
+      console.log('[V4 Canvas] Applying Hybrid layout...');
+      const positioned = hybridSpineLayout(initialNodes);
       
       // Convert to React Flow format
       const reactFlowNodes: Node[] = positioned.map(node => {
         const isGhostNode = node.className?.includes('ghost-node');
         const isCourseNode = [NodeType.Course, NodeType.Requirement, NodeType.Bundle].includes(node.type);
+        const nodeType = isGhostNode ? 'ghost' : node.type;
         
         return {
           id: node.id,
-          type: isGhostNode ? 'ghost' : node.type,
+          type: nodeType,
           position: node.position,
           data: { 
             ...node.data,
             onClick: isCourseNode && onNodeClick ? () => onNodeClick(node.id) : undefined,
+            type: nodeType, // CRITICAL: Pass type to data for CSS [data-type] selector
           },
           draggable: false,
           hidden: isGhostNode && !overlays.compare,
         };
       });
+
+      // Debug: Check for overlaps
+      const checkCollisions = (nodes: Node[]) => {
+        const overlaps: Array<{a: string, b: string}> = [];
+        
+        for (let i = 0; i < nodes.length; i++) {
+          for (let j = i + 1; j < nodes.length; j++) {
+            const a = nodes[i];
+            const b = nodes[j];
+            
+            const aBox = {
+              x1: a.position.x,
+              x2: a.position.x + 250,  // Average width
+              y1: a.position.y,
+              y2: a.position.y + 180,  // Average height
+            };
+            
+            const bBox = {
+              x1: b.position.x,
+              x2: b.position.x + 250,
+              y1: b.position.y,
+              y2: b.position.y + 180,
+            };
+            
+            const xOverlap = aBox.x1 < bBox.x2 && aBox.x2 > bBox.x1;
+            const yOverlap = aBox.y1 < bBox.y2 && aBox.y2 > bBox.y1;
+            
+            if (xOverlap && yOverlap) {
+              overlaps.push({ a: a.id, b: b.id });
+            }
+          }
+        }
+        
+        if (overlaps.length > 0) {
+          console.warn('[V4 Canvas] ⚠️ Overlaps detected:', overlaps);
+        } else {
+          console.log('[V4 Canvas] ✅ No overlaps detected');
+        }
+      };
+
+      checkCollisions(reactFlowNodes);
 
       setLayoutedNodes(reactFlowNodes);
       setNodes(reactFlowNodes);
@@ -85,7 +128,7 @@ function CanvasInner({ nodes: initialNodes, edges: initialEdges, overlays, onNod
     }
 
     applyLayout();
-  }, [initialNodes, initialEdges, fitView, onNodeClick]);
+  }, [initialNodes, initialEdges, fitView, onNodeClick, overlays.compare]);
 
   // Manual ghost node positioning when Compare overlay is active
   useEffect(() => {

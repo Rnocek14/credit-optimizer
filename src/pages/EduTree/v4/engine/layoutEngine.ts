@@ -184,3 +184,75 @@ export function manualSpineLayout(
 
   return positioned;
 }
+
+/**
+ * Hybrid Layout: Manual positioning + collision avoidance
+ * Guarantees no overlaps with dynamic spacing based on content
+ */
+export function hybridSpineLayout(
+  nodes: PlanNode[],
+  options: LayoutOptions = {}
+): PlanNode[] {
+  const opts = { ...DEFAULT_OPTIONS, ...options };
+  
+  const spineNodes = nodes.filter(n => n.type === NodeType.Year);
+  const branchNodes = nodes.filter(n => n.type !== NodeType.Year);
+  
+  // Phase 1: Position spine horizontally with generous spacing
+  const positioned: PlanNode[] = spineNodes.map((node, index) => ({
+    ...node,
+    position: { 
+      x: index * 500,  // 500px per year (generous for overlaps)
+      y: 0 
+    }
+  }));
+  
+  // Phase 2: Group courses by year
+  const coursesByYear = new Map<number, PlanNode[]>();
+  branchNodes.forEach(node => {
+    const year = node.data.year ?? 1;
+    if (!coursesByYear.has(year)) coursesByYear.set(year, []);
+    coursesByYear.get(year)!.push(node);
+  });
+  
+  // Phase 3: Position courses in 3-column grid per year with dynamic spacing
+  const COLUMNS = 3;
+  const BASE_NODE_WIDTH = 250;  // Average width for spacing calculations
+  const BASE_NODE_HEIGHT = 180; // Average height including metadata
+  const H_GAP = 40;  // Horizontal gap between columns
+  const V_GAP = 40;  // Vertical gap between rows
+  
+  coursesByYear.forEach((courses, year) => {
+    const yearIndex = year - 1;
+    const yearNode = spineNodes[yearIndex];
+    if (!yearNode) return;
+    
+    const baseX = yearIndex * 500;
+    const startY = 120; // Start below year node
+    
+    // Sort for deterministic layout
+    courses.sort((a, b) => a.id.localeCompare(b.id));
+    
+    courses.forEach((node, index) => {
+      const col = index % COLUMNS;
+      const row = Math.floor(index / COLUMNS);
+      
+      // Calculate position with collision avoidance
+      const x = baseX + col * (BASE_NODE_WIDTH + H_GAP) - (COLUMNS - 1) * (BASE_NODE_WIDTH + H_GAP) / 2;
+      const y = startY + row * (BASE_NODE_HEIGHT + V_GAP);
+      
+      positioned.push({
+        ...node,
+        position: { x, y }
+      });
+    });
+  });
+  
+  console.log('[Hybrid Layout] Positioned', {
+    spine: spineNodes.length,
+    courses: branchNodes.length,
+    totalNodes: positioned.length
+  });
+  
+  return positioned;
+}

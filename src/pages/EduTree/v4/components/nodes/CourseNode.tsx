@@ -46,6 +46,7 @@ export function CourseNode({ data, selected }: CourseNodeProps) {
 
   return (
     <div 
+      data-type={data.type || 'course'}
       onClick={() => {
         console.log('[CourseNode] Clicked:', data.label);
         data.onClick?.();

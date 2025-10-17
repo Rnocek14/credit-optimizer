@@ -28,6 +28,9 @@ export interface PlanNodeData {
   status?: "completed" | "in-progress" | "planned" | "unplanned";
   source?: "institution" | "transfer" | "exam" | "other";
   
+  // Node type for data-type attribute
+  type?: string;
+  
   // Overlay flags
   transferable?: boolean;      // Has known transfer equivalent
   residencyRequired?: boolean; // Must be taken in residence
