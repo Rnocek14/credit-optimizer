@@ -164,7 +164,7 @@ export function DegreeValidationPanel({ validation, onBrowseModule }: DegreeVali
                                 className="h-6 text-xs px-2"
                               >
                                 <ShoppingCart className="w-3 h-3 mr-1" />
-                                Browse
+                                View Module
                               </Button>
                             )}
                           </div>

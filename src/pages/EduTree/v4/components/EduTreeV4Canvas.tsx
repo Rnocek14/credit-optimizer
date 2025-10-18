@@ -12,13 +12,13 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { PlanNode, PlanEdge, NodeType, EdgeType, OverlayState, DegreeRequirements } from '../types/v4';
-import { hybridSpineLayout, hierarchicalModuleLayout, enrichYearNodesWithSummaries, groupCoursesByModule } from '../engine/layoutEngine';
+import { hybridSpineLayout, moduleCardLayout, enrichYearNodesWithSummaries, groupCoursesByModule } from '../engine/layoutEngine';
 import { validateDegree } from '../engine/degreeValidator';
 import { CS_DEGREE_REQUIREMENTS_V2 } from '../data/requirementsV2';
 import { flattenRequirements, findRequirementById } from '../types/requirementsHierarchy';
 import { annotateCourseModules } from '../seed/migrateSeedToHierarchy';
 import { DegreeValidationPanel } from './DegreeValidationPanel';
-import { CourseSelectionPanel } from './CourseSelectionPanel';
+import { ModuleDetailPanel } from './panels/ModuleDetailPanel';
 import { ComplianceScorePanel } from './ComplianceScorePanel';
 import { CreditPolicyEngine, DEFAULT_FL_POLICY } from '../engine/CreditPolicyEngine';
 import { SpineNode } from './nodes/SpineNode';
@@ -34,8 +34,8 @@ import { CompareEdge } from './edges/CompareEdge';
 import { ExportPlanButton } from './ExportPlanButton';
 import { SharePlanDialog } from './SharePlanDialog';
 import { BadgeLegend } from './BadgeLegend';
-import { ModuleToolbar } from './ModuleToolbar';
 import { MarketplaceCourse } from '@/hooks/useCourseMarketplace';
+import { toast } from 'sonner';
 import '../styles/v4-canvas.css';
 import '../styles/EduTreeV4.css';
 
@@ -204,16 +204,7 @@ function CanvasInner({ nodes: initialNodes, edges: initialEdges, overlays, onNod
   );
   
   const [planNodes, setPlanNodes] = useState<PlanNode[]>(annotatedNodes);
-  const [collapsedModules, setCollapsedModules] = useState<Set<string>>(() => {
-    // Initialize with default collapsed modules from requirements
-    const defaultCollapsed = new Set<string>();
-    flattenRequirements(CS_DEGREE_REQUIREMENTS_V2.requirements).forEach(req => {
-      if (req.defaultCollapsed) {
-        defaultCollapsed.add(req.id);
-      }
-    });
-    return defaultCollapsed;
-  });
+  const [selectedModuleId, setSelectedModuleId] = useState<string | null>(null);
   
   // Policy engine
   const policyEngine = useMemo(() => new CreditPolicyEngine(DEFAULT_FL_POLICY, 'ucf'), []);
@@ -246,82 +237,91 @@ function CanvasInner({ nodes: initialNodes, edges: initialEdges, overlays, onNod
     [planNodes, policyEngine]
   );
 
-  // Handle course selection from marketplace
-  const handleCourseSelect = useCallback((missingCourseId: string, selectedCourse: MarketplaceCourse) => {
-    console.log('[V4 Canvas] Course selected:', { missingCourseId, selectedCourse });
-    
-    // Create new course node from marketplace selection
+  // Handle course management from module panel
+  const handleAddCourseToModule = useCallback((moduleId: string, course: MarketplaceCourse) => {
     const newNode: PlanNode = {
-      id: `${missingCourseId}_marketplace_${Date.now()}`,
+      id: `${moduleId}_course_${Date.now()}`,
       type: NodeType.Course,
-      position: { x: 0, y: 0 }, // Layout engine will position
+      position: { x: 0, y: 0 }, // Not rendered in tree
       data: {
-        label: missingCourseId,
-        credits: 3, // Default, could be extracted from course data
+        label: course.title,
+        credits: 3,
         status: 'planned',
         source: 'other',
-        category: 'coreCS', // Match the sub-requirement category
-        moduleId: selectedSubReq || undefined,
-        selectedProviderId: selectedCourse.id,
-        providerId: selectedCourse.platform,
-        skillTags: selectedCourse.skill_tags || [],
-        difficulty: selectedCourse.difficulty as any,
-        estimatedHours: selectedCourse.duration_hours,
+        moduleId: moduleId,
+        providerId: course.platform,
+        selectedProviderId: course.id,
+        skillTags: course.skill_tags || [],
+        difficulty: course.difficulty as any,
+        estimatedHours: course.duration_hours,
       }
     };
-
-    // Validate policy before adding
-    const policyStatus = policyEngine.validateCourseSelection(newNode, planNodes);
     
-    // Add policy status to node data
+    // Validate policy
+    const policyStatus = policyEngine.validateCourseSelection(newNode, planNodes);
     newNode.data.policyStatus = {
       transferable: policyStatus.transferable,
       accredited: policyStatus.accredited,
       articulated: policyStatus.articulated,
       articulationId: policyStatus.articulationId,
     };
-
-    // Add to plan nodes
+    
     setPlanNodes(prev => [...prev, newNode]);
-    
-    // Close panel
-    setSelectedSubReq(null);
-  }, [selectedSubReq, planNodes, policyEngine]);
+    toast.success('Course added', { description: `Added ${course.title} to your plan` });
+  }, [planNodes, policyEngine]);
 
-  // Find sub-requirement and its validation status (from hierarchical structure)
-  const selectedSubReqData = useMemo(() => {
-    if (!selectedSubReq) return null;
-    const req = findRequirementById(selectedSubReq, CS_DEGREE_REQUIREMENTS_V2.requirements);
-    const subReqValidation = validation.bySubRequirement?.find(srv => srv.subReqId === selectedSubReq);
+  const handleRemoveCourse = useCallback((courseId: string) => {
+    setPlanNodes(prev => prev.filter(n => n.id !== courseId));
+    toast.success('Course removed');
+  }, []);
+
+  const handleReplaceCourse = useCallback((oldId: string, newCourse: MarketplaceCourse) => {
+    setPlanNodes(prev => prev.map(n => 
+      n.id === oldId ? {
+        ...n,
+        data: {
+          ...n.data,
+          label: newCourse.title,
+          providerId: newCourse.platform,
+          selectedProviderId: newCourse.id,
+        }
+      } : n
+    ));
+    toast.success('Course replaced');
+  }, []);
+
+  // Get selected module data for panel
+  const selectedModuleData = useMemo(() => {
+    if (!selectedModuleId) return null;
+    const module = findRequirementById(selectedModuleId, CS_DEGREE_REQUIREMENTS_V2.requirements);
+    const moduleValidation = validation.bySubRequirement?.find(srv => srv.subReqId === selectedModuleId);
     
-    if (!req || !subReqValidation) return null;
+    if (!module) return null;
     
-    // Convert to legacy SubRequirement format for compatibility
-    const subReq = {
-      id: req.id,
-      label: req.label,
-      category: req.category,
-      type: req.type,
-      requiredCount: req.requiredCount,
-      minCredits: req.minCredits,
-      courseIds: req.courseIds,
-      tag: req.tag,
-      description: req.description,
-      icon: req.icon,
+    // Get child sequences if bucket-level
+    const sequences = module.level === 'bucket' && module.children 
+      ? module.children 
+      : [];
+    
+    // Get current courses for this module
+    const currentCourses = planNodes.filter(n => n.data.moduleId === selectedModuleId);
+    
+    return {
+      module,
+      sequences,
+      currentCourses,
+      validation: moduleValidation,
     };
-    
-    return { subReq, validation: subReqValidation };
-  }, [selectedSubReq, validation]);
+  }, [selectedModuleId, planNodes, validation]);
 
   // Apply layout when plan nodes change
   useEffect(() => {
     async function applyLayout() {
-      console.log('[V4 Canvas] Applying Hierarchical Module layout...');
-      // Use hierarchical module layout (two-level nesting)
-      const positioned = hierarchicalModuleLayout(
+      console.log('[V4 Canvas] Applying Module Card layout...');
+      // Use module card layout (Phase 2I)
+      const positioned = moduleCardLayout(
         planNodes, 
-        CS_DEGREE_REQUIREMENTS_V2.requirements,
-        collapsedModules
+        CS_DEGREE_REQUIREMENTS_V2.requirements
       );
       const enriched = enrichYearNodesWithSummaries(positioned);
       
@@ -331,46 +331,22 @@ function CanvasInner({ nodes: initialNodes, edges: initialEdges, overlays, onNod
       const isModuleGroup = node.type === NodeType.ModuleGroup || node.data.type === 'moduleGroup';
       const nodeType = isGhostNode ? 'ghost' : (isModuleGroup ? 'moduleGroup' : node.type);
       
-      // For module group nodes, inject handlers
+      // For module group nodes, inject click handler
       if (isModuleGroup) {
         const moduleId = node.data.moduleId;
-        const level = node.data.level || 'sequence';
-        const req = findRequirementById(moduleId, CS_DEGREE_REQUIREMENTS_V2.requirements);
-        const subReqValidation = validation.bySubRequirement?.find(srv => srv.subReqId === moduleId);
-        
-        // Convert to legacy SubRequirement format
-        const subReq = req ? {
-          id: req.id,
-          label: req.label,
-          category: req.category,
-          type: req.type,
-          requiredCount: req.requiredCount,
-          minCredits: req.minCredits,
-          courseIds: req.courseIds,
-          tag: req.tag,
-          description: req.description,
-          icon: req.icon,
-        } : undefined;
         
         return {
           id: node.id,
           type: 'moduleGroup',
           position: node.position,
-          parentId: node.parentNode,
-          extent: node.extent,
           data: {
-            module: subReq,
-            validation: subReqValidation,
-            isCollapsed: collapsedModules.has(moduleId),
-            onToggle: () => toggleModule(moduleId),
-            onBrowseOptions: () => setSelectedSubReq(moduleId),
-            level,
+            ...node.data,
+            onClick: () => setSelectedModuleId(moduleId),
           },
           draggable: false,
           style: {
             width: node.style?.width || 420,
-            height: node.style?.height || 400,
-            zIndex: level === 'bucket' ? 0 : 1,
+            height: node.style?.height || 240,
           },
         };
       }
@@ -407,7 +383,10 @@ function CanvasInner({ nodes: initialNodes, edges: initialEdges, overlays, onNod
         hidden: isGhostNode && !overlays.compare,
         style: node.parentNode ? { zIndex: 1 } : undefined, // Child nodes above parent
       };
-    });
+    }).filter(n => 
+      // ONLY render Module and Year nodes (no course nodes)
+      n.type === 'moduleGroup' || n.type === NodeType.Year
+    );
 
       // Debug: Check for overlaps with variable node dimensions
       const checkCollisions = (nodes: Node[]) => {
@@ -580,62 +559,6 @@ function CanvasInner({ nodes: initialNodes, edges: initialEdges, overlays, onNod
     setEdges(reactFlowEdges);
   }, [initialEdges, overlays]);
 
-  // Group courses by module for module node rendering (no longer needed for floating cards)
-  const coursesByModule = useMemo(() => groupCoursesByModule(planNodes), [planNodes]);
-  
-  // Toggle module collapse with child node visibility (supports two-level nesting)
-  const toggleModule = useCallback((moduleId: string) => {
-    setCollapsedModules(prev => {
-      const next = new Set(prev);
-      
-      if (next.has(moduleId)) {
-        next.delete(moduleId);
-        // Auto-expand children if expanding parent bucket
-        const requirement = findRequirementById(moduleId, CS_DEGREE_REQUIREMENTS_V2.requirements);
-        if (requirement?.level === 'bucket' && requirement.children) {
-          requirement.children.forEach(child => next.delete(child.id));
-        }
-      } else {
-        next.add(moduleId);
-        // Auto-collapse children if collapsing parent bucket
-        const requirement = findRequirementById(moduleId, CS_DEGREE_REQUIREMENTS_V2.requirements);
-        if (requirement?.level === 'bucket' && requirement.children) {
-          requirement.children.forEach(child => next.add(child.id));
-        }
-      }
-      
-      return next;
-    });
-  }, []);
-
-  // Bulk expand/collapse handlers
-  const handleExpandAll = useCallback(() => {
-    setCollapsedModules(new Set());
-    localStorage.setItem('edutree_collapsed_modules', JSON.stringify([]));
-  }, []);
-
-  const handleCollapseAll = useCallback(() => {
-    const allModuleIds = flattenRequirements(CS_DEGREE_REQUIREMENTS_V2.requirements).map(r => r.id);
-    setCollapsedModules(new Set(allModuleIds));
-    localStorage.setItem('edutree_collapsed_modules', JSON.stringify(allModuleIds));
-  }, []);
-
-  // Persist collapsed state
-  useEffect(() => {
-    const saved = localStorage.getItem('edutree_collapsed_modules');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        setCollapsedModules(new Set(parsed));
-      } catch (e) {
-        console.error('Failed to parse collapsed modules:', e);
-      }
-    }
-  }, []);
-
-  useEffect(() => {
-    localStorage.setItem('edutree_collapsed_modules', JSON.stringify(Array.from(collapsedModules)));
-  }, [collapsedModules]);
 
   return (
     <div className="relative w-full h-full">
@@ -675,28 +598,25 @@ function CanvasInner({ nodes: initialNodes, edges: initialEdges, overlays, onNod
         <SharePlanDialog planNodes={planNodes} />
       </div>
 
-      {/* Module Toolbar */}
-      <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10">
-        <ModuleToolbar
-          onExpandAll={handleExpandAll}
-          onCollapseAll={handleCollapseAll}
-        />
-      </div>
-
       {/* Badge Legend */}
       <div className="absolute bottom-4 right-4 z-10 w-80">
         <BadgeLegend />
       </div>
       
-      {/* Course Selection Panel */}
-      <CourseSelectionPanel
-        subRequirement={selectedSubReqData?.subReq || null}
-        validation={selectedSubReqData?.validation || null}
-        currentPlan={planNodes}
-        isOpen={!!selectedSubReq}
-        onClose={() => setSelectedSubReq(null)}
-        onSelectCourse={handleCourseSelect}
-      />
+      {/* Module Detail Panel */}
+      {selectedModuleData && (
+        <ModuleDetailPanel
+          module={selectedModuleData.module}
+          sequences={selectedModuleData.sequences}
+          currentCourses={selectedModuleData.currentCourses}
+          validation={selectedModuleData.validation}
+          isOpen={!!selectedModuleId}
+          onClose={() => setSelectedModuleId(null)}
+          onAddCourse={handleAddCourseToModule}
+          onRemoveCourse={handleRemoveCourse}
+          onReplaceCourse={handleReplaceCourse}
+        />
+      )}
       
       {/* Semester column separators */}
       <div className="semester-separators">
@@ -731,17 +651,7 @@ function CanvasInner({ nodes: initialNodes, edges: initialEdges, overlays, onNod
       </div>
       
       <ReactFlow
-        nodes={nodes.map(node => {
-          // Hide courses when their module is collapsed (check both data.moduleId and parentId)
-          const moduleId = node.data?.moduleId as string | undefined;
-          const parentModuleId = node.parentId?.replace('module-', '');
-          
-          if ((moduleId && collapsedModules.has(moduleId)) || 
-              (parentModuleId && collapsedModules.has(parentModuleId))) {
-            return { ...node, hidden: true };
-          }
-          return node;
-        })}
+        nodes={nodes}
         edges={edges}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
