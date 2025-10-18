@@ -15,6 +15,7 @@ import { PlanNode, PlanEdge, NodeType, EdgeType, OverlayState, DegreeRequirement
 import { hybridSpineLayout, moduleCardLayout, enrichYearNodesWithSummaries, groupCoursesByModule } from '../engine/layoutEngine';
 import { validateDegree } from '../engine/degreeValidator';
 import { CS_DEGREE_REQUIREMENTS_V2 } from '../data/requirementsV2';
+import { filterVisibleNodes, getCollapsedYearSummary, filterVisibleEdges } from '../engine/collapseEngine';
 import { flattenRequirements, findRequirementById } from '../types/requirementsHierarchy';
 import { annotateCourseModules } from '../seed/migrateSeedToHierarchy';
 import { DegreeValidationPanel } from './DegreeValidationPanel';
@@ -391,11 +392,56 @@ function CanvasInner({ nodes: initialNodes, edges: initialEdges, overlays, onNod
       );
       const enriched = enrichYearNodesWithSummaries(positioned);
       
+      // ✨ Phase 2T: Apply collapse filtering and add summaries
+      const collapseState = { collapsedYears, collapsedModules, isDegreeCollapsed };
+      const visibleNodes = filterVisibleNodes(enriched, collapseState);
+      
+      // Add collapsed summaries to year nodes
+      const nodesWithSummaries = visibleNodes.map(node => {
+        if (node.type === NodeType.Year) {
+          const yearMatch = node.data.label.match(/Year (\d+)/);
+          if (yearMatch) {
+            const year = parseInt(yearMatch[1]);
+            if (collapsedYears.has(year)) {
+              return {
+                ...node,
+                data: {
+                  ...node.data,
+                  collapsedSummary: getCollapsedYearSummary(year, enriched),
+                },
+              };
+            }
+          }
+        }
+        return node;
+      });
+      
       // Convert to React Flow format
-    const reactFlowNodes: Node[] = enriched.map(node => {
+    const reactFlowNodes: Node[] = nodesWithSummaries.map(node => {
       const isGhostNode = node.className?.includes('ghost-node');
       const isModuleGroup = node.type === NodeType.ModuleGroup || node.data.type === 'moduleGroup';
+      const isYearNode = node.type === NodeType.Year;
       const nodeType = isGhostNode ? 'ghost' : (isModuleGroup ? 'moduleGroup' : node.type);
+      
+      // ✨ Phase 2T: For year nodes, inject collapse state and handler
+      if (isYearNode) {
+        const yearMatch = node.data.label.match(/Year (\d+)/);
+        const year = yearMatch ? parseInt(yearMatch[1]) : null;
+        const isCollapsed = year ? collapsedYears.has(year) : false;
+        
+        return {
+          id: node.id,
+          type: node.type,
+          position: node.position,
+          data: {
+            ...node.data,
+            onToggleCollapse: year ? () => toggleYearCollapse(year) : undefined,
+            type: node.type,
+          },
+          draggable: false,
+          isCollapsed, // Pass as node prop for SpineNode component
+        };
+      }
       
       // For module group nodes, inject click handler
       if (isModuleGroup) {
@@ -527,7 +573,7 @@ function CanvasInner({ nodes: initialNodes, edges: initialEdges, overlays, onNod
     }
 
     applyLayout();
-  }, [planNodes, initialEdges, fitView, onNodeClick, overlays.compare]);
+  }, [planNodes, initialEdges, fitView, onNodeClick, overlays.compare, collapsedYears, collapsedModules, isDegreeCollapsed, toggleYearCollapse]);
 
   // Manual ghost node positioning when Compare overlay is active
   useEffect(() => {
@@ -571,16 +617,24 @@ function CanvasInner({ nodes: initialNodes, edges: initialEdges, overlays, onNod
     setNodes(updatedNodes);
   }, [overlays.compare, layoutedNodes]);
 
-  // Update edge visibility based on overlays
+  // Update edge visibility based on overlays and collapse state
   useEffect(() => {
+    // ✨ Phase 2T: Filter edges based on visible nodes
+    const visibleNodeIds = new Set(nodes.map(n => n.id));
+    
     const reactFlowEdges: Edge[] = initialEdges.map(edge => {
       const isEquivEdge = edge.type === EdgeType.Equivalency;
       const isCompareEdge = edge.className?.includes('compare-edge');
       
+      // ✨ Phase 2T: Hide edges if either endpoint is hidden
+      const sourceVisible = visibleNodeIds.has(edge.source);
+      const targetVisible = visibleNodeIds.has(edge.target);
+      const endpointHidden = !sourceVisible || !targetVisible;
+      
       // Determine visibility
       const shouldHideTransfer = isEquivEdge && !isCompareEdge && !overlays.transfer;
       const shouldHideCompare = isCompareEdge && !overlays.compare;
-      const shouldHide = shouldHideTransfer || shouldHideCompare;
+      const shouldHide = shouldHideTransfer || shouldHideCompare || endpointHidden;
 
       // Determine edge type
       let edgeType = 'default';
@@ -628,7 +682,7 @@ function CanvasInner({ nodes: initialNodes, edges: initialEdges, overlays, onNod
     });
 
     setEdges(reactFlowEdges);
-  }, [initialEdges, overlays]);
+  }, [initialEdges, overlays, nodes]);
 
 
   return (
