@@ -12,8 +12,11 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { PlanNode, PlanEdge, NodeType, EdgeType, OverlayState, DegreeRequirements } from '../types/v4';
-import { hybridSpineLayout, nestedModuleLayout, enrichYearNodesWithSummaries, groupCoursesByModule } from '../engine/layoutEngine';
+import { hybridSpineLayout, hierarchicalModuleLayout, enrichYearNodesWithSummaries, groupCoursesByModule } from '../engine/layoutEngine';
 import { validateDegree } from '../engine/degreeValidator';
+import { CS_DEGREE_REQUIREMENTS_V2 } from '../data/requirementsV2';
+import { flattenRequirements, findRequirementById } from '../types/requirementsHierarchy';
+import { annotateCourseModules } from '../seed/migrateSeedToHierarchy';
 import { DegreeValidationPanel } from './DegreeValidationPanel';
 import { CourseSelectionPanel } from './CourseSelectionPanel';
 import { ComplianceScorePanel } from './ComplianceScorePanel';
@@ -191,19 +194,51 @@ function CanvasInner({ nodes: initialNodes, edges: initialEdges, overlays, onNod
   const [nodes, setNodes] = useState<Node[]>([]);
   const [edges, setEdges] = useState<Edge[]>([]);
   const [layoutedNodes, setLayoutedNodes] = useState<Node[]>([]);
-  const [planNodes, setPlanNodes] = useState<PlanNode[]>(initialNodes);
   const [selectedSubReq, setSelectedSubReq] = useState<string | null>(null);
-  const [collapsedModules, setCollapsedModules] = useState<Set<string>>(new Set());
   const { fitView } = useReactFlow();
+  
+  // Annotate courses with moduleId based on hierarchical requirements
+  const annotatedNodes = useMemo(() => 
+    annotateCourseModules(initialNodes, CS_DEGREE_REQUIREMENTS_V2.requirements),
+    [initialNodes]
+  );
+  
+  const [planNodes, setPlanNodes] = useState<PlanNode[]>(annotatedNodes);
+  const [collapsedModules, setCollapsedModules] = useState<Set<string>>(() => {
+    // Initialize with default collapsed modules from requirements
+    const defaultCollapsed = new Set<string>();
+    flattenRequirements(CS_DEGREE_REQUIREMENTS_V2.requirements).forEach(req => {
+      if (req.defaultCollapsed) {
+        defaultCollapsed.add(req.id);
+      }
+    });
+    return defaultCollapsed;
+  });
   
   // Policy engine
   const policyEngine = useMemo(() => new CreditPolicyEngine(DEFAULT_FL_POLICY, 'ucf'), []);
 
-  // Validate degree requirements
-  const validation = useMemo(() => 
-    validateDegree(planNodes, CS_DEGREE_REQUIREMENTS),
-    [planNodes]
-  );
+  // Validate degree requirements (convert hierarchical to flat for validator)
+  const validation = useMemo(() => {
+    const flatRequirements: DegreeRequirements = {
+      totalCredits: CS_DEGREE_REQUIREMENTS_V2.totalCredits,
+      residencyMinimum: CS_DEGREE_REQUIREMENTS_V2.residencyMinimum,
+      categories: CS_DEGREE_REQUIREMENTS_V2.categories!,
+      subRequirements: flattenRequirements(CS_DEGREE_REQUIREMENTS_V2.requirements).map(req => ({
+        id: req.id,
+        label: req.label,
+        category: req.category,
+        type: req.type,
+        requiredCount: req.requiredCount,
+        minCredits: req.minCredits,
+        courseIds: req.courseIds,
+        tag: req.tag,
+        description: req.description,
+        icon: req.icon,
+      }))
+    };
+    return validateDegree(planNodes, flatRequirements);
+  }, [planNodes]);
   
   // Calculate compliance metrics
   const complianceMetrics = useMemo(() => 
@@ -253,22 +288,39 @@ function CanvasInner({ nodes: initialNodes, edges: initialEdges, overlays, onNod
     setSelectedSubReq(null);
   }, [selectedSubReq, planNodes, policyEngine]);
 
-  // Find sub-requirement and its validation status
+  // Find sub-requirement and its validation status (from hierarchical structure)
   const selectedSubReqData = useMemo(() => {
     if (!selectedSubReq) return null;
-    const subReq = CS_DEGREE_REQUIREMENTS.subRequirements?.find(sr => sr.id === selectedSubReq);
+    const req = findRequirementById(selectedSubReq, CS_DEGREE_REQUIREMENTS_V2.requirements);
     const subReqValidation = validation.bySubRequirement?.find(srv => srv.subReqId === selectedSubReq);
-    return subReq && subReqValidation ? { subReq, validation: subReqValidation } : null;
+    
+    if (!req || !subReqValidation) return null;
+    
+    // Convert to legacy SubRequirement format for compatibility
+    const subReq = {
+      id: req.id,
+      label: req.label,
+      category: req.category,
+      type: req.type,
+      requiredCount: req.requiredCount,
+      minCredits: req.minCredits,
+      courseIds: req.courseIds,
+      tag: req.tag,
+      description: req.description,
+      icon: req.icon,
+    };
+    
+    return { subReq, validation: subReqValidation };
   }, [selectedSubReq, validation]);
 
   // Apply layout when plan nodes change
   useEffect(() => {
     async function applyLayout() {
-      console.log('[V4 Canvas] Applying Nested Module layout...');
-      // Use nested module layout for hierarchical structure (pass collapse state)
-      const positioned = nestedModuleLayout(
+      console.log('[V4 Canvas] Applying Hierarchical Module layout...');
+      // Use hierarchical module layout (two-level nesting)
+      const positioned = hierarchicalModuleLayout(
         planNodes, 
-        CS_DEGREE_REQUIREMENTS.subRequirements || [],
+        CS_DEGREE_REQUIREMENTS_V2.requirements,
         collapsedModules
       );
       const enriched = enrichYearNodesWithSummaries(positioned);
@@ -282,25 +334,43 @@ function CanvasInner({ nodes: initialNodes, edges: initialEdges, overlays, onNod
       // For module group nodes, inject handlers
       if (isModuleGroup) {
         const moduleId = node.data.moduleId;
-        const subReq = CS_DEGREE_REQUIREMENTS.subRequirements?.find(sr => sr.id === moduleId);
+        const level = node.data.level || 'sequence';
+        const req = findRequirementById(moduleId, CS_DEGREE_REQUIREMENTS_V2.requirements);
         const subReqValidation = validation.bySubRequirement?.find(srv => srv.subReqId === moduleId);
+        
+        // Convert to legacy SubRequirement format
+        const subReq = req ? {
+          id: req.id,
+          label: req.label,
+          category: req.category,
+          type: req.type,
+          requiredCount: req.requiredCount,
+          minCredits: req.minCredits,
+          courseIds: req.courseIds,
+          tag: req.tag,
+          description: req.description,
+          icon: req.icon,
+        } : undefined;
         
         return {
           id: node.id,
           type: 'moduleGroup',
           position: node.position,
+          parentId: node.parentNode,
+          extent: node.extent,
           data: {
             module: subReq,
             validation: subReqValidation,
             isCollapsed: collapsedModules.has(moduleId),
             onToggle: () => toggleModule(moduleId),
             onBrowseOptions: () => setSelectedSubReq(moduleId),
+            level,
           },
           draggable: false,
           style: {
             width: node.style?.width || 420,
             height: node.style?.height || 400,
-            zIndex: 0,
+            zIndex: level === 'bucket' ? 0 : 1,
           },
         };
       }
@@ -513,25 +583,26 @@ function CanvasInner({ nodes: initialNodes, edges: initialEdges, overlays, onNod
   // Group courses by module for module node rendering (no longer needed for floating cards)
   const coursesByModule = useMemo(() => groupCoursesByModule(planNodes), [planNodes]);
   
-  // Toggle module collapse with child node visibility
+  // Toggle module collapse with child node visibility (supports two-level nesting)
   const toggleModule = useCallback((moduleId: string) => {
     setCollapsedModules(prev => {
       const next = new Set(prev);
-      const isCollapsing = !next.has(moduleId);
       
       if (next.has(moduleId)) {
         next.delete(moduleId);
+        // Auto-expand children if expanding parent bucket
+        const requirement = findRequirementById(moduleId, CS_DEGREE_REQUIREMENTS_V2.requirements);
+        if (requirement?.level === 'bucket' && requirement.children) {
+          requirement.children.forEach(child => next.delete(child.id));
+        }
       } else {
         next.add(moduleId);
-      }
-      
-      // Update child node visibility
-      setNodes(prevNodes => prevNodes.map(node => {
-        if (node.parentId === `module-${moduleId}`) {
-          return { ...node, hidden: isCollapsing };
+        // Auto-collapse children if collapsing parent bucket
+        const requirement = findRequirementById(moduleId, CS_DEGREE_REQUIREMENTS_V2.requirements);
+        if (requirement?.level === 'bucket' && requirement.children) {
+          requirement.children.forEach(child => next.add(child.id));
         }
-        return node;
-      }));
+      }
       
       return next;
     });
@@ -544,7 +615,7 @@ function CanvasInner({ nodes: initialNodes, edges: initialEdges, overlays, onNod
   }, []);
 
   const handleCollapseAll = useCallback(() => {
-    const allModuleIds = CS_DEGREE_REQUIREMENTS.subRequirements?.map(sr => sr.id) || [];
+    const allModuleIds = flattenRequirements(CS_DEGREE_REQUIREMENTS_V2.requirements).map(r => r.id);
     setCollapsedModules(new Set(allModuleIds));
     localStorage.setItem('edutree_collapsed_modules', JSON.stringify(allModuleIds));
   }, []);
@@ -575,7 +646,23 @@ function CanvasInner({ nodes: initialNodes, edges: initialEdges, overlays, onNod
           planNodes={planNodes}
           validation={validation}
           complianceMetrics={complianceMetrics}
-          requirements={CS_DEGREE_REQUIREMENTS}
+          requirements={{
+            totalCredits: CS_DEGREE_REQUIREMENTS_V2.totalCredits,
+            residencyMinimum: CS_DEGREE_REQUIREMENTS_V2.residencyMinimum,
+            categories: CS_DEGREE_REQUIREMENTS_V2.categories!,
+            subRequirements: flattenRequirements(CS_DEGREE_REQUIREMENTS_V2.requirements).map(req => ({
+              id: req.id,
+              label: req.label,
+              category: req.category,
+              type: req.type,
+              requiredCount: req.requiredCount,
+              minCredits: req.minCredits,
+              courseIds: req.courseIds,
+              tag: req.tag,
+              description: req.description,
+              icon: req.icon,
+            }))
+          }}
         />
       </div>
       

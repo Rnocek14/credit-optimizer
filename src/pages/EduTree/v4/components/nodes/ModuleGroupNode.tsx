@@ -17,21 +17,27 @@ interface ModuleGroupNodeProps {
     isCollapsed: boolean;
     onToggle: () => void;
     onBrowseOptions: () => void;
+    level?: 'bucket' | 'sequence'; // Level-aware styling
   };
 }
 
 export function ModuleGroupNode({ data }: ModuleGroupNodeProps) {
-  const { module, validation, isCollapsed, onToggle, onBrowseOptions } = data;
+  const { module, validation, isCollapsed, onToggle, onBrowseOptions, level = 'sequence' } = data;
   
   const progress = validation.creditsNeeded > 0
     ? (validation.creditsEarned / validation.creditsNeeded) * 100
     : validation.completed.length > 0 ? 100 : 0;
   
   const totalCourses = validation.completed.length + validation.missing.length;
+  const isBucket = level === 'bucket';
   
   return (
     <div 
-      className="bg-card/80 backdrop-blur-sm border-2 border-border rounded-xl shadow-lg transition-all duration-200 hover:shadow-xl p-4 relative overflow-hidden"
+      className={`backdrop-blur-sm border-2 rounded-xl shadow-lg transition-all duration-200 hover:shadow-xl p-4 relative overflow-hidden ${
+        isBucket 
+          ? 'bg-primary/5 border-primary/30' 
+          : 'bg-card/80 border-border'
+      }`}
       style={{
         width: '100%',
         height: '100%',
@@ -42,12 +48,12 @@ export function ModuleGroupNode({ data }: ModuleGroupNodeProps) {
       <div className="flex items-start justify-between gap-3 mb-3">
         <div className="flex items-start gap-3 flex-1">
           {module.icon && (
-            <span className="text-3xl flex-shrink-0" aria-hidden="true">
+            <span className={`flex-shrink-0 ${isBucket ? 'text-4xl' : 'text-3xl'}`} aria-hidden="true">
               {module.icon}
             </span>
           )}
           <div className="flex-1 min-w-0">
-            <h3 className="font-bold text-lg text-foreground leading-tight mb-1">
+            <h3 className={`font-bold leading-tight mb-1 ${isBucket ? 'text-xl' : 'text-lg'}`}>
               {module.label}
             </h3>
             {module.description && (

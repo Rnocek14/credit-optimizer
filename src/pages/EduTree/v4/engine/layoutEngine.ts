@@ -318,85 +318,185 @@ export function groupCoursesByModule(
 }
 
 /**
- * Nested Module Layout - Groups courses by moduleId FIRST, then positions within parent modules
- * This creates a true hierarchical structure where modules are ReactFlow parent nodes
+ * Hierarchical Module Layout - Two-level nesting: Bucket → Sequence → Courses
+ * Supports both bucket-level containers and standalone sequences
  */
-export function nestedModuleLayout(
+export function hierarchicalModuleLayout(
   nodes: PlanNode[],
-  subRequirements: any[],
+  requirements: any[], // HierarchicalRequirement[]
   collapsedModules: Set<string> = new Set()
 ): PlanNode[] {
   const positioned: PlanNode[] = [];
-  const moduleParentNodes: PlanNode[] = [];
+  const bucketParentNodes: PlanNode[] = [];
+  const sequenceParentNodes: PlanNode[] = [];
   
-  // 1. Group courses by module
+  // 1. Group courses by module (sequence-level)
   const coursesByModule = groupCoursesByModule(nodes);
   
   // 2. Get spine nodes (Year markers)
   const spineNodes = nodes.filter(n => n.type === NodeType.Year);
   
-  // 3. For each sub-requirement, create a parent module node
-  const selectAnyModules = subRequirements.filter(sr => sr.type === 'select-any');
+  // 3. Get bucket-level requirements and standalone sequences
+  const buckets = requirements.filter((r: any) => r.level === 'bucket');
+  const standaloneSequences = requirements.filter((r: any) => 
+    r.level === 'sequence' && !r.parentId
+  );
   
-  selectAnyModules.forEach((subReq, moduleIndex) => {
-    const moduleCourses = coursesByModule.get(subReq.id) || [];
-    if (moduleCourses.length === 0) return;
+  // 4. Process buckets (two-level nesting)
+  let bucketYOffset = 180; // Start below spine
+  
+  buckets.forEach((bucket: any) => {
+    const sequences = bucket.children || [];
     
-    const isCollapsed = collapsedModules.has(subReq.id);
+    // Calculate total bucket content
+    let totalBucketCourses = 0;
+    sequences.forEach((seq: any) => {
+      const seqCourses = coursesByModule.get(seq.id) || [];
+      totalBucketCourses += seqCourses.length;
+    });
     
-    // Determine module position based on earliest year
-    const years = moduleCourses.map(c => c.data.year || 1);
+    if (totalBucketCourses === 0) return; // Skip empty buckets
+    
+    const isBucketCollapsed = collapsedModules.has(bucket.id);
+    
+    // Determine bucket position based on earliest year of courses
+    const allBucketCourses: PlanNode[] = [];
+    sequences.forEach((seq: any) => {
+      const seqCourses = coursesByModule.get(seq.id) || [];
+      allBucketCourses.push(...seqCourses);
+    });
+    
+    const years = allBucketCourses.map(c => c.data.year || 1);
+    const minYear = years.length > 0 ? Math.min(...years) : 1;
+    const bucketX = 100 + (minYear - 1) * 1200;
+    
+    // Calculate bucket dimensions
+    let totalSequenceHeight = 0;
+    sequences.forEach((seq: any) => {
+      const seqCourses = coursesByModule.get(seq.id) || [];
+      const isSeqCollapsed = collapsedModules.has(seq.id);
+      const seqHeight = isSeqCollapsed ? 100 : Math.max(200, 140 + seqCourses.length * 220);
+      totalSequenceHeight += seqHeight + 30; // Add gap between sequences
+    });
+    
+    const bucketHeight = isBucketCollapsed 
+      ? 180 
+      : Math.max(400, 220 + totalSequenceHeight);
+    
+    // Create bucket parent node
+    const bucketNode: PlanNode = {
+      id: `bucket-${bucket.id}`,
+      type: NodeType.ModuleGroup,
+      position: { x: bucketX, y: bucketYOffset },
+      data: {
+        label: bucket.label,
+        moduleId: bucket.id,
+        type: 'moduleGroup',
+        level: 'bucket'
+      },
+      style: {
+        width: 480,
+        height: bucketHeight,
+      }
+    };
+    bucketParentNodes.push(bucketNode);
+    
+    // 5. Position sequences within bucket
+    let sequenceYOffset = 200; // Start after bucket header
+    
+    sequences.forEach((sequence: any) => {
+      const seqCourses = coursesByModule.get(sequence.id) || [];
+      if (seqCourses.length === 0) return;
+      
+      const isSeqCollapsed = collapsedModules.has(sequence.id);
+      const seqHeight = isSeqCollapsed 
+        ? 100 
+        : Math.max(200, 140 + seqCourses.length * 220);
+      
+      // Create sequence node (child of bucket)
+      const sequenceNode: PlanNode = {
+        id: `module-${sequence.id}`,
+        type: NodeType.ModuleGroup,
+        position: { x: 20, y: sequenceYOffset }, // Relative to bucket
+        parentNode: `bucket-${bucket.id}`,
+        extent: 'parent' as const,
+        data: {
+          label: sequence.label,
+          moduleId: sequence.id,
+          type: 'moduleGroup',
+          level: 'sequence'
+        },
+        style: {
+          width: 420,
+          height: seqHeight,
+        }
+      };
+      sequenceParentNodes.push(sequenceNode);
+      
+      // 6. Position courses within sequence
+      seqCourses.forEach((course, courseIndex) => {
+        positioned.push({
+          ...course,
+          position: { x: 20, y: 160 + courseIndex * 220 }, // Relative to sequence
+          parentNode: `module-${sequence.id}`,
+          extent: 'parent' as const,
+        });
+      });
+      
+      sequenceYOffset += seqHeight + 30; // Stack sequences vertically
+    });
+    
+    bucketYOffset += bucketHeight + 50; // Stack buckets vertically
+  });
+  
+  // 7. Process standalone sequences (no parent bucket)
+  let standaloneYOffset = bucketYOffset;
+  
+  standaloneSequences.forEach((sequence: any) => {
+    const seqCourses = coursesByModule.get(sequence.id) || [];
+    if (seqCourses.length === 0) return;
+    
+    const isCollapsed = collapsedModules.has(sequence.id);
+    const years = seqCourses.map(c => c.data.year || 1);
     const minYear = Math.min(...years);
-    const maxYear = Math.max(...years);
-    const yearSpan = maxYear - minYear;
-    
-    // Position module at earliest year column
     const moduleX = 100 + (minYear - 1) * 1200;
     
-    // Stack modules vertically with generous spacing to avoid overlaps
-    const moduleY = 180 + (moduleIndex * 700);
-    
-    // Calculate dynamic parent size based on collapse state
-    // Header: ~180px (icon, title, progress, button, padding)
-    // Collapsed: just header height
-    // Expanded: header + courses (200px each) + bottom padding
     const moduleHeight = isCollapsed 
       ? 140 
-      : Math.max(280, 200 + moduleCourses.length * 220);
+      : Math.max(280, 200 + seqCourses.length * 220);
     
-    // Create parent module node
+    // Create standalone sequence node
     const moduleNode: PlanNode = {
-      id: `module-${subReq.id}`,
+      id: `module-${sequence.id}`,
       type: NodeType.ModuleGroup,
-      position: { x: moduleX, y: moduleY },
+      position: { x: moduleX, y: standaloneYOffset },
       data: {
-        label: subReq.label,
-        moduleId: subReq.id,
+        label: sequence.label,
+        moduleId: sequence.id,
         type: 'moduleGroup',
+        level: 'sequence'
       },
       style: {
         width: 420,
         height: moduleHeight,
       }
     };
-    moduleParentNodes.push(moduleNode);
+    sequenceParentNodes.push(moduleNode);
     
-    // 4. Position child courses RELATIVE to parent (all offsets are relative)
-    // Start after header (180px) + 20px padding
-    moduleCourses.forEach((course, index) => {
-      const childX = 20; // Left margin within module
-      const childY = 200 + (index * 220); // Start after header, 220px per course (200px + 20px gap)
-      
+    // Position courses within standalone sequence
+    seqCourses.forEach((course, index) => {
       positioned.push({
         ...course,
-        position: { x: childX, y: childY },
-        parentNode: `module-${subReq.id}`, // 🔑 Link to parent
-        extent: 'parent' as const, // Constrain to parent bounds
+        position: { x: 20, y: 200 + index * 220 }, // Relative to sequence
+        parentNode: `module-${sequence.id}`,
+        extent: 'parent' as const,
       });
     });
+    
+    standaloneYOffset += moduleHeight + 50;
   });
   
-  // 5. Position spine nodes (Year markers) at top
+  // 8. Position spine nodes (Year markers) at top
   spineNodes.forEach((spine, index) => {
     positioned.push({
       ...spine,
@@ -404,7 +504,7 @@ export function nestedModuleLayout(
     });
   });
   
-  // 6. Handle courses NOT in modules (all-required types) - use existing hybrid layout
+  // 9. Handle courses NOT in modules - use existing hybrid layout
   const coursesNotInModules = nodes.filter(n => 
     (n.type === NodeType.Course || n.type === NodeType.Placeholder) && 
     !n.data.moduleId &&
@@ -459,14 +559,26 @@ export function nestedModuleLayout(
     });
   });
   
-  console.log('[Nested Layout] Created modules:', {
-    moduleParents: moduleParentNodes.length,
+  console.log('[Hierarchical Layout] Created modules:', {
+    buckets: bucketParentNodes.length,
+    sequences: sequenceParentNodes.length,
     childrenInModules: positioned.filter(n => n.parentNode).length,
     independentCourses: positioned.filter(n => !n.parentNode && n.type !== NodeType.Year).length,
     spineNodes: spineNodes.length,
   });
   
-  return [...moduleParentNodes, ...positioned];
+  return [...bucketParentNodes, ...sequenceParentNodes, ...positioned];
+}
+
+/**
+ * Legacy wrapper for backward compatibility
+ */
+export function nestedModuleLayout(
+  nodes: PlanNode[],
+  subRequirements: any[],
+  collapsedModules: Set<string> = new Set()
+): PlanNode[] {
+  return hierarchicalModuleLayout(nodes, subRequirements, collapsedModules);
 }
 
 /**

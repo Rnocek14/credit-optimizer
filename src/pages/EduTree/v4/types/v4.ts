@@ -56,6 +56,7 @@ export interface PlanNodeData {
   
   // Module grouping (Phase 2D)
   moduleId?: string;          // Links course to a sub-requirement module
+  level?: 'bucket' | 'sequence'; // Hierarchical level for module nodes (Phase 2H)
   
   // Provider matching fields
   skillTags?: string[];        // Skills required for matching providers
