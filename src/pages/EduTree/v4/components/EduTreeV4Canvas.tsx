@@ -435,11 +435,11 @@ function CanvasInner({ nodes: initialNodes, edges: initialEdges, overlays, onNod
           position: node.position,
           data: {
             ...node.data,
+            isCollapsed,
             onToggleCollapse: year ? () => toggleYearCollapse(year) : undefined,
             type: node.type,
           },
           draggable: false,
-          isCollapsed, // Pass as node prop for SpineNode component
         };
       }
       

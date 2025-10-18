@@ -9,19 +9,22 @@ import { Progress } from '@/components/ui/progress';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 
 interface SpineNodeProps {
-  data: PlanNodeData;
+  data: PlanNodeData & {
+    isCollapsed?: boolean;
+    onToggleCollapse?: () => void;
+  };
   selected?: boolean;
-  isCollapsed?: boolean;
 }
 
-export function SpineNode({ data, selected, isCollapsed = false }: SpineNodeProps) {
+export function SpineNode({ data, selected }: SpineNodeProps) {
   const summary = data.creditsSummary;
   const health = data.loadHealth;
   const collapsedSummary = data.collapsedSummary;
+  const { isCollapsed = false, onToggleCollapse } = data;
   
   const handleToggleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    data.onToggleCollapse?.();
+    onToggleCollapse?.();
   };
   
   return (
