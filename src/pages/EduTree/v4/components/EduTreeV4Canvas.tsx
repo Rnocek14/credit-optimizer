@@ -22,7 +22,7 @@ import { DegreeValidationPanel } from './DegreeValidationPanel';
 import { ModuleDetailPanel } from './panels/ModuleDetailPanel';
 import { ComplianceScorePanel } from './ComplianceScorePanel';
 import { CreditPolicyEngine, DEFAULT_FL_POLICY } from '../engine/CreditPolicyEngine';
-import { SpineNode } from './nodes/SpineNode';
+import { SimpleSpineNode } from './nodes/SimpleSpineNode';
 import { CourseNode } from './nodes/CourseNode';
 import { GhostCourseNode } from './nodes/GhostCourseNode';
 import { ExternalNode } from './nodes/ExternalNode';
@@ -175,7 +175,7 @@ interface EduTreeV4CanvasProps {
 }
 
 const nodeTypes = {
-  [NodeType.Year]: SpineNode,
+  [NodeType.Year]: SimpleSpineNode,
   [NodeType.Course]: CourseNode,
   [NodeType.External]: ExternalNode,
   [NodeType.Requirement]: CourseNode,
