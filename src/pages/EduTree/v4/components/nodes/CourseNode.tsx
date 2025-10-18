@@ -72,17 +72,26 @@ export function CourseNode({ data, selected }: CourseNodeProps) {
     return (
       <div className="flex items-center gap-1 flex-wrap">
         {data.policyStatus.articulated && (
-          <Badge className="text-[10px] px-1.5 py-0 bg-green-500/20 text-green-700 dark:text-green-300">
+          <Badge 
+            className="text-[10px] px-1.5 py-0 bg-green-500/20 text-green-700 dark:text-green-300"
+            title="Guaranteed transfer via Florida articulation"
+          >
             ✅ Articulated
           </Badge>
         )}
         {!data.policyStatus.transferable && (
-          <Badge className="text-[10px] px-1.5 py-0 bg-red-500/20 text-red-700 dark:text-red-300">
+          <Badge 
+            className="text-[10px] px-1.5 py-0 bg-red-500/20 text-red-700 dark:text-red-300"
+            title="Does not count toward transfer limit"
+          >
             ⚠️ Non-Transfer
           </Badge>
         )}
         {data.selectedProviderId && (
-          <Badge className="text-[10px] px-1.5 py-0 bg-blue-500/20 text-blue-700 dark:text-blue-300">
+          <Badge 
+            className="text-[10px] px-1.5 py-0 bg-blue-500/20 text-blue-700 dark:text-blue-300"
+            title="Selected from course marketplace"
+          >
             🛒 Marketplace
           </Badge>
         )}

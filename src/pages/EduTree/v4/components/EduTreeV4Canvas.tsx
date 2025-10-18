@@ -12,7 +12,7 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { PlanNode, PlanEdge, NodeType, EdgeType, OverlayState, DegreeRequirements } from '../types/v4';
-import { hybridSpineLayout, enrichYearNodesWithSummaries, groupCoursesByModule, calculateModuleCardPosition } from '../engine/layoutEngine';
+import { hybridSpineLayout, enrichYearNodesWithSummaries, groupCoursesByModule, calculateModuleCardPositions } from '../engine/layoutEngine';
 import { validateDegree } from '../engine/degreeValidator';
 import { DegreeValidationPanel } from './DegreeValidationPanel';
 import { CourseSelectionPanel } from './CourseSelectionPanel';
@@ -23,8 +23,13 @@ import { CourseNode } from './nodes/CourseNode';
 import { GhostCourseNode } from './nodes/GhostCourseNode';
 import { ExternalNode } from './nodes/ExternalNode';
 import { ModuleCard } from './nodes/ModuleCard';
+import { ModuleBundleNode } from './nodes/ModuleBundleNode';
 import { TransferEdge } from './edges/TransferEdge';
 import { CompareEdge } from './edges/CompareEdge';
+import { ExportPlanButton } from './ExportPlanButton';
+import { SharePlanDialog } from './SharePlanDialog';
+import { BadgeLegend } from './BadgeLegend';
+import { ModuleToolbar } from './ModuleToolbar';
 import { MarketplaceCourse } from '@/hooks/useCourseMarketplace';
 import '../styles/v4-canvas.css';
 import '../styles/EduTreeV4.css';
@@ -170,6 +175,7 @@ const nodeTypes = {
   [NodeType.Requirement]: CourseNode,
   [NodeType.Bundle]: CourseNode,
   ghost: GhostCourseNode,
+  moduleBundle: ModuleBundleNode,
 };
 
 const edgeTypes = {
@@ -458,6 +464,12 @@ function CanvasInner({ nodes: initialNodes, edges: initialEdges, overlays, onNod
   // Group courses by module for visual grouping
   const coursesByModule = useMemo(() => groupCoursesByModule(planNodes), [planNodes]);
   
+  // Calculate all module card positions at once
+  const moduleCardPositions = useMemo(() => 
+    calculateModuleCardPositions(coursesByModule, CS_DEGREE_REQUIREMENTS.subRequirements || []),
+    [coursesByModule]
+  );
+  
   // Toggle module collapse
   const toggleModule = useCallback((moduleId: string) => {
     setCollapsedModules(prev => {
@@ -471,39 +483,84 @@ function CanvasInner({ nodes: initialNodes, edges: initialEdges, overlays, onNod
     });
   }, []);
 
+  // Bulk expand/collapse handlers
+  const handleExpandAll = useCallback(() => {
+    setCollapsedModules(new Set());
+    localStorage.setItem('edutree_collapsed_modules', JSON.stringify([]));
+  }, []);
+
+  const handleCollapseAll = useCallback(() => {
+    const allModuleIds = CS_DEGREE_REQUIREMENTS.subRequirements?.map(sr => sr.id) || [];
+    setCollapsedModules(new Set(allModuleIds));
+    localStorage.setItem('edutree_collapsed_modules', JSON.stringify(allModuleIds));
+  }, []);
+
+  // Persist collapsed state
+  useEffect(() => {
+    const saved = localStorage.getItem('edutree_collapsed_modules');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        setCollapsedModules(new Set(parsed));
+      } catch (e) {
+        console.error('Failed to parse collapsed modules:', e);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem('edutree_collapsed_modules', JSON.stringify(Array.from(collapsedModules)));
+  }, [collapsedModules]);
+
   return (
     <div className="relative w-full h-full">
-      {/* Compliance Score Panel */}
-      <div className="absolute top-4 left-4 z-10 w-72">
+      {/* Compliance Score Panel with Export */}
+      <div className="absolute top-4 left-4 z-10 w-72 space-y-2">
         <ComplianceScorePanel metrics={complianceMetrics} />
+        <ExportPlanButton
+          planNodes={planNodes}
+          validation={validation}
+          complianceMetrics={complianceMetrics}
+          requirements={CS_DEGREE_REQUIREMENTS}
+        />
       </div>
       
-      {/* Validation Panel */}
-      <div className="absolute top-4 right-4 z-10 w-80">
+      {/* Validation Panel with Share */}
+      <div className="absolute top-4 right-4 z-10 w-80 space-y-2">
         <DegreeValidationPanel 
           validation={validation}
           onBrowseModule={(subReqId) => setSelectedSubReq(subReqId)}
         />
+        <SharePlanDialog planNodes={planNodes} />
+      </div>
+
+      {/* Module Toolbar */}
+      <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10">
+        <ModuleToolbar
+          onExpandAll={handleExpandAll}
+          onCollapseAll={handleCollapseAll}
+        />
+      </div>
+
+      {/* Badge Legend */}
+      <div className="absolute bottom-4 right-4 z-10 w-80">
+        <BadgeLegend />
       </div>
       
       {/* Module Cards Overlay */}
-      {CS_DEGREE_REQUIREMENTS.subRequirements?.map((subReq, index) => {
+      {CS_DEGREE_REQUIREMENTS.subRequirements?.map((subReq) => {
         const moduleValidation = validation.bySubRequirement?.find(v => v.subReqId === subReq.id);
         const moduleCourses = coursesByModule.get(subReq.id) || [];
         
         if (!moduleValidation || moduleCourses.length === 0) return null;
         
-        // Calculate optimal position to prevent overlap
-        const position = calculateModuleCardPosition(
-          moduleCourses,
-          index,
-          CS_DEGREE_REQUIREMENTS.subRequirements?.length || 0
-        );
+        // Get position from pre-calculated positions map
+        const position = moduleCardPositions.get(subReq.id) || { x: 0, y: 0 };
         
         return (
           <div
             key={`module-${subReq.id}`}
-            className="absolute pointer-events-auto"
+            className="absolute pointer-events-auto transition-all duration-200"
             style={{
               left: position.x,
               top: position.y,

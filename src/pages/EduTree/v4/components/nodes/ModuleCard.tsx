@@ -37,7 +37,7 @@ export function ModuleCard({
   const hiddenCount = isCollapsed ? totalCourses : 0;
 
   return (
-    <Card className="w-[280px] p-3 bg-card border-border shadow-sm hover:shadow-md transition-all">
+    <Card className="w-[280px] p-3 bg-card border-border shadow-sm hover:shadow-md transition-all duration-200 animate-fade-in">
       {/* Header: Icon + Label + Toggle */}
       <div className="flex items-start justify-between gap-2 mb-2">
         <div className="flex items-center gap-2 flex-1">

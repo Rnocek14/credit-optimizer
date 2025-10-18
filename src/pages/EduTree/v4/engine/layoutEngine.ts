@@ -318,30 +318,53 @@ export function groupCoursesByModule(
 }
 
 /**
- * Calculate optimal module card position to prevent overlap
+ * Calculate optimal module card positions with improved collision avoidance
+ * Groups modules by year tier and applies horizontal/vertical offsets
  */
-export function calculateModuleCardPosition(
-  moduleCourses: PlanNode[],
-  moduleIndex: number,
-  totalModules: number
-): { x: number; y: number } {
-  if (moduleCourses.length === 0) {
-    return { x: 0, y: 0 };
-  }
-
-  // Calculate average X position (centered above courses)
-  const avgX = moduleCourses.reduce((sum, node) => sum + node.position.x, 0) / moduleCourses.length;
+export function calculateModuleCardPositions(
+  coursesByModule: Map<string, PlanNode[]>,
+  subRequirements: any[]
+): Map<string, { x: number; y: number }> {
+  const positions = new Map<string, { x: number; y: number }>();
   
-  // Find minimum Y position (top-most course)
-  const minY = Math.min(...moduleCourses.map(node => node.position.y));
+  // Group modules by year tier (based on average year of their courses)
+  const modulesByYear = new Map<number, Array<{ id: string; courses: PlanNode[]; avgX: number; minY: number }>>();
   
-  // Add vertical spacing based on module index to prevent stacking
-  const verticalOffset = 160 + (moduleIndex * 20); // Base offset + stagger
+  subRequirements.forEach(subReq => {
+    const moduleCourses = coursesByModule.get(subReq.id) || [];
+    if (moduleCourses.length === 0) return;
+    
+    const avgYear = moduleCourses.reduce((sum, n) => sum + (n.data.year || 1), 0) / moduleCourses.length;
+    const yearBucket = Math.round(avgYear);
+    const avgX = moduleCourses.reduce((sum, n) => sum + n.position.x, 0) / moduleCourses.length;
+    const minY = Math.min(...moduleCourses.map(n => n.position.y));
+    
+    if (!modulesByYear.has(yearBucket)) {
+      modulesByYear.set(yearBucket, []);
+    }
+    modulesByYear.get(yearBucket)!.push({ id: subReq.id, courses: moduleCourses, avgX, minY });
+  });
   
-  return {
-    x: avgX - 140, // Center the 280px wide card
-    y: minY - verticalOffset
-  };
+  // Position modules: horizontal spacing within year, vertical by year
+  modulesByYear.forEach((modules, year) => {
+    // Sort by X position for left-to-right layout
+    modules.sort((a, b) => a.avgX - b.avgX);
+    
+    modules.forEach((module, index) => {
+      // Horizontal offset to prevent overlap (320px spacing)
+      const horizontalOffset = index * 320;
+      
+      // Vertical offset based on year tier (deeper years = higher up)
+      const verticalOffset = 180 + (year * 30);
+      
+      positions.set(module.id, {
+        x: module.avgX - 140 + (index > 0 ? horizontalOffset - (modules.length - 1) * 160 : 0),
+        y: module.minY - verticalOffset,
+      });
+    });
+  });
+  
+  return positions;
 }
 
 /**
