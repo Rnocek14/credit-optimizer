@@ -635,31 +635,6 @@ function CanvasInner({ nodes: initialNodes, edges: initialEdges, overlays, onNod
         />
       )}
       
-      {/* Year Background Zones - Alternating for visual separation */}
-      <svg 
-        className="absolute inset-0 pointer-events-none" 
-        style={{ zIndex: 0, width: '100%', height: '100%' }}
-      >
-        {nodes
-          .filter(n => n.type === NodeType.Year)
-          .map((yearNode, index) => {
-            const YEAR_SPACING = 580;
-            const ZONE_WIDTH = 520;
-            const x = index * YEAR_SPACING - 40; // Center zone around year column
-            
-            return (
-              <rect
-                key={`zone-${yearNode.id}`}
-                x={x}
-                y={0}
-                width={ZONE_WIDTH}
-                height="2000"
-                fill={index % 2 === 0 ? 'hsl(var(--muted) / 0.05)' : 'hsl(var(--accent) / 0.03)'}
-                rx="8"
-              />
-            );
-          })}
-      </svg>
       
       <ReactFlow
         nodes={nodes}

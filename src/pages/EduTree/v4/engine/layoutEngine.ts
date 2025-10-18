@@ -328,7 +328,8 @@ export function moduleCardLayout(
   const moduleNodes: PlanNode[] = [];
   const spineNodes: PlanNode[] = [];
   
-  const YEAR_SPACING = 580;  // ✅ Increased horizontal space (was 400)
+  const YEAR_SPACING = 600;  // ✅ Increased horizontal space for wider cards
+  const CARD_WIDTH = 440;    // ✅ Match CSS dimensions exactly
   const CARD_HEIGHT = 260;   // ✅ Slightly taller cards (was 240)
   const CARD_GAP = 50;       // ✅ Increased vertical gap (was 30)
   
@@ -409,7 +410,7 @@ export function moduleCardLayout(
           creditsRequired: totalCredits,
         } as any,
         style: {
-          width: 360,
+          width: CARD_WIDTH,
           height: CARD_HEIGHT,
         }
       });
