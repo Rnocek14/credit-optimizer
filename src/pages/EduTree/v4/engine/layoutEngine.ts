@@ -6,6 +6,9 @@
 import ELK from 'elkjs/lib/elk.bundled.js';
 import { PlanNode, PlanEdge, NodeType } from '../types/v4';
 
+// Shared layout constant for year X positioning
+const YEAR_X_SPACING = 600; // Standard horizontal spacing between years
+
 export interface LayoutOptions {
   /** Direction of spine flow (RIGHT = horizontal left-to-right) */
   direction?: 'RIGHT' | 'DOWN' | 'LEFT' | 'UP';
@@ -205,8 +208,8 @@ export function hybridSpineLayout(
   const positioned: PlanNode[] = spineNodes.map((node, index) => ({
     ...node,
     position: { 
-      x: index * 1200,  // 1200px per year to prevent grid overlaps
-      y: 0 
+      x: index * YEAR_X_SPACING,  // Standard year spacing
+      y: 50  // ✅ Match moduleCardLayout spine Y position
     }
   }));
   
@@ -230,7 +233,7 @@ export function hybridSpineLayout(
     const yearNode = spineNodes[yearIndex];
     if (!yearNode) return;
     
-    const baseX = yearIndex * 1200;
+    const baseX = yearIndex * YEAR_X_SPACING;
     const startY = 180; // Start below year node and semester labels
     
     // Sort for deterministic layout (fallback if no semester specified)
@@ -328,7 +331,6 @@ export function moduleCardLayout(
   const moduleNodes: PlanNode[] = [];
   const spineNodes: PlanNode[] = [];
   
-  const YEAR_SPACING = 600;  // ✅ Increased horizontal space for wider cards
   const CARD_WIDTH = 440;    // ✅ Match CSS dimensions exactly
   const CARD_HEIGHT = 260;   // ✅ Slightly taller cards (was 240)
   const CARD_GAP = 50;       // ✅ Increased vertical gap (was 30)
@@ -338,7 +340,7 @@ export function moduleCardLayout(
     spineNodes.push({
       id: `year${year}`,
       type: NodeType.Year,
-      position: { x: (year - 1) * YEAR_SPACING, y: 50 },
+      position: { x: (year - 1) * YEAR_X_SPACING, y: 50 },
       data: { label: `Year ${year}`, type: 'year' }
     });
   }
@@ -376,7 +378,7 @@ export function moduleCardLayout(
     
     // Create a module card for EACH year this module appears in
     coursesByYear.forEach((yearCourses, year) => {
-      const moduleX = (year - 1) * YEAR_SPACING;
+      const moduleX = (year - 1) * YEAR_X_SPACING;
       
       // Stack module cards vertically using exact year tracking
       const currentCount = cardCountByYear.get(year) || 0;
