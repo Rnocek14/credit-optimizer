@@ -6,6 +6,11 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ChevronUp, ChevronDown, HelpCircle } from 'lucide-react';
 
+const NODE_TYPES = [
+  { type: 'solid', label: 'Concrete Course', description: 'Course locked in your plan' },
+  { type: 'dashed', label: 'Placeholder', description: 'Choose from available options' },
+];
+
 const LEGEND_ITEMS = [
   { icon: '💻', label: 'Core', description: 'Core CS courses' },
   { icon: '📐', label: 'Math', description: 'Math & Science' },
@@ -45,19 +50,44 @@ export const BadgeLegend: React.FC = () => {
       </div>
 
       {isExpanded && (
-        <div className="space-y-1.5 mt-2">
-          {LEGEND_ITEMS.map((item, index) => (
-            <div
-              key={index}
-              className="flex items-start gap-2 text-xs"
-            >
-              <span className="text-base flex-shrink-0">{item.icon}</span>
-              <div className="flex-1">
-                <span className="font-medium">{item.label}:</span>{' '}
-                <span className="text-muted-foreground">{item.description}</span>
+        <div className="space-y-3 mt-2">
+          {/* Node Types Section */}
+          <div className="space-y-1.5">
+            <h4 className="font-semibold text-xs text-muted-foreground">Node Types</h4>
+            {NODE_TYPES.map((item, index) => (
+              <div
+                key={index}
+                className="flex items-start gap-2 text-xs"
+              >
+                <div className={`w-4 h-4 flex-shrink-0 rounded mt-0.5 ${
+                  item.type === 'solid' 
+                    ? 'border-2 border-blue-500 bg-blue-50 dark:bg-blue-950/30'
+                    : 'border-2 border-dashed border-muted-foreground/50 bg-muted/20'
+                }`} />
+                <div className="flex-1">
+                  <span className="font-medium">{item.label}:</span>{' '}
+                  <span className="text-muted-foreground">{item.description}</span>
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
+          
+          {/* Badges Section */}
+          <div className="space-y-1.5">
+            <h4 className="font-semibold text-xs text-muted-foreground">Course Badges</h4>
+            {LEGEND_ITEMS.map((item, index) => (
+              <div
+                key={index}
+                className="flex items-start gap-2 text-xs"
+              >
+                <span className="text-base flex-shrink-0">{item.icon}</span>
+                <div className="flex-1">
+                  <span className="font-medium">{item.label}:</span>{' '}
+                  <span className="text-muted-foreground">{item.description}</span>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </Card>

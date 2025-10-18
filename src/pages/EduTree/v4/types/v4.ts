@@ -11,7 +11,8 @@ export enum NodeType {
   Course = "course",
   Requirement = "requirement",
   External = "external",
-  Bundle = "bundle"
+  Bundle = "bundle",
+  Placeholder = "placeholder"
 }
 
 export enum EdgeType {
@@ -30,6 +31,10 @@ export interface PlanNodeData {
   
   // Node type for data-type attribute
   type?: string;
+  
+  // Placeholder-specific fields
+  area?: string;           // "Any discipline", "Humanities", etc.
+  description?: string;    // "Pick any approved 300+ level course"
   
   // Overlay flags
   transferable?: boolean;      // Has known transfer equivalent

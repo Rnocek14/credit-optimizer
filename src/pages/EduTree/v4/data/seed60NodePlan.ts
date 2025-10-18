@@ -390,7 +390,7 @@ export const seed60NodePlan: V4GraphData = {
         estimatedHours: 90,
       } 
     },
-    { id: 'ELEC301', type: NodeType.Course, position: { x: 800, y: 500 },
+    { id: 'ELEC301', type: NodeType.Placeholder, position: { x: 800, y: 500 },
       data: { 
         label: 'Free Elective', 
         credits: 3, 
@@ -399,8 +399,8 @@ export const seed60NodePlan: V4GraphData = {
         year: 3,
         semester: 'fall',
         moduleId: 'elective-free',
-        difficulty: 'beginner',
-        estimatedHours: 80,
+        area: 'Any discipline',
+        description: 'Pick any approved 300+ level course',
       } 
     },
     
@@ -447,7 +447,7 @@ export const seed60NodePlan: V4GraphData = {
         estimatedHours: 80,
       } 
     },
-    { id: 'ELEC302', type: NodeType.Course, position: { x: 800, y: 400 },
+    { id: 'ELEC302', type: NodeType.Placeholder, position: { x: 800, y: 400 },
       data: { 
         label: 'Free Elective', 
         credits: 3, 
@@ -456,8 +456,8 @@ export const seed60NodePlan: V4GraphData = {
         year: 3,
         semester: 'spring',
         moduleId: 'elective-free',
-        difficulty: 'beginner',
-        estimatedHours: 80,
+        area: 'Any discipline',
+        description: 'Pick any approved 300+ level course',
       } 
     },
     { id: 'COMM201', type: NodeType.Course, position: { x: 800, y: 500 },
@@ -526,7 +526,7 @@ export const seed60NodePlan: V4GraphData = {
         estimatedHours: 150,
       }
     },
-    { id: 'ELEC401', type: NodeType.Course, position: { x: 1200, y: 400 },
+    { id: 'ELEC401', type: NodeType.Placeholder, position: { x: 1200, y: 400 },
       data: { 
         label: 'Free Elective', 
         credits: 3, 
@@ -535,8 +535,8 @@ export const seed60NodePlan: V4GraphData = {
         year: 4,
         semester: 'fall',
         moduleId: 'elective-free',
-        difficulty: 'beginner',
-        estimatedHours: 80,
+        area: 'Any discipline',
+        description: 'Pick any approved course',
       } 
     },
     { id: 'MGMT301', type: NodeType.Course, position: { x: 1200, y: 500 },
@@ -584,7 +584,7 @@ export const seed60NodePlan: V4GraphData = {
         estimatedHours: 140,
       } 
     },
-    { id: 'ELEC402', type: NodeType.Course, position: { x: 1200, y: 300 },
+    { id: 'ELEC402', type: NodeType.Placeholder, position: { x: 1200, y: 300 },
       data: { 
         label: 'Free Elective', 
         credits: 3, 
@@ -593,11 +593,11 @@ export const seed60NodePlan: V4GraphData = {
         year: 4,
         semester: 'spring',
         moduleId: 'elective-free',
-        difficulty: 'beginner',
-        estimatedHours: 80,
+        area: 'Any discipline',
+        description: 'Pick any approved course',
       } 
     },
-    { id: 'ELEC403', type: NodeType.Course, position: { x: 1200, y: 400 },
+    { id: 'ELEC403', type: NodeType.Placeholder, position: { x: 1200, y: 400 },
       data: { 
         label: 'Free Elective', 
         credits: 3, 
@@ -606,8 +606,8 @@ export const seed60NodePlan: V4GraphData = {
         year: 4,
         semester: 'spring',
         moduleId: 'elective-free',
-        difficulty: 'beginner',
-        estimatedHours: 80,
+        area: 'Any discipline',
+        description: 'Pick any approved course',
       } 
     },
     { id: 'PHIL301', type: NodeType.Course, position: { x: 1200, y: 500 },

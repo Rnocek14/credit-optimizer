@@ -24,6 +24,7 @@ import { GhostCourseNode } from './nodes/GhostCourseNode';
 import { ExternalNode } from './nodes/ExternalNode';
 import { ModuleCard } from './nodes/ModuleCard';
 import { ModuleBundleNode } from './nodes/ModuleBundleNode';
+import { PlaceholderCourseNode } from './nodes/PlaceholderCourseNode';
 import { TransferEdge } from './edges/TransferEdge';
 import { CompareEdge } from './edges/CompareEdge';
 import { ExportPlanButton } from './ExportPlanButton';
@@ -174,6 +175,7 @@ const nodeTypes = {
   [NodeType.External]: ExternalNode,
   [NodeType.Requirement]: CourseNode,
   [NodeType.Bundle]: CourseNode,
+  [NodeType.Placeholder]: PlaceholderCourseNode,
   ghost: GhostCourseNode,
   moduleBundle: ModuleBundleNode,
 };
@@ -270,15 +272,26 @@ function CanvasInner({ nodes: initialNodes, edges: initialEdges, overlays, onNod
       const isGhostNode = node.className?.includes('ghost-node');
       const nodeType = isGhostNode ? 'ghost' : node.type;
       
-      // ✅ Pass onClick to ALL course-like nodes (Course, Requirement, Bundle)
-      const shouldHaveClick = [NodeType.Course, NodeType.Requirement, NodeType.Bundle].includes(node.type as NodeType);
+      // ✅ Pass onClick to ALL course-like nodes (Course, Requirement, Bundle, Placeholder)
+      const shouldHaveClick = [NodeType.Course, NodeType.Requirement, NodeType.Bundle, NodeType.Placeholder].includes(node.type as NodeType);
+      
+      // For placeholder nodes, inject onBrowseOptions handler
+      const dataWithHandlers = node.type === NodeType.Placeholder ? {
+        ...node.data,
+        onBrowseOptions: () => {
+          console.log('[V4 Canvas] Browse options for placeholder:', node.id);
+          if (node.data.moduleId) {
+            setSelectedSubReq(node.data.moduleId);
+          }
+        },
+      } : node.data;
       
       return {
         id: node.id,
         type: nodeType,
         position: node.position,
         data: { 
-          ...node.data,
+          ...dataWithHandlers,
           onClick: shouldHaveClick && onNodeClick ? () => {
             console.log('[V4 Canvas] Click handler for:', node.id);
             onNodeClick(node.id);
