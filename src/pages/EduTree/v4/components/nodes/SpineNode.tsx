@@ -39,6 +39,7 @@ export function SpineNode({ data, selected }: SpineNodeProps) {
     <div 
       data-type={data.type || 'year'}
       className={`
+        nodrag
         px-6 py-3 rounded-lg border-2
         ${isCollapsed ? 'bg-primary/5 border-primary border-dashed opacity-80' : 'bg-primary/10 border-primary'}
         text-primary font-semibold
