@@ -33,6 +33,9 @@ export interface PlanNodeData {
   // Node type for data-type attribute
   type?: string;
   
+  // Collapse state for year nodes
+  isCollapsed?: boolean;
+  
   // Placeholder-specific fields
   area?: string;           // "Any discipline", "Humanities", etc.
   description?: string;    // "Pick any approved 300+ level course"

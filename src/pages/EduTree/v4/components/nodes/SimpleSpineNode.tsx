@@ -2,25 +2,15 @@ import React from 'react';
 import { Handle, Position } from '@xyflow/react';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { ChevronDown, ChevronRight } from 'lucide-react';
 
 export function SimpleSpineNode({ data, selected }: any) {
   const { 
     label, 
-    isCollapsed = false, 
-    onToggleCollapse,
+    isCollapsed = false,
     creditsSummary,
     loadHealth,
     collapsedSummary 
   } = data;
-  
-  // Ultra-simple click handler - no stopPropagation, no complexity
-  const handleClick = () => {
-    console.log('[SimpleSpineNode] Button clicked!', label);
-    if (onToggleCollapse) {
-      onToggleCollapse();
-    }
-  };
   
   return (
     <div className="nodrag nopan nowheel">
@@ -38,18 +28,10 @@ export function SimpleSpineNode({ data, selected }: any) {
         `}
       >
         <div className="space-y-2">
-          {/* Year Label with Toggle */}
+          {/* Year Label (button rendered in overlay) */}
           <div className="flex items-center justify-center gap-2 text-sm">
             <span>{label}</span>
-            {onToggleCollapse && (
-              <button
-                onClick={handleClick}
-                className="p-1 hover:bg-primary/20 rounded cursor-pointer bg-white/50"
-                type="button"
-              >
-                {isCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-              </button>
-            )}
+            {/* Chevron button is now in YearNodeOverlay.tsx */}
           </div>
           
           {/* Collapsed State */}
