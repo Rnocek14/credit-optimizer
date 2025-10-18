@@ -373,14 +373,17 @@ export function moduleCardLayout(
     });
     
     // Create a module card for EACH year this module appears in
+    const cardCountByYear = new Map<number, number>();
+    
     coursesByYear.forEach((yearCourses, year) => {
       const moduleX = (year - 1) * YEAR_SPACING;
       
-      // Stack vertically if multiple modules in same year
-      const modulesInSameYear = moduleNodes.filter((n: PlanNode) => 
-        Math.abs(n.position.x - moduleX) < 50
-      );
-      const moduleY = 200 + modulesInSameYear.length * (CARD_HEIGHT + CARD_GAP);
+      // Stack module cards vertically using exact year tracking
+      const currentCount = cardCountByYear.get(year) || 0;
+      const moduleY = 200 + currentCount * (CARD_HEIGHT + CARD_GAP);
+      cardCountByYear.set(year, currentCount + 1);
+      
+      console.log(`[Layout] ${module.label} Y${year}: card ${currentCount + 1}, Y=${moduleY}`);
       
       // Calculate summary data for this year's courses
       const creditsEarned = yearCourses

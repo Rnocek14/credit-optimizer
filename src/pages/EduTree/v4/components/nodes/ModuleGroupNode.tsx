@@ -48,6 +48,7 @@ export function ModuleGroupNode({ data }: ModuleGroupNodeProps) {
   
   return (
     <div 
+      data-type="moduleGroup"
       className={cn(
         "group relative cursor-pointer backdrop-blur-sm border-2 rounded-2xl shadow-lg transition-all duration-300",
         "hover:shadow-2xl hover:scale-[1.03] hover:border-primary/60 p-6",

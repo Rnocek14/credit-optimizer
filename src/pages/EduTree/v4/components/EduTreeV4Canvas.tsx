@@ -357,10 +357,11 @@ function CanvasInner({ nodes: initialNodes, edges: initialEdges, overlays, onNod
             },
           },
           draggable: false,
-          style: {
-            width: node.style?.width || 440,
-            height: node.style?.height || 260,
-          },
+        style: {
+          width: node.style?.width || 440,
+          height: node.style?.height || 260,
+          zIndex: 10 + Math.floor(node.position.y / 100), // Higher Y = higher z-index
+        },
         };
       }
       
