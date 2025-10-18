@@ -728,7 +728,7 @@ function CanvasInner({ nodes: initialNodes, edges: initialEdges, overlays, onNod
 
 
   return (
-    <div className="relative w-full h-full">
+    <div className="edu-tree-v4 relative w-full h-full">
       {/* Compliance Score Panel with Export */}
       <div className="absolute top-4 left-4 z-10 w-72 space-y-2">
         <ComplianceScorePanel metrics={complianceMetrics} />
