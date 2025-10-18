@@ -26,7 +26,7 @@ import { SimpleSpineNode } from './nodes/SimpleSpineNode';
 import { CourseNode } from './nodes/CourseNode';
 import { GhostCourseNode } from './nodes/GhostCourseNode';
 import { ExternalNode } from './nodes/ExternalNode';
-import { YearNodeOverlay } from './YearNodeOverlay';
+
 import { ModuleCard } from './nodes/ModuleCard';
 import { ModuleBundleNode } from './nodes/ModuleBundleNode';
 import { ModuleGroupNode } from './nodes/ModuleGroupNode';
@@ -328,13 +328,6 @@ function CanvasInner({ nodes: initialNodes, edges: initialEdges, overlays, onNod
     });
   }, [planNodes, collapsedYears]);
 
-  // Wrapper for overlay that takes node ID instead of year number
-  const handleToggleYearCollapse = useCallback((nodeId: string) => {
-    const yearNode = planNodes.find(n => n.id === nodeId);
-    if (yearNode?.data.year) {
-      toggleYearCollapse(yearNode.data.year);
-    }
-  }, [planNodes, toggleYearCollapse]);
 
   const toggleModuleCollapse = useCallback((moduleId: string) => {
     setCollapsedModules(prev => {
@@ -826,8 +819,6 @@ function CanvasInner({ nodes: initialNodes, edges: initialEdges, overlays, onNod
         <Controls />
       </ReactFlow>
       
-      {/* Overlay for clickable year node buttons - positioned outside React Flow */}
-      <YearNodeOverlay onToggleCollapse={handleToggleYearCollapse} />
     </div>
   );
 }

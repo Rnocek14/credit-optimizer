@@ -2,6 +2,7 @@ import React from 'react';
 import { Handle, Position } from '@xyflow/react';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { ChevronDown, ChevronRight } from 'lucide-react';
 
 export function SimpleSpineNode({ data, selected }: any) {
   const { 
@@ -9,7 +10,8 @@ export function SimpleSpineNode({ data, selected }: any) {
     isCollapsed = false,
     creditsSummary,
     loadHealth,
-    collapsedSummary 
+    collapsedSummary,
+    onToggleCollapse
   } = data;
   
   return (
@@ -28,10 +30,23 @@ export function SimpleSpineNode({ data, selected }: any) {
         `}
       >
         <div className="space-y-2">
-          {/* Year Label (button rendered in overlay) */}
+          {/* Year Label with inline chevron button */}
           <div className="flex items-center justify-center gap-2 text-sm">
             <span>{label}</span>
-            {/* Chevron button is now in YearNodeOverlay.tsx */}
+            {onToggleCollapse && (
+              <button
+                onClick={onToggleCollapse}
+                className="p-1 hover:bg-primary/20 rounded transition-colors"
+                type="button"
+                aria-label={isCollapsed ? 'Expand year' : 'Collapse year'}
+              >
+                {isCollapsed ? (
+                  <ChevronRight className="w-4 h-4" />
+                ) : (
+                  <ChevronDown className="w-4 h-4" />
+                )}
+              </button>
+            )}
           </div>
           
           {/* Collapsed State */}
