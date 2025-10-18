@@ -297,6 +297,27 @@ export function hybridSpineLayout(
 }
 
 /**
+ * Group courses by their moduleId
+ */
+export function groupCoursesByModule(
+  nodes: PlanNode[]
+): Map<string, PlanNode[]> {
+  const coursesByModule = new Map<string, PlanNode[]>();
+  
+  nodes
+    .filter(n => n.type === NodeType.Course && n.data.moduleId)
+    .forEach(node => {
+      const moduleId = node.data.moduleId!;
+      if (!coursesByModule.has(moduleId)) {
+        coursesByModule.set(moduleId, []);
+      }
+      coursesByModule.get(moduleId)!.push(node);
+    });
+  
+  return coursesByModule;
+}
+
+/**
  * Enrich year nodes with credit summaries and load health
  */
 export function enrichYearNodesWithSummaries(

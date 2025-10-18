@@ -12,7 +12,7 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { PlanNode, PlanEdge, NodeType, EdgeType, OverlayState, DegreeRequirements } from '../types/v4';
-import { hybridSpineLayout, enrichYearNodesWithSummaries } from '../engine/layoutEngine';
+import { hybridSpineLayout, enrichYearNodesWithSummaries, groupCoursesByModule } from '../engine/layoutEngine';
 import { validateDegree } from '../engine/degreeValidator';
 import { DegreeValidationPanel } from './DegreeValidationPanel';
 import { CourseSelectionPanel } from './CourseSelectionPanel';
@@ -22,6 +22,7 @@ import { SpineNode } from './nodes/SpineNode';
 import { CourseNode } from './nodes/CourseNode';
 import { GhostCourseNode } from './nodes/GhostCourseNode';
 import { ExternalNode } from './nodes/ExternalNode';
+import { ModuleCard } from './nodes/ModuleCard';
 import { TransferEdge } from './edges/TransferEdge';
 import { CompareEdge } from './edges/CompareEdge';
 import { MarketplaceCourse } from '@/hooks/useCourseMarketplace';
@@ -149,6 +150,7 @@ function CanvasInner({ nodes: initialNodes, edges: initialEdges, overlays, onNod
   const [layoutedNodes, setLayoutedNodes] = useState<Node[]>([]);
   const [planNodes, setPlanNodes] = useState<PlanNode[]>(initialNodes);
   const [selectedSubReq, setSelectedSubReq] = useState<string | null>(null);
+  const [collapsedModules, setCollapsedModules] = useState<Set<string>>(new Set());
   const { fitView } = useReactFlow();
   
   // Policy engine
@@ -420,6 +422,22 @@ function CanvasInner({ nodes: initialNodes, edges: initialEdges, overlays, onNod
     setEdges(reactFlowEdges);
   }, [initialEdges, overlays]);
 
+  // Group courses by module for visual grouping
+  const coursesByModule = useMemo(() => groupCoursesByModule(planNodes), [planNodes]);
+  
+  // Toggle module collapse
+  const toggleModule = useCallback((moduleId: string) => {
+    setCollapsedModules(prev => {
+      const next = new Set(prev);
+      if (next.has(moduleId)) {
+        next.delete(moduleId);
+      } else {
+        next.add(moduleId);
+      }
+      return next;
+    });
+  }, []);
+
   return (
     <div className="relative w-full h-full">
       {/* Compliance Score Panel */}
@@ -434,6 +452,38 @@ function CanvasInner({ nodes: initialNodes, edges: initialEdges, overlays, onNod
           onBrowseModule={(subReqId) => setSelectedSubReq(subReqId)}
         />
       </div>
+      
+      {/* Module Cards Overlay */}
+      {CS_DEGREE_REQUIREMENTS.subRequirements?.map(subReq => {
+        const moduleValidation = validation.bySubRequirement?.find(v => v.subReqId === subReq.id);
+        const moduleCourses = coursesByModule.get(subReq.id) || [];
+        
+        if (!moduleValidation || moduleCourses.length === 0) return null;
+        
+        // Calculate average position of courses in this module
+        const avgX = moduleCourses.reduce((sum, node) => sum + node.position.x, 0) / moduleCourses.length;
+        const minY = Math.min(...moduleCourses.map(node => node.position.y));
+        
+        return (
+          <div
+            key={`module-${subReq.id}`}
+            className="absolute pointer-events-auto"
+            style={{
+              left: avgX - 140, // Center module card above courses (280px width / 2)
+              top: minY - 160, // Position 160px above first course
+              zIndex: 20,
+            }}
+          >
+            <ModuleCard
+              module={subReq}
+              validation={moduleValidation}
+              isCollapsed={collapsedModules.has(subReq.id)}
+              onToggle={() => toggleModule(subReq.id)}
+              onBrowseOptions={() => setSelectedSubReq(subReq.id)}
+            />
+          </div>
+        );
+      })}
       
       {/* Course Selection Panel */}
       <CourseSelectionPanel
@@ -478,7 +528,14 @@ function CanvasInner({ nodes: initialNodes, edges: initialEdges, overlays, onNod
       </div>
       
       <ReactFlow
-        nodes={nodes}
+        nodes={nodes.map(node => {
+          // Hide courses when their module is collapsed
+          const moduleId = node.data?.moduleId as string | undefined;
+          if (moduleId && collapsedModules.has(moduleId)) {
+            return { ...node, hidden: true };
+          }
+          return node;
+        })}
         edges={edges}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
