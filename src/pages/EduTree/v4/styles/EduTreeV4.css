@@ -105,6 +105,11 @@
   z-index: 100 !important;
 }
 
+/* Let React Flow manage pointer events naturally in V4 */
+.edu-tree-v4 .react-flow__node button {
+  cursor: pointer;
+}
+
 /* ========================================
    Edge Interactions
    ======================================== */

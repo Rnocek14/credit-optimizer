@@ -71,10 +71,10 @@
   pointer-events: none !important;
 }
 
-/* Explicitly re-enable on nodes and their children */
-.react-flow__node,
-.react-flow__node *,
-.react-flow__node button {
+/* Explicitly re-enable on nodes and their children - SCOPED TO V3 */
+.edu-tree-v3 .react-flow__node,
+.edu-tree-v3 .react-flow__node *,
+.edu-tree-v3 .react-flow__node button {
   pointer-events: auto !important;
 }
 
