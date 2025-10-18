@@ -24,11 +24,17 @@ export function SpineNode({ data, selected }: SpineNodeProps) {
         bg-primary/10 border-primary
         text-primary font-semibold
         transition-all duration-200
-        min-w-[180px]
+        min-w-[180px] min-h-[120px]
+        flex flex-col justify-center
         ${selected ? 'ring-2 ring-primary ring-offset-2' : ''}
       `}
     >
-      <Handle type="target" position={Position.Left} className="opacity-0" />
+      <Handle 
+        type="target" 
+        position={Position.Left} 
+        className="opacity-0"
+        style={{ top: '50%' }}
+      />
       
       <div className="space-y-2">
         {/* Year Label */}
@@ -72,7 +78,12 @@ export function SpineNode({ data, selected }: SpineNodeProps) {
         )}
       </div>
       
-      <Handle type="source" position={Position.Right} className="opacity-0" />
+      <Handle 
+        type="source" 
+        position={Position.Right} 
+        className="opacity-0"
+        style={{ top: '50%' }}
+      />
     </div>
   );
 }

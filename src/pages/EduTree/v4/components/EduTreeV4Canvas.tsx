@@ -412,7 +412,7 @@ function CanvasInner({ nodes: initialNodes, edges: initialEdges, overlays, onNod
           
           return {
             width: isYear ? 180 : (isGhost ? 200 : 440),  // ✅ Match CSS module card width
-            height: isYear ? 80 : 260,  // ✅ Match CSS module card height
+            height: isYear ? 120 : 260,  // ✅ Match SpineNode min-h-[120px]
           };
         };
         
