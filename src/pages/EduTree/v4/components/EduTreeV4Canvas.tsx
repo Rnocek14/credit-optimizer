@@ -409,6 +409,7 @@ function CanvasInner({ nodes: initialNodes, edges: initialEdges, overlays, onNod
           if (yearMatch) {
             const year = parseInt(yearMatch[1]);
             if (collapsedYears.has(year)) {
+              // Add collapsed summary when year is collapsed
               return {
                 ...node,
                 data: {
@@ -416,11 +417,35 @@ function CanvasInner({ nodes: initialNodes, edges: initialEdges, overlays, onNod
                   collapsedSummary: getCollapsedYearSummary(year, enriched),
                 },
               };
+            } else {
+              // CRITICAL FIX: Remove collapsed summary when expanding
+              if (node.data.collapsedSummary) {
+                const { collapsedSummary, ...restData } = node.data;
+                return {
+                  ...node,
+                  data: restData,
+                };
+              }
             }
           }
         }
         return node;
       });
+      
+      console.log('[Year Node Mapping] 📍 Year nodes state:', 
+        nodesWithSummaries
+          .filter(n => n.type === NodeType.Year)
+          .map(n => {
+            const yearMatch = n.data.label.match(/Year (\d+)/);
+            const year = yearMatch ? parseInt(yearMatch[1]) : 0;
+            return {
+              label: n.data.label,
+              isCollapsed: collapsedYears.has(year),
+              hasCollapsedSummary: !!(n.data as any).collapsedSummary,
+              hasCreditsSummary: !!(n.data as any).creditsSummary,
+            };
+          })
+      );
       
       // Convert to React Flow format
     const reactFlowNodes: Node[] = nodesWithSummaries.map(node => {
@@ -578,7 +603,8 @@ function CanvasInner({ nodes: initialNodes, edges: initialEdges, overlays, onNod
       checkCollisions(reactFlowNodes);
 
       setLayoutedNodes(reactFlowNodes);
-      setNodes(reactFlowNodes);
+      // Force new array reference to trigger React Flow re-render
+      setNodes([...reactFlowNodes]);
       
       console.log('[V4 Canvas] Layout complete, fitted view');
       
