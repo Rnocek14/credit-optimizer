@@ -197,6 +197,11 @@ function CanvasInner({ nodes: initialNodes, edges: initialEdges, overlays, onNod
   const [selectedSubReq, setSelectedSubReq] = useState<string | null>(null);
   const { fitView } = useReactFlow();
   
+  // ✨ Phase 2S: Collapse state management
+  const [collapsedYears, setCollapsedYears] = useState<Set<number>>(new Set());
+  const [collapsedModules, setCollapsedModules] = useState<Set<string>>(new Set());
+  const [isDegreeCollapsed, setIsDegreeCollapsed] = useState(false);
+  
   // Annotate courses with moduleId based on hierarchical requirements
   const annotatedNodes = useMemo(() => 
     annotateCourseModules(initialNodes, CS_DEGREE_REQUIREMENTS_V2.requirements),
@@ -290,6 +295,58 @@ function CanvasInner({ nodes: initialNodes, edges: initialEdges, overlays, onNod
     ));
     toast.success('Course replaced');
   }, []);
+
+  // ✨ Phase 2S: Collapse toggle handlers with cascade logic
+  const toggleYearCollapse = useCallback((year: number) => {
+    setCollapsedYears(prev => {
+      const next = new Set(prev);
+      if (next.has(year)) {
+        next.delete(year);
+      } else {
+        next.add(year);
+        // When collapsing year, also collapse all its modules
+        const yearModuleIds = planNodes
+          .filter(n => n.data.year === year && n.data.moduleId)
+          .map(n => n.data.moduleId!)
+          .filter((id, idx, arr) => arr.indexOf(id) === idx); // unique
+        
+        setCollapsedModules(prevMods => {
+          const nextMods = new Set(prevMods);
+          yearModuleIds.forEach(id => nextMods.add(id));
+          return nextMods;
+        });
+      }
+      return next;
+    });
+  }, [planNodes]);
+
+  const toggleModuleCollapse = useCallback((moduleId: string) => {
+    setCollapsedModules(prev => {
+      const next = new Set(prev);
+      if (next.has(moduleId)) {
+        next.delete(moduleId);
+      } else {
+        next.add(moduleId);
+      }
+      return next;
+    });
+  }, []);
+
+  const toggleDegreeCollapse = useCallback(() => {
+    setIsDegreeCollapsed(prev => {
+      const next = !prev;
+      if (next) {
+        // When collapsing degree, collapse ALL years and modules
+        setCollapsedYears(new Set([1, 2, 3, 4]));
+        const allModuleIds = planNodes
+          .filter(n => n.data.moduleId)
+          .map(n => n.data.moduleId!)
+          .filter((id, idx, arr) => arr.indexOf(id) === idx);
+        setCollapsedModules(new Set(allModuleIds));
+      }
+      return next;
+    });
+  }, [planNodes]);
 
   // Get selected module data for panel
   const selectedModuleData = useMemo(() => {

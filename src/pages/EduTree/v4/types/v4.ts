@@ -86,8 +86,16 @@ export interface PlanNodeData {
   loadHealth?: 'underloaded' | 'balanced' | 'overloaded';
   missingRequirements?: string[];
   
+  // ✨ Phase 2S: Collapsed state summary
+  collapsedSummary?: {
+    moduleCount: number;
+    completedModules: number;
+    totalCredits: number;
+  };
+  
   // Event handlers (injected at layout time)
   onClick?: () => void;
+  onToggleCollapse?: () => void;  // ✨ Phase 2S: Collapse handler
 }
 
 export interface PlanNode {
