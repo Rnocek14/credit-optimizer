@@ -22,7 +22,15 @@ export function SpineNode({ data, selected }: SpineNodeProps) {
   const collapsedSummary = data.collapsedSummary;
   const { isCollapsed = false, onToggleCollapse } = data;
   
+  console.log('[SpineNode Render] 🎨', {
+    label: data.label,
+    isCollapsed,
+    hasToggleHandler: !!onToggleCollapse,
+    dataKeys: Object.keys(data)
+  });
+  
   const handleToggleClick = (e: React.MouseEvent) => {
+    console.log('[SpineNode] 🖱️ Toggle clicked!', data.label);
     e.stopPropagation();
     onToggleCollapse?.();
   };

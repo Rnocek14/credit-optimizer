@@ -299,11 +299,16 @@ function CanvasInner({ nodes: initialNodes, edges: initialEdges, overlays, onNod
 
   // ✨ Phase 2S: Collapse toggle handlers with cascade logic
   const toggleYearCollapse = useCallback((year: number) => {
+    console.log('[toggleYearCollapse] 🎯 Called for year:', year);
+    console.log('[toggleYearCollapse] Current collapsedYears:', Array.from(collapsedYears));
+    
     setCollapsedYears(prev => {
       const next = new Set(prev);
       if (next.has(year)) {
+        console.log('[toggleYearCollapse] ✅ Expanding year', year);
         next.delete(year);
       } else {
+        console.log('[toggleYearCollapse] 📦 Collapsing year', year);
         next.add(year);
         // When collapsing year, also collapse all its modules
         const yearModuleIds = planNodes
@@ -317,9 +322,10 @@ function CanvasInner({ nodes: initialNodes, edges: initialEdges, overlays, onNod
           return nextMods;
         });
       }
+      console.log('[toggleYearCollapse] New collapsedYears:', Array.from(next));
       return next;
     });
-  }, [planNodes]);
+  }, [planNodes, collapsedYears]);
 
   const toggleModuleCollapse = useCallback((moduleId: string) => {
     setCollapsedModules(prev => {
@@ -428,6 +434,16 @@ function CanvasInner({ nodes: initialNodes, edges: initialEdges, overlays, onNod
         const yearMatch = node.data.label.match(/Year (\d+)/);
         const year = yearMatch ? parseInt(yearMatch[1]) : null;
         const isCollapsed = year ? collapsedYears.has(year) : false;
+        
+        console.log('[Year Node Mapping] 📍', {
+          nodeId: node.id,
+          label: node.data.label,
+          yearMatch: yearMatch,
+          year,
+          isCollapsed,
+          hasToggleHandler: !!year,
+          collapsedYearsState: Array.from(collapsedYears)
+        });
         
         return {
           id: node.id,
