@@ -318,6 +318,33 @@ export function groupCoursesByModule(
 }
 
 /**
+ * Calculate optimal module card position to prevent overlap
+ */
+export function calculateModuleCardPosition(
+  moduleCourses: PlanNode[],
+  moduleIndex: number,
+  totalModules: number
+): { x: number; y: number } {
+  if (moduleCourses.length === 0) {
+    return { x: 0, y: 0 };
+  }
+
+  // Calculate average X position (centered above courses)
+  const avgX = moduleCourses.reduce((sum, node) => sum + node.position.x, 0) / moduleCourses.length;
+  
+  // Find minimum Y position (top-most course)
+  const minY = Math.min(...moduleCourses.map(node => node.position.y));
+  
+  // Add vertical spacing based on module index to prevent stacking
+  const verticalOffset = 160 + (moduleIndex * 20); // Base offset + stagger
+  
+  return {
+    x: avgX - 140, // Center the 280px wide card
+    y: minY - verticalOffset
+  };
+}
+
+/**
  * Enrich year nodes with credit summaries and load health
  */
 export function enrichYearNodesWithSummaries(

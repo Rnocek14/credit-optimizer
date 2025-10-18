@@ -12,7 +12,7 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { PlanNode, PlanEdge, NodeType, EdgeType, OverlayState, DegreeRequirements } from '../types/v4';
-import { hybridSpineLayout, enrichYearNodesWithSummaries, groupCoursesByModule } from '../engine/layoutEngine';
+import { hybridSpineLayout, enrichYearNodesWithSummaries, groupCoursesByModule, calculateModuleCardPosition } from '../engine/layoutEngine';
 import { validateDegree } from '../engine/degreeValidator';
 import { DegreeValidationPanel } from './DegreeValidationPanel';
 import { CourseSelectionPanel } from './CourseSelectionPanel';
@@ -34,9 +34,9 @@ const CS_DEGREE_REQUIREMENTS: DegreeRequirements = {
   totalCredits: 120,
   categories: {
     coreCS: { required: 45, label: 'Core CS' },
-    math: { required: 18, label: 'Math & Science' },
+    math: { required: 20, label: 'Math & Science' },
     genEd: { required: 30, label: 'General Education' },
-    elective: { required: 21, label: 'Electives' },
+    elective: { required: 19, label: 'Electives' },
     capstone: { required: 6, label: 'Capstone' }
   },
   residencyMinimum: 30,
@@ -48,64 +48,97 @@ const CS_DEGREE_REQUIREMENTS: DegreeRequirements = {
       category: 'coreCS',
       type: 'all-required',
       courseIds: ['CS101', 'CS102', 'CS201', 'CS202', 'CS205'],
-      description: 'Core computer science fundamentals required for all CS majors',
-      icon: '💻'
+      description: 'Core programming and data structures',
+      icon: '💻',
     },
     {
       id: 'cs-systems',
-      label: 'Systems Track',
-      category: 'coreCS',
-      type: 'select-n',
-      requiredCount: 2,
-      courseIds: ['CS301', 'CS302', 'CS305']
-    },
-    {
-      id: 'cs-theory',
-      label: 'Theory Core',
+      label: 'Systems & Architecture',
       category: 'coreCS',
       type: 'all-required',
-      courseIds: ['CS303', 'CS304']
+      courseIds: ['CS301', 'CS305', 'CS310', 'CS410'],
+      description: 'Low-level systems programming',
+      icon: '⚙️',
     },
-    
-    // Math breakdown
     {
       id: 'math-calculus',
       label: 'Calculus Sequence',
       category: 'math',
       type: 'all-required',
-      courseIds: ['MATH151', 'MATH152']
+      courseIds: ['MATH151', 'MATH152'],
+      description: 'Calculus I & II',
+      icon: '📐',
     },
     {
       id: 'math-advanced',
       label: 'Advanced Math',
       category: 'math',
-      type: 'select-n',
-      requiredCount: 1,
-      courseIds: ['MATH251', 'MATH301']
+      type: 'all-required',
+      courseIds: ['MATH251', 'STAT220'],
+      description: 'Linear algebra and statistics',
+      icon: '📊',
     },
-    
-    // Gen Ed breakdown
+    {
+      id: 'math-science',
+      label: 'Physics Sequence',
+      category: 'math',
+      type: 'all-required',
+      courseIds: ['PHYS211', 'PHYS212'],
+      description: 'Physics for engineers',
+      icon: '⚛️',
+    },
     {
       id: 'genEd-humanities',
-      label: 'Humanities Breadth',
+      label: 'Humanities',
       category: 'genEd',
-      type: 'select-n',
-      requiredCount: 2,
-      courseIds: ['ENGL101', 'PHIL201', 'HIST101', 'ART150']
+      type: 'select-any',
+      minCredits: 12,
+      tag: 'humanities',
+      description: 'Arts, literature, and philosophy',
+      icon: '🎨',
     },
     {
       id: 'genEd-social',
       label: 'Social Sciences',
       category: 'genEd',
-      type: 'select-n',
-      requiredCount: 2,
-      courseIds: ['PSYC101', 'SOC101', 'ECON201', 'POLI150']
+      type: 'select-any',
+      minCredits: 9,
+      tag: 'social',
+      description: 'Psychology, sociology, economics',
+      icon: '👥',
     },
-    
-    // Capstone
     {
-      id: 'capstone-project',
-      label: 'Senior Capstone',
+      id: 'genEd-communication',
+      label: 'Communication',
+      category: 'genEd',
+      type: 'all-required',
+      courseIds: ['ENG101', 'ENG102', 'SPCH101'],
+      description: 'Written and oral communication',
+      icon: '💬',
+    },
+    {
+      id: 'elective-upper',
+      label: 'Upper-Level Electives',
+      category: 'elective',
+      type: 'select-any',
+      minCredits: 12,
+      tag: 'upper-div',
+      description: '300/400 level courses',
+      icon: '🎓',
+    },
+    {
+      id: 'elective-free',
+      label: 'Free Electives',
+      category: 'elective',
+      type: 'select-any',
+      minCredits: 6,
+      tag: 'free',
+      description: 'Any approved courses',
+      icon: '✨',
+    },
+    {
+      id: 'capstone',
+      label: 'Capstone Project',
       category: 'capstone',
       type: 'all-required',
       courseIds: ['CS497', 'CS498']
@@ -454,23 +487,26 @@ function CanvasInner({ nodes: initialNodes, edges: initialEdges, overlays, onNod
       </div>
       
       {/* Module Cards Overlay */}
-      {CS_DEGREE_REQUIREMENTS.subRequirements?.map(subReq => {
+      {CS_DEGREE_REQUIREMENTS.subRequirements?.map((subReq, index) => {
         const moduleValidation = validation.bySubRequirement?.find(v => v.subReqId === subReq.id);
         const moduleCourses = coursesByModule.get(subReq.id) || [];
         
         if (!moduleValidation || moduleCourses.length === 0) return null;
         
-        // Calculate average position of courses in this module
-        const avgX = moduleCourses.reduce((sum, node) => sum + node.position.x, 0) / moduleCourses.length;
-        const minY = Math.min(...moduleCourses.map(node => node.position.y));
+        // Calculate optimal position to prevent overlap
+        const position = calculateModuleCardPosition(
+          moduleCourses,
+          index,
+          CS_DEGREE_REQUIREMENTS.subRequirements?.length || 0
+        );
         
         return (
           <div
             key={`module-${subReq.id}`}
             className="absolute pointer-events-auto"
             style={{
-              left: avgX - 140, // Center module card above courses (280px width / 2)
-              top: minY - 160, // Position 160px above first course
+              left: position.x,
+              top: position.y,
               zIndex: 20,
             }}
           >
