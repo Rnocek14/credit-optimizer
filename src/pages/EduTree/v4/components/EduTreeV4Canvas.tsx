@@ -410,8 +410,8 @@ function CanvasInner({ nodes: initialNodes, edges: initialEdges, overlays, onNod
           const isYear = node.type === NodeType.Year;
           
           return {
-            width: isYear ? 180 : (isGhost ? 200 : 360),
-            height: isYear ? 80 : 180,  // All non-year nodes same height
+            width: isYear ? 180 : (isGhost ? 200 : 440),  // ✅ Match CSS module card width
+            height: isYear ? 80 : 260,  // ✅ Match CSS module card height
           };
         };
         

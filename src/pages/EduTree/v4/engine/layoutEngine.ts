@@ -220,8 +220,8 @@ export function hybridSpineLayout(
   
   // Phase 3: Position courses in 2-column semester grid per year with dynamic spacing
   const COLUMNS = 2;  // Fall / Spring
-  const BASE_NODE_WIDTH = 360;  // Match CSS max-width: 350px + 10px buffer
-  const BASE_NODE_HEIGHT = 180; // Average height including metadata
+  const BASE_NODE_WIDTH = 440;  // ✅ Match CSS module card width
+  const BASE_NODE_HEIGHT = 260; // ✅ Match CSS module card height
   const H_GAP = 120;  // Increased spacing between semester columns
   const V_GAP = 80;   // Increased vertical spacing for metadata-rich nodes
   
@@ -649,8 +649,8 @@ export function hierarchicalModuleLayout(
   });
   
   const COLUMNS = 2;
-  const BASE_NODE_WIDTH = 360;
-  const BASE_NODE_HEIGHT = 180;
+  const BASE_NODE_WIDTH = 440;  // ✅ Match CSS module card width
+  const BASE_NODE_HEIGHT = 260; // ✅ Match CSS module card height
   const H_GAP = 120;
   const V_GAP = 80;
   
