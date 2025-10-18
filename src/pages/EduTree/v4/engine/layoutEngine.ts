@@ -349,6 +349,8 @@ export function moduleCardLayout(
   );
   
   // 3. For each module, create cards for each year it appears in
+  const cardCountByYear = new Map<number, number>();
+  
   topLevelModules.forEach((module: any) => {
     const isBucket = module.level === 'bucket';
     
@@ -373,8 +375,6 @@ export function moduleCardLayout(
     });
     
     // Create a module card for EACH year this module appears in
-    const cardCountByYear = new Map<number, number>();
-    
     coursesByYear.forEach((yearCourses, year) => {
       const moduleX = (year - 1) * YEAR_SPACING;
       
