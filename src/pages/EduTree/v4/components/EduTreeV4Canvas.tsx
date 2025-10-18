@@ -730,7 +730,7 @@ function CanvasInner({ nodes: initialNodes, edges: initialEdges, overlays, onNod
   return (
     <div className="edu-tree-v4 relative w-full h-full">
       {/* Compliance Score Panel with Export */}
-      <div className="absolute top-4 left-4 z-10 w-72 space-y-2">
+      <div className="absolute top-4 left-4 z-10 w-72 space-y-2 pointer-events-none">
         <ComplianceScorePanel metrics={complianceMetrics} />
         <ExportPlanButton
           planNodes={planNodes}
@@ -757,7 +757,7 @@ function CanvasInner({ nodes: initialNodes, edges: initialEdges, overlays, onNod
       </div>
       
       {/* Validation Panel with Share */}
-      <div className="absolute top-4 right-4 z-10 w-80 space-y-2">
+      <div className="absolute top-4 right-4 z-10 w-80 space-y-2 pointer-events-none">
         <DegreeValidationPanel 
           validation={validation}
           onBrowseModule={(subReqId) => setSelectedSubReq(subReqId)}
@@ -766,7 +766,7 @@ function CanvasInner({ nodes: initialNodes, edges: initialEdges, overlays, onNod
       </div>
 
       {/* Badge Legend */}
-      <div className="absolute bottom-4 right-4 z-10 w-80">
+      <div className="absolute bottom-4 right-4 z-10 w-80 pointer-events-none">
         <BadgeLegend />
       </div>
       
