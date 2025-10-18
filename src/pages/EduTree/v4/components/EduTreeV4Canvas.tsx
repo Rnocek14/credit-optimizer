@@ -806,7 +806,7 @@ function CanvasInner({ nodes: initialNodes, edges: initialEdges, overlays, onNod
         defaultEdgeOptions={{ type: 'default' }}
         onNodeClick={(event, node) => {
           // Trigger for all nodes that render as CourseNode component
-          const courseNodeTypes = [NodeType.Course, NodeType.Requirement, NodeType.Bundle];
+          const courseNodeTypes = [NodeType.Course, NodeType.Requirement, NodeType.Bundle, NodeType.Year];
           const nodeData = node.data as any;
           
           if (courseNodeTypes.includes(node.type as NodeType) && typeof nodeData?.onClick === 'function') {
