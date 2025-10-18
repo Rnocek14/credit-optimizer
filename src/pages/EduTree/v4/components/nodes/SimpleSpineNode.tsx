@@ -15,7 +15,7 @@ export function SimpleSpineNode({ data, selected }: any) {
   } = data;
   
   return (
-    <div className="nodrag nopan nowheel">
+    <div>
       <Handle type="target" position={Position.Left} className="opacity-0" />
       
       <div 
@@ -36,9 +36,10 @@ export function SimpleSpineNode({ data, selected }: any) {
             {onToggleCollapse && (
               <button
                 onClick={onToggleCollapse}
-                className="p-1 hover:bg-primary/20 rounded transition-colors"
+                className="p-1 hover:bg-primary/20 rounded transition-colors pointer-events-auto cursor-pointer"
                 type="button"
                 aria-label={isCollapsed ? 'Expand year' : 'Collapse year'}
+                style={{ pointerEvents: 'auto' }}
               >
                 {isCollapsed ? (
                   <ChevronRight className="w-4 h-4" />

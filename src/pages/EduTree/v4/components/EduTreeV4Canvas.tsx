@@ -734,28 +734,30 @@ function CanvasInner({ nodes: initialNodes, edges: initialEdges, overlays, onNod
       {/* Compliance Score Panel with Export */}
       <div className="absolute top-4 left-4 z-10 w-72 space-y-2 pointer-events-none">
         <ComplianceScorePanel metrics={complianceMetrics} />
-        <ExportPlanButton
-          planNodes={planNodes}
-          validation={validation}
-          complianceMetrics={complianceMetrics}
-          requirements={{
-            totalCredits: CS_DEGREE_REQUIREMENTS_V2.totalCredits,
-            residencyMinimum: CS_DEGREE_REQUIREMENTS_V2.residencyMinimum,
-            categories: CS_DEGREE_REQUIREMENTS_V2.categories!,
-            subRequirements: flattenRequirements(CS_DEGREE_REQUIREMENTS_V2.requirements).map(req => ({
-              id: req.id,
-              label: req.label,
-              category: req.category,
-              type: req.type,
-              requiredCount: req.requiredCount,
-              minCredits: req.minCredits,
-              courseIds: req.courseIds,
-              tag: req.tag,
-              description: req.description,
-              icon: req.icon,
-            }))
-          }}
-        />
+        <div className="pointer-events-auto">
+          <ExportPlanButton
+            planNodes={planNodes}
+            validation={validation}
+            complianceMetrics={complianceMetrics}
+            requirements={{
+              totalCredits: CS_DEGREE_REQUIREMENTS_V2.totalCredits,
+              residencyMinimum: CS_DEGREE_REQUIREMENTS_V2.residencyMinimum,
+              categories: CS_DEGREE_REQUIREMENTS_V2.categories!,
+              subRequirements: flattenRequirements(CS_DEGREE_REQUIREMENTS_V2.requirements).map(req => ({
+                id: req.id,
+                label: req.label,
+                category: req.category,
+                type: req.type,
+                requiredCount: req.requiredCount,
+                minCredits: req.minCredits,
+                courseIds: req.courseIds,
+                tag: req.tag,
+                description: req.description,
+                icon: req.icon,
+              }))
+            }}
+          />
+        </div>
       </div>
       
       {/* Validation Panel with Share */}
@@ -764,7 +766,9 @@ function CanvasInner({ nodes: initialNodes, edges: initialEdges, overlays, onNod
           validation={validation}
           onBrowseModule={(subReqId) => setSelectedSubReq(subReqId)}
         />
-        <SharePlanDialog planNodes={planNodes} />
+        <div className="pointer-events-auto">
+          <SharePlanDialog planNodes={planNodes} />
+        </div>
       </div>
 
       {/* Badge Legend */}
@@ -797,7 +801,7 @@ function CanvasInner({ nodes: initialNodes, edges: initialEdges, overlays, onNod
         edges={edges}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
-        nodesDraggable={true}
+        nodesDraggable={false}
         nodesConnectable={false}
         elementsSelectable={false}
         fitView
