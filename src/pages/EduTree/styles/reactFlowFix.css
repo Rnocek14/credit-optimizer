@@ -66,9 +66,16 @@
   pointer-events: none !important;
 }
 
-/* Ensure absolutely positioned overlays don't block canvas */
-.react-flow [style*="position: absolute"] {
+/* Only disable pointer events on overlay wrappers, NOT on nodes */
+.react-flow > [style*="position: absolute"]:not(.react-flow__controls):not(.react-flow__minimap):not(.react-flow__nodes) {
   pointer-events: none !important;
+}
+
+/* Explicitly re-enable on nodes and their children */
+.react-flow__node,
+.react-flow__node *,
+.react-flow__node button {
+  pointer-events: auto !important;
 }
 
 /* Exception for actual React Flow controls */

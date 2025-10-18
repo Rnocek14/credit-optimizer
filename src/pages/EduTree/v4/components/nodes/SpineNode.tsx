@@ -62,7 +62,7 @@ export function SpineNode({ data, selected }: SpineNodeProps) {
           {data.onToggleCollapse && (
             <button
               onClick={handleToggleClick}
-              className="p-0.5 hover:bg-primary/20 rounded transition-colors"
+              className="p-0.5 hover:bg-primary/20 rounded transition-colors cursor-pointer"
               aria-label={isCollapsed ? "Expand year" : "Collapse year"}
             >
               {isCollapsed ? (
