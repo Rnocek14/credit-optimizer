@@ -15,12 +15,14 @@ import { PlanNode, PlanEdge, NodeType, EdgeType, OverlayState, DegreeRequirement
 import { hybridSpineLayout, enrichYearNodesWithSummaries } from '../engine/layoutEngine';
 import { validateDegree } from '../engine/degreeValidator';
 import { DegreeValidationPanel } from './DegreeValidationPanel';
+import { CourseSelectionPanel } from './CourseSelectionPanel';
 import { SpineNode } from './nodes/SpineNode';
 import { CourseNode } from './nodes/CourseNode';
 import { GhostCourseNode } from './nodes/GhostCourseNode';
 import { ExternalNode } from './nodes/ExternalNode';
 import { TransferEdge } from './edges/TransferEdge';
 import { CompareEdge } from './edges/CompareEdge';
+import { MarketplaceCourse } from '@/hooks/useCourseMarketplace';
 import '../styles/v4-canvas.css';
 import '../styles/EduTreeV4.css';
 
@@ -42,7 +44,9 @@ const CS_DEGREE_REQUIREMENTS: DegreeRequirements = {
       label: 'CS Foundations',
       category: 'coreCS',
       type: 'all-required',
-      courseIds: ['CS101', 'CS102', 'CS201', 'CS202', 'CS205']
+      courseIds: ['CS101', 'CS102', 'CS201', 'CS202', 'CS205'],
+      description: 'Core computer science fundamentals required for all CS majors',
+      icon: '💻'
     },
     {
       id: 'cs-systems',
@@ -141,20 +145,61 @@ function CanvasInner({ nodes: initialNodes, edges: initialEdges, overlays, onNod
   const [nodes, setNodes] = useState<Node[]>([]);
   const [edges, setEdges] = useState<Edge[]>([]);
   const [layoutedNodes, setLayoutedNodes] = useState<Node[]>([]);
+  const [planNodes, setPlanNodes] = useState<PlanNode[]>(initialNodes);
+  const [selectedSubReq, setSelectedSubReq] = useState<string | null>(null);
   const { fitView } = useReactFlow();
 
   // Validate degree requirements
   const validation = useMemo(() => 
-    validateDegree(initialNodes, CS_DEGREE_REQUIREMENTS),
-    [initialNodes]
+    validateDegree(planNodes, CS_DEGREE_REQUIREMENTS),
+    [planNodes]
   );
 
-  // Apply layout on mount
+  // Handle course selection from marketplace
+  const handleCourseSelect = useCallback((missingCourseId: string, selectedCourse: MarketplaceCourse) => {
+    console.log('[V4 Canvas] Course selected:', { missingCourseId, selectedCourse });
+    
+    // Create new course node from marketplace selection
+    const newNode: PlanNode = {
+      id: `${missingCourseId}_marketplace_${Date.now()}`,
+      type: NodeType.Course,
+      position: { x: 0, y: 0 }, // Layout engine will position
+      data: {
+        label: missingCourseId,
+        credits: 3, // Default, could be extracted from course data
+        status: 'planned',
+        source: 'other',
+        category: 'coreCS', // Match the sub-requirement category
+        moduleId: selectedSubReq || undefined,
+        selectedProviderId: selectedCourse.id,
+        providerId: selectedCourse.platform,
+        skillTags: selectedCourse.skill_tags || [],
+        difficulty: selectedCourse.difficulty as any,
+        estimatedHours: selectedCourse.duration_hours,
+      }
+    };
+
+    // Add to plan nodes
+    setPlanNodes(prev => [...prev, newNode]);
+    
+    // Close panel
+    setSelectedSubReq(null);
+  }, [selectedSubReq]);
+
+  // Find sub-requirement and its validation status
+  const selectedSubReqData = useMemo(() => {
+    if (!selectedSubReq) return null;
+    const subReq = CS_DEGREE_REQUIREMENTS.subRequirements?.find(sr => sr.id === selectedSubReq);
+    const subReqValidation = validation.bySubRequirement?.find(srv => srv.subReqId === selectedSubReq);
+    return subReq && subReqValidation ? { subReq, validation: subReqValidation } : null;
+  }, [selectedSubReq, validation]);
+
+  // Apply layout when plan nodes change
   useEffect(() => {
     async function applyLayout() {
       console.log('[V4 Canvas] Applying Hybrid layout...');
       // First apply layout, then enrich year nodes with summaries
-      const positioned = hybridSpineLayout(initialNodes);
+      const positioned = hybridSpineLayout(planNodes);
       const enriched = enrichYearNodesWithSummaries(positioned);
       
       // Convert to React Flow format
@@ -250,7 +295,7 @@ function CanvasInner({ nodes: initialNodes, edges: initialEdges, overlays, onNod
     }
 
     applyLayout();
-  }, [initialNodes, initialEdges, fitView, onNodeClick, overlays.compare]);
+  }, [planNodes, initialEdges, fitView, onNodeClick, overlays.compare]);
 
   // Manual ghost node positioning when Compare overlay is active
   useEffect(() => {
@@ -357,8 +402,20 @@ function CanvasInner({ nodes: initialNodes, edges: initialEdges, overlays, onNod
     <div className="relative w-full h-full">
       {/* Validation Panel */}
       <div className="absolute top-4 right-4 z-10 w-80">
-        <DegreeValidationPanel validation={validation} />
+        <DegreeValidationPanel 
+          validation={validation}
+          onBrowseModule={(subReqId) => setSelectedSubReq(subReqId)}
+        />
       </div>
+      
+      {/* Course Selection Panel */}
+      <CourseSelectionPanel
+        subRequirement={selectedSubReqData?.subReq || null}
+        validation={selectedSubReqData?.validation || null}
+        isOpen={!!selectedSubReq}
+        onClose={() => setSelectedSubReq(null)}
+        onSelectCourse={handleCourseSelect}
+      />
       
       {/* Semester column separators */}
       <div className="semester-separators">

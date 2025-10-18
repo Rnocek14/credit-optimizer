@@ -48,6 +48,9 @@ export interface PlanNodeData {
   category?: 'coreCS' | 'math' | 'genEd' | 'elective' | 'capstone' | 'transfer';
   fulfills?: string[];        // Array of requirement IDs this course satisfies
   
+  // Module grouping (Phase 2D)
+  moduleId?: string;          // Links course to a sub-requirement module
+  
   // Provider matching fields
   skillTags?: string[];        // Skills required for matching providers
   difficulty?: 'beginner' | 'intermediate' | 'advanced';
@@ -56,6 +59,7 @@ export interface PlanNodeData {
   // Selected provider (when user chooses alternate)
   selectedProviderId?: string;
   selectedTeacherId?: string;
+  providerId?: string;         // Provider ID for marketplace courses
   
   // Year node summary data (for SpineNode)
   creditsSummary?: {
@@ -119,6 +123,10 @@ export interface SubRequirement {
   minCredits?: number;    // For 'select-any': minimum credits needed
   courseIds?: string[];   // For 'all-required' and 'select-n': specific courses
   tag?: string;           // For 'select-any': tag to match (e.g., 'elective', 'upper-div')
+  
+  // Phase 2D: Module UI metadata
+  description?: string;   // Human-readable description
+  icon?: string;         // Emoji or icon for display
 }
 
 export interface SubRequirementStatus {

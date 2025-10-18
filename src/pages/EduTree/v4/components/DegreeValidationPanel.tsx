@@ -12,13 +12,15 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { AlertCircle, CheckCircle2, ChevronDown } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { AlertCircle, CheckCircle2, ChevronDown, ShoppingCart } from 'lucide-react';
 
 interface DegreeValidationPanelProps {
   validation: ValidationResult;
+  onBrowseModule?: (subReqId: string) => void;
 }
 
-export function DegreeValidationPanel({ validation }: DegreeValidationPanelProps) {
+export function DegreeValidationPanel({ validation, onBrowseModule }: DegreeValidationPanelProps) {
   const progressPercent = (validation.totalCredits.planned / validation.totalCredits.required) * 100;
   
   return (
@@ -152,7 +154,20 @@ export function DegreeValidationPanel({ validation }: DegreeValidationPanelProps
                       
                       {subReq.missing.length > 0 && (
                         <div>
-                          <span className="font-medium text-destructive">Still need:</span>
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="font-medium text-destructive">Still need:</span>
+                            {onBrowseModule && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => onBrowseModule(subReq.subReqId)}
+                                className="h-6 text-xs px-2"
+                              >
+                                <ShoppingCart className="w-3 h-3 mr-1" />
+                                Browse
+                              </Button>
+                            )}
+                          </div>
                           <ul className="mt-1 space-y-0.5">
                             {subReq.missing.map((course, i) => (
                               <li key={i} className="text-muted-foreground flex items-center gap-1">

@@ -21,16 +21,16 @@ export const seed60NodePlan: V4GraphData = {
     // Fall Semester (15 cr)
     { id: 'CS101', type: NodeType.Course, position: { x: 0, y: 100 },
       data: { 
-        label: 'CS 101 Intro to CS', 
+        label: 'CS101', 
         credits: 3, 
         category: 'coreCS',
         status: 'completed', 
         year: 1,
         semester: 'fall',
+        moduleId: 'cs-foundations',
         skillTags: ['programming', 'python'],
         difficulty: 'beginner',
         estimatedHours: 120,
-        fulfills: ['coreCS-foundations'],
       } 
     },
     { id: 'MATH151', type: NodeType.Course, position: { x: 0, y: 200 },
@@ -87,14 +87,15 @@ export const seed60NodePlan: V4GraphData = {
     },
     
     // Spring Semester (15 cr)
-    { id: 'CS150', type: NodeType.Course, position: { x: 0, y: 100 },
+    { id: 'CS102', type: NodeType.Course, position: { x: 0, y: 100 },
       data: { 
-        label: 'CS 150 Discrete Math', 
+        label: 'CS102', 
         credits: 3, 
         category: 'coreCS',
         status: 'completed', 
         year: 1,
         semester: 'spring',
+        moduleId: 'cs-foundations',
         skillTags: ['logic', 'mathematics', 'proofs'],
         difficulty: 'intermediate',
         estimatedHours: 130,
@@ -171,12 +172,13 @@ export const seed60NodePlan: V4GraphData = {
     // Fall Semester (16 cr)
     { id: 'CS201', type: NodeType.Course, position: { x: 400, y: 100 },
       data: { 
-        label: 'CS 201 Data Structures', 
+        label: 'CS201', 
         credits: 3, 
         category: 'coreCS',
         status: 'in-progress', 
         year: 2,
         semester: 'fall',
+        moduleId: 'cs-foundations',
         skillTags: ['data-structures', 'algorithms'],
         difficulty: 'intermediate',
         estimatedHours: 140,
@@ -235,14 +237,29 @@ export const seed60NodePlan: V4GraphData = {
     },
     
     // Spring Semester (14 cr)
-    { id: 'CS205', type: NodeType.Course, position: { x: 400, y: 100 },
+    { id: 'CS202', type: NodeType.Course, position: { x: 400, y: 100 },
       data: { 
-        label: 'CS 205 Software Eng', 
+        label: 'CS202', 
         credits: 3, 
         category: 'coreCS',
         status: 'planned', 
         year: 2,
         semester: 'spring',
+        moduleId: 'cs-foundations',
+        skillTags: ['software-engineering', 'design-patterns'],
+        difficulty: 'intermediate',
+        estimatedHours: 130,
+      } 
+    },
+    { id: 'CS205', type: NodeType.Course, position: { x: 400, y: 100 },
+      data: { 
+        label: 'CS205', 
+        credits: 3, 
+        category: 'coreCS',
+        status: 'planned', 
+        year: 2,
+        semester: 'spring',
+        moduleId: 'cs-foundations',
         skillTags: ['software-engineering', 'design-patterns'],
         difficulty: 'intermediate',
         estimatedHours: 130,
