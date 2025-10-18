@@ -12,7 +12,7 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { PlanNode, PlanEdge, NodeType, EdgeType, OverlayState, DegreeRequirements } from '../types/v4';
-import { hybridSpineLayout, enrichYearNodesWithSummaries, groupCoursesByModule, calculateModuleCardPositions } from '../engine/layoutEngine';
+import { hybridSpineLayout, nestedModuleLayout, enrichYearNodesWithSummaries, groupCoursesByModule, calculateModuleCardPositions } from '../engine/layoutEngine';
 import { validateDegree } from '../engine/degreeValidator';
 import { DegreeValidationPanel } from './DegreeValidationPanel';
 import { CourseSelectionPanel } from './CourseSelectionPanel';
@@ -24,6 +24,7 @@ import { GhostCourseNode } from './nodes/GhostCourseNode';
 import { ExternalNode } from './nodes/ExternalNode';
 import { ModuleCard } from './nodes/ModuleCard';
 import { ModuleBundleNode } from './nodes/ModuleBundleNode';
+import { ModuleGroupNode } from './nodes/ModuleGroupNode';
 import { PlaceholderCourseNode } from './nodes/PlaceholderCourseNode';
 import { TransferEdge } from './edges/TransferEdge';
 import { CompareEdge } from './edges/CompareEdge';
@@ -178,6 +179,7 @@ const nodeTypes = {
   [NodeType.Placeholder]: PlaceholderCourseNode,
   ghost: GhostCourseNode,
   moduleBundle: ModuleBundleNode,
+  moduleGroup: ModuleGroupNode,
 };
 
 const edgeTypes = {
@@ -262,15 +264,42 @@ function CanvasInner({ nodes: initialNodes, edges: initialEdges, overlays, onNod
   // Apply layout when plan nodes change
   useEffect(() => {
     async function applyLayout() {
-      console.log('[V4 Canvas] Applying Hybrid layout...');
-      // First apply layout, then enrich year nodes with summaries
-      const positioned = hybridSpineLayout(planNodes);
+      console.log('[V4 Canvas] Applying Nested Module layout...');
+      // Use nested module layout for hierarchical structure
+      const positioned = nestedModuleLayout(planNodes, CS_DEGREE_REQUIREMENTS.subRequirements || []);
       const enriched = enrichYearNodesWithSummaries(positioned);
       
       // Convert to React Flow format
     const reactFlowNodes: Node[] = enriched.map(node => {
       const isGhostNode = node.className?.includes('ghost-node');
-      const nodeType = isGhostNode ? 'ghost' : node.type;
+      const isModuleGroup = node.data.type === 'moduleGroup';
+      const nodeType = isGhostNode ? 'ghost' : (isModuleGroup ? 'moduleGroup' : node.type);
+      
+      // For module group nodes, inject handlers
+      if (isModuleGroup) {
+        const moduleId = node.data.moduleId;
+        const subReq = CS_DEGREE_REQUIREMENTS.subRequirements?.find(sr => sr.id === moduleId);
+        const subReqValidation = validation.bySubRequirement?.find(srv => srv.subReqId === moduleId);
+        
+        return {
+          id: node.id,
+          type: 'moduleGroup',
+          position: node.position,
+          data: {
+            module: subReq,
+            validation: subReqValidation,
+            isCollapsed: collapsedModules.has(moduleId),
+            onToggle: () => toggleModule(moduleId),
+            onBrowseOptions: () => setSelectedSubReq(moduleId),
+          },
+          draggable: false,
+          style: {
+            width: 400,
+            height: 'auto',
+            zIndex: 0,
+          },
+        };
+      }
       
       // ✅ Pass onClick to ALL course-like nodes (Course, Requirement, Bundle, Placeholder)
       const shouldHaveClick = [NodeType.Course, NodeType.Requirement, NodeType.Bundle, NodeType.Placeholder].includes(node.type as NodeType);
@@ -290,6 +319,8 @@ function CanvasInner({ nodes: initialNodes, edges: initialEdges, overlays, onNod
         id: node.id,
         type: nodeType,
         position: node.position,
+        parentId: node.parentNode, // Pass parent for hierarchical nesting (ReactFlow uses parentId)
+        extent: node.extent,        // Constrain to parent bounds
         data: { 
           ...dataWithHandlers,
           onClick: shouldHaveClick && onNodeClick ? () => {
@@ -300,6 +331,7 @@ function CanvasInner({ nodes: initialNodes, edges: initialEdges, overlays, onNod
         },
         draggable: false,
         hidden: isGhostNode && !overlays.compare,
+        style: node.parentNode ? { zIndex: 1 } : undefined, // Child nodes above parent
       };
     });
 
@@ -483,15 +515,26 @@ function CanvasInner({ nodes: initialNodes, edges: initialEdges, overlays, onNod
     [coursesByModule]
   );
   
-  // Toggle module collapse
+  // Toggle module collapse with child node visibility
   const toggleModule = useCallback((moduleId: string) => {
     setCollapsedModules(prev => {
       const next = new Set(prev);
+      const isCollapsing = !next.has(moduleId);
+      
       if (next.has(moduleId)) {
         next.delete(moduleId);
       } else {
         next.add(moduleId);
       }
+      
+      // Update child node visibility
+      setNodes(prevNodes => prevNodes.map(node => {
+        if (node.parentId === `module-${moduleId}`) {
+          return { ...node, hidden: isCollapsing };
+        }
+        return node;
+      }));
+      
       return next;
     });
   }, []);

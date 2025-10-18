@@ -138,6 +138,16 @@ export function CourseNode({ data, selected }: CourseNodeProps) {
     >
       <Handle type="target" position={Position.Top} className="opacity-0" />
       
+      {/* Year badge - top left (for multi-year modules) */}
+      {data.year && (
+        <Badge 
+          variant="outline" 
+          className="absolute -top-2 -left-2 text-xs px-2 py-0.5 bg-background border-border shadow-sm z-10"
+        >
+          Y{data.year}
+        </Badge>
+      )}
+      
       {/* Semester badge - top right */}
       {data.semester && (
         <Badge 

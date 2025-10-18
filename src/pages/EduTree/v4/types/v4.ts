@@ -93,6 +93,8 @@ export interface PlanNode {
   data: PlanNodeData;
   position: { x: number; y: number };
   className?: string;  // e.g., "spine-node is-transferable"
+  parentNode?: string; // For nested modules: ID of parent node
+  extent?: 'parent';   // Constrain child nodes to parent bounds
 }
 
 export interface PlanEdge {

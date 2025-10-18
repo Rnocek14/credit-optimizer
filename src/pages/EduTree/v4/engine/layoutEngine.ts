@@ -297,7 +297,7 @@ export function hybridSpineLayout(
 }
 
 /**
- * Group courses by their moduleId
+ * Group courses by their moduleId (includes Placeholders)
  */
 export function groupCoursesByModule(
   nodes: PlanNode[]
@@ -305,7 +305,7 @@ export function groupCoursesByModule(
   const coursesByModule = new Map<string, PlanNode[]>();
   
   nodes
-    .filter(n => n.type === NodeType.Course && n.data.moduleId)
+    .filter(n => (n.type === NodeType.Course || n.type === NodeType.Placeholder) && n.data.moduleId)
     .forEach(node => {
       const moduleId = node.data.moduleId!;
       if (!coursesByModule.has(moduleId)) {
@@ -315,6 +315,142 @@ export function groupCoursesByModule(
     });
   
   return coursesByModule;
+}
+
+/**
+ * Nested Module Layout - Groups courses by moduleId FIRST, then positions within parent modules
+ * This creates a true hierarchical structure where modules are ReactFlow parent nodes
+ */
+export function nestedModuleLayout(
+  nodes: PlanNode[],
+  subRequirements: any[]
+): PlanNode[] {
+  const positioned: PlanNode[] = [];
+  const moduleParentNodes: PlanNode[] = [];
+  
+  // 1. Group courses by module
+  const coursesByModule = groupCoursesByModule(nodes);
+  
+  // 2. Get spine nodes (Year markers)
+  const spineNodes = nodes.filter(n => n.type === NodeType.Year);
+  
+  // 3. For each sub-requirement, create a parent module node
+  const selectAnyModules = subRequirements.filter(sr => sr.type === 'select-any');
+  
+  selectAnyModules.forEach((subReq, moduleIndex) => {
+    const moduleCourses = coursesByModule.get(subReq.id) || [];
+    if (moduleCourses.length === 0) return;
+    
+    // Determine module position based on earliest year
+    const years = moduleCourses.map(c => c.data.year || 1);
+    const minYear = Math.min(...years);
+    const maxYear = Math.max(...years);
+    const yearSpan = maxYear - minYear;
+    
+    // Position module at earliest year column
+    const moduleX = 100 + (minYear - 1) * 1200;
+    
+    // Stack modules vertically with generous spacing to avoid overlaps
+    const moduleY = 180 + (moduleIndex * 700);
+    
+    // Create parent module node
+    const moduleNode: PlanNode = {
+      id: `module-${subReq.id}`,
+      type: NodeType.Bundle,
+      position: { x: moduleX, y: moduleY },
+      data: {
+        label: subReq.label,
+        moduleId: subReq.id,
+        type: 'moduleGroup',
+      },
+    };
+    moduleParentNodes.push(moduleNode);
+    
+    // 4. Position child courses RELATIVE to parent (all offsets are relative)
+    moduleCourses.forEach((course, index) => {
+      const childX = 20; // Left margin within module
+      const childY = 140 + (index * 200); // Stack vertically with spacing
+      
+      positioned.push({
+        ...course,
+        position: { x: childX, y: childY },
+        parentNode: `module-${subReq.id}`, // 🔑 Link to parent
+        extent: 'parent' as const, // Constrain to parent bounds
+      });
+    });
+  });
+  
+  // 5. Position spine nodes (Year markers) at top
+  spineNodes.forEach((spine, index) => {
+    positioned.push({
+      ...spine,
+      position: { x: 100 + index * 1200, y: 50 },
+    });
+  });
+  
+  // 6. Handle courses NOT in modules (all-required types) - use existing hybrid layout
+  const coursesNotInModules = nodes.filter(n => 
+    (n.type === NodeType.Course || n.type === NodeType.Placeholder) && 
+    !n.data.moduleId &&
+    !n.className?.includes('ghost-node')
+  );
+  
+  // Group by year and position in grid
+  const coursesByYear = new Map<number, PlanNode[]>();
+  coursesNotInModules.forEach(node => {
+    const year = node.data.year ?? 1;
+    if (!coursesByYear.has(year)) coursesByYear.set(year, []);
+    coursesByYear.get(year)!.push(node);
+  });
+  
+  const COLUMNS = 2;
+  const BASE_NODE_WIDTH = 360;
+  const BASE_NODE_HEIGHT = 180;
+  const H_GAP = 120;
+  const V_GAP = 80;
+  
+  coursesByYear.forEach((courses, year) => {
+    const yearIndex = year - 1;
+    const baseX = yearIndex * 1200 + 100;
+    const startY = 180;
+    
+    const fallCourses: PlanNode[] = [];
+    const springCourses: PlanNode[] = [];
+    
+    courses.forEach(node => {
+      const semester = node.data.semester ?? (fallCourses.length <= springCourses.length ? 'fall' : 'spring');
+      if (semester === 'fall') {
+        fallCourses.push(node);
+      } else {
+        springCourses.push(node);
+      }
+    });
+    
+    const gridStartX = baseX - 90;
+    
+    fallCourses.forEach((node, index) => {
+      positioned.push({
+        ...node,
+        position: { x: gridStartX, y: startY + index * (BASE_NODE_HEIGHT + V_GAP) }
+      });
+    });
+    
+    springCourses.forEach((node, index) => {
+      positioned.push({
+        ...node,
+        position: { x: gridStartX + BASE_NODE_WIDTH + H_GAP, y: startY + index * (BASE_NODE_HEIGHT + V_GAP) }
+      });
+    });
+  });
+  
+  console.log('[Nested Layout] Created modules:', {
+    moduleParents: moduleParentNodes.length,
+    childrenInModules: positioned.filter(n => n.parentNode).length,
+    independentCourses: positioned.filter(n => !n.parentNode && n.type !== NodeType.Year).length,
+    spineNodes: spineNodes.length,
+  });
+  
+  return [...moduleParentNodes, ...positioned];
 }
 
 /**
