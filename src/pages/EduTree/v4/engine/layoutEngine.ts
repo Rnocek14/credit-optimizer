@@ -323,7 +323,8 @@ export function groupCoursesByModule(
  */
 export function nestedModuleLayout(
   nodes: PlanNode[],
-  subRequirements: any[]
+  subRequirements: any[],
+  collapsedModules: Set<string> = new Set()
 ): PlanNode[] {
   const positioned: PlanNode[] = [];
   const moduleParentNodes: PlanNode[] = [];
@@ -341,6 +342,8 @@ export function nestedModuleLayout(
     const moduleCourses = coursesByModule.get(subReq.id) || [];
     if (moduleCourses.length === 0) return;
     
+    const isCollapsed = collapsedModules.has(subReq.id);
+    
     // Determine module position based on earliest year
     const years = moduleCourses.map(c => c.data.year || 1);
     const minYear = Math.min(...years);
@@ -353,13 +356,18 @@ export function nestedModuleLayout(
     // Stack modules vertically with generous spacing to avoid overlaps
     const moduleY = 180 + (moduleIndex * 700);
     
-    // Calculate dynamic parent size based on number of children
-    const moduleHeight = Math.max(250, 160 + moduleCourses.length * 200);
+    // Calculate dynamic parent size based on collapse state
+    // Header: ~180px (icon, title, progress, button, padding)
+    // Collapsed: just header height
+    // Expanded: header + courses (200px each) + bottom padding
+    const moduleHeight = isCollapsed 
+      ? 140 
+      : Math.max(280, 200 + moduleCourses.length * 220);
     
     // Create parent module node
     const moduleNode: PlanNode = {
       id: `module-${subReq.id}`,
-      type: NodeType.Bundle,
+      type: NodeType.ModuleGroup,
       position: { x: moduleX, y: moduleY },
       data: {
         label: subReq.label,
@@ -374,9 +382,10 @@ export function nestedModuleLayout(
     moduleParentNodes.push(moduleNode);
     
     // 4. Position child courses RELATIVE to parent (all offsets are relative)
+    // Start after header (180px) + 20px padding
     moduleCourses.forEach((course, index) => {
       const childX = 20; // Left margin within module
-      const childY = 140 + (index * 200); // Stack vertically with spacing
+      const childY = 200 + (index * 220); // Start after header, 220px per course (200px + 20px gap)
       
       positioned.push({
         ...course,

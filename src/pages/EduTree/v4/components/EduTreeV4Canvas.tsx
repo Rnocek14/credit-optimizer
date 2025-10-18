@@ -265,14 +265,18 @@ function CanvasInner({ nodes: initialNodes, edges: initialEdges, overlays, onNod
   useEffect(() => {
     async function applyLayout() {
       console.log('[V4 Canvas] Applying Nested Module layout...');
-      // Use nested module layout for hierarchical structure
-      const positioned = nestedModuleLayout(planNodes, CS_DEGREE_REQUIREMENTS.subRequirements || []);
+      // Use nested module layout for hierarchical structure (pass collapse state)
+      const positioned = nestedModuleLayout(
+        planNodes, 
+        CS_DEGREE_REQUIREMENTS.subRequirements || [],
+        collapsedModules
+      );
       const enriched = enrichYearNodesWithSummaries(positioned);
       
       // Convert to React Flow format
     const reactFlowNodes: Node[] = enriched.map(node => {
       const isGhostNode = node.className?.includes('ghost-node');
-      const isModuleGroup = node.data.type === 'moduleGroup';
+      const isModuleGroup = node.type === NodeType.ModuleGroup || node.data.type === 'moduleGroup';
       const nodeType = isGhostNode ? 'ghost' : (isModuleGroup ? 'moduleGroup' : node.type);
       
       // For module group nodes, inject handlers
@@ -294,8 +298,8 @@ function CanvasInner({ nodes: initialNodes, edges: initialEdges, overlays, onNod
           },
           draggable: false,
           style: {
-            width: 420,
-            minHeight: 400,
+            width: node.style?.width || 420,
+            height: node.style?.height || 400,
             zIndex: 0,
           },
         };

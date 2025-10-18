@@ -12,7 +12,8 @@ export enum NodeType {
   Requirement = "requirement",
   External = "external",
   Bundle = "bundle",
-  Placeholder = "placeholder"
+  Placeholder = "placeholder",
+  ModuleGroup = "moduleGroup"
 }
 
 export enum EdgeType {

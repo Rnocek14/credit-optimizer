@@ -31,10 +31,11 @@ export function ModuleGroupNode({ data }: ModuleGroupNodeProps) {
   
   return (
     <div 
-      className="bg-card/80 backdrop-blur-sm border-2 border-border rounded-xl shadow-lg transition-all duration-200 hover:shadow-xl p-4 relative"
+      className="bg-card/80 backdrop-blur-sm border-2 border-border rounded-xl shadow-lg transition-all duration-200 hover:shadow-xl p-4 relative overflow-hidden"
       style={{
-        minWidth: 380,
-        minHeight: isCollapsed ? 120 : 'auto',
+        width: '100%',
+        height: '100%',
+        boxSizing: 'border-box',
       }}
     >
       {/* Header */}
