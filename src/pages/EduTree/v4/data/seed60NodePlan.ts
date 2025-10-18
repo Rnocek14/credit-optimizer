@@ -84,6 +84,7 @@ export const seed60NodePlan: V4GraphData = {
         status: 'completed', 
         year: 1,
         semester: 'fall',
+        moduleId: 'genEd-humanities',
         difficulty: 'beginner',
         estimatedHours: 40,
       } 
@@ -207,13 +208,13 @@ export const seed60NodePlan: V4GraphData = {
     },
     { id: 'PHYS211', type: NodeType.Course, position: { x: 400, y: 300 },
       data: { 
-        label: 'PHYS 211 Physics I', 
+        label: 'PHYS211', 
         credits: 4, 
         category: 'math',
         status: 'in-progress', 
         year: 2,
         semester: 'fall',
-        moduleId: 'math-science',
+        moduleId: 'physics-sequence',
         skillTags: ['physics', 'mechanics'],
         difficulty: 'intermediate',
         estimatedHours: 150,
@@ -292,13 +293,13 @@ export const seed60NodePlan: V4GraphData = {
     },
     { id: 'PHYS212', type: NodeType.Course, position: { x: 400, y: 300 },
       data: { 
-        label: 'PHYS 212 Physics II', 
+        label: 'PHYS212', 
         credits: 4, 
         category: 'math',
         status: 'planned', 
         year: 2,
         semester: 'spring',
-        moduleId: 'math-science',
+        moduleId: 'physics-sequence',
         skillTags: ['physics', 'electromagnetism'],
         difficulty: 'intermediate',
         estimatedHours: 150,
@@ -326,6 +327,7 @@ export const seed60NodePlan: V4GraphData = {
         status: 'planned', 
         year: 2,
         semester: 'spring',
+        moduleId: 'genEd-humanities',
         difficulty: 'beginner',
         estimatedHours: 40,
       } 
@@ -370,7 +372,7 @@ export const seed60NodePlan: V4GraphData = {
         status: 'unplanned', 
         year: 3,
         semester: 'fall',
-        moduleId: 'elective-upper',
+        moduleId: 'upper-electives',
         skillTags: ['web-development', 'javascript'],
         difficulty: 'intermediate',
         estimatedHours: 120,
@@ -427,7 +429,7 @@ export const seed60NodePlan: V4GraphData = {
         status: 'unplanned', 
         year: 3,
         semester: 'spring',
-        moduleId: 'elective-upper',
+        moduleId: 'upper-electives',
         skillTags: ['machine-learning', 'ai'],
         difficulty: 'advanced',
         estimatedHours: 150,
@@ -482,9 +484,9 @@ export const seed60NodePlan: V4GraphData = {
     
     // ===== YEAR 4 (30 credits) =====
     // Fall Semester (15 cr)
-    { id: 'CS401', type: NodeType.Course, position: { x: 1200, y: 100 },
+    { id: 'CS497', type: NodeType.Course, position: { x: 1200, y: 100 },
       data: { 
-        label: 'CS 401 Capstone I', 
+        label: 'CS 497 Capstone I', 
         credits: 3, 
         category: 'capstone',
         status: 'unplanned', 
@@ -520,7 +522,7 @@ export const seed60NodePlan: V4GraphData = {
         status: 'unplanned', 
         year: 4,
         semester: 'fall',
-        moduleId: 'elective-upper',
+        moduleId: 'upper-electives',
         skillTags: ['security', 'cryptography'],
         difficulty: 'advanced',
         estimatedHours: 150,
@@ -554,9 +556,9 @@ export const seed60NodePlan: V4GraphData = {
     },
     
     // Spring Semester (15 cr)
-    { id: 'CS490', type: NodeType.Course, position: { x: 1200, y: 100 },
+    { id: 'CS498', type: NodeType.Course, position: { x: 1200, y: 100 },
       data: { 
-        label: 'CS 490 Capstone II', 
+        label: 'CS 498 Capstone II', 
         credits: 3, 
         category: 'capstone',
         status: 'unplanned', 
@@ -578,7 +580,7 @@ export const seed60NodePlan: V4GraphData = {
         status: 'unplanned', 
         year: 4,
         semester: 'spring',
-        moduleId: 'elective-upper',
+        moduleId: 'upper-electives',
         skillTags: ['cloud', 'devops'],
         difficulty: 'advanced',
         estimatedHours: 140,
@@ -663,9 +665,9 @@ export const seed60NodePlan: V4GraphData = {
     { id: 'e-CS201-CS310', source: 'CS201', target: 'CS310', type: EdgeType.Prerequisite, className: 'prereq-edge' },
     { id: 'e-MATH151-MATH251', source: 'MATH151', target: 'MATH251', type: EdgeType.Prerequisite, className: 'prereq-edge' },
     { id: 'e-CS205-CS310', source: 'CS205', target: 'CS310', type: EdgeType.Prerequisite, className: 'prereq-edge' },
-    { id: 'e-CS301-CS401', source: 'CS301', target: 'CS401', type: EdgeType.Prerequisite, className: 'prereq-edge' },
+    { id: 'e-CS301-CS497', source: 'CS301', target: 'CS497', type: EdgeType.Prerequisite, className: 'prereq-edge' },
     { id: 'e-CS310-CS410', source: 'CS310', target: 'CS410', type: EdgeType.Prerequisite, className: 'prereq-edge' },
-    { id: 'e-CS401-CS490', source: 'CS401', target: 'CS490', type: EdgeType.Prerequisite, className: 'prereq-edge' },
+    { id: 'e-CS497-CS498', source: 'CS497', target: 'CS498', type: EdgeType.Prerequisite, className: 'prereq-edge' },
     
     // Transfer equivalency (hidden by default)
     { id: 'e-CLEP-MATH151', source: 'MATH151_CLEP', target: 'MATH151', type: EdgeType.Equivalency, 

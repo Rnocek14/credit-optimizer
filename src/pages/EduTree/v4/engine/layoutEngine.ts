@@ -318,94 +318,130 @@ export function groupCoursesByModule(
 }
 
 /**
- * Module Card Layout - Simplified spine-based layout with ONLY module cards
- * NO course nodes rendered in tree (handled via side panel)
+ * Module Card Layout - Multi-year distribution
+ * Creates module cards for each year a module appears in
  */
 export function moduleCardLayout(
   courses: PlanNode[],
   requirements: any[] // HierarchicalRequirement[]
 ): PlanNode[] {
-  const nodes: PlanNode[] = [];
-  const YEAR_X_START = 100;
-  const YEAR_X_SPACING = 1200;
-  const MODULE_Y_START = 200;
-  const MODULE_Y_SPACING = 280;
-  const MODULE_WIDTH = 420;
-  const MODULE_HEIGHT = 240;
-
+  const moduleNodes: PlanNode[] = [];
+  const spineNodes: PlanNode[] = [];
+  
+  const YEAR_SPACING = 400;
+  const CARD_HEIGHT = 240;
+  const CARD_GAP = 30;
+  
   // 1. Create spine (year markers)
   for (let year = 1; year <= 4; year++) {
-    nodes.push({
+    spineNodes.push({
       id: `year${year}`,
       type: NodeType.Year,
-      position: { x: YEAR_X_START + (year - 1) * YEAR_X_SPACING, y: 50 },
-      data: { label: `Year ${year}`, year }
+      position: { x: (year - 1) * YEAR_SPACING, y: 50 },
+      data: { label: `Year ${year}`, type: 'year' }
     });
   }
-
+  
   // 2. Get top-level modules (buckets + standalone sequences)
   const topLevelModules = requirements.filter((r: any) => 
     r.level === 'bucket' || (r.level === 'sequence' && !r.parentId)
   );
-
-  // 3. Helper: Get all course IDs for a module (flatten children)
-  const getAllCourseIdsForModule = (module: any): string[] => {
-    if (module.courseIds) return module.courseIds;
-    if (module.children) {
-      return module.children.flatMap((child: any) => getAllCourseIdsForModule(child));
-    }
-    return [];
-  };
-
-  // 4. Track module positions by year
-  const moduleCountByYear: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0 };
-
-  // 5. Position each module
+  
+  // 3. For each module, create cards for each year it appears in
   topLevelModules.forEach((module: any) => {
-    const courseIds = getAllCourseIdsForModule(module);
-    const moduleCourses = courses.filter(c => courseIds.includes(c.data.label));
-
+    const isBucket = module.level === 'bucket';
+    
+    // Get all course IDs for this module (flatten children for buckets)
+    const courseIds = getAllCourseIdsForModule(module, requirements);
+    const moduleCourses = courses.filter((c: PlanNode) => {
+      // Match by direct course ID or by moduleId in course data
+      return courseIds.includes(c.data.label) || 
+             (c.data.moduleId && isModuleMatch(c.data.moduleId, module, requirements));
+    });
+    
     if (moduleCourses.length === 0) return; // Skip empty modules
-
-    // Find earliest year
-    const years = moduleCourses.map(c => c.data.year || 1);
-    const minYear = Math.min(...years);
-    const moduleX = YEAR_X_START + (minYear - 1) * YEAR_X_SPACING;
-
-    // Stack vertically
-    const stackIndex = moduleCountByYear[minYear] || 0;
-    const moduleY = MODULE_Y_START + stackIndex * MODULE_Y_SPACING;
-    moduleCountByYear[minYear] = stackIndex + 1;
-
-    // Calculate summary data
-    const completedCourses = moduleCourses.filter(c => c.data.status === 'completed');
-    const creditsEarned = completedCourses.reduce((sum, c) => sum + (c.data.credits || 0), 0);
-    const creditsRequired = module.minCredits || (courseIds.length * 3);
-
-    nodes.push({
-      id: `module-${module.id}`,
-      type: NodeType.ModuleGroup,
-      position: { x: moduleX, y: moduleY },
-      data: {
-        label: module.label,
-        moduleId: module.id,
-        type: 'moduleGroup',
-        level: module.level,
-        description: module.description,
-        courseCount: moduleCourses.length,
-        creditsEarned,
-        creditsRequired,
-        // Store icon in a custom property (not in PlanNodeData schema)
-        ...(module.icon && { icon: module.icon }),
-      } as any,
-      style: {
-        width: MODULE_WIDTH,
-        height: MODULE_HEIGHT,
+    
+    // Group courses by year
+    const coursesByYear = new Map<number, PlanNode[]>();
+    moduleCourses.forEach((course: PlanNode) => {
+      const year = course.data.year || 1;
+      if (!coursesByYear.has(year)) {
+        coursesByYear.set(year, []);
       }
+      coursesByYear.get(year)!.push(course);
+    });
+    
+    // Create a module card for EACH year this module appears in
+    coursesByYear.forEach((yearCourses, year) => {
+      const moduleX = (year - 1) * YEAR_SPACING;
+      
+      // Stack vertically if multiple modules in same year
+      const modulesInSameYear = moduleNodes.filter((n: PlanNode) => 
+        Math.abs(n.position.x - moduleX) < 50
+      );
+      const moduleY = 200 + modulesInSameYear.length * (CARD_HEIGHT + CARD_GAP);
+      
+      // Calculate summary data for this year's courses
+      const creditsEarned = yearCourses
+        .filter((c: PlanNode) => c.data.status === 'completed')
+        .reduce((sum, c) => sum + (c.data.credits || 0), 0);
+      
+      const totalCredits = yearCourses.reduce((sum, c) => sum + (c.data.credits || 0), 0);
+      
+      moduleNodes.push({
+        id: `module-${module.id}-y${year}`,
+        type: NodeType.ModuleGroup,
+        position: { x: moduleX, y: moduleY },
+        data: {
+          label: module.label,
+          moduleId: module.id,
+          type: 'moduleGroup',
+          level: module.level,
+          icon: module.icon,
+          description: module.description,
+          
+          // Year filter for this card
+          yearFilter: year,
+          
+          // Summary data (for THIS year only)
+          courseCount: yearCourses.length,
+          creditsEarned: creditsEarned,
+          creditsRequired: totalCredits,
+        } as any,
+        style: {
+          width: 360,
+          height: CARD_HEIGHT,
+        }
+      });
     });
   });
+  
+  return [...spineNodes, ...moduleNodes];
+}
 
-  return nodes;
+// Helper: Get all course IDs for a module (including nested sequences)
+function getAllCourseIdsForModule(
+  module: any,
+  allRequirements: any[]
+): string[] {
+  if (module.courseIds) return module.courseIds;
+  if (module.children) {
+    return module.children.flatMap((child: any) => getAllCourseIdsForModule(child, allRequirements));
+  }
+  return [];
+}
+
+// Helper: Check if a course's moduleId matches this module or its children
+function isModuleMatch(
+  courseModuleId: string,
+  module: any,
+  allRequirements: any[]
+): boolean {
+  if (courseModuleId === module.id) return true;
+  if (module.children) {
+    return module.children.some((child: any) => isModuleMatch(courseModuleId, child, allRequirements));
+  }
+  return false;
 }
 
 /**

@@ -32,6 +32,7 @@ interface ModuleDetailPanelProps {
   onAddCourse: (moduleId: string, course: MarketplaceCourse) => void;
   onRemoveCourse: (courseId: string) => void;
   onReplaceCourse: (courseId: string, newCourse: MarketplaceCourse) => void;
+  yearFilter?: number; // Optional: filter to show only courses from a specific year
 }
 
 export function ModuleDetailPanel({
@@ -44,13 +45,22 @@ export function ModuleDetailPanel({
   onAddCourse,
   onRemoveCourse,
   onReplaceCourse,
+  yearFilter,
 }: ModuleDetailPanelProps) {
   const [activeTab, setActiveTab] = useState<'overview' | 'marketplace'>('overview');
   const [replaceTargetId, setReplaceTargetId] = useState<string | null>(null);
+  const [showAllYears, setShowAllYears] = useState(false);
 
   if (!module || !validation) return null;
 
   const isBucket = module.level === 'bucket';
+  
+  // Filter courses by year if yearFilter is provided and not showing all years
+  const filteredCourses = useMemo(() => {
+    if (!yearFilter || showAllYears) return currentCourses;
+    return currentCourses.filter(c => c.data.year === yearFilter);
+  }, [currentCourses, yearFilter, showAllYears]);
+  
   const progressPercent = validation.creditsNeeded > 0
     ? (validation.creditsEarned / validation.creditsNeeded) * 100
     : validation.completed.length > 0 ? 100 : 0;
@@ -80,6 +90,23 @@ export function ModuleDetailPanel({
             </div>
             <Progress value={progressPercent} className="h-2" />
           </div>
+          
+          {/* Year Filter Toggle */}
+          {yearFilter && (
+            <div className="mt-3 flex items-center gap-2">
+              <Button
+                variant={showAllYears ? 'outline' : 'secondary'}
+                size="sm"
+                onClick={() => setShowAllYears(!showAllYears)}
+                className="text-xs"
+              >
+                {showAllYears ? '🗓️ All Years' : `📅 Year ${yearFilter} Only`}
+              </Button>
+              <span className="text-xs text-muted-foreground">
+                Showing {filteredCourses.length} of {currentCourses.length} courses
+              </span>
+            </div>
+          )}
 
           {/* Tabs */}
           <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="mt-4">
@@ -98,7 +125,7 @@ export function ModuleDetailPanel({
                 {/* For bucket-level modules, group by sequence */}
                 {isBucket && sequences.length > 0 ? (
                   sequences.map(seq => {
-                    const seqCourses = currentCourses.filter(c => c.data.moduleId === seq.id);
+                    const seqCourses = filteredCourses.filter(c => c.data.moduleId === seq.id);
                     
                     return (
                       <div key={seq.id} className="space-y-3">
@@ -121,9 +148,9 @@ export function ModuleDetailPanel({
                     );
                   })
                 ) : (
-                  // Standalone sequence: show all courses
+                  // Standalone sequence: show filtered courses
                   <CourseList
-                    courses={currentCourses}
+                    courses={filteredCourses}
                     onRemove={onRemoveCourse}
                     onReplace={(id) => {
                       setReplaceTargetId(id);

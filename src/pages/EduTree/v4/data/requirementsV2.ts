@@ -9,53 +9,7 @@ export const CS_DEGREE_REQUIREMENTS_V2: DegreeRequirementsV2 = {
   residencyMinimum: 30,
   
   requirements: [
-    // ========== YEAR 1: FOUNDATION ==========
-    {
-      id: 'year-1-foundation',
-      label: 'Year 1: Foundation',
-      category: 'foundation',
-      level: 'bucket',
-      type: 'all-required',
-      icon: '🎯',
-      description: 'Core programming and mathematical foundations',
-      children: [
-        {
-          id: 'cs-foundations',
-          label: 'CS Foundations',
-          category: 'coreCS',
-          level: 'sequence',
-          type: 'all-required',
-          courseIds: ['CS101', 'CS102'],
-          description: 'Introduction to programming and problem solving',
-          icon: '💻',
-          parentId: 'year-1-foundation'
-        },
-        {
-          id: 'math-calculus',
-          label: 'Calculus Sequence',
-          category: 'math',
-          level: 'sequence',
-          type: 'all-required',
-          courseIds: ['MATH151', 'MATH152'],
-          description: 'Calculus I & II',
-          icon: '📐',
-          parentId: 'year-1-foundation'
-        },
-        {
-          id: 'genEd-communication',
-          label: 'Communication',
-          category: 'genEd',
-          level: 'sequence',
-          type: 'all-required',
-          courseIds: ['ENG101', 'ENG102', 'SPCH101'],
-          description: 'Written and oral communication',
-          icon: '💬',
-          parentId: 'year-1-foundation'
-        }
-      ]
-    },
-    
-    // ========== YEAR 2-3: CORE COMPUTER SCIENCE ==========
+    // ========== CORE COMPUTER SCIENCE ==========
     {
       id: 'core-cs',
       label: 'Core Computer Science',
@@ -66,14 +20,14 @@ export const CS_DEGREE_REQUIREMENTS_V2: DegreeRequirementsV2 = {
       description: 'Essential CS theory and systems',
       children: [
         {
-          id: 'cs-data-structures',
-          label: 'Data Structures',
+          id: 'cs-foundations',
+          label: 'CS Foundations',
           category: 'coreCS',
           level: 'sequence',
           type: 'all-required',
-          courseIds: ['CS201', 'CS202', 'CS205'],
-          description: 'Advanced data structures and algorithms',
-          icon: '🔗',
+          courseIds: ['CS101', 'CS102', 'CS201', 'CS202', 'CS205'],
+          description: 'Programming fundamentals and data structures',
+          icon: '💻',
           parentId: 'core-cs'
         },
         {
@@ -83,7 +37,7 @@ export const CS_DEGREE_REQUIREMENTS_V2: DegreeRequirementsV2 = {
           level: 'sequence',
           type: 'all-required',
           courseIds: ['CS301', 'CS305', 'CS310', 'CS410'],
-          description: 'Low-level systems programming',
+          description: 'Databases, architecture, operating systems, networks',
           icon: '⚙️',
           parentId: 'core-cs'
         }
@@ -98,8 +52,19 @@ export const CS_DEGREE_REQUIREMENTS_V2: DegreeRequirementsV2 = {
       level: 'bucket',
       type: 'all-required',
       icon: '🔬',
-      description: 'Advanced mathematics and physics',
+      description: 'Mathematical and scientific foundations',
       children: [
+        {
+          id: 'math-calculus',
+          label: 'Calculus Sequence',
+          category: 'math',
+          level: 'sequence',
+          type: 'all-required',
+          courseIds: ['MATH151', 'MATH152'],
+          description: 'Calculus I & II',
+          icon: '📐',
+          parentId: 'math-science'
+        },
         {
           id: 'math-advanced',
           label: 'Advanced Math',
@@ -113,7 +78,7 @@ export const CS_DEGREE_REQUIREMENTS_V2: DegreeRequirementsV2 = {
         },
         {
           id: 'physics-sequence',
-          label: 'Physics Sequence',
+          label: 'Physics',
           category: 'math',
           level: 'sequence',
           type: 'all-required',
@@ -132,11 +97,21 @@ export const CS_DEGREE_REQUIREMENTS_V2: DegreeRequirementsV2 = {
       category: 'genEd',
       level: 'bucket',
       type: 'select-any',
-      minCredits: 21,
+      minCredits: 30,
       icon: '🎓',
       description: 'Breadth requirements across disciplines',
-      defaultCollapsed: true,
       children: [
+        {
+          id: 'genEd-communication',
+          label: 'Communication',
+          category: 'genEd',
+          level: 'sequence',
+          type: 'all-required',
+          courseIds: ['ENG101', 'ENG102', 'SPCH101'],
+          description: 'Written and oral communication',
+          icon: '💬',
+          parentId: 'general-education'
+        },
         {
           id: 'genEd-humanities',
           label: 'Humanities',
@@ -145,7 +120,7 @@ export const CS_DEGREE_REQUIREMENTS_V2: DegreeRequirementsV2 = {
           type: 'select-any',
           minCredits: 12,
           tag: 'humanities',
-          description: 'Arts, literature, and philosophy',
+          description: 'Arts, literature, philosophy',
           icon: '🎨',
           parentId: 'general-education'
         },
@@ -174,7 +149,6 @@ export const CS_DEGREE_REQUIREMENTS_V2: DegreeRequirementsV2 = {
       minCredits: 19,
       icon: '✨',
       description: 'Free choice and upper-level courses',
-      defaultCollapsed: true,
       children: [
         {
           id: 'upper-electives',
@@ -203,7 +177,7 @@ export const CS_DEGREE_REQUIREMENTS_V2: DegreeRequirementsV2 = {
       ]
     },
     
-    // ========== CAPSTONE (standalone sequence) ==========
+    // ========== CAPSTONE ==========
     {
       id: 'capstone',
       label: 'Capstone Project',

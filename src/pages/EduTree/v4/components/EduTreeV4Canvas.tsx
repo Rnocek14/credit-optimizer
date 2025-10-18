@@ -205,6 +205,7 @@ function CanvasInner({ nodes: initialNodes, edges: initialEdges, overlays, onNod
   
   const [planNodes, setPlanNodes] = useState<PlanNode[]>(annotatedNodes);
   const [selectedModuleId, setSelectedModuleId] = useState<string | null>(null);
+  const [selectedYearFilter, setSelectedYearFilter] = useState<number | undefined>(undefined);
   
   // Policy engine
   const policyEngine = useMemo(() => new CreditPolicyEngine(DEFAULT_FL_POLICY, 'ucf'), []);
@@ -303,16 +304,24 @@ function CanvasInner({ nodes: initialNodes, edges: initialEdges, overlays, onNod
       ? module.children 
       : [];
     
-    // Get current courses for this module
-    const currentCourses = planNodes.filter(n => n.data.moduleId === selectedModuleId);
+    // Get current courses for this module (or matching child sequences)
+    const currentCourses = planNodes.filter(n => {
+      if (n.data.moduleId === selectedModuleId) return true;
+      // Also include courses from child sequences
+      if (module.level === 'bucket' && module.children) {
+        return module.children.some(child => child.id === n.data.moduleId);
+      }
+      return false;
+    });
     
     return {
       module,
       sequences,
       currentCourses,
       validation: moduleValidation,
+      yearFilter: selectedYearFilter,
     };
-  }, [selectedModuleId, planNodes, validation]);
+  }, [selectedModuleId, selectedYearFilter, planNodes, validation]);
 
   // Apply layout when plan nodes change
   useEffect(() => {
@@ -334,6 +343,7 @@ function CanvasInner({ nodes: initialNodes, edges: initialEdges, overlays, onNod
       // For module group nodes, inject click handler
       if (isModuleGroup) {
         const moduleId = node.data.moduleId;
+        const yearFilter = node.data.yearFilter; // Extract year filter from card
         
         return {
           id: node.id,
@@ -341,7 +351,10 @@ function CanvasInner({ nodes: initialNodes, edges: initialEdges, overlays, onNod
           position: node.position,
           data: {
             ...node.data,
-            onClick: () => setSelectedModuleId(moduleId),
+            onClick: () => {
+              setSelectedModuleId(moduleId);
+              setSelectedYearFilter(yearFilter);
+            },
           },
           draggable: false,
           style: {
@@ -611,10 +624,14 @@ function CanvasInner({ nodes: initialNodes, edges: initialEdges, overlays, onNod
           currentCourses={selectedModuleData.currentCourses}
           validation={selectedModuleData.validation}
           isOpen={!!selectedModuleId}
-          onClose={() => setSelectedModuleId(null)}
+          onClose={() => {
+            setSelectedModuleId(null);
+            setSelectedYearFilter(undefined);
+          }}
           onAddCourse={handleAddCourseToModule}
           onRemoveCourse={handleRemoveCourse}
           onReplaceCourse={handleReplaceCourse}
+          yearFilter={selectedModuleData.yearFilter}
         />
       )}
       
