@@ -358,8 +358,8 @@ function CanvasInner({ nodes: initialNodes, edges: initialEdges, overlays, onNod
           },
           draggable: false,
           style: {
-            width: node.style?.width || 420,
-            height: node.style?.height || 240,
+            width: node.style?.width || 440,
+            height: node.style?.height || 260,
           },
         };
       }
@@ -635,37 +635,31 @@ function CanvasInner({ nodes: initialNodes, edges: initialEdges, overlays, onNod
         />
       )}
       
-      {/* Semester column separators */}
-      <div className="semester-separators">
+      {/* Year Background Zones - Alternating for visual separation */}
+      <svg 
+        className="absolute inset-0 pointer-events-none" 
+        style={{ zIndex: 0, width: '100%', height: '100%' }}
+      >
         {nodes
           .filter(n => n.type === NodeType.Year)
-          .map(yearNode => {
-            const baseX = yearNode.position.x;
-            const BASE_NODE_WIDTH = 360;
-            const H_GAP = 120;
-            const COLUMNS = 2;
-            const gridWidth = COLUMNS * BASE_NODE_WIDTH + (COLUMNS - 1) * H_GAP;
-            const gridStartX = baseX - gridWidth / 2;
-            const separatorX = gridStartX + BASE_NODE_WIDTH + H_GAP / 2;
+          .map((yearNode, index) => {
+            const YEAR_SPACING = 580;
+            const ZONE_WIDTH = 520;
+            const x = index * YEAR_SPACING - 40; // Center zone around year column
             
             return (
-              <div
-                key={`separator-${yearNode.id}`}
-                className="semester-separator"
-                style={{
-                  position: 'absolute',
-                  left: separatorX,
-                  top: 60,
-                  width: '1px',
-                  height: '2000px',
-                  background: 'linear-gradient(to bottom, transparent, hsl(var(--border) / 0.2) 100px, hsl(var(--border) / 0.2) 90%, transparent)',
-                  pointerEvents: 'none',
-                  zIndex: 1,
-                }}
+              <rect
+                key={`zone-${yearNode.id}`}
+                x={x}
+                y={0}
+                width={ZONE_WIDTH}
+                height="2000"
+                fill={index % 2 === 0 ? 'hsl(var(--muted) / 0.05)' : 'hsl(var(--accent) / 0.03)'}
+                rx="8"
               />
             );
           })}
-      </div>
+      </svg>
       
       <ReactFlow
         nodes={nodes}

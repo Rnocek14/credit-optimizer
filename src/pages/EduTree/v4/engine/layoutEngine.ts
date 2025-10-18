@@ -328,9 +328,9 @@ export function moduleCardLayout(
   const moduleNodes: PlanNode[] = [];
   const spineNodes: PlanNode[] = [];
   
-  const YEAR_SPACING = 400;
-  const CARD_HEIGHT = 240;
-  const CARD_GAP = 30;
+  const YEAR_SPACING = 580;  // ✅ Increased horizontal space (was 400)
+  const CARD_HEIGHT = 260;   // ✅ Slightly taller cards (was 240)
+  const CARD_GAP = 50;       // ✅ Increased vertical gap (was 30)
   
   // 1. Create spine (year markers)
   for (let year = 1; year <= 4; year++) {
