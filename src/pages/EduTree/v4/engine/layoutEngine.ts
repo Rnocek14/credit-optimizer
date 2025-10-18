@@ -353,6 +353,9 @@ export function nestedModuleLayout(
     // Stack modules vertically with generous spacing to avoid overlaps
     const moduleY = 180 + (moduleIndex * 700);
     
+    // Calculate dynamic parent size based on number of children
+    const moduleHeight = Math.max(250, 160 + moduleCourses.length * 200);
+    
     // Create parent module node
     const moduleNode: PlanNode = {
       id: `module-${subReq.id}`,
@@ -363,6 +366,10 @@ export function nestedModuleLayout(
         moduleId: subReq.id,
         type: 'moduleGroup',
       },
+      style: {
+        width: 420,
+        height: moduleHeight,
+      }
     };
     moduleParentNodes.push(moduleNode);
     

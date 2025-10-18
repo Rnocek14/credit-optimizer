@@ -12,7 +12,7 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { PlanNode, PlanEdge, NodeType, EdgeType, OverlayState, DegreeRequirements } from '../types/v4';
-import { hybridSpineLayout, nestedModuleLayout, enrichYearNodesWithSummaries, groupCoursesByModule, calculateModuleCardPositions } from '../engine/layoutEngine';
+import { hybridSpineLayout, nestedModuleLayout, enrichYearNodesWithSummaries, groupCoursesByModule } from '../engine/layoutEngine';
 import { validateDegree } from '../engine/degreeValidator';
 import { DegreeValidationPanel } from './DegreeValidationPanel';
 import { CourseSelectionPanel } from './CourseSelectionPanel';
@@ -294,8 +294,8 @@ function CanvasInner({ nodes: initialNodes, edges: initialEdges, overlays, onNod
           },
           draggable: false,
           style: {
-            width: 400,
-            height: 'auto',
+            width: 420,
+            minHeight: 400,
             zIndex: 0,
           },
         };
@@ -506,14 +506,8 @@ function CanvasInner({ nodes: initialNodes, edges: initialEdges, overlays, onNod
     setEdges(reactFlowEdges);
   }, [initialEdges, overlays]);
 
-  // Group courses by module for visual grouping
+  // Group courses by module for module node rendering (no longer needed for floating cards)
   const coursesByModule = useMemo(() => groupCoursesByModule(planNodes), [planNodes]);
-  
-  // Calculate all module card positions at once
-  const moduleCardPositions = useMemo(() => 
-    calculateModuleCardPositions(coursesByModule, CS_DEGREE_REQUIREMENTS.subRequirements || []),
-    [coursesByModule]
-  );
   
   // Toggle module collapse with child node visibility
   const toggleModule = useCallback((moduleId: string) => {
@@ -603,37 +597,6 @@ function CanvasInner({ nodes: initialNodes, edges: initialEdges, overlays, onNod
         <BadgeLegend />
       </div>
       
-      {/* Module Cards Overlay */}
-      {CS_DEGREE_REQUIREMENTS.subRequirements?.map((subReq) => {
-        const moduleValidation = validation.bySubRequirement?.find(v => v.subReqId === subReq.id);
-        const moduleCourses = coursesByModule.get(subReq.id) || [];
-        
-        if (!moduleValidation || moduleCourses.length === 0) return null;
-        
-        // Get position from pre-calculated positions map
-        const position = moduleCardPositions.get(subReq.id) || { x: 0, y: 0 };
-        
-        return (
-          <div
-            key={`module-${subReq.id}`}
-            className="absolute pointer-events-auto transition-all duration-200"
-            style={{
-              left: position.x,
-              top: position.y,
-              zIndex: 20,
-            }}
-          >
-            <ModuleCard
-              module={subReq}
-              validation={moduleValidation}
-              isCollapsed={collapsedModules.has(subReq.id)}
-              onToggle={() => toggleModule(subReq.id)}
-              onBrowseOptions={() => setSelectedSubReq(subReq.id)}
-            />
-          </div>
-        );
-      })}
-      
       {/* Course Selection Panel */}
       <CourseSelectionPanel
         subRequirement={selectedSubReqData?.subReq || null}
@@ -678,9 +641,12 @@ function CanvasInner({ nodes: initialNodes, edges: initialEdges, overlays, onNod
       
       <ReactFlow
         nodes={nodes.map(node => {
-          // Hide courses when their module is collapsed
+          // Hide courses when their module is collapsed (check both data.moduleId and parentId)
           const moduleId = node.data?.moduleId as string | undefined;
-          if (moduleId && collapsedModules.has(moduleId)) {
+          const parentModuleId = node.parentId?.replace('module-', '');
+          
+          if ((moduleId && collapsedModules.has(moduleId)) || 
+              (parentModuleId && collapsedModules.has(parentModuleId))) {
             return { ...node, hidden: true };
           }
           return node;

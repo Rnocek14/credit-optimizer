@@ -95,6 +95,11 @@ export interface PlanNode {
   className?: string;  // e.g., "spine-node is-transferable"
   parentNode?: string; // For nested modules: ID of parent node
   extent?: 'parent';   // Constrain child nodes to parent bounds
+  style?: {           // ReactFlow style properties
+    width?: number;
+    height?: number;
+    minHeight?: number;
+  };
 }
 
 export interface PlanEdge {
