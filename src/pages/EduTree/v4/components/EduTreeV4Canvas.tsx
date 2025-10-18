@@ -16,6 +16,8 @@ import { hybridSpineLayout, enrichYearNodesWithSummaries } from '../engine/layou
 import { validateDegree } from '../engine/degreeValidator';
 import { DegreeValidationPanel } from './DegreeValidationPanel';
 import { CourseSelectionPanel } from './CourseSelectionPanel';
+import { ComplianceScorePanel } from './ComplianceScorePanel';
+import { CreditPolicyEngine, DEFAULT_FL_POLICY } from '../engine/CreditPolicyEngine';
 import { SpineNode } from './nodes/SpineNode';
 import { CourseNode } from './nodes/CourseNode';
 import { GhostCourseNode } from './nodes/GhostCourseNode';
@@ -148,11 +150,20 @@ function CanvasInner({ nodes: initialNodes, edges: initialEdges, overlays, onNod
   const [planNodes, setPlanNodes] = useState<PlanNode[]>(initialNodes);
   const [selectedSubReq, setSelectedSubReq] = useState<string | null>(null);
   const { fitView } = useReactFlow();
+  
+  // Policy engine
+  const policyEngine = useMemo(() => new CreditPolicyEngine(DEFAULT_FL_POLICY, 'ucf'), []);
 
   // Validate degree requirements
   const validation = useMemo(() => 
     validateDegree(planNodes, CS_DEGREE_REQUIREMENTS),
     [planNodes]
+  );
+  
+  // Calculate compliance metrics
+  const complianceMetrics = useMemo(() => 
+    policyEngine.calculateComplianceScore(planNodes),
+    [planNodes, policyEngine]
   );
 
   // Handle course selection from marketplace
@@ -179,12 +190,23 @@ function CanvasInner({ nodes: initialNodes, edges: initialEdges, overlays, onNod
       }
     };
 
+    // Validate policy before adding
+    const policyStatus = policyEngine.validateCourseSelection(newNode, planNodes);
+    
+    // Add policy status to node data
+    newNode.data.policyStatus = {
+      transferable: policyStatus.transferable,
+      accredited: policyStatus.accredited,
+      articulated: policyStatus.articulated,
+      articulationId: policyStatus.articulationId,
+    };
+
     // Add to plan nodes
     setPlanNodes(prev => [...prev, newNode]);
     
     // Close panel
     setSelectedSubReq(null);
-  }, [selectedSubReq]);
+  }, [selectedSubReq, planNodes, policyEngine]);
 
   // Find sub-requirement and its validation status
   const selectedSubReqData = useMemo(() => {
@@ -400,6 +422,11 @@ function CanvasInner({ nodes: initialNodes, edges: initialEdges, overlays, onNod
 
   return (
     <div className="relative w-full h-full">
+      {/* Compliance Score Panel */}
+      <div className="absolute top-4 left-4 z-10 w-72">
+        <ComplianceScorePanel metrics={complianceMetrics} />
+      </div>
+      
       {/* Validation Panel */}
       <div className="absolute top-4 right-4 z-10 w-80">
         <DegreeValidationPanel 
@@ -412,6 +439,7 @@ function CanvasInner({ nodes: initialNodes, edges: initialEdges, overlays, onNod
       <CourseSelectionPanel
         subRequirement={selectedSubReqData?.subReq || null}
         validation={selectedSubReqData?.validation || null}
+        currentPlan={planNodes}
         isOpen={!!selectedSubReq}
         onClose={() => setSelectedSubReq(null)}
         onSelectCourse={handleCourseSelect}

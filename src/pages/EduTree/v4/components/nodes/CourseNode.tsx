@@ -66,6 +66,30 @@ export function CourseNode({ data, selected }: CourseNodeProps) {
     );
   };
 
+  const getPolicyBadges = () => {
+    if (!data.policyStatus) return null;
+
+    return (
+      <div className="flex items-center gap-1 flex-wrap">
+        {data.policyStatus.articulated && (
+          <Badge className="text-[10px] px-1.5 py-0 bg-green-500/20 text-green-700 dark:text-green-300">
+            ✅ Articulated
+          </Badge>
+        )}
+        {!data.policyStatus.transferable && (
+          <Badge className="text-[10px] px-1.5 py-0 bg-red-500/20 text-red-700 dark:text-red-300">
+            ⚠️ Non-Transfer
+          </Badge>
+        )}
+        {data.selectedProviderId && (
+          <Badge className="text-[10px] px-1.5 py-0 bg-blue-500/20 text-blue-700 dark:text-blue-300">
+            🛒 Marketplace
+          </Badge>
+        )}
+      </div>
+    );
+  };
+
   const getDifficultyBadge = () => {
     if (!data.difficulty) return null;
     
@@ -144,6 +168,9 @@ export function CourseNode({ data, selected }: CourseNodeProps) {
             </Badge>
           )}
         </div>
+        
+        {/* Policy Status Badges */}
+        {getPolicyBadges()}
       </div>
 
       {/* Metadata Footer: Skills + Time */}

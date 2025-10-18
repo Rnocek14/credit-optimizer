@@ -3,8 +3,9 @@
  * Shows available course options with filtering and selection
  */
 import React, { useState, useMemo } from 'react';
-import { SubRequirement, SubRequirementStatus } from '../types/v4';
+import { SubRequirement, SubRequirementStatus, PlanNode } from '../types/v4';
 import { useCourseMarketplace, MarketplaceCourse } from '@/hooks/useCourseMarketplace';
+import { CreditPolicyEngine, DEFAULT_FL_POLICY } from '../engine/CreditPolicyEngine';
 import {
   Sheet,
   SheetContent,
@@ -29,6 +30,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 interface CourseSelectionPanelProps {
   subRequirement: SubRequirement | null;
   validation: SubRequirementStatus | null;
+  currentPlan: PlanNode[];
   isOpen: boolean;
   onClose: () => void;
   onSelectCourse: (missingCourseId: string, selectedCourse: MarketplaceCourse) => void;
@@ -37,6 +39,7 @@ interface CourseSelectionPanelProps {
 export function CourseSelectionPanel({
   subRequirement,
   validation,
+  currentPlan,
   isOpen,
   onClose,
   onSelectCourse,
@@ -44,6 +47,7 @@ export function CourseSelectionPanel({
   const { courses, loading } = useCourseMarketplace();
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'cost' | 'duration' | 'rating'>('rating');
+  const policyEngine = useMemo(() => new CreditPolicyEngine(DEFAULT_FL_POLICY, 'ucf'), []);
 
   // Filter courses by missing requirement and search
   const filteredOptions = useMemo(() => {
@@ -166,8 +170,48 @@ export function CourseSelectionPanel({
             </div>
           ) : (
             <div className="space-y-3 pr-4">
-              {filteredOptions.map(({ missingCourseId, course }, idx) => (
+              {filteredOptions.map(({ missingCourseId, course }, idx) => {
+                // Check policy for this course selection
+                const mockCourseNode: PlanNode = {
+                  id: `temp-${missingCourseId}`,
+                  type: 'course' as any,
+                  position: { x: 0, y: 0 },
+                  data: {
+                    label: missingCourseId,
+                    credits: 3,
+                    source: 'other',
+                    providerId: course.platform,
+                    category: subRequirement?.category as any,
+                  }
+                };
+                
+                const policyStatus = policyEngine.validateCourseSelection(mockCourseNode, currentPlan);
+                const hasErrors = policyStatus.violations.some(v => v.severity === 'error');
+                const hasWarnings = policyStatus.violations.some(v => v.severity === 'warning');
+
+                return (
                 <Card key={`${missingCourseId}-${course.id}-${idx}`} className="p-3 hover:shadow-md transition-shadow">
+                  {/* Policy Warnings/Errors Banner */}
+                  {policyStatus.violations.length > 0 && (
+                    <div className="mb-2 space-y-1">
+                      {policyStatus.violations.filter(v => v.severity === 'error').map((violation, vi) => (
+                        <div key={vi} className="px-2 py-1 rounded bg-red-500/10 border border-red-500/20 text-xs text-red-600 dark:text-red-400">
+                          {violation.message}
+                        </div>
+                      ))}
+                      {policyStatus.violations.filter(v => v.severity === 'warning').map((violation, vi) => (
+                        <div key={vi} className="px-2 py-1 rounded bg-amber-500/10 border border-amber-500/20 text-xs text-amber-600 dark:text-amber-400">
+                          {violation.message}
+                        </div>
+                      ))}
+                      {policyStatus.violations.filter(v => v.severity === 'info').map((violation, vi) => (
+                        <div key={vi} className="px-2 py-1 rounded bg-blue-500/10 border border-blue-500/20 text-xs text-blue-600 dark:text-blue-400">
+                          {violation.message}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  
                   {/* Course Header */}
                   <div className="flex items-start justify-between gap-2 mb-2">
                     <div>
@@ -244,12 +288,14 @@ export function CourseSelectionPanel({
                     size="sm"
                     onClick={() => onSelectCourse(missingCourseId, course)}
                     className="w-full"
+                    disabled={hasErrors}
                   >
                     <CheckCircle2 className="h-3 w-3 mr-1" />
-                    Select for {missingCourseId}
+                    {hasErrors ? 'Cannot Select' : `Select for ${missingCourseId}`}
                   </Button>
                 </Card>
-              ))}
+                );
+              })}
             </div>
           )}
         </ScrollArea>

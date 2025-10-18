@@ -61,6 +61,14 @@ export interface PlanNodeData {
   selectedTeacherId?: string;
   providerId?: string;         // Provider ID for marketplace courses
   
+  // Policy status for visual badges
+  policyStatus?: {
+    transferable: boolean;
+    accredited: boolean;
+    articulated: boolean;
+    articulationId?: string;
+  };
+  
   // Year node summary data (for SpineNode)
   creditsSummary?: {
     planned: number;
