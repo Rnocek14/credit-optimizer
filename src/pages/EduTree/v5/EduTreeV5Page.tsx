@@ -3,7 +3,7 @@ import { YearCard } from './components/YearCard';
 import { ModuleCard } from './components/ModuleCard';
 import canonicalCourses from '@/fixtures/prereqs/canonical-courses.json';
 import requirements from '@/fixtures/requirements/cs-degree-requirements.json';
-import { ModuleData, Course, Requirement } from './types/v5';
+import { ModuleData, Course, Requirement, LoadHealth } from './types/v5';
 import './styles/v5.css';
 
 export default function EduTreeV5Page() {
@@ -91,6 +91,34 @@ export default function EduTreeV5Page() {
     }, 0);
   };
 
+  // Calculate load health based on planned vs required credits
+  const calculateLoadHealth = (planned: number, required: number): LoadHealth => {
+    const ratio = planned / required;
+    if (ratio < 0.75) return 'underloaded';
+    if (ratio > 1.25) return 'overloaded';
+    return 'balanced';
+  };
+
+  // Get year data with all metrics
+  const getYearData = (year: number) => {
+    const modules = getModulesForYear(year);
+    const plannedCredits = getYearCredits(year);
+    const requiredCredits = 30; // Standard academic year
+
+    return {
+      creditsSummary: {
+        planned: plannedCredits,
+        required: requiredCredits,
+      },
+      loadHealth: calculateLoadHealth(plannedCredits, requiredCredits),
+      modulesSummary: {
+        total: modules.length,
+        completed: modules.filter(m => m.creditsEarned >= m.creditsRequired).length,
+        inProgress: modules.filter(m => m.creditsEarned > 0 && m.creditsEarned < m.creditsRequired).length,
+      },
+    };
+  };
+
   return (
     <div className="w-full min-h-screen bg-background p-8">
       {/* Header */}
@@ -104,15 +132,19 @@ export default function EduTreeV5Page() {
       
       {/* Grid Layout: 4 columns for 4 years */}
       <div className="year-spine-grid grid grid-cols-4 gap-6 items-start">
-        {[1, 2, 3, 4].map(year => (
-          <div key={year} className="year-column">
-            {/* Year Card */}
-            <YearCard
-              year={year}
-              isCollapsed={collapsedYears[year] || false}
-              onToggle={() => toggleYear(year)}
-              totalCredits={getYearCredits(year)}
-            />
+        {[1, 2, 3, 4].map(year => {
+          const yearData = getYearData(year);
+          return (
+            <div key={year} className="year-column">
+              {/* Year Card */}
+              <YearCard
+                year={year}
+                isCollapsed={collapsedYears[year] || false}
+                onToggle={() => toggleYear(year)}
+                creditsSummary={yearData.creditsSummary}
+                loadHealth={yearData.loadHealth}
+                modulesSummary={yearData.modulesSummary}
+              />
             
             {/* Module Cards - Stack vertically below */}
             {!collapsedYears[year] && (
@@ -127,8 +159,9 @@ export default function EduTreeV5Page() {
                 ))}
               </div>
             )}
-          </div>
-        ))}
+            </div>
+          );
+        })}
       </div>
     </div>
   );

@@ -25,3 +25,16 @@ export interface Requirement {
   minCredits: number;
   courseIds: string[];
 }
+
+export type LoadHealth = 'balanced' | 'underloaded' | 'overloaded';
+
+export interface CreditsSummary {
+  planned: number;
+  required: number;
+}
+
+export interface ModulesSummary {
+  total: number;
+  completed: number;
+  inProgress: number;
+}

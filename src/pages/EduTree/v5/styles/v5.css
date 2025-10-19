@@ -12,10 +12,23 @@
 .year-card {
   user-select: none;
   width: 100%;
+  transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .year-card:active {
   transform: scale(0.98);
+}
+
+.year-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.year-card.collapsed {
+  min-height: 90px;
+}
+
+.year-card.expanded {
+  min-height: 140px;
 }
 
 /* Module Card Styles */
