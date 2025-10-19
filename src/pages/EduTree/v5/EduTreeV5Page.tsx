@@ -1,16 +1,28 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { YearCard } from './components/YearCard';
+import { ModuleCard } from './components/ModuleCard';
 import canonicalCourses from '@/fixtures/prereqs/canonical-courses.json';
+import requirements from '@/fixtures/requirements/cs-degree-requirements.json';
+import { ModuleData, Course, Requirement } from './types/v5';
 import './styles/v5.css';
 
 export default function EduTreeV5Page() {
-  const [collapsed, setCollapsed] = useState<Record<number, boolean>>({});
+  const [collapsedYears, setCollapsedYears] = useState<Record<number, boolean>>({});
+  const [collapsedModules, setCollapsedModules] = useState<Record<string, boolean>>({});
   
   const toggleYear = (year: number) => {
     console.log('[V5 Page] Toggling year:', year);
-    setCollapsed(prev => ({ 
+    setCollapsedYears(prev => ({ 
       ...prev, 
       [year]: !prev[year] 
+    }));
+  };
+
+  const toggleModule = (moduleId: string) => {
+    console.log('[V5 Page] Toggling module:', moduleId);
+    setCollapsedModules(prev => ({
+      ...prev,
+      [moduleId]: !prev[moduleId]
     }));
   };
 
@@ -26,41 +38,96 @@ export default function EduTreeV5Page() {
     4: ['BIO-MICROBIOLOGY-301']
   };
 
-  const getCoursesForYear = (year: number) => {
-    const courseIds = coursesByYear[year] || [];
-    return courseIds.map(id => {
-      const course = canonicalCourses.canonicalCourses[id as keyof typeof canonicalCourses.canonicalCourses];
-      return {
-        courseId: course.id,
-        title: course.title,
-        credits: course.credits,
-        subject: course.subject
-      };
-    });
+  // Get course details from canonical courses
+  const getCourseDetails = (courseId: string): Course | null => {
+    const course = canonicalCourses.canonicalCourses[courseId as keyof typeof canonicalCourses.canonicalCourses];
+    if (!course) return null;
+    return {
+      courseId: course.id,
+      title: course.title,
+      credits: course.credits,
+      subject: course.subject
+    };
+  };
+
+  // Get modules for a specific year
+  const getModulesForYear = useMemo(() => {
+    return (year: number): ModuleData[] => {
+      const yearCourseIds = coursesByYear[year] || [];
+      const modules: ModuleData[] = [];
+
+      requirements.requirements.forEach((req: Requirement) => {
+        // Find courses in this module that are in this year
+        const moduleCourses = req.courseIds
+          .filter(id => yearCourseIds.includes(id))
+          .map(id => getCourseDetails(id))
+          .filter((c): c is Course => c !== null);
+
+        if (moduleCourses.length > 0) {
+          const creditsEarned = moduleCourses.reduce((sum, c) => sum + c.credits, 0);
+          modules.push({
+            id: req.id,
+            label: req.label,
+            icon: req.icon,
+            description: req.description,
+            courses: moduleCourses,
+            creditsEarned,
+            creditsRequired: req.minCredits,
+            isCollapsed: !!collapsedModules[req.id]
+          });
+        }
+      });
+
+      return modules;
+    };
+  }, [collapsedModules]);
+
+  // Calculate total credits for a year
+  const getYearCredits = (year: number): number => {
+    const yearCourseIds = coursesByYear[year] || [];
+    return yearCourseIds.reduce((sum, id) => {
+      const course = getCourseDetails(id);
+      return sum + (course?.credits || 0);
+    }, 0);
   };
 
   return (
-    <div className="w-full h-screen bg-background p-8">
+    <div className="w-full min-h-screen bg-background p-8">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-2xl font-bold">EduTree V5 - Year Spine</h1>
-        <p className="text-sm text-muted-foreground">Click any year to collapse/expand</p>
+        <h1 className="text-2xl font-bold">EduTree V5 - Year Spine + Modules</h1>
+        <p className="text-sm text-muted-foreground">Click years to show modules, click modules to show courses</p>
         <div className="text-xs text-muted-foreground mt-2">
-          Collapsed: {Object.entries(collapsed).filter(([_, v]) => v).map(([k]) => k).join(', ') || 'none'}
+          Collapsed Years: {Object.entries(collapsedYears).filter(([_, v]) => v).map(([k]) => `Year ${k}`).join(', ') || 'none'}
         </div>
       </div>
       
-      {/* Year Cards */}
-      <div className="flex gap-4 items-start">
+      {/* Grid Layout: 4 columns for 4 years */}
+      <div className="year-spine-grid grid grid-cols-4 gap-6 items-start">
         {[1, 2, 3, 4].map(year => (
-          <YearCard
-            key={year}
-            year={year}
-            isCollapsed={collapsed[year] || false}
-            onToggle={() => toggleYear(year)}
-            courses={getCoursesForYear(year)}
-            onCourseClick={handleCourseClick}
-          />
+          <div key={year} className="year-column">
+            {/* Year Card */}
+            <YearCard
+              year={year}
+              isCollapsed={collapsedYears[year] || false}
+              onToggle={() => toggleYear(year)}
+              totalCredits={getYearCredits(year)}
+            />
+            
+            {/* Module Cards - Stack vertically below */}
+            {!collapsedYears[year] && (
+              <div className="modules-stack mt-4 space-y-3">
+                {getModulesForYear(year).map(module => (
+                  <ModuleCard
+                    key={module.id}
+                    {...module}
+                    onToggle={() => toggleModule(module.id)}
+                    onCourseClick={handleCourseClick}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
         ))}
       </div>
     </div>

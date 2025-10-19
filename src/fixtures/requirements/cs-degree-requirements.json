@@ -1,0 +1,50 @@
+{
+  "totalCredits": 120,
+  "requirements": [
+    {
+      "id": "general-education",
+      "label": "General Education Core",
+      "level": "bucket",
+      "icon": "📚",
+      "description": "Breadth requirements across disciplines",
+      "minCredits": 36,
+      "courseIds": ["ENG-COMP-101", "MATH-ALGEBRA-101"]
+    },
+    {
+      "id": "cs-prerequisites",
+      "label": "CS Prerequisites",
+      "level": "bucket",
+      "icon": "🧮",
+      "description": "Mathematical foundations for computer science",
+      "minCredits": 12,
+      "courseIds": ["MATH-CALCULUS-201"]
+    },
+    {
+      "id": "cs-core",
+      "label": "Computer Science Core",
+      "level": "bucket",
+      "icon": "💻",
+      "description": "Fundamental CS courses",
+      "minCredits": 42,
+      "courseIds": ["CS-INTRO-101", "CS-DATA-STRUCTURES-301"]
+    },
+    {
+      "id": "science-foundation",
+      "label": "Foundation Science",
+      "level": "bucket",
+      "icon": "🔬",
+      "description": "Natural science requirements",
+      "minCredits": 16,
+      "courseIds": ["BIO-ANATOMY-201", "BIO-ANATOMY-202", "BIO-MICROBIOLOGY-301"]
+    },
+    {
+      "id": "electives",
+      "label": "Electives",
+      "level": "bucket",
+      "icon": "🎯",
+      "description": "Free choice courses",
+      "minCredits": 14,
+      "courseIds": []
+    }
+  ]
+}

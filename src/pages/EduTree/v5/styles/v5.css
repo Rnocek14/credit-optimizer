@@ -1,10 +1,35 @@
+/* Year Spine Grid */
+.year-spine-grid {
+  user-select: none;
+}
+
+.year-column {
+  display: flex;
+  flex-direction: column;
+}
+
 /* Year Card Styles */
 .year-card {
   user-select: none;
+  width: 100%;
 }
 
 .year-card:active {
   transform: scale(0.98);
+}
+
+/* Module Card Styles */
+.module-card {
+  user-select: none;
+  width: 100%;
+}
+
+.module-header {
+  user-select: none;
+}
+
+.module-courses {
+  background: hsl(var(--muted) / 0.3);
 }
 
 /* Course Card Styles */
@@ -14,8 +39,4 @@
 
 .course-card:active {
   transform: scale(0.98);
-}
-
-.courses-container {
-  pointer-events: auto;
 }
