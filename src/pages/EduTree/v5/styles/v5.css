@@ -1,0 +1,20 @@
+/* Year Spine Node hover effect */
+.year-spine-node {
+  cursor: pointer;
+}
+
+.year-spine-node:hover > div > div {
+  opacity: 0.9;
+  transform: scale(1.02);
+}
+
+/* Ensure handles are invisible but functional */
+.react-flow__handle {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Debug: Show node bounds in dev */
+.year-spine-node[data-debug="true"] {
+  outline: 1px dashed red;
+}

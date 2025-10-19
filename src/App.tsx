@@ -132,6 +132,7 @@ import EduTree from "./pages/EduTree";
 import EduTreeV2Page from "./pages/EduTree/EduTreeV2Page";
 import EduTreeV3Route from "./pages/EduTree/v3";
 import EduTreeV4Route from "./pages/EduTree/v4";
+import EduTreeV5Route from "./pages/EduTree/v5";
 import { EduTreeError } from "./components/EduTreeError";
 import { PageLoader } from "./components/PageLoader";
 import { isFeatureEnabled } from "./lib/featureFlags";
@@ -313,6 +314,17 @@ const App = () => {
               <EnhancedErrorBoundary fallback={<EduTreeError />}>
                 <React.Suspense fallback={<PageLoader message="Loading V4 planner..." />}>
                   <EduTreeV4Route />
+                </React.Suspense>
+              </EnhancedErrorBoundary>
+            }
+          />
+          {/* EduTree V5 - Perfect year spine foundation */}
+          <Route 
+            path="/edu-tree-v5" 
+            element={
+              <EnhancedErrorBoundary fallback={<EduTreeError />}>
+                <React.Suspense fallback={<PageLoader message="Loading V5 testbed..." />}>
+                  <EduTreeV5Route />
                 </React.Suspense>
               </EnhancedErrorBoundary>
             }
