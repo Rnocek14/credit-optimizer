@@ -26,27 +26,26 @@ export function SimpleSpineNode({ data, selected }: any) {
           transition-all duration-200
           min-w-[180px] h-[120px]
           flex flex-col justify-center
+          ${onClick ? 'cursor-pointer hover:opacity-90' : ''}
           ${selected ? 'ring-2 ring-primary ring-offset-2' : ''}
         `}
+        onClick={() => {
+          console.log('[SimpleSpineNode] Clicked:', label);
+          onClick?.();
+        }}
       >
         <div className="space-y-2">
           {/* Year Label with inline chevron button */}
           <div className="flex items-center justify-center gap-2 text-sm">
             <span>{label}</span>
             {onClick && (
-              <button
-                onClick={onClick}
-                className="p-1 hover:bg-primary/20 rounded transition-colors pointer-events-auto cursor-pointer"
-                type="button"
-                aria-label={isCollapsed ? 'Expand year' : 'Collapse year'}
-                style={{ pointerEvents: 'auto' }}
-              >
+              <span className="pointer-events-none" aria-hidden="true">
                 {isCollapsed ? (
                   <ChevronRight className="w-4 h-4" />
                 ) : (
                   <ChevronDown className="w-4 h-4" />
                 )}
-              </button>
+              </span>
             )}
           </div>
           
