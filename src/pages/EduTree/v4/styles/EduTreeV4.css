@@ -105,7 +105,16 @@
   z-index: 100 !important;
 }
 
-/* Let React Flow manage pointer events naturally in V4 */
+/* Disable selection visual feedback but keep interactivity */
+.edu-tree-v4 .react-flow__node.selected {
+  outline: none !important;
+}
+
+/* Let our custom ring styles handle selection feedback */
+.edu-tree-v4 .react-flow__node.selectable {
+  cursor: default;
+}
+
 .edu-tree-v4 .react-flow__node button {
   cursor: pointer;
 }

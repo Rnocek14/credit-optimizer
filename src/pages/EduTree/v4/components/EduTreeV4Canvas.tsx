@@ -803,7 +803,7 @@ function CanvasInner({ nodes: initialNodes, edges: initialEdges, overlays, onNod
         edgeTypes={edgeTypes}
         nodesDraggable={false}
         nodesConnectable={false}
-        elementsSelectable={false}
+        elementsSelectable={true}
         fitView
         minZoom={0.1}
         maxZoom={2}
