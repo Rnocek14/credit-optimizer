@@ -6,6 +6,7 @@ export interface YearSpineNodeData {
   label: string;
   year: number;
   isCollapsed: boolean;
+  onClick?: () => void;
   creditsSummary?: {
     planned: number;
     required: number;
@@ -25,7 +26,13 @@ export function YearSpineNode({ data, selected }: YearSpineNodeProps) {
   console.log(`[YearSpineNode] Rendering ${label}:`, { isCollapsed, selected });
 
   return (
-    <div className="year-spine-node">
+    <div 
+      className="year-spine-node"
+      onClick={() => {
+        console.log('[YearSpineNode] Clicked:', data.label);
+        data.onClick?.();
+      }}
+    >
       <Handle type="target" position={Position.Left} className="opacity-0" />
       
       <div 

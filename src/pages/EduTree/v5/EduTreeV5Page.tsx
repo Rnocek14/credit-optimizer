@@ -48,7 +48,7 @@ function EduTreeV5Canvas() {
         onNodeClick={handleNodeClick}
         nodesDraggable={false}
         nodesConnectable={false}
-        elementsSelectable={false}
+        elementsSelectable={true}
         fitView
         fitViewOptions={{ padding: 0.2 }}
         minZoom={0.5}

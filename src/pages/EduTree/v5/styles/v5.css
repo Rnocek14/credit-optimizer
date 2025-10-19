@@ -18,3 +18,8 @@
 .year-spine-node[data-debug="true"] {
   outline: 1px dashed red;
 }
+
+/* Disable selection visual feedback but keep interactivity */
+.react-flow__node.selected {
+  outline: none !important;
+}

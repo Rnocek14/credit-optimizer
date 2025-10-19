@@ -32,6 +32,7 @@ export function useYearSpine() {
         label: y.label,
         year: y.year,
         isCollapsed: !!collapsedYears[y.id],
+        onClick: () => toggleYear(y.id),
         creditsSummary: {
           planned: 30,
           required: 30
