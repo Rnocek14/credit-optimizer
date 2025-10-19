@@ -6,3 +6,16 @@
 .year-card:active {
   transform: scale(0.98);
 }
+
+/* Course Card Styles */
+.course-card {
+  user-select: none;
+}
+
+.course-card:active {
+  transform: scale(0.98);
+}
+
+.courses-container {
+  pointer-events: auto;
+}

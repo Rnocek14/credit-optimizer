@@ -1,12 +1,22 @@
 import { ChevronDown, ChevronRight } from 'lucide-react';
+import { CourseCard } from './CourseCard';
+
+interface Course {
+  courseId: string;
+  title: string;
+  credits: number;
+  subject: string;
+}
 
 interface YearCardProps {
   year: number;
   isCollapsed: boolean;
   onToggle: () => void;
+  courses?: Course[];
+  onCourseClick?: (courseId: string) => void;
 }
 
-export function YearCard({ year, isCollapsed, onToggle }: YearCardProps) {
+export function YearCard({ year, isCollapsed, onToggle, courses = [], onCourseClick }: YearCardProps) {
   console.log(`[YearCard] Rendering Year ${year}:`, { isCollapsed });
   
   return (
@@ -34,9 +44,24 @@ export function YearCard({ year, isCollapsed, onToggle }: YearCardProps) {
         {isCollapsed ? <ChevronRight size={20} /> : <ChevronDown size={20} />}
       </div>
       
-      {!isCollapsed && (
+      {!isCollapsed && courses.length > 0 && (
         <div className="text-center text-xs text-muted-foreground">
-          30 / 30 credits
+          {courses.reduce((sum, c) => sum + c.credits, 0)} credits
+        </div>
+      )}
+      
+      {!isCollapsed && courses.length > 0 && (
+        <div className="courses-container mt-4 space-y-2" onClick={e => e.stopPropagation()}>
+          {courses.map(course => (
+            <CourseCard
+              key={course.courseId}
+              courseId={course.courseId}
+              title={course.title}
+              credits={course.credits}
+              subject={course.subject}
+              onClick={() => onCourseClick?.(course.courseId)}
+            />
+          ))}
         </div>
       )}
     </div>
