@@ -11,7 +11,7 @@ export function SimpleSpineNode({ data, selected }: any) {
     creditsSummary,
     loadHealth,
     collapsedSummary,
-    onToggleCollapse
+    onClick
   } = data;
   
   return (
@@ -33,9 +33,9 @@ export function SimpleSpineNode({ data, selected }: any) {
           {/* Year Label with inline chevron button */}
           <div className="flex items-center justify-center gap-2 text-sm">
             <span>{label}</span>
-            {onToggleCollapse && (
+            {onClick && (
               <button
-                onClick={onToggleCollapse}
+                onClick={onClick}
                 className="p-1 hover:bg-primary/20 rounded transition-colors pointer-events-auto cursor-pointer"
                 type="button"
                 aria-label={isCollapsed ? 'Expand year' : 'Collapse year'}

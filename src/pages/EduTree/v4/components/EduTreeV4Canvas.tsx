@@ -479,7 +479,7 @@ function CanvasInner({ nodes: initialNodes, edges: initialEdges, overlays, onNod
           data: {
             ...node.data,
             isCollapsed,
-            onToggleCollapse: year ? () => toggleYearCollapse(year) : undefined,
+            onClick: year ? () => toggleYearCollapse(year) : undefined,
             type: node.type,
           },
           draggable: false,
