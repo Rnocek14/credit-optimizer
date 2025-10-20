@@ -138,14 +138,13 @@ export default function EduTreeV5Page() {
     return getModulesForYearFixtures(year);
   }, [USE_DATABASE, dbData, getModulesForYearFixtures, selections]);
 
-  // Calculate total credits for a year
-  const getYearCredits = (year: number): number => {
-    const yearCourseIds = coursesByYear[year] || [];
-    return yearCourseIds.reduce((sum, id) => {
-      const course = getCourseDetails(id);
-      return sum + (course?.credits || 0);
-    }, 0);
-  };
+  // Calculate total credits for a year (planned = required, earned = selected)
+  const getYearCredits = useCallback((year: number): { planned: number; earned: number } => {
+    const modules = getModulesForYear(year);
+    const earned = modules.reduce((sum, m) => sum + (m.creditsEarned || 0), 0);
+    const planned = modules.reduce((sum, m) => sum + (m.creditsRequired || 0), 0);
+    return { planned, earned };
+  }, [getModulesForYear]);
 
   // Calculate load health based on planned vs required credits
   const calculateLoadHealth = (planned: number, required: number): LoadHealth => {
@@ -158,15 +157,14 @@ export default function EduTreeV5Page() {
   // Get year data with all metrics
   const getYearData = (year: number) => {
     const modules = getModulesForYear(year);
-    const plannedCredits = getYearCredits(year);
-    const requiredCredits = 30; // Standard academic year
+    const yearCredits = getYearCredits(year);
 
     return {
       creditsSummary: {
-        planned: plannedCredits,
-        required: requiredCredits,
+        planned: yearCredits.earned,   // Live from store selections
+        required: yearCredits.planned, // From module definitions
       },
-      loadHealth: calculateLoadHealth(plannedCredits, requiredCredits),
+      loadHealth: calculateLoadHealth(yearCredits.earned, yearCredits.planned),
       modulesSummary: {
         total: modules.length,
         completed: modules.filter(m => m.creditsEarned >= m.creditsRequired).length,
@@ -199,8 +197,17 @@ export default function EduTreeV5Page() {
   // Get degree summary data (memoized for performance)
   const degreeSummary = useMemo((): DegreeSummary => {
     const allYears = [1, 2, 3, 4];
-    const totalPlanned = allYears.reduce((sum, y) => sum + getYearCredits(y), 0);
-    const totalEarned = getTotalEarnedCredits();
+    
+    // Aggregate from all years
+    let totalPlanned = 0;
+    let totalEarned = 0;
+    
+    allYears.forEach(year => {
+      const yearCredits = getYearCredits(year);
+      totalPlanned += yearCredits.planned;
+      totalEarned += yearCredits.earned;
+    });
+    
     const totalRequired = 120;
     const costPerCredit = 375;
     
@@ -238,7 +245,7 @@ export default function EduTreeV5Page() {
       estimatedCost: remainingCredits * costPerCredit,
       warnings: allWarnings
     };
-  }, [collapsedModules]);
+  }, [getYearCredits]);
 
   // Toggle degree with localStorage persistence (memoized for React.memo optimization)
   const toggleDegree = useCallback(() => {
@@ -249,6 +256,9 @@ export default function EduTreeV5Page() {
     }
   }, [degreeCollapsed]);
 
+  // Reset all selections
+  const clearAll = usePlanStore(s => s.clearAll);
+
   return (
     <div className="w-full min-h-screen bg-background p-8">
       {/* Dev mode toggle - always visible for testing */}
@@ -258,6 +268,19 @@ export default function EduTreeV5Page() {
         title="Toggle between database and fixture data"
       >
         {USE_DATABASE ? '🗄️ Database' : '🧪 Fixtures'}
+      </button>
+
+      {/* Reset plan button */}
+      <button
+        onClick={() => {
+          if (confirm('Clear all course selections?')) {
+            clearAll();
+          }
+        }}
+        className="fixed bottom-4 right-32 px-3 py-1.5 bg-destructive/10 text-destructive rounded-md text-xs font-medium shadow-lg hover:bg-destructive/20 transition-colors z-50"
+        title="Clear all selections"
+      >
+        🗑️ Reset Plan
       </button>
 
       {/* Loading state */}

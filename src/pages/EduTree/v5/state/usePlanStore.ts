@@ -9,6 +9,7 @@ type Selection = Record<string, { // requirementId -> selected courseIds
 type Actions = {
   toggleCourse: (requirementId: string, courseId: string, courseCredits: number, maxCredits: number) => void
   clearRequirement: (requirementId: string) => void
+  clearAll: () => void
 }
 
 type State = {
@@ -44,6 +45,9 @@ export const usePlanStore = create<State>()(persist(
       const s = structuredClone(get().selections)
       delete s[reqId]
       set({ selections: s })
+    },
+    clearAll: () => {
+      set({ selections: {} })
     },
   }),
   { name: 'v5-plan' }
