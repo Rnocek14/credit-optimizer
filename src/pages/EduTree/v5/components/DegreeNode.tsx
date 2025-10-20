@@ -1,3 +1,4 @@
+import React from 'react';
 import { ChevronDown, ChevronRight, GraduationCap, Clock, DollarSign, AlertCircle } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
@@ -11,7 +12,7 @@ interface DegreeNodeProps extends DegreeSummary {
   yearCount: number;
 }
 
-export function DegreeNode({
+function DegreeNodeImpl({
   degreeTitle,
   degreeLevel,
   totalCreditsRequired,
@@ -24,14 +25,18 @@ export function DegreeNode({
   onToggle,
   yearCount
 }: DegreeNodeProps) {
-  // Earned progress (main progress bar - actual completion)
-  const earnedProgressPct = totalCreditsRequired > 0
-    ? (totalCreditsEarned / totalCreditsRequired) * 100
+  // Handle over-credit edge case (e.g., 130/120 shows as "120/120 (+10)")
+  const cappedEarned = Math.min(totalCreditsEarned, totalCreditsRequired);
+  const surplus = Math.max(0, totalCreditsEarned - totalCreditsRequired);
+
+  // Earned progress (main progress bar - actual completion) - clamped to 0-100%
+  const earnedProgressPct = totalCreditsRequired > 0 
+    ? Math.min(100, Math.max(0, (cappedEarned / totalCreditsRequired) * 100))
     : 0;
 
-  // Planned coverage (badge indicator - what's scheduled)
+  // Planned coverage (badge indicator - what's scheduled) - clamped to 0-100%
   const plannedCoveragePct = totalCreditsRequired > 0 
-    ? (totalCreditsPlanned / totalCreditsRequired) * 100 
+    ? Math.min(100, Math.max(0, (totalCreditsPlanned / totalCreditsRequired) * 100))
     : 0;
 
   const getDegreeStatus = (): DegreeStatus => {
@@ -67,9 +72,7 @@ export function DegreeNode({
   const statusBadge = getStatusBadge();
   const isComplete = totalCreditsEarned >= totalCreditsRequired;
 
-  // Handle over-credit edge case (e.g., 130/120 shows as "120/120 (+10)")
-  const cappedEarned = Math.min(totalCreditsEarned, totalCreditsRequired);
-  const surplus = Math.max(0, totalCreditsEarned - totalCreditsRequired);
+  // Format earned label with surplus (moved from below)
   const earnedLabel = surplus > 0
     ? `${cappedEarned}/${totalCreditsRequired} cr (+${surplus})`
     : fmtCredits(totalCreditsEarned, totalCreditsRequired);
@@ -253,3 +256,5 @@ export function DegreeNode({
     </div>
   );
 }
+
+export const DegreeNode = React.memo(DegreeNodeImpl);

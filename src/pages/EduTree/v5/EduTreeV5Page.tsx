@@ -196,7 +196,9 @@ export default function EduTreeV5Page() {
   const toggleDegree = () => {
     const next = !degreeCollapsed;
     setDegreeCollapsed(next);
-    localStorage.setItem('v5.degreeCollapsed', String(next));
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('v5.degreeCollapsed', String(next));
+    }
   };
 
   return (
