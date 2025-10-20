@@ -7,7 +7,6 @@ export interface Course {
 
 export interface ModuleData {
   id: string;
-  year: number;
   label: string;
   icon: string;
   description: string;
@@ -15,29 +14,6 @@ export interface ModuleData {
   creditsEarned: number;
   creditsRequired: number;
   isCollapsed: boolean;
-  requirementId?: string;
-  minSelect?: number;
-  marketplaceOptions?: MarketplaceOption[];
-  optionsCount?: number;
-  cheapestOption?: number | null;
-  hasAceCredit?: boolean;
-  hasClep?: boolean;
-}
-
-export type TransferFitLevel = 'excellent' | 'good' | 'fair' | 'poor';
-
-export interface MarketplaceOption {
-  id: string;
-  title: string;
-  provider: string | null;
-  providerId: string;
-  credits: number;
-  cost_usd: number | null;
-  cri_score: number | null;
-  duration_weeks: number | null;
-  accreditation?: string;
-  transferFit?: TransferFitLevel;
-  transferFitReason?: string;
 }
 
 export interface Requirement {

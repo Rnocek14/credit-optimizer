@@ -77,54 +77,18 @@ export function useAddCourseToPlan() {
     }) => {
       const { data, error } = await supabase
         .from('user_plan_courses')
-        .upsert({
+        .insert({
           plan_id: planId,
           requirement_id: requirementId,
           course_id: courseId,
           provider_id: providerId,
           status: 'planned',
-        }, {
-          onConflict: 'plan_id,requirement_id,course_id',
-          ignoreDuplicates: false,
         })
         .select()
         .single();
 
       if (error) throw error;
       return data;
-    },
-    onMutate: async (variables) => {
-      // Cancel outgoing queries
-      await queryClient.cancelQueries({ queryKey: ['user-plan-selections', variables.planId] });
-      
-      // Snapshot previous value
-      const previousData = queryClient.getQueryData(['user-plan-selections', variables.planId]);
-      
-      // Optimistically update
-      queryClient.setQueryData(['user-plan-selections', variables.planId], (old: any) => {
-        if (!old) return old;
-        const newMap = new Map(old);
-        newMap.set(variables.requirementId, {
-          requirement_id: variables.requirementId,
-          course: { id: variables.courseId, title: 'Loading...', credits: 0 },
-          provider: { name: 'Loading...' }
-        });
-        return newMap;
-      });
-      
-      return { previousData };
-    },
-    onError: (err, variables, context) => {
-      // Rollback on failure
-      if (context?.previousData) {
-        queryClient.setQueryData(['user-plan-selections', variables.planId], context.previousData);
-      }
-      
-      toast({
-        title: 'Error',
-        description: err.message || 'Failed to add course to plan',
-        variant: 'destructive',
-      });
     },
     onSuccess: (_, variables) => {
       // Phase 3: Invalidate EduTree-related queries
@@ -140,6 +104,13 @@ export function useAddCourseToPlan() {
       toast({
         title: 'Course added to plan',
         description: 'The course has been added to your degree plan.',
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to add course to plan',
+        variant: 'destructive',
       });
     },
   });
