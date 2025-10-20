@@ -58,10 +58,11 @@ function transformToModuleData(
     return {
       id: `module-${req.id}`,
       requirementId: req.id,
+      year: req.year,
       label: req.name,
       description: req.description || '',
       icon: getCategoryIcon(req.category),
-      courses: coursesForDisplay,
+      courses: [],
       creditsEarned: 0,
       creditsRequired: req.credits_required,
       isCollapsed: true,
@@ -127,12 +128,12 @@ export function useV5MarketplaceData(programId: string) {
 
       console.log('[useV5MarketplaceData] Fetched:', options?.length, 'options');
 
-      // Step 3: Get marketplace courses
+      // Step 3: Get marketplace courses (with fallback to edu_courses)
       const courseIds = options
         ?.filter(opt => opt.option_kind === 'course')
         .map(opt => opt.option_ref_id) || [];
 
-      const { data: courses, error: courseError } = await supabase
+      const { data: marketplaceCourses, error: courseError } = await supabase
         .from('marketplace_courses')
         .select(`
           id,
@@ -152,11 +153,41 @@ export function useV5MarketplaceData(programId: string) {
         .in('id', courseIds);
 
       if (courseError) {
-        console.error('[useV5MarketplaceData] Courses error:', courseError);
-        throw courseError;
+        console.error('[useV5MarketplaceData] Marketplace courses error:', courseError);
       }
 
-      console.log('[useV5MarketplaceData] Fetched:', courses?.length, 'courses');
+      console.log('[useV5MarketplaceData] Fetched:', marketplaceCourses?.length, 'marketplace courses');
+
+      // Fallback to edu_courses if marketplace is empty
+      const { data: eduCourses, error: eduError } = await supabase
+        .from('edu_courses')
+        .select('id, code, title, credits, level_year')
+        .in('id', courseIds);
+
+      if (eduError) {
+        console.error('[useV5MarketplaceData] Edu courses error:', eduError);
+      }
+
+      console.log('[useV5MarketplaceData] Fetched:', eduCourses?.length, 'edu courses');
+
+      // Merge both sources
+      const courses = [
+        ...(marketplaceCourses || []),
+        ...(eduCourses || []).map(ec => ({
+          id: ec.id,
+          code: ec.code,
+          title: ec.title,
+          credits: ec.credits,
+          level: `Year ${ec.level_year}`,
+          cost_usd: null,
+          duration_weeks: null,
+          cri_score: null,
+          provider_id: null,
+          providers: null
+        }))
+      ];
+
+      console.log('[useV5MarketplaceData] Total merged courses:', courses.length);
 
       // Step 4: Get equivalence data
       const { data: equivalences, error: eqError } = await supabase

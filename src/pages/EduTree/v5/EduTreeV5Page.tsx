@@ -75,11 +75,12 @@ export default function EduTreeV5Page() {
   const modulesByYear = useMemo(() => {
     if (!marketplaceModules) return { 1: [], 2: [], 3: [], 4: [] };
     
-    // For now, distribute modules evenly across years
-    // Later, this should use the 'year' field from program_requirements
     const grouped: Record<number, ModuleData[]> = { 1: [], 2: [], 3: [], 4: [] };
-    marketplaceModules.forEach((module, index) => {
-      const year = (index % 4) + 1;
+    
+    // Group by actual year field from database
+    marketplaceModules.forEach(module => {
+      const year = module.year || 1;
+      if (!grouped[year]) grouped[year] = [];
       grouped[year].push({
         ...module,
         isCollapsed: !!collapsedModules[module.id]

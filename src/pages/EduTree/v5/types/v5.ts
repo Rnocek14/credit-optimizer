@@ -7,6 +7,7 @@ export interface Course {
 
 export interface ModuleData {
   id: string;
+  year: number;
   label: string;
   icon: string;
   description: string;
