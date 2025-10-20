@@ -17,7 +17,9 @@ export function ModuleCard({
   creditsRequired,
   isCollapsed,
   onToggle,
-  onCourseClick 
+  onCourseClick,
+  optionsCount,
+  marketplaceOptions
 }: ModuleCardProps) {
   const progress = creditsRequired > 0 ? (creditsEarned / creditsRequired) * 100 : 0;
   
@@ -42,7 +44,14 @@ export function ModuleCard({
             <h3 className="font-semibold text-sm">{label}</h3>
             {isCollapsed ? <ChevronRight size={16} /> : <ChevronDown size={16} />}
           </div>
-          <p className="text-xs text-muted-foreground mt-0.5 truncate">{description}</p>
+          <div className="flex items-center gap-2 mt-0.5">
+            <p className="text-xs text-muted-foreground truncate">{description}</p>
+            {optionsCount && optionsCount > 0 && (
+              <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full whitespace-nowrap">
+                {optionsCount} {optionsCount === 1 ? 'option' : 'options'} available
+              </span>
+            )}
+          </div>
         </div>
         
         {/* Progress Indicator */}
@@ -93,6 +102,48 @@ export function ModuleCard({
               subject={course.subject}
               onClick={() => onCourseClick?.(course.courseId)}
             />
+          ))}
+        </div>
+      )}
+      
+      {/* Available Options - Expandable */}
+      {!isCollapsed && marketplaceOptions && marketplaceOptions.length > 0 && (
+        <div className="module-courses p-4 pt-0 space-y-2" onClick={e => e.stopPropagation()}>
+          <div className="text-xs font-semibold text-muted-foreground mb-2">
+            Available Options
+          </div>
+          {marketplaceOptions.map(option => (
+            <div
+              key={option.id}
+              className="course-card bg-background border border-border rounded-md p-2 hover:bg-accent/50 transition-colors cursor-pointer flex items-center gap-2"
+              onClick={() => onCourseClick?.(option.courseId)}
+            >
+              <div className="flex-1 min-w-0">
+                <div className="text-xs font-medium truncate">
+                  {option.courseId}: {option.title}
+                </div>
+                <div className="text-xs text-muted-foreground flex items-center gap-2 mt-0.5">
+                  <span>{option.credits} cr</span>
+                  <span>•</span>
+                  <span className="truncate">{option.provider}</span>
+                  {option.cost_usd && (
+                    <>
+                      <span>•</span>
+                      <span>${option.cost_usd}</span>
+                    </>
+                  )}
+                </div>
+              </div>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  // Future: Handle option selection
+                }}
+                className="text-xs px-2 py-1 bg-primary/10 text-primary rounded hover:bg-primary/20 transition-colors whitespace-nowrap"
+              >
+                Select
+              </button>
+            </div>
           ))}
         </div>
       )}

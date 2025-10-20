@@ -14,6 +14,20 @@ export interface ModuleData {
   creditsEarned: number;
   creditsRequired: number;
   isCollapsed: boolean;
+  
+  // Available options for this module
+  optionsCount?: number;
+  marketplaceOptions?: Array<{
+    id: string;
+    courseId: string;
+    title: string;
+    credits: number;
+    subject: string;
+    provider: string;
+    cost_usd: number | null;
+    duration_weeks: number | null;
+  }>;
+  cheapestOption?: number | null;
 }
 
 export interface Requirement {
