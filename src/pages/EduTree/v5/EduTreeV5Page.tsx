@@ -5,12 +5,26 @@ import { DegreeNode } from './components/DegreeNode';
 import canonicalCourses from '@/fixtures/prereqs/canonical-courses.json';
 import requirements from '@/fixtures/requirements/cs-degree-requirements.json';
 import { ModuleData, Course, Requirement, LoadHealth, DegreeSummary } from './types/v5';
+import { useV5DatabaseData } from './hooks/useV5DatabaseData';
 import './styles/v5.css';
 
 // Feature flag for quick rollback during demos
 const ENABLE_DEGREE_NODE = true;
 
 export default function EduTreeV5Page() {
+  // Feature flag: Database vs Fixtures
+  const USE_DATABASE = useMemo(() => {
+    if (typeof window === 'undefined') return false;
+    const params = new URLSearchParams(window.location.search);
+    return params.get('db') === '1' || localStorage.getItem('v5.useDatabase') === 'true';
+  }, []);
+
+  // Database mode
+  const { data: dbData, isLoading, error } = useV5DatabaseData({
+    programId: 'bs_cs',
+    enabled: USE_DATABASE,
+  });
+
   // Initialize from localStorage (SSR-safe)
   const [degreeCollapsed, setDegreeCollapsed] = useState<boolean>(() => {
     if (typeof window === 'undefined') return false;
@@ -39,6 +53,13 @@ export default function EduTreeV5Page() {
     console.log('[V5 Page] Course clicked:', courseId);
   };
 
+  // Toggle database mode
+  const handleToggleMode = useCallback(() => {
+    const next = !USE_DATABASE;
+    localStorage.setItem('v5.useDatabase', String(next));
+    window.location.reload();
+  }, [USE_DATABASE]);
+
   // Mock course mapping to years
   const coursesByYear: Record<number, string[]> = {
     1: ['MATH-ALGEBRA-101', 'CS-INTRO-101'],
@@ -59,8 +80,8 @@ export default function EduTreeV5Page() {
     };
   };
 
-  // Get modules for a specific year
-  const getModulesForYear = useMemo(() => {
+  // Get modules for a specific year (fixtures mode)
+  const getModulesForYearFixtures = useMemo(() => {
     return (year: number): ModuleData[] => {
       const yearCourseIds = coursesByYear[year] || [];
       const modules: ModuleData[] = [];
@@ -90,6 +111,14 @@ export default function EduTreeV5Page() {
       return modules;
     };
   }, [collapsedModules]);
+
+  // Get modules for a specific year (database or fixtures)
+  const getModulesForYear = useCallback((year: number): ModuleData[] => {
+    if (USE_DATABASE && dbData?.modulesByYear) {
+      return dbData.modulesByYear[year] || [];
+    }
+    return getModulesForYearFixtures(year);
+  }, [USE_DATABASE, dbData, getModulesForYearFixtures]);
 
   // Calculate total credits for a year
   const getYearCredits = (year: number): number => {
@@ -204,10 +233,40 @@ export default function EduTreeV5Page() {
 
   return (
     <div className="w-full min-h-screen bg-background p-8">
+      {/* Dev mode toggle */}
+      {import.meta.env.DEV && (
+        <button
+          onClick={handleToggleMode}
+          className="fixed bottom-4 right-4 px-3 py-1.5 bg-primary text-primary-foreground rounded-md text-xs font-medium shadow-lg hover:bg-primary/90 transition-colors z-50"
+          title="Toggle between database and fixture data"
+        >
+          {USE_DATABASE ? '🗄️ Database' : '📄 Fixtures'}
+        </button>
+      )}
+
+      {/* Loading state */}
+      {USE_DATABASE && isLoading && (
+        <div className="text-center py-12">
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+          <p className="mt-4 text-muted-foreground">Loading from database...</p>
+        </div>
+      )}
+
+      {/* Error state */}
+      {USE_DATABASE && error && (
+        <div className="bg-destructive/10 border border-destructive rounded-lg p-4 mb-8">
+          <p className="text-destructive font-medium">Failed to load data from database</p>
+          <p className="text-sm text-muted-foreground mt-1">{error.message}</p>
+        </div>
+      )}
+
       {/* Header */}
       <div className="mb-8">
         <h1 className="text-2xl font-bold">EduTree V5 - Year Spine + Modules</h1>
-        <p className="text-sm text-muted-foreground">Click degree node or years to collapse/expand</p>
+        <p className="text-sm text-muted-foreground">
+          Click degree node or years to collapse/expand
+          {USE_DATABASE && <span className="ml-2 text-primary">• Database Mode</span>}
+        </p>
       </div>
       
       {/* Degree Node */}
