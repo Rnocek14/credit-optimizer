@@ -77,10 +77,9 @@ export default function EduTreeV5Page() {
     
     const grouped: Record<number, ModuleData[]> = { 1: [], 2: [], 3: [], 4: [] };
     
-    // Group by actual year field from database
+    // Group by actual year field from database with clamping
     marketplaceModules.forEach(module => {
-      const year = module.year || 1;
-      if (!grouped[year]) grouped[year] = [];
+      const year = Math.min(4, Math.max(1, Number(module.year) || 1));  // Clamp to 1-4
       grouped[year].push({
         ...module,
         isCollapsed: !!collapsedModules[module.id]
@@ -286,15 +285,21 @@ export default function EduTreeV5Page() {
             {/* Module Cards - Stack vertically below */}
             {!collapsedYears[year] && (
               <div className="modules-stack mt-4 space-y-3">
-                {(modulesByYear[year] || []).map(module => (
-                  <ModuleCard
-                    key={module.id}
-                    {...module}
-                    onToggle={() => toggleModule(module.id)}
-                    onCourseClick={handleCourseClick}
-                    onModuleClick={() => handleModuleClick(module)}
-                  />
-                ))}
+                {(modulesByYear[year] || []).length > 0 ? (
+                  (modulesByYear[year] || []).map(module => (
+                    <ModuleCard
+                      key={module.id}
+                      {...module}
+                      onToggle={() => toggleModule(module.id)}
+                      onCourseClick={handleCourseClick}
+                      onModuleClick={() => handleModuleClick(module)}
+                    />
+                  ))
+                ) : (
+                  <div className="text-sm text-muted-foreground px-4 py-2 text-center">
+                    No modules in Year {year}
+                  </div>
+                )}
               </div>
             )}
             </div>

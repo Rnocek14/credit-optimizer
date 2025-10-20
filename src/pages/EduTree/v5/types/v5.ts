@@ -35,6 +35,7 @@ export interface MarketplaceOption {
   cost_usd: number | null;
   cri_score: number | null;
   duration_weeks: number | null;
+  accreditation?: string;
   transferFit?: TransferFitLevel;
   transferFitReason?: string;
 }

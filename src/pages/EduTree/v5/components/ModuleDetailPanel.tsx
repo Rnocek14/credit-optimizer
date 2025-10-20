@@ -191,7 +191,9 @@ export function ModuleDetailPanel({ module, onClose, transferRules, planId }: Mo
                       <CardHeader>
                         <CardTitle className="text-sm">{option.title}</CardTitle>
                         <CardDescription>
-                          {option.provider || 'Unknown'} • {option.credits} cr
+                          {option.provider || 'Unknown'}
+                          {option.accreditation && ` • ${option.accreditation}`}
+                          {' • '}{option.credits} cr
                         </CardDescription>
                       </CardHeader>
                       <CardContent>
