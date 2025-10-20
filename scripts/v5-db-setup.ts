@@ -1,277 +1,172 @@
-// scripts/v5-db-setup.ts
-// Usage:
-//  - Diagnose only:   npx tsx scripts/v5-db-setup.ts --diag
-//  - Seed + diagnose: npx tsx scripts/v5-db-setup.ts --seed
-//
-// Requires env:
-//   VITE_SUPABASE_URL
-//   SUPABASE_SERVICE_ROLE_KEY (preferred) or VITE_SUPABASE_PUBLISHABLE_KEY
-
-import 'dotenv/config';
 import { createClient } from '@supabase/supabase-js';
+import type { Database } from '../src/integrations/supabase/types';
 
-const SUPABASE_URL = process.env.VITE_SUPABASE_URL!;
-const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+const SUPABASE_URL = "https://vzpissitddpunkpythsb.supabase.co";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ6cGlzc2l0ZGRwdW5rcHl0aHNiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI3ODUxMDUsImV4cCI6MjA2ODM2MTEwNX0.qm92R4H0_rQpNipa2u1PjJqjnKrlRz_RJe6h6J9G-RI";
 
-if (!SUPABASE_URL || !SERVICE_KEY) {
-  console.error('❌ Missing VITE_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY in env.');
-  process.exit(1);
-}
+const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_KEY);
 
-const sb = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false } });
+async function diagnose() {
+  console.log('\n📊 V5 Database Diagnostic\n');
 
-const PROGRAM_ID = 'bs_cs';
+  const { data: providers } = await supabase.from('course_providers').select('id');
+  const { data: eduCourses } = await supabase.from('edu_courses').select('id');
+  const { data: marketplaceCourses } = await supabase.from('marketplace_courses').select('id');
+  const { data: requirements } = await supabase.from('program_requirements').select('id, year, category, name, credits_required').eq('program_id', 'bs_cs');
+  const { data: options } = await supabase.from('requirement_options').select('id, requirement_id, option_ref_id');
 
-const seedData = {
-  providers: [
-    { id: 'univ', name: 'University', is_marketplace: false },
-    { id: 'coursera', name: 'Coursera', is_marketplace: true },
-    { id: 'edx', name: 'edX', is_marketplace: true },
-  ],
+  console.log('📋 Table Counts:');
+  console.log(`  providers: ${providers?.length || 0}`);
+  console.log(`  edu_courses: ${eduCourses?.length || 0}`);
+  console.log(`  marketplace_courses: ${marketplaceCourses?.length || 0}`);
+  console.log(`  program_requirements (bs_cs): ${requirements?.length || 0}`);
+  console.log(`  requirement_options: ${options?.length || 0}\n`);
+
+  console.log('📅 Requirements by Year:');
+  const byYear = [1, 2, 3, 4].map(y => ({
+    year: y,
+    count: requirements?.filter(r => r.year === y).length || 0,
+    items: requirements?.filter(r => r.year === y).map(r => `${r.name} (${r.credits_required} cr)`) || []
+  }));
   
-  requirements: [
-    { year: 1, category: 'gened', name: 'Foundations', description: 'General foundations', credits_required: 6, min_select: 1 },
-    { year: 2, category: 'core', name: 'Core I', description: 'CS core part I', credits_required: 6, min_select: 1 },
-    { year: 3, category: 'core', name: 'Core II', description: 'CS core part II', credits_required: 6, min_select: 1 },
-    { year: 4, category: 'capstone', name: 'Senior Capstone', description: 'Culminating project', credits_required: 6, min_select: 1 },
-  ],
-  
-  eduCourses: [
-    { code: 'CS-101', title: 'Intro to Computer Science', credits: 3, provider_id: 'univ' },
-    { code: 'CS-201', title: 'Data Structures & Algorithms', credits: 3, provider_id: 'univ' },
-    { code: 'CS-301', title: 'Database Systems', credits: 3, provider_id: 'univ' },
-    { code: 'CS-401', title: 'Senior Capstone Project', credits: 6, provider_id: 'univ' },
-  ],
-  
-  marketplaceCourses: [
-    { code: 'COURSERA-CS50', title: 'CS50: Introduction to Computer Science', credits: 3, cost_usd: 49, provider_id: 'coursera', duration_weeks: 12 },
-    { code: 'EDX-DS101', title: 'Algorithms and Data Structures', credits: 3, cost_usd: 99, provider_id: 'edx', duration_weeks: 10 },
-    { code: 'COURSERA-DB', title: 'Database Design and Management', credits: 3, cost_usd: 79, provider_id: 'coursera', duration_weeks: 8 },
-    { code: 'EDX-CAPSTONE', title: 'Applied CS Capstone', credits: 6, cost_usd: 199, provider_id: 'edx', duration_weeks: 16 },
-  ],
-};
+  byYear.forEach(({ year, count, items }) => {
+    console.log(`  Year ${year}: ${count} requirement(s)`);
+    items.forEach(item => console.log(`    - ${item}`));
+  });
 
-async function upsertProvider(id: string, name: string, is_marketplace: boolean) {
-  const { data: existing } = await sb.from('providers').select('id').eq('id', id).maybeSingle();
-  if (existing?.id) return id;
-
-  const { error } = await sb.from('providers').insert({ id, name, is_marketplace });
-  if (error) throw error;
-  return id;
-}
-
-async function upsertEduCourse(code: string, title: string, credits: number, provider_id: string) {
-  const { data: existing } = await sb.from('edu_courses').select('id').eq('code', code).maybeSingle();
-  if (existing?.id) return existing.id;
-
-  const { data, error } = await sb.from('edu_courses')
-    .insert({ code, title, credits, provider_id })
-    .select('id')
-    .single();
-  if (error) throw error;
-  return data.id;
-}
-
-async function upsertMarketplaceCourse(code: string, title: string, credits: number, cost_usd: number, provider_id: string, duration_weeks?: number) {
-  const { data: existing } = await sb.from('marketplace_courses').select('id').eq('code', code).maybeSingle();
-  if (existing?.id) return existing.id;
-
-  const { data, error } = await sb.from('marketplace_courses')
-    .insert({ code, title, credits, cost_usd, provider_id, duration_weeks })
-    .select('id')
-    .single();
-  if (error) throw error;
-  return data.id;
-}
-
-async function upsertRequirement(year: number, category: string, name: string, description: string, credits_required: number, min_select: number) {
-  const { data: existing } = await sb.from('program_requirements')
-    .select('id, credits_required')
-    .eq('program_id', PROGRAM_ID)
-    .eq('year', year)
-    .eq('name', name)
-    .maybeSingle();
-
-  if (existing?.id) {
-    // Update if credits_required is 0
-    if ((existing.credits_required ?? 0) === 0) {
-      await sb.from('program_requirements')
-        .update({ credits_required, min_select })
-        .eq('id', existing.id);
-    }
-    return existing.id;
+  const zeroCredit = requirements?.filter(r => !r.credits_required || r.credits_required === 0) || [];
+  if (zeroCredit.length > 0) {
+    console.log('\n⚠️  Zero-Credit Requirements:');
+    zeroCredit.forEach(r => console.log(`  - Year ${r.year}: ${r.name}`));
   }
 
-  const { data, error } = await sb.from('program_requirements')
-    .insert({
-      program_id: PROGRAM_ID,
-      year,
-      category,
-      name,
-      description,
-      credits_required,
-      min_select
-    })
-    .select('id')
-    .single();
-  if (error) throw error;
-  return data.id;
-}
+  const unresolvedCount = options?.filter(opt => {
+    const hasEdu = eduCourses?.some(c => c.id === opt.option_ref_id);
+    const hasMkt = marketplaceCourses?.some(c => c.id === opt.option_ref_id);
+    return !hasEdu && !hasMkt;
+  }).length || 0;
 
-async function linkOption(requirement_id: string, option_ref_id: string, credits_awarded: number) {
-  const { data: existing } = await sb.from('requirement_options')
-    .select('id')
-    .eq('requirement_id', requirement_id)
-    .eq('option_ref_id', option_ref_id)
-    .maybeSingle();
-  
-  if (existing?.id) return;
-
-  const { error } = await sb.from('requirement_options')
-    .insert({
-      requirement_id,
-      option_kind: 'course',
-      option_ref_id,
-      credits_awarded
-    });
-  if (error) throw error;
+  console.log(`\n🔗 Options: ${options?.length || 0} total, ${unresolvedCount} unresolved\n`);
 }
 
 async function seed() {
-  console.log('🌱 Seeding minimal V5 data (Years 1–4)...\n');
+  console.log('\n🌱 Seeding V5 Database Data\n');
 
-  // 1. Providers
-  console.log('📦 Providers...');
-  for (const p of seedData.providers) {
-    await upsertProvider(p.id, p.name, p.is_marketplace);
-  }
+  const providers = [
+    { id: crypto.randomUUID(), name: 'Coursera', website: 'https://coursera.org', accreditation_status: 'accredited' },
+    { id: crypto.randomUUID(), name: 'edX', website: 'https://edx.org', accreditation_status: 'accredited' },
+    { id: crypto.randomUUID(), name: 'Udacity', website: 'https://udacity.com', accreditation_status: 'recognized' }
+  ];
 
-  // 2. Edu courses
-  console.log('🎓 Edu courses...');
-  const eduCourseIds: Record<string, string> = {};
-  for (const c of seedData.eduCourses) {
-    eduCourseIds[c.code] = await upsertEduCourse(c.code, c.title, c.credits, c.provider_id);
-  }
+  const { error: provError } = await supabase.from('course_providers').upsert(providers, { onConflict: 'name' });
+  if (provError) console.error('Provider seed error:', provError);
+  else console.log(`✓ Providers seeded: ${providers.length}`);
 
-  // 3. Marketplace courses
-  console.log('🛒 Marketplace courses...');
-  const marketplaceCourseIds: Record<string, string> = {};
-  for (const c of seedData.marketplaceCourses) {
-    marketplaceCourseIds[c.code] = await upsertMarketplaceCourse(
-      c.code, c.title, c.credits, c.cost_usd, c.provider_id, c.duration_weeks
-    );
-  }
+  const eduCourses = [
+    { id: crypto.randomUUID(), code: 'CS101', title: 'Intro to Computer Science', credits: 3 },
+    { id: crypto.randomUUID(), code: 'MATH201', title: 'Calculus I', credits: 3 },
+    { id: crypto.randomUUID(), code: 'CS201', title: 'Data Structures', credits: 3 },
+    { id: crypto.randomUUID(), code: 'CS301', title: 'Algorithms', credits: 3 }
+  ];
 
-  // 4. Requirements + link options
-  console.log('📋 Requirements + options...');
-  for (let i = 0; i < seedData.requirements.length; i++) {
-    const req = seedData.requirements[i];
-    const reqId = await upsertRequirement(
-      req.year, req.category, req.name, req.description, req.credits_required, req.min_select
-    );
+  const { error: eduError } = await supabase.from('edu_courses').upsert(eduCourses, { onConflict: 'code' });
+  if (eduError) console.error('Edu courses seed error:', eduError);
+  else console.log(`✓ Edu courses seeded: ${eduCourses.length}`);
 
-    // Link 1 edu + 1 marketplace per requirement
-    const eduCourseId = eduCourseIds[seedData.eduCourses[i].code];
-    const marketplaceCourseId = marketplaceCourseIds[seedData.marketplaceCourses[i].code];
+  const marketplaceCourses = [
+    { 
+      id: crypto.randomUUID(), 
+      code: 'COUR-CS-101', 
+      title: 'Programming Foundations', 
+      credits: 3, 
+      cost_usd: 49, 
+      duration_weeks: 6,
+      provider_id: providers[0].id 
+    },
+    { 
+      id: crypto.randomUUID(), 
+      code: 'EDX-MATH-101', 
+      title: 'Mathematical Thinking', 
+      credits: 3, 
+      cost_usd: 99, 
+      duration_weeks: 8,
+      provider_id: providers[1].id 
+    },
+    { 
+      id: crypto.randomUUID(), 
+      code: 'UDAC-DS-201', 
+      title: 'Data Structures Nanodegree', 
+      credits: 3, 
+      cost_usd: 399, 
+      duration_weeks: 12,
+      provider_id: providers[2].id 
+    },
+    { 
+      id: crypto.randomUUID(), 
+      code: 'COUR-ALG-301', 
+      title: 'Algorithm Design', 
+      credits: 3, 
+      cost_usd: 79, 
+      duration_weeks: 10,
+      provider_id: providers[0].id 
+    }
+  ];
 
-    await linkOption(reqId, eduCourseId, seedData.eduCourses[i].credits);
-    await linkOption(reqId, marketplaceCourseId, seedData.marketplaceCourses[i].credits);
-  }
+  const { error: mktError } = await supabase.from('marketplace_courses').upsert(marketplaceCourses, { onConflict: 'code' });
+  if (mktError) console.error('Marketplace courses seed error:', mktError);
+  else console.log(`✓ Marketplace courses seeded: ${marketplaceCourses.length}`);
 
-  console.log('✅ Seed complete!\n');
+  const requirements = [
+    { id: crypto.randomUUID(), program_id: 'bs_cs', year: 1, category: 'foundation', name: 'Foundations', description: 'Core programming foundations', credits_required: 6 },
+    { id: crypto.randomUUID(), program_id: 'bs_cs', year: 2, category: 'core', name: 'Core I', description: 'Data structures and algorithms', credits_required: 6 },
+    { id: crypto.randomUUID(), program_id: 'bs_cs', year: 3, category: 'specialization', name: 'Specialization', description: 'Track-specific courses', credits_required: 6 },
+    { id: crypto.randomUUID(), program_id: 'bs_cs', year: 4, category: 'capstone', name: 'Capstone', description: 'Final project and electives', credits_required: 6 }
+  ];
+
+  const { error: reqError } = await supabase.from('program_requirements').upsert(requirements, { onConflict: 'program_id,year,category' });
+  if (reqError) console.error('Requirements seed error:', reqError);
+  else console.log(`✓ Program requirements seeded: ${requirements.length}`);
+
+  const options = requirements.flatMap((req, idx) => [
+    {
+      id: crypto.randomUUID(),
+      requirement_id: req.id,
+      option_kind: 'course' as const,
+      option_ref_id: eduCourses[idx]?.id || eduCourses[0].id,
+      credits_awarded: 3,
+      transfer_eligible: true
+    },
+    {
+      id: crypto.randomUUID(),
+      requirement_id: req.id,
+      option_kind: 'course' as const,
+      option_ref_id: marketplaceCourses[idx]?.id || marketplaceCourses[0].id,
+      credits_awarded: 3,
+      transfer_eligible: true
+    }
+  ]);
+
+  const { error: optError } = await supabase.from('requirement_options').upsert(options, { onConflict: 'requirement_id,option_ref_id' });
+  if (optError) console.error('Options seed error:', optError);
+  else console.log(`✓ Requirement options seeded: ${options.length}`);
+
+  console.log('\n✨ Seeding complete!\n');
 }
 
-async function diagnose() {
-  console.log('\n=== V5 DIAGNOSTIC ===\n');
+async function main() {
+  const mode = process.argv[2];
 
-  // Table counts
-  const tables = ['providers', 'program_requirements', 'requirement_options', 'edu_courses', 'marketplace_courses'];
-  const counts: Record<string, number> = {};
-  
-  console.log('📊 Table counts:');
-  for (const t of tables) {
-    const { count } = await sb.from(t as any).select('*', { count: 'exact', head: true });
-    counts[t] = count ?? 0;
-    console.log(`  ${t}: ${counts[t]}`);
+  if (mode === '--diag') {
+    await diagnose();
+  } else if (mode === '--seed') {
+    await seed();
+    console.log('Running diagnostic after seed...');
+    await diagnose();
+  } else {
+    console.log('Usage: tsx scripts/v5-db-setup.ts [--diag|--seed]');
+    console.log('  --diag: Show current database state');
+    console.log('  --seed: Populate database with sample data');
   }
-
-  // Requirements by year
-  const { data: reqs } = await sb.from('program_requirements')
-    .select('id, year, category, name, credits_required')
-    .eq('program_id', PROGRAM_ID)
-    .order('year', { ascending: true });
-
-  const byYear: Record<number, any[]> = { 1: [], 2: [], 3: [], 4: [] };
-  (reqs || []).forEach(r => {
-    const y = Math.min(4, Math.max(1, Number(r.year) || 1));
-    byYear[y].push(r);
-  });
-
-  console.log('\n📅 Requirements by year:');
-  for (let y = 1; y <= 4; y++) {
-    console.log(`  Year ${y}: ${byYear[y].length} requirements`);
-    byYear[y].forEach(r => {
-      console.log(`    - ${r.name} (${r.credits_required ?? 0} credits)`);
-    });
-  }
-
-  const zeroCredit = (reqs || []).filter(r => (r.credits_required ?? 0) === 0);
-  if (zeroCredit.length > 0) {
-    console.log('\n⚠️  Zero-credit requirements:');
-    zeroCredit.forEach(r => console.log(`  - ${r.name} (Year ${r.year})`));
-  }
-
-  // Options resolution
-  if (reqs && reqs.length > 0) {
-    const reqIds = reqs.map(r => r.id);
-    const { data: opts } = await sb.from('requirement_options')
-      .select('id, requirement_id, option_ref_id, option_kind')
-      .in('requirement_id', reqIds);
-
-    const refIds = Array.from(new Set((opts || []).map(o => o.option_ref_id)));
-    const eduHits = new Set<string>();
-    const mkHits = new Set<string>();
-
-    if (refIds.length > 0) {
-      const { data: edu } = await sb.from('edu_courses').select('id').in('id', refIds);
-      const { data: mk } = await sb.from('marketplace_courses').select('id').in('id', refIds);
-      (edu || []).forEach(e => eduHits.add(e.id));
-      (mk || []).forEach(m => mkHits.add(m.id));
-    }
-
-    const unresolved = (opts || []).filter(o => !eduHits.has(o.option_ref_id) && !mkHits.has(o.option_ref_id));
-
-    console.log('\n🔗 Requirement options:');
-    console.log(`  Total: ${opts?.length ?? 0}`);
-    console.log(`  Edu courses: ${(opts || []).filter(o => eduHits.has(o.option_ref_id)).length}`);
-    console.log(`  Marketplace: ${(opts || []).filter(o => mkHits.has(o.option_ref_id)).length}`);
-    console.log(`  Unresolved: ${unresolved.length}`);
-    
-    if (unresolved.length > 0) {
-      console.log('\n⚠️  Unresolved options (sample):');
-      unresolved.slice(0, 3).forEach(o => {
-        console.log(`  - Option ${o.id} → ${o.option_ref_id}`);
-      });
-    }
-  }
-
-  console.log('\n=== END DIAGNOSTIC ===\n');
 }
 
-(async () => {
-  const args = new Set(process.argv.slice(2));
-  const doSeed = args.has('--seed');
-  const doDiag = args.has('--diag') || !doSeed;
-
-  try {
-    if (doSeed) {
-      await seed();
-    }
-    if (doDiag) {
-      await diagnose();
-    }
-  } catch (err: any) {
-    console.error('❌ Script failed:', err?.message || err);
-    process.exit(1);
-  }
-})();
+main().catch(console.error);
