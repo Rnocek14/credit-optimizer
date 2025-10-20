@@ -137,6 +137,7 @@ import { EduTreeError } from "./components/EduTreeError";
 import { PageLoader } from "./components/PageLoader";
 import { isFeatureEnabled } from "./lib/featureFlags";
 import TrackOverlayPOCPage from "../sandbox/TrackOverlayPOCPage";
+import SeedV5Database from "./pages/Admin/SeedV5Database";
 
 const queryClient = new QueryClient();
 
@@ -331,6 +332,8 @@ const App = () => {
           />
           {/* Sandbox route for TrackOverlayPOC (dev only) */}
           <Route path="/sandbox/track-overlay" element={<TrackOverlayPOCPage />} />
+          {/* Admin route for database seeding */}
+          <Route path="/admin/seed-v5" element={<SeedV5Database />} />
           <Route 
             path="/compare" 
             element={
