@@ -26,7 +26,7 @@ export function useV5DatabaseData(options: UseV5DatabaseDataOptions = {}) {
         return { modulesByYear: { 1: [], 2: [], 3: [], 4: [] } };
       }
 
-      // 2. Fetch all options for these requirements with joined course data
+      // 2. Fetch all options for these requirements
       const requirementIds = requirements.map((r) => r.id);
       const { data: options, error: optsError } = await supabase
         .from('requirement_options')
@@ -35,31 +35,41 @@ export function useV5DatabaseData(options: UseV5DatabaseDataOptions = {}) {
           requirement_id,
           option_kind,
           option_ref_id,
-          credits_awarded,
-          edu_courses:option_ref_id (
-            id,
-            code,
-            title,
-            credits
-          ),
-          marketplace_courses:option_ref_id (
-            id,
-            code,
-            title,
-            credits,
-            cost_usd,
-            duration_weeks,
-            provider_id
-          )
+          credits_awarded
         `)
         .in('requirement_id', requirementIds);
 
       if (optsError) throw optsError;
 
-      // 3. Transform to V5 format
+      // 3. Fetch edu courses and marketplace courses separately
+      // Note: We fetch all course IDs and check both tables since option_kind is generic ("course", "exam", "cert")
+      const allOptionIds = options?.map(o => o.option_ref_id) || [];
+
+      const { data: eduCourses } = await supabase
+        .from('edu_courses')
+        .select('id, code, title, credits')
+        .in('id', allOptionIds.length > 0 ? allOptionIds : ['']);
+
+      const { data: marketplaceCourses } = await supabase
+        .from('marketplace_courses')
+        .select('id, code, title, credits, cost_usd, duration_weeks, provider_id')
+        .in('id', allOptionIds.length > 0 ? allOptionIds : ['']);
+
+      // 4. Enrich options with course data (try edu_courses first, then marketplace_courses)
+      const enrichedOptions = options?.map(opt => {
+        const eduCourse = eduCourses?.find(c => c.id === opt.option_ref_id);
+        const mkCourse = marketplaceCourses?.find(c => c.id === opt.option_ref_id);
+        return {
+          ...opt,
+          edu_courses: eduCourse || null,
+          marketplace_courses: mkCourse || null
+        };
+      }) || [];
+
+      // 5. Transform to V5 format
       const modulesByYear = transformToModuleData(
         requirements as any,
-        options as any || []
+        enrichedOptions as any
       );
 
       return { modulesByYear };
