@@ -36,10 +36,9 @@ export function DegreeNode({
 
   const getDegreeStatus = (): DegreeStatus => {
     const ratio = totalCreditsEarned / totalCreditsRequired;
-    if (ratio >= 1.0) return 'on-track';
-    if (ratio >= 0.75) return 'on-track';
-    if (ratio >= 0.5) return 'ahead';
-    return 'behind';
+    if (ratio >= 1.0) return 'on-track';  // Completed or close to completion
+    if (ratio >= 0.75) return 'ahead';    // Above expected pace for time in program
+    return 'behind';                       // Needs to accelerate to finish on time
   };
 
   const getStatusBadge = () => {

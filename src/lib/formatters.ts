@@ -1,5 +1,13 @@
-export const fmtCurrency = (amount: number): string => {
-  return `$${amount.toLocaleString('en-US')}`;
+export const fmtCurrency = (
+  amount: number,
+  currency: string = 'USD',
+  locale?: string
+): string => {
+  return new Intl.NumberFormat(locale, {
+    style: 'currency',
+    currency,
+    maximumFractionDigits: 0,
+  }).format(amount);
 };
 
 export const fmtCredits = (earned: number, required: number): string => {

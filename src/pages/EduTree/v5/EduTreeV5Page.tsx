@@ -128,6 +128,10 @@ export default function EduTreeV5Page() {
   };
 
   // Calculate actual earned credits from completed modules
+  // NOTE: Currently treats modules as atomic units - a module counts as "earned"
+  // only when ALL its courses are complete (creditsEarned >= creditsRequired).
+  // TODO: Update this to handle partial module completion when student progress
+  // tracking is implemented with granular course-level completion data.
   const getTotalEarnedCredits = (): number => {
     const allYears = [1, 2, 3, 4];
     return allYears.reduce((sum, year) => {
