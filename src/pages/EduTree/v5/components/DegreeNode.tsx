@@ -11,6 +11,9 @@ interface DegreeNodeProps extends DegreeSummary {
   isCollapsed: boolean;
   onToggle: () => void;
   yearCount: number;
+  transferUsed?: number;
+  transferMax?: number;
+  residencyMin?: number;
 }
 
 function DegreeNodeImpl({
@@ -24,7 +27,10 @@ function DegreeNodeImpl({
   warnings,
   isCollapsed,
   onToggle,
-  yearCount
+  yearCount,
+  transferUsed = 0,
+  transferMax = 90,
+  residencyMin = 30
 }: DegreeNodeProps) {
   // Handle over-credit edge case (e.g., 130/120 shows as "120/120 (+10)")
   const cappedEarned = Math.min(totalCreditsEarned, totalCreditsRequired);
@@ -216,6 +222,24 @@ function DegreeNodeImpl({
                 <Badge variant="outline" className="text-xs">
                   📚 Planned: {fmtCredits(totalCreditsPlanned, totalCreditsRequired)} ({fmtPercentage(plannedCoveragePct)})
                 </Badge>
+              </div>
+            )}
+            
+            {/* Transfer/Residency Cap Meter */}
+            {!isComplete && (transferUsed > 0 || totalCreditsEarned > 0) && (
+              <div className="flex items-center gap-4 text-xs mt-2">
+                <div>
+                  <span className="text-muted-foreground">Transfer: </span>
+                  <span className={transferUsed > transferMax ? 'text-destructive font-semibold' : 'text-foreground'}>
+                    {transferUsed}/{transferMax} cr
+                  </span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Residency: </span>
+                  <span className={totalCreditsEarned < residencyMin ? 'text-orange-500 font-semibold' : 'text-green-600 font-semibold'}>
+                    {totalCreditsEarned}/{residencyMin} cr
+                  </span>
+                </div>
               </div>
             )}
           </div>

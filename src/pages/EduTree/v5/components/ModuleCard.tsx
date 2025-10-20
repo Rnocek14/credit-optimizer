@@ -1,10 +1,12 @@
 import { ChevronDown, ChevronRight } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { CourseCard } from './CourseCard';
 import { ModuleData } from '../types/v5';
 
 interface ModuleCardProps extends ModuleData {
   onToggle: () => void;
   onCourseClick?: (courseId: string) => void;
+  onModuleClick?: () => void;
 }
 
 export function ModuleCard({ 
@@ -17,13 +19,19 @@ export function ModuleCard({
   creditsRequired,
   isCollapsed,
   onToggle,
-  onCourseClick 
+  onCourseClick,
+  onModuleClick,
+  optionsCount,
+  cheapestOption,
+  hasAceCredit,
+  hasClep
 }: ModuleCardProps) {
   const progress = creditsRequired > 0 ? (creditsEarned / creditsRequired) * 100 : 0;
   
   return (
     <div
       className="module-card bg-card border-2 border-border rounded-lg overflow-hidden"
+      data-testid={`module-card-${id}`}
     >
       {/* Module Header - Clickable */}
       <div
@@ -43,6 +51,24 @@ export function ModuleCard({
             {isCollapsed ? <ChevronRight size={16} /> : <ChevronDown size={16} />}
           </div>
           <p className="text-xs text-muted-foreground mt-0.5 truncate">{description}</p>
+          
+          {/* Marketplace Preview Badge */}
+          {optionsCount !== undefined && optionsCount > 0 && (
+            <Badge 
+              variant="outline" 
+              className="text-xs cursor-pointer hover:bg-accent w-fit mt-2"
+              onClick={(e) => {
+                e.stopPropagation();
+                onModuleClick?.();
+              }}
+              data-testid="marketplace-preview-badge"
+            >
+              🛒 {optionsCount} options
+              {cheapestOption !== null && ` • from $${cheapestOption}`}
+              {hasAceCredit && ' • ✅ ACE'}
+              {hasClep && ' • ✅ CLEP'}
+            </Badge>
+          )}
         </div>
         
         {/* Progress Indicator */}
