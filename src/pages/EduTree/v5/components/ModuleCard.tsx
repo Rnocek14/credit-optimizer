@@ -108,18 +108,26 @@ export function ModuleCard({
       </div>
       
       {/* Courses List - Expandable */}
-      {!isCollapsed && courses.length > 0 && (
-        <div className="module-courses p-4 pt-0 space-y-2" onClick={e => e.stopPropagation()}>
-          {courses.map(course => (
-            <CourseCard
-              key={course.courseId}
-              courseId={course.courseId}
-              title={course.title}
-              credits={course.credits}
-              subject={course.subject}
-              onClick={() => onCourseClick?.(course.courseId)}
-            />
-          ))}
+      {!isCollapsed && (
+        <div className="module-courses p-4 pt-0" onClick={e => e.stopPropagation()}>
+          {courses.length > 0 ? (
+            <div className="space-y-2">
+              {courses.map(course => (
+                <CourseCard
+                  key={course.courseId}
+                  courseId={course.courseId}
+                  title={course.title}
+                  credits={course.credits}
+                  subject={course.subject}
+                  onClick={() => onCourseClick?.(course.courseId)}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="p-4 text-xs text-muted-foreground text-center">
+              No courses available. {(optionsCount ?? 0) > 0 && 'Click marketplace badge to browse options.'}
+            </div>
+          )}
         </div>
       )}
     </div>
