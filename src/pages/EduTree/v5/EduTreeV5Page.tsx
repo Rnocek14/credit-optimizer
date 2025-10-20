@@ -7,8 +7,14 @@ import requirements from '@/fixtures/requirements/cs-degree-requirements.json';
 import { ModuleData, Course, Requirement, LoadHealth, DegreeSummary } from './types/v5';
 import './styles/v5.css';
 
+// Feature flag for quick rollback during demos
+const ENABLE_DEGREE_NODE = true;
+
 export default function EduTreeV5Page() {
-  const [degreeCollapsed, setDegreeCollapsed] = useState(false);
+  // Initialize from localStorage
+  const [degreeCollapsed, setDegreeCollapsed] = useState(() => 
+    localStorage.getItem('v5.degreeCollapsed') === 'true'
+  );
   const [collapsedYears, setCollapsedYears] = useState<Record<number, boolean>>({});
   const [collapsedModules, setCollapsedModules] = useState<Record<string, boolean>>({});
   
@@ -121,10 +127,23 @@ export default function EduTreeV5Page() {
     };
   };
 
+  // Calculate actual earned credits from completed modules
+  const getTotalEarnedCredits = (): number => {
+    const allYears = [1, 2, 3, 4];
+    return allYears.reduce((sum, year) => {
+      const modules = getModulesForYear(year);
+      const yearEarned = modules
+        .filter(m => m.creditsEarned >= m.creditsRequired)
+        .reduce((s, m) => s + m.creditsEarned, 0);
+      return sum + yearEarned;
+    }, 0);
+  };
+
   // Get degree summary data
   const getDegreeSummary = (): DegreeSummary => {
     const allYears = [1, 2, 3, 4];
     const totalPlanned = allYears.reduce((sum, y) => sum + getYearCredits(y), 0);
+    const totalEarned = getTotalEarnedCredits();
     const totalRequired = 120;
     const costPerCredit = 375;
     
@@ -133,22 +152,35 @@ export default function EduTreeV5Page() {
     allYears.forEach(year => {
       const yearData = getYearData(year);
       if (yearData.loadHealth === 'overloaded') {
-        allWarnings.push(`Year ${year} is overloaded`);
+        allWarnings.push(`Year ${year} is overloaded (${yearData.creditsSummary.planned} credits)`);
       } else if (yearData.loadHealth === 'underloaded') {
-        allWarnings.push(`Year ${year} is underloaded`);
+        allWarnings.push(`Year ${year} is underloaded (${yearData.creditsSummary.planned} credits)`);
       }
     });
+    
+    // Dynamic time estimation based on pace
+    const avgCreditsPerYear = totalPlanned / allYears.length;
+    const estimatedYears = avgCreditsPerYear > 0 
+      ? Math.ceil((totalRequired - totalEarned) / avgCreditsPerYear)
+      : 4;
     
     return {
       degreeTitle: "Bachelor of Science in Computer Science",
       degreeLevel: "bachelor",
       totalCreditsRequired: totalRequired,
       totalCreditsPlanned: totalPlanned,
-      totalCreditsEarned: 0, // Mock for now
-      estimatedMonths: 48, // 4 years
+      totalCreditsEarned: totalEarned,
+      estimatedMonths: estimatedYears * 12,
       estimatedCost: totalPlanned * costPerCredit,
       warnings: allWarnings
     };
+  };
+
+  // Toggle degree with localStorage persistence
+  const toggleDegree = () => {
+    const next = !degreeCollapsed;
+    setDegreeCollapsed(next);
+    localStorage.setItem('v5.degreeCollapsed', String(next));
   };
 
   return (
@@ -160,18 +192,23 @@ export default function EduTreeV5Page() {
       </div>
       
       {/* Degree Node */}
-      <div className="mb-6">
-        <DegreeNode
-          {...getDegreeSummary()}
-          isCollapsed={degreeCollapsed}
-          onToggle={() => setDegreeCollapsed(!degreeCollapsed)}
-          yearCount={4}
-        />
-      </div>
+      {ENABLE_DEGREE_NODE && (
+        <div className="mb-6">
+          <DegreeNode
+            {...getDegreeSummary()}
+            isCollapsed={degreeCollapsed}
+            onToggle={toggleDegree}
+            yearCount={4}
+          />
+        </div>
+      )}
       
       {/* Grid Layout: 4 columns for 4 years - hidden when degree collapsed */}
-      {!degreeCollapsed && (
-        <div className="year-spine-grid grid grid-cols-4 gap-6 items-start">
+      <div 
+        className={`year-spine-grid grid grid-cols-4 gap-6 items-start transition-opacity duration-300 ${
+          degreeCollapsed ? 'hidden' : 'grid'
+        }`}
+      >
         {[1, 2, 3, 4].map(year => {
           const yearData = getYearData(year);
           return (
@@ -202,8 +239,7 @@ export default function EduTreeV5Page() {
             </div>
           );
         })}
-        </div>
-      )}
+      </div>
     </div>
   );
 }

@@ -1,6 +1,8 @@
 import { ChevronDown, ChevronRight, GraduationCap, Clock, DollarSign, AlertCircle } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { fmtCurrency, fmtCredits, fmtPercentage } from '@/lib/formatters';
 import type { DegreeSummary, DegreeStatus } from '../types/v5';
 
 interface DegreeNodeProps extends DegreeSummary {
@@ -22,18 +24,21 @@ export function DegreeNode({
   onToggle,
   yearCount
 }: DegreeNodeProps) {
-  const progressPercentage = totalCreditsRequired > 0 
-    ? (totalCreditsPlanned / totalCreditsRequired) * 100 
-    : 0;
-
-  const completionPercentage = totalCreditsRequired > 0
+  // Earned progress (main progress bar - actual completion)
+  const earnedProgressPct = totalCreditsRequired > 0
     ? (totalCreditsEarned / totalCreditsRequired) * 100
     : 0;
 
+  // Planned coverage (badge indicator - what's scheduled)
+  const plannedCoveragePct = totalCreditsRequired > 0 
+    ? (totalCreditsPlanned / totalCreditsRequired) * 100 
+    : 0;
+
   const getDegreeStatus = (): DegreeStatus => {
-    const ratio = totalCreditsPlanned / totalCreditsRequired;
+    const ratio = totalCreditsEarned / totalCreditsRequired;
     if (ratio >= 1.0) return 'on-track';
-    if (ratio >= 0.9) return 'ahead';
+    if (ratio >= 0.75) return 'on-track';
+    if (ratio >= 0.5) return 'ahead';
     return 'behind';
   };
 
@@ -62,15 +67,28 @@ export function DegreeNode({
 
   const statusBadge = getStatusBadge();
 
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      onToggle();
+    }
+  };
+
   return (
     <div
+      role="button"
+      tabIndex={0}
+      aria-expanded={!isCollapsed}
+      aria-label={`Degree summary for ${degreeTitle}`}
       onClick={onToggle}
+      onKeyDown={handleKeyDown}
       className={`
         degree-node
         px-8 py-6 rounded-xl border-3 cursor-pointer
         transition-all duration-300
         bg-gradient-to-r from-primary/5 to-secondary/5
         hover:shadow-xl hover:scale-[1.01]
+        focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2
         ${isCollapsed 
           ? 'collapsed border-primary/30 border-dashed min-h-[70px]' 
           : 'expanded border-primary min-h-[180px]'
@@ -85,12 +103,14 @@ export function DegreeNode({
             <span className="font-semibold">{degreeTitle}</span>
             <span className="text-muted-foreground">•</span>
             <span className="text-muted-foreground">
-              {totalCreditsPlanned}/{totalCreditsRequired} cr ({Math.round(progressPercentage)}%)
+              {fmtCredits(totalCreditsEarned, totalCreditsRequired)} ({fmtPercentage(earnedProgressPct)})
             </span>
+            <span className="text-muted-foreground">•</span>
+            <span className="text-muted-foreground">Planned: {fmtCredits(totalCreditsPlanned, totalCreditsRequired)}</span>
             <span className="text-muted-foreground">•</span>
             <span className="text-muted-foreground">~{estimatedMonths} months</span>
             <span className="text-muted-foreground">•</span>
-            <span className="text-muted-foreground">${estimatedCost.toLocaleString()}</span>
+            <span className="text-muted-foreground">{fmtCurrency(estimatedCost)}</span>
           </div>
           <ChevronRight className="h-5 w-5 text-primary" />
         </div>
@@ -133,10 +153,15 @@ export function DegreeNode({
           {/* Progress Section */}
           <div className="space-y-2">
             <div className="flex items-center justify-between text-sm">
-              <span className="font-medium">Progress: {totalCreditsPlanned}/{totalCreditsRequired} credits</span>
-              <span className="text-muted-foreground">{Math.round(progressPercentage)}%</span>
+              <span className="font-medium">Progress: {fmtCredits(totalCreditsEarned, totalCreditsRequired)} earned</span>
+              <span className="text-muted-foreground">{fmtPercentage(earnedProgressPct)}</span>
             </div>
-            <Progress value={progressPercentage} className="h-2" />
+            <Progress value={earnedProgressPct} className="h-2" />
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <Badge variant="outline" className="text-xs">
+                📚 Planned: {fmtCredits(totalCreditsPlanned, totalCreditsRequired)} ({fmtPercentage(plannedCoveragePct)})
+              </Badge>
+            </div>
           </div>
 
           {/* Metrics Grid */}
@@ -147,10 +172,27 @@ export function DegreeNode({
                 {statusBadge.emoji} {statusBadge.label}
               </Badge>
               {warnings && warnings.length > 0 && (
-                <Badge variant="destructive" className="text-xs">
-                  <AlertCircle className="h-3 w-3 mr-1" />
-                  {warnings.length} warning{warnings.length !== 1 ? 's' : ''}
-                </Badge>
+                <Popover>
+                  <PopoverTrigger asChild onClick={(e) => e.stopPropagation()}>
+                    <Badge variant="destructive" className="text-xs cursor-pointer hover:bg-destructive/90">
+                      <AlertCircle className="h-3 w-3 mr-1" />
+                      {warnings.length} warning{warnings.length !== 1 ? 's' : ''}
+                    </Badge>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-80" align="start">
+                    <div className="space-y-2">
+                      <h4 className="font-medium text-sm">Planning Warnings</h4>
+                      <div className="text-xs text-muted-foreground space-y-1">
+                        {warnings.map((warning, idx) => (
+                          <div key={idx} className="flex items-start gap-2">
+                            <span className="text-destructive">•</span>
+                            <span>{warning}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </PopoverContent>
+                </Popover>
               )}
             </div>
 
@@ -162,29 +204,11 @@ export function DegreeNode({
               </div>
               <div className="flex items-center gap-2">
                 <DollarSign className="h-4 w-4" />
-                <span>${estimatedCost.toLocaleString()}</span>
+                <span>{fmtCurrency(estimatedCost)}</span>
               </div>
             </div>
           </div>
 
-          {/* Warnings Detail */}
-          {warnings && warnings.length > 0 && (
-            <div className="pt-2 border-t border-border">
-              <div className="text-xs text-destructive">
-                {warnings.slice(0, 3).map((warning, idx) => (
-                  <div key={idx} className="flex items-start gap-2">
-                    <span>•</span>
-                    <span>{warning}</span>
-                  </div>
-                ))}
-                {warnings.length > 3 && (
-                  <div className="mt-1 text-muted-foreground">
-                    + {warnings.length - 3} more issue{warnings.length - 3 !== 1 ? 's' : ''}
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
         </div>
       )}
     </div>
