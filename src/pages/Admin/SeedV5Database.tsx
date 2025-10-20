@@ -22,14 +22,14 @@ export default function SeedV5Database() {
 
       // Create providers
       const providers = [
-        { id: crypto.randomUUID(), name: 'Coursera', website: 'https://coursera.org', accreditation_status: 'accredited' },
-        { id: crypto.randomUUID(), name: 'edX', website: 'https://edx.org', accreditation_status: 'accredited' },
-        { id: crypto.randomUUID(), name: 'Udacity', website: 'https://udacity.com', accreditation_status: 'recognized' }
+        { id: crypto.randomUUID(), name: 'Coursera', website_url: 'https://coursera.org', accreditation: 'accredited', type: 'mooc' as const },
+        { id: crypto.randomUUID(), name: 'edX', website_url: 'https://edx.org', accreditation: 'accredited', type: 'mooc' as const },
+        { id: crypto.randomUUID(), name: 'Udacity', website_url: 'https://udacity.com', accreditation: 'recognized', type: 'mooc' as const }
       ];
 
-      const { error: provError } = await supabase.from('course_providers' as any).upsert(providers, { onConflict: 'name' });
+      const { error: provError } = await supabase.from('providers' as any).upsert(providers, { onConflict: 'name' });
       if (provError) {
-        addLog(`❌ Provider seed error: ${provError.message}`);
+        addLog(`❌ Provider seed error: ${provError.message || provError.code || JSON.stringify(provError)}`);
         throw provError;
       }
       addLog(`✓ Providers seeded: ${providers.length}`);
@@ -44,7 +44,7 @@ export default function SeedV5Database() {
 
       const { error: eduError } = await supabase.from('edu_courses' as any).upsert(eduCourses, { onConflict: 'code' });
       if (eduError) {
-        addLog(`❌ Edu courses seed error: ${eduError.message}`);
+        addLog(`❌ Edu courses seed error: ${eduError.message || eduError.code || JSON.stringify(eduError)}`);
         throw eduError;
       }
       addLog(`✓ Edu courses seeded: ${eduCourses.length}`);
@@ -91,7 +91,7 @@ export default function SeedV5Database() {
 
       const { error: mktError } = await supabase.from('marketplace_courses' as any).upsert(marketplaceCourses, { onConflict: 'code' });
       if (mktError) {
-        addLog(`❌ Marketplace courses seed error: ${mktError.message}`);
+        addLog(`❌ Marketplace courses seed error: ${mktError.message || mktError.code || JSON.stringify(mktError)}`);
         throw mktError;
       }
       addLog(`✓ Marketplace courses seeded: ${marketplaceCourses.length}`);
@@ -103,7 +103,7 @@ export default function SeedV5Database() {
         .eq('program_id', 'bs_cs');
       
       if (deleteError) {
-        addLog(`❌ Delete requirements error: ${deleteError.message}`);
+        addLog(`❌ Delete requirements error: ${deleteError.message || deleteError.code || JSON.stringify(deleteError)}`);
         throw deleteError;
       }
       addLog('✓ Cleared existing bs_cs requirements');
@@ -118,7 +118,7 @@ export default function SeedV5Database() {
 
       const { error: reqError } = await supabase.from('program_requirements' as any).insert(requirements);
       if (reqError) {
-        addLog(`❌ Requirements seed error: ${reqError.message}`);
+        addLog(`❌ Requirements seed error: ${reqError.message || reqError.code || JSON.stringify(reqError)}`);
         throw reqError;
       }
       addLog(`✓ Program requirements seeded: ${requirements.length}`);
@@ -145,7 +145,7 @@ export default function SeedV5Database() {
 
       const { error: optError } = await supabase.from('requirement_options' as any).upsert(options, { onConflict: 'requirement_id,option_ref_id' });
       if (optError) {
-        addLog(`❌ Options seed error: ${optError.message}`);
+        addLog(`❌ Options seed error: ${optError.message || optError.code || JSON.stringify(optError)}`);
         throw optError;
       }
       addLog(`✓ Requirement options seeded: ${options.length}`);
