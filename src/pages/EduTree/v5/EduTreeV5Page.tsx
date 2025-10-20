@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { YearCard } from './components/YearCard';
 import { ModuleCard } from './components/ModuleCard';
 import { DegreeNode } from './components/DegreeNode';
@@ -11,10 +11,11 @@ import './styles/v5.css';
 const ENABLE_DEGREE_NODE = true;
 
 export default function EduTreeV5Page() {
-  // Initialize from localStorage
-  const [degreeCollapsed, setDegreeCollapsed] = useState(() => 
-    localStorage.getItem('v5.degreeCollapsed') === 'true'
-  );
+  // Initialize from localStorage (SSR-safe)
+  const [degreeCollapsed, setDegreeCollapsed] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    return localStorage.getItem('v5.degreeCollapsed') === 'true';
+  });
   const [collapsedYears, setCollapsedYears] = useState<Record<number, boolean>>({});
   const [collapsedModules, setCollapsedModules] = useState<Record<string, boolean>>({});
   
@@ -148,8 +149,8 @@ export default function EduTreeV5Page() {
     }, 0);
   };
 
-  // Get degree summary data
-  const getDegreeSummary = (): DegreeSummary => {
+  // Get degree summary data (memoized for performance)
+  const degreeSummary = useMemo((): DegreeSummary => {
     const allYears = [1, 2, 3, 4];
     const totalPlanned = allYears.reduce((sum, y) => sum + getYearCredits(y), 0);
     const totalEarned = getTotalEarnedCredits();
@@ -190,16 +191,16 @@ export default function EduTreeV5Page() {
       estimatedCost: remainingCredits * costPerCredit,
       warnings: allWarnings
     };
-  };
+  }, [collapsedModules]);
 
-  // Toggle degree with localStorage persistence
-  const toggleDegree = () => {
+  // Toggle degree with localStorage persistence (memoized for React.memo optimization)
+  const toggleDegree = useCallback(() => {
     const next = !degreeCollapsed;
     setDegreeCollapsed(next);
     if (typeof window !== 'undefined') {
       localStorage.setItem('v5.degreeCollapsed', String(next));
     }
-  };
+  }, [degreeCollapsed]);
 
   return (
     <div className="w-full min-h-screen bg-background p-8">
@@ -210,10 +211,11 @@ export default function EduTreeV5Page() {
       </div>
       
       {/* Degree Node */}
+      {/* Degree Node */}
       {ENABLE_DEGREE_NODE && (
         <div className="mb-6">
           <DegreeNode
-            {...getDegreeSummary()}
+            {...degreeSummary}
             isCollapsed={degreeCollapsed}
             onToggle={toggleDegree}
             yearCount={4}

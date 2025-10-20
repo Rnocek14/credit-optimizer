@@ -174,14 +174,14 @@ function DegreeNodeImpl({
             </div>
             <div 
               role="progressbar"
-              aria-valuenow={Math.round(earnedProgressPct)}
               aria-valuemin={0}
               aria-valuemax={100}
-              aria-label={`Degree completion: ${Math.round(earnedProgressPct)}%`}
+              aria-valuenow={Math.round(earnedProgressPct)}
+              aria-valuetext={`${Math.round(earnedProgressPct)}% complete (${earnedLabel})`}
             >
               <Progress value={earnedProgressPct} className="h-2" />
             </div>
-            {totalCreditsPlanned > totalCreditsEarned && (
+            {!isComplete && totalCreditsPlanned > totalCreditsEarned && (
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
                 <Badge variant="outline" className="text-xs">
                   📚 Planned: {fmtCredits(totalCreditsPlanned, totalCreditsRequired)} ({fmtPercentage(plannedCoveragePct)})
