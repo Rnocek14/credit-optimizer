@@ -169,12 +169,16 @@ export default function EduTreeV5Page() {
     
     // Dynamic time estimation based on pace
     const avgCreditsPerYear = totalPlanned / allYears.length;
-    const estimatedYears = avgCreditsPerYear > 0 
-      ? Math.ceil((totalRequired - totalEarned) / avgCreditsPerYear)
-      : 4;
+    const remainingCredits = Math.max(0, totalRequired - totalEarned);
+    
+    // Guard: if already complete or no pace data, don't calculate meaningless duration
+    const estimatedYears = remainingCredits === 0 
+      ? 0  // Completed
+      : avgCreditsPerYear > 0 
+        ? Math.ceil(remainingCredits / avgCreditsPerYear)
+        : 4; // Default fallback
     
     // Cost estimate based on remaining credits to complete degree
-    const remainingCredits = Math.max(0, totalRequired - totalEarned);
     
     return {
       degreeTitle: "Bachelor of Science in Computer Science",

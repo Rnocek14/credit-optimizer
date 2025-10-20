@@ -65,6 +65,7 @@ export function DegreeNode({
   };
 
   const statusBadge = getStatusBadge();
+  const isComplete = totalCreditsEarned >= totalCreditsRequired;
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' || e.key === ' ') {
@@ -107,7 +108,11 @@ export function DegreeNode({
             <span className="text-muted-foreground">•</span>
             <span className="text-muted-foreground">Planned: {fmtCredits(totalCreditsPlanned, totalCreditsRequired)}</span>
             <span className="text-muted-foreground">•</span>
-            <span className="text-muted-foreground">~{fmtDuration(estimatedMonths)}</span>
+            {isComplete ? (
+              <Badge variant="default" className="text-xs">✅ Completed</Badge>
+            ) : (
+              <span className="text-muted-foreground">~{fmtDuration(estimatedMonths)}</span>
+            )}
             <span className="text-muted-foreground">•</span>
             <span className="text-muted-foreground">{fmtCurrency(estimatedCost)}</span>
           </div>
@@ -156,11 +161,13 @@ export function DegreeNode({
               <span className="text-muted-foreground">{fmtPercentage(earnedProgressPct)}</span>
             </div>
             <Progress value={earnedProgressPct} className="h-2" />
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <Badge variant="outline" className="text-xs">
-                📚 Planned: {fmtCredits(totalCreditsPlanned, totalCreditsRequired)} ({fmtPercentage(plannedCoveragePct)})
-              </Badge>
-            </div>
+            {totalCreditsPlanned > totalCreditsEarned && (
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <Badge variant="outline" className="text-xs">
+                  📚 Planned: {fmtCredits(totalCreditsPlanned, totalCreditsRequired)} ({fmtPercentage(plannedCoveragePct)})
+                </Badge>
+              </div>
+            )}
           </div>
 
           {/* Metrics Grid */}
@@ -170,7 +177,7 @@ export function DegreeNode({
               <Badge variant={statusBadge.variant} className="text-xs">
                 {statusBadge.emoji} {statusBadge.label}
               </Badge>
-              {warnings && warnings.length > 0 && (
+              {warnings && warnings.length > 0 && !isComplete && (
                 <Popover>
                   <PopoverTrigger asChild onClick={(e) => e.stopPropagation()}>
                     <button
@@ -209,7 +216,13 @@ export function DegreeNode({
             <div className="flex items-center gap-6 text-sm text-muted-foreground">
               <div className="flex items-center gap-2">
                 <Clock className="h-4 w-4" />
-                <span>~{fmtDuration(estimatedMonths)}</span>
+                {isComplete ? (
+                  <Badge variant="default" className="text-xs">
+                    ✅ Completed
+                  </Badge>
+                ) : (
+                  <span>~{fmtDuration(estimatedMonths)}</span>
+                )}
               </div>
               <div className="flex items-center gap-2">
                 <DollarSign className="h-4 w-4" />
