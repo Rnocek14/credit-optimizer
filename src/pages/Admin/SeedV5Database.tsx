@@ -81,16 +81,34 @@ export default function SeedV5Database() {
       if (reqErr) { logErr('Insert requirements', reqErr); throw reqErr; }
       addLog(`✓ Inserted ${reqData?.length ?? 0} requirements`);
 
-      // 4) Create options using ONLY edu courses (1 per requirement)
-      addLog('→ Inserting requirement_options (edu only)');
-      const opts = (reqData as any)!.map((req: any, idx: number) => ({
-        id: crypto.randomUUID(),
-        requirement_id: req.id,
-        option_kind: 'course' as const,
-        option_ref_id: (eduData as any)[idx % (eduData as any).length].id,
-        credits_awarded: 3,
-        transfer_eligible: true,
-      }));
+      // 4) Create options using ONLY edu courses (3 per requirement if available)
+      addLog('→ Inserting requirement_options (3 edu options per requirement)');
+      
+      const edu = (eduData as any) as Array<{ id: string; credits?: number }>;
+      const reqs = (reqData as any) as Array<{ id: string; year: number }>;
+      
+      const optionsPerReq = Math.min(3, edu.length); // if you only have 2 courses, we'll add 2
+      const makeOptsForReq = (reqIndex: number, requirementId: string) => {
+        const start = reqIndex % edu.length;
+        // pick distinct course IDs per requirement
+        const picks = new Set<string>();
+        let i = 0;
+        while (picks.size < optionsPerReq && i < edu.length * 2) {
+          picks.add(edu[(start + i) % edu.length].id);
+          i++;
+        }
+        return Array.from(picks).map((courseId) => ({
+          id: crypto.randomUUID(),
+          requirement_id: requirementId,
+          option_kind: 'course' as const,
+          option_ref_id: courseId,
+          credits_awarded: 3,
+          transfer_eligible: true,
+        }));
+      };
+      
+      const opts = reqs.flatMap((req, idx) => makeOptsForReq(idx, req.id));
+      
       const { data: optData, error: optErr } = await supabase
         .from('requirement_options' as any)
         .insert(opts)
