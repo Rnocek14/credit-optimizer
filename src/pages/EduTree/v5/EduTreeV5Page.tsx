@@ -6,6 +6,7 @@ import canonicalCourses from '@/fixtures/prereqs/canonical-courses.json';
 import requirements from '@/fixtures/requirements/cs-degree-requirements.json';
 import { ModuleData, Course, Requirement, LoadHealth, DegreeSummary } from './types/v5';
 import { useV5DatabaseData } from './hooks/useV5DatabaseData';
+import { usePlanStore } from './state/usePlanStore';
 import './styles/v5.css';
 
 // Feature flag for quick rollback during demos
@@ -113,19 +114,29 @@ export default function EduTreeV5Page() {
   }, [collapsedModules]);
 
   // Get modules for a specific year (database or fixtures)
+  const selections = usePlanStore(s => s.selections);
+  
   const getModulesForYear = useCallback((year: number): ModuleData[] => {
     if (USE_DATABASE && dbData?.modulesByYear) {
       const modules = dbData.modulesByYear[year] || [];
-      console.log(`[V5] Year ${year}`, modules.map(m => ({
+      
+      // Enrich with live credits from store
+      const enriched = modules.map(m => {
+        const sel = selections[m.id];
+        const earned = sel?.selectedCredits ?? 0;
+        return { ...m, creditsEarned: earned };
+      });
+      
+      console.log(`[V5] Year ${year}`, enriched.map(m => ({
         id: m.id, 
         label: m.label,
         optionsCount: m.optionsCount,
-        optionsLen: m.marketplaceOptions?.length
+        creditsEarned: m.creditsEarned,
       })));
-      return modules;
+      return enriched;
     }
     return getModulesForYearFixtures(year);
-  }, [USE_DATABASE, dbData, getModulesForYearFixtures]);
+  }, [USE_DATABASE, dbData, getModulesForYearFixtures, selections]);
 
   // Calculate total credits for a year
   const getYearCredits = (year: number): number => {

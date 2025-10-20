@@ -1,6 +1,8 @@
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { CourseCard } from './CourseCard';
 import { ModuleData } from '../types/v5';
+import { usePlanStore } from '../state/usePlanStore';
+import { Checkbox } from '@/components/ui/checkbox';
 
 interface ModuleCardProps extends ModuleData {
   onToggle: () => void;
@@ -22,6 +24,9 @@ export function ModuleCard({
   marketplaceOptions
 }: ModuleCardProps) {
   const progress = creditsRequired > 0 ? (creditsEarned / creditsRequired) * 100 : 0;
+  const selections = usePlanStore(s => s.selections);
+  const toggleCourse = usePlanStore(s => s.toggleCourse);
+  const selectedIds = selections[id]?.selected ?? [];
   
   return (
     <div
@@ -112,39 +117,57 @@ export function ModuleCard({
           <div className="text-xs font-semibold text-muted-foreground mb-2">
             Available Options
           </div>
-          {marketplaceOptions.map(option => (
-            <div
-              key={option.id}
-              className="course-card bg-background border border-border rounded-md p-2 hover:bg-accent/50 transition-colors cursor-pointer flex items-center gap-2"
-              onClick={() => onCourseClick?.(option.courseId)}
-            >
-              <div className="flex-1 min-w-0">
-                <div className="text-xs font-medium truncate">
-                  {option.courseId}: {option.title}
-                </div>
-                <div className="text-xs text-muted-foreground flex items-center gap-2 mt-0.5">
-                  <span>{option.credits} cr</span>
-                  <span>•</span>
-                  <span className="truncate">{option.provider}</span>
-                  {option.cost_usd && (
-                    <>
-                      <span>•</span>
-                      <span>${option.cost_usd}</span>
-                    </>
-                  )}
-                </div>
-              </div>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  // Future: Handle option selection
-                }}
-                className="text-xs px-2 py-1 bg-primary/10 text-primary rounded hover:bg-primary/20 transition-colors whitespace-nowrap"
+          {marketplaceOptions.map(option => {
+            const isSelected = selectedIds.includes(option.courseId);
+            const atMax = !isSelected && (selections[id]?.selectedCredits ?? 0) >= creditsRequired;
+            
+            return (
+              <div
+                key={option.id}
+                className="course-card bg-background border border-border rounded-md p-2 hover:bg-accent/50 transition-colors flex items-center gap-2"
               >
-                Select
-              </button>
-            </div>
-          ))}
+                <Checkbox 
+                  checked={isSelected}
+                  onCheckedChange={() => {
+                    toggleCourse(id, option.courseId, option.credits, creditsRequired);
+                  }}
+                  disabled={atMax}
+                />
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs font-medium truncate">
+                    {option.courseId}: {option.title}
+                  </div>
+                  <div className="text-xs text-muted-foreground flex items-center gap-2 mt-0.5">
+                    <span>{option.credits} cr</span>
+                    <span>•</span>
+                    <span className="truncate">{option.provider}</span>
+                    {option.cost_usd !== null && (
+                      <>
+                        <span>•</span>
+                        <span>${option.cost_usd}</span>
+                      </>
+                    )}
+                  </div>
+                </div>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toggleCourse(id, option.courseId, option.credits, creditsRequired);
+                  }}
+                  disabled={atMax}
+                  className={`text-xs px-3 py-1 rounded transition-colors whitespace-nowrap ${
+                    isSelected 
+                      ? 'bg-green-100 text-green-700 hover:bg-green-200' 
+                      : atMax
+                        ? 'bg-muted text-muted-foreground cursor-not-allowed'
+                        : 'bg-primary/10 text-primary hover:bg-primary/20'
+                  }`}
+                >
+                  {isSelected ? '✓ Selected' : atMax ? 'Max reached' : 'Select'}
+                </button>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
