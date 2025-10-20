@@ -1,12 +1,14 @@
 import { useState, useMemo } from 'react';
 import { YearCard } from './components/YearCard';
 import { ModuleCard } from './components/ModuleCard';
+import { DegreeNode } from './components/DegreeNode';
 import canonicalCourses from '@/fixtures/prereqs/canonical-courses.json';
 import requirements from '@/fixtures/requirements/cs-degree-requirements.json';
-import { ModuleData, Course, Requirement, LoadHealth } from './types/v5';
+import { ModuleData, Course, Requirement, LoadHealth, DegreeSummary } from './types/v5';
 import './styles/v5.css';
 
 export default function EduTreeV5Page() {
+  const [degreeCollapsed, setDegreeCollapsed] = useState(false);
   const [collapsedYears, setCollapsedYears] = useState<Record<number, boolean>>({});
   const [collapsedModules, setCollapsedModules] = useState<Record<string, boolean>>({});
   
@@ -119,19 +121,57 @@ export default function EduTreeV5Page() {
     };
   };
 
+  // Get degree summary data
+  const getDegreeSummary = (): DegreeSummary => {
+    const allYears = [1, 2, 3, 4];
+    const totalPlanned = allYears.reduce((sum, y) => sum + getYearCredits(y), 0);
+    const totalRequired = 120;
+    const costPerCredit = 375;
+    
+    // Collect warnings from all years
+    const allWarnings: string[] = [];
+    allYears.forEach(year => {
+      const yearData = getYearData(year);
+      if (yearData.loadHealth === 'overloaded') {
+        allWarnings.push(`Year ${year} is overloaded`);
+      } else if (yearData.loadHealth === 'underloaded') {
+        allWarnings.push(`Year ${year} is underloaded`);
+      }
+    });
+    
+    return {
+      degreeTitle: "Bachelor of Science in Computer Science",
+      degreeLevel: "bachelor",
+      totalCreditsRequired: totalRequired,
+      totalCreditsPlanned: totalPlanned,
+      totalCreditsEarned: 0, // Mock for now
+      estimatedMonths: 48, // 4 years
+      estimatedCost: totalPlanned * costPerCredit,
+      warnings: allWarnings
+    };
+  };
+
   return (
     <div className="w-full min-h-screen bg-background p-8">
       {/* Header */}
       <div className="mb-8">
         <h1 className="text-2xl font-bold">EduTree V5 - Year Spine + Modules</h1>
-        <p className="text-sm text-muted-foreground">Click years to show modules, click modules to show courses</p>
-        <div className="text-xs text-muted-foreground mt-2">
-          Collapsed Years: {Object.entries(collapsedYears).filter(([_, v]) => v).map(([k]) => `Year ${k}`).join(', ') || 'none'}
-        </div>
+        <p className="text-sm text-muted-foreground">Click degree node or years to collapse/expand</p>
       </div>
       
-      {/* Grid Layout: 4 columns for 4 years */}
-      <div className="year-spine-grid grid grid-cols-4 gap-6 items-start">
+      {/* Degree Node */}
+      <div className="mb-6">
+        <DegreeNode
+          {...getDegreeSummary()}
+          isCollapsed={degreeCollapsed}
+          onToggle={() => setDegreeCollapsed(!degreeCollapsed)}
+          yearCount={4}
+        />
+      </div>
+      
+      {/* Grid Layout: 4 columns for 4 years - hidden when degree collapsed */}
+      {!degreeCollapsed && (
+        <div className="year-spine-grid grid grid-cols-4 gap-6 items-start">
         {[1, 2, 3, 4].map(year => {
           const yearData = getYearData(year);
           return (
@@ -162,7 +202,8 @@ export default function EduTreeV5Page() {
             </div>
           );
         })}
-      </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -38,3 +38,16 @@ export interface ModulesSummary {
   completed: number;
   inProgress: number;
 }
+
+export interface DegreeSummary {
+  degreeTitle: string;
+  degreeLevel: 'bachelor' | 'associate' | 'master';
+  totalCreditsRequired: number;
+  totalCreditsPlanned: number;
+  totalCreditsEarned: number;
+  estimatedMonths: number;
+  estimatedCost: number;
+  warnings: string[];
+}
+
+export type DegreeStatus = 'on-track' | 'ahead' | 'behind';
