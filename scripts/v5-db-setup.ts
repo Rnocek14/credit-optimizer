@@ -116,6 +116,15 @@ async function seed() {
   if (mktError) console.error('Marketplace courses seed error:', mktError);
   else console.log(`✓ Marketplace courses seeded: ${marketplaceCourses.length}`);
 
+  // Delete existing requirements for bs_cs to ensure clean slate
+  const { error: deleteError } = await supabase
+    .from('program_requirements')
+    .delete()
+    .eq('program_id', 'bs_cs');
+  
+  if (deleteError) console.error('Delete requirements error:', deleteError);
+  else console.log('✓ Cleared existing bs_cs requirements');
+
   const requirements = [
     { id: crypto.randomUUID(), program_id: 'bs_cs', year: 1, category: 'foundation', name: 'Foundations', description: 'Core programming foundations', credits_required: 6 },
     { id: crypto.randomUUID(), program_id: 'bs_cs', year: 2, category: 'core', name: 'Core I', description: 'Data structures and algorithms', credits_required: 6 },
@@ -123,7 +132,7 @@ async function seed() {
     { id: crypto.randomUUID(), program_id: 'bs_cs', year: 4, category: 'capstone', name: 'Capstone', description: 'Final project and electives', credits_required: 6 }
   ];
 
-  const { error: reqError } = await supabase.from('program_requirements').upsert(requirements, { onConflict: 'program_id,year,category' });
+  const { error: reqError } = await supabase.from('program_requirements').insert(requirements);
   if (reqError) console.error('Requirements seed error:', reqError);
   else console.log(`✓ Program requirements seeded: ${requirements.length}`);
 
