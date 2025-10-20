@@ -14,30 +14,45 @@ function getCategoryIcon(category: string): string {
   return iconMap[category.toLowerCase()] || '📖';
 }
 
-function transformToModuleData(requirements: any[]): ModuleData[] {
+function transformToModuleData(
+  requirements: any[],
+  options: any[],
+  courses: any[],
+  equivalences: any[]
+): ModuleData[] {
+  // Create lookup maps for efficient joining
+  const courseMap = new Map(courses.map(c => [c.id, c]));
+  const equivalenceMap = new Map(equivalences.map(e => [e.course_id, e]));
+  
   return requirements.map(req => {
-    const options = req.requirement_options || [];
-    const marketplaceCourses = options
-      .map((opt: any) => opt.marketplace_courses)
-      .filter((c: any) => c !== null && c !== undefined && typeof c === 'object' && !c.error);
+    // Get options for this requirement
+    const reqOptions = options.filter(opt => opt.requirement_id === req.id);
     
-    const hasAceCredit = req.equivalence_group_members?.some(
-      (egm: any) => egm.source === 'ACE'
-    ) || false;
+    // Get marketplace courses for these options
+    const marketplaceCourses = reqOptions
+      .filter(opt => opt.option_kind === 'course')
+      .map(opt => courseMap.get(opt.option_ref_id))
+      .filter(Boolean);
     
-    const hasClep = req.equivalence_group_members?.some(
-      (egm: any) => egm.source === 'CLEP'
-    ) || false;
+    // Check ACE/CLEP from equivalences
+    const hasAceCredit = marketplaceCourses.some(c => 
+      equivalenceMap.get(c.id)?.source === 'ACE'
+    );
+    const hasClep = marketplaceCourses.some(c => 
+      equivalenceMap.get(c.id)?.source === 'CLEP'
+    );
     
-    const costs = marketplaceCourses.map((c: any) => c?.cost_usd).filter((c: any) => c !== null && c !== undefined);
+    const costs = marketplaceCourses
+      .map(c => c.cost_usd)
+      .filter(cost => cost !== null && cost !== undefined);
     const cheapestOption = costs.length > 0 ? Math.min(...costs) : null;
 
     // Map marketplace courses to Course[] format for display
     const coursesForDisplay = marketplaceCourses.slice(0, 3).map((c: any) => ({
-      courseId: c?.id || '',
-      title: c?.title || 'Untitled Course',
-      credits: c?.credits || 0,
-      subject: c?.providers?.name || 'General',
+      courseId: c.id,
+      title: c.title || 'Untitled Course',
+      credits: c.credits || 0,
+      subject: c.providers?.name || 'General',
     }));
 
     return {
@@ -52,14 +67,14 @@ function transformToModuleData(requirements: any[]): ModuleData[] {
       isCollapsed: true,
       minSelect: req.min_select || undefined,
       marketplaceOptions: marketplaceCourses.map((c: any) => ({
-        id: c?.id || '',
-        title: c?.title || 'Untitled',
-        provider: c?.providers?.name || null,
-        providerId: c?.provider_id || '',
-        credits: c?.credits || 0,
-        cost_usd: c?.cost_usd ?? null,
-        cri_score: c?.cri_score ?? null,
-        duration_weeks: c?.duration_weeks ?? null,
+        id: c.id,
+        title: c.title || 'Untitled',
+        provider: c.providers?.name || null,
+        providerId: c.provider_id || '',
+        credits: c.credits || 0,
+        cost_usd: c.cost_usd ?? null,
+        cri_score: c.cri_score ?? null,
+        duration_weeks: c.duration_weeks ?? null,
       })),
       optionsCount: marketplaceCourses.length,
       cheapestOption,
@@ -75,42 +90,95 @@ export function useV5MarketplaceData(programId: string) {
     queryFn: async () => {
       console.log('[useV5MarketplaceData] Fetching requirements for program:', programId);
       
-      const { data, error } = await supabase
+      // Step 1: Get all program requirements
+      const { data: requirements, error: reqError } = await supabase
         .from('program_requirements')
         .select(`
-          *,
-          requirement_options (
-            id,
-            requirement_id,
-            course_id,
-            marketplace_courses (
-              id,
-              title,
-              credits,
-              cost_usd,
-              duration_weeks,
-              cri_score,
-              provider_id,
-              providers (
-                name
-              )
-            )
-          ),
-          equivalence_group_members (
-            source
-          )
+          id,
+          program_id,
+          year,
+          category,
+          name,
+          description,
+          credits_required,
+          min_select
         `)
         .eq('program_id', programId)
         .order('year', { ascending: true });
 
-      if (error) {
-        console.error('[useV5MarketplaceData] Query error:', error);
-        throw error;
+      if (reqError) {
+        console.error('[useV5MarketplaceData] Requirements error:', reqError);
+        throw reqError;
       }
 
-      console.log('[useV5MarketplaceData] Fetched:', data?.length, 'requirements');
+      const requirementIds = requirements?.map(r => r.id) || [];
+      console.log('[useV5MarketplaceData] Fetched:', requirements?.length, 'requirements');
+
+      // Step 2: Get all requirement options
+      const { data: options, error: optError } = await supabase
+        .from('requirement_options')
+        .select('id, requirement_id, option_kind, option_ref_id, credits_awarded')
+        .in('requirement_id', requirementIds);
+
+      if (optError) {
+        console.error('[useV5MarketplaceData] Options error:', optError);
+        throw optError;
+      }
+
+      console.log('[useV5MarketplaceData] Fetched:', options?.length, 'options');
+
+      // Step 3: Get marketplace courses
+      const courseIds = options
+        ?.filter(opt => opt.option_kind === 'course')
+        .map(opt => opt.option_ref_id) || [];
+
+      const { data: courses, error: courseError } = await supabase
+        .from('marketplace_courses')
+        .select(`
+          id,
+          code,
+          title,
+          credits,
+          cost_usd,
+          duration_weeks,
+          level,
+          cri_score,
+          provider_id,
+          providers (
+            name,
+            type
+          )
+        `)
+        .in('id', courseIds);
+
+      if (courseError) {
+        console.error('[useV5MarketplaceData] Courses error:', courseError);
+        throw courseError;
+      }
+
+      console.log('[useV5MarketplaceData] Fetched:', courses?.length, 'courses');
+
+      // Step 4: Get equivalence data
+      const { data: equivalences, error: eqError } = await supabase
+        .from('equivalence_group_members')
+        .select('course_id, source, confidence')
+        .in('course_id', courseIds);
+
+      if (eqError) {
+        console.error('[useV5MarketplaceData] Equivalences error:', eqError);
+        throw eqError;
+      }
+
+      console.log('[useV5MarketplaceData] Fetched:', equivalences?.length, 'equivalences');
       
-      const transformed = transformToModuleData(data || []);
+      // Transform with manual joins
+      const transformed = transformToModuleData(
+        requirements || [],
+        options || [],
+        courses || [],
+        equivalences || []
+      );
+      
       console.log('[useV5MarketplaceData] Transformed modules:', transformed.map(m => ({
         label: m.label,
         courses: m.courses.length,
