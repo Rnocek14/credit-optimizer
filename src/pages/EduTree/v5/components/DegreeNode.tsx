@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { ChevronDown, ChevronRight, GraduationCap, Clock, DollarSign, AlertCircle } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { fmtCurrency, fmtCredits, fmtPercentage, fmtDuration } from '@/lib/formatters';
+import { trackTelemetryEvent } from '@/utils/telemetry';
 import type { DegreeSummary, DegreeStatus } from '../types/v5';
 
 interface DegreeNodeProps extends DegreeSummary {
@@ -77,6 +78,29 @@ function DegreeNodeImpl({
     ? `${cappedEarned}/${totalCreditsRequired} cr (+${surplus})`
     : fmtCredits(totalCreditsEarned, totalCreditsRequired);
 
+  // Data validation guard - warn if invalid degree template
+  useEffect(() => {
+    if (totalCreditsRequired === 0) {
+      console.warn('[DegreeNode] Invalid degree template: totalCreditsRequired is 0', {
+        degreeTitle,
+        degreeLevel
+      });
+    }
+  }, [totalCreditsRequired, degreeTitle, degreeLevel]);
+
+  // Analytics: track when completed degree is viewed
+  useEffect(() => {
+    if (isComplete) {
+      trackTelemetryEvent({
+        task: 'degree_completed_viewed',
+        complexity: { 
+          earnedCredits: totalCreditsEarned,
+          requiredCredits: totalCreditsRequired 
+        }
+      });
+    }
+  }, [isComplete, totalCreditsEarned, totalCreditsRequired]);
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
@@ -90,7 +114,13 @@ function DegreeNodeImpl({
       tabIndex={0}
       aria-expanded={!isCollapsed}
       aria-label={`Degree summary for ${degreeTitle}`}
-      onClick={onToggle}
+      onClick={() => {
+        onToggle();
+        trackTelemetryEvent({
+          task: 'degree_toggle',
+          complexity: { collapsed: !isCollapsed }
+        });
+      }}
       onKeyDown={handleKeyDown}
       className={`
         degree-node
@@ -203,6 +233,12 @@ function DegreeNodeImpl({
                     <button
                       aria-haspopup="dialog"
                       aria-label={`View ${warnings.length} planning warning${warnings.length !== 1 ? 's' : ''}`}
+                      onClick={() => {
+                        trackTelemetryEvent({
+                          task: 'degree_warnings_open',
+                          complexity: { warningCount: warnings.length }
+                        });
+                      }}
                     >
                       <Badge variant="destructive" className="text-xs cursor-pointer hover:bg-destructive/90">
                         <AlertCircle className="h-3 w-3 mr-1" />

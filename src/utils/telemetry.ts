@@ -19,7 +19,10 @@ export type AltCourseTelemetryTask =
   | 'alt_resolve_failed'
   | 'yt_playlist_import_started'
   | 'yt_playlist_import_completed'
-  | 'db_health_checked';
+  | 'db_health_checked'
+  | 'degree_toggle'
+  | 'degree_warnings_open'
+  | 'degree_completed_viewed';
 
 export const trackTelemetryEvent = async (event: TelemetryEvent): Promise<void> => {
   try {
