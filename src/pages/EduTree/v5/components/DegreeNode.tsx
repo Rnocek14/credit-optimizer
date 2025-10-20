@@ -2,7 +2,7 @@ import { ChevronDown, ChevronRight, GraduationCap, Clock, DollarSign, AlertCircl
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { fmtCurrency, fmtCredits, fmtPercentage } from '@/lib/formatters';
+import { fmtCurrency, fmtCredits, fmtPercentage, fmtDuration } from '@/lib/formatters';
 import type { DegreeSummary, DegreeStatus } from '../types/v5';
 
 interface DegreeNodeProps extends DegreeSummary {
@@ -107,7 +107,7 @@ export function DegreeNode({
             <span className="text-muted-foreground">•</span>
             <span className="text-muted-foreground">Planned: {fmtCredits(totalCreditsPlanned, totalCreditsRequired)}</span>
             <span className="text-muted-foreground">•</span>
-            <span className="text-muted-foreground">~{estimatedMonths} months</span>
+            <span className="text-muted-foreground">~{fmtDuration(estimatedMonths)}</span>
             <span className="text-muted-foreground">•</span>
             <span className="text-muted-foreground">{fmtCurrency(estimatedCost)}</span>
           </div>
@@ -173,12 +173,22 @@ export function DegreeNode({
               {warnings && warnings.length > 0 && (
                 <Popover>
                   <PopoverTrigger asChild onClick={(e) => e.stopPropagation()}>
-                    <Badge variant="destructive" className="text-xs cursor-pointer hover:bg-destructive/90">
-                      <AlertCircle className="h-3 w-3 mr-1" />
-                      {warnings.length} warning{warnings.length !== 1 ? 's' : ''}
-                    </Badge>
+                    <button
+                      aria-haspopup="dialog"
+                      aria-label={`View ${warnings.length} planning warning${warnings.length !== 1 ? 's' : ''}`}
+                    >
+                      <Badge variant="destructive" className="text-xs cursor-pointer hover:bg-destructive/90">
+                        <AlertCircle className="h-3 w-3 mr-1" />
+                        {warnings.length} warning{warnings.length !== 1 ? 's' : ''}
+                      </Badge>
+                    </button>
                   </PopoverTrigger>
-                  <PopoverContent className="w-80" align="start">
+                  <PopoverContent 
+                    className="w-80" 
+                    align="start"
+                    role="dialog"
+                    aria-label="Planning warnings"
+                  >
                     <div className="space-y-2">
                       <h4 className="font-medium text-sm">Planning Warnings</h4>
                       <div className="text-xs text-muted-foreground space-y-1">
@@ -199,7 +209,7 @@ export function DegreeNode({
             <div className="flex items-center gap-6 text-sm text-muted-foreground">
               <div className="flex items-center gap-2">
                 <Clock className="h-4 w-4" />
-                <span>~{estimatedMonths} months</span>
+                <span>~{fmtDuration(estimatedMonths)}</span>
               </div>
               <div className="flex items-center gap-2">
                 <DollarSign className="h-4 w-4" />

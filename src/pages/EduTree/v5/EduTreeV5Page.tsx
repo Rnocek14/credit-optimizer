@@ -127,18 +127,23 @@ export default function EduTreeV5Page() {
     };
   };
 
-  // Calculate actual earned credits from completed modules
-  // NOTE: Currently treats modules as atomic units - a module counts as "earned"
-  // only when ALL its courses are complete (creditsEarned >= creditsRequired).
-  // TODO: Update this to handle partial module completion when student progress
-  // tracking is implemented with granular course-level completion data.
+  // Helper: Safely count partial progress up to module's required credits
+  const clampEarned = (earned?: number, required?: number): number => {
+    return Math.max(0, Math.min(earned ?? 0, required ?? 0));
+  };
+
+  // Calculate actual earned credits from all modules
+  // NOTE: Uses clamped creditsEarned (min: 0, max: creditsRequired) to safely
+  // handle partial progress. Works with both atomic completion (0 or full credits)
+  // and incremental tracking (1, 2, 3... credits as courses complete).
   const getTotalEarnedCredits = (): number => {
     const allYears = [1, 2, 3, 4];
     return allYears.reduce((sum, year) => {
       const modules = getModulesForYear(year);
-      const yearEarned = modules
-        .filter(m => m.creditsEarned >= m.creditsRequired)
-        .reduce((s, m) => s + m.creditsEarned, 0);
+      const yearEarned = modules.reduce(
+        (s, m) => s + clampEarned(m.creditsEarned, m.creditsRequired),
+        0
+      );
       return sum + yearEarned;
     }, 0);
   };
@@ -168,6 +173,9 @@ export default function EduTreeV5Page() {
       ? Math.ceil((totalRequired - totalEarned) / avgCreditsPerYear)
       : 4;
     
+    // Cost estimate based on remaining credits to complete degree
+    const remainingCredits = Math.max(0, totalRequired - totalEarned);
+    
     return {
       degreeTitle: "Bachelor of Science in Computer Science",
       degreeLevel: "bachelor",
@@ -175,7 +183,7 @@ export default function EduTreeV5Page() {
       totalCreditsPlanned: totalPlanned,
       totalCreditsEarned: totalEarned,
       estimatedMonths: estimatedYears * 12,
-      estimatedCost: totalPlanned * costPerCredit,
+      estimatedCost: remainingCredits * costPerCredit,
       warnings: allWarnings
     };
   };
