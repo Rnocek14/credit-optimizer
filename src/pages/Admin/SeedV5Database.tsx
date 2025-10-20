@@ -25,25 +25,8 @@ export default function SeedV5Database() {
     try {
       addLog('🌱 Starting **LITE** seed (requirements + options using existing edu_courses)…\n');
 
-      // 0) Resolve/create program
-      addLog('→ Resolving program_id for BS_CS / bs_cs');
-      const { data: p1, error: e1 } = await supabase.from('programs' as any).select('id, code').eq('code','BS_CS').maybeSingle();
-      if (e1) addLog(`   (note) lookup BS_CS: ${e1.message}`);
-      const { data: p2, error: e2 } = await supabase.from('programs' as any).select('id, code').eq('code','bs_cs').maybeSingle();
-      if (e2) addLog(`   (note) lookup bs_cs: ${e2.message}`);
-
-      let programId: string | undefined = (p1 as any)?.id ?? (p2 as any)?.id;
-      if (!programId) {
-        const { data: created, error: eCreate } = await supabase
-          .from('programs' as any)
-          .insert([{ code: 'BS_CS', title: 'BS Computer Science' }])
-          .select('id').single();
-        if (eCreate) { logErr('Create program', eCreate); throw eCreate; }
-        programId = (created as any)?.id;
-        addLog(`✓ Program created: ${programId}`);
-      } else {
-        addLog(`✓ Program found: ${programId}`);
-      }
+      const programId = 'bs_cs';
+      addLog('✓ Using program_id: bs_cs');
 
       // 1) Fetch existing edu courses (we only use what already exists)
       addLog('→ Fetching existing edu_courses');
