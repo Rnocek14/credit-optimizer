@@ -13,6 +13,118 @@ export default function SeedV5Database() {
     setLog(prev => [...prev, message]);
   };
 
+  const seedLiteDatabase = async () => {
+    setIsSeeding(true);
+    setLog([]);
+    const logErr = (label: string, err: any) => {
+      const msg = typeof err?.message === 'string' ? err.message : JSON.stringify(err);
+      const code = err?.code ? ` [${err.code}]` : '';
+      addLog(`❌ ${label}:${code} ${msg}`);
+    };
+
+    try {
+      addLog('🌱 Starting **LITE** seed (requirements + options using existing edu_courses)…\n');
+
+      // 0) Resolve/create program
+      addLog('→ Resolving program_id for BS_CS / bs_cs');
+      const { data: p1, error: e1 } = await supabase.from('programs' as any).select('id, code').eq('code','BS_CS').maybeSingle();
+      if (e1) addLog(`   (note) lookup BS_CS: ${e1.message}`);
+      const { data: p2, error: e2 } = await supabase.from('programs' as any).select('id, code').eq('code','bs_cs').maybeSingle();
+      if (e2) addLog(`   (note) lookup bs_cs: ${e2.message}`);
+
+      let programId: string | undefined = (p1 as any)?.id ?? (p2 as any)?.id;
+      if (!programId) {
+        const { data: created, error: eCreate } = await supabase
+          .from('programs' as any)
+          .insert([{ code: 'BS_CS', title: 'BS Computer Science' }])
+          .select('id').single();
+        if (eCreate) { logErr('Create program', eCreate); throw eCreate; }
+        programId = (created as any)?.id;
+        addLog(`✓ Program created: ${programId}`);
+      } else {
+        addLog(`✓ Program found: ${programId}`);
+      }
+
+      // 1) Fetch existing edu courses (we only use what already exists)
+      addLog('→ Fetching existing edu_courses');
+      const { data: eduData, error: eduErr } = await supabase
+        .from('edu_courses' as any)
+        .select('id, code, title, credits')
+        .limit(8);
+      if (eduErr) { logErr('Fetch edu_courses', eduErr); throw eduErr; }
+      if (!eduData || eduData.length < 2) {
+        addLog('⚠️ Need at least 2 edu_courses to create options. Add a couple in Supabase and re-run.');
+        return;
+      }
+      addLog(`✓ Found ${eduData.length} edu_courses`);
+
+      // 2) Clear existing reqs safely (options → requirements) for this program
+      addLog('→ Clearing existing requirements for program (best effort)');
+      const { data: existingReqs } = await supabase
+        .from('program_requirements' as any)
+        .select('id')
+        .eq('program_id', programId);
+
+      const existingReqIds = (existingReqs as any)?.map((r: any) => r.id) ?? [];
+      if (existingReqIds.length) {
+        const { error: delOptsErr } = await supabase
+          .from('requirement_options' as any)
+          .delete()
+          .in('requirement_id', existingReqIds);
+        if (delOptsErr) addLog(`   (note) delete options: ${delOptsErr.message}`);
+      }
+
+      const { error: delReqsErr } = await supabase
+        .from('program_requirements' as any)
+        .delete()
+        .eq('program_id', programId);
+      if (delReqsErr) addLog(`   (note) delete requirements: ${delReqsErr.message}`);
+
+      addLog('✓ Cleared existing');
+
+      // 3) Insert 4 requirements (Years 1–4, 6 credits each)
+      addLog('→ Inserting program_requirements (Years 1–4, 6 cr each)');
+      const requirements = [
+        { id: crypto.randomUUID(), program_id: programId, year: 1, category: 'foundation',     name: 'Foundations',     credits_required: 6, description: 'Core programming foundations' },
+        { id: crypto.randomUUID(), program_id: programId, year: 2, category: 'core',           name: 'Core I',          credits_required: 6, description: 'Data structures and algorithms' },
+        { id: crypto.randomUUID(), program_id: programId, year: 3, category: 'specialization', name: 'Specialization',  credits_required: 6, description: 'Track-specific courses' },
+        { id: crypto.randomUUID(), program_id: programId, year: 4, category: 'capstone',       name: 'Capstone',        credits_required: 6, description: 'Final project and electives' },
+      ];
+      const { data: reqData, error: reqErr } = await supabase
+        .from('program_requirements' as any)
+        .insert(requirements)
+        .select('id, year')
+        .order('year');
+      if (reqErr) { logErr('Insert requirements', reqErr); throw reqErr; }
+      addLog(`✓ Inserted ${reqData?.length ?? 0} requirements`);
+
+      // 4) Create options using ONLY edu courses (1 per requirement)
+      addLog('→ Inserting requirement_options (edu only)');
+      const opts = (reqData as any)!.map((req: any, idx: number) => ({
+        id: crypto.randomUUID(),
+        requirement_id: req.id,
+        option_kind: 'course' as const,
+        option_ref_id: (eduData as any)[idx % (eduData as any).length].id,
+        credits_awarded: 3,
+        transfer_eligible: true,
+      }));
+      const { data: optData, error: optErr } = await supabase
+        .from('requirement_options' as any)
+        .insert(opts)
+        .select('id');
+      if (optErr) { logErr('Insert options', optErr); throw optErr; }
+      addLog(`✓ Inserted ${(optData as any)?.length ?? 0} options`);
+
+      addLog('\n✨ LITE seeding complete! Open /edu-tree-v5?db=1 and hard refresh.');
+      toast({ title: 'Lite Seeded', description: 'Years 1–4 added with 6 credits each (edu only).' });
+    } catch (e: any) {
+      logErr('Seeder failed', e);
+      toast({ title: 'Seeding Failed', description: e?.message ?? 'Unknown error', variant: 'destructive' });
+    } finally {
+      setIsSeeding(false);
+    }
+  };
+
   const seedDatabase = async () => {
     setIsSeeding(true);
     setLog([]);
@@ -183,21 +295,40 @@ export default function SeedV5Database() {
           <li>8 requirement options (course alternatives)</li>
         </ul>
 
-        <Button 
-          onClick={seedDatabase} 
-          disabled={isSeeding}
-          size="lg"
-          className="w-full"
-        >
-          {isSeeding ? (
-            <>
-              <LoadingSpinner size="sm" className="mr-2" />
-              Seeding Database...
-            </>
-          ) : (
-            '🌱 Seed Database'
-          )}
-        </Button>
+        <div className="flex gap-3">
+          <Button 
+            onClick={seedDatabase} 
+            disabled={isSeeding}
+            size="lg"
+            className="flex-1"
+          >
+            {isSeeding ? (
+              <>
+                <LoadingSpinner size="sm" className="mr-2" />
+                Seeding...
+              </>
+            ) : (
+              '🌱 Full Seed'
+            )}
+          </Button>
+          
+          <Button 
+            onClick={seedLiteDatabase} 
+            disabled={isSeeding}
+            size="lg"
+            variant="outline"
+            className="flex-1"
+          >
+            {isSeeding ? (
+              <>
+                <LoadingSpinner size="sm" className="mr-2" />
+                Seeding...
+              </>
+            ) : (
+              '🌱 Lite Seed (edu only)'
+            )}
+          </Button>
+        </div>
       </div>
 
       {log.length > 0 && (
