@@ -233,16 +233,14 @@ export default function EduTreeV5Page() {
 
   return (
     <div className="w-full min-h-screen bg-background p-8">
-      {/* Dev mode toggle */}
-      {import.meta.env.DEV && (
-        <button
-          onClick={handleToggleMode}
-          className="fixed bottom-4 right-4 px-3 py-1.5 bg-primary text-primary-foreground rounded-md text-xs font-medium shadow-lg hover:bg-primary/90 transition-colors z-50"
-          title="Toggle between database and fixture data"
-        >
-          {USE_DATABASE ? '🗄️ Database' : '📄 Fixtures'}
-        </button>
-      )}
+      {/* Dev mode toggle - always visible for testing */}
+      <button
+        onClick={handleToggleMode}
+        className="fixed bottom-4 right-4 px-3 py-1.5 bg-primary text-primary-foreground rounded-md text-xs font-medium shadow-lg hover:bg-primary/90 transition-colors z-50"
+        title="Toggle between database and fixture data"
+      >
+        {USE_DATABASE ? '🗄️ Database' : '🧪 Fixtures'}
+      </button>
 
       {/* Loading state */}
       {USE_DATABASE && isLoading && (
