@@ -87,7 +87,7 @@ function transformToModuleData(
 
 export function useV5MarketplaceData(programId: string) {
   return useQuery({
-    queryKey: ['v5-marketplace', programId],
+    queryKey: ['v5-marketplace-v2', programId], // Changed key to force cache refresh
     queryFn: async () => {
       console.log('[useV5MarketplaceData] Fetching requirements for program:', programId);
       
