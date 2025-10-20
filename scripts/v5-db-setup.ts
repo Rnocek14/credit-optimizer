@@ -9,7 +9,7 @@ const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_KEY);
 async function diagnose() {
   console.log('\n📊 V5 Database Diagnostic\n');
 
-  const { data: providers } = await supabase.from('course_providers').select('id');
+  const { data: providers } = await supabase.from('providers').select('id');
   const { data: eduCourses } = await supabase.from('edu_courses').select('id');
   const { data: marketplaceCourses } = await supabase.from('marketplace_courses').select('id');
   const { data: requirements } = await supabase.from('program_requirements').select('id, year, category, name, credits_required').eq('program_id', 'bs_cs');
@@ -53,12 +53,12 @@ async function seed() {
   console.log('\n🌱 Seeding V5 Database Data\n');
 
   const providers = [
-    { id: crypto.randomUUID(), name: 'Coursera', website: 'https://coursera.org', accreditation_status: 'accredited' },
-    { id: crypto.randomUUID(), name: 'edX', website: 'https://edx.org', accreditation_status: 'accredited' },
-    { id: crypto.randomUUID(), name: 'Udacity', website: 'https://udacity.com', accreditation_status: 'recognized' }
+    { id: crypto.randomUUID(), name: 'Coursera', website_url: 'https://coursera.org', accreditation: 'accredited', type: 'mooc' as const },
+    { id: crypto.randomUUID(), name: 'edX', website_url: 'https://edx.org', accreditation: 'accredited', type: 'mooc' as const },
+    { id: crypto.randomUUID(), name: 'Udacity', website_url: 'https://udacity.com', accreditation: 'recognized', type: 'mooc' as const }
   ];
 
-  const { error: provError } = await supabase.from('course_providers').upsert(providers, { onConflict: 'name' });
+  const { error: provError } = await supabase.from('providers').upsert(providers, { onConflict: 'name' });
   if (provError) console.error('Provider seed error:', provError);
   else console.log(`✓ Providers seeded: ${providers.length}`);
 
