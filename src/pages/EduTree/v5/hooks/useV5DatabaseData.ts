@@ -75,6 +75,7 @@ export function useV5DatabaseData(options: UseV5DatabaseDataOptions = {}) {
       return { modulesByYear };
     },
     enabled,
-    staleTime: 60_000, // Cache for 1 minute
+    staleTime: 0,
+    refetchOnMount: 'always'
   });
 }

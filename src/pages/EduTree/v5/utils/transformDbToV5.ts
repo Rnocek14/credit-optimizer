@@ -96,7 +96,7 @@ export function transformToModuleData(
       courses: [], // Empty for now - would come from user's selected courses
       creditsEarned: 0, // Would come from user progress
       creditsRequired: req.credits_required ?? 0,
-      isCollapsed: true,
+      isCollapsed: false,
     };
 
     // Add marketplace metadata if available

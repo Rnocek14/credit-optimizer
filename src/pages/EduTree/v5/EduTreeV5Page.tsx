@@ -115,7 +115,14 @@ export default function EduTreeV5Page() {
   // Get modules for a specific year (database or fixtures)
   const getModulesForYear = useCallback((year: number): ModuleData[] => {
     if (USE_DATABASE && dbData?.modulesByYear) {
-      return dbData.modulesByYear[year] || [];
+      const modules = dbData.modulesByYear[year] || [];
+      console.log(`[V5] Year ${year}`, modules.map(m => ({
+        id: m.id, 
+        label: m.label,
+        optionsCount: m.optionsCount,
+        optionsLen: m.marketplaceOptions?.length
+      })));
+      return modules;
     }
     return getModulesForYearFixtures(year);
   }, [USE_DATABASE, dbData, getModulesForYearFixtures]);
