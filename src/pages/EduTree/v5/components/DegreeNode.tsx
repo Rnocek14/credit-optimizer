@@ -67,6 +67,13 @@ export function DegreeNode({
   const statusBadge = getStatusBadge();
   const isComplete = totalCreditsEarned >= totalCreditsRequired;
 
+  // Handle over-credit edge case (e.g., 130/120 shows as "120/120 (+10)")
+  const cappedEarned = Math.min(totalCreditsEarned, totalCreditsRequired);
+  const surplus = Math.max(0, totalCreditsEarned - totalCreditsRequired);
+  const earnedLabel = surplus > 0
+    ? `${cappedEarned}/${totalCreditsRequired} cr (+${surplus})`
+    : fmtCredits(totalCreditsEarned, totalCreditsRequired);
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
@@ -103,7 +110,7 @@ export function DegreeNode({
             <span className="font-semibold">{degreeTitle}</span>
             <span className="text-muted-foreground">•</span>
             <span className="text-muted-foreground">
-              {fmtCredits(totalCreditsEarned, totalCreditsRequired)} ({fmtPercentage(earnedProgressPct)})
+              {earnedLabel} ({fmtPercentage(earnedProgressPct)})
             </span>
             <span className="text-muted-foreground">•</span>
             <span className="text-muted-foreground">Planned: {fmtCredits(totalCreditsPlanned, totalCreditsRequired)}</span>
@@ -111,10 +118,12 @@ export function DegreeNode({
             {isComplete ? (
               <Badge variant="default" className="text-xs">✅ Completed</Badge>
             ) : (
-              <span className="text-muted-foreground">~{fmtDuration(estimatedMonths)}</span>
+              <>
+                <span className="text-muted-foreground">~{fmtDuration(estimatedMonths)}</span>
+                <span className="text-muted-foreground">•</span>
+                <span className="text-muted-foreground">{fmtCurrency(estimatedCost)}</span>
+              </>
             )}
-            <span className="text-muted-foreground">•</span>
-            <span className="text-muted-foreground">{fmtCurrency(estimatedCost)}</span>
           </div>
           <ChevronRight className="h-5 w-5 text-primary" />
         </div>
@@ -157,10 +166,18 @@ export function DegreeNode({
           {/* Progress Section */}
           <div className="space-y-2">
             <div className="flex items-center justify-between text-sm">
-              <span className="font-medium">Progress: {fmtCredits(totalCreditsEarned, totalCreditsRequired)} earned</span>
+              <span className="font-medium">Progress: {earnedLabel} earned</span>
               <span className="text-muted-foreground">{fmtPercentage(earnedProgressPct)}</span>
             </div>
-            <Progress value={earnedProgressPct} className="h-2" />
+            <div 
+              role="progressbar"
+              aria-valuenow={Math.round(earnedProgressPct)}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-label={`Degree completion: ${Math.round(earnedProgressPct)}%`}
+            >
+              <Progress value={earnedProgressPct} className="h-2" />
+            </div>
             {totalCreditsPlanned > totalCreditsEarned && (
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
                 <Badge variant="outline" className="text-xs">
@@ -213,22 +230,22 @@ export function DegreeNode({
             </div>
 
             {/* Estimates */}
-            <div className="flex items-center gap-6 text-sm text-muted-foreground">
-              <div className="flex items-center gap-2">
-                <Clock className="h-4 w-4" />
-                {isComplete ? (
-                  <Badge variant="default" className="text-xs">
-                    ✅ Completed
-                  </Badge>
-                ) : (
+            {isComplete ? (
+              <Badge variant="default" className="text-xs">
+                ✅ Completed
+              </Badge>
+            ) : (
+              <div className="flex items-center gap-6 text-sm text-muted-foreground">
+                <div className="flex items-center gap-2">
+                  <Clock className="h-4 w-4" />
                   <span>~{fmtDuration(estimatedMonths)}</span>
-                )}
+                </div>
+                <div className="flex items-center gap-2">
+                  <DollarSign className="h-4 w-4" />
+                  <span>{fmtCurrency(estimatedCost)}</span>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <DollarSign className="h-4 w-4" />
-                <span>{fmtCurrency(estimatedCost)}</span>
-              </div>
-            </div>
+            )}
           </div>
 
         </div>
