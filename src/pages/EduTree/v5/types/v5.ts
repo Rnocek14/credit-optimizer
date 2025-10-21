@@ -5,6 +5,8 @@ export interface Course {
   subject: string;
 }
 
+export type ProviderType = 'university' | 'mooc' | 'bootcamp' | 'testing_center' | null | undefined;
+
 export interface ModuleData {
   id: string;
   label: string;
@@ -24,7 +26,7 @@ export interface ModuleData {
     credits: number;
     subject: string;
     provider: string;
-    providerType?: string | null;
+    providerType?: ProviderType;
     cost_usd: number | null;
     duration_weeks: number | null;
   }>;

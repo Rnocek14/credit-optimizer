@@ -42,7 +42,7 @@ export default function EduTreeV5Page() {
     moduleData?: ModuleData;
     year?: number;
   }>({ open: false });
-  const [panelSortBy, setPanelSortBy] = useState<'cheapest' | 'shortest' | 'credits'>('cheapest');
+  const [panelSortBy, setPanelSortBy] = useState<'cheapest' | 'shortest' | 'credits' | 'best-match'>('best-match');
   
   const toggleYear = (year: number) => {
     console.log('[V5 Page] Toggling year:', year);
