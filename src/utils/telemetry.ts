@@ -22,7 +22,11 @@ export type AltCourseTelemetryTask =
   | 'db_health_checked'
   | 'degree_toggle'
   | 'degree_warnings_open'
-  | 'degree_completed_viewed';
+  | 'degree_completed_viewed'
+  | 'autofill_started'
+  | 'autofill_completed'
+  | 'autofill_accepted'
+  | 'autofill_rejected';
 
 export const trackTelemetryEvent = async (event: TelemetryEvent): Promise<void> => {
   try {
