@@ -4,6 +4,7 @@ import { CourseCard } from './CourseCard';
 import { ModuleData } from '../types/v5';
 import { usePlanStore } from '../state/usePlanStore';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Badge } from '@/components/ui/badge';
 
 interface ModuleCardProps extends ModuleData {
   onToggle: () => void;
@@ -74,7 +75,7 @@ export function ModuleCard({
         role="button"
         aria-expanded={!isCollapsed}
         aria-label={`${isCollapsed ? 'Expand' : 'Collapse'} ${label} module`}
-        className="module-header p-4 cursor-pointer hover:bg-accent/50 transition-colors flex items-center gap-3"
+        className="module-header p-3 cursor-pointer hover:bg-accent/50 transition-colors flex items-center gap-3"
       >
         {/* Icon */}
         <div className="text-2xl flex-shrink-0">{icon}</div>
@@ -192,7 +193,9 @@ export function ModuleCard({
             return (
               <div
                 key={option.id}
-                className="course-card bg-background border border-border rounded-md p-2 hover:bg-accent/50 transition-colors flex items-center gap-2"
+                className={`course-card bg-background rounded-md p-1.5 hover:bg-accent/50 transition-all flex items-center gap-2 ${
+                  isSelected ? 'border-2 border-primary bg-primary/5' : 'border border-border'
+                }`}
               >
                 <Checkbox 
                   checked={isSelected}
@@ -204,10 +207,10 @@ export function ModuleCard({
                   disabled={atMax || wouldExceedYearCap}
                 />
                 <div className="flex-1 min-w-0">
-                  <div className="text-xs font-medium truncate">
+                  <div className="text-[11px] font-medium truncate leading-tight">
                     {option.courseId}: {option.title}
                   </div>
-                  <div className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5 flex-wrap">
+                  <div className="text-[10px] text-muted-foreground flex items-center gap-1 mt-0.5 flex-wrap">
                     <span>{option.credits} cr</span>
                     
                     {/* Provider badge with icon */}
@@ -246,31 +249,35 @@ export function ModuleCard({
                     )}
                   </div>
                 </div>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (!atMax && !wouldExceedYearCap) {
-                      toggleCourse(id, option.courseId, optionCredits, creditsRequired);
-                    }
-                  }}
-                  disabled={atMax || wouldExceedYearCap}
-                  className={`text-xs px-3 py-1 rounded transition-colors whitespace-nowrap ${
-                    isSelected 
-                      ? 'bg-green-100 text-green-700 hover:bg-green-200' 
-                      : atMax || wouldExceedYearCap
+                {isSelected ? (
+                  <Badge variant="default" className="text-[10px] px-2 py-0.5 whitespace-nowrap">
+                    ✓ Selected
+                  </Badge>
+                ) : (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (!atMax && !wouldExceedYearCap) {
+                        toggleCourse(id, option.courseId, optionCredits, creditsRequired);
+                      }
+                    }}
+                    disabled={atMax || wouldExceedYearCap}
+                    className={`text-[10px] px-2 py-1 rounded transition-colors whitespace-nowrap ${
+                      atMax || wouldExceedYearCap
                         ? 'bg-muted text-muted-foreground cursor-not-allowed'
                         : 'bg-primary/10 text-primary hover:bg-primary/20'
-                  }`}
-                  title={
-                    wouldExceedYearCap && !isSelected
-                      ? `Year cap reached (${yearCap} cr)`
-                      : atMax
-                      ? 'Module max reached'
-                      : ''
-                  }
-                >
-                  {isSelected ? '✓ Selected' : (atMax || wouldExceedYearCap) ? 'Cap Reached' : 'Select'}
-                </button>
+                    }`}
+                    title={
+                      wouldExceedYearCap && !isSelected
+                        ? `Year cap reached (${yearCap} cr)`
+                        : atMax
+                        ? 'Module max reached'
+                        : ''
+                    }
+                  >
+                    {(atMax || wouldExceedYearCap) ? 'Cap Reached' : 'Select'}
+                  </button>
+                )}
               </div>
             );
           })}

@@ -163,6 +163,11 @@ export default function EduTreeV5Page() {
     return getModulesForYearFixtures(year);
   }, [USE_DATABASE, dbData, getModulesForYearFixtures, selections]);
 
+  // Get all modules for auto-fill dialog
+  const allModules = useMemo(() => {
+    return [1, 2, 3, 4].flatMap(year => getModulesForYear(year));
+  }, [getModulesForYear]);
+
   // Calculate total credits for a year (planned = required, earned = selected)
   const getYearCredits = useCallback((year: number): { planned: number; earned: number } => {
     const modules = getModulesForYear(year);
@@ -404,16 +409,17 @@ export default function EduTreeV5Page() {
             open={panel.open}
             onOpenChange={(open) => setPanel(p => open ? p : { ...p, open })}
             moduleId={panel.moduleData.id}
-          moduleLabel={panel.moduleData.label}
-          creditsEarned={panel.moduleData.creditsEarned}
-          creditsRequired={panel.moduleData.creditsRequired}
-          options={panel.moduleData.marketplaceOptions || []}
-          sortBy={panelSortBy}
-          setSortBy={setPanelSortBy}
-          yearEarned={getYearEarnedCredits(panel.year)}
-          yearCap={YEAR_CREDIT_CAP}
-        />
-      )}
+            moduleLabel={panel.moduleData.label}
+            creditsEarned={panel.moduleData.creditsEarned}
+            creditsRequired={panel.moduleData.creditsRequired}
+            options={panel.moduleData.marketplaceOptions || []}
+            sortBy={panelSortBy}
+            setSortBy={setPanelSortBy}
+            yearEarned={getYearEarnedCredits(panel.year)}
+            yearCap={YEAR_CREDIT_CAP}
+            allModules={allModules}
+          />
+        )}
     </div>
   );
 }

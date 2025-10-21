@@ -13,6 +13,9 @@ import { getAutoCompleteMessage } from '../engine/autoCompleteStatus';
 import { ENV } from '@/config/env';
 import ConstraintsPanel from './ConstraintsPanel';
 import { usePlanBasketWithToasts } from '../hooks/usePlanBasketWithToasts';
+import { AutoFillPlanButton } from './AutoFillDialog';
+import { FEATURE_FLAGS } from '../config/featureFlags';
+import type { ModuleData } from '../types/v5';
 
 interface MarketplaceOption {
   id: string;
@@ -51,6 +54,7 @@ interface MarketplacePanelProps {
   setSortBy: (v: 'cheapest' | 'shortest' | 'credits' | 'best-match') => void;
   yearEarned: number;
   yearCap: number;
+  allModules: Array<{ id: string; marketplaceOptions?: MarketplaceOption[] }>;
 }
 
 export function MarketplacePanel({
@@ -64,7 +68,8 @@ export function MarketplacePanel({
   sortBy,
   setSortBy,
   yearEarned,
-  yearCap
+  yearCap,
+  allModules
 }: MarketplacePanelProps) {
   const toggleCourse = usePlanStore(s => s.toggleCourse);
   const selected = usePlanStore(s => s.selections[moduleId]?.selected || []);
@@ -259,17 +264,26 @@ export function MarketplacePanel({
               </div>
             )}
             
-            {/* Auto-Complete Button */}
-            <Button 
-              onClick={handleAutoComplete}
-              variant="outline" 
-              className="w-full"
-              size="sm"
-              disabled={isAutoCompleting || violations.some(v => v.severity === 'error')}
-              aria-busy={isAutoCompleting}
-            >
-              {isAutoCompleting ? 'Processing...' : '✨ Auto-Complete Plan'}
-            </Button>
+            {/* Auto-Complete Button - V2 Dialog */}
+            {FEATURE_FLAGS.v5_autofill_enabled ? (
+              <AutoFillPlanButton
+                modules={allModules as ModuleData[]}
+                constraints={constraints}
+                weights={{ cost: weights.cost, time: weights.time, cri: weights.quality }}
+                disabled={violations.some(v => v.severity === 'error')}
+              />
+            ) : (
+              <Button 
+                onClick={handleAutoComplete}
+                variant="outline" 
+                className="w-full"
+                size="sm"
+                disabled={isAutoCompleting || violations.some(v => v.severity === 'error')}
+                aria-busy={isAutoCompleting}
+              >
+                {isAutoCompleting ? 'Processing...' : '✨ Auto-Complete Plan'}
+              </Button>
+            )}
           </div>
         )}
 
