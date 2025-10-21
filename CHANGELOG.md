@@ -1,5 +1,26 @@
 # Changelog
 
+## [Phase 1a] - 2025-10-21 - Auto-Complete & Analytics Hardening
+
+### ✨ Auto-Complete Enhancements
+- **Status-Aware Messaging**: Centralized `getAutoCompleteMessage` with `ok`, `partial`, `none` status handling
+- **Pluralization**: Smart singular/plural forms ("1 module" vs "2 modules")
+- **Double-Click Protection**: Button disabled during processing with `aria-busy` for accessibility
+- **Async Safety**: Try-finally block ensures state cleanup even if errors occur
+
+### 📊 Analytics Improvements
+- **ACE Tracking**: Auto-complete events now log status, constraints used, and suggestion counts
+- **Null Guards**: Filters out undefined/null constraint values before analytics
+- **Empty-Degree Guard**: Validates modules before processing to prevent NaN totals
+
+### 🎯 Workload & Timeline
+- **Concurrency Totals**: Fixed NaN issues in total weeks and workload hours calculations
+- **Timeline Validation**: Proper handling of empty or invalid degree data
+
+### 🧪 Testing
+- **Status Message Tests**: Complete coverage of `getAutoCompleteMessage` edge cases
+- **Pluralization Tests**: Validates singular/plural handling
+
 ## [1.0.0] - 2024-02-14 - 4-Hub UX Consolidation
 
 ### 🎯 Major UX Overhaul
