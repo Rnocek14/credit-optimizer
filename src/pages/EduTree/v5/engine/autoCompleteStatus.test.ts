@@ -17,12 +17,17 @@ describe('getAutoCompleteMessage', () => {
     expect(message).toBe('⚠️ No modules could be auto-completed under current constraints');
   });
 
-  it('handles single module case', () => {
+  it('handles singular module correctly', () => {
     const message = getAutoCompleteMessage('ok', 1, 1);
-    expect(message).toBe('✨ Auto-completed all 1 modules');
+    expect(message).toBe('✨ Auto-completed all 1 module');
   });
 
-  it('handles zero unfilled modules', () => {
+  it('handles partial with singular unfilled', () => {
+    const message = getAutoCompleteMessage('partial', 0, 1);
+    expect(message).toBe('✨ Auto-completed 0 of 1 module (1 blocked by constraints)');
+  });
+
+  it('handles zero modules', () => {
     const message = getAutoCompleteMessage('ok', 0, 0);
     expect(message).toBe('✨ Auto-completed all 0 modules');
   });

@@ -130,8 +130,15 @@ export function MarketplacePanel({
     [basket, sortedOptions, constraints]
   );
   
+  // Double-click protection state
+  const [isAutoCompleting, setIsAutoCompleting] = useState(false);
+  
   // Auto-complete handler
   const handleAutoComplete = () => {
+    if (isAutoCompleting) return;
+    
+    setIsAutoCompleting(true);
+    
     // Mock modules data structure for auto-complete
     const modules = [{ id: moduleId, marketplaceOptions: sortedOptions }];
     const result = autoCompletePlan(modules, basket, constraints, weights);
@@ -157,6 +164,8 @@ export function MarketplacePanel({
       totalCost: totals.totalCost,
       avgCRI: totals.avgCRI
     });
+    
+    setIsAutoCompleting(false);
   };
   
   // Helper: format relative date
@@ -248,9 +257,9 @@ export function MarketplacePanel({
               variant="outline" 
               className="w-full"
               size="sm"
-              disabled={violations.some(v => v.severity === 'error')}
+              disabled={isAutoCompleting || violations.some(v => v.severity === 'error')}
             >
-              ✨ Auto-Complete Plan
+              {isAutoCompleting ? 'Processing...' : '✨ Auto-Complete Plan'}
             </Button>
           </div>
         )}
