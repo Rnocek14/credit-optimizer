@@ -11,6 +11,7 @@ import type { ProviderType } from '../types/v5';
 export interface BasketItem {
   moduleId: string;
   courseId: string;
+  title?: string; // Phase 1c: optional title for display
   credits: number;
   cost_usd: number | null;
   duration_weeks: number | null;
@@ -126,41 +127,9 @@ export const usePlanBasket = create<PlanBasketState>()(
         const items = get().items;
         const constraints = get().constraints;
         
-        if (items.length === 0) {
-          return {
-            totalCost: 0,
-            totalWeeks: 0,
-            avgCRI: 0,
-            totalWorkloadHours: 0,
-            aceCredits: 0
-          };
-        }
-        
-        const totalCost = items.reduce((sum, i) => sum + (i.cost_usd ?? 0), 0);
-        
-        // Calculate realistic weeks using concurrency
-        const concurrency = constraints.max_concurrent_courses ?? 2;
-        const serialWeeks = items.reduce((sum, i) => sum + (i.duration_weeks ?? 8), 0);
-        const totalWeeks = Math.ceil(serialWeeks / concurrency);
-        
-        const totalCRI = items.reduce((sum, i) => sum + i.cri_score, 0);
-        const avgCRI = totalCRI / items.length;
-        
-        // Phase 1a: Workload Totals (Not Averages) - guard against undefined
-        const totalWorkloadHours = items.reduce((sum, i) => sum + (i.workload_weekly_hours ?? 0), 0);
-        
-        // Phase 1a: ACE Credit Tracking - only MOOCs and testing centers count
-        const aceCredits = items
-          .filter(i => i.providerType === 'mooc' || i.providerType === 'testing_center')
-          .reduce((sum, i) => sum + i.credits, 0);
-        
-        return {
-          totalCost,
-          totalWeeks,
-          avgCRI,
-          totalWorkloadHours,
-          aceCredits
-        };
+        // Phase 1c: Use shared totals calculator (single source of truth)
+        const { calculateTotals } = require('../utils/totalsCalculator');
+        return calculateTotals(items, constraints);
       }
     }),
     { 

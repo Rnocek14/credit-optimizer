@@ -7,6 +7,42 @@ export interface Course {
 
 export type ProviderType = 'university' | 'mooc' | 'bootcamp' | 'testing_center' | null | undefined;
 
+// Phase 1c: Marketplace option with scoring metadata
+export interface MarketplaceOption {
+  id: string;
+  courseId: string;
+  title: string;
+  credits: number;
+  subject: string;
+  provider: string;
+  providerType?: ProviderType;
+  cost_usd: number | null;
+  duration_weeks: number | null;
+  
+  // Phase 1 additions
+  pace_type?: 'self_paced' | 'cohort';
+  start_windows?: string[]; // ISO dates
+  workload_weekly_hours?: number;
+  satisfies_requirements?: string[];
+  prereq_course_ids?: string[];
+  unlocks_count?: number;
+  equivalency_key?: string;
+  
+  // Phase 1b: Scoring metadata (added by scoring engine)
+  score?: number;
+  scoreBreakdown?: {
+    cost: number;
+    time: number;
+    quality: number;
+    cri: number;
+    total: number;
+  };
+  
+  // Phase 1b: Auto-fill reasoning
+  reason?: string;
+  autoFillReason?: string;
+}
+
 export interface ModuleData {
   id: string;
   label: string;
@@ -19,26 +55,7 @@ export interface ModuleData {
   
   // Available options for this module
   optionsCount?: number;
-  marketplaceOptions?: Array<{
-    id: string;
-    courseId: string;
-    title: string;
-    credits: number;
-    subject: string;
-    provider: string;
-    providerType?: ProviderType;
-    cost_usd: number | null;
-    duration_weeks: number | null;
-    
-    // Phase 1 additions
-    pace_type?: 'self_paced' | 'cohort';
-    start_windows?: string[]; // ISO dates
-    workload_weekly_hours?: number;
-    satisfies_requirements?: string[];
-    prereq_course_ids?: string[];
-    unlocks_count?: number;
-    equivalency_key?: string;
-  }>;
+  marketplaceOptions?: MarketplaceOption[];
   cheapestOption?: number | null;
 }
 
@@ -77,3 +94,39 @@ export interface DegreeSummary {
 }
 
 export type DegreeStatus = 'on-track' | 'ahead' | 'behind';
+
+// Phase 1c: Plan scenario for save/load/compare
+export interface PlanScenario {
+  id: string;
+  name: string;
+  version: number;
+  createdAt: string;
+  items: Array<{
+    moduleId: string;
+    courseId: string;
+    title?: string;
+    credits: number;
+    cost_usd: number | null;
+    duration_weeks: number | null;
+    workload_weekly_hours: number;
+    cri_score: number;
+    status: 'pinned' | 'auto-filled';
+    providerType?: ProviderType;
+    autoFillReason?: string;
+  }>;
+  constraints: {
+    max_budget_usd?: number;
+    target_graduation_date?: Date;
+    max_weekly_hours?: number;
+    min_cri_score?: number;
+    max_ace_credits?: number;
+    max_concurrent_courses?: number;
+  };
+  totals: {
+    totalCost: number;
+    totalWeeks: number;
+    avgCRI: number;
+    totalWorkloadHours: number;
+    aceCredits: number;
+  };
+}
