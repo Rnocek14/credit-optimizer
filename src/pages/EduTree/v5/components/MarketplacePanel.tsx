@@ -138,6 +138,19 @@ export function MarketplacePanel({
     // Add suggestions to basket
     result.suggestions.forEach(item => addItem(item));
     
+    // Status-aware toast feedback
+    const unfilledCount = modules.filter(m => 
+      !basket.some(b => b.moduleId === m.id) && (m.marketplaceOptions?.length ?? 0) > 0
+    ).length;
+    
+    if (result.status === 'ok') {
+      console.log(`✨ Auto-completed all ${result.suggestions.length} modules`);
+    } else if (result.status === 'partial') {
+      console.log(`✨ Auto-completed ${result.suggestions.length} of ${unfilledCount} modules (${unfilledCount - result.suggestions.length} blocked by constraints)`);
+    } else {
+      console.log('⚠️ No modules could be auto-completed under current constraints');
+    }
+    
     logAnalytics('autocomplete_run', {
       moduleId,
       status: result.status,
@@ -196,22 +209,22 @@ export function MarketplacePanel({
               <div>
                 <div className="text-xs text-muted-foreground">Total Cost</div>
                 <div className="font-semibold text-lg">
-                  ${totals.totalCost.toLocaleString()}
+                  ${(totals.totalCost ?? 0).toLocaleString()}
                 </div>
               </div>
               <div>
                 <div className="text-xs text-muted-foreground">Duration</div>
                 <div className="font-semibold text-lg">
-                  {totals.totalWeeks}wks
+                  {totals.totalWeeks ?? 0}wks
                 </div>
                 <div className="text-xs text-muted-foreground">
-                  (max {constraints.max_concurrent_courses ?? 2} concurrent)
+                  (max ×{constraints.max_concurrent_courses ?? 2})
                 </div>
               </div>
               <div>
                 <div className="text-xs text-muted-foreground">Weekly Load</div>
                 <div className="font-semibold text-lg">
-                  {totals.totalWorkloadHours}hrs/wk
+                  {totals.totalWorkloadHours ?? 0}hrs/wk
                 </div>
               </div>
             </div>

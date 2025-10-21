@@ -386,3 +386,150 @@ describe('autoCompletePlan - Edge Cases', () => {
     expect(result.reasoning.get('course1')).toBeTruthy();
   });
 });
+
+describe('autoCompletePlan - Status Matrix', () => {
+  it('returns status "ok" when all unfilled modules get suggestions', () => {
+    const modules = [
+      {
+        id: 'mod1',
+        marketplaceOptions: [
+          {
+            courseId: 'course1',
+            credits: 3,
+            cost_usd: 100,
+            duration_weeks: 8,
+            score: 80,
+            scoreBreakdown: { cri: 85, cost: 75, time: 80, quality: 80, total: 80 },
+            providerType: 'mooc' as const,
+            workload_weekly_hours: 7.5
+          }
+        ]
+      },
+      {
+        id: 'mod2',
+        marketplaceOptions: [
+          {
+            courseId: 'course2',
+            credits: 3,
+            cost_usd: 150,
+            duration_weeks: 6,
+            score: 75,
+            scoreBreakdown: { cri: 80, cost: 70, time: 85, quality: 75, total: 75 },
+            providerType: 'university' as const,
+            workload_weekly_hours: 10
+          }
+        ]
+      }
+    ];
+
+    const result = autoCompletePlan(modules, [], {}, defaultWeights);
+    
+    expect(result.suggestions).toHaveLength(2);
+    expect(result.status).toBe('ok');
+  });
+
+  it('returns status "partial" when some but not all unfilled modules get suggestions', () => {
+    const modules = [
+      {
+        id: 'mod1',
+        marketplaceOptions: [
+          {
+            courseId: 'course1',
+            credits: 3,
+            cost_usd: 100,
+            duration_weeks: 8,
+            score: 80,
+            scoreBreakdown: { cri: 85, cost: 75, time: 80, quality: 80, total: 80 },
+            providerType: 'mooc' as const,
+            workload_weekly_hours: 7.5
+          }
+        ]
+      },
+      {
+        id: 'mod2',
+        marketplaceOptions: [
+          {
+            courseId: 'course2',
+            credits: 3,
+            cost_usd: 5000, // Too expensive
+            duration_weeks: 6,
+            score: 75,
+            scoreBreakdown: { cri: 80, cost: 20, time: 85, quality: 75, total: 75 },
+            providerType: 'university' as const,
+            workload_weekly_hours: 10
+          }
+        ]
+      }
+    ];
+
+    const result = autoCompletePlan(modules, [], { max_budget_usd: 200 }, defaultWeights);
+    
+    expect(result.suggestions).toHaveLength(1);
+    expect(result.suggestions[0].courseId).toBe('course1');
+    expect(result.status).toBe('partial');
+  });
+
+  it('returns status "none" when no suggestions could be made', () => {
+    const modules = [
+      {
+        id: 'mod1',
+        marketplaceOptions: [
+          {
+            courseId: 'course1',
+            credits: 3,
+            cost_usd: 5000,
+            duration_weeks: 8,
+            score: 80,
+            scoreBreakdown: { cri: 85, cost: 30, time: 80, quality: 80, total: 80 },
+            providerType: 'mooc' as const,
+            workload_weekly_hours: 7.5
+          }
+        ]
+      }
+    ];
+
+    const result = autoCompletePlan(modules, [], { max_budget_usd: 100 }, defaultWeights);
+    
+    expect(result.suggestions).toHaveLength(0);
+    expect(result.status).toBe('none');
+  });
+
+  it('returns status "none" when all modules already filled', () => {
+    const modules = [
+      {
+        id: 'mod1',
+        marketplaceOptions: [
+          {
+            courseId: 'course1',
+            credits: 3,
+            cost_usd: 100,
+            duration_weeks: 8,
+            score: 80,
+            scoreBreakdown: { cri: 85, cost: 75, time: 80, quality: 80, total: 80 },
+            providerType: 'mooc' as const,
+            workload_weekly_hours: 7.5
+          }
+        ]
+      }
+    ];
+
+    const currentBasket = [
+      {
+        moduleId: 'mod1',
+        courseId: 'existing',
+        credits: 3,
+        cost_usd: 100,
+        duration_weeks: 8,
+        workload_weekly_hours: 7.5,
+        cri_score: 85,
+        status: 'pinned' as const,
+        providerType: 'mooc' as const
+      }
+    ];
+
+    const result = autoCompletePlan(modules, currentBasket, {}, defaultWeights);
+    
+    expect(result.suggestions).toHaveLength(0);
+    expect(result.status).toBe('none');
+  });
+});
