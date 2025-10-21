@@ -31,7 +31,7 @@ export function useGraphLayout(
   mode: GraphMode,
   maxConcurrent: number
 ): GraphLayoutResult {
-  const timelinePack = useTimelinePack(basket, maxConcurrent);
+  const timelinePack = useTimelinePack(basket, maxConcurrent, allOptions);
 
   return useMemo(() => {
     const nodes: Node<V5GraphNodeData>[] = [];
