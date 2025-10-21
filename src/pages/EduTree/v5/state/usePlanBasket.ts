@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { ProviderType } from '../types/v5';
+import { calculateTotals } from '../utils/totalsCalculator';
 
 /**
  * Phase 1a: BasketItem with ACE Credit Tracking
@@ -128,7 +129,6 @@ export const usePlanBasket = create<PlanBasketState>()(
         const constraints = get().constraints;
         
         // Phase 1c: Use shared totals calculator (single source of truth)
-        const { calculateTotals } = require('../utils/totalsCalculator');
         return calculateTotals(items, constraints);
       }
     }),

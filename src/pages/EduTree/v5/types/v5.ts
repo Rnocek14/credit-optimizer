@@ -27,6 +27,7 @@ export interface MarketplaceOption {
   prereq_course_ids?: string[];
   unlocks_count?: number;
   equivalency_key?: string;
+  cri_score?: number; // Phase 1c: CRI quality score
   
   // Phase 1b: Scoring metadata (added by scoring engine)
   score?: number;
