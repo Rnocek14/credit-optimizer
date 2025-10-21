@@ -1,14 +1,16 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { ReactFlow, Controls, Background, MiniMap, ReactFlowProvider } from '@xyflow/react';
+import { ReactFlow, Controls, Background, MiniMap, ReactFlowProvider, Node, Edge, MarkerType } from '@xyflow/react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { X, Network, Clock, DollarSign, BookOpen, Award } from 'lucide-react';
 import { usePlanBasket } from '../state/usePlanBasket';
 import { useV5DatabaseData } from '../hooks/useV5DatabaseData';
-import { useGraphLayout } from '../hooks/useGraphLayout';
+import { useGraphLayout, applyELKLayout } from '../hooks/useGraphLayout';
 import { V5GraphNode } from './V5GraphNode';
 import { V5GraphEdge } from './V5GraphEdge';
+import type { V5GraphNodeData } from './V5GraphNode';
+import type { V5GraphEdgeData } from './V5GraphEdge';
 import { trackTelemetryEvent } from '@/utils/telemetry';
 import '@xyflow/react/dist/style.css';
 
@@ -28,6 +30,8 @@ interface GraphViewProps {
 function GraphViewInner({ open, onOpenChange }: GraphViewProps) {
   const [mode, setMode] = useState<'prereq' | 'timeline'>('prereq');
   const [openTime] = useState(Date.now());
+  const [rfNodes, setRfNodes] = useState<Node<V5GraphNodeData>[]>([]);
+  const [rfEdges, setRfEdges] = useState<Edge<V5GraphEdgeData>[]>([]);
   
   const basket = usePlanBasket(s => s.items);
   const constraints = usePlanBasket(s => s.constraints);
@@ -57,8 +61,58 @@ function GraphViewInner({ open, onOpenChange }: GraphViewProps) {
   
   const maxConcurrent = constraints.max_concurrent_courses ?? 2;
   
-  // Generate graph layout
-  const { nodes, edges } = useGraphLayout(basket, allOptions, mode, maxConcurrent);
+  // Generate raw graph layout (nodes/edges without positioning)
+  const { nodes, edges, timelinePack } = useGraphLayout(basket, allOptions, mode, maxConcurrent);
+  
+  // Apply layout based on mode
+  useEffect(() => {
+    let cancelled = false;
+    
+    if (mode === 'timeline') {
+      // Timeline mode: use custom packing
+      const positionedNodes = nodes.map(node => {
+        const pos = timelinePack.layout.get(node.id);
+        if (pos) {
+          return {
+            ...node,
+            position: { x: pos.x, y: pos.y },
+          };
+        } else {
+          // Prereq nodes: position to the left
+          return {
+            ...node,
+            position: { x: -300, y: nodes.indexOf(node) * 120 },
+          };
+        }
+      });
+      
+      if (!cancelled) {
+        setRfNodes(positionedNodes);
+        setRfEdges(edges.slice());
+      }
+    } else {
+      // Prereq mode: use ELK layout (async)
+      applyELKLayout(nodes, edges)
+        .then(({ nodes: layoutedNodes }) => {
+          if (!cancelled) {
+            setRfNodes(layoutedNodes);
+            setRfEdges(edges.slice());
+          }
+        })
+        .catch(err => {
+          console.error('[GraphView] Layout failed:', err);
+          if (!cancelled) {
+            // Fallback to raw nodes
+            setRfNodes(nodes.slice());
+            setRfEdges(edges.slice());
+          }
+        });
+    }
+    
+    return () => {
+      cancelled = true;
+    };
+  }, [nodes, edges, mode, timelinePack]);
   
   // Telemetry: track view opened
   useEffect(() => {
@@ -197,10 +251,17 @@ function GraphViewInner({ open, onOpenChange }: GraphViewProps) {
             </div>
           ) : (
             <ReactFlow
-              nodes={nodes as any}
-              edges={edges as any}
+              nodes={rfNodes as any}
+              edges={rfEdges as any}
               nodeTypes={nodeTypes as any}
               edgeTypes={edgeTypes as any}
+              defaultEdgeOptions={{
+                markerEnd: {
+                  type: MarkerType.ArrowClosed,
+                  width: 20,
+                  height: 20,
+                },
+              }}
               fitView
               fitViewOptions={{ padding: 0.2 }}
               minZoom={0.1}

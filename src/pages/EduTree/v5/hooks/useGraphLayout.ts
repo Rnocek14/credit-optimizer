@@ -10,11 +10,15 @@ import type { V5GraphEdgeData } from '../components/V5GraphEdge';
 
 const elk = new ELK();
 
+const MAX_PREREQ_DEPTH = 3;
+const MAX_GHOST_NODES = 50;
+
 export type GraphMode = 'prereq' | 'timeline';
 
 export interface GraphLayoutResult {
   nodes: Node<V5GraphNodeData>[];
   edges: Edge<V5GraphEdgeData>[];
+  timelinePack: import('./useTimelinePack').TimelineLayout;
 }
 
 /**
@@ -33,6 +37,7 @@ export function useGraphLayout(
     const nodes: Node<V5GraphNodeData>[] = [];
     const edges: Edge<V5GraphEdgeData>[] = [];
     const seenNodes = new Set<string>();
+    let ghostNodeCount = 0;
     
     // Step 1: Add basket items as nodes
     basket.forEach(item => {
@@ -54,27 +59,58 @@ export function useGraphLayout(
           providerType: item.providerType,
           isInBasket: true,
         },
-        position: { x: 0, y: 0 }, // ELK/timeline will override
+        position: { x: 0, y: 0 }, // Will be positioned by layout
       });
     });
 
-    // Step 2: For each basket item, resolve prereqs and add missing ones
+    // Step 2: For each basket item, resolve prereqs with depth limiting
     basket.forEach(item => {
       const chain = resolveChain(item.courseId, allOptions, basket);
+      const depthMap = new Map<string, number>();
       
-      // Add unmet prereqs as ghost nodes
+      // Calculate depth for each prereq
+      const calculateDepth = (courseId: string, visited = new Set<string>()): number => {
+        if (visited.has(courseId)) return 0;
+        visited.add(courseId);
+        
+        const option = allOptions.find(o => o.courseId === courseId);
+        if (!option || !option.prereq_course_ids?.length) return 0;
+        
+        const maxPrereqDepth = Math.max(
+          ...option.prereq_course_ids.map(p => calculateDepth(p, new Set(visited)))
+        );
+        return maxPrereqDepth + 1;
+      };
+      
       chain.chain.forEach(prereqId => {
+        const depth = calculateDepth(prereqId);
+        depthMap.set(prereqId, depth);
+      });
+      
+      // Add prereqs respecting depth and count limits
+      let truncatedPrereqs = 0;
+      
+      chain.chain.forEach(prereqId => {
+        const depth = depthMap.get(prereqId) ?? 0;
+        
+        if (depth > MAX_PREREQ_DEPTH || ghostNodeCount >= MAX_GHOST_NODES) {
+          truncatedPrereqs++;
+          return;
+        }
+        
         if (!seenNodes.has(prereqId)) {
           const option = allOptions.find(o => o.courseId === prereqId);
+          
           if (option) {
             seenNodes.add(prereqId);
+            ghostNodeCount++;
             
             nodes.push({
               id: prereqId,
               type: 'v5GraphNode',
               data: {
                 courseId: prereqId,
-                title: option.title || prereqId,
+                title: option.title?.trim() || prereqId,
                 moduleId: 'prereq',
                 credits: option.credits,
                 cost_usd: option.cost_usd,
@@ -87,9 +123,69 @@ export function useGraphLayout(
               },
               position: { x: 0, y: 0 },
             });
+          } else {
+            // Fallback for missing prereq option
+            seenNodes.add(prereqId);
+            ghostNodeCount++;
+            
+            nodes.push({
+              id: prereqId,
+              type: 'v5GraphNode',
+              data: {
+                courseId: prereqId,
+                title: `Unknown Course (${prereqId})`,
+                moduleId: 'prereq',
+                credits: 0,
+                cost_usd: null,
+                duration_weeks: null,
+                workload_weekly_hours: 0,
+                cri_score: 0,
+                status: 'prereq',
+                providerType: 'Unknown' as any,
+                isInBasket: false,
+              },
+              position: { x: 0, y: 0 },
+            });
           }
         }
       });
+      
+      // If prereqs were truncated, add a meta-node
+      if (truncatedPrereqs > 0) {
+        const metaId = `meta-more-prereqs-${item.courseId}`;
+        if (!seenNodes.has(metaId)) {
+          seenNodes.add(metaId);
+          nodes.push({
+            id: metaId,
+            type: 'v5GraphNode',
+            data: {
+              courseId: metaId,
+              title: `+${truncatedPrereqs} more prerequisites`,
+              moduleId: 'prereq',
+              credits: 0,
+              cost_usd: null,
+              duration_weeks: null,
+              workload_weekly_hours: 0,
+              cri_score: 0,
+              status: 'prereq',
+              providerType: 'Unknown' as any,
+              isInBasket: false,
+            },
+            position: { x: 0, y: 0 },
+          });
+          
+          // Connect meta-node to the course
+          edges.push({
+            id: `e-${metaId}-${item.courseId}`,
+            source: metaId,
+            target: item.courseId,
+            type: 'v5GraphEdge',
+            data: {
+              type: mode === 'prereq' ? 'prereq' : 'timeline',
+            },
+          });
+        }
+      }
     });
 
     // Step 3: Build edges (prerequisites → targets)
@@ -113,25 +209,7 @@ export function useGraphLayout(
       });
     });
 
-    // Step 4: Apply layout based on mode
-    if (mode === 'timeline') {
-      // Timeline mode: use custom packing
-      nodes.forEach(node => {
-        const pos = timelinePack.layout.get(node.id);
-        if (pos) {
-          node.position = { x: pos.x, y: pos.y };
-        } else {
-          // Prereq nodes: position to the left
-          node.position = { x: -300, y: nodes.indexOf(node) * 120 };
-        }
-      });
-    } else {
-      // Prereq mode: use ELK layout (async, will trigger re-render)
-      applyELKLayout(nodes, edges).catch(err => {
-        console.error('[useGraphLayout] ELK layout failed:', err);
-      });
-    }
-
+    // Step 4: Return raw nodes/edges (layout will be applied in GraphView)
     console.log('[useGraphLayout]', {
       mode,
       nodesCount: nodes.length,
@@ -139,17 +217,19 @@ export function useGraphLayout(
       basketCount: basket.length,
     });
 
-    return { nodes, edges };
+    return { nodes, edges, timelinePack };
   }, [basket, allOptions, mode, timelinePack, maxConcurrent]);
 }
 
+export { elk };
+
 /**
- * Apply ELK hierarchical layout (mutates nodes in place)
+ * Apply ELK hierarchical layout (returns new nodes array)
  */
-async function applyELKLayout(
+export async function applyELKLayout(
   nodes: Node<V5GraphNodeData>[],
   edges: Edge<V5GraphEdgeData>[]
-): Promise<void> {
+): Promise<{ nodes: Node<V5GraphNodeData>[] }> {
   const elkNodes = nodes.map(n => ({
     id: n.id,
     width: 256, // w-64 = 16rem = 256px
@@ -181,21 +261,29 @@ async function applyELKLayout(
   try {
     const layout = await elk.layout(graph);
     
-    // Update node positions from ELK result
-    layout.children?.forEach((child: any) => {
-      const node = nodes.find(n => n.id === child.id);
-      if (node) {
-        node.position = {
-          x: child.x ?? 0,
-          y: child.y ?? 0,
+    // Create new nodes array with updated positions
+    const newNodes = nodes.map(node => {
+      const child = layout.children?.find((c: any) => c.id === node.id);
+      if (child) {
+        return {
+          ...node,
+          position: {
+            x: child.x ?? 0,
+            y: child.y ?? 0,
+          },
         };
       }
+      return node;
     });
+    
+    return { nodes: newNodes };
   } catch (err) {
     console.error('[ELK Layout] Failed:', err);
     // Fallback: simple vertical stacking
-    nodes.forEach((node, i) => {
-      node.position = { x: 0, y: i * 160 };
-    });
+    const newNodes = nodes.map((node, i) => ({
+      ...node,
+      position: { x: 0, y: i * 160 },
+    }));
+    return { nodes: newNodes };
   }
 }
