@@ -42,6 +42,7 @@ export function MarketplacePanel({
 }: MarketplacePanelProps) {
   const toggleCourse = usePlanStore(s => s.toggleCourse);
   const selected = usePlanStore(s => s.selections[moduleId]?.selected || []);
+  const liveEarned = usePlanStore(s => s.selections[moduleId]?.selectedCredits ?? 0);
 
   const sortedOptions = useMemo(() => {
     const opts = [...options];
@@ -70,7 +71,7 @@ export function MarketplacePanel({
           <SheetTitle className="flex items-center justify-between">
             <span>{moduleLabel}</span>
             <span className="text-sm text-muted-foreground">
-              {creditsEarned}/{creditsRequired} cr
+              {liveEarned}/{creditsRequired} cr
             </span>
           </SheetTitle>
           <div className="text-xs text-muted-foreground">
@@ -96,7 +97,8 @@ export function MarketplacePanel({
         <div className="space-y-2">
           {sortedOptions.map(option => {
             const isSelected = selected.includes(option.courseId);
-            const wouldExceedYearCap = !isSelected && yearEarned + option.credits > yearCap;
+            const optionCredits = Number(option.credits) || 0;
+            const wouldExceedYearCap = !isSelected && yearEarned + optionCredits > yearCap;
             const disabled = (isAtMax && !isSelected) || wouldExceedYearCap;
 
             return (
@@ -140,7 +142,7 @@ export function MarketplacePanel({
                 </div>
                 
                 <button
-                  onClick={() => toggleCourse(moduleId, option.courseId, option.credits, creditsRequired)}
+                  onClick={() => toggleCourse(moduleId, option.courseId, optionCredits, creditsRequired)}
                   disabled={disabled}
                   className={`text-xs px-3 py-1.5 rounded transition-colors whitespace-nowrap ml-2 ${
                     isSelected

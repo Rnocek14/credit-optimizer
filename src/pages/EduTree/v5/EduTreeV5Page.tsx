@@ -388,11 +388,11 @@ export default function EduTreeV5Page() {
       </div>
 
       {/* Marketplace Panel */}
-      {panel.open && panel.moduleData && panel.year && (
-        <MarketplacePanel
-          open={panel.open}
-          onOpenChange={(open) => setPanel({ open })}
-          moduleId={panel.moduleData.id}
+        {panel.open && panel.moduleData && panel.year && (
+          <MarketplacePanel
+            open={panel.open}
+            onOpenChange={(open) => setPanel(p => open ? p : { ...p, open })}
+            moduleId={panel.moduleData.id}
           moduleLabel={panel.moduleData.label}
           creditsEarned={panel.moduleData.creditsEarned}
           creditsRequired={panel.moduleData.creditsRequired}

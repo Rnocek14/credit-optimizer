@@ -185,7 +185,8 @@ export function ModuleCard({
           </div>
           {sortedOptions.map(option => {
             const isSelected = selectedIds.includes(option.courseId);
-            const wouldExceedYearCap = !isSelected && yearEarned + option.credits > yearCap;
+            const optionCredits = Number(option.credits) || 0;
+            const wouldExceedYearCap = !isSelected && yearEarned + optionCredits > yearCap;
             const atMax = !isSelected && (selections[id]?.selectedCredits ?? 0) >= creditsRequired;
             
             return (
@@ -197,7 +198,7 @@ export function ModuleCard({
                   checked={isSelected}
                   onCheckedChange={() => {
                     if (!atMax && !wouldExceedYearCap) {
-                      toggleCourse(id, option.courseId, option.credits, creditsRequired);
+                      toggleCourse(id, option.courseId, optionCredits, creditsRequired);
                     }
                   }}
                   disabled={atMax || wouldExceedYearCap}
@@ -249,7 +250,7 @@ export function ModuleCard({
                   onClick={(e) => {
                     e.stopPropagation();
                     if (!atMax && !wouldExceedYearCap) {
-                      toggleCourse(id, option.courseId, option.credits, creditsRequired);
+                      toggleCourse(id, option.courseId, optionCredits, creditsRequired);
                     }
                   }}
                   disabled={atMax || wouldExceedYearCap}
