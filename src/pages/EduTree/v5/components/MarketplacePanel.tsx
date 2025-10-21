@@ -17,6 +17,7 @@ import { AutoFillPlanButton } from './AutoFillDialog';
 import { FEATURE_FLAGS } from '../config/featureFlags';
 import { mapWeightsForEngine } from '../utils/weightMapping';
 import type { ModuleData } from '../types/v5';
+import { ScenarioManager } from './ScenarioManager';
 
 interface MarketplaceOption {
   id: string;
@@ -274,6 +275,9 @@ export function MarketplacePanel({
                 disabled={violations.some(v => v.severity === 'error')}
               />
             )}
+            
+            {/* Scenario Manager */}
+            <ScenarioManager />
           </div>
         )}
 
