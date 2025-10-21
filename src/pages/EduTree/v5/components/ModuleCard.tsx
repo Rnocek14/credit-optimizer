@@ -65,6 +65,9 @@ export function ModuleCard({
           e.stopPropagation();
           onToggle();
         }}
+        role="button"
+        aria-expanded={!isCollapsed}
+        aria-label={`${isCollapsed ? 'Expand' : 'Collapse'} ${label} module`}
         className="module-header p-4 cursor-pointer hover:bg-accent/50 transition-colors flex items-center gap-3"
       >
         {/* Icon */}
@@ -83,11 +86,11 @@ export function ModuleCard({
                 <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full whitespace-nowrap">
                   {optionsCount} {optionsCount === 1 ? 'option' : 'options'} available
                 </span>
-                {isCollapsed && cheapestOption !== undefined && cheapestOption !== null && (
-                  <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full whitespace-nowrap">
-                    from ${cheapestOption}
-                  </span>
-                )}
+          {isCollapsed && cheapestOption !== undefined && cheapestOption !== null && (
+            <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full whitespace-nowrap">
+              {cheapestOption === 0 ? 'free options' : `from $${cheapestOption}`}
+            </span>
+          )}
               </div>
             )}
           </div>
@@ -208,11 +211,11 @@ export function ModuleCard({
                     )}
                     
                     {/* Price badge */}
-                    {option.cost_usd !== null && (
-                      <span className="ml-1 px-1.5 py-0.5 rounded bg-green-100 text-green-700 text-[10px] font-medium">
-                        ${option.cost_usd}
-                      </span>
-                    )}
+                {option.cost_usd !== null && (
+                  <span className="ml-1 px-1.5 py-0.5 rounded bg-green-100 text-green-700 text-[10px] font-medium">
+                    {option.cost_usd === 0 ? 'Included' : `$${new Intl.NumberFormat().format(option.cost_usd)}`}
+                  </span>
+                )}
                     
                     {/* Duration */}
                     {option.duration_weeks && (
@@ -241,6 +244,13 @@ export function ModuleCard({
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Empty state when no options available */}
+      {!isCollapsed && (!marketplaceOptions || marketplaceOptions.length === 0) && courses.length === 0 && (
+        <div className="p-4 text-xs text-muted-foreground italic text-center">
+          No options available yet.
         </div>
       )}
     </div>
