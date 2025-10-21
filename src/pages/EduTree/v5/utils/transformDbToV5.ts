@@ -1,5 +1,6 @@
 import type { ModuleData } from '../types/v5';
 import { PROVIDER_DEFAULTS } from '../data/providerDefaults';
+import { ENV } from '@/config/env';
 
 // Normalize provider ID to match registry keys (kebab-case)
 const normalizeProviderId = (id?: string) => 
@@ -96,7 +97,11 @@ export function transformToModuleData(
         // Log when provider not found (helps grow coverage) - ONCE per provider
         if (provider?.id && !pDefaults && !warnedProviders.has(provider.id)) {
           warnedProviders.add(provider.id);
-          console.warn(`[CRI] Provider not in registry: "${provider.id}" (normalized: "${providerId}")`);
+          if (!ENV.PROD) {
+            console.warn(`[CRI] Provider not in registry: "${provider.id}" (normalized: "${providerId}")`);
+          }
+          // TODO: Track missing providers for registry growth
+          // trackTelemetryEvent({ task: 'marketplace_provider_missing_defaults', complexity: { providerId, providerIdNormalized: providerId } });
         }
 
         return {

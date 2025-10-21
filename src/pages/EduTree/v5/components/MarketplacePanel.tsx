@@ -4,6 +4,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { usePlanStore } from '../state/usePlanStore';
 import { calculateOptionScore, type ScoreBreakdown, type ProviderType } from '../utils/optionScoring';
 import { useScoringPrefs } from '../state/useScoringPrefs';
+import { ENV } from '@/config/env';
 
 interface MarketplaceOption {
   id: string;
@@ -58,8 +59,15 @@ export function MarketplacePanel({
 
   // Simple analytics logger (upgrade to proper telemetry later)
   const logAnalytics = (event: string, data: Record<string, any>) => {
-    console.log(`[Analytics] ${event}`, { timestamp: new Date().toISOString(), ...data });
-    // TODO: Send to your analytics backend (Mixpanel, PostHog, etc.)
+    const payload = { timestamp: new Date().toISOString(), ...data };
+    
+    // Only log to console in dev
+    if (!ENV.PROD) {
+      console.log(`[Analytics] ${event}`, payload);
+    }
+    
+    // TODO: Send to your analytics backend in all environments
+    // Example: trackTelemetryEvent({ task: event, complexity: payload });
   };
 
   // Enrich options with scores
