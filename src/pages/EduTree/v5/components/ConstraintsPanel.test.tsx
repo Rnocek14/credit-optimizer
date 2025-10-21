@@ -1,11 +1,14 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { renderHook, act } from '@testing-library/react';
+import { renderHook, act, render } from '@testing-library/react';
 import { usePlanBasket } from '../state/usePlanBasket';
+import ConstraintsPanel from './ConstraintsPanel';
 
 // Mock analytics
 vi.mock('@/lib/analytics', () => ({
   logEvent: vi.fn(),
 }));
+
+import { logEvent } from '@/lib/analytics';
 
 describe('ConstraintsPanel - Value Clamping', () => {
   beforeEach(() => {
@@ -176,5 +179,75 @@ describe('ConstraintsPanel - Debounce Behavior', () => {
     expect(result.current.constraints.min_cri_score).toBe(85);
     expect(result.current.constraints.max_budget_usd).not.toBe(initialBudget);
     expect(result.current.constraints.min_cri_score).not.toBe(initialCRI);
+  });
+});
+
+describe('ConstraintsPanel - UI Debounce', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.clearAllMocks();
+    // Reset store before each test
+    const { clearAll, setConstraints } = usePlanBasket.getState();
+    clearAll();
+    setConstraints({
+      max_ace_credits: 90,
+      max_concurrent_courses: 2,
+    });
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('debounces rapid slider changes to a single analytics event', () => {
+    const { container } = render(<ConstraintsPanel />);
+
+    // Find the Min CRI slider input
+    const sliders = container.querySelectorAll('input[type="range"]');
+    // Min CRI is the first slider in the second section (index 3 overall: 0=weekly hours, 1=min_cri, 2=max_ace, 3=max_concurrent)
+    // Actually from the code: section 1 has max_weekly_hours (index 0), section 2 has min_cri_score (index 1), max_ace_credits (index 2), max_concurrent_courses (index 3)
+    const minCRISlider = sliders[1] as HTMLInputElement;
+    
+    expect(minCRISlider).toBeTruthy();
+
+    // 5 rapid changes - use manual event triggering for speed
+    act(() => {
+      minCRISlider.value = '70';
+      minCRISlider.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    act(() => {
+      minCRISlider.value = '75';
+      minCRISlider.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    act(() => {
+      minCRISlider.value = '80';
+      minCRISlider.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    act(() => {
+      minCRISlider.value = '85';
+      minCRISlider.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    act(() => {
+      minCRISlider.value = '90';
+      minCRISlider.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+
+    // Nothing yet (debounce window hasn't elapsed)
+    expect(logEvent).not.toHaveBeenCalled();
+
+    // Advance past debounce window (300ms)
+    act(() => {
+      vi.advanceTimersByTime(300);
+    });
+
+    // Exactly one analytics call
+    expect(logEvent).toHaveBeenCalledTimes(1);
+    expect(logEvent).toHaveBeenCalledWith(
+      'plan_constraint_changed',
+      expect.objectContaining({ 
+        key: 'min_cri_score', 
+        newValue: 90 
+      })
+    );
   });
 });
