@@ -1,7 +1,8 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { ProviderType } from '../types/v5';
+import type { ProviderType, PlanScenario } from '../types/v5';
 import { calculateTotals } from '../utils/totalsCalculator';
+import { trackTelemetryEvent } from '@/utils/telemetry';
 
 /**
  * Phase 1a: BasketItem with ACE Credit Tracking
@@ -40,16 +41,17 @@ export interface Constraints {
 interface PlanBasketState {
   items: BasketItem[];
   constraints: Constraints;
-  scenarios: Record<string, { items: BasketItem[]; constraints: Constraints }>;
+  scenarios: PlanScenario[];
   
   // Actions
   addItem: (item: BasketItem) => void;
   removeItem: (courseId: string) => void;
   setConstraints: (c: Partial<Constraints>) => void;
   
-  // Scenarios (Phase 2 prep)
-  saveScenario: (name: string) => void;
-  loadScenario: (name: string) => void;
+  // Scenarios
+  saveScenario: (name: string) => string;
+  loadScenario: (id: string) => void;
+  deleteScenario: (id: string) => void;
   clearAll: () => void;
   
   // Computed
@@ -73,6 +75,8 @@ const migrateBasketItems = (items: BasketItem[]): BasketItem[] => {
   }));
 };
 
+const CAP = 20;
+
 export const usePlanBasket = create<PlanBasketState>()(
   persist(
     (set, get) => ({
@@ -81,7 +85,7 @@ export const usePlanBasket = create<PlanBasketState>()(
         max_ace_credits: 90, // default WGU-style cap
         max_concurrent_courses: 2, // default: 2 courses at a time
       },
-      scenarios: {},
+      scenarios: [],
       
       addItem: (item) => {
         const items = get().items;
@@ -102,22 +106,66 @@ export const usePlanBasket = create<PlanBasketState>()(
       
       saveScenario: (name) => {
         const { items, constraints, scenarios } = get();
+        const snapshotItems = items.map(i => ({ ...i }));
+        const snapshotConstraints = { ...constraints };
+        const totals = calculateTotals(snapshotItems, snapshotConstraints);
+
+        const scenario: PlanScenario = {
+          id: crypto.randomUUID(),
+          name: name?.trim() || `Plan – ${new Date().toLocaleDateString()}`,
+          version: 3,
+          createdAt: new Date().toISOString(),
+          items: snapshotItems,
+          constraints: snapshotConstraints,
+          totals,
+        };
+
+        const next = [scenario, ...scenarios].slice(0, CAP);
+        set({ scenarios: next });
+
+        void trackTelemetryEvent({
+          task: 'scenario_saved',
+          scope: 'plan',
+          complexity: {
+            itemsCount: snapshotItems.length,
+            totalCost: totals.totalCost,
+            scenarioCount: next.length,
+          },
+        });
+
+        return scenario.id;
+      },
+      
+      loadScenario: (id) => {
+        const s = get().scenarios.find(x => x.id === id);
+        if (!s) {
+          console.warn(`Scenario ${id} not found`);
+          return;
+        }
         set({
-          scenarios: {
-            ...scenarios,
-            [name]: { items: [...items], constraints: { ...constraints } }
-          }
+          items: s.items.map(i => ({ ...i })),
+          constraints: { ...s.constraints },
+        });
+
+        void trackTelemetryEvent({
+          task: 'scenario_loaded',
+          scope: 'plan',
+          complexity: {
+            itemsCount: s.items.length,
+            totalCost: s.totals.totalCost,
+          },
         });
       },
       
-      loadScenario: (name) => {
-        const scenario = get().scenarios[name];
-        if (scenario) {
-          set({
-            items: [...scenario.items],
-            constraints: { ...scenario.constraints }
-          });
-        }
+      deleteScenario: (id) => {
+        const next = get().scenarios.filter(s => s.id !== id);
+        set({ scenarios: next });
+
+        void trackTelemetryEvent({
+          task: 'scenario_deleted',
+          scope: 'plan',
+          complexity: { remainingCount: next.length },
+        });
       },
       
       clearAll: () => {
@@ -137,17 +185,45 @@ export const usePlanBasket = create<PlanBasketState>()(
       // Schema versions:
       // v1 = providerType + workload_weekly_hours
       // v2 = adds optional autoFillReason (no migration needed - optional field)
-      version: 2,
+      // v3 = scenarios: Record → PlanScenario[] with cap enforcement
+      version: 3,
       migrate: (persistedState: any, version: number) => {
+        let state = persistedState ?? {};
+        
         if (version === 0) {
           // Migrate from v0 to v1: backfill providerType and workload_weekly_hours
-          return {
-            ...persistedState,
-            items: migrateBasketItems(persistedState.items || [])
+          state = {
+            ...state,
+            items: migrateBasketItems(state.items || [])
           };
         }
-        // v1 → v2: no action needed (autoFillReason is optional)
-        return persistedState;
+        
+        // v2 → v3: Convert Record → PlanScenario[]
+        if (version < 3) {
+          const old = state.scenarios ?? {};
+          const entries = Object.entries(old) as [string, any][];
+
+          const newScenarios: PlanScenario[] = entries.map(([name, data]) => {
+            const items = migrateBasketItems(data?.items ?? []);
+            const constraints = { ...(data?.constraints ?? {}) };
+            const totals = calculateTotals(items, constraints);
+            return {
+              id: crypto.randomUUID(),
+              name,
+              version: 3,
+              createdAt: new Date().toISOString(),
+              items,
+              constraints,
+              totals,
+            };
+          })
+          .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+          .slice(0, CAP);
+
+          state = { ...state, scenarios: newScenarios };
+        }
+
+        return state;
       }
     }
   )
