@@ -1,6 +1,12 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
+/**
+ * Phase 1a: BasketItem with ACE Credit Tracking
+ * - providerType determines if credits count toward ACE/NCCRS transfer cap
+ * - Only 'mooc' and 'testing_center' count as alternative credit
+ * - Migration guard ensures old items without providerType default to null
+ */
 export interface BasketItem {
   moduleId: string;
   courseId: string;
@@ -13,6 +19,11 @@ export interface BasketItem {
   providerType?: 'university' | 'mooc' | 'bootcamp' | 'testing_center' | null;
 }
 
+/**
+ * Phase 1a: Constraints with Concurrency Support
+ * - max_concurrent_courses (default 2) simulates realistic parallelization
+ * - Used in deadline violations and timeline calculations
+ */
 export interface Constraints {
   max_budget_usd?: number;
   target_graduation_date?: Date;
@@ -46,6 +57,17 @@ interface PlanBasketState {
     aceCredits: number;
   };
 }
+
+/**
+ * Migration helper: backfill missing fields from Phase 1a
+ */
+const migrateBasketItems = (items: BasketItem[]): BasketItem[] => {
+  return items.map(item => ({
+    ...item,
+    providerType: item.providerType ?? null,
+    workload_weekly_hours: item.workload_weekly_hours ?? (item.credits * 2.5)
+  }));
+};
 
 export const usePlanBasket = create<PlanBasketState>()(
   persist(
@@ -121,9 +143,11 @@ export const usePlanBasket = create<PlanBasketState>()(
         
         const totalCRI = items.reduce((sum, i) => sum + i.cri_score, 0);
         const avgCRI = totalCRI / items.length;
-        const totalWorkloadHours = items.reduce((sum, i) => sum + i.workload_weekly_hours, 0);
         
-        // Calculate ACE credits from providerType
+        // Phase 1a: Workload Totals (Not Averages) - guard against undefined
+        const totalWorkloadHours = items.reduce((sum, i) => sum + (i.workload_weekly_hours ?? 0), 0);
+        
+        // Phase 1a: ACE Credit Tracking - only MOOCs and testing centers count
         const aceCredits = items
           .filter(i => i.providerType === 'mooc' || i.providerType === 'testing_center')
           .reduce((sum, i) => sum + i.credits, 0);
@@ -137,6 +161,19 @@ export const usePlanBasket = create<PlanBasketState>()(
         };
       }
     }),
-    { name: 'v5-plan-basket' }
+    { 
+      name: 'v5-plan-basket',
+      version: 1,
+      migrate: (persistedState: any, version: number) => {
+        if (version === 0) {
+          // Migrate from v0 to v1: backfill providerType and workload_weekly_hours
+          return {
+            ...persistedState,
+            items: migrateBasketItems(persistedState.items || [])
+          };
+        }
+        return persistedState;
+      }
+    }
   )
 );

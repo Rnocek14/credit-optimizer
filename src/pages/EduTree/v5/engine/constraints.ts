@@ -35,9 +35,9 @@ export function validatePlan(
     });
   }
   
-  // 2. Workload check (total weekly hours, not average)
+  // 2. Workload check (total weekly hours, not average) - Phase 1a: guard against undefined
   if (basket.length > 0) {
-    const totalWeeklyHours = basket.reduce((sum, i) => sum + i.workload_weekly_hours, 0);
+    const totalWeeklyHours = basket.reduce((sum, i) => sum + (i.workload_weekly_hours ?? 0), 0);
     if (constraints.max_weekly_hours && totalWeeklyHours > constraints.max_weekly_hours) {
       violations.push({
         type: 'workload',
@@ -69,12 +69,9 @@ export function validatePlan(
     }
   }
   
-  // 4. Transfer cap (ACE/NCCRS credits)
+  // 4. Transfer cap (ACE/NCCRS credits) - Phase 1a: use providerType from basket directly
   const aceCredits = basket
-    .filter(i => {
-      const opt = allOptions.find(o => o.courseId === i.courseId);
-      return opt?.providerType === 'mooc' || opt?.providerType === 'testing_center';
-    })
+    .filter(i => i.providerType === 'mooc' || i.providerType === 'testing_center')
     .reduce((sum, i) => sum + i.credits, 0);
     
   if (constraints.max_ace_credits && aceCredits > constraints.max_ace_credits) {

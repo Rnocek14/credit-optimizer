@@ -134,6 +134,7 @@ export function autoCompletePlan(
       workload_weekly_hours: best.credits * 2.5, // estimate
       cri_score: best.scoreBreakdown?.cri ?? 0,
       status: 'auto-filled',
+      // TODO: Remove 'as any' after ensuring providerType is always defined
       providerType: best.providerType as any
     });
     
