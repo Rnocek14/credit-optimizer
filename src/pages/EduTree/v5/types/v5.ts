@@ -29,6 +29,15 @@ export interface ModuleData {
     providerType?: ProviderType;
     cost_usd: number | null;
     duration_weeks: number | null;
+    
+    // Phase 1 additions
+    pace_type?: 'self_paced' | 'cohort';
+    start_windows?: string[]; // ISO dates
+    workload_weekly_hours?: number;
+    satisfies_requirements?: string[];
+    prereq_course_ids?: string[];
+    unlocks_count?: number;
+    equivalency_key?: string;
   }>;
   cheapestOption?: number | null;
 }

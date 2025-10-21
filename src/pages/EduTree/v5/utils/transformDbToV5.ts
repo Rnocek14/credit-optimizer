@@ -118,6 +118,14 @@ export function transformToModuleData(
           aceNccrs: pDefaults?.aceNccrs,
           proctored: pDefaults?.proctored,
           providerRep: pDefaults?.rep,
+          // Phase 1 additions
+          pace_type: 'self_paced', // Default - can be enriched from DB later
+          start_windows: [], // Placeholder - will be enriched from DB
+          workload_weekly_hours: course.credits * 2.5, // Estimate: 2.5 hrs/week per credit
+          satisfies_requirements: [], // Placeholder - will be enriched from requirement_options
+          prereq_course_ids: [], // Placeholder - will be enriched from course_prereqs
+          unlocks_count: 0, // Placeholder - will be calculated
+          equivalency_key: undefined, // Placeholder - will be enriched from equivalence tables
         };
       })
       .filter((opt): opt is NonNullable<typeof opt> => opt !== null);

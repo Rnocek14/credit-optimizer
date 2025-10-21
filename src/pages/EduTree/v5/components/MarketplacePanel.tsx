@@ -1,9 +1,14 @@
 import { useMemo, useState } from 'react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { usePlanStore } from '../state/usePlanStore';
+import { usePlanBasket } from '../state/usePlanBasket';
 import { calculateOptionScore, type ScoreBreakdown, type ProviderType } from '../utils/optionScoring';
 import { useScoringPrefs } from '../state/useScoringPrefs';
+import { validatePlan } from '../engine/constraints';
+import { autoCompletePlan } from '../engine/autoComplete';
 import { ENV } from '@/config/env';
 
 interface MarketplaceOption {
@@ -21,6 +26,14 @@ interface MarketplaceOption {
   aceNccrs?: boolean;
   proctored?: boolean;
   providerRep?: number;
+  // Phase 1 additions
+  pace_type?: 'self_paced' | 'cohort';
+  start_windows?: string[];
+  workload_weekly_hours?: number;
+  satisfies_requirements?: string[];
+  prereq_course_ids?: string[];
+  unlocks_count?: number;
+  equivalency_key?: string;
 }
 
 interface MarketplacePanelProps {
@@ -56,6 +69,13 @@ export function MarketplacePanel({
   
   const { weights, setWeights, resetWeights } = useScoringPrefs();
   const [showWeights, setShowWeights] = useState(false);
+  
+  // Plan Basket integration
+  const basket = usePlanBasket(s => s.items);
+  const totals = usePlanBasket(s => s.getTotals());
+  const constraints = usePlanBasket(s => s.constraints);
+  const addItem = usePlanBasket(s => s.addItem);
+  const removeItem = usePlanBasket(s => s.removeItem);
 
   // Simple analytics logger (upgrade to proper telemetry later)
   const logAnalytics = (event: string, data: Record<string, any>) => {
@@ -102,6 +122,47 @@ export function MarketplacePanel({
     // credits
     return opts.sort((a, b) => (b.credits ?? 0) - (a.credits ?? 0));
   }, [enriched, sortBy]);
+  
+  // Validate plan and get violations
+  const violations = useMemo(() => 
+    validatePlan(basket, sortedOptions, constraints),
+    [basket, sortedOptions, constraints]
+  );
+  
+  // Auto-complete handler
+  const handleAutoComplete = () => {
+    // Mock modules data structure for auto-complete
+    const modules = [{ id: moduleId, marketplaceOptions: sortedOptions }];
+    const result = autoCompletePlan(modules, basket, constraints, weights);
+    
+    // Add suggestions to basket
+    result.suggestions.forEach(item => addItem(item));
+    
+    logAnalytics('autocomplete_run', {
+      moduleId,
+      constraintsUsed: Object.keys(constraints).filter(k => constraints[k as keyof typeof constraints] !== undefined),
+      suggestionsCount: result.suggestions.length,
+      totalCost: totals.totalCost,
+      avgCRI: totals.avgCRI
+    });
+  };
+  
+  // Helper: format relative date
+  const formatRelativeDate = (isoDate: string) => {
+    const date = new Date(isoDate);
+    const days = Math.floor((date.getTime() - Date.now()) / (24 * 60 * 60 * 1000));
+    if (days < 0) return 'Past';
+    if (days === 0) return 'Today';
+    if (days === 1) return 'Tomorrow';
+    if (days < 7) return `${days}d`;
+    if (days < 30) return `${Math.floor(days / 7)}w`;
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  };
+  
+  const isWithin30Days = (isoDate: string) => {
+    const days = Math.floor((new Date(isoDate).getTime() - Date.now()) / (24 * 60 * 60 * 1000));
+    return days >= 0 && days <= 30;
+  };
 
   const isAtMax = creditsEarned >= creditsRequired;
 
@@ -126,6 +187,58 @@ export function MarketplacePanel({
             Year progress: {yearEarned}/{yearCap} cr
           </div>
         </SheetHeader>
+        
+        {/* Plan Basket Summary */}
+        {basket.length > 0 && (
+          <div className="sticky top-0 z-10 bg-background/95 backdrop-blur p-4 border rounded-lg mb-4">
+            <div className="grid grid-cols-3 gap-3 text-sm mb-3">
+              <div>
+                <div className="text-xs text-muted-foreground">Total Cost</div>
+                <div className="font-semibold text-lg">
+                  ${totals.totalCost.toLocaleString()}
+                </div>
+              </div>
+              <div>
+                <div className="text-xs text-muted-foreground">Duration</div>
+                <div className="font-semibold text-lg">
+                  {totals.totalWeeks}wks
+                </div>
+              </div>
+              <div>
+                <div className="text-xs text-muted-foreground">Transfer Safety</div>
+                <div className="font-semibold text-lg">
+                  {totals.avgCRI.toFixed(0)}% CRI
+                </div>
+              </div>
+            </div>
+            
+            {/* Violations */}
+            {violations.length > 0 && (
+              <div className="space-y-1 mb-3">
+                {violations.map((v, i) => (
+                  <div key={i} className={`text-xs px-2 py-1 rounded-md ${
+                    v.severity === 'error' ? 'bg-destructive/10 text-destructive' :
+                    v.severity === 'warning' ? 'bg-yellow-500/10 text-yellow-600' :
+                    'bg-blue-500/10 text-blue-600'
+                  }`}>
+                    {v.severity === 'error' ? '🚫' : v.severity === 'warning' ? '⚠️' : 'ℹ️'} {v.message}
+                  </div>
+                ))}
+              </div>
+            )}
+            
+            {/* Auto-Complete Button */}
+            <Button 
+              onClick={handleAutoComplete} 
+              variant="outline" 
+              className="w-full"
+              size="sm"
+              disabled={violations.some(v => v.severity === 'error')}
+            >
+              ✨ Auto-Complete Plan
+            </Button>
+          </div>
+        )}
 
         {/* Sort dropdown & Weight Tuner */}
         <div className="mb-4 space-y-3">
@@ -205,6 +318,7 @@ export function MarketplacePanel({
         <div className="space-y-2">
           {sortedOptions.map(option => {
             const isSelected = selected.includes(option.courseId);
+            const isInBasket = basket.some(b => b.courseId === option.courseId);
             const optionCredits = Number(option.credits) || 0;
             const wouldExceedYearCap = !isSelected && yearEarned + optionCredits > yearCap;
             const disabled = (isAtMax && !isSelected) || wouldExceedYearCap;
@@ -220,6 +334,27 @@ export function MarketplacePanel({
                   </div>
                   <div className="text-xs text-muted-foreground mt-1 flex items-center gap-2 flex-wrap">
                     <span>{option.credits} cr</span>
+                    
+                    {/* Unlock chip */}
+                    {(option.unlocks_count ?? 0) > 0 && (
+                      <Badge variant="secondary" className="text-xs">
+                        🔓 Unlocks {option.unlocks_count}
+                      </Badge>
+                    )}
+                    
+                    {/* Start date chip */}
+                    {option.start_windows?.[0] && (
+                      <Badge variant={isWithin30Days(option.start_windows[0]) ? 'default' : 'outline'} className="text-xs">
+                        🗓️ Starts {formatRelativeDate(option.start_windows[0])}
+                      </Badge>
+                    )}
+                    
+                    {/* Workload chip */}
+                    {option.workload_weekly_hours && (
+                      <Badge variant={option.workload_weekly_hours > 15 ? 'destructive' : 'outline'} className="text-xs">
+                        📊 {option.workload_weekly_hours}hrs/wk
+                      </Badge>
+                    )}
                     
                     {/* Provider badge */}
                     {option.providerType && (
@@ -361,23 +496,57 @@ export function MarketplacePanel({
                   </div>
                 </div>
                 
-                <button
-                  onClick={() => toggleCourse(moduleId, option.courseId, optionCredits, creditsRequired)}
-                  disabled={disabled}
-                  className={`text-xs px-3 py-1.5 rounded transition-colors whitespace-nowrap ml-2 ${
-                    isSelected
-                      ? 'bg-green-100 text-green-700 hover:bg-green-200'
-                      : disabled
-                      ? 'bg-muted text-muted-foreground cursor-not-allowed'
-                      : 'bg-primary/10 text-primary hover:bg-primary/20'
-                  }`}
-                  title={
-                    wouldExceedYearCap ? `Year cap reached (${yearCap} cr)` :
-                    isAtMax && !isSelected ? 'Module max reached' : ''
-                  }
-                >
-                  {isSelected ? '✓ Selected' : disabled ? 'Cap Reached' : 'Select'}
-                </button>
+                <div className="flex gap-2 ml-2">
+                  {/* Plan Basket Button */}
+                  <Button
+                    onClick={() => {
+                      if (isInBasket) {
+                        removeItem(option.courseId);
+                        logAnalytics('plan_remove', { courseId: option.courseId, moduleId });
+                      } else {
+                        addItem({
+                          moduleId,
+                          courseId: option.courseId,
+                          credits: option.credits,
+                          cost_usd: option.cost_usd,
+                          duration_weeks: option.duration_weeks,
+                          workload_weekly_hours: option.workload_weekly_hours ?? option.credits * 2.5,
+                          cri_score: option.scoreBreakdown?.cri ?? 0,
+                          status: 'pinned'
+                        });
+                        logAnalytics('plan_add', { 
+                          courseId: option.courseId, 
+                          moduleId,
+                          cost: option.cost_usd,
+                          cri: option.scoreBreakdown?.cri
+                        });
+                      }
+                    }}
+                    size="sm"
+                    variant={isInBasket ? 'default' : 'outline'}
+                  >
+                    {isInBasket ? '✓ In Plan' : '+ Add to Plan'}
+                  </Button>
+                  
+                  {/* Select Button (existing functionality) */}
+                  <button
+                    onClick={() => toggleCourse(moduleId, option.courseId, optionCredits, creditsRequired)}
+                    disabled={disabled}
+                    className={`text-xs px-3 py-1.5 rounded transition-colors whitespace-nowrap ${
+                      isSelected
+                        ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                        : disabled
+                        ? 'bg-muted text-muted-foreground cursor-not-allowed'
+                        : 'bg-primary/10 text-primary hover:bg-primary/20'
+                    }`}
+                    title={
+                      wouldExceedYearCap ? `Year cap reached (${yearCap} cr)` :
+                      isAtMax && !isSelected ? 'Module max reached' : ''
+                    }
+                  >
+                    {isSelected ? '✓ Selected' : disabled ? 'Cap Reached' : 'Select'}
+                  </button>
+                </div>
               </div>
             );
           })}
