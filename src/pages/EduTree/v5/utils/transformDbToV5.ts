@@ -73,14 +73,22 @@ export function transformToModuleData(
         const course = opt.marketplace_courses || opt.edu_courses;
         if (!course) return null;
 
+        // For edu courses without a provider, use a default university provider
+        const provider = opt.provider || (opt.edu_courses ? {
+          id: 'edu',
+          name: 'University',
+          type: 'university',
+          website_url: null
+        } : null);
+
         return {
           id: course.id,
           courseId: course.code,
           title: course.title,
           credits: course.credits,
           subject: opt.marketplace_courses ? 'Marketplace' : 'University',
-          provider: opt.provider?.name || 'University',
-          providerType: opt.provider?.type || null,
+          provider: provider?.name || 'University',
+          providerType: provider?.type?.toLowerCase() || null,
           cost_usd: opt.marketplace_courses?.cost_usd ?? null,
           duration_weeks: opt.marketplace_courses?.duration_weeks ?? null,
         };

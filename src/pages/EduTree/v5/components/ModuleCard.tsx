@@ -1,3 +1,4 @@
+import { useState, useMemo } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { CourseCard } from './CourseCard';
 import { ModuleData } from '../types/v5';
@@ -29,6 +30,30 @@ export function ModuleCard({
   const selections = usePlanStore(s => s.selections);
   const toggleCourse = usePlanStore(s => s.toggleCourse);
   const selectedIds = selections[id]?.selected ?? [];
+  
+  const [sortBy, setSortBy] = useState<'cheapest' | 'shortest' | 'credits'>('cheapest');
+
+  const sortedOptions = useMemo(() => {
+    if (!marketplaceOptions) return [];
+    
+    const opts = [...marketplaceOptions];
+    
+    if (sortBy === 'cheapest') {
+      return opts.sort((a, b) => {
+        if (a.cost_usd === null) return 1;
+        if (b.cost_usd === null) return -1;
+        return a.cost_usd - b.cost_usd;
+      });
+    } else if (sortBy === 'shortest') {
+      return opts.sort((a, b) => {
+        if (a.duration_weeks === null) return 1;
+        if (b.duration_weeks === null) return -1;
+        return a.duration_weeks - b.duration_weeks;
+      });
+    }
+    // Most credits
+    return opts.sort((a, b) => b.credits - a.credits);
+  }, [marketplaceOptions, sortBy]);
   
   return (
     <div
@@ -123,10 +148,22 @@ export function ModuleCard({
       {/* Available Options - Expandable */}
       {!isCollapsed && marketplaceOptions && marketplaceOptions.length > 0 && (
         <div className="module-courses p-4 pt-0 space-y-2" onClick={e => e.stopPropagation()}>
-          <div className="text-xs font-semibold text-muted-foreground mb-2">
-            Available Options
+          <div className="flex items-center justify-between mb-2">
+            <div className="text-xs font-semibold text-muted-foreground">
+              Available Options
+            </div>
+            <select 
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as any)}
+              className="text-xs px-2 py-1 rounded border border-border bg-background hover:bg-accent/50 cursor-pointer transition-colors"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <option value="cheapest">💰 Cheapest</option>
+              <option value="shortest">⚡ Shortest</option>
+              <option value="credits">📊 Most Credits</option>
+            </select>
           </div>
-          {marketplaceOptions.map(option => {
+          {sortedOptions.map(option => {
             const isSelected = selectedIds.includes(option.courseId);
             const atMax = !isSelected && (selections[id]?.selectedCredits ?? 0) >= creditsRequired;
             
