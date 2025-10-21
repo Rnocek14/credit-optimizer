@@ -3,11 +3,13 @@ import { YearCard } from './components/YearCard';
 import { ModuleCard } from './components/ModuleCard';
 import { DegreeNode } from './components/DegreeNode';
 import { MarketplacePanel } from './components/MarketplacePanel';
+import { GraphView } from './components/GraphView';
 import canonicalCourses from '@/fixtures/prereqs/canonical-courses.json';
 import requirements from '@/fixtures/requirements/cs-degree-requirements.json';
 import { ModuleData, Course, Requirement, LoadHealth, DegreeSummary } from './types/v5';
 import { useV5DatabaseData } from './hooks/useV5DatabaseData';
 import { usePlanStore } from './state/usePlanStore';
+import { usePlanBasket } from './state/usePlanBasket';
 import { YEAR_CREDIT_CAP } from './constants/v5';
 import './styles/v5.css';
 
@@ -42,6 +44,10 @@ export default function EduTreeV5Page() {
     moduleData?: ModuleData;
     year?: number;
   }>({ open: false });
+  
+  // Graph view dialog state
+  const [graphDialogOpen, setGraphDialogOpen] = useState(false);
+  const basket = usePlanBasket(s => s.items);
   const [panelSortBy, setPanelSortBy] = useState<'cheapest' | 'shortest' | 'credits' | 'best-match'>(() => {
     if (typeof window === 'undefined') return 'best-match';
     const saved = localStorage.getItem('v5-market-sort');
@@ -319,6 +325,17 @@ export default function EduTreeV5Page() {
         🗑️ Reset Plan
       </button>
 
+      {/* View as Graph button - only visible when basket has items */}
+      {basket.length > 0 && (
+        <button
+          onClick={() => setGraphDialogOpen(true)}
+          className="fixed bottom-4 right-60 px-3 py-1.5 bg-primary text-primary-foreground rounded-md text-xs font-medium shadow-lg hover:bg-primary/90 transition-colors z-50 flex items-center gap-1.5"
+          title="Visualize plan as graph"
+        >
+          📊 View as Graph
+        </button>
+      )}
+
       {/* Loading state */}
       {USE_DATABASE && isLoading && (
         <div className="text-center py-12">
@@ -404,22 +421,28 @@ export default function EduTreeV5Page() {
       </div>
 
       {/* Marketplace Panel */}
-        {panel.open && panel.moduleData && panel.year && (
-          <MarketplacePanel
-            open={panel.open}
-            onOpenChange={(open) => setPanel(p => open ? p : { ...p, open })}
-            moduleId={panel.moduleData.id}
-            moduleLabel={panel.moduleData.label}
-            creditsEarned={panel.moduleData.creditsEarned}
-            creditsRequired={panel.moduleData.creditsRequired}
-            options={panel.moduleData.marketplaceOptions || []}
-            sortBy={panelSortBy}
-            setSortBy={setPanelSortBy}
-            yearEarned={getYearEarnedCredits(panel.year)}
-            yearCap={YEAR_CREDIT_CAP}
-            allModules={allModules}
-          />
-        )}
+      {panel.open && panel.moduleData && panel.year && (
+        <MarketplacePanel
+          open={panel.open}
+          onOpenChange={(open) => setPanel(p => open ? p : { ...p, open })}
+          moduleId={panel.moduleData.id}
+          moduleLabel={panel.moduleData.label}
+          creditsEarned={panel.moduleData.creditsEarned}
+          creditsRequired={panel.moduleData.creditsRequired}
+          options={panel.moduleData.marketplaceOptions || []}
+          sortBy={panelSortBy}
+          setSortBy={setPanelSortBy}
+          yearEarned={getYearEarnedCredits(panel.year)}
+          yearCap={YEAR_CREDIT_CAP}
+          allModules={allModules}
+        />
+      )}
+
+      {/* Graph View Dialog */}
+      <GraphView 
+        open={graphDialogOpen} 
+        onOpenChange={setGraphDialogOpen} 
+      />
     </div>
   );
 }
