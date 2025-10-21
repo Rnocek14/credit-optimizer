@@ -202,11 +202,8 @@ describe('ConstraintsPanel - UI Debounce', () => {
   it('debounces rapid slider changes to a single analytics event', () => {
     const { container } = render(<ConstraintsPanel />);
 
-    // Find the Min CRI slider input
-    const sliders = container.querySelectorAll('input[type="range"]');
-    // Min CRI is the first slider in the second section (index 3 overall: 0=weekly hours, 1=min_cri, 2=max_ace, 3=max_concurrent)
-    // Actually from the code: section 1 has max_weekly_hours (index 0), section 2 has min_cri_score (index 1), max_ace_credits (index 2), max_concurrent_courses (index 3)
-    const minCRISlider = sliders[1] as HTMLInputElement;
+    // Find the Min CRI slider by aria-label
+    const minCRISlider = container.querySelector('input[type="range"][aria-label="Min CRI"]') as HTMLInputElement;
     
     expect(minCRISlider).toBeTruthy();
 

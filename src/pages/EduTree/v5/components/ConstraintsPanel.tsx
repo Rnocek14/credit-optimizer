@@ -104,6 +104,7 @@ export default function ConstraintsPanel() {
             max={80}
             step={1}
             className="w-40"
+            aria-label="Max Weekly Hours"
             value={local.max_weekly_hours ?? 0}
             onChange={e => commit({ max_weekly_hours: Number(e.target.value) })}
           />
@@ -123,6 +124,7 @@ export default function ConstraintsPanel() {
             max={100}
             step={1}
             className="w-40"
+            aria-label="Min CRI"
             value={local.min_cri_score ?? 0}
             onChange={e => commit({ min_cri_score: Number(e.target.value) })}
           />
@@ -138,6 +140,7 @@ export default function ConstraintsPanel() {
             max={120}
             step={1}
             className="w-40"
+            aria-label="Max ACE Credits"
             value={local.max_ace_credits ?? 0}
             onChange={e => commit({ max_ace_credits: Number(e.target.value) })}
           />
@@ -153,6 +156,7 @@ export default function ConstraintsPanel() {
             max={6}
             step={1}
             className="w-40"
+            aria-label="Max Concurrent Courses"
             value={local.max_concurrent_courses ?? 2}
             onChange={e => commit({ max_concurrent_courses: Number(e.target.value) })}
           />
