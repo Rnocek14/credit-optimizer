@@ -30,6 +30,12 @@ interface DbOption {
     duration_weeks: number | null;
     provider_id: string;
   } | null;
+  provider?: {
+    id: string;
+    name: string;
+    type: string;
+    website_url: string | null;
+  } | null;
 }
 
 export function mapCategoryToIcon(category: string): string {
@@ -73,7 +79,8 @@ export function transformToModuleData(
           title: course.title,
           credits: course.credits,
           subject: opt.marketplace_courses ? 'Marketplace' : 'University',
-          provider: opt.marketplace_courses ? 'Marketplace' : 'University',
+          provider: opt.provider?.name || 'University',
+          providerType: opt.provider?.type || null,
           cost_usd: opt.marketplace_courses?.cost_usd ?? null,
           duration_weeks: opt.marketplace_courses?.duration_weeks ?? null,
         };

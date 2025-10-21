@@ -7,6 +7,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 interface ModuleCardProps extends ModuleData {
   onToggle: () => void;
   onCourseClick?: (courseId: string) => void;
+  cheapestOption?: number | null;
 }
 
 export function ModuleCard({ 
@@ -21,7 +22,8 @@ export function ModuleCard({
   onToggle,
   onCourseClick,
   optionsCount,
-  marketplaceOptions
+  marketplaceOptions,
+  cheapestOption
 }: ModuleCardProps) {
   const progress = creditsRequired > 0 ? (creditsEarned / creditsRequired) * 100 : 0;
   const selections = usePlanStore(s => s.selections);
@@ -52,9 +54,16 @@ export function ModuleCard({
           <div className="flex items-center gap-2 mt-0.5">
             <p className="text-xs text-muted-foreground truncate">{description}</p>
             {optionsCount && optionsCount > 0 && (
-              <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full whitespace-nowrap">
-                {optionsCount} {optionsCount === 1 ? 'option' : 'options'} available
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full whitespace-nowrap">
+                  {optionsCount} {optionsCount === 1 ? 'option' : 'options'} available
+                </span>
+                {isCollapsed && cheapestOption !== undefined && cheapestOption !== null && (
+                  <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full whitespace-nowrap">
+                    from ${cheapestOption}
+                  </span>
+                )}
+              </div>
             )}
           </div>
         </div>
@@ -137,15 +146,42 @@ export function ModuleCard({
                   <div className="text-xs font-medium truncate">
                     {option.courseId}: {option.title}
                   </div>
-                  <div className="text-xs text-muted-foreground flex items-center gap-2 mt-0.5">
+                  <div className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5 flex-wrap">
                     <span>{option.credits} cr</span>
-                    <span>•</span>
-                    <span className="truncate">{option.provider}</span>
+                    
+                    {/* Provider badge with icon */}
+                    {option.providerType && (
+                      <span className={`ml-1 px-1.5 py-0.5 rounded text-[10px] font-medium ${
+                        option.providerType === 'university' 
+                          ? 'bg-blue-100 text-blue-700'
+                          : option.providerType === 'mooc'
+                          ? 'bg-purple-100 text-purple-700'
+                          : option.providerType === 'bootcamp'
+                          ? 'bg-orange-100 text-orange-700'
+                          : option.providerType === 'testing_center'
+                          ? 'bg-amber-100 text-amber-700'
+                          : 'bg-gray-100 text-gray-700'
+                      }`}>
+                        {option.providerType === 'university' && '🎓'}
+                        {option.providerType === 'mooc' && '🌐'}
+                        {option.providerType === 'bootcamp' && '⚡'}
+                        {option.providerType === 'testing_center' && '📝'}
+                        {' '}{option.provider}
+                      </span>
+                    )}
+                    
+                    {/* Price badge */}
                     {option.cost_usd !== null && (
-                      <>
-                        <span>•</span>
-                        <span>${option.cost_usd}</span>
-                      </>
+                      <span className="ml-1 px-1.5 py-0.5 rounded bg-green-100 text-green-700 text-[10px] font-medium">
+                        ${option.cost_usd}
+                      </span>
+                    )}
+                    
+                    {/* Duration */}
+                    {option.duration_weeks && (
+                      <span className="ml-1 text-[10px]">
+                        {option.duration_weeks}w
+                      </span>
                     )}
                   </div>
                 </div>

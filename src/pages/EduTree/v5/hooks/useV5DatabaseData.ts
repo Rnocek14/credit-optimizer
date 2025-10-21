@@ -55,14 +55,27 @@ export function useV5DatabaseData(options: UseV5DatabaseDataOptions = {}) {
         .select('id, code, title, credits, cost_usd, duration_weeks, provider_id')
         .in('id', allOptionIds.length > 0 ? allOptionIds : ['']);
 
+      // 3.5. Fetch provider details for marketplace courses
+      const providerIds = marketplaceCourses?.map(c => c.provider_id).filter(Boolean) || [];
+      const { data: providers } = await supabase
+        .from('providers')
+        .select('id, name, type, website_url')
+        .in('id', providerIds.length > 0 ? providerIds : ['']);
+
+      // Create a provider map for quick lookup
+      const providerMap = new Map(providers?.map(p => [p.id, p]) || []);
+
       // 4. Enrich options with course data (try edu_courses first, then marketplace_courses)
       const enrichedOptions = options?.map(opt => {
         const eduCourse = eduCourses?.find(c => c.id === opt.option_ref_id);
         const mkCourse = marketplaceCourses?.find(c => c.id === opt.option_ref_id);
+        const provider = mkCourse?.provider_id ? providerMap.get(mkCourse.provider_id) : null;
+        
         return {
           ...opt,
           edu_courses: eduCourse || null,
-          marketplace_courses: mkCourse || null
+          marketplace_courses: mkCourse || null,
+          provider: provider || null
         };
       }) || [];
 

@@ -24,6 +24,7 @@ export interface ModuleData {
     credits: number;
     subject: string;
     provider: string;
+    providerType?: string | null;
     cost_usd: number | null;
     duration_weeks: number | null;
   }>;
