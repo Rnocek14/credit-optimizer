@@ -1,10 +1,5 @@
-// Note: prereqs.ts will be created in Phase 1c.1
-// import { resolveChain, detectCycles } from '../prereqs';
+import { resolveChain, detectCycles } from '../prereqs';
 import type { BasketItem, MarketplaceOption } from '../../types/exports';
-
-// Stubs for skipped tests (will be replaced by actual imports)
-const resolveChain = (...args: any[]) => ({ chain: [], unsatisfiable: [] });
-const detectCycles = (...args: any[]) => null;
 
 const opt = (id: string, prereqs: string[] = []): MarketplaceOption => ({
   id, courseId: id, title: id, credits: 3, subject: 'X', provider: 'Y',
@@ -13,8 +8,7 @@ const opt = (id: string, prereqs: string[] = []): MarketplaceOption => ({
   scoreBreakdown: { cost: 80, time: 80, quality: 80, cri: 80, total: 80 }
 });
 
-// Placeholder tests - will pass when prereqs.ts is implemented
-describe.skip('prereqs.resolveChain', () => {
+describe('prereqs.resolveChain', () => {
   it('returns ordered missing prereqs (deepest-first) for target', () => {
     const options = [opt('A'), opt('B', ['A']), opt('C', ['B'])];
     const basket: BasketItem[] = [{ 
@@ -35,7 +29,7 @@ describe.skip('prereqs.resolveChain', () => {
   });
 });
 
-describe.skip('prereqs.detectCycles', () => {
+describe('prereqs.detectCycles', () => {
   it('detects simple cycle', () => {
     const options = [opt('X', ['Y']), opt('Y', ['X'])];
     const cycles = detectCycles(options);

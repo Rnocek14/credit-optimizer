@@ -1,15 +1,5 @@
-// Note: autoCompletePlan.ts will be created in Phase 1c.1
-// import { autoCompletePlan } from '../autoCompletePlan';
+import { autoCompletePlan } from '../autoCompletePlan';
 import type { BasketItem, Constraints, ModuleData, MarketplaceOption, ScoringWeights } from '../../types/exports';
-
-// Stub for skipped tests (will be replaced by actual import)
-const autoCompletePlan = (...args: any[]) => ({ 
-  status: 'ok', 
-  suggestions: [], 
-  totals: { totalCost: 0, totalWeeks: 0, totalWorkloadHours: 0, aceCredits: 0 }, 
-  reasoning: [],
-  stoppedReason: undefined 
-});
 
 const mo = (id: string, cost = 100, cri = 80): MarketplaceOption => ({
   id, courseId: id, title: id, credits: 3, subject: 'X', provider: 'Y',
@@ -26,8 +16,7 @@ const mod = (moduleId: string, options: MarketplaceOption[]): ModuleData => ({
 
 const weights: ScoringWeights = { cost: 0.33, time: 0.33, cri: 0.34 };
 
-// Placeholder tests - will pass when autoCompletePlan.ts is implemented
-describe.skip('autoCompletePlan (preview)', () => {
+describe('autoCompletePlan (preview)', () => {
   it('returns ok with suggestions when eligible options exist', () => {
     const modules = [mod('m1', [mo('c1', 100, 90)]), mod('m2', [mo('c2', 120, 85)])];
     const basket: BasketItem[] = [];
