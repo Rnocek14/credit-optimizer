@@ -62,7 +62,7 @@ export default function ConstraintsPanel() {
   }, [local, constraints, setConstraints]);
 
   return (
-    <div className="grid gap-4 rounded-2xl border p-4 md:grid-cols-2">
+    <div className="space-y-6 rounded-2xl border p-4">
       <section className="space-y-2">
         <h3 className="text-sm font-medium">Budget & Timeline</h3>
 
