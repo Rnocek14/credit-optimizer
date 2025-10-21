@@ -33,7 +33,7 @@ export function AutoFillPlanButton({
   weights,
   disabled = false,
 }: AutoFillPlanButtonProps) {
-  const { isRunning, result, error, run, accept, reject } = useAutoFillPlan(
+  const { isRunning, result, error, run, accept, reject, constraintsChanged } = useAutoFillPlan(
     modules,
     constraints,
     weights
@@ -165,6 +165,17 @@ export function AutoFillPlanButton({
               </div>
             </div>
 
+            {/* Constraints Changed Warning */}
+            {constraintsChanged && (
+              <div className="p-3 bg-orange-500/10 text-orange-700 rounded-lg text-sm">
+                <div className="flex items-center gap-2 font-medium mb-1">
+                  <AlertCircle className="w-4 h-4" />
+                  Constraints Changed
+                </div>
+                <p className="text-xs">Your constraints have changed since this plan was generated. Run again to get updated suggestions.</p>
+              </div>
+            )}
+
             {/* Stopped Reason */}
             {result.stoppedReason && (
               <div className="p-3 bg-yellow-500/10 text-yellow-700 rounded-lg text-sm">
@@ -241,7 +252,7 @@ export function AutoFillPlanButton({
               </Button>
               <Button
                 onClick={handleAccept}
-                disabled={result.suggestions.length === 0}
+                disabled={result.suggestions.length === 0 || constraintsChanged}
               >
                 Accept &amp; Add ({result.suggestions.length})
               </Button>

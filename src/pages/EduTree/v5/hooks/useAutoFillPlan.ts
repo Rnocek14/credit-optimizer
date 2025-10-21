@@ -22,6 +22,7 @@ export function useAutoFillPlan(
   const [state, setState] = useState<AutoFillState>('idle');
   const [result, setResult] = useState<PlanAutoCompleteResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [capturedConstraints, setCapturedConstraints] = useState<string | null>(null);
 
   const basket = usePlanBasket(s => s.items);
   const addItem = usePlanBasket(s => s.addItem);
@@ -29,12 +30,16 @@ export function useAutoFillPlan(
   const run = useCallback(() => {
     setState('running');
     setError(null);
+    
+    // Capture constraints snapshot for change detection
+    setCapturedConstraints(JSON.stringify(constraints));
 
     const unfilled = modules.filter(m => (m.creditsRequired - m.creditsEarned) > 0);
     
     // Track start event
     void trackTelemetryEvent({
       task: 'autofill_started',
+      scope: 'plan',
       complexity: {
         modulesCount: modules.length,
         unfilledCount: unfilled.length,
@@ -65,6 +70,7 @@ export function useAutoFillPlan(
       // Track completion event
       void trackTelemetryEvent({
         task: 'autofill_completed',
+        scope: 'plan',
         success: true,
         complexity: {
           status: planResult.status,
@@ -86,6 +92,7 @@ export function useAutoFillPlan(
 
       void trackTelemetryEvent({
         task: 'autofill_completed',
+        scope: 'plan',
         success: false,
         complexity: { error: message },
       });
@@ -124,6 +131,7 @@ export function useAutoFillPlan(
     // Track acceptance
     void trackTelemetryEvent({
       task: 'autofill_accepted',
+      scope: 'plan',
       complexity: {
         suggestionsCount: itemsSnapshot.length,
         totalCost: result.totals.totalCost,
@@ -146,6 +154,7 @@ export function useAutoFillPlan(
     if (result) {
       void trackTelemetryEvent({
         task: 'autofill_rejected',
+        scope: 'plan',
         complexity: {
           suggestionsCount: result.suggestions.length,
           status: result.status,
@@ -170,5 +179,6 @@ export function useAutoFillPlan(
     run,
     accept,
     reject,
+    constraintsChanged: capturedConstraints !== null && capturedConstraints !== JSON.stringify(constraints),
   };
 }

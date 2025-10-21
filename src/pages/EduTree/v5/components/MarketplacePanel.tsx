@@ -265,24 +265,13 @@ export function MarketplacePanel({
             )}
             
             {/* Auto-Complete Button - V2 Dialog */}
-            {FEATURE_FLAGS.v5_autofill_enabled ? (
+            {FEATURE_FLAGS.v5_autofill_enabled && (
               <AutoFillPlanButton
                 modules={allModules as ModuleData[]}
                 constraints={constraints}
                 weights={{ cost: weights.cost, time: weights.time, cri: weights.quality }}
                 disabled={violations.some(v => v.severity === 'error')}
               />
-            ) : (
-              <Button 
-                onClick={handleAutoComplete}
-                variant="outline" 
-                className="w-full"
-                size="sm"
-                disabled={isAutoCompleting || violations.some(v => v.severity === 'error')}
-                aria-busy={isAutoCompleting}
-              >
-                {isAutoCompleting ? 'Processing...' : '✨ Auto-Complete Plan'}
-              </Button>
             )}
           </div>
         )}
