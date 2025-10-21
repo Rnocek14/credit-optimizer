@@ -2,7 +2,7 @@ import type { BasketItem, Constraints } from '../state/usePlanBasket';
 import type { ScoringWeights } from '../utils/optionScoring';
 import type { ProviderType } from '../types/v5';
 
-interface ModuleData {
+export interface ModuleData {
   id: string;
   marketplaceOptions?: any[];
 }

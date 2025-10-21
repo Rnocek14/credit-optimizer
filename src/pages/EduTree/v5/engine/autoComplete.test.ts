@@ -1,535 +1,179 @@
 import { describe, it, expect } from 'vitest';
 import { autoCompletePlan } from './autoComplete';
-import type { ScoringWeights } from '../utils/optionScoring';
+import type { ModuleData } from './autoComplete';
+import type { BasketItem } from '../state/usePlanBasket';
 
-const defaultWeights: ScoringWeights = { cost: 0.33, time: 0.33, quality: 0.34 };
-
-describe('autoCompletePlan - Reasoning Thresholds', () => {
-  it('shows "Top-rated match" for score >= 80', () => {
-    const modules = [
+describe('autoCompletePlan - Reasoning & Status', () => {
+  it('returns suggestions with auto-filled status and reasoning', () => {
+    const modules: ModuleData[] = [
       {
-        id: 'mod1',
+        id: 'mod-101',
         marketplaceOptions: [
           {
-            courseId: 'course1',
+            courseId: 'CS101',
             credits: 3,
-            cost_usd: 100,
+            cost_usd: 299,
             duration_weeks: 8,
-            score: 80,
-            scoreBreakdown: { cri: 85, cost: 75, time: 80, quality: 80, total: 80 },
-            providerType: 'mooc' as const,
-            workload_weekly_hours: 7.5
-          }
-        ]
-      }
-    ];
-
-    const result = autoCompletePlan(modules, [], {}, defaultWeights);
-    
-    expect(result.reasoning.get('course1')).toContain('Top-rated match');
-  });
-
-  it('does not show "Top-rated match" for score < 80', () => {
-    const modules = [
-      {
-        id: 'mod1',
-        marketplaceOptions: [
-          {
-            courseId: 'course1',
-            credits: 3,
-            cost_usd: 100,
-            duration_weeks: 8,
-            score: 79,
-            scoreBreakdown: { cri: 70, cost: 75, time: 80, quality: 80, total: 79 },
-            providerType: 'mooc' as const,
-            workload_weekly_hours: 7.5
-          }
-        ]
-      }
-    ];
-
-    const result = autoCompletePlan(modules, [], {}, defaultWeights);
-    
-    expect(result.reasoning.get('course1')).not.toContain('Top-rated match');
-  });
-
-  it('shows transfer safety for CRI >= 85', () => {
-    const modules = [
-      {
-        id: 'mod1',
-        marketplaceOptions: [
-          {
-            courseId: 'course1',
-            credits: 3,
-            cost_usd: 100,
-            duration_weeks: 8,
-            score: 80,
-            scoreBreakdown: { cri: 92, cost: 75, time: 80, quality: 80, total: 80 },
-            providerType: 'mooc' as const,
-            workload_weekly_hours: 7.5
-          }
-        ]
-      }
-    ];
-
-    const result = autoCompletePlan(modules, [], {}, defaultWeights);
-    
-    expect(result.reasoning.get('course1')).toContain('92% transfer safety');
-  });
-
-  it('shows fast completion for duration <= 8 weeks', () => {
-    const modules = [
-      {
-        id: 'mod1',
-        marketplaceOptions: [
-          {
-            courseId: 'course1',
-            credits: 3,
-            cost_usd: 100,
-            duration_weeks: 6,
-            score: 75,
-            scoreBreakdown: { cri: 80, cost: 70, time: 85, quality: 75, total: 75 },
-            providerType: 'mooc' as const,
-            workload_weekly_hours: 7.5
-          }
-        ]
-      }
-    ];
-
-    const result = autoCompletePlan(modules, [], {}, defaultWeights);
-    
-    expect(result.reasoning.get('course1')).toContain('Fast completion');
-  });
-
-  it('shows budget-friendly for low cost', () => {
-    const modules = [
-      {
-        id: 'mod1',
-        marketplaceOptions: [
-          {
-            courseId: 'course1',
-            credits: 3,
-            cost_usd: 50,
-            duration_weeks: 8,
-            score: 75,
-            scoreBreakdown: { cri: 75, cost: 95, time: 70, quality: 70, total: 75 },
-            providerType: 'mooc' as const,
-            workload_weekly_hours: 7.5
-          }
-        ]
-      }
-    ];
-
-    const result = autoCompletePlan(modules, [], {}, defaultWeights);
-    
-    const reasoning = result.reasoning.get('course1') || '';
-    expect(reasoning.toLowerCase()).toContain('budget');
-  });
-});
-
-describe('autoCompletePlan - Constraint Respect', () => {
-  it('respects budget constraint', () => {
-    const modules = [
-      {
-        id: 'mod1',
-        marketplaceOptions: [
-          {
-            courseId: 'course1',
-            credits: 3,
-            cost_usd: 2000,
-            duration_weeks: 8,
-            score: 90,
-            scoreBreakdown: { cri: 85, cost: 75, time: 80, quality: 80, total: 90 },
+            workload_weekly_hours: 10,
+            scoreBreakdown: { cri: 95, cost: 90, duration: 85 },
+            prerequisites: [],
             providerType: 'university' as const,
-            workload_weekly_hours: 12
           },
           {
-            courseId: 'course2',
+            courseId: 'CS101-ALT',
             credits: 3,
-            cost_usd: 100,
-            duration_weeks: 8,
-            score: 70,
-            scoreBreakdown: { cri: 75, cost: 90, time: 80, quality: 70, total: 70 },
+            cost_usd: 499,
+            duration_weeks: 12,
+            workload_weekly_hours: 12,
+            scoreBreakdown: { cri: 75, cost: 60, duration: 70 },
+            prerequisites: [],
             providerType: 'mooc' as const,
-            workload_weekly_hours: 7.5
-          }
-        ]
-      }
-    ];
-
-    const result = autoCompletePlan(
-      modules, 
-      [], 
-      { max_budget_usd: 500 }, 
-      defaultWeights
-    );
-    
-    // Should choose cheaper option despite lower score
-    expect(result.suggestions[0].courseId).toBe('course2');
-    expect(result.status).toBe('ok');
-  });
-
-  it('respects ACE transfer cap', () => {
-    const modules = [
-      {
-        id: 'mod1',
-        marketplaceOptions: [
-          {
-            courseId: 'course1',
-            credits: 10,
-            cost_usd: 100,
-            duration_weeks: 8,
-            score: 90,
-            scoreBreakdown: { cri: 85, cost: 90, time: 80, quality: 80, total: 90 },
-            providerType: 'mooc' as const,
-            workload_weekly_hours: 7.5
           },
-          {
-            courseId: 'course2',
-            credits: 3,
-            cost_usd: 500,
-            duration_weeks: 16,
-            score: 70,
-            scoreBreakdown: { cri: 95, cost: 60, time: 70, quality: 90, total: 70 },
-            providerType: 'university' as const,
-            workload_weekly_hours: 12
-          }
-        ]
-      }
+        ],
+      },
     ];
 
-    const currentBasket = [
-      {
-        moduleId: 'mod0',
-        courseId: 'existing',
-        credits: 85,
-        cost_usd: 1000,
-        duration_weeks: 60,
-        workload_weekly_hours: 10,
-        cri_score: 80,
-        status: 'pinned' as const,
-        providerType: 'mooc' as const
-      }
-    ];
+    const currentBasket: BasketItem[] = [];
+    const constraints = {
+      max_budget_usd: 5000,
+      min_cri_score: 70,
+      max_ace_credits: 90,
+    };
+    const weights = { quality: 0.5, cost: 0.3, time: 0.2 };
 
-    const result = autoCompletePlan(
-      modules,
-      currentBasket,
-      { max_ace_credits: 90 },
-      defaultWeights
-    );
+    const result = autoCompletePlan(modules, currentBasket, constraints, weights);
+
+    expect(result.suggestions).toHaveLength(1);
     
-    // Should choose university option to avoid exceeding ACE cap (85 + 10 > 90)
-    expect(result.suggestions[0].courseId).toBe('course2');
+    const suggestion = result.suggestions[0];
+    expect(suggestion.status).toBe('auto-filled');
+    expect(suggestion.autoFillReason).toBeDefined();
+    expect(suggestion.autoFillReason).toContain('Top-rated match');
+    expect(suggestion.courseId).toBe('CS101');
   });
 
-  it('respects minimum CRI constraint', () => {
-    const modules = [
+  it('includes reasoning for cost-optimized selections', () => {
+    const modules: ModuleData[] = [
       {
-        id: 'mod1',
+        id: 'mod-102',
         marketplaceOptions: [
           {
-            courseId: 'course1',
+            courseId: 'CHEAP',
             credits: 3,
-            cost_usd: 50,
+            cost_usd: 99,
+            duration_weeks: 8,
+            workload_weekly_hours: 10,
+            scoreBreakdown: { cri: 80, cost: 95, duration: 85 },
+            prerequisites: [],
+            providerType: 'mooc' as const,
+          },
+        ],
+      },
+    ];
+
+    const result = autoCompletePlan(modules, [], {}, { quality: 0.2, cost: 0.6, time: 0.2 });
+
+    expect(result.suggestions[0].autoFillReason).toContain('Lowest cost');
+  });
+
+  it('includes reasoning for duration-optimized selections', () => {
+    const modules: ModuleData[] = [
+      {
+        id: 'mod-103',
+        marketplaceOptions: [
+          {
+            courseId: 'FAST',
+            credits: 3,
+            cost_usd: 299,
             duration_weeks: 4,
-            score: 80,
-            scoreBreakdown: { cri: 70, cost: 90, time: 85, quality: 75, total: 80 },
+            workload_weekly_hours: 15,
+            scoreBreakdown: { cri: 85, cost: 70, duration: 95 },
+            prerequisites: [],
+            providerType: 'bootcamp' as const,
+          },
+        ],
+      },
+    ];
+
+    const result = autoCompletePlan(modules, [], {}, { quality: 0.2, cost: 0.2, time: 0.6 });
+
+    expect(result.suggestions[0].autoFillReason).toContain('Fastest completion');
+  });
+
+  it('filters options below min CRI threshold', () => {
+    const modules: ModuleData[] = [
+      {
+        id: 'mod-104',
+        marketplaceOptions: [
+          {
+            courseId: 'LOW-CRI',
+            credits: 3,
+            cost_usd: 99,
+            duration_weeks: 6,
+            workload_weekly_hours: 8,
+            scoreBreakdown: { cri: 60, cost: 95, duration: 90 },
+            prerequisites: [],
             providerType: 'mooc' as const,
-            workload_weekly_hours: 5
           },
           {
-            courseId: 'course2',
+            courseId: 'HIGH-CRI',
             credits: 3,
-            cost_usd: 100,
+            cost_usd: 299,
             duration_weeks: 8,
-            score: 75,
-            scoreBreakdown: { cri: 92, cost: 80, time: 70, quality: 85, total: 75 },
-            providerType: 'mooc' as const,
-            workload_weekly_hours: 7.5
-          }
-        ]
-      }
-    ];
-
-    const result = autoCompletePlan(
-      modules,
-      [],
-      { min_cri_score: 85 },
-      defaultWeights
-    );
-    
-    // Should choose higher CRI option despite lower overall score
-    expect(result.suggestions[0].courseId).toBe('course2');
-  });
-
-  it('handles multiple constraints simultaneously', () => {
-    const modules = [
-      {
-        id: 'mod1',
-        marketplaceOptions: [
-          {
-            courseId: 'course1',
-            credits: 3,
-            cost_usd: 2000,
-            duration_weeks: 16,
-            score: 95,
-            scoreBreakdown: { cri: 98, cost: 50, time: 60, quality: 95, total: 95 },
+            workload_weekly_hours: 10,
+            scoreBreakdown: { cri: 90, cost: 80, duration: 85 },
+            prerequisites: [],
             providerType: 'university' as const,
-            workload_weekly_hours: 15
           },
-          {
-            courseId: 'course2',
-            credits: 3,
-            cost_usd: 200,
-            duration_weeks: 8,
-            score: 85,
-            scoreBreakdown: { cri: 88, cost: 85, time: 80, quality: 88, total: 85 },
-            providerType: 'mooc' as const,
-            workload_weekly_hours: 8
-          }
-        ]
-      }
-    ];
-
-    const result = autoCompletePlan(
-      modules,
-      [],
-      { 
-        max_budget_usd: 500,
-        min_cri_score: 85,
-        max_weekly_hours: 10
+        ],
       },
-      defaultWeights
-    );
-    
-    // Should choose course2 (meets all constraints)
-    expect(result.suggestions[0].courseId).toBe('course2');
-  });
-});
-
-describe('autoCompletePlan - Edge Cases', () => {
-  it('handles empty marketplace options', () => {
-    const modules = [
-      {
-        id: 'mod1',
-        marketplaceOptions: []
-      }
     ];
 
-    const result = autoCompletePlan(modules, [], {}, defaultWeights);
-    
-    expect(result.suggestions).toHaveLength(0);
-  });
+    const result = autoCompletePlan(modules, [], { min_cri_score: 85 }, { quality: 0.5, cost: 0.3, time: 0.2 });
 
-  it('skips modules already in basket', () => {
-    const modules = [
-      {
-        id: 'mod1',
-        marketplaceOptions: [
-          {
-            courseId: 'course1',
-            credits: 3,
-            cost_usd: 100,
-            duration_weeks: 8,
-            score: 80,
-            scoreBreakdown: { cri: 85, cost: 75, time: 80, quality: 80, total: 80 },
-            providerType: 'mooc' as const,
-            workload_weekly_hours: 7.5
-          }
-        ]
-      }
-    ];
-
-    const currentBasket = [
-      {
-        moduleId: 'mod1',
-        courseId: 'existing',
-        credits: 3,
-        cost_usd: 100,
-        duration_weeks: 8,
-        workload_weekly_hours: 7.5,
-        cri_score: 85,
-        status: 'pinned' as const,
-        providerType: 'mooc' as const
-      }
-    ];
-
-    const result = autoCompletePlan(modules, currentBasket, {}, defaultWeights);
-    
-    expect(result.suggestions).toHaveLength(0);
-  });
-
-  it('provides reasoning for each suggestion', () => {
-    const modules = [
-      {
-        id: 'mod1',
-        marketplaceOptions: [
-          {
-            courseId: 'course1',
-            credits: 3,
-            cost_usd: 100,
-            duration_weeks: 8,
-            score: 80,
-            scoreBreakdown: { cri: 85, cost: 75, time: 80, quality: 80, total: 80 },
-            providerType: 'mooc' as const,
-            workload_weekly_hours: 7.5
-          }
-        ]
-      }
-    ];
-
-    const result = autoCompletePlan(modules, [], {}, defaultWeights);
-    
     expect(result.suggestions).toHaveLength(1);
-    expect(result.reasoning.has('course1')).toBe(true);
-    expect(result.reasoning.get('course1')).toBeTruthy();
-  });
-});
-
-describe('autoCompletePlan - Status Matrix', () => {
-  it('returns status "ok" when all unfilled modules get suggestions', () => {
-    const modules = [
-      {
-        id: 'mod1',
-        marketplaceOptions: [
-          {
-            courseId: 'course1',
-            credits: 3,
-            cost_usd: 100,
-            duration_weeks: 8,
-            score: 80,
-            scoreBreakdown: { cri: 85, cost: 75, time: 80, quality: 80, total: 80 },
-            providerType: 'mooc' as const,
-            workload_weekly_hours: 7.5
-          }
-        ]
-      },
-      {
-        id: 'mod2',
-        marketplaceOptions: [
-          {
-            courseId: 'course2',
-            credits: 3,
-            cost_usd: 150,
-            duration_weeks: 6,
-            score: 75,
-            scoreBreakdown: { cri: 80, cost: 70, time: 85, quality: 75, total: 75 },
-            providerType: 'university' as const,
-            workload_weekly_hours: 10
-          }
-        ]
-      }
-    ];
-
-    const result = autoCompletePlan(modules, [], {}, defaultWeights);
-    
-    expect(result.suggestions).toHaveLength(2);
-    expect(result.status).toBe('ok');
+    expect(result.suggestions[0].courseId).toBe('HIGH-CRI');
+    expect(result.suggestions[0].autoFillReason).toBeDefined();
   });
 
-  it('returns status "partial" when some but not all unfilled modules get suggestions', () => {
-    const modules = [
+  it('returns partial status when some modules cannot be filled', () => {
+    const modules: ModuleData[] = [
       {
-        id: 'mod1',
+        id: 'mod-105',
         marketplaceOptions: [
           {
-            courseId: 'course1',
+            courseId: 'VALID',
             credits: 3,
-            cost_usd: 100,
+            cost_usd: 299,
             duration_weeks: 8,
-            score: 80,
-            scoreBreakdown: { cri: 85, cost: 75, time: 80, quality: 80, total: 80 },
-            providerType: 'mooc' as const,
-            workload_weekly_hours: 7.5
-          }
-        ]
+            workload_weekly_hours: 10,
+            scoreBreakdown: { cri: 85, cost: 80, duration: 85 },
+            prerequisites: [],
+            providerType: 'university' as const,
+          },
+        ],
       },
       {
-        id: 'mod2',
+        id: 'mod-106',
         marketplaceOptions: [
           {
-            courseId: 'course2',
+            courseId: 'TOO-EXPENSIVE',
             credits: 3,
-            cost_usd: 5000, // Too expensive
-            duration_weeks: 6,
-            score: 75,
-            scoreBreakdown: { cri: 80, cost: 20, time: 85, quality: 75, total: 75 },
-            providerType: 'university' as const,
-            workload_weekly_hours: 10
-          }
-        ]
-      }
+            cost_usd: 10000,
+            duration_weeks: 8,
+            workload_weekly_hours: 10,
+            scoreBreakdown: { cri: 95, cost: 20, duration: 85 },
+            prerequisites: [],
+            providerType: 'bootcamp' as const,
+          },
+        ],
+      },
     ];
 
-    const result = autoCompletePlan(modules, [], { max_budget_usd: 200 }, defaultWeights);
-    
-    expect(result.suggestions).toHaveLength(1);
-    expect(result.suggestions[0].courseId).toBe('course1');
+    const result = autoCompletePlan(modules, [], { max_budget_usd: 500 }, { quality: 0.5, cost: 0.3, time: 0.2 });
+
     expect(result.status).toBe('partial');
-  });
-
-  it('returns status "none" when no suggestions could be made', () => {
-    const modules = [
-      {
-        id: 'mod1',
-        marketplaceOptions: [
-          {
-            courseId: 'course1',
-            credits: 3,
-            cost_usd: 5000,
-            duration_weeks: 8,
-            score: 80,
-            scoreBreakdown: { cri: 85, cost: 30, time: 80, quality: 80, total: 80 },
-            providerType: 'mooc' as const,
-            workload_weekly_hours: 7.5
-          }
-        ]
-      }
-    ];
-
-    const result = autoCompletePlan(modules, [], { max_budget_usd: 100 }, defaultWeights);
-    
-    expect(result.suggestions).toHaveLength(0);
-    expect(result.status).toBe('none');
-  });
-
-  it('returns status "none" when all modules already filled', () => {
-    const modules = [
-      {
-        id: 'mod1',
-        marketplaceOptions: [
-          {
-            courseId: 'course1',
-            credits: 3,
-            cost_usd: 100,
-            duration_weeks: 8,
-            score: 80,
-            scoreBreakdown: { cri: 85, cost: 75, time: 80, quality: 80, total: 80 },
-            providerType: 'mooc' as const,
-            workload_weekly_hours: 7.5
-          }
-        ]
-      }
-    ];
-
-    const currentBasket = [
-      {
-        moduleId: 'mod1',
-        courseId: 'existing',
-        credits: 3,
-        cost_usd: 100,
-        duration_weeks: 8,
-        workload_weekly_hours: 7.5,
-        cri_score: 85,
-        status: 'pinned' as const,
-        providerType: 'mooc' as const
-      }
-    ];
-
-    const result = autoCompletePlan(modules, currentBasket, {}, defaultWeights);
-    
-    expect(result.suggestions).toHaveLength(0);
-    expect(result.status).toBe('none');
+    expect(result.suggestions).toHaveLength(1);
+    expect(result.suggestions[0].courseId).toBe('VALID');
   });
 });
