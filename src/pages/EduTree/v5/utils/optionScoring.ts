@@ -33,7 +33,7 @@ function minmaxNormalize(
   lowerIsBetter = true
 ): number {
   if (value == null || Number.isNaN(value)) return 0.5; // neutral when unknown
-  if (max <= min) return 1; // all equal → perfect score
+  if (max <= min) return 0.5; // all equal → neutral, not perfect
   const x = clamp01((value - min) / (max - min));
   return lowerIsBetter ? 1 - x : x;
 }
