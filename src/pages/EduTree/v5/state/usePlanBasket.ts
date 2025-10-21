@@ -164,6 +164,9 @@ export const usePlanBasket = create<PlanBasketState>()(
     }),
     { 
       name: 'v5-plan-basket',
+      // TODO: Bump version when adding/removing BasketItem fields
+      // Current schema: v1 = providerType + workload_weekly_hours
+      // Next migration: v2 = [describe next schema change]
       version: 1,
       migrate: (persistedState: any, version: number) => {
         if (version === 0) {

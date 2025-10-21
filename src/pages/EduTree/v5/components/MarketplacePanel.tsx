@@ -9,6 +9,7 @@ import { calculateOptionScore, type ScoreBreakdown, type ProviderType } from '..
 import { useScoringPrefs } from '../state/useScoringPrefs';
 import { validatePlan } from '../engine/constraints';
 import { autoCompletePlan } from '../engine/autoComplete';
+import { getAutoCompleteMessage } from '../engine/autoCompleteStatus';
 import { ENV } from '@/config/env';
 
 interface MarketplaceOption {
@@ -138,23 +139,20 @@ export function MarketplacePanel({
     // Add suggestions to basket
     result.suggestions.forEach(item => addItem(item));
     
-    // Status-aware toast feedback
+    // Status-aware toast feedback (using centralized helper)
     const unfilledCount = modules.filter(m => 
       !basket.some(b => b.moduleId === m.id) && (m.marketplaceOptions?.length ?? 0) > 0
     ).length;
     
-    if (result.status === 'ok') {
-      console.log(`✨ Auto-completed all ${result.suggestions.length} modules`);
-    } else if (result.status === 'partial') {
-      console.log(`✨ Auto-completed ${result.suggestions.length} of ${unfilledCount} modules (${unfilledCount - result.suggestions.length} blocked by constraints)`);
-    } else {
-      console.log('⚠️ No modules could be auto-completed under current constraints');
-    }
+    const message = getAutoCompleteMessage(result.status, result.suggestions.length, unfilledCount);
+    console.log(message);
     
     logAnalytics('autocomplete_run', {
       moduleId,
       status: result.status,
-      constraintsUsed: Object.keys(constraints).filter(k => constraints[k as keyof typeof constraints] !== undefined),
+      constraintsUsed: Object.entries(constraints)
+        .filter(([, v]) => v !== undefined && v !== null)
+        .map(([k]) => k),
       suggestionsCount: result.suggestions.length,
       totalCost: totals.totalCost,
       avgCRI: totals.avgCRI

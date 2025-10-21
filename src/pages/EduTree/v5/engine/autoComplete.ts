@@ -38,6 +38,16 @@ export function autoCompletePlan(
   constraints: Constraints,
   weights: ScoringWeights
 ): AutoCompleteResult {
+  // Early return for empty degree (no data vs constraints block)
+  if (modules.length === 0) {
+    console.warn('[AutoComplete] No modules provided');
+    return {
+      suggestions: [],
+      reasoning: new Map(),
+      status: 'none'
+    };
+  }
+
   const suggestions: BasketItem[] = [];
   const reasoning = new Map<string, string>();
   
