@@ -85,6 +85,11 @@ export function YearCard({
             <Badge variant={loadBadge.variant} size="sm" className="text-[10px]">
               {loadBadge.emoji} {loadBadge.label}
             </Badge>
+            {creditsSummary.planned >= 30 && (
+              <Badge variant="destructive" size="sm" className="text-[10px]">
+                🔒 Year Cap
+              </Badge>
+            )}
             <Badge variant="secondary" size="sm" className="text-[10px]">
               📚 {modulesSummary.total} modules
             </Badge>

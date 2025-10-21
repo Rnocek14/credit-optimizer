@@ -2,11 +2,13 @@ import { useState, useMemo, useCallback } from 'react';
 import { YearCard } from './components/YearCard';
 import { ModuleCard } from './components/ModuleCard';
 import { DegreeNode } from './components/DegreeNode';
+import { MarketplacePanel } from './components/MarketplacePanel';
 import canonicalCourses from '@/fixtures/prereqs/canonical-courses.json';
 import requirements from '@/fixtures/requirements/cs-degree-requirements.json';
 import { ModuleData, Course, Requirement, LoadHealth, DegreeSummary } from './types/v5';
 import { useV5DatabaseData } from './hooks/useV5DatabaseData';
 import { usePlanStore } from './state/usePlanStore';
+import { YEAR_CREDIT_CAP } from './constants/v5';
 import './styles/v5.css';
 
 // Feature flag for quick rollback during demos
@@ -34,6 +36,14 @@ export default function EduTreeV5Page() {
   const [collapsedYears, setCollapsedYears] = useState<Record<number, boolean>>({});
   const [collapsedModules, setCollapsedModules] = useState<Record<string, boolean>>({});
   
+  // Marketplace panel state
+  const [panel, setPanel] = useState<{
+    open: boolean;
+    moduleData?: ModuleData;
+    year?: number;
+  }>({ open: false });
+  const [panelSortBy, setPanelSortBy] = useState<'cheapest' | 'shortest' | 'credits'>('cheapest');
+  
   const toggleYear = (year: number) => {
     console.log('[V5 Page] Toggling year:', year);
     setCollapsedYears(prev => ({ 
@@ -53,6 +63,10 @@ export default function EduTreeV5Page() {
   const handleCourseClick = (courseId: string) => {
     console.log('[V5 Page] Course clicked:', courseId);
   };
+
+  const handleOpenPanel = useCallback((module: ModuleData, year: number) => {
+    setPanel({ open: true, moduleData: module, year });
+  }, []);
 
   // Toggle database mode
   const handleToggleMode = useCallback(() => {
@@ -144,6 +158,12 @@ export default function EduTreeV5Page() {
     const earned = modules.reduce((sum, m) => sum + (m.creditsEarned || 0), 0);
     const planned = modules.reduce((sum, m) => sum + (m.creditsRequired || 0), 0);
     return { planned, earned };
+  }, [getModulesForYear]);
+
+  // Calculate actual earned credits for a year from selections
+  const getYearEarnedCredits = useCallback((year: number): number => {
+    const modules = getModulesForYear(year);
+    return modules.reduce((sum, m) => sum + (m.creditsEarned || 0), 0);
   }, [getModulesForYear]);
 
   // Calculate load health based on planned vs required credits
@@ -344,20 +364,45 @@ export default function EduTreeV5Page() {
             {/* Module Cards - Stack vertically below */}
             {!collapsedYears[year] && (
               <div className="modules-stack mt-4 space-y-3">
-                {getModulesForYear(year).map(module => (
-                  <ModuleCard
-                    key={module.id}
-                    {...module}
-                    onToggle={() => toggleModule(module.id)}
-                    onCourseClick={handleCourseClick}
-                  />
-                ))}
+                {getModulesForYear(year).map(module => {
+                  const yearEarned = getYearEarnedCredits(year);
+                  const yearCap = YEAR_CREDIT_CAP;
+                  
+                  return (
+                    <ModuleCard
+                      key={module.id}
+                      {...module}
+                      onToggle={() => toggleModule(module.id)}
+                      onCourseClick={handleCourseClick}
+                      onOpenPanel={() => handleOpenPanel(module, year)}
+                      yearEarned={yearEarned}
+                      yearCap={yearCap}
+                    />
+                  );
+                })}
               </div>
             )}
             </div>
           );
         })}
       </div>
+
+      {/* Marketplace Panel */}
+      {panel.open && panel.moduleData && panel.year && (
+        <MarketplacePanel
+          open={panel.open}
+          onOpenChange={(open) => setPanel({ open })}
+          moduleId={panel.moduleData.id}
+          moduleLabel={panel.moduleData.label}
+          creditsEarned={panel.moduleData.creditsEarned}
+          creditsRequired={panel.moduleData.creditsRequired}
+          options={panel.moduleData.marketplaceOptions || []}
+          sortBy={panelSortBy}
+          setSortBy={setPanelSortBy}
+          yearEarned={getYearEarnedCredits(panel.year)}
+          yearCap={YEAR_CREDIT_CAP}
+        />
+      )}
     </div>
   );
 }

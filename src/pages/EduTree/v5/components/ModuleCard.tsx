@@ -9,6 +9,9 @@ interface ModuleCardProps extends ModuleData {
   onToggle: () => void;
   onCourseClick?: (courseId: string) => void;
   cheapestOption?: number | null;
+  onOpenPanel?: () => void;
+  yearEarned?: number;
+  yearCap?: number;
 }
 
 export function ModuleCard({ 
@@ -24,7 +27,10 @@ export function ModuleCard({
   onCourseClick,
   optionsCount,
   marketplaceOptions,
-  cheapestOption
+  cheapestOption,
+  onOpenPanel,
+  yearEarned = 0,
+  yearCap = 30
 }: ModuleCardProps) {
   const progress = creditsRequired > 0 ? (creditsEarned / creditsRequired) * 100 : 0;
   const selections = usePlanStore(s => s.selections);
@@ -86,11 +92,22 @@ export function ModuleCard({
                 <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full whitespace-nowrap">
                   {optionsCount} {optionsCount === 1 ? 'option' : 'options'} available
                 </span>
-          {isCollapsed && cheapestOption !== undefined && cheapestOption !== null && (
-            <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full whitespace-nowrap">
-              {cheapestOption === 0 ? 'free options' : `from $${cheapestOption}`}
-            </span>
-          )}
+                {isCollapsed && cheapestOption !== undefined && cheapestOption !== null && (
+                  <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full whitespace-nowrap">
+                    {cheapestOption === 0 ? 'free options' : `from $${cheapestOption}`}
+                  </span>
+                )}
+                {onOpenPanel && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onOpenPanel();
+                    }}
+                    className="text-xs px-2 py-0.5 rounded bg-accent hover:bg-accent/80 text-accent-foreground transition-colors"
+                  >
+                    🔍 Compare
+                  </button>
+                )}
               </div>
             )}
           </div>
@@ -168,6 +185,7 @@ export function ModuleCard({
           </div>
           {sortedOptions.map(option => {
             const isSelected = selectedIds.includes(option.courseId);
+            const wouldExceedYearCap = !isSelected && yearEarned + option.credits > yearCap;
             const atMax = !isSelected && (selections[id]?.selectedCredits ?? 0) >= creditsRequired;
             
             return (
@@ -178,9 +196,11 @@ export function ModuleCard({
                 <Checkbox 
                   checked={isSelected}
                   onCheckedChange={() => {
-                    toggleCourse(id, option.courseId, option.credits, creditsRequired);
+                    if (!atMax && !wouldExceedYearCap) {
+                      toggleCourse(id, option.courseId, option.credits, creditsRequired);
+                    }
                   }}
-                  disabled={atMax}
+                  disabled={atMax || wouldExceedYearCap}
                 />
                 <div className="flex-1 min-w-0">
                   <div className="text-xs font-medium truncate">
@@ -228,18 +248,27 @@ export function ModuleCard({
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    toggleCourse(id, option.courseId, option.credits, creditsRequired);
+                    if (!atMax && !wouldExceedYearCap) {
+                      toggleCourse(id, option.courseId, option.credits, creditsRequired);
+                    }
                   }}
-                  disabled={atMax}
+                  disabled={atMax || wouldExceedYearCap}
                   className={`text-xs px-3 py-1 rounded transition-colors whitespace-nowrap ${
                     isSelected 
                       ? 'bg-green-100 text-green-700 hover:bg-green-200' 
-                      : atMax
+                      : atMax || wouldExceedYearCap
                         ? 'bg-muted text-muted-foreground cursor-not-allowed'
                         : 'bg-primary/10 text-primary hover:bg-primary/20'
                   }`}
+                  title={
+                    wouldExceedYearCap && !isSelected
+                      ? `Year cap reached (${yearCap} cr)`
+                      : atMax
+                      ? 'Module max reached'
+                      : ''
+                  }
                 >
-                  {isSelected ? '✓ Selected' : atMax ? 'Max reached' : 'Select'}
+                  {isSelected ? '✓ Selected' : (atMax || wouldExceedYearCap) ? 'Cap Reached' : 'Select'}
                 </button>
               </div>
             );
