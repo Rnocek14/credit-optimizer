@@ -1,6 +1,10 @@
 import type { ModuleData } from '../types/v5';
 import { PROVIDER_DEFAULTS } from '../data/providerDefaults';
 
+// Normalize provider ID to match registry keys (kebab-case)
+const normalizeProviderId = (id?: string) => 
+  id?.toLowerCase().replace(/\s+/g, '-').replace(/_/g, '-');
+
 interface DbRequirement {
   id: string;
   year: number;
@@ -82,9 +86,14 @@ export function transformToModuleData(
           website_url: null
         } : null);
         
-        // Look up provider defaults for CRI signals
-        const providerId = provider?.id;
+        // Look up provider defaults for CRI signals (normalized to kebab-case)
+        const providerId = normalizeProviderId(provider?.id);
         const pDefaults = providerId ? PROVIDER_DEFAULTS[providerId] : undefined;
+        
+        // Log when provider not found (helps grow coverage)
+        if (provider?.id && !pDefaults) {
+          console.warn(`[CRI] Provider not in registry: "${provider.id}" (normalized: "${providerId}")`);
+        }
 
         return {
           id: course.id,

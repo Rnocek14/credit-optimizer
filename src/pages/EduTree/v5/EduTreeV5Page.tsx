@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { YearCard } from './components/YearCard';
 import { ModuleCard } from './components/ModuleCard';
 import { DegreeNode } from './components/DegreeNode';
@@ -42,7 +42,18 @@ export default function EduTreeV5Page() {
     moduleData?: ModuleData;
     year?: number;
   }>({ open: false });
-  const [panelSortBy, setPanelSortBy] = useState<'cheapest' | 'shortest' | 'credits' | 'best-match'>('best-match');
+  const [panelSortBy, setPanelSortBy] = useState<'cheapest' | 'shortest' | 'credits' | 'best-match'>(() => {
+    if (typeof window === 'undefined') return 'best-match';
+    const saved = localStorage.getItem('v5-market-sort');
+    return (saved as any) || 'best-match';
+  });
+  
+  // Persist sort preference
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('v5-market-sort', panelSortBy);
+    }
+  }, [panelSortBy]);
   
   const toggleYear = (year: number) => {
     console.log('[V5 Page] Toggling year:', year);

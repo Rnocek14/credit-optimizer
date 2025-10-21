@@ -291,12 +291,12 @@ export function MarketplacePanel({
                                   </span>
                                 </div>
                                 <p className="text-[10px] text-muted-foreground mt-1">
-                                  Likelihood this course will transfer for credit based on provider type, accreditation, and assessment rigor.
+                                  Estimated likelihood this option transfers for degree credit at most schools. Based on provider type, ACE/NCCRS status, and assessment rigor.
                                 </p>
                                 
                                 {option.scoreBreakdown.cri < 50 && (
                                   <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-[10px] text-yellow-800">
-                                    ⚠️ <strong>Transfer risk:</strong> Verify acceptance with your registrar before enrolling. Low likelihood of transfer — confirm with your registrar.
+                                    ⚠️ <strong>Transfer risk:</strong> Low likelihood of transfer. Check your school's transfer policy before enrolling.
                                   </div>
                                 )}
                               </div>

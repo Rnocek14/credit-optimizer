@@ -173,3 +173,23 @@ describe('edge cases', () => {
     expect(r3.cost).toBe(0);   // expensive = worst
   });
 });
+
+describe('duration edge cases', () => {
+  it('duration ties are neutral (50/100)', () => {
+    const options = [
+      { cost_usd: 100, duration_weeks: 8, providerType: 'mooc' as const },
+      { cost_usd: 100, duration_weeks: 8, providerType: 'mooc' as const },
+    ];
+    const r = calculateOptionScore(options[0], options);
+    expect(r.time).toBe(50);
+  });
+
+  it('null duration is neutral', () => {
+    const options = [
+      { cost_usd: 100, duration_weeks: null, providerType: 'mooc' as const },
+      { cost_usd: 100, duration_weeks: 8, providerType: 'mooc' as const },
+    ];
+    const r = calculateOptionScore(options[0], options);
+    expect(r.time).toBe(50);
+  });
+});
