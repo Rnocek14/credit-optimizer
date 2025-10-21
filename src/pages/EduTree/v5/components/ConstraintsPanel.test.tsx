@@ -200,11 +200,10 @@ describe('ConstraintsPanel - UI Debounce', () => {
   });
 
   it('debounces rapid slider changes to a single analytics event', () => {
-    const { container } = render(<ConstraintsPanel />);
+    render(<ConstraintsPanel />);
 
-    // Find the Min CRI slider by aria-label
-    const minCRISlider = container.querySelector('input[type="range"][aria-label="Min CRI"]') as HTMLInputElement;
-    
+    // Find the Min CRI slider by accessible role
+    const minCRISlider = document.querySelector('input[type="range"][aria-label="Min CRI"]') as HTMLInputElement;
     expect(minCRISlider).toBeTruthy();
 
     // 5 rapid changes - use manual event triggering for speed
