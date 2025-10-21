@@ -4,6 +4,7 @@ import { ModuleCard } from './components/ModuleCard';
 import { DegreeNode } from './components/DegreeNode';
 import { MarketplacePanel } from './components/MarketplacePanel';
 import { GraphView } from './components/GraphView';
+import { QuickMarketplaceSeed } from '@/components/QuickMarketplaceSeed';
 import canonicalCourses from '@/fixtures/prereqs/canonical-courses.json';
 import requirements from '@/fixtures/requirements/cs-degree-requirements.json';
 import { ModuleData, Course, Requirement, LoadHealth, DegreeSummary } from './types/v5';
@@ -360,6 +361,19 @@ export default function EduTreeV5Page() {
           {USE_DATABASE && <span className="ml-2 text-primary">• Database Mode</span>}
         </p>
       </div>
+
+      {/* Quick Seed for Empty Database */}
+      {USE_DATABASE && dbData && !isLoading && (() => {
+        // Check if any module has marketplace options
+        const hasMarketplaceOptions = Object.values(dbData.modulesByYear).some(modules =>
+          modules.some(m => m.marketplaceOptions && m.marketplaceOptions.length > 0)
+        );
+        return !hasMarketplaceOptions;
+      })() && (
+        <div className="mb-6">
+          <QuickMarketplaceSeed />
+        </div>
+      )}
       
       {/* Degree Node */}
       {/* Degree Node */}
