@@ -15,6 +15,7 @@ import ConstraintsPanel from './ConstraintsPanel';
 import { usePlanBasketWithToasts } from '../hooks/usePlanBasketWithToasts';
 import { AutoFillPlanButton } from './AutoFillDialog';
 import { FEATURE_FLAGS } from '../config/featureFlags';
+import { mapWeightsForEngine } from '../utils/weightMapping';
 import type { ModuleData } from '../types/v5';
 
 interface MarketplaceOption {
@@ -269,7 +270,7 @@ export function MarketplacePanel({
               <AutoFillPlanButton
                 modules={allModules as ModuleData[]}
                 constraints={constraints}
-                weights={{ cost: weights.cost, time: weights.time, cri: weights.quality }}
+                weights={mapWeightsForEngine(weights)}
                 disabled={violations.some(v => v.severity === 'error')}
               />
             )}

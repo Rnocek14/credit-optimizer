@@ -120,6 +120,12 @@ export function useAutoFillPlan(
           itemsSnapshot.forEach(item => removeItem(item.courseId));
           toast.message('Changes undone');
           
+          void trackTelemetryEvent({
+            task: 'autofill_undo_bulk',
+            scope: 'plan',
+            complexity: { count: itemsSnapshot.length },
+          });
+          
           logEvent('autofill_undo_bulk', {
             count: itemsSnapshot.length,
           });

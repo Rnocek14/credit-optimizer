@@ -1,11 +1,12 @@
 import { render } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import React from 'react';
 import { describe, it, expect, vi } from 'vitest';
 import { useAutoFillPlan } from '../../hooks/useAutoFillPlan';
 
 // Mock hook to simulate states
 vi.mock('../../hooks/useAutoFillPlan', () => ({
-  useAutoFillPlan: () => ({
+  useAutoFillPlan: vi.fn(() => ({
     isRunning: false,
     result: {
       status: 'ok',
@@ -27,7 +28,8 @@ vi.mock('../../hooks/useAutoFillPlan', () => ({
     run: vi.fn(),
     accept: vi.fn(),
     reject: vi.fn(),
-  }),
+    constraintsChanged: false,
+  })),
 }));
 
 const modules: any[] = [{ id:'m1' }, { id:'m2' }];
@@ -52,5 +54,54 @@ describe('AutoFillDialog', () => {
     expect(result).toHaveProperty('run');
     expect(result).toHaveProperty('accept');
     expect(result).toHaveProperty('reject');
+    expect(result).toHaveProperty('constraintsChanged');
+  });
+
+  it('disables Accept when constraints change after run', async () => {
+    // Mock hook to return result with constraintsChanged=true
+    vi.mocked(useAutoFillPlan).mockReturnValue({
+      isRunning: false,
+      result: {
+        status: 'ok',
+        totals: { totalCost: 500, totalWeeks: 10, totalWorkloadHours: 20, aceCredits: 6 },
+        suggestions: [
+          { 
+            moduleId: 'm1', 
+            courseId: 'c1', 
+            title: 'Course 1', 
+            credits: 3, 
+            cost_usd: 100, 
+            duration_weeks: 8, 
+            workload_weekly_hours: 10, 
+            cri_score: 80, 
+            status: 'auto-filled' as const,
+            autoFillReason: 'Top match' 
+          }
+        ],
+        reasoning: ['Top match'],
+      },
+      error: null,
+      run: vi.fn(),
+      accept: vi.fn(),
+      reject: vi.fn(),
+      constraintsChanged: true, // 🔑 Key test condition
+    });
+    
+    const user = userEvent.setup();
+    const { AutoFillPlanButton } = require('../AutoFillDialog');
+    const { getByRole, getByText } = render(
+      <AutoFillPlanButton modules={modules} constraints={{}} weights={weights as any} />
+    );
+    
+    // Open dialog
+    const trigger = getByRole('button', { name: /auto-fill plan/i });
+    await user.click(trigger);
+    
+    // Verify warning visible
+    expect(getByText(/constraints changed/i)).toBeInTheDocument();
+    
+    // Verify Accept button disabled
+    const acceptButton = getByRole('button', { name: /accept & add/i });
+    expect(acceptButton).toBeDisabled();
   });
 });
