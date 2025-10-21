@@ -69,6 +69,9 @@ export function transformToModuleData(
     3: [],
     4: [],
   };
+  
+  // Track warned providers to prevent duplicate logs
+  const warnedProviders = new Set<string>();
 
   requirements.forEach((req) => {
     const reqOptions = allOptions.filter((opt) => opt.requirement_id === req.id);
@@ -90,8 +93,9 @@ export function transformToModuleData(
         const providerId = normalizeProviderId(provider?.id);
         const pDefaults = providerId ? PROVIDER_DEFAULTS[providerId] : undefined;
         
-        // Log when provider not found (helps grow coverage)
-        if (provider?.id && !pDefaults) {
+        // Log when provider not found (helps grow coverage) - ONCE per provider
+        if (provider?.id && !pDefaults && !warnedProviders.has(provider.id)) {
+          warnedProviders.add(provider.id);
           console.warn(`[CRI] Provider not in registry: "${provider.id}" (normalized: "${providerId}")`);
         }
 

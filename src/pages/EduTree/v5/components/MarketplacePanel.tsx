@@ -56,6 +56,12 @@ export function MarketplacePanel({
   const { weights, setWeights, resetWeights } = useScoringPrefs();
   const [showWeights, setShowWeights] = useState(false);
 
+  // Simple analytics logger (upgrade to proper telemetry later)
+  const logAnalytics = (event: string, data: Record<string, any>) => {
+    console.log(`[Analytics] ${event}`, { timestamp: new Date().toISOString(), ...data });
+    // TODO: Send to your analytics backend (Mixpanel, PostHog, etc.)
+  };
+
   // Enrich options with scores
   const enriched = useMemo(() => {
     return options.map(o => {
@@ -96,7 +102,14 @@ export function MarketplacePanel({
       <SheetContent className="w-[520px] sm:w-[600px] overflow-y-auto">
         <SheetHeader className="mb-4">
           <SheetTitle className="flex items-center justify-between">
-            <span>{moduleLabel}</span>
+            <div className="flex flex-col gap-1">
+              <span>{moduleLabel}</span>
+              <span className="text-xs text-muted-foreground font-normal">
+                {sortedOptions.length} option{sortedOptions.length !== 1 ? 's' : ''} • {
+                  sortedOptions.filter(o => o.cost_usd === 0).length
+                } free
+              </span>
+            </div>
             <span className="text-sm text-muted-foreground">
               {liveEarned}/{creditsRequired} cr
             </span>
@@ -112,7 +125,16 @@ export function MarketplacePanel({
             <span className="text-xs text-muted-foreground">Sort by</span>
             <select
               value={sortBy}
-              onChange={e => setSortBy(e.target.value as any)}
+              onChange={e => {
+                const newSort = e.target.value as any;
+                logAnalytics('marketplace_sort_changed', { 
+                  from: sortBy, 
+                  to: newSort,
+                  moduleId,
+                  optionCount: sortedOptions.length
+                });
+                setSortBy(newSort);
+              }}
               className="text-xs px-2 py-1 rounded border border-border bg-background"
             >
               <option value="best-match">🎯 Best Match</option>
@@ -151,7 +173,16 @@ export function MarketplacePanel({
                       min={0}
                       max={100}
                       value={Math.round(weights[key] * 100)}
-                      onChange={(e) => setWeights({ [key]: (+e.target.value) / 100 })}
+                      onChange={(e) => {
+                        const newValue = (+e.target.value) / 100;
+                        logAnalytics('marketplace_weights_adjusted', {
+                          dimension: key,
+                          oldValue: weights[key],
+                          newValue,
+                          weights: { ...weights, [key]: newValue }
+                        });
+                        setWeights({ [key]: newValue });
+                      }}
                       className="flex-1"
                     />
                     <span className="text-xs w-10 text-right font-medium">{Math.round(weights[key] * 100)}%</span>
@@ -229,11 +260,25 @@ export function MarketplacePanel({
                           <button 
                             className="text-[11px] underline text-muted-foreground hover:text-foreground"
                             aria-label={`View match breakdown for ${option.title}`}
+                            onClick={() => logAnalytics('marketplace_explainer_viewed', {
+                              moduleId,
+                              courseId: option.courseId,
+                              courseTitle: option.title,
+                              score: option.score,
+                              cri: option.scoreBreakdown?.cri,
+                              weights,
+                              sortBy
+                            })}
                           >
                             Why this?
                           </button>
                         </PopoverTrigger>
-                        <PopoverContent className="w-72 p-3" align="start">
+                        <PopoverContent 
+                          className="w-72 p-3" 
+                          align="start"
+                          role="dialog"
+                          aria-label={`Match breakdown for ${option.title}`}
+                        >
                           <div className="space-y-2">
                             <div className="text-sm font-semibold">
                               Match Score: {option.score}/100
