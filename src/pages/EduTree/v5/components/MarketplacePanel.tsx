@@ -139,33 +139,35 @@ export function MarketplacePanel({
     
     setIsAutoCompleting(true);
     
-    // Mock modules data structure for auto-complete
-    const modules = [{ id: moduleId, marketplaceOptions: sortedOptions }];
-    const result = autoCompletePlan(modules, basket, constraints, weights);
-    
-    // Add suggestions to basket
-    result.suggestions.forEach(item => addItem(item));
-    
-    // Status-aware toast feedback (using centralized helper)
-    const unfilledCount = modules.filter(m => 
-      !basket.some(b => b.moduleId === m.id) && (m.marketplaceOptions?.length ?? 0) > 0
-    ).length;
-    
-    const message = getAutoCompleteMessage(result.status, result.suggestions.length, unfilledCount);
-    console.log(message);
-    
-    logAnalytics('autocomplete_run', {
-      moduleId,
-      status: result.status,
-      constraintsUsed: Object.entries(constraints)
-        .filter(([, v]) => v !== undefined && v !== null)
-        .map(([k]) => k),
-      suggestionsCount: result.suggestions.length,
-      totalCost: totals.totalCost,
-      avgCRI: totals.avgCRI
-    });
-    
-    setIsAutoCompleting(false);
+    try {
+      // Mock modules data structure for auto-complete
+      const modules = [{ id: moduleId, marketplaceOptions: sortedOptions }];
+      const result = autoCompletePlan(modules, basket, constraints, weights);
+      
+      // Add suggestions to basket
+      result.suggestions.forEach(item => addItem(item));
+      
+      // Status-aware toast feedback (using centralized helper)
+      const unfilledCount = modules.filter(m => 
+        !basket.some(b => b.moduleId === m.id) && (m.marketplaceOptions?.length ?? 0) > 0
+      ).length;
+      
+      const message = getAutoCompleteMessage(result.status, result.suggestions.length, unfilledCount);
+      console.log(message);
+      
+      logAnalytics('autocomplete_run', {
+        moduleId,
+        status: result.status,
+        constraintsUsed: Object.entries(constraints)
+          .filter(([, v]) => v !== undefined && v !== null)
+          .map(([k]) => k),
+        suggestionsCount: result.suggestions.length,
+        totalCost: totals.totalCost,
+        avgCRI: totals.avgCRI
+      });
+    } finally {
+      setIsAutoCompleting(false);
+    }
   };
   
   // Helper: format relative date
@@ -253,11 +255,12 @@ export function MarketplacePanel({
             
             {/* Auto-Complete Button */}
             <Button 
-              onClick={handleAutoComplete} 
+              onClick={handleAutoComplete}
               variant="outline" 
               className="w-full"
               size="sm"
               disabled={isAutoCompleting || violations.some(v => v.severity === 'error')}
+              aria-busy={isAutoCompleting}
             >
               {isAutoCompleting ? 'Processing...' : '✨ Auto-Complete Plan'}
             </Button>
