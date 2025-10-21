@@ -148,7 +148,8 @@ export function autoCompletePlan(
       workload_weekly_hours: best.credits * 2.5, // estimate
       cri_score: best.scoreBreakdown?.cri ?? 0,
       status: 'auto-filled',
-      providerType: best.providerType
+      providerType: best.providerType,
+      autoFillReason: reasonText // Phase 1b: inline reasoning
     });
     
     // Update running totals

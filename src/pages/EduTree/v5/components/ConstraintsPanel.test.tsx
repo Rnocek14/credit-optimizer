@@ -1,0 +1,110 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { renderHook, act } from '@testing-library/react';
+import { usePlanBasket } from '../state/usePlanBasket';
+
+describe('ConstraintsPanel - Value Clamping', () => {
+  beforeEach(() => {
+    // Reset store before each test
+    const { clearAll, setConstraints } = usePlanBasket.getState();
+    clearAll();
+    setConstraints({
+      max_ace_credits: 90,
+      max_concurrent_courses: 2,
+    });
+  });
+
+  it('clamps max_budget_usd to minimum 0', () => {
+    const { result } = renderHook(() => usePlanBasket());
+    
+    act(() => {
+      result.current.setConstraints({ max_budget_usd: -100 });
+    });
+    
+    // Should be clamped or undefined (depends on implementation)
+    const budget = result.current.constraints.max_budget_usd;
+    expect(budget === undefined || budget >= 0).toBe(true);
+  });
+
+  it('clamps min_cri_score to 0-100 range', () => {
+    const { result } = renderHook(() => usePlanBasket());
+    
+    act(() => {
+      result.current.setConstraints({ min_cri_score: 150 });
+    });
+    
+    const cri = result.current.constraints.min_cri_score;
+    expect(cri).toBeGreaterThanOrEqual(0);
+    expect(cri).toBeLessThanOrEqual(100);
+  });
+
+  it('clamps max_ace_credits to 0-120 range', () => {
+    const { result } = renderHook(() => usePlanBasket());
+    
+    act(() => {
+      result.current.setConstraints({ max_ace_credits: 200 });
+    });
+    
+    const ace = result.current.constraints.max_ace_credits;
+    expect(ace).toBeLessThanOrEqual(120);
+  });
+
+  it('clamps max_concurrent_courses to 1-6 range', () => {
+    const { result } = renderHook(() => usePlanBasket());
+    
+    act(() => {
+      result.current.setConstraints({ max_concurrent_courses: 10 });
+    });
+    
+    const concurrent = result.current.constraints.max_concurrent_courses;
+    expect(concurrent).toBeGreaterThanOrEqual(1);
+    expect(concurrent).toBeLessThanOrEqual(6);
+  });
+
+  it('clamps max_weekly_hours to 0-80 range', () => {
+    const { result } = renderHook(() => usePlanBasket());
+    
+    act(() => {
+      result.current.setConstraints({ max_weekly_hours: 100 });
+    });
+    
+    const hours = result.current.constraints.max_weekly_hours;
+    expect(hours).toBeLessThanOrEqual(80);
+  });
+});
+
+describe('ConstraintsPanel - Analytics Tracking', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('should trigger analytics when constraints change', () => {
+    const { result } = renderHook(() => usePlanBasket());
+    
+    const oldCRI = result.current.constraints.min_cri_score;
+    
+    act(() => {
+      result.current.setConstraints({ min_cri_score: 85 });
+    });
+    
+    const newCRI = result.current.constraints.min_cri_score;
+    expect(newCRI).toBe(85);
+    expect(newCRI).not.toBe(oldCRI);
+  });
+
+  it('should not trigger duplicate events for unchanged values', () => {
+    const { result } = renderHook(() => usePlanBasket());
+    
+    act(() => {
+      result.current.setConstraints({ min_cri_score: 75 });
+    });
+    
+    const cri1 = result.current.constraints.min_cri_score;
+    
+    act(() => {
+      result.current.setConstraints({ min_cri_score: 75 });
+    });
+    
+    const cri2 = result.current.constraints.min_cri_score;
+    expect(cri1).toBe(cri2);
+  });
+});

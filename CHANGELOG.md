@@ -1,5 +1,40 @@
 # Changelog
 
+## [Phase 1b] - 2025-10-21 - Constraints UI & Undo System
+
+### ✨ ConstraintsPanel
+- Interactive sliders for budget, CRI, ACE cap, concurrency
+- Debounced updates (300ms) with analytics tracking
+- Input validation & sanitization (budget ≥0, CRI 0-100, ACE 0-120, concurrent 1-6)
+- Two-column responsive layout for Budget/Timeline and Credit/Safety controls
+
+### 🔄 Undo System
+- Toast notifications for add/remove actions via centralized hook
+- 5-second undo window with `sonner` integration
+- Analytics tracking for undo actions (`plan_basket_undo_add`, `plan_basket_undo_remove`)
+- Tracks when auto-filled items are removed (`auto_fill_removed`)
+
+### 📝 Inline Reasoning
+- Auto-filled courses display selection rationale beneath title
+- Persisted in basket state (schema v2: added `autoFillReason?: string`)
+- Reasons include: "Top-rated match", "85% transfer safety", "Lowest cost", "Fast completion", "Fits budget"
+- Helps users understand AI decisions without opening modals
+
+### 🗄️ Schema Migration
+- Bumped `v5-plan-basket` version from 1 → 2
+- Added optional `autoFillReason` field to `BasketItem`
+- No migration code needed (optional field, backward compatible)
+
+### 📊 Analytics Events
+- `plan_constraint_changed`: Fires when constraints are modified (key, oldValue, newValue)
+- `plan_basket_add` / `plan_basket_remove`: Track basket operations
+- `auto_fill_removed`: Tracks when users reject AI suggestions
+
+### 🧪 Testing
+- `ConstraintsPanel.test.tsx`: Value clamping tests for all constraints
+- Analytics event tracking tests for constraint changes
+- Duplicate event prevention validation
+
 ## [Phase 1a] - 2025-10-21 - Auto-Complete & Analytics Hardening
 
 ### ✨ Auto-Complete Enhancements

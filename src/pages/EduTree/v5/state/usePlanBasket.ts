@@ -18,6 +18,7 @@ export interface BasketItem {
   cri_score: number;
   status: 'pinned' | 'auto-filled';
   providerType?: ProviderType;
+  autoFillReason?: string; // Phase 1b: inline reasoning for auto-filled items
 }
 
 /**
@@ -164,10 +165,10 @@ export const usePlanBasket = create<PlanBasketState>()(
     }),
     { 
       name: 'v5-plan-basket',
-      // TODO: Bump version when adding/removing BasketItem fields
-      // Current schema: v1 = providerType + workload_weekly_hours
-      // Next migration: v2 = [describe next schema change]
-      version: 1,
+      // Schema versions:
+      // v1 = providerType + workload_weekly_hours
+      // v2 = adds optional autoFillReason (no migration needed - optional field)
+      version: 2,
       migrate: (persistedState: any, version: number) => {
         if (version === 0) {
           // Migrate from v0 to v1: backfill providerType and workload_weekly_hours
@@ -176,6 +177,7 @@ export const usePlanBasket = create<PlanBasketState>()(
             items: migrateBasketItems(persistedState.items || [])
           };
         }
+        // v1 → v2: no action needed (autoFillReason is optional)
         return persistedState;
       }
     }

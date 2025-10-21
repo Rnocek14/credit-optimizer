@@ -11,6 +11,8 @@ import { validatePlan } from '../engine/constraints';
 import { autoCompletePlan } from '../engine/autoComplete';
 import { getAutoCompleteMessage } from '../engine/autoCompleteStatus';
 import { ENV } from '@/config/env';
+import ConstraintsPanel from './ConstraintsPanel';
+import { usePlanBasketWithToasts } from '../hooks/usePlanBasketWithToasts';
 
 interface MarketplaceOption {
   id: string;
@@ -77,6 +79,7 @@ export function MarketplacePanel({
   const constraints = usePlanBasket(s => s.constraints);
   const addItem = usePlanBasket(s => s.addItem);
   const removeItem = usePlanBasket(s => s.removeItem);
+  const { addItemWithToast, removeItemWithToast } = usePlanBasketWithToasts();
 
   // Simple analytics logger (upgrade to proper telemetry later)
   const logAnalytics = (event: string, data: Record<string, any>) => {
@@ -210,6 +213,9 @@ export function MarketplacePanel({
             Year progress: {yearEarned}/{yearCap} cr
           </div>
         </SheetHeader>
+        
+        {/* Constraints Panel */}
+        <ConstraintsPanel />
         
         {/* Plan Basket Summary */}
         {basket.length > 0 && (
@@ -359,6 +365,17 @@ export function MarketplacePanel({
                   <div className="font-medium text-sm truncate">
                     {option.courseId}: {option.title}
                   </div>
+                  
+                  {/* Inline Auto-Fill Reasoning (Phase 1b) */}
+                  {(() => {
+                    const basketItem = basket.find(b => b.courseId === option.courseId);
+                    return basketItem?.status === 'auto-filled' && basketItem.autoFillReason && (
+                      <div className="text-xs text-muted-foreground mt-1 italic">
+                        ✨ {basketItem.autoFillReason}
+                      </div>
+                    );
+                  })()}
+                  
                   <div className="text-xs text-muted-foreground mt-1 flex items-center gap-2 flex-wrap">
                     <span>{option.credits} cr</span>
                     
@@ -528,10 +545,9 @@ export function MarketplacePanel({
                   <Button
                     onClick={() => {
                       if (isInBasket) {
-                        removeItem(option.courseId);
-                        logAnalytics('plan_remove', { courseId: option.courseId, moduleId });
+                        removeItemWithToast(option.courseId);
                       } else {
-                        addItem({
+                        addItemWithToast({
                           moduleId,
                           courseId: option.courseId,
                           credits: option.credits,
@@ -541,12 +557,6 @@ export function MarketplacePanel({
                           cri_score: option.scoreBreakdown?.cri ?? 0,
                           status: 'pinned',
                           providerType: option.providerType
-                        });
-                        logAnalytics('plan_add', { 
-                          courseId: option.courseId, 
-                          moduleId,
-                          cost: option.cost_usd,
-                          cri: option.scoreBreakdown?.cri
                         });
                       }
                     }}
