@@ -21,6 +21,7 @@ export interface ScoringOption {
   // Optional CRI signals (graceful degradation if missing)
   aceNccrs?: boolean;
   proctored?: boolean;
+  providerRep?: number; // override quality prior (0-100)
 }
 
 // Helpers
@@ -77,8 +78,9 @@ function calculateCRI(option: ScoringOption): number {
 // Quality combines provider reputation + CRI
 function calculateQuality(option: ScoringOption): number {
   const cri = calculateCRI(option);
-  // For now, quality = 70% CRI + 30% provider reputation
-  const providerRep = (() => {
+  
+  // Use explicit providerRep if provided, otherwise use defaults
+  const providerRep = option.providerRep ?? (() => {
     switch (option.providerType) {
       case 'university': return 90;
       case 'testing_center': return 80;
@@ -96,9 +98,9 @@ export function calculateOptionScore(
   allOptions: ScoringOption[],
   weights: ScoringWeights = { cost: 0.4, time: 0.3, quality: 0.3 }
 ): ScoreBreakdown {
-  // Null safety: coerce all numeric fields
-  const safeCost = Number(option.cost_usd) ?? null;
-  const safeDuration = Number(option.duration_weeks) ?? null;
+  // Null safety: explicit null checks (Number(null) returns 0, not null)
+  const safeCost = option.cost_usd === null ? null : Number(option.cost_usd);
+  const safeDuration = option.duration_weeks === null ? null : Number(option.duration_weeks);
   
   // Extract ranges for normalization
   const costs = allOptions

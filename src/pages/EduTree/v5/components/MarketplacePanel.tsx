@@ -16,6 +16,10 @@ interface MarketplaceOption {
   duration_weeks: number | null;
   score?: number;
   scoreBreakdown?: ScoreBreakdown;
+  // CRI signals
+  aceNccrs?: boolean;
+  proctored?: boolean;
+  providerRep?: number;
 }
 
 interface MarketplacePanelProps {
@@ -196,11 +200,14 @@ export function MarketplacePanel({
                     
                     {/* CRI Badge */}
                     {option.scoreBreakdown && (
-                      <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
-                        option.scoreBreakdown.cri >= 80 ? 'bg-green-100 text-green-700' :
-                        option.scoreBreakdown.cri >= 60 ? 'bg-yellow-100 text-yellow-700' :
-                        'bg-red-100 text-red-700'
-                      }`}>
+                      <span 
+                        className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
+                          option.scoreBreakdown.cri >= 80 ? 'bg-green-100 text-green-700' :
+                          option.scoreBreakdown.cri >= 60 ? 'bg-yellow-100 text-yellow-700' :
+                          'bg-red-100 text-red-700'
+                        }`}
+                        title="Credit Recognition Index – likelihood to transfer"
+                      >
                         🛡️ CRI {option.scoreBreakdown.cri}
                       </span>
                     )}
@@ -289,7 +296,7 @@ export function MarketplacePanel({
                                 
                                 {option.scoreBreakdown.cri < 50 && (
                                   <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-[10px] text-yellow-800">
-                                    ⚠️ <strong>Transfer risk:</strong> Verify acceptance with your registrar before enrolling.
+                                    ⚠️ <strong>Transfer risk:</strong> Verify acceptance with your registrar before enrolling. Low likelihood of transfer — confirm with your registrar.
                                   </div>
                                 )}
                               </div>

@@ -1,4 +1,5 @@
 import type { ModuleData } from '../types/v5';
+import { PROVIDER_DEFAULTS } from '../data/providerDefaults';
 
 interface DbRequirement {
   id: string;
@@ -80,6 +81,10 @@ export function transformToModuleData(
           type: 'university',
           website_url: null
         } : null);
+        
+        // Look up provider defaults for CRI signals
+        const providerId = provider?.id;
+        const pDefaults = providerId ? PROVIDER_DEFAULTS[providerId] : undefined;
 
         return {
           id: course.id,
@@ -91,6 +96,10 @@ export function transformToModuleData(
           providerType: provider?.type?.toLowerCase() || null,
           cost_usd: opt.marketplace_courses?.cost_usd ?? null,
           duration_weeks: opt.marketplace_courses?.duration_weeks ?? null,
+          // Inject CRI signals from provider registry
+          aceNccrs: pDefaults?.aceNccrs,
+          proctored: pDefaults?.proctored,
+          providerRep: pDefaults?.rep,
         };
       })
       .filter((opt): opt is NonNullable<typeof opt> => opt !== null);
