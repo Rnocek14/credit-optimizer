@@ -10,6 +10,7 @@ export interface BasketItem {
   workload_weekly_hours: number;
   cri_score: number;
   status: 'pinned' | 'auto-filled';
+  providerType?: 'university' | 'mooc' | 'bootcamp' | 'testing_center' | null;
 }
 
 export interface Constraints {
@@ -18,6 +19,7 @@ export interface Constraints {
   max_weekly_hours?: number;
   min_cri_score?: number;
   max_ace_credits?: number; // transfer cap
+  max_concurrent_courses?: number; // for realistic deadline math
 }
 
 interface PlanBasketState {
@@ -51,6 +53,7 @@ export const usePlanBasket = create<PlanBasketState>()(
       items: [],
       constraints: {
         max_ace_credits: 90, // default WGU-style cap
+        max_concurrent_courses: 2, // default: 2 courses at a time
       },
       scenarios: {},
       
@@ -97,6 +100,7 @@ export const usePlanBasket = create<PlanBasketState>()(
       
       getTotals: () => {
         const items = get().items;
+        const constraints = get().constraints;
         
         if (items.length === 0) {
           return {
@@ -109,14 +113,20 @@ export const usePlanBasket = create<PlanBasketState>()(
         }
         
         const totalCost = items.reduce((sum, i) => sum + (i.cost_usd ?? 0), 0);
-        const totalWeeks = items.reduce((sum, i) => sum + (i.duration_weeks ?? 8), 0);
+        
+        // Calculate realistic weeks using concurrency
+        const concurrency = constraints.max_concurrent_courses ?? 2;
+        const serialWeeks = items.reduce((sum, i) => sum + (i.duration_weeks ?? 8), 0);
+        const totalWeeks = Math.ceil(serialWeeks / concurrency);
+        
         const totalCRI = items.reduce((sum, i) => sum + i.cri_score, 0);
         const avgCRI = totalCRI / items.length;
         const totalWorkloadHours = items.reduce((sum, i) => sum + i.workload_weekly_hours, 0);
         
-        // For now, assume all MOOCs/testing are ACE credits
-        // In real implementation, would check provider type from metadata
-        const aceCredits = 0; // Placeholder - will be calculated with provider data
+        // Calculate ACE credits from providerType
+        const aceCredits = items
+          .filter(i => i.providerType === 'mooc' || i.providerType === 'testing_center')
+          .reduce((sum, i) => sum + i.credits, 0);
         
         return {
           totalCost,

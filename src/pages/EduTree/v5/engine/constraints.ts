@@ -35,32 +35,34 @@ export function validatePlan(
     });
   }
   
-  // 2. Workload check (average weekly hours)
+  // 2. Workload check (total weekly hours, not average)
   if (basket.length > 0) {
-    const avgWeeklyHours = basket.reduce((sum, i) => sum + i.workload_weekly_hours, 0) / basket.length;
-    if (constraints.max_weekly_hours && avgWeeklyHours > constraints.max_weekly_hours) {
+    const totalWeeklyHours = basket.reduce((sum, i) => sum + i.workload_weekly_hours, 0);
+    if (constraints.max_weekly_hours && totalWeeklyHours > constraints.max_weekly_hours) {
       violations.push({
         type: 'workload',
         severity: 'warning',
-        message: `Average ${avgWeeklyHours.toFixed(1)} hrs/week exceeds ${constraints.max_weekly_hours} hrs/week limit`,
+        message: `Total ${totalWeeklyHours}hrs/wk exceeds ${constraints.max_weekly_hours}hrs/wk limit`,
         affectedCourses: basket.filter(i => i.workload_weekly_hours > 10).map(i => i.courseId),
-        suggestedFix: 'Spread courses over more terms or choose lighter alternatives'
+        suggestedFix: 'Reduce concurrent courses or choose lighter alternatives'
       });
     }
   }
   
-  // 3. Deadline feasibility
+  // 3. Deadline feasibility (with concurrency)
   if (constraints.target_graduation_date) {
-    const totalWeeks = basket.reduce((sum, i) => sum + (i.duration_weeks ?? 8), 0);
+    const concurrency = constraints.max_concurrent_courses ?? 2;
+    const serialWeeks = basket.reduce((sum, i) => sum + (i.duration_weeks ?? 8), 0);
+    const realisticWeeks = Math.ceil(serialWeeks / concurrency);
     const weeksUntilDeadline = Math.floor(
       (constraints.target_graduation_date.getTime() - Date.now()) / (7 * 24 * 60 * 60 * 1000)
     );
     
-    if (totalWeeks > weeksUntilDeadline) {
+    if (realisticWeeks > weeksUntilDeadline) {
       violations.push({
         type: 'deadline',
         severity: 'error',
-        message: `Plan requires ${totalWeeks} weeks but only ${weeksUntilDeadline} weeks until graduation`,
+        message: `Plan requires ${realisticWeeks} weeks (${basket.length} courses, max ${concurrency} concurrent) but only ${weeksUntilDeadline} weeks until graduation`,
         affectedCourses: basket.map(i => i.courseId),
         suggestedFix: 'Adjust deadline or select faster-paced courses'
       });

@@ -40,7 +40,7 @@ export function autoCompletePlan(
   // Track running totals
   let runningCost = currentBasket.reduce((sum, i) => sum + (i.cost_usd ?? 0), 0);
   let runningAceCredits = currentBasket
-    .filter(i => i.cri_score < 80) // Proxy for ACE/alt credit
+    .filter(i => i.providerType === 'mooc' || i.providerType === 'testing_center')
     .reduce((sum, i) => sum + i.credits, 0);
   
   // Find modules not yet satisfied
@@ -106,7 +106,7 @@ export function autoCompletePlan(
       return a;
     });
     
-    // Generate reasoning
+    // Generate reasoning (scores are 0-100 scale)
     const reasons: string[] = [];
     if ((best.score ?? 0) >= 80) reasons.push('Top-rated match');
     if ((best.scoreBreakdown?.cri ?? 0) >= 85) reasons.push(`${best.scoreBreakdown!.cri}% transfer safety`);
@@ -133,7 +133,8 @@ export function autoCompletePlan(
       duration_weeks: best.duration_weeks,
       workload_weekly_hours: best.credits * 2.5, // estimate
       cri_score: best.scoreBreakdown?.cri ?? 0,
-      status: 'auto-filled'
+      status: 'auto-filled',
+      providerType: best.providerType as any
     });
     
     // Update running totals

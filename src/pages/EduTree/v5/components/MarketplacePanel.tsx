@@ -205,9 +205,9 @@ export function MarketplacePanel({
                 </div>
               </div>
               <div>
-                <div className="text-xs text-muted-foreground">Transfer Safety</div>
+                <div className="text-xs text-muted-foreground">Weekly Load</div>
                 <div className="font-semibold text-lg">
-                  {totals.avgCRI.toFixed(0)}% CRI
+                  {totals.totalWorkloadHours}hrs/wk
                 </div>
               </div>
             </div>
@@ -512,7 +512,8 @@ export function MarketplacePanel({
                           duration_weeks: option.duration_weeks,
                           workload_weekly_hours: option.workload_weekly_hours ?? option.credits * 2.5,
                           cri_score: option.scoreBreakdown?.cri ?? 0,
-                          status: 'pinned'
+                          status: 'pinned',
+                          providerType: option.providerType
                         });
                         logAnalytics('plan_add', { 
                           courseId: option.courseId, 
