@@ -140,6 +140,7 @@ export function MarketplacePanel({
     
     logAnalytics('autocomplete_run', {
       moduleId,
+      status: result.status,
       constraintsUsed: Object.keys(constraints).filter(k => constraints[k as keyof typeof constraints] !== undefined),
       suggestionsCount: result.suggestions.length,
       totalCost: totals.totalCost,
@@ -202,6 +203,9 @@ export function MarketplacePanel({
                 <div className="text-xs text-muted-foreground">Duration</div>
                 <div className="font-semibold text-lg">
                   {totals.totalWeeks}wks
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  (max {constraints.max_concurrent_courses ?? 2} concurrent)
                 </div>
               </div>
               <div>

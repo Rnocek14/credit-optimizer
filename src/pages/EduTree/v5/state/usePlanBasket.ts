@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import type { ProviderType } from '../types/v5';
 
 /**
  * Phase 1a: BasketItem with ACE Credit Tracking
@@ -16,7 +17,7 @@ export interface BasketItem {
   workload_weekly_hours: number;
   cri_score: number;
   status: 'pinned' | 'auto-filled';
-  providerType?: 'university' | 'mooc' | 'bootcamp' | 'testing_center' | null;
+  providerType?: ProviderType;
 }
 
 /**

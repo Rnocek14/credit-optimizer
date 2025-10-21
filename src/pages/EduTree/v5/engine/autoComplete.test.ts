@@ -166,6 +166,7 @@ describe('autoCompletePlan - Constraint Respect', () => {
     
     // Should choose cheaper option despite lower score
     expect(result.suggestions[0].courseId).toBe('course2');
+    expect(result.status).toBe('ok');
   });
 
   it('respects ACE transfer cap', () => {

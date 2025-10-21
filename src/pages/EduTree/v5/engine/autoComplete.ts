@@ -1,5 +1,6 @@
 import type { BasketItem, Constraints } from '../state/usePlanBasket';
 import type { ScoringWeights } from '../utils/optionScoring';
+import type { ProviderType } from '../types/v5';
 
 interface ModuleData {
   id: string;
@@ -19,13 +20,16 @@ interface AutoCompleteOption {
     quality: number;
     total: number;
   };
-  providerType?: string | null;
+  providerType?: ProviderType;
   prereq_course_ids?: string[];
 }
+
+export type AutoCompleteStatus = 'ok' | 'partial' | 'none';
 
 export interface AutoCompleteResult {
   suggestions: BasketItem[];
   reasoning: Map<string, string>; // courseId -> human explanation
+  status: AutoCompleteStatus;
 }
 
 export function autoCompletePlan(
@@ -134,8 +138,7 @@ export function autoCompletePlan(
       workload_weekly_hours: best.credits * 2.5, // estimate
       cri_score: best.scoreBreakdown?.cri ?? 0,
       status: 'auto-filled',
-      // TODO: Remove 'as any' after ensuring providerType is always defined
-      providerType: best.providerType as any
+      providerType: best.providerType
     });
     
     // Update running totals
@@ -145,5 +148,14 @@ export function autoCompletePlan(
     }
   }
   
-  return { suggestions, reasoning };
+  // Calculate status
+  const unfilledCount = unfilledModules.length;
+  const status: AutoCompleteStatus =
+    suggestions.length === 0
+      ? 'none'
+      : suggestions.length < unfilledCount
+        ? 'partial'
+        : 'ok';
+  
+  return { suggestions, reasoning, status };
 }
