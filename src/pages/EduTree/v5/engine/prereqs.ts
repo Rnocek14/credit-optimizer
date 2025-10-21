@@ -32,8 +32,10 @@ export function resolveChain(
 
     const node = index.get(courseId);
     if (!node) {
-      // The target might reference a prereq we don't have in marketplace.
-      unsatisfiable.push(courseId);
+      // Only flag missing *prereqs*, not the target itself
+      if (courseId !== targetCourseId) {
+        unsatisfiable.push(courseId);
+      }
       return;
     }
 
@@ -64,13 +66,20 @@ export function detectCycles(options: MarketplaceOption[]): CycleError[] | null 
   const visited = new Set<string>();
   const stack = new Set<string>();
   const cycles: CycleError[] = [];
+  const seen = new Set<string>(); // Deduplicate cycle signatures
 
   function dfs(courseId: string, path: string[]): boolean {
     if (stack.has(courseId)) {
       // Found a cycle: slice path from first occurrence
       const startIdx = path.indexOf(courseId);
       const cycle = path.slice(startIdx).concat(courseId);
-      cycles.push({ courses: cycle, message: `Cycle detected: ${cycle.join(' → ')}` });
+      
+      // Only add unique cycles
+      const sig = cycle.slice().sort().join('|');
+      if (!seen.has(sig)) {
+        seen.add(sig);
+        cycles.push({ courses: cycle, message: `Cycle detected: ${cycle.join(' → ')}` });
+      }
       return true;
     }
     if (visited.has(courseId)) return false;

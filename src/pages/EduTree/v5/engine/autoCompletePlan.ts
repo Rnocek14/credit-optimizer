@@ -27,7 +27,9 @@ export interface PlanAutoCompleteResult {
 /** Convert an option to a BasketItem for a given moduleId */
 function toBasketItem(moduleId: string, opt: MarketplaceOption, isPrereq = false): BasketItem {
   return {
-    moduleId,
+    // Put prerequisites into a neutral bucket so they don't masquerade
+    // as part of the current module (cleaner UI/compare)
+    moduleId: isPrereq ? 'prereqs' : moduleId,
     courseId: opt.courseId,
     title: opt.title ?? opt.courseId,
     credits: opt.credits ?? 0,
@@ -126,19 +128,17 @@ export function autoCompletePlan(
       break;
     }
 
-    // Commit: add prereqs first, then the target
-    for (let i = 0; i < chainOptions.length; i++) {
-      const prereqItem = toBasketItem(mod.id, chainOptions[i], true);
-      suggestions.push(prereqItem);
-      basketIds.add(prereqItem.courseId);
-      reasoning.push(prereqItem.autoFillReason ?? 'Required prerequisite');
+    // Commit: add prereqs first, then target — skip duplicates explicitly
+    for (const opt of toAddOptions) {
+      if (basketIds.has(opt.courseId)) continue; // Explicit duplicate prevention
+      
+      const isPrereq = chainOptions.includes(opt);
+      const item = toBasketItem(mod.id, opt, isPrereq);
+      
+      suggestions.push(item);
+      basketIds.add(item.courseId);
+      reasoning.push(item.autoFillReason ?? (isPrereq ? 'Required prerequisite' : 'Best available match'));
     }
-
-    // Add the main pick
-    const mainItem = toBasketItem(mod.id, best, false);
-    suggestions.push(mainItem);
-    basketIds.add(mainItem.courseId);
-    reasoning.push(mainItem.autoFillReason ?? 'Best available match');
   }
 
   // Finalize totals

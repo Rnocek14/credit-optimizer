@@ -45,4 +45,32 @@ describe('autoCompletePlan (preview)', () => {
     const b = autoCompletePlan(modules, [], { max_concurrent_courses: 2 }, weights);
     expect(a.suggestions.map(s => s.courseId)).toEqual(b.suggestions.map(s => s.courseId));
   });
+
+  it('adds shared prereqs only once across modules', () => {
+    const shared = mo('MATH-101', 50, 90);
+    const m1Pick = { ...mo('C1', 200, 85), prereq_course_ids: ['MATH-101'] };
+    const m2Pick = { ...mo('C2', 220, 86), prereq_course_ids: ['MATH-101'] };
+
+    const modules = [
+      mod('m1', [m1Pick, shared]), 
+      mod('m2', [m2Pick, shared])
+    ];
+    
+    const r = autoCompletePlan(modules, [], { max_concurrent_courses: 4, max_budget_usd: 10000 }, weights);
+
+    const mathCount = r.suggestions.filter(s => s.courseId === 'MATH-101').length;
+    expect(mathCount).toBe(1);
+    expect(r.suggestions.length).toBe(3); // MATH-101 + C1 + C2
+  });
+
+  it('assigns prerequisites to neutral "prereqs" module', () => {
+    const prereq = mo('PREREQ-101', 50, 80);
+    const main = { ...mo('MAIN-201', 100, 90), prereq_course_ids: ['PREREQ-101'] };
+    const modules = [mod('target-module', [main, prereq])];
+
+    const r = autoCompletePlan(modules, [], { max_concurrent_courses: 2, max_budget_usd: 1000 }, weights);
+    
+    const p = r.suggestions.find(s => s.courseId === 'PREREQ-101');
+    expect(p?.moduleId).toBe('prereqs');
+  });
 });
