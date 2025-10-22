@@ -18,35 +18,35 @@ export function AnchorSchoolSelector() {
   const { constraints, setConstraints } = usePlanBasket();
 
   const { data, isLoading } = useQuery({
-    queryKey: ['anchor-schools'],
+    queryKey: ['partner-policies'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('partner_policies')
+        .from('partner_policies' as any)
         .select('partner_code, partner_name, max_alt_credits, min_residency_credits, upper_division_min, notes')
         .order('partner_name');
       if (error) throw error;
-      return data as Policy[];
+      return data as unknown as Policy[];
     },
   });
 
   return (
     <div className="flex items-center gap-2">
-      <GraduationCap className="h-4 w-4 text-muted-foreground" />
+      <GraduationCap className="h-4 w-4 opacity-70" />
       <Select
-        value={constraints.target_school || undefined}
         onValueChange={(v) => setConstraints({ target_school: v })}
+        value={constraints.target_school}
         disabled={isLoading || !data?.length}
       >
-        <SelectTrigger className="w-[280px]">
-          <SelectValue placeholder="Select target school" />
+        <SelectTrigger className="w-[320px]">
+          <SelectValue placeholder={isLoading ? 'Loading schools…' : 'Select anchor school'} />
         </SelectTrigger>
         <SelectContent>
           {(data || []).map((p) => (
             <SelectItem key={p.partner_code} value={p.partner_code}>
-              <div className="flex items-center justify-between w-full gap-3">
-                <span className="truncate">{p.partner_name}</span>
-                <div className="flex gap-1">
-                  <Badge variant="secondary">{p.max_alt_credits} ACE</Badge>
+              <div className="flex items-center justify-between gap-2 w-full">
+                <span>{p.partner_name}</span>
+                <div className="flex items-center gap-1">
+                  <Badge variant="outline">{p.max_alt_credits} ACE</Badge>
                   <Badge variant="outline">{p.min_residency_credits} res</Badge>
                   <Badge variant="outline">{p.upper_division_min} UD</Badge>
                 </div>
