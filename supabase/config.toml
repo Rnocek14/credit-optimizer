@@ -1,1 +1,7 @@
 project_id = "vzpissitddpunkpythsb"
+
+[functions.run-migrations]
+verify_jwt = false
+
+[functions.seed-foundation]
+verify_jwt = false
