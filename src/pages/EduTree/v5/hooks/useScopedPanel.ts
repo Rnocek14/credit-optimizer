@@ -25,29 +25,37 @@ export function useScopedPanel() {
     const nodeId = params.get('node') || undefined;
     const tab = params.get('tab') || undefined;
     
-    if (scope) {
-      setPanelState({ scope, nodeId, tab });
-    } else {
-      setPanelState({ scope: null });
-    }
+    setPanelState(prev => {
+      // Guard: only update if values actually changed
+      if (prev.scope === scope && prev.nodeId === nodeId && prev.tab === tab) {
+        return prev;
+      }
+      return scope ? { scope, nodeId, tab } : { scope: null };
+    });
   }, [location.search]);
 
   const openPanel = useCallback((scope: PanelScope, nodeId?: string, nodeData?: any, tab?: string) => {
-    setPanelState({ scope, nodeId, nodeData, tab });
-    
-    // Update URL
-    const params = new URLSearchParams(location.search);
-    if (scope) {
-      params.set('scope', scope);
-      if (nodeId) params.set('node', nodeId);
-      if (tab) params.set('tab', tab);
-    } else {
-      params.delete('scope');
-      params.delete('node');
-      params.delete('tab');
-    }
-    
-    navigate(`${location.pathname}?${params.toString()}`, { replace: true });
+    setPanelState(prev => {
+      const isSameScope = prev.scope === scope && prev.nodeId === nodeId;
+      const isTabChange = isSameScope && prev.tab !== tab;
+      
+      const params = new URLSearchParams(location.search);
+      if (scope) {
+        params.set('scope', scope);
+        if (nodeId) params.set('node', nodeId);
+        if (tab) params.set('tab', tab);
+      } else {
+        params.delete('scope');
+        params.delete('node');
+        params.delete('tab');
+      }
+      
+      navigate(`${location.pathname}?${params.toString()}`, { 
+        replace: isTabChange // Only replace for tab changes within same scope
+      });
+      
+      return { scope, nodeId, nodeData, tab };
+    });
   }, [navigate, location]);
 
   const closePanel = useCallback(() => {

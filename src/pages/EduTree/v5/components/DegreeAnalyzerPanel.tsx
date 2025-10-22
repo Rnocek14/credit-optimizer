@@ -1,3 +1,4 @@
+import { useRef } from 'react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -23,16 +24,29 @@ export function DegreeAnalyzerPanel({
   onNavigate
 }: DegreeAnalyzerPanelProps) {
   const progressPercent = (degreeSummary.totalCreditsEarned / degreeSummary.totalCreditsRequired) * 100;
+  const previousFocusRef = useRef<HTMLElement | null>(null);
   
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="w-[600px] sm:w-[700px] overflow-y-auto">
+      <SheetContent 
+        className="w-[600px] sm:w-[700px] overflow-y-auto"
+        role="dialog"
+        aria-labelledby="degree-panel-title"
+        onOpenAutoFocus={(e) => {
+          previousFocusRef.current = document.activeElement as HTMLElement;
+        }}
+        onCloseAutoFocus={(e) => {
+          e.preventDefault();
+          previousFocusRef.current?.focus();
+        }}
+      >
         <SheetHeader className="mb-4">
           <ScopeBreadcrumbs
             scope="degree"
+            degreeTitle={degreeSummary.degreeTitle}
             onNavigate={onNavigate}
           />
-          <SheetTitle className="text-lg">Degree Analyzer</SheetTitle>
+          <SheetTitle id="degree-panel-title" className="text-lg">Degree Analyzer</SheetTitle>
         </SheetHeader>
 
         <Tabs value={activeTab} onValueChange={onTabChange} className="w-full">

@@ -62,6 +62,7 @@ export function ScopePanelRouter(props: ScopePanelRouterProps) {
           onOpenChange={onClose}
           year={props.year!}
           modules={props.yearModules || []}
+          degreeTitle={props.degreeSummary?.degreeTitle}
           onNavigate={onNavigate}
           onOpenModulePanel={props.onOpenModulePanel!}
         />

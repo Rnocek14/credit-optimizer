@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useRef } from 'react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -10,6 +10,7 @@ interface YearMarketplacePanelProps {
   onOpenChange: (open: boolean) => void;
   year: number;
   modules: ModuleData[];
+  degreeTitle?: string;
   onNavigate: (scope: any, nodeId?: string, nodeData?: any) => void;
   onOpenModulePanel: (module: ModuleData) => void;
 }
@@ -19,6 +20,7 @@ export function YearMarketplacePanel({
   onOpenChange,
   year,
   modules,
+  degreeTitle,
   onNavigate,
   onOpenModulePanel
 }: YearMarketplacePanelProps) {
@@ -38,16 +40,30 @@ export function YearMarketplacePanel({
     };
   }, [modules]);
 
+  const previousFocusRef = useRef<HTMLElement | null>(null);
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="w-[600px] sm:w-[700px] overflow-y-auto">
+      <SheetContent 
+        className="w-[600px] sm:w-[700px] overflow-y-auto"
+        role="dialog"
+        aria-labelledby="year-panel-title"
+        onOpenAutoFocus={(e) => {
+          previousFocusRef.current = document.activeElement as HTMLElement;
+        }}
+        onCloseAutoFocus={(e) => {
+          e.preventDefault();
+          previousFocusRef.current?.focus();
+        }}
+      >
         <SheetHeader className="mb-4">
           <ScopeBreadcrumbs
             scope="year"
             year={year}
+            degreeTitle={degreeTitle}
             onNavigate={onNavigate}
           />
-          <SheetTitle className="text-lg">Year {year} Marketplace</SheetTitle>
+          <SheetTitle id="year-panel-title" className="text-lg">Year {year} Marketplace</SheetTitle>
         </SheetHeader>
 
         {/* Year Stats Header */}
