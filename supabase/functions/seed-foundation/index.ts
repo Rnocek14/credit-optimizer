@@ -134,22 +134,22 @@ Deno.serve(async (req) => {
 
       // 3) Starter transfer rules (~16)
       const rules = [
-        ["SOPHIA","SOPH-ENG-101","TESU","ENG-101","accepted","ACE",0.95,null],
-        ["SOPHIA","SOPH-ENG-102","TESU","ENG-102","accepted","ACE",0.95,null],
-        ["STUDY","STUDY-ENG-101","TESU","ENG-101","accepted","ACE",0.92,null],
-        ["CLEP","CLEP-COMP","TESU","ENG-102","accepted","CLEP",0.98,null],
-        ["SOPHIA","SOPH-ALG-101","TESU","MAT-121","accepted","ACE",0.93,null],
-        ["STUDY","STUDY-ALG-101","TESU","MAT-121","accepted","ACE",0.92,null],
-        ["CLEP","CLEP-ALG","TESU","MAT-121","accepted","CLEP",0.98,null],
-        ["SOPHIA","SOPH-STAT-201","TESU","STA-201","accepted","ACE",0.92,null],
-        ["SOPHIA","SOPH-PSY-101","TESU","PSY-101","accepted","ACE",0.90,null],
-        ["CLEP","CLEP-PSY","TESU","PSY-101","accepted","CLEP",0.97,null],
-        ["SOPHIA","SOPH-SOC-101","TESU","SOC-101","accepted","ACE",0.89,null],
-        ["SOPHIA","SOPH-COMM-101","TESU",null,"elective","ACE",0.60,null],
-        ["SOPHIA","SOPH-ENG-101","WGU","ENG-1XX","accepted","ACE",0.85,null],
-        ["SOPHIA","SOPH-STAT-201","WGU","STAT-1XX","accepted","ACE",0.84,null],
-        ["STUDY","STUDY-DB-INTRO","WGU",null,"elective","ACE",0.70,null],
-        ["SOPHIA","SOPH-COMM-101","WGU",null,"rejected","heuristic",0.50,null],
+        ["SOPHIA","SOPH-ENG-101","TESU","ENG-101","accepted","ACE",0.95],
+        ["SOPHIA","SOPH-ENG-102","TESU","ENG-102","accepted","ACE",0.95],
+        ["STUDY","STUDY-ENG-101","TESU","ENG-101","accepted","ACE",0.92],
+        ["CLEP","CLEP-COMP","TESU","ENG-102","accepted","CLEP",0.98],
+        ["SOPHIA","SOPH-ALG-101","TESU","MAT-121","accepted","ACE",0.93],
+        ["STUDY","STUDY-ALG-101","TESU","MAT-121","accepted","ACE",0.92],
+        ["CLEP","CLEP-ALG","TESU","MAT-121","accepted","CLEP",0.98],
+        ["SOPHIA","SOPH-STAT-201","TESU","STA-201","accepted","ACE",0.92],
+        ["SOPHIA","SOPH-PSY-101","TESU","PSY-101","accepted","ACE",0.90],
+        ["CLEP","CLEP-PSY","TESU","PSY-101","accepted","CLEP",0.97],
+        ["SOPHIA","SOPH-SOC-101","TESU","SOC-101","accepted","ACE",0.89],
+        ["SOPHIA","SOPH-COMM-101","TESU",null,"elective","ACE",0.60],
+        ["SOPHIA","SOPH-ENG-101","WGU","ENG-1XX","accepted","ACE",0.85],
+        ["SOPHIA","SOPH-STAT-201","WGU","STAT-1XX","accepted","ACE",0.84],
+        ["STUDY","STUDY-DB-INTRO","WGU",null,"elective","ACE",0.70],
+        ["SOPHIA","SOPH-COMM-101","WGU",null,"rejected","heuristic",0.50],
       ];
 
       for (const r of rules) {
