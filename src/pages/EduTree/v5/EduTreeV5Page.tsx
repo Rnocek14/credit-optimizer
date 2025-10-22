@@ -11,6 +11,7 @@ import { AnchorSchoolSelector } from './components/AnchorSchoolSelector';
 import { PolicyCard } from './components/PolicyCard';
 import { TransferWarningBanner } from './components/TransferWarningBanner';
 import { SmartReplaceModal } from './components/SmartReplaceModal';
+import SeedStatus from '@/components/SeedStatus';
 import canonicalCourses from '@/fixtures/prereqs/canonical-courses.json';
 import requirements from '@/fixtures/requirements/cs-degree-requirements.json';
 import { ModuleData, Course, Requirement, LoadHealth, DegreeSummary } from './types/v5';
@@ -384,6 +385,7 @@ export default function EduTreeV5Page() {
               </>
             )}
             <AnchorSchoolSelector />
+            {USE_DATABASE && <SeedStatus />}
           </div>
         </div>
       </div>
