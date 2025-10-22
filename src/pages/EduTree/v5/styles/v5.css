@@ -76,3 +76,19 @@
 .degree-node:active {
   transform: scale(0.99);
 }
+
+/* Drag Feedback Animations */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  10%, 30%, 50%, 70%, 90% { transform: translateX(-4px); }
+  20%, 40%, 60%, 80% { transform: translateX(4px); }
+}
+
+.shake-animation {
+  animation: shake 0.4s ease-in-out;
+}
+
+/* Disable React Flow interaction during drag */
+body.dragging .react-flow__renderer {
+  pointer-events: none;
+}

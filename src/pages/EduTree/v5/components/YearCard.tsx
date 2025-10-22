@@ -2,6 +2,38 @@ import { ChevronDown, ChevronRight } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import type { LoadHealth, CreditsSummary, ModulesSummary } from '../types/v5';
+import { DroppableSemester } from './drag/DroppableSemester';
+import { usePlanStore } from '../state/usePlanStore';
+
+function SemesterLane({ year, term }: { year: number; term: 'fall' | 'spring' }) {
+  const semesters = usePlanStore(s => s.semesters);
+  const semesterId = `${year}-${term}`;
+  const semester = semesters[semesterId] || { credits: 0, workloadHours: 0, courseIds: [] };
+  
+  const header = term === 'fall' ? `Fall ${year}` : `Spring ${year + 1}`;
+  
+  return (
+    <DroppableSemester 
+      id={semesterId}
+      header={header}
+      credits={semester.credits}
+      workloadHours={semester.workloadHours}
+    >
+      {semester.courseIds.length > 0 ? (
+        <div className="space-y-1">
+          {semester.courseIds.map(courseId => (
+            <div 
+              key={courseId}
+              className="text-[10px] px-2 py-1 bg-card rounded border border-border"
+            >
+              {courseId}
+            </div>
+          ))}
+        </div>
+      ) : null}
+    </DroppableSemester>
+  );
+}
 
 interface YearCardProps {
   year: number;
@@ -118,10 +150,11 @@ export function YearCard({
             </Badge>
           </div>
           
-          {/* Semester Planning Placeholder */}
+          {/* Semester Lanes */}
           <div className="mt-2 pt-2 border-t border-muted">
-            <div className="text-center text-[10px] text-muted-foreground">
-              📅 Semester planning coming soon
+            <div className="grid grid-cols-2 gap-3">
+              <SemesterLane year={year} term="fall" />
+              <SemesterLane year={year} term="spring" />
             </div>
           </div>
           

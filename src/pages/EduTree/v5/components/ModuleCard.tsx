@@ -5,6 +5,7 @@ import { ModuleData } from '../types/v5';
 import { usePlanStore } from '../state/usePlanStore';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
+import { DraggableCourseChip } from './drag/DraggableCourseChip';
 
 interface ModuleCardProps extends ModuleData {
   onToggle: () => void;
@@ -191,94 +192,95 @@ export function ModuleCard({
             const atMax = !isSelected && (selections[id]?.selectedCredits ?? 0) >= creditsRequired;
             
             return (
-              <div
-                key={option.id}
-                className={`course-card bg-background rounded-md p-1.5 hover:bg-accent/50 transition-all flex items-center gap-2 ${
-                  isSelected ? 'border-2 border-primary bg-primary/5' : 'border border-border'
-                }`}
-              >
-                <Checkbox 
-                  checked={isSelected}
-                  onCheckedChange={() => {
-                    if (!atMax && !wouldExceedYearCap) {
-                      toggleCourse(id, option.courseId, optionCredits, creditsRequired);
-                    }
-                  }}
-                  disabled={atMax || wouldExceedYearCap}
-                />
-                <div className="flex-1 min-w-0">
-                  <div className="text-[11px] font-medium truncate leading-tight">
-                    {option.courseId}: {option.title}
-                  </div>
-                  <div className="text-[10px] text-muted-foreground flex items-center gap-1 mt-0.5 flex-wrap">
-                    <span>{option.credits} cr</span>
-                    
-                    {/* Provider badge with icon */}
-                    {option.providerType && (
-                      <span className={`ml-1 px-1.5 py-0.5 rounded text-[10px] font-medium ${
-                        option.providerType === 'university' 
-                          ? 'bg-blue-100 text-blue-700'
-                          : option.providerType === 'mooc'
-                          ? 'bg-purple-100 text-purple-700'
-                          : option.providerType === 'bootcamp'
-                          ? 'bg-orange-100 text-orange-700'
-                          : option.providerType === 'testing_center'
-                          ? 'bg-amber-100 text-amber-700'
-                          : 'bg-gray-100 text-gray-700'
-                      }`}>
-                        {option.providerType === 'university' && '🎓'}
-                        {option.providerType === 'mooc' && '🌐'}
-                        {option.providerType === 'bootcamp' && '⚡'}
-                        {option.providerType === 'testing_center' && '📝'}
-                        {' '}{option.provider}
-                      </span>
-                    )}
-                    
-                    {/* Price badge */}
-                {option.cost_usd !== null && (
-                  <span className="ml-1 px-1.5 py-0.5 rounded bg-green-100 text-green-700 text-[10px] font-medium">
-                    {option.cost_usd === 0 ? 'Included' : `$${new Intl.NumberFormat().format(option.cost_usd)}`}
-                  </span>
-                )}
-                    
-                    {/* Duration */}
-                    {option.duration_weeks && (
-                      <span className="ml-1 text-[10px]">
-                        {option.duration_weeks}w
-                      </span>
-                    )}
-                  </div>
-                </div>
-                {isSelected ? (
-                  <Badge variant="default" className="text-[10px] px-2 py-0.5 whitespace-nowrap">
-                    ✓ Selected
-                  </Badge>
-                ) : (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
+              <DraggableCourseChip key={option.id} course={option}>
+                <div
+                  className={`course-card bg-background rounded-md p-1.5 hover:bg-accent/50 transition-all flex items-center gap-2 ${
+                    isSelected ? 'border-2 border-primary bg-primary/5' : 'border border-border'
+                  }`}
+                >
+                  <Checkbox 
+                    checked={isSelected}
+                    onCheckedChange={() => {
                       if (!atMax && !wouldExceedYearCap) {
                         toggleCourse(id, option.courseId, optionCredits, creditsRequired);
                       }
                     }}
                     disabled={atMax || wouldExceedYearCap}
-                    className={`text-[10px] px-2 py-1 rounded transition-colors whitespace-nowrap ${
-                      atMax || wouldExceedYearCap
-                        ? 'bg-muted text-muted-foreground cursor-not-allowed'
-                        : 'bg-primary/10 text-primary hover:bg-primary/20'
-                    }`}
-                    title={
-                      wouldExceedYearCap && !isSelected
-                        ? `Year cap reached (${yearCap} cr)`
-                        : atMax
-                        ? 'Module max reached'
-                        : ''
-                    }
-                  >
-                    {(atMax || wouldExceedYearCap) ? 'Cap Reached' : 'Select'}
-                  </button>
-                )}
-              </div>
+                  />
+                  <div className="flex-1 min-w-0">
+                    <div className="text-[11px] font-medium truncate leading-tight">
+                      {option.courseId}: {option.title}
+                    </div>
+                    <div className="text-[10px] text-muted-foreground flex items-center gap-1 mt-0.5 flex-wrap">
+                      <span>{option.credits} cr</span>
+                      
+                      {/* Provider badge with icon */}
+                      {option.providerType && (
+                        <span className={`ml-1 px-1.5 py-0.5 rounded text-[10px] font-medium ${
+                          option.providerType === 'university' 
+                            ? 'bg-blue-100 text-blue-700'
+                            : option.providerType === 'mooc'
+                            ? 'bg-purple-100 text-purple-700'
+                            : option.providerType === 'bootcamp'
+                            ? 'bg-orange-100 text-orange-700'
+                            : option.providerType === 'testing_center'
+                            ? 'bg-amber-100 text-amber-700'
+                            : 'bg-gray-100 text-gray-700'
+                        }`}>
+                          {option.providerType === 'university' && '🎓'}
+                          {option.providerType === 'mooc' && '🌐'}
+                          {option.providerType === 'bootcamp' && '⚡'}
+                          {option.providerType === 'testing_center' && '📝'}
+                          {' '}{option.provider}
+                        </span>
+                      )}
+                      
+                      {/* Price badge */}
+                  {option.cost_usd !== null && (
+                    <span className="ml-1 px-1.5 py-0.5 rounded bg-green-100 text-green-700 text-[10px] font-medium">
+                      {option.cost_usd === 0 ? 'Included' : `$${new Intl.NumberFormat().format(option.cost_usd)}`}
+                    </span>
+                  )}
+                      
+                      {/* Duration */}
+                      {option.duration_weeks && (
+                        <span className="ml-1 text-[10px]">
+                          {option.duration_weeks}w
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  {isSelected ? (
+                    <Badge variant="default" className="text-[10px] px-2 py-0.5 whitespace-nowrap">
+                      ✓ Selected
+                    </Badge>
+                  ) : (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (!atMax && !wouldExceedYearCap) {
+                          toggleCourse(id, option.courseId, optionCredits, creditsRequired);
+                        }
+                      }}
+                      disabled={atMax || wouldExceedYearCap}
+                      className={`text-[10px] px-2 py-1 rounded transition-colors whitespace-nowrap ${
+                        atMax || wouldExceedYearCap
+                          ? 'bg-muted text-muted-foreground cursor-not-allowed'
+                          : 'bg-primary/10 text-primary hover:bg-primary/20'
+                      }`}
+                      title={
+                        wouldExceedYearCap && !isSelected
+                          ? `Year cap reached (${yearCap} cr)`
+                          : atMax
+                          ? 'Module max reached'
+                          : ''
+                      }
+                    >
+                      {(atMax || wouldExceedYearCap) ? 'Cap Reached' : 'Select'}
+                    </button>
+                  )}
+                </div>
+              </DraggableCourseChip>
             );
           })}
         </div>

@@ -1,11 +1,13 @@
+import { ReactNode } from 'react';
 import { useDraggable } from '@dnd-kit/core';
 import type { MarketplaceOption } from '../../types/v5';
 
 interface DraggableCourseChipProps {
   course: MarketplaceOption;
+  children?: ReactNode;
 }
 
-export function DraggableCourseChip({ course }: DraggableCourseChipProps) {
+export function DraggableCourseChip({ course, children }: DraggableCourseChipProps) {
   const { attributes, listeners, setNodeRef, transform } = useDraggable({
     id: `course-${course.id}`,
     data: { course }
@@ -15,6 +17,22 @@ export function DraggableCourseChip({ course }: DraggableCourseChipProps) {
     ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)` } 
     : undefined;
 
+  // If children provided, render custom content
+  if (children) {
+    return (
+      <div
+        ref={setNodeRef}
+        {...listeners}
+        {...attributes}
+        style={style}
+        className="cursor-grab active:cursor-grabbing"
+      >
+        {children}
+      </div>
+    );
+  }
+
+  // Default chip rendering
   return (
     <button
       ref={setNodeRef}

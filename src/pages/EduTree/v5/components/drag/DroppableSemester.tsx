@@ -20,6 +20,7 @@ export function DroppableSemester({ id, header, credits, workloadHours, children
       </div>
       <div
         ref={setNodeRef}
+        data-semester-id={id}
         className={`rounded-lg border p-3 min-h-[120px] transition-colors
           ${isOver ? 'border-primary bg-primary/10' : 'border-muted bg-muted/30'}`}
         aria-label={`${header} drop zone`}

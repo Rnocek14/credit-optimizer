@@ -21,6 +21,9 @@ import { usePlanBasket } from './state/usePlanBasket';
 import { YEAR_CREDIT_CAP } from './constants/v5';
 import { useScopedPanel } from './hooks/useScopedPanel';
 import { logEvent } from '@/lib/analytics';
+import { buildCourseIndex, getCourseFromIndex } from './utils/courseLookup';
+import { validateSemesterDrop } from './engine/semesterValidation';
+import { toast } from 'sonner';
 import './styles/v5.css';
 
 // Feature flag for quick rollback during demos
@@ -64,6 +67,20 @@ export default function EduTreeV5Page() {
   // Smart replace modal state
   const [replaceModalOpen, setReplaceModalOpen] = useState(false);
   const [replaceViolations, setReplaceViolations] = useState<any[]>([]);
+  
+  // Semester state management
+  const addCourseToSemester = usePlanStore(s => s.addCourseToSemester);
+  
+  // Build course index from all marketplace options
+  const courseIndex = useMemo(() => {
+    if (USE_DATABASE && dbData?.modulesByYear) {
+      const allOptions = Object.values(dbData.modulesByYear).flatMap(modules => 
+        modules.flatMap(mod => mod.marketplaceOptions || [])
+      );
+      return buildCourseIndex(allOptions);
+    }
+    return new Map();
+  }, [USE_DATABASE, dbData]);
   
   // Persist sort preference
   useEffect(() => {
@@ -312,33 +329,111 @@ export default function EduTreeV5Page() {
   // Reset all selections
   const clearAll = usePlanStore(s => s.clearAll);
 
-  // Drag handlers (Phase 1: log only)
+  // Drag handlers with validation (Phase 2)
   const handleDragStart = useCallback((event: any) => {
     const courseId = event.active?.data?.current?.course?.id;
     if (courseId) {
       logEvent('course_drag_start', { courseId });
       console.log('[Drag] Start:', courseId);
+      document.body.classList.add('dragging');
     }
   }, []);
 
   const handleDragOver = useCallback((event: any) => {
-    // Phase 1: Can show ghost highlight later
+    // Can be used for ghost highlighting later
   }, []);
 
   const handleDragEnd = useCallback((event: any) => {
     const { active, over } = event;
+    
+    // Remove dragging class
+    document.body.classList.remove('dragging');
+    
     if (!over) {
       console.log('[Drag] Dropped nowhere');
       return;
     }
+
+    // Look up course from drag data or index
+    let course = active?.data?.current?.course;
+    if (!course && active?.id) {
+      const courseId = String(active.id).replace('course-', '');
+      course = getCourseFromIndex(courseIndex, courseId);
+    }
     
-    const courseId = active?.data?.current?.course?.id;
-    const semesterId = over.id;
+    if (!course) {
+      toast.error('Course not found');
+      return;
+    }
+
+    const semesterId = String(over.id);
     
-    // Phase 1: Just log; Phase 2 will validate + place
-    console.log('[Drag] Drop:', { courseId, semesterId });
-    logEvent('course_drag_attempt', { courseId, semesterId, valid: false });
-  }, []);
+    // Validate drop
+    const plan = usePlanStore.getState();
+    const validation = validateSemesterDrop({
+      course,
+      semesterId,
+      plan,
+      constraints: { termCap: 15, yearCap: 30, aceCap: 90 }
+    });
+
+    if (!validation.valid) {
+      // Show error with shake animation
+      const element = document.querySelector(`[data-semester-id="${semesterId}"]`);
+      if (element) {
+        element.classList.add('shake-animation');
+        setTimeout(() => element.classList.remove('shake-animation'), 400);
+      }
+      
+      // Show error toast with fix action if available
+      const error = validation.errors[0];
+      const fix = validation.fixes[0];
+      
+      toast.error(error.message, {
+        action: fix ? {
+          label: fix.label,
+          onClick: () => {
+            addCourseToSemester(fix.semesterId, course.id, course.credits ?? 0);
+            toast.success(`Moved to ${fix.label}`);
+            logEvent('semester_fix_applied', { 
+              originalSemesterId: semesterId,
+              fixedSemesterId: fix.semesterId,
+              courseId: course.id 
+            });
+          }
+        } : undefined,
+        duration: 5000
+      });
+      
+      logEvent('course_dropped', { 
+        courseId: course.id, 
+        semesterId,
+        valid: false,
+        errorCode: error.code
+      });
+      return;
+    }
+
+    // Valid drop - place course
+    addCourseToSemester(semesterId, course.id, course.credits ?? 0);
+    
+    toast.success('Course added', {
+      description: `${course.courseId} (${course.credits}cr)`,
+      duration: 3000
+    });
+    
+    console.log('[Drag] Placed', { 
+      courseId: course.id, 
+      semesterId,
+      credits: course.credits 
+    });
+    
+    logEvent('course_dropped', { 
+      courseId: course.id, 
+      semesterId,
+      valid: true
+    });
+  }, [courseIndex, addCourseToSemester]);
 
   return (
     <DragProvider
