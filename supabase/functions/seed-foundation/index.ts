@@ -1,6 +1,7 @@
 // deno-lint-ignore-file no-explicit-any
 // Deno Edge Function: seed-foundation
 // Seeds providers (codes), canonical requirements, partner policies, starter rules, exclusions.
+// Force deployment: 2025-01-22
 
 import postgres from 'https://esm.sh/postgres@3.4.4';
 

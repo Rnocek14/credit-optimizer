@@ -1,6 +1,7 @@
 // deno-lint-ignore-file no-explicit-any
 // Deno Edge Function: run-migrations
 // Creates/aligns ONLY the schema your frontend already uses.
+// Force deployment: 2025-01-22
 
 import postgres from 'https://esm.sh/postgres@3.4.4';
 
