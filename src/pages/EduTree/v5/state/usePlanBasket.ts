@@ -21,6 +21,8 @@ export interface BasketItem {
   cri_score: number;
   status: 'pinned' | 'auto-filled';
   providerType?: ProviderType;
+  providerCode?: string; // Phase 0-2: provider code for transfer rules
+  level?: number; // Phase 0-2: course level for upper-division tracking
   autoFillReason?: string; // Phase 1b: inline reasoning for auto-filled items
 }
 
@@ -36,6 +38,7 @@ export interface Constraints {
   min_cri_score?: number;
   max_ace_credits?: number; // transfer cap
   max_concurrent_courses?: number; // for realistic deadline math
+  target_school?: string; // Phase 0-2: anchor school for transfer policy tracking
 }
 
 interface PlanBasketState {
