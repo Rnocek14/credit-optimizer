@@ -6,7 +6,6 @@ import { MarketplacePanel } from './components/MarketplacePanel';
 import { GraphView } from './components/GraphView';
 import { QuickMarketplaceSeed } from '@/components/QuickMarketplaceSeed';
 import { MigrationTrigger } from '@/components/MigrationTrigger';
-import { SeedFoundationTrigger } from '@/components/SeedFoundationTrigger';
 import { AnchorSchoolSelector } from './components/AnchorSchoolSelector';
 import { PolicyCard } from './components/PolicyCard';
 import { TransferWarningBanner } from './components/TransferWarningBanner';
@@ -381,7 +380,6 @@ export default function EduTreeV5Page() {
             {USE_DATABASE && (
               <>
                 <MigrationTrigger />
-                <SeedFoundationTrigger />
               </>
             )}
             <AnchorSchoolSelector />
