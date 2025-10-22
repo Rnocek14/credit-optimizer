@@ -1138,6 +1138,48 @@ export type Database = {
           },
         ]
       }
+      canonical_requirement_map: {
+        Row: {
+          canon_req_code: string
+          confidence: number | null
+          created_at: string | null
+          id: string
+          marketplace_course_id: string
+          source: string | null
+        }
+        Insert: {
+          canon_req_code: string
+          confidence?: number | null
+          created_at?: string | null
+          id?: string
+          marketplace_course_id: string
+          source?: string | null
+        }
+        Update: {
+          canon_req_code?: string
+          confidence?: number | null
+          created_at?: string | null
+          id?: string
+          marketplace_course_id?: string
+          source?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "canonical_requirement_map_canon_req_code_fkey"
+            columns: ["canon_req_code"]
+            isOneToOne: false
+            referencedRelation: "requirement_catalog"
+            referencedColumns: ["canon_req_code"]
+          },
+          {
+            foreignKeyName: "canonical_requirement_map_marketplace_course_id_fkey"
+            columns: ["marketplace_course_id"]
+            isOneToOne: false
+            referencedRelation: "marketplace_courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       career_goals: {
         Row: {
           active: boolean | null
@@ -3483,6 +3525,51 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      credit_transfer_rules: {
+        Row: {
+          acceptance_status: string | null
+          confidence: number | null
+          effective_from: string | null
+          effective_to: string | null
+          evidence_url: string | null
+          id: string
+          precedence: number | null
+          rule_source: string | null
+          source_course_code: string | null
+          source_institution: string
+          target_course_code: string | null
+          target_institution: string
+        }
+        Insert: {
+          acceptance_status?: string | null
+          confidence?: number | null
+          effective_from?: string | null
+          effective_to?: string | null
+          evidence_url?: string | null
+          id?: string
+          precedence?: number | null
+          rule_source?: string | null
+          source_course_code?: string | null
+          source_institution: string
+          target_course_code?: string | null
+          target_institution: string
+        }
+        Update: {
+          acceptance_status?: string | null
+          confidence?: number | null
+          effective_from?: string | null
+          effective_to?: string | null
+          evidence_url?: string | null
+          id?: string
+          precedence?: number | null
+          rule_source?: string | null
+          source_course_code?: string | null
+          source_institution?: string
+          target_course_code?: string | null
+          target_institution?: string
+        }
+        Relationships: []
       }
       data_imports: {
         Row: {
@@ -6434,6 +6521,45 @@ export type Database = {
         }
         Relationships: []
       }
+      option_exclusions: {
+        Row: {
+          created_at: string | null
+          id: string
+          option_a_id: string
+          option_b_id: string
+          reason: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          option_a_id: string
+          option_b_id: string
+          reason?: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          option_a_id?: string
+          option_b_id?: string
+          reason?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "option_exclusions_option_a_id_fkey"
+            columns: ["option_a_id"]
+            isOneToOne: false
+            referencedRelation: "marketplace_courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "option_exclusions_option_b_id_fkey"
+            columns: ["option_b_id"]
+            isOneToOne: false
+            referencedRelation: "marketplace_courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       partner_policies: {
         Row: {
           created_at: string
@@ -7645,6 +7771,7 @@ export type Database = {
           id: string
           name: string
           policies: Json | null
+          provider_code: string | null
           type: Database["public"]["Enums"]["provider_type"]
           updated_at: string | null
           website_url: string | null
@@ -7657,6 +7784,7 @@ export type Database = {
           id?: string
           name: string
           policies?: Json | null
+          provider_code?: string | null
           type: Database["public"]["Enums"]["provider_type"]
           updated_at?: string | null
           website_url?: string | null
@@ -7669,6 +7797,7 @@ export type Database = {
           id?: string
           name?: string
           policies?: Json | null
+          provider_code?: string | null
           type?: Database["public"]["Enums"]["provider_type"]
           updated_at?: string | null
           website_url?: string | null
@@ -7847,6 +7976,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      requirement_catalog: {
+        Row: {
+          area: string | null
+          canon_req_code: string
+          created_at: string | null
+          credits_typical: number | null
+          description: string | null
+          level_hint: number | null
+          title: string
+        }
+        Insert: {
+          area?: string | null
+          canon_req_code: string
+          created_at?: string | null
+          credits_typical?: number | null
+          description?: string | null
+          level_hint?: number | null
+          title: string
+        }
+        Update: {
+          area?: string | null
+          canon_req_code?: string
+          created_at?: string | null
+          credits_typical?: number | null
+          description?: string | null
+          level_hint?: number | null
+          title?: string
+        }
+        Relationships: []
       }
       requirement_option_counts_by_block: {
         Row: {
