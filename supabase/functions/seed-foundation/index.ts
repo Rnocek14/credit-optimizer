@@ -119,15 +119,14 @@ Deno.serve(async (req) => {
       for (const a of anchors) {
         await connection.queryObject(
           `INSERT INTO public.partner_policies
-             (partner_code, partner_name, max_alt_credits, min_residency_credits, upper_division_min, notes, scope, effective_from)
-           VALUES ($1, $2, $3, $4, $5, $6, 'institution', CURRENT_DATE)
+             (partner_code, partner_name, max_alt_credits, min_residency_credits, upper_division_min, notes)
+           VALUES ($1, $2, $3, $4, $5, $6)
            ON CONFLICT (partner_code) DO UPDATE
              SET partner_name=EXCLUDED.partner_name,
                  max_alt_credits=EXCLUDED.max_alt_credits,
                  min_residency_credits=EXCLUDED.min_residency_credits,
                  upper_division_min=EXCLUDED.upper_division_min,
-                 notes=EXCLUDED.notes,
-                 scope=EXCLUDED.scope`,
+                 notes=EXCLUDED.notes`,
           a
         );
       }
