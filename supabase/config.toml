@@ -38,6 +38,9 @@ verify_jwt = false
 [functions.seed-marketplace]
 verify_jwt = false
 
+[functions.run-migrations]
+verify_jwt = false
+
 [realtime]
 enabled = true
 port = 54323
