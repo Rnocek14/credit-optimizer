@@ -96,6 +96,25 @@ export interface DegreeSummary {
 
 export type DegreeStatus = 'on-track' | 'ahead' | 'behind';
 
+// Phase 2: Semester planning
+export interface SemesterLane {
+  id: string;
+  year: number;
+  term: 'fall' | 'spring';
+  courses: PlacedCourse[];
+  credits: number;
+  workload_hours: number;
+}
+
+export interface PlacedCourse {
+  courseId: string;
+  title: string;
+  credits: number;
+  provider: string;
+  providerType?: ProviderType;
+  cri_score?: number;
+}
+
 // Phase 1c: Plan scenario for save/load/compare
 export interface PlanScenario {
   id: string;

@@ -118,6 +118,13 @@ export function YearCard({
             </Badge>
           </div>
           
+          {/* Semester Planning Placeholder */}
+          <div className="mt-2 pt-2 border-t border-muted">
+            <div className="text-center text-[10px] text-muted-foreground">
+              📅 Semester planning coming soon
+            </div>
+          </div>
+          
           {/* Warnings */}
           {warnings && warnings.length > 0 && (
             <div className="text-center text-[9px] text-destructive">

@@ -11,6 +11,7 @@ import { PolicyCard } from './components/PolicyCard';
 import { TransferWarningBanner } from './components/TransferWarningBanner';
 import { SmartReplaceModal } from './components/SmartReplaceModal';
 import SeedStatus from '@/components/SeedStatus';
+import { DragProvider } from './components/drag/DragProvider';
 import canonicalCourses from '@/fixtures/prereqs/canonical-courses.json';
 import requirements from '@/fixtures/requirements/cs-degree-requirements.json';
 import { ModuleData, Course, Requirement, LoadHealth, DegreeSummary } from './types/v5';
@@ -19,6 +20,7 @@ import { usePlanStore } from './state/usePlanStore';
 import { usePlanBasket } from './state/usePlanBasket';
 import { YEAR_CREDIT_CAP } from './constants/v5';
 import { useScopedPanel } from './hooks/useScopedPanel';
+import { logEvent } from '@/lib/analytics';
 import './styles/v5.css';
 
 // Feature flag for quick rollback during demos
@@ -310,8 +312,41 @@ export default function EduTreeV5Page() {
   // Reset all selections
   const clearAll = usePlanStore(s => s.clearAll);
 
+  // Drag handlers (Phase 1: log only)
+  const handleDragStart = useCallback((event: any) => {
+    const courseId = event.active?.data?.current?.course?.id;
+    if (courseId) {
+      logEvent('course_drag_start', { courseId });
+      console.log('[Drag] Start:', courseId);
+    }
+  }, []);
+
+  const handleDragOver = useCallback((event: any) => {
+    // Phase 1: Can show ghost highlight later
+  }, []);
+
+  const handleDragEnd = useCallback((event: any) => {
+    const { active, over } = event;
+    if (!over) {
+      console.log('[Drag] Dropped nowhere');
+      return;
+    }
+    
+    const courseId = active?.data?.current?.course?.id;
+    const semesterId = over.id;
+    
+    // Phase 1: Just log; Phase 2 will validate + place
+    console.log('[Drag] Drop:', { courseId, semesterId });
+    logEvent('course_drag_attempt', { courseId, semesterId, valid: false });
+  }, []);
+
   return (
-    <div className="w-full min-h-screen bg-background p-8">
+    <DragProvider
+      onDragStart={handleDragStart}
+      onDragOver={handleDragOver}
+      onDragEnd={handleDragEnd}
+    >
+      <div className="w-full min-h-screen bg-background p-8">
       {/* Dev mode toggle - always visible for testing */}
       <button
         onClick={handleToggleMode}
@@ -527,6 +562,7 @@ export default function EduTreeV5Page() {
         yearCap={YEAR_CREDIT_CAP}
         allModules={allModules}
       />
-    </div>
+      </div>
+    </DragProvider>
   );
 }
