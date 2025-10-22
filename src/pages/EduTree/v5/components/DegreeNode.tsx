@@ -10,6 +10,7 @@ import type { DegreeSummary, DegreeStatus } from '../types/v5';
 interface DegreeNodeProps extends DegreeSummary {
   isCollapsed: boolean;
   onToggle: () => void;
+  onClick?: () => void;
   yearCount: number;
 }
 
@@ -24,6 +25,7 @@ function DegreeNodeImpl({
   warnings,
   isCollapsed,
   onToggle,
+  onClick,
   yearCount
 }: DegreeNodeProps) {
   // Handle over-credit edge case (e.g., 130/120 shows as "120/120 (+10)")
@@ -114,10 +116,21 @@ function DegreeNodeImpl({
       tabIndex={0}
       aria-expanded={!isCollapsed}
       aria-label={`Degree summary for ${degreeTitle}`}
-      onClick={() => {
-        onToggle();
+      onClick={(e) => {
+        // Check if clicking collapse button
+        if ((e.target as HTMLElement).closest('button')) {
+          return;
+        }
+        
+        // If onClick is provided, open panel instead of toggling
+        if (onClick) {
+          onClick();
+        } else {
+          onToggle();
+        }
+        
         trackTelemetryEvent({
-          task: 'degree_toggle',
+          task: onClick ? 'degree_panel_opened' : 'degree_toggle',
           complexity: { collapsed: !isCollapsed }
         });
       }}

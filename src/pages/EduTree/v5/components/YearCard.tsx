@@ -7,6 +7,7 @@ interface YearCardProps {
   year: number;
   isCollapsed: boolean;
   onToggle: () => void;
+  onClick?: () => void;
   creditsSummary: CreditsSummary;
   loadHealth: LoadHealth;
   modulesSummary: ModulesSummary;
@@ -16,7 +17,8 @@ interface YearCardProps {
 export function YearCard({ 
   year, 
   isCollapsed, 
-  onToggle, 
+  onToggle,
+  onClick,
   creditsSummary,
   loadHealth,
   modulesSummary,
@@ -43,7 +45,13 @@ export function YearCard({
     <div
       onClick={(e) => {
         e.stopPropagation();
-        onToggle();
+        
+        // If onClick is provided, open panel instead of toggling
+        if (onClick) {
+          onClick();
+        } else {
+          onToggle();
+        }
       }}
       className={`
         year-card

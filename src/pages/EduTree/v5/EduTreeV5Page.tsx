@@ -2,7 +2,7 @@ import { useState, useMemo, useCallback, useEffect } from 'react';
 import { YearCard } from './components/YearCard';
 import { ModuleCard } from './components/ModuleCard';
 import { DegreeNode } from './components/DegreeNode';
-import { MarketplacePanel } from './components/MarketplacePanel';
+import { ScopePanelRouter } from './components/ScopePanelRouter';
 import { GraphView } from './components/GraphView';
 import { QuickMarketplaceSeed } from '@/components/QuickMarketplaceSeed';
 import { MigrationTrigger } from '@/components/MigrationTrigger';
@@ -18,6 +18,7 @@ import { useV5DatabaseData } from './hooks/useV5DatabaseData';
 import { usePlanStore } from './state/usePlanStore';
 import { usePlanBasket } from './state/usePlanBasket';
 import { YEAR_CREDIT_CAP } from './constants/v5';
+import { useScopedPanel } from './hooks/useScopedPanel';
 import './styles/v5.css';
 
 // Feature flag for quick rollback during demos
@@ -45,12 +46,8 @@ export default function EduTreeV5Page() {
   const [collapsedYears, setCollapsedYears] = useState<Record<number, boolean>>({});
   const [collapsedModules, setCollapsedModules] = useState<Record<string, boolean>>({});
   
-  // Marketplace panel state
-  const [panel, setPanel] = useState<{
-    open: boolean;
-    moduleData?: ModuleData;
-    year?: number;
-  }>({ open: false });
+  // Scoped panel system
+  const { panelState, openPanel, closePanel, setTab } = useScopedPanel();
   
   // Graph view dialog state
   const [graphDialogOpen, setGraphDialogOpen] = useState(false);
@@ -94,8 +91,8 @@ export default function EduTreeV5Page() {
   };
 
   const handleOpenPanel = useCallback((module: ModuleData, year: number) => {
-    setPanel({ open: true, moduleData: module, year });
-  }, []);
+    openPanel('module', module.id, { module, year });
+  }, [openPanel]);
 
   // Toggle database mode
   const handleToggleMode = useCallback(() => {
@@ -421,13 +418,14 @@ export default function EduTreeV5Page() {
       )}
       
       {/* Degree Node */}
-      {/* Degree Node */}
+      {/* Degree Node - now clickable */}
       {ENABLE_DEGREE_NODE && (
         <div className="mb-6">
           <DegreeNode
             {...degreeSummary}
             isCollapsed={degreeCollapsed}
             onToggle={toggleDegree}
+            onClick={() => openPanel('degree')}
             yearCount={4}
           />
         </div>
@@ -443,11 +441,12 @@ export default function EduTreeV5Page() {
           const yearData = getYearData(year);
           return (
             <div key={year} className="year-column">
-              {/* Year Card */}
+              {/* Year Card - now clickable */}
               <YearCard
                 year={year}
                 isCollapsed={collapsedYears[year] || false}
                 onToggle={() => toggleYear(year)}
+                onClick={() => openPanel('year', String(year), { year, modules: getModulesForYear(year) })}
                 creditsSummary={yearData.creditsSummary}
                 loadHealth={yearData.loadHealth}
                 modulesSummary={yearData.modulesSummary}
@@ -478,24 +477,6 @@ export default function EduTreeV5Page() {
           );
         })}
       </div>
-
-      {/* Marketplace Panel */}
-      {panel.open && panel.moduleData && panel.year && (
-        <MarketplacePanel
-          open={panel.open}
-          onOpenChange={(open) => setPanel(p => open ? p : { ...p, open })}
-          moduleId={panel.moduleData.id}
-          moduleLabel={panel.moduleData.label}
-          creditsEarned={panel.moduleData.creditsEarned}
-          creditsRequired={panel.moduleData.creditsRequired}
-          options={panel.moduleData.marketplaceOptions || []}
-          sortBy={panelSortBy}
-          setSortBy={setPanelSortBy}
-          yearEarned={getYearEarnedCredits(panel.year)}
-          yearCap={YEAR_CREDIT_CAP}
-          allModules={allModules}
-        />
-      )}
 
       {/* Graph View Dialog */}
       <GraphView 
