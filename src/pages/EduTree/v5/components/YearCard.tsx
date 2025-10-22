@@ -46,7 +46,13 @@ export function YearCard({
       onClick={(e) => {
         e.stopPropagation();
         
-        // If onClick is provided, open panel instead of toggling
+        // Check if clicking a button (like collapse chevron)
+        const target = e.target as HTMLElement;
+        if (target.closest('button')) {
+          return; // Let the button handle it
+        }
+        
+        // Card body click: open panel if available, else toggle
         if (onClick) {
           onClick();
         } else {
@@ -69,7 +75,16 @@ export function YearCard({
       {/* Header */}
       <div className="flex items-center justify-center gap-2 text-primary font-bold text-lg">
         <span>Year {year}</span>
-        {isCollapsed ? <ChevronRight size={20} /> : <ChevronDown size={20} />}
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggle();
+          }}
+          aria-label={isCollapsed ? 'Expand year' : 'Collapse year'}
+          className="p-1 hover:bg-primary/10 rounded transition-colors"
+        >
+          {isCollapsed ? <ChevronRight size={20} /> : <ChevronDown size={20} />}
+        </button>
       </div>
       
       {isCollapsed ? (

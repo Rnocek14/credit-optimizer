@@ -491,6 +491,42 @@ export default function EduTreeV5Page() {
         violations={replaceViolations}
         targetSchool={constraints.target_school || ''}
       />
+      
+      {/* Scoped Panel System */}
+      <ScopePanelRouter
+        scope={panelState.scope}
+        nodeId={panelState.nodeId}
+        nodeData={panelState.nodeData}
+        activeTab={panelState.tab}
+        onClose={closePanel}
+        onNavigate={openPanel}
+        onTabChange={setTab}
+        
+        // Degree-specific props
+        degreeSummary={degreeSummary}
+        
+        // Year-specific props  
+        year={panelState.scope === 'year' ? Number(panelState.nodeId) : undefined}
+        yearModules={panelState.scope === 'year' ? panelState.nodeData?.modules : undefined}
+        onOpenModulePanel={(module: ModuleData) => {
+          const year = panelState.nodeData?.year;
+          if (year) {
+            openPanel('module', module.id, { module, year });
+          }
+        }}
+        
+        // Module-specific props (existing marketplace logic)
+        moduleId={panelState.scope === 'module' ? panelState.nodeId : undefined}
+        moduleLabel={panelState.scope === 'module' ? panelState.nodeData?.module?.label : undefined}
+        creditsEarned={panelState.scope === 'module' ? panelState.nodeData?.module?.creditsEarned : 0}
+        creditsRequired={panelState.scope === 'module' ? panelState.nodeData?.module?.creditsRequired : 0}
+        options={panelState.scope === 'module' ? panelState.nodeData?.module?.marketplaceOptions : []}
+        sortBy={panelSortBy}
+        setSortBy={setPanelSortBy}
+        yearEarned={panelState.scope === 'module' ? getYearEarnedCredits(panelState.nodeData?.year || 1) : 0}
+        yearCap={YEAR_CREDIT_CAP}
+        allModules={allModules}
+      />
     </div>
   );
 }
