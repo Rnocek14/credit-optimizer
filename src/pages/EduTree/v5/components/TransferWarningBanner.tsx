@@ -15,6 +15,11 @@ export function TransferWarningBanner({ onShowAlternatives }: { onShowAlternativ
       if (!target || items.length === 0) return [];
       const out: any[] = [];
       for (const item of items) {
+        // Skip items that are already at the target school (in-residence)
+        if ((item.providerCode || '').toUpperCase() === target.toUpperCase()) {
+          continue;
+        }
+
         const { data: rule } = await supabase
           .from('credit_transfer_rules' as any)
           .select('*')

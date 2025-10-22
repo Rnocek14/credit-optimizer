@@ -20,6 +20,16 @@ export function TransferBadge({
 
   if (!target) return null;
 
+  // If the course is from the target institution, it's in-residence (no transfer needed)
+  if (providerCode?.toUpperCase() === target?.toUpperCase()) {
+    return (
+      <Badge className="gap-1 border cursor-pointer bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 border-blue-300 dark:border-blue-700">
+        <CheckCircle className="h-4 w-4" />
+        In-residence
+      </Badge>
+    );
+  }
+
   const fallback = () => {
     switch (providerType) {
       case 'university':

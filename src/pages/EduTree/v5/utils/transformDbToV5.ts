@@ -88,7 +88,8 @@ export function transformToModuleData(
           id: 'edu',
           name: 'University',
           type: 'university',
-          website_url: null
+          website_url: null,
+          provider_code: 'EDU'
         } : null);
         
         // Look up provider defaults for CRI signals (normalized to kebab-case)
