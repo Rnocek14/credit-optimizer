@@ -5560,6 +5560,7 @@ export type Database = {
       }
       marketplace_courses: {
         Row: {
+          ace_recommendation_id: string | null
           active: boolean | null
           code: string
           completion_rate: number | null
@@ -5567,20 +5568,27 @@ export type Database = {
           created_at: string | null
           credits: number
           cri_score: number | null
+          delivery_mode:
+            | Database["public"]["Enums"]["delivery_mode_enum"]
+            | null
           description: string | null
           duration_weeks: number | null
           id: string
           instructor_rating: number | null
           level: number | null
           modality: Database["public"]["Enums"]["modality_type"] | null
+          nccrs_course_id: string | null
+          proctoring_required: boolean | null
           provider_id: string
           skill_tags: string[] | null
           start_dates: Json | null
+          subject_area: string | null
           syllabus_text: string | null
           title: string
           updated_at: string | null
         }
         Insert: {
+          ace_recommendation_id?: string | null
           active?: boolean | null
           code: string
           completion_rate?: number | null
@@ -5588,20 +5596,27 @@ export type Database = {
           created_at?: string | null
           credits?: number
           cri_score?: number | null
+          delivery_mode?:
+            | Database["public"]["Enums"]["delivery_mode_enum"]
+            | null
           description?: string | null
           duration_weeks?: number | null
           id?: string
           instructor_rating?: number | null
           level?: number | null
           modality?: Database["public"]["Enums"]["modality_type"] | null
+          nccrs_course_id?: string | null
+          proctoring_required?: boolean | null
           provider_id: string
           skill_tags?: string[] | null
           start_dates?: Json | null
+          subject_area?: string | null
           syllabus_text?: string | null
           title: string
           updated_at?: string | null
         }
         Update: {
+          ace_recommendation_id?: string | null
           active?: boolean | null
           code?: string
           completion_rate?: number | null
@@ -5609,15 +5624,21 @@ export type Database = {
           created_at?: string | null
           credits?: number
           cri_score?: number | null
+          delivery_mode?:
+            | Database["public"]["Enums"]["delivery_mode_enum"]
+            | null
           description?: string | null
           duration_weeks?: number | null
           id?: string
           instructor_rating?: number | null
           level?: number | null
           modality?: Database["public"]["Enums"]["modality_type"] | null
+          nccrs_course_id?: string | null
+          proctoring_required?: boolean | null
           provider_id?: string
           skill_tags?: string[] | null
           start_dates?: Json | null
+          subject_area?: string | null
           syllabus_text?: string | null
           title?: string
           updated_at?: string | null
@@ -7765,39 +7786,48 @@ export type Database = {
       providers: {
         Row: {
           accreditation: string | null
+          ace_approved: boolean | null
           active: boolean | null
           country: string | null
           created_at: string | null
           id: string
           name: string
+          nccrs_approved: boolean | null
           policies: Json | null
           provider_code: string | null
+          reputation_score: number | null
           type: Database["public"]["Enums"]["provider_type"]
           updated_at: string | null
           website_url: string | null
         }
         Insert: {
           accreditation?: string | null
+          ace_approved?: boolean | null
           active?: boolean | null
           country?: string | null
           created_at?: string | null
           id?: string
           name: string
+          nccrs_approved?: boolean | null
           policies?: Json | null
           provider_code?: string | null
+          reputation_score?: number | null
           type: Database["public"]["Enums"]["provider_type"]
           updated_at?: string | null
           website_url?: string | null
         }
         Update: {
           accreditation?: string | null
+          ace_approved?: boolean | null
           active?: boolean | null
           country?: string | null
           created_at?: string | null
           id?: string
           name?: string
+          nccrs_approved?: boolean | null
           policies?: Json | null
           provider_code?: string | null
+          reputation_score?: number | null
           type?: Database["public"]["Enums"]["provider_type"]
           updated_at?: string | null
           website_url?: string | null
@@ -12115,6 +12145,16 @@ export type Database = {
         | "masterclass"
         | "other"
       app_role: "user" | "admin" | "mentor"
+      course_level_enum:
+        | "introductory"
+        | "intermediate"
+        | "advanced"
+        | "graduate"
+      delivery_mode_enum:
+        | "asynchronous"
+        | "synchronous"
+        | "hybrid"
+        | "testing_center"
       modality_type: "online" | "in_person" | "hybrid"
       option_kind: "course" | "exam" | "cert"
       plan_status: "planned" | "enrolled" | "complete" | "dropped"
@@ -12262,6 +12302,18 @@ export const Constants = {
         "other",
       ],
       app_role: ["user", "admin", "mentor"],
+      course_level_enum: [
+        "introductory",
+        "intermediate",
+        "advanced",
+        "graduate",
+      ],
+      delivery_mode_enum: [
+        "asynchronous",
+        "synchronous",
+        "hybrid",
+        "testing_center",
+      ],
       modality_type: ["online", "in_person", "hybrid"],
       option_kind: ["course", "exam", "cert"],
       plan_status: ["planned", "enrolled", "complete", "dropped"],
