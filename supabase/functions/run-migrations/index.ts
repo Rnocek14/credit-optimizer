@@ -151,12 +151,6 @@ Deno.serve(async (req) => {
       );
       console.log('✓ Option exclusions created');
 
-      // 5) Partner policies indexes
-      await connection.queryObject(
-        `CREATE INDEX IF NOT EXISTS idx_policies_active
-           ON public.partner_policies (partner_code, effective_from, effective_to)`
-      );
-      console.log('✓ Partner policies indexed');
 
       // 6) RLS
       await connection.queryObject(
