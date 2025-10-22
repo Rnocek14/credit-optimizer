@@ -41,6 +41,7 @@ interface DbOption {
     name: string;
     type: string;
     website_url: string | null;
+    provider_code?: string | null;
   } | null;
 }
 
@@ -112,6 +113,8 @@ export function transformToModuleData(
           subject: opt.marketplace_courses ? 'Marketplace' : 'University',
           provider: provider?.name || 'University',
           providerType: provider?.type?.toLowerCase() || null,
+          providerCode: provider?.provider_code || null,
+          level: 100, // Default level - can be enriched from DB later
           cost_usd: opt.marketplace_courses?.cost_usd ?? null,
           duration_weeks: opt.marketplace_courses?.duration_weeks ?? null,
           // Inject CRI signals from provider registry

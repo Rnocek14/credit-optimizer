@@ -58,12 +58,12 @@ export function useV5DatabaseData(options: UseV5DatabaseDataOptions = {}) {
       // 3.5. Fetch provider details for marketplace courses
       const providerIds = marketplaceCourses?.map(c => c.provider_id).filter(Boolean) || [];
       const { data: providers } = await supabase
-        .from('providers')
-        .select('id, name, type, website_url')
+        .from('providers' as any)
+        .select('id, name, type, website_url, provider_code')
         .in('id', providerIds.length > 0 ? providerIds : ['']);
 
       // Create a provider map for quick lookup
-      const providerMap = new Map(providers?.map(p => [p.id, p]) || []);
+      const providerMap = new Map((providers as any)?.map((p: any) => [p.id, p]) || []);
 
       // 4. Enrich options with course data (try edu_courses first, then marketplace_courses)
       const enrichedOptions = options?.map(opt => {

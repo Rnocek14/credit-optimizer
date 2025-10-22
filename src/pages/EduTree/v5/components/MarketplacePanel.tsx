@@ -18,6 +18,7 @@ import { FEATURE_FLAGS } from '../config/featureFlags';
 import { mapWeightsForEngine } from '../utils/weightMapping';
 import type { ModuleData } from '../types/v5';
 import { ScenarioManager } from './ScenarioManager';
+import { TransferBadge } from './TransferBadge';
 
 interface MarketplaceOption {
   id: string;
@@ -26,6 +27,8 @@ interface MarketplaceOption {
   credits: number;
   provider: string;
   providerType?: ProviderType;
+  providerCode?: string;
+  level?: number;
   cost_usd: number | null;
   duration_weeks: number | null;
   score?: number;
@@ -424,6 +427,13 @@ export function MarketplacePanel({
                       </span>
                     )}
                     
+                    {/* Transfer Badge */}
+                    <TransferBadge
+                      courseCode={option.courseId}
+                      providerCode={option.providerCode || ''}
+                      providerType={option.providerType}
+                    />
+                    
                     {/* CRI Badge */}
                     {option.scoreBreakdown && (
                       <span 
@@ -558,13 +568,16 @@ export function MarketplacePanel({
                         addItemWithToast({
                           moduleId,
                           courseId: option.courseId,
+                          title: option.title,
                           credits: option.credits,
                           cost_usd: option.cost_usd,
                           duration_weeks: option.duration_weeks,
                           workload_weekly_hours: option.workload_weekly_hours ?? option.credits * 2.5,
                           cri_score: option.scoreBreakdown?.cri ?? 0,
                           status: 'pinned',
-                          providerType: option.providerType
+                          providerType: option.providerType,
+                          providerCode: option.providerCode,
+                          level: option.level ?? 100
                         });
                       }
                     }}

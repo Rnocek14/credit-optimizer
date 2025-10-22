@@ -5,6 +5,12 @@ import { DegreeNode } from './components/DegreeNode';
 import { MarketplacePanel } from './components/MarketplacePanel';
 import { GraphView } from './components/GraphView';
 import { QuickMarketplaceSeed } from '@/components/QuickMarketplaceSeed';
+import { MigrationTrigger } from '@/components/MigrationTrigger';
+import { SeedFoundationTrigger } from '@/components/SeedFoundationTrigger';
+import { AnchorSchoolSelector } from './components/AnchorSchoolSelector';
+import { PolicyCard } from './components/PolicyCard';
+import { TransferWarningBanner } from './components/TransferWarningBanner';
+import { SmartReplaceModal } from './components/SmartReplaceModal';
 import canonicalCourses from '@/fixtures/prereqs/canonical-courses.json';
 import requirements from '@/fixtures/requirements/cs-degree-requirements.json';
 import { ModuleData, Course, Requirement, LoadHealth, DegreeSummary } from './types/v5';
@@ -49,11 +55,16 @@ export default function EduTreeV5Page() {
   // Graph view dialog state
   const [graphDialogOpen, setGraphDialogOpen] = useState(false);
   const basket = usePlanBasket(s => s.items);
+  const constraints = usePlanBasket(s => s.constraints);
   const [panelSortBy, setPanelSortBy] = useState<'cheapest' | 'shortest' | 'credits' | 'best-match'>(() => {
     if (typeof window === 'undefined') return 'best-match';
     const saved = localStorage.getItem('v5-market-sort');
     return (saved as any) || 'best-match';
   });
+  
+  // Smart replace modal state
+  const [replaceModalOpen, setReplaceModalOpen] = useState(false);
+  const [replaceViolations, setReplaceViolations] = useState<any[]>([]);
   
   // Persist sort preference
   useEffect(() => {
@@ -355,12 +366,46 @@ export default function EduTreeV5Page() {
 
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-2xl font-bold">EduTree V5 - Year Spine + Modules</h1>
-        <p className="text-sm text-muted-foreground">
-          Click degree node or years to collapse/expand
-          {USE_DATABASE && <span className="ml-2 text-primary">• Database Mode</span>}
-        </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold">EduTree V5 - Year Spine + Modules</h1>
+            <p className="text-sm text-muted-foreground">
+              Click degree node or years to collapse/expand
+              {USE_DATABASE && <span className="ml-2 text-primary">• Database Mode</span>}
+            </p>
+          </div>
+          
+          {/* Admin Controls + Anchor Selector */}
+          <div className="flex items-center gap-2">
+            {USE_DATABASE && (
+              <>
+                <MigrationTrigger />
+                <SeedFoundationTrigger />
+              </>
+            )}
+            <AnchorSchoolSelector />
+          </div>
+        </div>
       </div>
+      
+      {/* Transfer Warning Banner */}
+      {constraints.target_school && (
+        <div className="mb-6">
+          <TransferWarningBanner
+            onShowAlternatives={(violations) => {
+              setReplaceViolations(violations);
+              setReplaceModalOpen(true);
+            }}
+          />
+        </div>
+      )}
+      
+      {/* Transfer Policy Tracking */}
+      {constraints.target_school && (
+        <div className="mb-6 max-w-md">
+          <PolicyCard />
+        </div>
+      )}
 
       {/* Quick Seed for Empty Database */}
       {USE_DATABASE && dbData && !isLoading && (() => {
@@ -456,6 +501,14 @@ export default function EduTreeV5Page() {
       <GraphView 
         open={graphDialogOpen} 
         onOpenChange={setGraphDialogOpen} 
+      />
+      
+      {/* Smart Replace Modal */}
+      <SmartReplaceModal
+        open={replaceModalOpen}
+        onClose={() => setReplaceModalOpen(false)}
+        violations={replaceViolations}
+        targetSchool={constraints.target_school || ''}
       />
     </div>
   );
