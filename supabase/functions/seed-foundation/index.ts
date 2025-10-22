@@ -25,6 +25,69 @@ serve(async (req) => {
     await client.connect();
     await client.queryArray`BEGIN`;
 
+    // 0) Ensure core providers exist + backfill provider_code
+    await client.queryArray`
+      -- Defensive: ensure column exists
+      ALTER TABLE IF EXISTS public.providers
+        ADD COLUMN IF NOT EXISTS provider_code TEXT;
+
+      -- Backfill codes on existing rows by name matching
+      UPDATE public.providers SET provider_code = 'TESU'
+        WHERE provider_code IS NULL AND name ILIKE '%thomas edison%';
+      UPDATE public.providers SET provider_code = 'WGU'
+        WHERE provider_code IS NULL AND name ILIKE '%western governors%';
+      UPDATE public.providers SET provider_code = 'COSC'
+        WHERE provider_code IS NULL AND name ILIKE '%charter oak%';
+      UPDATE public.providers SET provider_code = 'EXCU'
+        WHERE provider_code IS NULL AND name ILIKE '%excelsior%';
+      UPDATE public.providers SET provider_code = 'SOPHIA'
+        WHERE provider_code IS NULL AND name ILIKE '%sophia%';
+      UPDATE public.providers SET provider_code = 'STUDY'
+        WHERE provider_code IS NULL AND name ILIKE '%study%';
+      UPDATE public.providers SET provider_code = 'CLEP'
+        WHERE provider_code IS NULL AND name ILIKE '%clep%';
+      UPDATE public.providers SET provider_code = 'DSST'
+        WHERE provider_code IS NULL AND name ILIKE '%dsst%';
+      UPDATE public.providers SET provider_code = 'COUR'
+        WHERE provider_code IS NULL AND name ILIKE '%coursera%';
+      UPDATE public.providers SET provider_code = 'EDX'
+        WHERE provider_code IS NULL AND name ILIKE '%edx%';
+
+      -- Insert must-have providers if missing (idempotent)
+      INSERT INTO public.providers (name, type, website_url, provider_code)
+      SELECT * FROM (VALUES
+        ('Thomas Edison State University', 'university', 'https://www.tesu.edu', 'TESU'),
+        ('Western Governors University', 'university', 'https://www.wgu.edu', 'WGU'),
+        ('Charter Oak State College', 'university', 'https://www.charteroak.edu', 'COSC'),
+        ('Excelsior University', 'university', 'https://www.excelsior.edu', 'EXCU'),
+        ('Sophia Learning', 'mooc', 'https://www.sophia.org', 'SOPHIA'),
+        ('Study.com', 'mooc', 'https://www.study.com', 'STUDY'),
+        ('CLEP', 'testing_center', 'https://clep.collegeboard.org', 'CLEP'),
+        ('DSST', 'testing_center', 'https://www.dantes.doded.mil/examinee/Exam_Programs/DSST.html', 'DSST'),
+        ('Coursera', 'mooc', 'https://www.coursera.org', 'COUR'),
+        ('edX', 'mooc', 'https://www.edx.org', 'EDX')
+      ) AS v(name, type, website_url, provider_code)
+      WHERE NOT EXISTS (
+        SELECT 1 FROM public.providers p WHERE p.provider_code = v.provider_code
+      );
+
+      -- Enforce constraints
+      ALTER TABLE public.providers
+        ALTER COLUMN provider_code SET NOT NULL;
+
+      DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM pg_constraint WHERE conname = 'uq_provider_code'
+        ) THEN
+          ALTER TABLE public.providers
+            ADD CONSTRAINT uq_provider_code UNIQUE (provider_code);
+        END IF;
+      END$$;
+
+      CREATE INDEX IF NOT EXISTS idx_providers_code ON public.providers(provider_code);
+    `;
+
     // 1) Canonical Requirement Catalog
     const catalog = [
       // English
@@ -161,6 +224,7 @@ serve(async (req) => {
     return json(200, {
       message: "✅ Seed complete",
       inserted: {
+        providers: 10,
         requirement_catalog: catalog.length,
         partner_policies: anchors.length,
         transfer_rules: rules.length,

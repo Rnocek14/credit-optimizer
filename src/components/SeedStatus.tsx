@@ -5,7 +5,8 @@ export default function SeedStatus() {
   const { data, isLoading, error } = useQuery({
     queryKey: ['seed-status'],
     queryFn: async () => {
-      const [reqs, anchors, rules, exclusions] = await Promise.all([
+      const [providers, reqs, anchors, rules, exclusions] = await Promise.all([
+        supabase.from('providers' as any).select('*', { count: 'exact', head: true }),
         supabase.from('requirement_catalog' as any).select('*', { count: 'exact', head: true }),
         supabase.from('partner_policies' as any).select('*', { count: 'exact', head: true }),
         supabase.from('credit_transfer_rules' as any).select('*', { count: 'exact', head: true }),
@@ -13,6 +14,7 @@ export default function SeedStatus() {
       ]);
 
       return {
+        providers: providers.count ?? 0,
         requirements: reqs.count ?? 0,
         anchors: anchors.count ?? 0,
         rules: rules.count ?? 0,
@@ -34,6 +36,9 @@ export default function SeedStatus() {
   return (
     <div className="flex items-center gap-2 text-xs">
       <span className="text-muted-foreground">Seed:</span>
+      <span className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-1">
+        Providers: <strong>{data?.providers}</strong>
+      </span>
       <span className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-1">
         Reqs: <strong>{data?.requirements}</strong>
       </span>
