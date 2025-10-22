@@ -11,14 +11,11 @@ export function SeedFoundationTrigger() {
   const handleRun = async () => {
     setBusy(true);
     try {
-      const { data, error } = await supabase.functions.invoke('seed-foundation', { body: { confirm: true } });
+      const { data, error } = await supabase.functions.invoke('seed-foundation-v2', { body: { confirm: true } });
       if (error) throw error;
       toast.success(data?.message || 'Seed completed');
       setDone(true);
       console.log('Seed results', data);
-    } catch (e:any) {
-      console.error(e);
-      toast.error('Seed failed');
     } finally {
       setBusy(false);
     }

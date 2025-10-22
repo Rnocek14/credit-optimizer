@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.seed-foundation]
 verify_jwt = false
+
+[functions.seed-foundation-v2]
+verify_jwt = false
