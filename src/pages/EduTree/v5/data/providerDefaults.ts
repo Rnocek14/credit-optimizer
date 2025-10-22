@@ -5,6 +5,7 @@ export type ProviderDefaults = {
 };
 
 export const PROVIDER_DEFAULTS: Record<string, ProviderDefaults> = {
+  'edu':                      { aceNccrs: false, proctored: true,  rep: 85 }, // University courses (default)
   'sophia-learning':          { aceNccrs: true,  proctored: false, rep: 78 },
   'study-com':                { aceNccrs: true,  proctored: true,  rep: 80 },
   'asu-universal-learner':    { aceNccrs: true,  proctored: true,  rep: 90 },
