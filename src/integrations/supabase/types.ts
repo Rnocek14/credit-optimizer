@@ -700,7 +700,7 @@ export type Database = {
           published_at: string | null
           skills: Json | null
           title: string
-          topics: unknown | null
+          topics: unknown
           url: string
         }
         Insert: {
@@ -716,7 +716,7 @@ export type Database = {
           published_at?: string | null
           skills?: Json | null
           title: string
-          topics?: unknown | null
+          topics?: unknown
           url: string
         }
         Update: {
@@ -732,7 +732,7 @@ export type Database = {
           published_at?: string | null
           skills?: Json | null
           title?: string
-          topics?: unknown | null
+          topics?: unknown
           url?: string
         }
         Relationships: []
@@ -7731,7 +7731,7 @@ export type Database = {
           created_at: string
           event_type: string
           id: string
-          ip: unknown | null
+          ip: unknown
           referral_code: string
           user_agent: string | null
         }
@@ -7739,7 +7739,7 @@ export type Database = {
           created_at?: string
           event_type: string
           id?: string
-          ip?: unknown | null
+          ip?: unknown
           referral_code: string
           user_agent?: string | null
         }
@@ -7747,7 +7747,7 @@ export type Database = {
           created_at?: string
           event_type?: string
           id?: string
-          ip?: unknown | null
+          ip?: unknown
           referral_code?: string
           user_agent?: string | null
         }
@@ -8414,7 +8414,7 @@ export type Database = {
           action_type: string
           created_at: string | null
           id: string
-          ip_address: unknown | null
+          ip_address: unknown
           resource_id: string | null
           resource_type: string
           user_agent: string | null
@@ -8425,7 +8425,7 @@ export type Database = {
           action_type: string
           created_at?: string | null
           id?: string
-          ip_address?: unknown | null
+          ip_address?: unknown
           resource_id?: string | null
           resource_type: string
           user_agent?: string | null
@@ -8436,7 +8436,7 @@ export type Database = {
           action_type?: string
           created_at?: string | null
           id?: string
-          ip_address?: unknown | null
+          ip_address?: unknown
           resource_id?: string | null
           resource_type?: string
           user_agent?: string | null
@@ -11653,10 +11653,7 @@ export type Database = {
       }
     }
     Functions: {
-      after_maya_analysis_increment_quota: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
+      after_maya_analysis_increment_quota: { Args: never; Returns: undefined }
       award_xp: {
         Args: {
           action_type_param: string
@@ -11704,10 +11701,7 @@ export type Database = {
         Args: { profile_row: Database["public"]["Tables"]["profiles"]["Row"] }
         Returns: number
       }
-      calculate_system_health_score: {
-        Args: Record<PropertyKey, never>
-        Returns: number
-      }
+      calculate_system_health_score: { Args: never; Returns: number }
       calculate_user_trust_metrics: {
         Args: { days_back?: number; user_id_param: string }
         Returns: Json
@@ -11784,10 +11778,7 @@ export type Database = {
         Args: { risk_assessment: Json; target_user_id: string }
         Returns: string
       }
-      generate_certificate_number: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
+      generate_certificate_number: { Args: never; Returns: string }
       generate_phase6_enterprise_certification: {
         Args: {
           baseline_snapshot_id: string
@@ -11796,18 +11787,9 @@ export type Database = {
         }
         Returns: string
       }
-      generate_user_roadmap: {
-        Args: { user_id_param: string }
-        Returns: Json
-      }
-      generate_verification_code: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
-      get_age_penalty: {
-        Args: { age_int: number }
-        Returns: number
-      }
+      generate_user_roadmap: { Args: { user_id_param: string }; Returns: Json }
+      generate_verification_code: { Args: never; Returns: string }
+      get_age_penalty: { Args: { age_int: number }; Returns: number }
       get_badge_for_user: {
         Args: { badge_slug: string; user_uuid?: string }
         Returns: {
@@ -11823,7 +11805,7 @@ export type Database = {
         }[]
       }
       get_badge_statistics: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           badge_emoji: string
           badge_id: string
@@ -11832,7 +11814,7 @@ export type Database = {
         }[]
       }
       get_demo_resume_profiles: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           created_at: string
           current_level: number
@@ -11865,16 +11847,10 @@ export type Database = {
           user_id: string
         }[]
       }
-      get_mentor_by_user_id: {
-        Args: { user_uuid: string }
-        Returns: boolean
-      }
-      get_track_insights: {
-        Args: { p_track_id: string }
-        Returns: Json
-      }
+      get_mentor_by_user_id: { Args: { user_uuid: string }; Returns: boolean }
+      get_track_insights: { Args: { p_track_id: string }; Returns: Json }
       get_transcript_health: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           duplicate_rows: number
           total_tags: number
@@ -11918,10 +11894,7 @@ export type Database = {
         }
         Returns: boolean
       }
-      is_mentor: {
-        Args: Record<PropertyKey, never>
-        Returns: boolean
-      }
+      is_mentor: { Args: never; Returns: boolean }
       lock_phase6_components: {
         Args: { baseline_snapshot_id: string; target_user_id: string }
         Returns: string[]
@@ -11938,18 +11911,9 @@ export type Database = {
         Args: { p_code: string; p_ip: unknown; p_type: string; p_ua: string }
         Returns: undefined
       }
-      refresh_career_steps_with_levels: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
-      refresh_requirement_option_counts: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
-      slugify: {
-        Args: { input: string }
-        Returns: string
-      }
+      refresh_career_steps_with_levels: { Args: never; Returns: undefined }
+      refresh_requirement_option_counts: { Args: never; Returns: undefined }
+      slugify: { Args: { input: string }; Returns: string }
       start_course_progress: {
         Args: { course_id_param: string; user_id_param: string }
         Returns: string
@@ -11964,10 +11928,7 @@ export type Database = {
           slug: string
         }[]
       }
-      system_health_check: {
-        Args: Record<PropertyKey, never>
-        Returns: Json
-      }
+      system_health_check: { Args: never; Returns: Json }
       update_learning_streak: {
         Args: { activity_date?: string; user_id_param: string }
         Returns: Json
@@ -11984,10 +11945,7 @@ export type Database = {
         Args: { user_uuid: string }
         Returns: boolean
       }
-      validate_no_public_extensions: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
+      validate_no_public_extensions: { Args: never; Returns: undefined }
     }
     Enums: {
       alt_course_provider:
