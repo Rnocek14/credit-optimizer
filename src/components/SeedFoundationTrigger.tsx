@@ -11,7 +11,7 @@ export function SeedFoundationTrigger() {
   const handleRun = async () => {
     setBusy(true);
     try {
-      const { data, error } = await supabase.functions.invoke('seed-foundation-v2', { body: { confirm: true } });
+      const { data, error } = await supabase.functions.invoke('seed-data-2025', { body: { confirm: true } });
       if (error) throw error;
       toast.success(data?.message || 'Seed completed');
       setDone(true);

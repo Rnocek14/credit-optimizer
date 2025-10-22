@@ -3,8 +3,5 @@ project_id = "vzpissitddpunkpythsb"
 [functions.run-migrations]
 verify_jwt = false
 
-[functions.seed-foundation]
-verify_jwt = false
-
-[functions.seed-foundation-v2]
+[functions.seed-data-2025]
 verify_jwt = false

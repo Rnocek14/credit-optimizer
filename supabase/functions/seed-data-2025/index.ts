@@ -1,8 +1,7 @@
 // deno-lint-ignore-file no-explicit-any
-// Deno Edge Function: seed-foundation
+// Deno Edge Function: seed-data-2025
 // Seeds providers (codes), canonical requirements, partner policies, starter rules, exclusions.
-// Rewritten to use Deno-native postgres client
-// DEPLOYMENT: v2.0 - Fixed transfer rules parameter count
+// Fresh deployment bypassing Supabase cache issues
 
 import { Pool } from 'https://deno.land/x/postgres@v0.17.0/mod.ts';
 
