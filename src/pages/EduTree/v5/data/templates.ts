@@ -1,6 +1,19 @@
 import type { ModuleTemplate } from '../types/templates';
 
 /**
+ * Temporary alias map: human-readable slugs → database UUIDs
+ * Allows templates to use friendly IDs while resolving to actual DB IDs
+ * Phase 1: Bootstrap mapping (extend as you discover real module UUIDs)
+ */
+const MODULE_ALIAS: Record<string, string> = {
+  // Year 1 - Foundations
+  'y1-found': 'c4258b6d-0422-4b8e-9a44-e9d4a7d83167',
+  // TODO: Fill these after grabbing UUIDs from module URLs:
+  'y1-math': '',      // TODO: Copy from URL when opening Math module
+  'y1-genedAB': '',   // TODO: Copy from URL when opening GenEd module
+};
+
+/**
  * Static template seeds (pre-generated for common modules)
  * Phase 1: Bootstrap with 9 templates (3 modules × 3 variants)
  */
@@ -199,7 +212,7 @@ export const MODULE_TEMPLATES: ModuleTemplate[] = [
   {
     id: 'found-cheapest',
     kind: 'module',
-    moduleId: 'y1-found',
+    moduleId: 'c4258b6d-0422-4b8e-9a44-e9d4a7d83167',
     label: 'Foundations: Budget-Optimized',
     summary: '$99 • 4w • 3cr • CRI 76',
     badge: 'Cheapest',
@@ -230,7 +243,7 @@ export const MODULE_TEMPLATES: ModuleTemplate[] = [
   {
     id: 'found-fastest',
     kind: 'module',
-    moduleId: 'y1-found',
+    moduleId: 'c4258b6d-0422-4b8e-9a44-e9d4a7d83167',
     label: 'Foundations: Fast-Track',
     summary: '$159 • 2w • 3cr • CRI 79',
     badge: 'Fastest',
@@ -261,7 +274,7 @@ export const MODULE_TEMPLATES: ModuleTemplate[] = [
   {
     id: 'found-prestige',
     kind: 'module',
-    moduleId: 'y1-found',
+    moduleId: 'c4258b6d-0422-4b8e-9a44-e9d4a7d83167',
     label: 'Foundations: Premium Quality',
     summary: '$1200 • 8w • 3cr • CRI 91',
     badge: 'Prestige',
@@ -293,9 +306,11 @@ export const MODULE_TEMPLATES: ModuleTemplate[] = [
 
 /**
  * Get templates for specific module
+ * Resolves alias slugs (e.g., 'y1-found') to actual database UUIDs
  */
 export function getTemplatesForModule(moduleId: string): ModuleTemplate[] {
-  return MODULE_TEMPLATES.filter(t => t.moduleId === moduleId);
+  const resolved = MODULE_ALIAS[moduleId] ?? moduleId;
+  return MODULE_TEMPLATES.filter(t => t.moduleId === resolved);
 }
 
 /**
