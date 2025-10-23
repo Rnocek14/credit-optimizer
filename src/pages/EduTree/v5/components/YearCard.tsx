@@ -30,7 +30,11 @@ function SemesterLane({ year, term }: { year: number; term: 'fall' | 'spring' })
             </div>
           ))}
         </div>
-      ) : null}
+      ) : (
+        <div className="text-xs text-muted-foreground py-6 text-center">
+          Add courses from the dock below — or drag them here.
+        </div>
+      )}
     </DroppableSemester>
   );
 }

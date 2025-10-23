@@ -1,5 +1,5 @@
 import { useRef, useEffect } from 'react';
-import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerOverlay } from "@/components/ui/drawer";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import '../styles/decisionDock.css';
 import { Button } from "@/components/ui/button";
@@ -93,6 +93,21 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
 
   if (!scope) return null;
 
+  // Escape key handler
+  useEffect(() => {
+    if (!scope) return;
+    
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        onClose();
+      }
+    };
+    
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, [scope, onClose]);
+
   return (
     <Drawer
       open={true}
@@ -102,8 +117,11 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
       modal={false}
       direction="bottom"
     >
+      {/* Click-through overlay with dimming effect */}
+      <div className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm pointer-events-none" />
+      
       <DrawerContent 
-        className="h-[40vh] min-h-[35vh] max-h-[80vh] resize-y pointer-events-auto border-t"
+        className="z-[100] h-[40vh] min-h-[35vh] max-h-[80vh] resize-y pointer-events-auto border-t shadow-2xl"
         style={{ 
           backdropFilter: 'blur(2px)',
           backgroundColor: 'hsl(var(--background) / 0.95)'
@@ -116,6 +134,17 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
           previousFocusRef.current?.focus();
         }}
       >
+        {/* Visual resize handle */}
+        <div 
+          className="mx-auto mt-2 mb-3 h-2 w-14 rounded-full bg-muted cursor-ns-resize"
+          onMouseDown={() => {
+            document.body.style.cursor = 'ns-resize';
+          }}
+          onMouseUp={() => {
+            document.body.style.cursor = '';
+          }}
+        />
+        
         <div className="mx-auto w-full max-w-7xl h-full overflow-y-auto px-4 pb-4">
           {scope === 'degree' && <DegreeAnalyzerContent {...props} />}
           {scope === 'year' && <YearMarketplaceContent {...props} />}
