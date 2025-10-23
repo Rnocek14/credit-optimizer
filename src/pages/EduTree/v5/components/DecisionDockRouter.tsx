@@ -215,7 +215,7 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
             </h2>
           </div>
           
-          <div className="mx-auto w-full max-w-7xl h-full overflow-y-auto px-4 pb-4">
+          <div className="w-full h-full overflow-y-auto px-4 pb-4">
             {scope === 'degree' && <DegreeAnalyzerContent {...props} />}
             {scope === 'year' && <YearMarketplaceContent {...props} />}
             {scope === 'module' && <MarketplaceContent {...props} />}
