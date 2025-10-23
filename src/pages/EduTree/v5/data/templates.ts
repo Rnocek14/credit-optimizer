@@ -309,8 +309,20 @@ export const MODULE_TEMPLATES: ModuleTemplate[] = [
  * Resolves alias slugs (e.g., 'y1-found') to actual database UUIDs
  */
 export function getTemplatesForModule(moduleId: string): ModuleTemplate[] {
+  console.log('[Templates] 🔍 getTemplatesForModule called with:', moduleId);
+  
   const resolved = MODULE_ALIAS[moduleId] ?? moduleId;
-  return MODULE_TEMPLATES.filter(t => t.moduleId === resolved);
+  console.log('[Templates] 🎯 Alias resolved to:', resolved);
+  console.log('[Templates] 📋 Available template moduleIds:', [...new Set(MODULE_TEMPLATES.map(t => t.moduleId))]);
+  
+  const filtered = MODULE_TEMPLATES.filter(t => t.moduleId === resolved);
+  console.log('[Templates] ✅ Filtered templates count:', filtered.length);
+  
+  if (filtered.length > 0) {
+    console.log('[Templates] 📦 Template IDs:', filtered.map(t => t.id));
+  }
+  
+  return filtered;
 }
 
 /**

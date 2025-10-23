@@ -43,10 +43,24 @@ export function ModuleTemplatesPanel({ module, allModules, onAddTemplate }: Modu
       evidence.raw?.completed?.length ?? 0 // Phase 1c: evidence in key
     ],
     queryFn: async () => {
-      const templates = getTemplatesForModule(module.id);
-      if (templates.length === 0) return [];
+      console.log('[ModuleTemplatesPanel] 🔍 Query running for module:', {
+        moduleId: module.id,
+        moduleLabel: module.label,
+        basketCount: basket.length
+      });
       
-      return await rankTemplates(templates, basket, constraints, allOptions, evidence.raw); // Phase 1c: pass evidence
+      const templates = getTemplatesForModule(module.id);
+      console.log('[ModuleTemplatesPanel] 📦 Templates fetched:', templates.length);
+      
+      if (templates.length === 0) {
+        console.log('[ModuleTemplatesPanel] ⚠️ No templates found, returning empty array');
+        return [];
+      }
+      
+      const ranked = await rankTemplates(templates, basket, constraints, allOptions, evidence.raw);
+      console.log('[ModuleTemplatesPanel] 📊 Ranked templates:', ranked.length);
+      
+      return ranked;
     },
     staleTime: 5000, // 5 seconds
     enabled: !!module.id
@@ -95,6 +109,7 @@ export function ModuleTemplatesPanel({ module, allModules, onAddTemplate }: Modu
   };
   
   if (isLoading) {
+    console.log('[ModuleTemplatesPanel] ⏳ Loading templates...');
     return (
       <div className="space-y-3">
         <Skeleton className="h-32 w-full" />
@@ -105,6 +120,10 @@ export function ModuleTemplatesPanel({ module, allModules, onAddTemplate }: Modu
   }
   
   if (!rankedTemplates || rankedTemplates.length === 0) {
+    console.log('[ModuleTemplatesPanel] ❌ No templates to display:', {
+      rankedTemplates: rankedTemplates?.length ?? 'null',
+      moduleId: module.id
+    });
     return (
       <div className="text-center py-8 text-muted-foreground">
         <p className="text-sm">No templates available for this module yet.</p>
