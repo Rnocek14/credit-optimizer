@@ -550,6 +550,7 @@ function MarketplaceContent(props: DecisionDockRouterProps) {
   const totals = usePlanBasket(s => s.getTotals());
   const constraints = usePlanBasket(s => s.constraints);
   const addItem = usePlanBasket(s => s.addItem);
+  const removeItem = usePlanBasket(s => s.removeItem);
   const { addItemWithToast, removeItemWithToast } = usePlanBasketWithToasts();
 
   const enriched = useMemo(() => {
