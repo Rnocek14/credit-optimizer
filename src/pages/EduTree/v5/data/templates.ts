@@ -8,6 +8,8 @@ import type { ModuleTemplate } from '../types/templates';
 const MODULE_ALIAS: Record<string, string> = {
   // Year 1 - Foundations
   'y1-found': 'c4258b6d-0422-4b8e-9a44-e9d4a7d83167',
+  // Year 2 - Core I
+  'y2-core1': '15b68444-6e24-43a4-acfc-0a4bf13a60b2',
   // TODO: Fill these after grabbing UUIDs from module URLs:
   'y1-math': '',      // TODO: Copy from URL when opening Math module
   'y1-genedAB': '',   // TODO: Copy from URL when opening GenEd module
@@ -300,6 +302,149 @@ export const MODULE_TEMPLATES: ModuleTemplate[] = [
     targetCanonicalIds: ['foundations'],
     semesterPlacement: 'fall',
     est: { costUsd: 1200, weeks: 8, credits: 3, cri: 91, workloadHours: 15 },
+    generatedFrom: 'manual'
+  },
+  
+  // Core I (Year 2) - 3 variants
+  {
+    id: 'core1-cheapest',
+    kind: 'module',
+    moduleId: '15b68444-6e24-43a4-acfc-0a4bf13a60b2',
+    label: 'Core I: Budget-Optimized',
+    summary: '$198 • 8w • 6cr • CRI 77',
+    badge: 'Cheapest',
+    options: [
+      {
+        id: 'sophia-ds101',
+        courseId: 'DS101',
+        title: 'Data Structures',
+        credits: 3,
+        subject: 'Computer Science',
+        provider: 'Sophia Learning',
+        providerType: 'mooc',
+        providerCode: 'SOPHIA',
+        level: 200,
+        cost_usd: 99,
+        duration_weeks: 4,
+        workload_weekly_hours: 12,
+        cri_score: 75,
+        satisfies_requirements: ['core-i']
+      },
+      {
+        id: 'sophia-alg101',
+        courseId: 'ALG101',
+        title: 'Algorithms',
+        credits: 3,
+        subject: 'Computer Science',
+        provider: 'Sophia Learning',
+        providerType: 'mooc',
+        providerCode: 'SOPHIA',
+        level: 200,
+        cost_usd: 99,
+        duration_weeks: 4,
+        workload_weekly_hours: 12,
+        cri_score: 79,
+        satisfies_requirements: ['core-i']
+      }
+    ],
+    recommendedCourseId: 'DS101',
+    targetCanonicalIds: ['core-i'],
+    semesterPlacement: 'any',
+    est: { costUsd: 198, weeks: 8, credits: 6, cri: 77, workloadHours: 24 },
+    generatedFrom: 'manual'
+  },
+  {
+    id: 'core1-fastest',
+    kind: 'module',
+    moduleId: '15b68444-6e24-43a4-acfc-0a4bf13a60b2',
+    label: 'Core I: Fast-Track',
+    summary: '$318 • 4w • 6cr • CRI 81',
+    badge: 'Fastest',
+    options: [
+      {
+        id: 'straighterline-ds201',
+        courseId: 'DS201',
+        title: 'Data Structures',
+        credits: 3,
+        subject: 'Computer Science',
+        provider: 'StraighterLine',
+        providerType: 'mooc',
+        providerCode: 'STRAIGHTERLINE',
+        level: 200,
+        cost_usd: 159,
+        duration_weeks: 2,
+        workload_weekly_hours: 18,
+        cri_score: 80,
+        satisfies_requirements: ['core-i']
+      },
+      {
+        id: 'straighterline-alg201',
+        courseId: 'ALG201',
+        title: 'Algorithms & Complexity',
+        credits: 3,
+        subject: 'Computer Science',
+        provider: 'StraighterLine',
+        providerType: 'mooc',
+        providerCode: 'STRAIGHTERLINE',
+        level: 200,
+        cost_usd: 159,
+        duration_weeks: 2,
+        workload_weekly_hours: 18,
+        cri_score: 82,
+        satisfies_requirements: ['core-i']
+      }
+    ],
+    recommendedCourseId: 'DS201',
+    targetCanonicalIds: ['core-i'],
+    semesterPlacement: 'any',
+    est: { costUsd: 318, weeks: 4, credits: 6, cri: 81, workloadHours: 36 },
+    generatedFrom: 'manual'
+  },
+  {
+    id: 'core1-prestige',
+    kind: 'module',
+    moduleId: '15b68444-6e24-43a4-acfc-0a4bf13a60b2',
+    label: 'Core I: Premium Quality',
+    summary: '$2400 • 16w • 6cr • CRI 93',
+    badge: 'Prestige',
+    options: [
+      {
+        id: 'wgu-c950',
+        courseId: 'C950',
+        title: 'Data Structures and Algorithms II',
+        credits: 3,
+        subject: 'Computer Science',
+        provider: 'Western Governors University',
+        providerType: 'university',
+        providerCode: 'WGU',
+        level: 200,
+        cost_usd: 1200,
+        duration_weeks: 8,
+        workload_weekly_hours: 15,
+        cri_score: 92,
+        satisfies_requirements: ['core-i']
+      },
+      {
+        id: 'wgu-c951',
+        courseId: 'C951',
+        title: 'Introduction to Artificial Intelligence',
+        credits: 3,
+        subject: 'Computer Science',
+        provider: 'Western Governors University',
+        providerType: 'university',
+        providerCode: 'WGU',
+        level: 200,
+        cost_usd: 1200,
+        duration_weeks: 8,
+        workload_weekly_hours: 15,
+        cri_score: 94,
+        satisfies_requirements: ['core-i']
+      }
+    ],
+    recommendedCourseId: 'C950',
+    targetCanonicalIds: ['core-i'],
+    semesterPlacement: 'fall',
+    est: { costUsd: 2400, weeks: 16, credits: 6, cri: 93, workloadHours: 30 },
     generatedFrom: 'manual'
   }
 ];
