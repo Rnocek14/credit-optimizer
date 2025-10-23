@@ -30,7 +30,10 @@ export type AltCourseTelemetryTask =
   | 'autofill_rejected'
   | 'scenario_saved'
   | 'scenario_loaded'
-  | 'scenario_deleted';
+  | 'scenario_deleted'
+  | 'dock_opened'
+  | 'dock_closed'
+  | 'dock_resized';
 
 export const trackTelemetryEvent = async (event: TelemetryEvent): Promise<void> => {
   try {

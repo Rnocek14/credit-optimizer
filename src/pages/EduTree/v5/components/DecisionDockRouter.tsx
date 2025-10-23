@@ -82,6 +82,7 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
   const previousFocusRef = useRef<HTMLElement | null>(null);
   const [isResizing, setIsResizing] = useState(false);
   const titleId = useMemo(() => `decision-dock-title-${scope ?? "closed"}`, [scope]);
+  const openAtRef = useRef<number | null>(null);
 
   // Apply dimming effect to plan board
   useEffect(() => {
@@ -125,6 +126,22 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
       window.removeEventListener("mousemove", handleMouseMove);
     };
   }, [isResizing]);
+
+  // Telemetry: track dock open/close and duration
+  useEffect(() => {
+    if (scope && !openAtRef.current) {
+      openAtRef.current = Date.now();
+      console.log('[telemetry] dock_opened', { scope, timestamp: new Date().toISOString() });
+    } else if (!scope && openAtRef.current) {
+      const durationMs = Date.now() - openAtRef.current;
+      console.log('[telemetry] dock_closed', { 
+        duration_ms: durationMs, 
+        duration_sec: Math.round(durationMs / 1000),
+        timestamp: new Date().toISOString()
+      });
+      openAtRef.current = null;
+    }
+  }, [scope]);
 
   if (!scope) return null;
 
@@ -170,7 +187,7 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
           {/* Visual resize handle */}
           <div 
             data-testid="decision-dock-resize-handle"
-            className="mx-auto mt-2 mb-3 h-2 w-12 rounded-full bg-muted cursor-ns-resize"
+            className="mx-auto mt-2 mb-3 h-4 w-16 rounded-full bg-muted/80 cursor-ns-resize select-none touch-none"
             onMouseDown={() => {
               setIsResizing(true);
               document.body.style.cursor = 'ns-resize';
