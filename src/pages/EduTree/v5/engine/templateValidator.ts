@@ -74,14 +74,15 @@ async function validateTransferStatus(
   let allAccepted = true;
   
   for (const opt of template.options) {
-    const providerCode = opt.providerCode || opt.provider || 'UNKNOWN';
+    const providerCode = String(opt.providerCode || opt.provider || 'UNKNOWN').toUpperCase();
+    const targetUpper = String(targetSchool || '').toUpperCase();
     
     // Skip if course is from target school (in-residence)
-    if (providerCode.toUpperCase() === targetSchool.toUpperCase()) {
+    if (providerCode === targetUpper) {
       continue;
     }
     
-    const rule = await checkTransferRule(providerCode, opt.courseId, targetSchool);
+    const rule = await checkTransferRule(providerCode, opt.courseId, targetUpper);
     
     if (!rule.accepted && !rule.electiveOnly) {
       rejectedCourses.push(opt.title || opt.courseId);

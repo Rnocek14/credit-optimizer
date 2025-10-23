@@ -43,14 +43,18 @@ class ErrorBoundary extends Component<{ children: ReactNode; fallback: ReactNode
 
   componentDidCatch(error: Error, errorInfo: any) {
     console.error('[ErrorBoundary] Caught error:', error, errorInfo);
-    void trackTelemetryEvent({
-      task: 'module_templates_crash',
-      scope: 'error',
-      complexity: { 
-        message: error.message,
-        stack: error.stack?.substring(0, 200)
-      }
-    });
+    try {
+      void trackTelemetryEvent({
+        task: 'module_templates_crash',
+        scope: 'error',
+        complexity: {
+          message: error.message,
+          stack: error.stack?.substring(0, 200)
+        }
+      });
+    } catch (telemetryError) {
+      console.warn('[Telemetry] Failed to track error:', telemetryError);
+    }
   }
 
   render() {
@@ -672,15 +676,19 @@ function MarketplaceContent(props: DecisionDockRouterProps) {
     });
     
     // Telemetry (Phase 1c)
-    void trackTelemetryEvent({
-      task: 'template_added',
-      scope: 'module',
-      complexity: {
-        templateId: template.id,
-        coursesAdded: toAdd.length,
-        duplicatesFiltered: template.options.length - toAdd.length
-      }
-    });
+    try {
+      void trackTelemetryEvent({
+        task: 'template_added',
+        scope: 'module',
+        complexity: {
+          templateId: template.id,
+          coursesAdded: toAdd.length,
+          duplicatesFiltered: template.options.length - toAdd.length
+        }
+      });
+    } catch (telemetryError) {
+      console.warn('[Telemetry] Failed to track template add:', telemetryError);
+    }
   };
 
   // Helper functions

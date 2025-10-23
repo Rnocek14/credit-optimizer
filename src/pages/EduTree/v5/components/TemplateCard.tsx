@@ -179,6 +179,8 @@ export function TemplateCard({ template, validation, onAdd, isDraggable = true }
           size="sm"
           onClick={onAdd}
           disabled={!validation.isValid}
+          aria-disabled={!validation.isValid}
+          role="button"
           className="flex-shrink-0"
         >
           {validation.isValid ? 'Add' : 'Blocked'}

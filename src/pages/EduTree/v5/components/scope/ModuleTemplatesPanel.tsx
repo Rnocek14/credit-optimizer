@@ -55,33 +55,41 @@ export function ModuleTemplatesPanel({ module, allModules, onAddTemplate }: Modu
   // Track template views (Phase 1c: add evidence telemetry)
   useEffect(() => {
     if (rankedTemplates && rankedTemplates.length > 0) {
-      void trackTelemetryEvent({
-        task: 'template_tab_opened',
-        scope: 'module',
-        complexity: {
-          moduleId: module.id,
-          templateCount: rankedTemplates.length,
-          validCount: rankedTemplates.filter(t => t.validation.isValid).length,
-          hasAnchorSchool: !!constraints.target_school,
-          hasEvidence: !!evidence.raw?.completed?.length
-        }
-      });
+      try {
+        void trackTelemetryEvent({
+          task: 'template_tab_opened',
+          scope: 'module',
+          complexity: {
+            moduleId: module.id,
+            templateCount: rankedTemplates.length,
+            validCount: rankedTemplates.filter(t => t.validation.isValid).length,
+            hasAnchorSchool: !!constraints.target_school,
+            hasEvidence: !!evidence.raw?.completed?.length
+          }
+        });
+      } catch (telemetryError) {
+        console.warn('[Telemetry] Failed to track template view:', telemetryError);
+      }
     }
   }, [rankedTemplates, module.id, constraints.target_school, evidence.raw]);
   
   // Track template add with telemetry
   const handleAddTemplate = (template: ModuleTemplate) => {
-    void trackTelemetryEvent({
-      task: 'template_added',
-      scope: 'module',
-      complexity: {
-        templateId: template.id,
-        badge: template.badge,
-        costDelta: template.est.costUsd,
-        weeksDelta: template.est.weeks,
-        criDelta: template.est.cri
-      }
-    });
+    try {
+      void trackTelemetryEvent({
+        task: 'template_added',
+        scope: 'module',
+        complexity: {
+          templateId: template.id,
+          badge: template.badge,
+          costDelta: template.est.costUsd,
+          weeksDelta: template.est.weeks,
+          criDelta: template.est.cri
+        }
+      });
+    } catch (telemetryError) {
+      console.warn('[Telemetry] Failed to track template add:', telemetryError);
+    }
     
     onAddTemplate(template);
   };
