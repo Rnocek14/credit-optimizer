@@ -1,0 +1,726 @@
+import { useRef, useEffect } from 'react';
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import '../styles/decisionDock.css';
+import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
+import { Badge } from "@/components/ui/badge";
+import { ScopeBreadcrumbs } from './ScopeBreadcrumbs';
+import { usePlanStore } from '../state/usePlanStore';
+import { usePlanBasket } from '../state/usePlanBasket';
+import { calculateOptionScore } from '../utils/optionScoring';
+import { useScoringPrefs } from '../state/useScoringPrefs';
+import { validatePlan } from '../engine/constraints';
+import { autoCompletePlan } from '../engine/autoComplete';
+import { getAutoCompleteMessage } from '../engine/autoCompleteStatus';
+import { ENV } from '@/config/env';
+import ConstraintsPanel from './ConstraintsPanel';
+import { usePlanBasketWithToasts } from '../hooks/usePlanBasketWithToasts';
+import { AutoFillPlanButton } from './AutoFillDialog';
+import { FEATURE_FLAGS } from '../config/featureFlags';
+import { mapWeightsForEngine } from '../utils/weightMapping';
+import { ScenarioManager } from './ScenarioManager';
+import { TransferBadge } from './TransferBadge';
+import type { PanelScope } from '../hooks/useScopedPanel';
+import type { DegreeSummary, ModuleData } from '../types/v5';
+import { useState, useMemo } from 'react';
+import type { ProviderType, ScoreBreakdown } from '../utils/optionScoring';
+import type { BasketItem } from '../state/usePlanBasket';
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+
+interface MarketplaceOption {
+  id: string;
+  courseId: string;
+  title: string;
+  credits: number;
+  provider: string;
+  providerType?: ProviderType;
+  providerCode?: string;
+  level?: number;
+  cost_usd: number | null;
+  duration_weeks: number | null;
+  score?: number;
+  scoreBreakdown?: ScoreBreakdown;
+  aceNccrs?: boolean;
+  proctored?: boolean;
+  providerRep?: number;
+  pace_type?: 'self_paced' | 'cohort';
+  start_windows?: string[];
+  workload_weekly_hours?: number;
+  satisfies_requirements?: string[];
+  prereq_course_ids?: string[];
+  unlocks_count?: number;
+  equivalency_key?: string;
+}
+
+interface DecisionDockRouterProps {
+  scope: PanelScope;
+  nodeId?: string;
+  nodeData?: any;
+  activeTab?: string;
+  onClose: () => void;
+  onNavigate: (scope: PanelScope, nodeId?: string, nodeData?: any) => void;
+  onTabChange: (tab: string) => void;
+  degreeSummary?: DegreeSummary;
+  year?: number;
+  yearModules?: ModuleData[];
+  onOpenModulePanel?: (module: ModuleData) => void;
+  moduleId?: string;
+  moduleLabel?: string;
+  creditsEarned?: number;
+  creditsRequired?: number;
+  options?: any[];
+  sortBy?: 'cheapest' | 'shortest' | 'credits' | 'best-match';
+  setSortBy?: (v: 'cheapest' | 'shortest' | 'credits' | 'best-match') => void;
+  yearEarned?: number;
+  yearCap?: number;
+  allModules?: any[];
+}
+
+export function DecisionDockRouter(props: DecisionDockRouterProps) {
+  const { scope, onClose } = props;
+  const previousFocusRef = useRef<HTMLElement | null>(null);
+
+  // Apply dimming effect to plan board
+  useEffect(() => {
+    if (scope) {
+      document.body.classList.add('decision-dock-open');
+    }
+    return () => {
+      document.body.classList.remove('decision-dock-open');
+    };
+  }, [scope]);
+
+  if (!scope) return null;
+
+  return (
+    <Drawer
+      open={true}
+      onOpenChange={(open) => {
+        if (!open) onClose();
+      }}
+      modal={false}
+      direction="bottom"
+    >
+      <DrawerContent 
+        className="h-[40vh] min-h-[35vh] max-h-[80vh] resize-y pointer-events-auto border-t"
+        style={{ 
+          backdropFilter: 'blur(2px)',
+          backgroundColor: 'hsl(var(--background) / 0.95)'
+        }}
+        onOpenAutoFocus={(e) => {
+          previousFocusRef.current = document.activeElement as HTMLElement;
+        }}
+        onCloseAutoFocus={(e) => {
+          e.preventDefault();
+          previousFocusRef.current?.focus();
+        }}
+      >
+        <div className="mx-auto w-full max-w-7xl h-full overflow-y-auto px-4 pb-4">
+          {scope === 'degree' && <DegreeAnalyzerContent {...props} />}
+          {scope === 'year' && <YearMarketplaceContent {...props} />}
+          {scope === 'module' && <MarketplaceContent {...props} />}
+        </div>
+      </DrawerContent>
+    </Drawer>
+  );
+}
+
+// Extract Degree Analyzer content (without Sheet wrapper)
+function DegreeAnalyzerContent(props: DecisionDockRouterProps) {
+  const { degreeSummary, activeTab = 'overview', onTabChange, onNavigate } = props;
+  
+  if (!degreeSummary) return null;
+  
+  const progressPercent = (degreeSummary.totalCreditsEarned / degreeSummary.totalCreditsRequired) * 100;
+
+  return (
+    <>
+      <DrawerHeader className="pb-4">
+        <ScopeBreadcrumbs
+          scope="degree"
+          degreeTitle={degreeSummary.degreeTitle}
+          onNavigate={onNavigate}
+        />
+        <DrawerTitle className="text-lg">Degree Analyzer</DrawerTitle>
+      </DrawerHeader>
+
+      <Tabs value={activeTab} onValueChange={onTabChange} className="w-full">
+        <TabsList className="grid w-full grid-cols-4 mb-6">
+          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="requirements">Requirements</TabsTrigger>
+          <TabsTrigger value="transfer">Transfer</TabsTrigger>
+          <TabsTrigger value="optimize">Optimize</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="overview" className="space-y-6">
+          <div className="bg-accent/30 rounded-lg p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="font-semibold text-lg">{degreeSummary.degreeTitle}</h3>
+                <p className="text-sm text-muted-foreground">Bachelor's Degree</p>
+              </div>
+              <div className="text-right">
+                <div className="text-3xl font-bold text-primary">{Math.round(progressPercent)}%</div>
+                <div className="text-xs text-muted-foreground">Complete</div>
+              </div>
+            </div>
+            
+            <Progress value={progressPercent} className="h-3 mb-2" />
+            
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">
+                {degreeSummary.totalCreditsEarned} / {degreeSummary.totalCreditsRequired} credits
+              </span>
+              <span className="text-muted-foreground">
+                {degreeSummary.totalCreditsRequired - degreeSummary.totalCreditsEarned} remaining
+              </span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 gap-4">
+            <div className="bg-card border rounded-lg p-4">
+              <div className="text-xs text-muted-foreground mb-1">Total Cost</div>
+              <div className="text-2xl font-bold">${degreeSummary.estimatedCost.toLocaleString()}</div>
+            </div>
+            <div className="bg-card border rounded-lg p-4">
+              <div className="text-xs text-muted-foreground mb-1">Duration</div>
+              <div className="text-2xl font-bold">{Math.round(degreeSummary.estimatedMonths / 12)}y</div>
+              <div className="text-xs text-muted-foreground">{degreeSummary.estimatedMonths} months</div>
+            </div>
+            <div className="bg-card border rounded-lg p-4">
+              <div className="text-xs text-muted-foreground mb-1">Credits Planned</div>
+              <div className="text-2xl font-bold">{degreeSummary.totalCreditsPlanned}</div>
+            </div>
+          </div>
+
+          {degreeSummary.warnings.length > 0 && (
+            <div className="space-y-2">
+              <h4 className="font-medium text-sm">⚠️ Warnings</h4>
+              {degreeSummary.warnings.map((warning, i) => (
+                <div key={i} className="text-sm p-3 rounded-md bg-yellow-500/10 text-yellow-600 dark:text-yellow-400">
+                  {warning}
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="bg-accent/20 rounded-lg p-4">
+            <h4 className="font-medium text-sm mb-3">🎯 What's Blocking Completion?</h4>
+            <div className="space-y-2 text-sm">
+              {degreeSummary.totalCreditsEarned < degreeSummary.totalCreditsRequired ? (
+                <p className="text-muted-foreground">
+                  Complete {degreeSummary.totalCreditsRequired - degreeSummary.totalCreditsEarned} more credits to finish your degree.
+                </p>
+              ) : (
+                <p className="text-green-600 dark:text-green-400">
+                  ✓ All degree requirements met!
+                </p>
+              )}
+            </div>
+          </div>
+
+          <div className="flex gap-3">
+            <Button variant="outline" className="flex-1">
+              📊 Export Plan (PDF)
+            </Button>
+            <Button variant="outline" className="flex-1">
+              📤 Share with Advisor
+            </Button>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="requirements" className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            View all requirements grouped by category (Gen Ed, Core, Major, Electives).
+          </p>
+          <div className="bg-accent/20 rounded-lg p-8 text-center">
+            <div className="text-muted-foreground text-sm">
+              Requirements breakdown coming soon...
+            </div>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="transfer" className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Visualize credit transfer flow from providers to target institution.
+          </p>
+          <div className="bg-accent/20 rounded-lg p-8 text-center">
+            <div className="text-muted-foreground text-sm">
+              Transfer flow diagram coming soon...
+            </div>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="optimize" className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Auto-fill entire degree with optimized course selections.
+          </p>
+          <div className="grid grid-cols-2 gap-3">
+            <Button variant="outline" className="h-auto flex-col items-start p-4">
+              <div className="text-sm font-medium mb-1">⚡ Fastest Path</div>
+              <div className="text-xs text-muted-foreground">Minimize duration</div>
+            </Button>
+            <Button variant="outline" className="h-auto flex-col items-start p-4">
+              <div className="text-sm font-medium mb-1">💰 Cheapest Path</div>
+              <div className="text-xs text-muted-foreground">Minimize cost</div>
+            </Button>
+            <Button variant="outline" className="h-auto flex-col items-start p-4">
+              <div className="text-sm font-medium mb-1">🎓 Transfer-Safe</div>
+              <div className="text-xs text-muted-foreground">Guaranteed acceptance</div>
+            </Button>
+            <Button variant="outline" className="h-auto flex-col items-start p-4">
+              <div className="text-sm font-medium mb-1">⚖️ Balanced</div>
+              <div className="text-xs text-muted-foreground">Best overall</div>
+            </Button>
+          </div>
+        </TabsContent>
+      </Tabs>
+    </>
+  );
+}
+
+// Extract Year Marketplace content
+function YearMarketplaceContent(props: DecisionDockRouterProps) {
+  const { year, yearModules = [], degreeSummary, onNavigate, onOpenModulePanel, onClose } = props;
+
+  const yearStats = useMemo(() => {
+    const totalCreditsRequired = yearModules.reduce((sum, m) => sum + m.creditsRequired, 0);
+    const totalCreditsEarned = yearModules.reduce((sum, m) => sum + (m.creditsEarned || 0), 0);
+    const unmetModules = yearModules.filter(m => (m.creditsEarned || 0) < m.creditsRequired);
+    
+    return {
+      totalCreditsRequired,
+      totalCreditsEarned,
+      unmetModules,
+      progressPercent: totalCreditsRequired > 0 
+        ? Math.round((totalCreditsEarned / totalCreditsRequired) * 100)
+        : 0
+    };
+  }, [yearModules]);
+
+  return (
+    <>
+      <DrawerHeader className="pb-4">
+        <ScopeBreadcrumbs
+          scope="year"
+          year={year}
+          degreeTitle={degreeSummary?.degreeTitle}
+          onNavigate={onNavigate}
+        />
+        <DrawerTitle className="text-lg">Year {year} Marketplace</DrawerTitle>
+      </DrawerHeader>
+
+      <div className="bg-accent/30 rounded-lg p-4 mb-6">
+        <div className="grid grid-cols-3 gap-4 text-sm mb-3">
+          <div>
+            <div className="text-xs text-muted-foreground">Credits</div>
+            <div className="font-semibold text-lg">
+              {yearStats.totalCreditsEarned}/{yearStats.totalCreditsRequired}
+            </div>
+          </div>
+          <div>
+            <div className="text-xs text-muted-foreground">Progress</div>
+            <div className="font-semibold text-lg">{yearStats.progressPercent}%</div>
+          </div>
+          <div>
+            <div className="text-xs text-muted-foreground">Remaining</div>
+            <div className="font-semibold text-lg">{yearStats.unmetModules.length}</div>
+            <div className="text-xs text-muted-foreground">modules</div>
+          </div>
+        </div>
+
+        <div className="flex gap-2">
+          <Button size="sm" variant="default" className="flex-1">
+            ✨ Auto-Fill Year
+          </Button>
+          <Button size="sm" variant="outline" className="flex-1">
+            🗑️ Clear Year
+          </Button>
+        </div>
+      </div>
+
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="font-medium">Unmet Requirements</h3>
+          <Badge variant="secondary">{yearStats.unmetModules.length} modules</Badge>
+        </div>
+
+        {yearStats.unmetModules.length === 0 ? (
+          <div className="bg-green-500/10 text-green-600 dark:text-green-400 rounded-lg p-6 text-center">
+            <div className="text-2xl mb-2">✓</div>
+            <div className="font-medium">All requirements met for Year {year}!</div>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {yearStats.unmetModules.map(module => (
+              <div
+                key={module.id}
+                className="border rounded-lg p-4 hover:bg-accent/50 transition-colors"
+              >
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex-1">
+                    <div className="font-medium text-sm mb-1">{module.label}</div>
+                    <div className="text-xs text-muted-foreground line-clamp-2">
+                      {module.description}
+                    </div>
+                  </div>
+                  <Badge variant="outline" className="ml-2">
+                    {module.creditsRequired} cr
+                  </Badge>
+                </div>
+
+                {module.marketplaceOptions && module.marketplaceOptions.length > 0 && (
+                  <div className="space-y-1 mb-3">
+                    {module.marketplaceOptions.slice(0, 3).map((option, idx) => (
+                      <div
+                        key={option.id}
+                        className="text-xs text-muted-foreground flex items-center justify-between"
+                      >
+                        <span className="truncate">{option.provider}: {option.title}</span>
+                        <span className="ml-2 text-nowrap">
+                          {option.cost_usd !== null ? `$${option.cost_usd}` : 'Free'}
+                        </span>
+                      </div>
+                    ))}
+                    {module.marketplaceOptions.length > 3 && (
+                      <div className="text-xs text-muted-foreground">
+                        +{module.marketplaceOptions.length - 3} more options
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => {
+                    if (onOpenModulePanel) {
+                      onOpenModulePanel(module);
+                      onClose();
+                    }
+                  }}
+                >
+                  View All Options ({module.optionsCount || 0})
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </>
+  );
+}
+
+// Extract Marketplace content (reuse existing logic from MarketplacePanel)
+function MarketplaceContent(props: DecisionDockRouterProps) {
+  const {
+    moduleId = '',
+    moduleLabel = '',
+    creditsEarned = 0,
+    creditsRequired = 0,
+    options = [],
+    sortBy = 'best-match',
+    setSortBy,
+    yearEarned = 0,
+    yearCap = 30,
+    allModules = []
+  } = props;
+
+  const toggleCourse = usePlanStore(s => s.toggleCourse);
+  const selected = usePlanStore(s => s.selections[moduleId]?.selected || []);
+  const liveEarned = usePlanStore(s => s.selections[moduleId]?.selectedCredits ?? 0);
+  
+  const { weights, setWeights, resetWeights } = useScoringPrefs();
+  const [showWeights, setShowWeights] = useState(false);
+  
+  const basket = usePlanBasket(s => s.items);
+  const totals = usePlanBasket(s => s.getTotals());
+  const constraints = usePlanBasket(s => s.constraints);
+  const addItem = usePlanBasket(s => s.addItem);
+  const { addItemWithToast, removeItemWithToast } = usePlanBasketWithToasts();
+
+  const enriched = useMemo(() => {
+    return options.map(o => {
+      const breakdown = calculateOptionScore(o, options, weights);
+      return { ...o, score: breakdown.total, scoreBreakdown: breakdown };
+    });
+  }, [options, weights]);
+
+  const sortedOptions = useMemo(() => {
+    const opts = [...enriched];
+    
+    if (sortBy === 'best-match') {
+      return opts.sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
+    }
+    if (sortBy === 'cheapest') {
+      return opts.sort((a, b) => {
+        if (a.cost_usd === null) return 1;
+        if (b.cost_usd === null) return -1;
+        return a.cost_usd - b.cost_usd;
+      });
+    }
+    if (sortBy === 'shortest') {
+      return opts.sort((a, b) => {
+        if (a.duration_weeks === null) return 1;
+        if (b.duration_weeks === null) return -1;
+        return a.duration_weeks - b.duration_weeks;
+      });
+    }
+    return opts.sort((a, b) => (b.credits ?? 0) - (a.credits ?? 0));
+  }, [enriched, sortBy]);
+  
+  const violations = useMemo(() => 
+    validatePlan(basket, sortedOptions, constraints),
+    [basket, sortedOptions, constraints]
+  );
+
+  const isAtMax = creditsEarned >= creditsRequired;
+
+  // Helper functions
+  const formatRelativeDate = (isoDate: string) => {
+    const date = new Date(isoDate);
+    const days = Math.floor((date.getTime() - Date.now()) / (24 * 60 * 60 * 1000));
+    if (days < 0) return 'Past';
+    if (days === 0) return 'Today';
+    if (days === 1) return 'Tomorrow';
+    if (days < 7) return `${days}d`;
+    if (days < 30) return `${Math.floor(days / 7)}w`;
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  };
+  
+  const isWithin30Days = (isoDate: string) => {
+    const days = Math.floor((new Date(isoDate).getTime() - Date.now()) / (24 * 60 * 60 * 1000));
+    return days >= 0 && days <= 30;
+  };
+
+  return (
+    <>
+      <DrawerHeader className="pb-4">
+        <DrawerTitle className="flex items-center justify-between">
+          <div className="flex flex-col gap-1">
+            <span>{moduleLabel}</span>
+            <span className="text-xs text-muted-foreground font-normal">
+              {sortedOptions.length} option{sortedOptions.length !== 1 ? 's' : ''} • {
+                sortedOptions.filter(o => o.cost_usd === 0).length
+              } free
+            </span>
+          </div>
+          <span className="text-sm text-muted-foreground">
+            {liveEarned}/{creditsRequired} cr
+          </span>
+        </DrawerTitle>
+        <div className="text-xs text-muted-foreground">
+          Year progress: {yearEarned}/{yearCap} cr
+        </div>
+      </DrawerHeader>
+      
+      <ConstraintsPanel />
+      
+      {basket.length > 0 && (
+        <div className="sticky top-0 z-10 bg-background/95 backdrop-blur p-4 border rounded-lg mb-4">
+          <div className="grid grid-cols-3 gap-3 text-sm mb-3">
+            <div>
+              <div className="text-xs text-muted-foreground">Total Cost</div>
+              <div className="font-semibold text-lg">
+                ${(totals.totalCost ?? 0).toLocaleString()}
+              </div>
+            </div>
+            <div>
+              <div className="text-xs text-muted-foreground">Duration</div>
+              <div className="font-semibold text-lg">
+                {totals.totalWeeks ?? 0}wks
+              </div>
+              <div className="text-xs text-muted-foreground">
+                (max ×{constraints.max_concurrent_courses ?? 2})
+              </div>
+            </div>
+            <div>
+              <div className="text-xs text-muted-foreground">Weekly Load</div>
+              <div className="font-semibold text-lg">
+                {totals.totalWorkloadHours ?? 0}hrs/wk
+              </div>
+            </div>
+          </div>
+          
+          {violations.length > 0 && (
+            <div className="space-y-1 mb-3">
+              {violations.map((v, i) => (
+                <div key={i} className={`text-xs px-2 py-1 rounded-md ${
+                  v.severity === 'error' ? 'bg-destructive/10 text-destructive' :
+                  v.severity === 'warning' ? 'bg-yellow-500/10 text-yellow-600' :
+                  'bg-blue-500/10 text-blue-600'
+                }`}>
+                  {v.severity === 'error' ? '🚫' : v.severity === 'warning' ? '⚠️' : 'ℹ️'} {v.message}
+                </div>
+              ))}
+            </div>
+          )}
+          
+          {FEATURE_FLAGS.v5_autofill_enabled && (
+            <AutoFillPlanButton
+              modules={allModules as ModuleData[]}
+              constraints={constraints}
+              weights={mapWeightsForEngine(weights)}
+              disabled={violations.some(v => v.severity === 'error')}
+            />
+          )}
+          
+          <ScenarioManager />
+        </div>
+      )}
+
+      <div className="mb-4 space-y-3">
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-muted-foreground">Sort by</span>
+          <select
+            value={sortBy}
+            onChange={e => setSortBy?.(e.target.value as any)}
+            className="text-xs px-2 py-1 rounded border border-border bg-background"
+          >
+            <option value="best-match">🎯 Best Match</option>
+            <option value="cheapest">💰 Cheapest</option>
+            <option value="shortest">⚡ Shortest</option>
+            <option value="credits">📊 Most Credits</option>
+          </select>
+          
+          <button
+            className="text-xs px-2 py-1 rounded bg-accent hover:bg-accent/80 transition-colors ml-auto"
+            onClick={() => setShowWeights(v => !v)}
+          >
+            ⚙️ Priorities
+          </button>
+        </div>
+
+        {showWeights && (
+          <div className="p-3 bg-accent/30 rounded-lg">
+            <div className="flex items-center justify-between mb-2">
+              <div className="text-xs font-medium">Adjust what matters to you:</div>
+              <button
+                onClick={resetWeights}
+                className="text-[10px] text-muted-foreground hover:text-foreground underline"
+              >
+                Reset to default
+              </button>
+            </div>
+            <div className="space-y-2">
+              {(['cost', 'time', 'quality'] as const).map(key => (
+                <label key={key} className="flex items-center gap-2">
+                  <span className="text-xs w-20 capitalize">
+                    {key === 'cost' && '💰'} {key === 'time' && '⚡'} {key === 'quality' && '⭐'} {key}
+                  </span>
+                  <input
+                    type="range"
+                    min={0}
+                    max={100}
+                    value={Math.round(weights[key] * 100)}
+                    onChange={(e) => setWeights({ [key]: (+e.target.value) / 100 })}
+                    className="flex-1"
+                  />
+                  <span className="text-xs w-10 text-right font-medium">{Math.round(weights[key] * 100)}%</span>
+                </label>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="space-y-2">
+        {sortedOptions.map(option => {
+          const isSelected = selected.includes(option.courseId);
+          const isInBasket = basket.some(b => b.courseId === option.courseId);
+          const optionCredits = Number(option.credits) || 0;
+          const wouldExceedYearCap = !isSelected && yearEarned + optionCredits > yearCap;
+          const disabled = (isAtMax && !isSelected) || wouldExceedYearCap;
+
+          return (
+            <div
+              key={option.id}
+              className="border rounded-lg p-3 flex items-center justify-between hover:bg-accent/50 transition-colors"
+            >
+              <div className="min-w-0 flex-1">
+                <div className="font-medium text-sm truncate">
+                  {option.courseId}: {option.title}
+                </div>
+                
+                {(() => {
+                  const basketItem = basket.find(b => b.courseId === option.courseId);
+                  return basketItem?.status === 'auto-filled' && basketItem.autoFillReason && (
+                    <div className="text-xs text-muted-foreground mt-1 italic">
+                      ✨ {basketItem.autoFillReason}
+                    </div>
+                  );
+                })()}
+                
+                <div className="text-xs text-muted-foreground mt-1 flex items-center gap-2 flex-wrap">
+                  <span>{option.credits} cr</span>
+                  
+                  {(option.unlocks_count ?? 0) > 0 && (
+                    <Badge variant="secondary" className="text-xs">
+                      🔓 Unlocks {option.unlocks_count}
+                    </Badge>
+                  )}
+                  
+                  {option.start_windows?.[0] && (
+                    <Badge variant={isWithin30Days(option.start_windows[0]) ? 'default' : 'outline'} className="text-xs">
+                      🗓️ Starts {formatRelativeDate(option.start_windows[0])}
+                    </Badge>
+                  )}
+                  
+                  {option.workload_weekly_hours && (
+                    <Badge variant={option.workload_weekly_hours > 15 ? 'destructive' : 'outline'} className="text-xs">
+                      📊 {option.workload_weekly_hours}hrs/wk
+                    </Badge>
+                  )}
+                  
+                  {option.providerType && (
+                    <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
+                      option.providerType === 'university' ? 'bg-blue-100 text-blue-700' :
+                      option.providerType === 'mooc' ? 'bg-purple-100 text-purple-700' :
+                      option.providerType === 'bootcamp' ? 'bg-orange-100 text-orange-700' :
+                      'bg-gray-100 text-gray-700'
+                    }`}>
+                      {option.providerType === 'university' && '🎓'}
+                      {option.providerType === 'mooc' && '🌐'}
+                      {option.providerType === 'bootcamp' && '⚡'}
+                      {option.providerType === 'testing_center' && '📝'}
+                      {' '}{option.provider}
+                    </span>
+                  )}
+                  
+                  <TransferBadge
+                    courseCode={option.courseId}
+                    providerCode={option.providerCode || ''}
+                    providerType={option.providerType}
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3 ml-4">
+                <div className="text-right min-w-[80px]">
+                  <div className="text-sm font-semibold">
+                    {option.cost_usd !== null ? `$${option.cost_usd}` : 'Free'}
+                  </div>
+                  {option.duration_weeks && (
+                    <div className="text-xs text-muted-foreground">
+                      {option.duration_weeks}wks
+                    </div>
+                  )}
+                </div>
+
+                <input
+                  type="checkbox"
+                  checked={isSelected}
+                  disabled={disabled}
+                  onChange={() => toggleCourse(moduleId, option.courseId, optionCredits, creditsRequired)}
+                  className="h-5 w-5"
+                />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </>
+  );
+}

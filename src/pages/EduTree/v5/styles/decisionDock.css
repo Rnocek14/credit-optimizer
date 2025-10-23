@@ -1,0 +1,22 @@
+/**
+ * Decision Dock Visual Feedback
+ * Dims the plan board when drawer is open to focus attention
+ */
+
+.decision-dock-open .react-flow {
+  filter: brightness(0.85);
+  transition: filter 200ms ease-out;
+}
+
+.decision-dock-open .react-flow__node {
+  pointer-events: auto; /* Keep nodes interactive */
+}
+
+.decision-dock-open .react-flow__edge {
+  pointer-events: auto; /* Keep edges interactive */
+}
+
+/* Ensure drawer content is always interactive */
+[data-vaul-drawer] {
+  pointer-events: auto;
+}

@@ -1,6 +1,8 @@
 import { DegreeAnalyzerPanel } from './DegreeAnalyzerPanel';
 import { YearMarketplacePanel } from './YearMarketplacePanel';
 import { MarketplacePanel } from './MarketplacePanel';
+import { DecisionDockRouter } from './DecisionDockRouter';
+import { FEATURE_FLAGS } from '../config/featureFlags';
 import type { PanelScope } from '../hooks/useScopedPanel';
 import type { DegreeSummary, ModuleData } from '../types/v5';
 
@@ -40,6 +42,12 @@ interface ScopePanelRouterProps {
 export function ScopePanelRouter(props: ScopePanelRouterProps) {
   const { scope, nodeId, activeTab, onClose, onNavigate, onTabChange } = props;
 
+  // Feature flag check: use Decision Dock if enabled
+  if (FEATURE_FLAGS.v5_decision_dock) {
+    return <DecisionDockRouter {...props} />;
+  }
+
+  // Legacy Sheet-based panels
   if (!scope) return null;
 
   switch (scope) {
