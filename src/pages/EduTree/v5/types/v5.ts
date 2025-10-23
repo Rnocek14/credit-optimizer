@@ -1,3 +1,5 @@
+import type { NodeSelectedSummary } from './nodeProgress';
+
 export interface Course {
   courseId: string;
   title: string;
@@ -71,6 +73,9 @@ export interface ModuleData {
   
   // Canonical requirement mapping
   requiredCanonicalIds?: string[];
+  
+  // Progress visualization (from basket selections)
+  selectedSummary?: NodeSelectedSummary;
 }
 
 export interface Requirement {

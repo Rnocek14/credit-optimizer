@@ -64,7 +64,16 @@ export function mapCategoryToIcon(category: string): string {
 
 export function transformToModuleData(
   requirements: DbRequirement[],
-  allOptions: DbOption[]
+  allOptions: DbOption[],
+  basket: Array<{
+    moduleId: string;
+    credits: number;
+    cost_usd: number | null;
+    duration_weeks: number | null;
+    cri_score: number;
+    status?: string;
+    autoFillReason?: string;
+  }> = []
 ): Record<number, ModuleData[]> {
   const modulesByYear: Record<number, ModuleData[]> = {
     1: [],
@@ -143,6 +152,13 @@ export function transformToModuleData(
           null
         );
 
+    // Compute selection summary from basket
+    const selectedSummary = computeModuleSummary(
+      req.id,
+      req.credits_required ?? 0,
+      basket
+    );
+
     const module: ModuleData = {
       id: req.id,
       label: req.name,
@@ -152,6 +168,7 @@ export function transformToModuleData(
       creditsEarned: 0, // Would come from user progress
       creditsRequired: req.credits_required ?? 0,
       isCollapsed: false,
+      selectedSummary, // Attach progress summary
     };
 
     // Add marketplace metadata if available

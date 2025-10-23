@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { transformToModuleData } from '../utils/transformDbToV5';
+import { usePlanBasket } from '../state/usePlanBasket';
 import type { ModuleData } from '../types/v5';
 
 interface UseV5DatabaseDataOptions {
@@ -10,9 +11,10 @@ interface UseV5DatabaseDataOptions {
 
 export function useV5DatabaseData(options: UseV5DatabaseDataOptions = {}) {
   const { programId = 'bs_cs', enabled = true } = options;
+  const basket = usePlanBasket(s => s.items);
 
   return useQuery({
-    queryKey: ['v5-program-data', programId],
+    queryKey: ['v5-program-data', programId, basket.length],
     queryFn: async () => {
       // 1. Fetch all requirements for this program
       const { data: requirements, error: reqError } = await supabase
@@ -79,10 +81,19 @@ export function useV5DatabaseData(options: UseV5DatabaseDataOptions = {}) {
         };
       }) || [];
 
-      // 5. Transform to V5 format
+      // 5. Transform to V5 format with basket for progress calculation
       const modulesByYear = transformToModuleData(
         requirements as any,
-        enrichedOptions as any
+        enrichedOptions as any,
+        basket.map(item => ({
+          moduleId: item.moduleId,
+          credits: item.credits,
+          cost_usd: item.cost_usd,
+          duration_weeks: item.duration_weeks,
+          cri_score: item.cri_score,
+          status: item.status,
+          autoFillReason: item.autoFillReason
+        }))
       );
 
       return { modulesByYear };
