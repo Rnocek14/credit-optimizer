@@ -5,7 +5,6 @@ import { Card } from '@/components/ui/card';
 import { CheckCircle, AlertCircle, AlertTriangle, Info, GripVertical } from 'lucide-react';
 import { useDraggable } from '@dnd-kit/core';
 import type { ModuleTemplate, TemplateValidation } from '../types/templates';
-import { cn } from '@/lib/utils';
 
 interface TemplateCardProps {
   template: ModuleTemplate;
@@ -44,10 +43,9 @@ export function TemplateCard({ template, validation, onAdd, isDraggable = true }
     <Card
       ref={setNodeRef}
       style={style}
-      className={cn(
-        "p-4 transition-colors",
+      className={`p-4 transition-colors ${
         validation.isValid ? "bg-card hover:bg-accent/50" : "bg-muted/50 opacity-75"
-      )}
+      }`}
     >
       <div className="flex items-start gap-3">
         {/* Drag Handle */}
@@ -64,7 +62,7 @@ export function TemplateCard({ template, validation, onAdd, isDraggable = true }
             
             {/* Badge */}
             {template.badge && (
-              <Badge className={cn(badgeColor, "text-white text-xs")}>
+              <Badge className={`${badgeColor} text-white text-xs`}>
                 {template.badge}
               </Badge>
             )}

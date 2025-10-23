@@ -584,6 +584,11 @@ function MarketplaceContent(props: DecisionDockRouterProps) {
   );
 
   const isAtMax = creditsEarned >= creditsRequired;
+  
+  // Module data for templates
+  const moduleData = useMemo(() => {
+    return allModules.find(m => m.id === moduleId) as ModuleData | undefined;
+  }, [allModules, moduleId]);
 
   // Helper functions
   const formatRelativeDate = (isoDate: string) => {
@@ -622,6 +627,55 @@ function MarketplaceContent(props: DecisionDockRouterProps) {
           Year progress: {yearEarned}/{yearCap} cr
         </div>
       </div>
+
+      {FEATURE_FLAGS.v5_templates_module && moduleData ? (
+        <Tabs defaultValue="templates" className="w-full mb-4">
+          <TabsList className="w-full grid grid-cols-2">
+            <TabsTrigger value="templates">Templates</TabsTrigger>
+            <TabsTrigger value="courses">Individual Courses</TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="templates" className="mt-4">
+            {/* Templates panel - imported lazily below */}
+            <div className="text-sm text-muted-foreground text-center py-8">
+              💡 Templates feature coming soon. Enable in console with:
+              <code className="block mt-2 bg-muted p-2 rounded">
+                localStorage.setItem('v5_templates_module', 'true')
+              </code>
+            </div>
+          </TabsContent>
+          
+          <TabsContent value="courses" className="mt-4">
+            <CoursesList 
+              sortedOptions={sortedOptions}
+              selected={selected}
+              basket={basket}
+              moduleId={moduleId}
+              creditsRequired={creditsRequired}
+              yearEarned={yearEarned}
+              yearCap={yearCap}
+              isAtMax={isAtMax}
+              toggleCourse={toggleCourse}
+              formatRelativeDate={formatRelativeDate}
+              isWithin30Days={isWithin30Days}
+            />
+          </TabsContent>
+        </Tabs>
+      ) : (
+        <CoursesList 
+          sortedOptions={sortedOptions}
+          selected={selected}
+          basket={basket}
+          moduleId={moduleId}
+          creditsRequired={creditsRequired}
+          yearEarned={yearEarned}
+          yearCap={yearCap}
+          isAtMax={isAtMax}
+          toggleCourse={toggleCourse}
+          formatRelativeDate={formatRelativeDate}
+          isWithin30Days={isWithin30Days}
+        />
+      )}
       
       <ConstraintsPanel />
       
@@ -733,8 +787,9 @@ function MarketplaceContent(props: DecisionDockRouterProps) {
         )}
       </div>
 
-      <div className="space-y-2">
-        {sortedOptions.map(option => {
+      {!FEATURE_FLAGS.v5_templates_module && (
+        <div className="space-y-2">
+          {sortedOptions.map(option => {
           const isSelected = selected.includes(option.courseId);
           const isInBasket = basket.some(b => b.courseId === option.courseId);
           const optionCredits = Number(option.credits) || 0;
@@ -827,7 +882,135 @@ function MarketplaceContent(props: DecisionDockRouterProps) {
             </div>
           );
         })}
-      </div>
+        </div>
+      )}
     </>
+  );
+}
+
+// Extracted courses list component for reuse
+interface CoursesListProps {
+  sortedOptions: MarketplaceOption[];
+  selected: string[];
+  basket: BasketItem[];
+  moduleId: string;
+  creditsRequired: number;
+  yearEarned: number;
+  yearCap: number;
+  isAtMax: boolean;
+  toggleCourse: (moduleId: string, courseId: string, credits: number, required: number) => void;
+  formatRelativeDate: (isoDate: string) => string;
+  isWithin30Days: (isoDate: string) => boolean;
+}
+
+function CoursesList({
+  sortedOptions,
+  selected,
+  basket,
+  moduleId,
+  creditsRequired,
+  yearEarned,
+  yearCap,
+  isAtMax,
+  toggleCourse,
+  formatRelativeDate,
+  isWithin30Days
+}: CoursesListProps) {
+  return (
+    <div className="space-y-2">
+      {sortedOptions.map(option => {
+        const isSelected = selected.includes(option.courseId);
+        const isInBasket = basket.some(b => b.courseId === option.courseId);
+        const optionCredits = Number(option.credits) || 0;
+        const wouldExceedYearCap = !isSelected && yearEarned + optionCredits > yearCap;
+        const disabled = (isAtMax && !isSelected) || wouldExceedYearCap;
+
+        return (
+          <div
+            key={option.id}
+            className="border rounded-lg p-3 flex items-center justify-between hover:bg-accent/50 transition-colors"
+          >
+            <div className="min-w-0 flex-1">
+              <div className="font-medium text-sm truncate">
+                {option.courseId}: {option.title}
+              </div>
+              
+              {(() => {
+                const basketItem = basket.find(b => b.courseId === option.courseId);
+                return basketItem?.status === 'auto-filled' && basketItem.autoFillReason && (
+                  <div className="text-xs text-muted-foreground mt-1 italic">
+                    ✨ {basketItem.autoFillReason}
+                  </div>
+                );
+              })()}
+              
+              <div className="text-xs text-muted-foreground mt-1 flex items-center gap-2 flex-wrap">
+                <span>{option.credits} cr</span>
+                
+                {(option.unlocks_count ?? 0) > 0 && (
+                  <Badge variant="secondary" className="text-xs">
+                    🔓 Unlocks {option.unlocks_count}
+                  </Badge>
+                )}
+                
+                {option.start_windows?.[0] && (
+                  <Badge variant={isWithin30Days(option.start_windows[0]) ? 'default' : 'outline'} className="text-xs">
+                    🗓️ Starts {formatRelativeDate(option.start_windows[0])}
+                  </Badge>
+                )}
+                
+                {option.workload_weekly_hours && (
+                  <Badge variant={option.workload_weekly_hours > 15 ? 'destructive' : 'outline'} className="text-xs">
+                    📊 {option.workload_weekly_hours}hrs/wk
+                  </Badge>
+                )}
+                
+                {option.providerType && (
+                  <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
+                    option.providerType === 'university' ? 'bg-blue-100 text-blue-700' :
+                    option.providerType === 'mooc' ? 'bg-purple-100 text-purple-700' :
+                    option.providerType === 'bootcamp' ? 'bg-orange-100 text-orange-700' :
+                    'bg-gray-100 text-gray-700'
+                  }`}>
+                    {option.providerType === 'university' && '🎓'}
+                    {option.providerType === 'mooc' && '🌐'}
+                    {option.providerType === 'bootcamp' && '⚡'}
+                    {option.providerType === 'testing_center' && '📝'}
+                    {' '}{option.provider}
+                  </span>
+                )}
+                
+                <TransferBadge
+                  courseCode={option.courseId}
+                  providerCode={option.providerCode || ''}
+                  providerType={option.providerType}
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 ml-4">
+              <div className="text-right min-w-[80px]">
+                <div className="text-sm font-semibold">
+                  {option.cost_usd !== null ? `$${option.cost_usd}` : 'Free'}
+                </div>
+                {option.duration_weeks && (
+                  <div className="text-xs text-muted-foreground">
+                    {option.duration_weeks}wks
+                  </div>
+                )}
+              </div>
+
+              <input
+                type="checkbox"
+                checked={isSelected}
+                disabled={disabled}
+                onChange={() => toggleCourse(moduleId, option.courseId, optionCredits, creditsRequired)}
+                className="h-5 w-5"
+              />
+            </div>
+          </div>
+        );
+      })}
+    </div>
   );
 }
