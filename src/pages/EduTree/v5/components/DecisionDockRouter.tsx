@@ -164,7 +164,7 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
           data-testid="decision-dock-content"
           className={cn(
             "z-[110] fixed inset-x-0 bottom-0 mt-24 flex flex-col",
-            "h-[40vh] min-h-[35vh] max-h-[80vh] resize-y",
+            "h-[28vh] min-h-[25vh] max-h-[85vh] resize-y",
             "pointer-events-auto border-t shadow-2xl",
             "rounded-t-[10px] bg-background"
           )}
@@ -193,6 +193,18 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
               document.body.style.cursor = 'ns-resize';
             }}
           />
+
+          {/* Scroll hint - auto-dismisses after 3s */}
+          {scope && (
+            <div 
+              className="fixed top-4 left-1/2 -translate-x-1/2 z-[120] px-4 py-2 bg-primary text-primary-foreground rounded-full text-xs font-medium shadow-lg pointer-events-none"
+              style={{ 
+                animation: 'fadeInOut 3s ease-out forwards' 
+              }}
+            >
+              💡 Scroll to see content behind drawer
+            </div>
+          )}
 
           {/* Header/title for ARIA */}
           <div className="px-4 pb-2">

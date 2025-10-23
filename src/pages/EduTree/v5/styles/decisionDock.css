@@ -3,6 +3,12 @@
  * Dims the plan board when drawer is open to focus attention
  */
 
+/* Add bottom padding to allow scrolling past drawer */
+.decision-dock-open {
+  padding-bottom: 28vh;
+  transition: padding-bottom 200ms ease-out;
+}
+
 .decision-dock-open .react-flow {
   filter: brightness(0.85);
   transition: filter 200ms ease-out;
@@ -16,7 +22,29 @@
   pointer-events: auto; /* Keep edges interactive */
 }
 
+/* Scroll indicator on top edge */
+.decision-dock-open::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 40px;
+  background: linear-gradient(to bottom, rgba(0,0,0,0.15), transparent);
+  pointer-events: none;
+  z-index: 60;
+  transition: opacity 200ms ease-out;
+}
+
 /* Ensure drawer content is always interactive */
 [data-vaul-drawer] {
   pointer-events: auto;
+}
+
+/* Hint badge animation */
+@keyframes fadeInOut {
+  0% { opacity: 0; transform: translate(-50%, -10px); }
+  10% { opacity: 1; transform: translate(-50%, 0); }
+  90% { opacity: 1; }
+  100% { opacity: 0; }
 }
