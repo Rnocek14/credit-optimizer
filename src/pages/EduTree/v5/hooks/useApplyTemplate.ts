@@ -18,6 +18,27 @@ export function useApplyTemplate() {
 
   const apply = useCallback(
     (template: ModuleTemplate, allOptions: any[]) => {
+      // Validate template has valid moduleId
+      if (!template.moduleId || template.moduleId.length < 10) {
+        console.error('[Apply] ❌ Template missing valid moduleId:', {
+          templateId: template.id,
+          label: template.label,
+          moduleId: template.moduleId,
+        });
+        toast.error('Invalid template: missing module identifier', {
+          description: 'This template cannot be applied. Please contact support.',
+        });
+        return;
+      }
+
+      console.log('[Apply] 🚀 Starting template application:', {
+        templateId: template.id,
+        label: template.label,
+        moduleId: template.moduleId,
+        coursesCount: template.options.length,
+        basketSize: basket.length,
+      });
+
       // Map template to apply params
       const params: Omit<ApplyTemplateParams, 'currentBasket' | 'constraints'> = {
         scope: 'module',
@@ -32,6 +53,14 @@ export function useApplyTemplate() {
         ...params,
         currentBasket: basket,
         constraints,
+      });
+
+      console.log('[Apply] 📊 Apply result:', {
+        added: result.added.length,
+        removed: result.removed.length,
+        conflicts: result.conflicts.length,
+        addedCourseIds: result.added.map(i => i.courseId),
+        addedModuleIds: [...new Set(result.added.map(i => i.moduleId))],
       });
 
       // Show conflicts as warnings (non-blocking)

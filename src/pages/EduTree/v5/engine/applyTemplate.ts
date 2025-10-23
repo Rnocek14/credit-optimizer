@@ -181,8 +181,32 @@ function convertToBasketItem(
   templateId: string,
   moduleId?: string
 ): BasketItem {
+  // Critical: moduleId must be a valid UUID, not a fallback to subject
+  // This prevents items from being orphaned with generic subjects like "Computer Science"
+  if (!moduleId || moduleId.length < 10) {
+    console.error(
+      `[Apply] ❌ CRITICAL: Missing or invalid moduleId for course ${option.courseId}`,
+      {
+        moduleId,
+        templateId,
+        courseId: option.courseId,
+        subject: option.subject,
+        fallbackWouldBe: option.subject || 'unknown'
+      }
+    );
+    // Use fallback but log loudly - this indicates a template configuration error
+    moduleId = option.subject || 'unknown';
+    console.warn(`[Apply] ⚠️ Using fallback moduleId: "${moduleId}" - basket item may be orphaned!`);
+  }
+
+  console.log(`[Apply] ✅ Converting to basket item:`, {
+    courseId: option.courseId,
+    moduleId,
+    templateId
+  });
+
   return {
-    moduleId: moduleId || option.subject || 'unknown',
+    moduleId,
     courseId: option.courseId,
     title: option.title ?? option.courseId,
     credits: option.credits,
