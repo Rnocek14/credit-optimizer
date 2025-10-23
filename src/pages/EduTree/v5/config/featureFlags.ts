@@ -11,6 +11,6 @@ export const FEATURE_FLAGS = {
   v5_autofill_enabled: typeof window !== 'undefined' && localStorage.getItem('v5_autofill_enabled') === 'true',
   v5_design_v2: typeof window !== 'undefined' && localStorage.getItem('v5_design_v2') === 'true',
   v5_decision_dock: true,
-  v5_templates_module: typeof window !== 'undefined' && localStorage.getItem('v5_templates_module') === 'true',
+  v5_templates_module: true, // Hardcoded for testing - templates feature enabled
   v5_pivot_mode: typeof window !== 'undefined' && localStorage.getItem('v5_pivot_mode') === 'true', // Phase 1d: dark launch
 };
