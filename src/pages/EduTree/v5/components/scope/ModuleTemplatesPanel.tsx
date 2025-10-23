@@ -19,7 +19,7 @@ interface ModuleTemplatesPanelProps {
 export function ModuleTemplatesPanel({ module, allModules, onAddTemplate }: ModuleTemplatesPanelProps) {
   const basket = usePlanBasket(s => s.items);
   const constraints = usePlanBasket(s => s.constraints);
-  const evidence = useUserEvidence(); // Phase 1c: evidence integration
+  const evidence = useUserEvidence({ enabled: true }); // Phase 1c: evidence integration (opt-in)
   
   // Get all marketplace options for validation
   const allOptions = useMemo(() => 

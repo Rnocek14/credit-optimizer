@@ -15,7 +15,7 @@ type Props = {
  */
 export function CanonicalGapAnalysis({ requiredCanonicalIds, title = "Degree Progress" }: Props) {
   const basket = usePlanBasket(s => s.items);
-  const evidence = useUserEvidence();
+  const evidence = useUserEvidence({ enabled: true });
 
   // Safe loading state handling
   if (!evidence || !evidence.raw) {

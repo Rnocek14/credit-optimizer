@@ -13,7 +13,7 @@ export const EvidenceBadges: React.FC<Props> = ({
   creditsNeeded,
   catalogCourseIds,
 }) => {
-  const { raw, getCourseStatus } = useUserEvidence();
+  const { raw, getCourseStatus } = useUserEvidence({ enabled: true });
 
   if (!raw) {
     return <span className="badge badge-ghost" title="Evidence temporarily unavailable">Evidence n/a</span>;

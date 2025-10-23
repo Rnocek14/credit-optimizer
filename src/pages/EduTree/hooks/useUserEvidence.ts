@@ -36,13 +36,13 @@ type EvidenceSets = {
   transferPending: Set<string>;
 };
 
-export function useUserEvidence() {
+export function useUserEvidence(options?: { enabled?: boolean }) {
   const { state } = useUnifiedData();
   const user = state?.user;
 
-  const { data } = useQuery({
+  const { data, isLoading, error } = useQuery({
     queryKey: ['student-evidence', EVIDENCE_VERSION, user?.id ?? 'anon'],
-    enabled: !!user?.id,          // ❗️no calls when unauthenticated
+    enabled: (options?.enabled ?? false) && !!user?.id,  // ✅ Opt-in only
     retry: false,                 // ❗️no retry loops on 400s
     staleTime: 60_000,
     queryFn: async () => {
@@ -83,5 +83,7 @@ export function useUserEvidence() {
     raw: data,
     sets,
     getCourseStatus,
+    isLoading,
+    error
   };
 }
