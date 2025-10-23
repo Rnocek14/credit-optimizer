@@ -9,6 +9,7 @@ import type { ModuleData } from '../../types/v5';
 import type { ModuleTemplate } from '../../types/templates';
 import { trackTelemetryEvent } from '@/utils/telemetry';
 import { useUserEvidence } from '@/pages/EduTree/hooks/useUserEvidence'; // Phase 1c
+import { useApplyTemplate } from '../../hooks/useApplyTemplate';
 
 interface ModuleTemplatesPanelProps {
   module: ModuleData;
@@ -87,24 +88,14 @@ export function ModuleTemplatesPanel({ module, allModules, onAddTemplate }: Modu
     }
   }, [rankedTemplates, module.id, constraints.target_school, evidence.raw]);
   
+  const { applyTemplate } = useApplyTemplate();
+  
   // Track template add with telemetry
   const handleAddTemplate = (template: ModuleTemplate) => {
-    try {
-      void trackTelemetryEvent({
-        task: 'template_added',
-        scope: 'module',
-        complexity: {
-          templateId: template.id,
-          badge: template.badge,
-          costDelta: template.est.costUsd,
-          weeksDelta: template.est.weeks,
-          criDelta: template.est.cri
-        }
-      });
-    } catch (telemetryError) {
-      console.warn('[Telemetry] Failed to track template add:', telemetryError);
-    }
+    // Use new apply engine with automatic prereqs, deduplication, undo
+    applyTemplate(template, allOptions);
     
+    // Call parent callback (for UI state like tab switching)
     onAddTemplate(template);
   };
   

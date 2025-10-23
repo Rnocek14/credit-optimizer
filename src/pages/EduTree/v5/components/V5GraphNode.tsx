@@ -8,8 +8,13 @@ import {
   DollarSign,
   Sparkles,
   Pin,
-  AlertCircle
+  AlertCircle,
+  CheckCircle
 } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
+import { cn } from '@/lib/utils';
+
+import type { NodeSelectedSummary } from '../types/nodeProgress';
 
 export interface V5GraphNodeData extends Record<string, unknown> {
   courseId: string;
@@ -25,6 +30,7 @@ export interface V5GraphNodeData extends Record<string, unknown> {
   isInBasket: boolean;
   prereqCount?: number;
   unlocksCount?: number;
+  selectedSummary?: NodeSelectedSummary; // Module-level progress
 }
 
 interface V5GraphNodeProps {
@@ -43,6 +49,7 @@ export function V5GraphNode({ data }: V5GraphNodeProps) {
     status,
     isInBasket,
     prereqCount = 0,
+    selectedSummary,
   } = data;
 
   const getStatusColor = () => {
@@ -72,7 +79,7 @@ export function V5GraphNode({ data }: V5GraphNodeProps) {
   };
 
   return (
-    <div className="v5-graph-node">
+    <div className="v5-graph-node relative">
       <Handle
         type="target"
         position={Position.Left}
@@ -85,13 +92,40 @@ export function V5GraphNode({ data }: V5GraphNodeProps) {
         }}
       />
       
+      {/* Progress chip (top-right corner) */}
+      {selectedSummary && (
+        <div className="absolute -top-2 -right-2 flex gap-1 z-10">
+          <Badge 
+            variant={
+              selectedSummary.isComplete ? 'default' : 
+              selectedSummary.isEmpty ? 'outline' : 
+              'secondary'
+            }
+            className="text-xs px-2 py-0.5 shadow-sm"
+          >
+            {selectedSummary.isComplete && <CheckCircle className="w-3 h-3 mr-1 inline" />}
+            {selectedSummary.credits}/{selectedSummary.creditsRequired} cr
+          </Badge>
+          
+          {selectedSummary.templateSource && (
+            <Badge 
+              variant="outline" 
+              className="text-xs px-1.5 py-0.5 shadow-sm" 
+              title={`From template: ${selectedSummary.templateSource}`}
+            >
+              ✨
+            </Badge>
+          )}
+        </div>
+      )}
+      
       <Card 
-        className={`
-          w-64 cursor-pointer
-          ${getStatusColor()}
-          transition-all duration-200 ease-in-out
-          hover:shadow-lg hover:scale-105
-        `}
+        className={cn(
+          "w-64 cursor-pointer transition-all duration-200 ease-in-out hover:shadow-lg hover:scale-105",
+          getStatusColor(),
+          selectedSummary?.isEmpty && "border-dashed opacity-75",
+          selectedSummary?.isComplete && "border-primary border-2 shadow-lg",
+        )}
       >
         <CardContent className="p-3">
           {/* Header */}
@@ -159,7 +193,26 @@ export function V5GraphNode({ data }: V5GraphNodeProps) {
               </p>
             </div>
           )}
+          
+          {/* Secondary info line (when module has selections) */}
+          {selectedSummary && !selectedSummary.isEmpty && (
+            <div className="mt-2 pt-2 border-t border-dashed text-xs text-muted-foreground flex justify-between">
+              <span>${selectedSummary.cost}</span>
+              <span>{selectedSummary.weeks}w</span>
+              <span>CRI {Math.round(selectedSummary.avgCri)}</span>
+            </div>
+          )}
         </CardContent>
+        
+        {/* Progress bar (bottom of card) */}
+        {selectedSummary && selectedSummary.credits > 0 && (
+          <div className="px-3 pb-2">
+            <Progress 
+              value={Math.min(selectedSummary.progressPercent, 100)} 
+              className="h-1"
+            />
+          </div>
+        )}
       </Card>
 
       <Handle

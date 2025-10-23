@@ -1,6 +1,7 @@
 import type { ModuleData } from '../types/v5';
 import { PROVIDER_DEFAULTS } from '../data/providerDefaults';
 import { ENV } from '@/config/env';
+import { computeModuleSummary, type NodeSelectedSummary } from '../types/nodeProgress';
 
 // Normalize provider ID to match registry keys (kebab-case)
 const normalizeProviderId = (id?: string) => 
