@@ -8,6 +8,7 @@ import { getTemplatesForModule } from '../../data/templates';
 import type { ModuleData } from '../../types/v5';
 import type { ModuleTemplate } from '../../types/templates';
 import { trackTelemetryEvent } from '@/utils/telemetry';
+import { useUserEvidence } from '@/pages/EduTree/hooks/useUserEvidence'; // Phase 1c
 
 interface ModuleTemplatesPanelProps {
   module: ModuleData;
@@ -18,6 +19,7 @@ interface ModuleTemplatesPanelProps {
 export function ModuleTemplatesPanel({ module, allModules, onAddTemplate }: ModuleTemplatesPanelProps) {
   const basket = usePlanBasket(s => s.items);
   const constraints = usePlanBasket(s => s.constraints);
+  const evidence = useUserEvidence(); // Phase 1c: evidence integration
   
   // Get all marketplace options for validation
   const allOptions = useMemo(() => 
@@ -25,34 +27,47 @@ export function ModuleTemplatesPanel({ module, allModules, onAddTemplate }: Modu
     [allModules]
   );
   
+  // Phase 1: Throttle re-ranking with basketKey memo
+  const basketKey = useMemo(
+    () => basket.map(b => b.courseId).sort().join('|'),
+    [basket]
+  );
+  
   // Fetch and rank templates reactively
   const { data: rankedTemplates, isLoading } = useQuery({
-    queryKey: ['module-templates-ranked', module.id, basket, constraints],
+    queryKey: [
+      'module-templates-ranked', 
+      module.id, 
+      basketKey, // Phase 1: throttle via memo
+      constraints,
+      evidence.raw?.completed?.length ?? 0 // Phase 1c: evidence in key
+    ],
     queryFn: async () => {
       const templates = getTemplatesForModule(module.id);
       if (templates.length === 0) return [];
       
-      return await rankTemplates(templates, basket, constraints, allOptions);
+      return await rankTemplates(templates, basket, constraints, allOptions, evidence.raw); // Phase 1c: pass evidence
     },
     staleTime: 5000, // 5 seconds
     enabled: !!module.id
   });
   
-  // Track template views
+  // Track template views (Phase 1c: add evidence telemetry)
   useEffect(() => {
     if (rankedTemplates && rankedTemplates.length > 0) {
       void trackTelemetryEvent({
-        task: 'templates_viewed',
+        task: 'template_tab_opened',
         scope: 'module',
         complexity: {
           moduleId: module.id,
           templateCount: rankedTemplates.length,
           validCount: rankedTemplates.filter(t => t.validation.isValid).length,
-          hasAnchorSchool: !!constraints.target_school
+          hasAnchorSchool: !!constraints.target_school,
+          hasEvidence: !!evidence.raw?.completed?.length
         }
       });
     }
-  }, [rankedTemplates, module.id, constraints.target_school]);
+  }, [rankedTemplates, module.id, constraints.target_school, evidence.raw]);
   
   // Track template add with telemetry
   const handleAddTemplate = (template: ModuleTemplate) => {

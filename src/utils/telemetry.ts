@@ -33,7 +33,11 @@ export type AltCourseTelemetryTask =
   | 'scenario_deleted'
   | 'dock_opened'
   | 'dock_closed'
-  | 'dock_resized';
+  | 'dock_resized'
+  | 'template_tab_opened' // Phase 1c
+  | 'template_added' // Phase 1c
+  | 'template_dupe_prevented' // Phase 1c
+  | 'gap_analysis_viewed'; // Phase 1c
 
 export const trackTelemetryEvent = async (event: TelemetryEvent): Promise<void> => {
   try {

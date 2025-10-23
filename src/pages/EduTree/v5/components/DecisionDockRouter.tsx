@@ -30,6 +30,8 @@ import type { ProviderType, ScoreBreakdown } from '../utils/optionScoring';
 import type { BasketItem } from '../state/usePlanBasket';
 import type { ModuleTemplate } from '../types/templates';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { toast } from 'sonner'; // Phase 1: toast for dupe handling
+import { trackTelemetryEvent } from '@/utils/telemetry'; // Phase 1c: telemetry
 
 interface MarketplaceOption {
   id: string;
@@ -592,14 +594,24 @@ function MarketplaceContent(props: DecisionDockRouterProps) {
     return allModules.find(m => m.id === moduleId) as ModuleData | undefined;
   }, [allModules, moduleId]);
   
-  // Handler for adding template
+  // Handler for adding template (Phase 1: dupe prevention)
   const handleAddTemplate = (template: ModuleTemplate) => {
-    // Add all courses from template to basket
-    template.options.forEach(course => {
-      addItemWithToast({
+    const inBasket = new Set(basket.map(b => b.courseId.toUpperCase()));
+    const toAdd = template.options.filter(course => !inBasket.has(course.courseId.toUpperCase()));
+    
+    if (toAdd.length === 0) {
+      toast.message('All courses already in plan', {
+        description: 'This template is fully covered by your current plan.'
+      });
+      return;
+    }
+    
+    // Add non-duplicate courses
+    toAdd.forEach(course => {
+      addItem({
         moduleId: moduleId,
         courseId: course.courseId,
-        title: course.title,
+        title: course.title || course.courseId,
         credits: course.credits,
         cost_usd: course.cost_usd,
         duration_weeks: course.duration_weeks,
@@ -608,6 +620,31 @@ function MarketplaceContent(props: DecisionDockRouterProps) {
         status: 'pinned',
         providerType: course.providerType
       });
+    });
+    
+    // Single toast for bulk add with undo
+    const addedSnapshot = [...toAdd];
+    toast.success('Added to plan', {
+      description: `${toAdd.length} course${toAdd.length !== 1 ? 's' : ''} from ${template.label}`,
+      action: {
+        label: 'Undo All',
+        onClick: () => {
+          addedSnapshot.forEach(c => removeItem(c.courseId));
+          toast.message('Changes undone');
+        }
+      },
+      duration: 5000
+    });
+    
+    // Telemetry (Phase 1c)
+    void trackTelemetryEvent({
+      task: 'template_added',
+      scope: 'module',
+      complexity: {
+        templateId: template.id,
+        coursesAdded: toAdd.length,
+        duplicatesFiltered: template.options.length - toAdd.length
+      }
     });
   };
 
@@ -657,11 +694,17 @@ function MarketplaceContent(props: DecisionDockRouterProps) {
           </TabsList>
           
           <TabsContent value="templates" className="mt-4">
-            <ModuleTemplatesPanel
-              module={moduleData}
-              allModules={allModules}
-              onAddTemplate={handleAddTemplate}
-            />
+            {moduleData ? (
+              <ModuleTemplatesPanel
+                module={moduleData}
+                allModules={allModules}
+                onAddTemplate={handleAddTemplate}
+              />
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                <p className="text-sm">Module data not available</p>
+              </div>
+            )}
           </TabsContent>
           
           <TabsContent value="courses" className="mt-4">

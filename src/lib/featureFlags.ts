@@ -29,6 +29,9 @@ interface FeatureFlags {
   // Clean Slate V2 Flags
   eduTreeV2Grid: boolean; // Master flag for V2 system
   eduTreeLayoutMode: 'legacy' | 'manual_v1' | 'grid_v2'; // Layout system mode
+  
+  // Phase 1d: Career Pivot Mode (dark launch)
+  v5PivotMode: boolean;
 }
 
 /**
@@ -148,6 +151,9 @@ export function getFeatureFlags(): FeatureFlags {
     }
     return mode;
   })(),
+  
+  // Phase 1d: Career Pivot Mode (dark launch - off by default)
+  v5PivotMode: typeof window !== 'undefined' && localStorage.getItem('v5_pivot_mode') === 'true',
   };
   
   // Single consolidated debug log (only once per session)

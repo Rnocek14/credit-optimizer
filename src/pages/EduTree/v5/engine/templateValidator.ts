@@ -2,6 +2,7 @@ import { supabase } from '@/integrations/supabase/client';
 import type { ModuleTemplate, TemplateValidation, CanonicalId } from '../types/templates';
 import type { BasketItem, Constraints } from '../state/usePlanBasket';
 import type { MarketplaceOption } from '../types/exports';
+import type { EvidenceSummary } from '@/pages/EduTree/hooks/useUserEvidence'; // Phase 1c
 import { resolveChain } from './prereqs';
 import { calculateTotals } from '../utils/totalsCalculator';
 import { getCanonicalIds } from '../data/canonicalMappings';
@@ -213,14 +214,56 @@ export async function validateModuleTemplate(
 
 // ============ Template Ranking ============
 
+/**
+ * Rank templates by validation score + heuristics
+ * Phase 1c: Evidence-aware filtering
+ */
 export async function rankTemplates(
   templates: ModuleTemplate[],
   basket: BasketItem[],
   constraints: Constraints,
-  allOptions: MarketplaceOption[]
+  allOptions: MarketplaceOption[],
+  evidence?: EvidenceSummary // Phase 1c: accept evidence parameter
 ): Promise<Array<{ template: ModuleTemplate; validation: TemplateValidation; score: number }>> {
+  // Phase 1c: Build fast lookups for evidence filtering
+  const completedIds = new Set((evidence?.completed ?? []).map(s => s.toUpperCase()));
+  const basketIds = new Set(basket.map(b => b.courseId.toUpperCase()));
+  
+  // Canonical sets derived from evidence + basket (treat both as "already satisfied")
+  const completedCanonical = new Set<string>();
+  completedIds.forEach(cid => {
+    // Evidence may have provider-agnostic IDs; pass empty providerCode if unknown
+    getCanonicalIds('', cid).forEach(canon => completedCanonical.add(canon));
+  });
+  basket.forEach(item => {
+    const providerCode = (item as any).providerCode || '';
+    getCanonicalIds(providerCode, item.courseId).forEach(canon => completedCanonical.add(canon));
+  });
+  
+  // Phase 1c: Filter templates by evidence
+  const filteredTemplates = templates.map(t => {
+    // 1) Direct duplicates: drop options that match completed or in-basket
+    const noDupes = t.options.filter(opt => {
+      const id = opt.courseId?.toUpperCase() || '';
+      return !completedIds.has(id) && !basketIds.has(id);
+    });
+    
+    // 2) Canonical-satisfied: drop options that only satisfy canonicals we already have
+    const canonAware = noDupes.filter(opt => {
+      const providerCode = opt.providerCode || opt.provider || '';
+      const optCanonicals = getCanonicalIds(providerCode, opt.courseId);
+      // keep if it adds at least one NEW canonical requirement
+      return optCanonicals.length === 0 || optCanonicals.some(c => !completedCanonical.has(c));
+    });
+    
+    return { ...t, options: canonAware };
+  })
+  // skip templates that have nothing left to add
+  .filter(t => t.options.length > 0);
+  
+  // Phase 1c: Rank filtered templates (not original templates)
   const scored = await Promise.all(
-    templates.map(async (t) => {
+    filteredTemplates.map(async (t) => {
       const validation = await validateModuleTemplate(t, basket, constraints, allOptions);
       let score = 0;
       

@@ -19,6 +19,15 @@ export type EvidenceSummary = {
   
   // timestamp when evidence was calculated
   asOf?: string;
+  
+  // Phase 1d: Prior degrees for career pivot (stub - not used until v5_pivot_mode)
+  priorDegrees?: Array<{
+    degreeName: string;
+    institution: string;
+    major: string;
+    graduationYear: number;
+    totalCredits: number;
+  }>;
 };
 
 type EvidenceSets = {

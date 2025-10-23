@@ -123,15 +123,27 @@ export function TemplateCard({ template, validation, onAdd, isDraggable = true }
             </div>
           )}
           
-          {/* Impact Deltas */}
+          {/* Impact Deltas - Phase 1: improved formatting */}
           {validation.isValid && (
-            <div className="flex flex-wrap gap-3 text-xs text-muted-foreground mb-3">
-              <span>+${validation.impact.costDelta}</span>
-              <span>+{validation.impact.weeksDelta}wks</span>
+            <div className="flex flex-wrap gap-2 text-xs text-muted-foreground mb-3">
+              <span>+${validation.impact.costDelta.toLocaleString()}</span>
+              <span>·</span>
+              <span>+{validation.impact.weeksDelta}w</span>
               {validation.impact.aceDelta > 0 && (
-                <span className="text-blue-600">+{validation.impact.aceDelta} ACE</span>
+                <>
+                  <span>·</span>
+                  <span className="text-blue-600">+{validation.impact.aceDelta} ACE</span>
+                </>
               )}
+              <span>·</span>
               <span>CRI {validation.impact.criDelta}</span>
+            </div>
+          )}
+          
+          {/* Phase 1c: Empty state message when all courses satisfied */}
+          {template.options.length === 0 && (
+            <div className="mt-2 text-xs text-muted-foreground bg-muted/30 rounded-lg p-3">
+              ✓ All courses in this template are already satisfied by your completed work or current plan.
             </div>
           )}
           
