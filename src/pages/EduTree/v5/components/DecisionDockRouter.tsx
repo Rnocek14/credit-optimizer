@@ -4,6 +4,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import '../styles/decisionDock.css';
 import { Button } from "@/components/ui/button";
+import { X } from 'lucide-react';
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { ScopeBreadcrumbs } from './ScopeBreadcrumbs';
@@ -207,12 +208,20 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
           )}
 
           {/* Header/title for ARIA */}
-          <div className="px-4 pb-2">
+          <div className="flex items-center justify-between px-4 pb-2 border-b">
             <h2 id={titleId} className="text-sm font-medium text-muted-foreground">
               {scope === 'degree' && 'Degree Analyzer'}
               {scope === 'year' && `Year ${props.year} Marketplace`}
               {scope === 'module' && `${props.moduleLabel ?? 'Module'} Options`}
             </h2>
+            <button
+              onClick={onClose}
+              className="p-1.5 hover:bg-accent rounded-md transition-colors"
+              title="Close (Esc)"
+              aria-label="Close decision dock"
+            >
+              <X className="h-4 w-4" />
+            </button>
           </div>
           
           <div className="w-full h-full overflow-y-auto px-4 pb-4">
