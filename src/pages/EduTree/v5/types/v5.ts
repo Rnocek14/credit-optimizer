@@ -42,6 +42,16 @@ export interface MarketplaceOption {
   // Phase 1b: Auto-fill reasoning
   reason?: string;
   autoFillReason?: string;
+  
+  // Phase 1c: Provider code for transfer rules
+  providerCode?: string;
+  level?: number; // Course level (100/200/300/400) for upper-division tracking
+}
+
+export interface ScoringWeights {
+  cost: number;
+  time: number;
+  cri: number;
 }
 
 export interface ModuleData {
@@ -58,6 +68,9 @@ export interface ModuleData {
   optionsCount?: number;
   marketplaceOptions?: MarketplaceOption[];
   cheapestOption?: number | null;
+  
+  // Canonical requirement mapping
+  requiredCanonicalIds?: string[];
 }
 
 export interface Requirement {
