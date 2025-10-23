@@ -17,6 +17,15 @@ export function CanonicalGapAnalysis({ requiredCanonicalIds, title = "Degree Pro
   const basket = usePlanBasket(s => s.items);
   const evidence = useUserEvidence();
 
+  // Safe loading state handling
+  if (!evidence || !evidence.raw) {
+    return (
+      <Card className="p-3 border-muted">
+        <div className="text-sm text-muted-foreground">Loading progress...</div>
+      </Card>
+    );
+  }
+
   const { completed, planned, remaining } = useMemo(() => {
     const doneCanon = new Set<string>();
     const plannedCanon = new Set<string>();

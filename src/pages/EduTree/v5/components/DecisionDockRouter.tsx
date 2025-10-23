@@ -630,8 +630,14 @@ function MarketplaceContent(props: DecisionDockRouterProps) {
       action: {
         label: 'Undo All',
         onClick: () => {
-          addedSnapshot.forEach(c => removeItem(c.courseId));
-          toast.message('Changes undone');
+          try {
+            const currentRemoveItem = usePlanBasket.getState().removeItem;
+            addedSnapshot.forEach(c => currentRemoveItem(c.courseId));
+            toast.message('Changes undone');
+          } catch (error) {
+            console.error('[Toast Undo] Failed:', error);
+            toast.error('Failed to undo changes');
+          }
         }
       },
       duration: 5000
@@ -687,7 +693,7 @@ function MarketplaceContent(props: DecisionDockRouterProps) {
         </div>
       </div>
 
-      {FEATURE_FLAGS.v5_templates_module && moduleData ? (
+      {FEATURE_FLAGS.v5_templates_module && moduleData && moduleData.id ? (
         <Tabs defaultValue="templates" className="w-full mb-4">
           <TabsList className="w-full grid grid-cols-2">
             <TabsTrigger value="templates">Templates</TabsTrigger>
