@@ -24,7 +24,7 @@ import { logEvent } from '@/lib/analytics';
 import { buildCourseIndex, getCourseFromIndex } from './utils/courseLookup';
 import { validateSemesterDrop } from './engine/semesterValidation';
 import { toast } from 'sonner';
-import { computeModuleSummary } from './types/nodeProgress';
+import { computeModuleSummary, computeYearSummary } from './types/nodeProgress';
 import './styles/v5.css';
 
 // Feature flag for quick rollback during demos
@@ -589,6 +589,24 @@ export default function EduTreeV5Page() {
       >
         {[1, 2, 3, 4].map(year => {
           const yearData = getYearData(year);
+          const yearModules = getModulesForYear(year);
+          
+          // Compute year-level progress from basket
+          const yearSelectedSummary = computeYearSummary(
+            year,
+            yearModules.map(m => ({ 
+              id: m.id, 
+              creditsRequired: m.creditsRequired ?? 0 
+            })),
+            basket.map(item => ({
+              moduleId: item.moduleId,
+              credits: item.credits,
+              cost_usd: item.cost_usd,
+              duration_weeks: item.duration_weeks,
+              cri_score: item.cri_score
+            }))
+          );
+          
           return (
             <div key={year} className="year-column">
               {/* Year Card - now clickable */}
@@ -596,8 +614,9 @@ export default function EduTreeV5Page() {
                 year={year}
                 isCollapsed={collapsedYears[year] || false}
                 onToggle={() => toggleYear(year)}
-                onClick={() => openPanel('year', String(year), { year, modules: getModulesForYear(year) })}
+                onClick={() => openPanel('year', String(year), { year, modules: yearModules })}
                 creditsSummary={yearData.creditsSummary}
+                selectedSummary={yearSelectedSummary}
                 loadHealth={yearData.loadHealth}
                 modulesSummary={yearData.modulesSummary}
               />

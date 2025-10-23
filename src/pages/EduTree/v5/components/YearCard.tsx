@@ -2,6 +2,7 @@ import { ChevronDown, ChevronRight } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import type { LoadHealth, CreditsSummary, ModulesSummary } from '../types/v5';
+import type { NodeSelectedSummary } from '../types/nodeProgress';
 import { DroppableSemester } from './drag/DroppableSemester';
 import { usePlanStore } from '../state/usePlanStore';
 
@@ -45,6 +46,7 @@ interface YearCardProps {
   onToggle: () => void;
   onClick?: () => void;
   creditsSummary: CreditsSummary;
+  selectedSummary?: NodeSelectedSummary;
   loadHealth: LoadHealth;
   modulesSummary: ModulesSummary;
   warnings?: string[];
@@ -56,6 +58,7 @@ export function YearCard({
   onToggle,
   onClick,
   creditsSummary,
+  selectedSummary,
   loadHealth,
   modulesSummary,
   warnings 
@@ -125,8 +128,13 @@ export function YearCard({
       
       {isCollapsed ? (
         /* Collapsed State: Compact Summary */
-        <div className="text-center text-xs text-muted-foreground">
-          {modulesSummary.total} modules • {modulesSummary.completed} complete • {creditsSummary.planned} cr
+        <div className="text-center text-xs text-muted-foreground space-y-1">
+          <div>{modulesSummary.total} modules • {modulesSummary.completed} complete • {creditsSummary.planned} cr</div>
+          {selectedSummary && !selectedSummary.isEmpty && (
+            <div className="text-[10px]">
+              ${selectedSummary.cost} • {selectedSummary.weeks}w • CRI {Math.round(selectedSummary.avgCri)}
+            </div>
+          )}
         </div>
       ) : (
         /* Expanded State: Full Details */
@@ -134,8 +142,13 @@ export function YearCard({
           {/* Progress Bar */}
           <div className="space-y-1">
             <Progress value={progressPercentage} className="h-1.5" />
-            <div className="text-center text-[10px] text-muted-foreground">
-              {creditsSummary.planned} / {creditsSummary.required} cr
+            <div className="text-center text-[10px] text-muted-foreground space-y-0.5">
+              <div>{creditsSummary.planned} / {creditsSummary.required} cr</div>
+              {selectedSummary && !selectedSummary.isEmpty && (
+                <div className="text-[9px]">
+                  ${selectedSummary.cost} • {selectedSummary.weeks}w • CRI {Math.round(selectedSummary.avgCri)}
+                </div>
+              )}
             </div>
           </div>
           
