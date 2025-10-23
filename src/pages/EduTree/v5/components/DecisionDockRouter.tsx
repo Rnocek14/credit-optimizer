@@ -1,5 +1,4 @@
-import { useRef, useEffect } from 'react';
-import { Drawer, DrawerHeader, DrawerTitle, DrawerOverlay, DrawerPortal } from "@/components/ui/drawer";
+import { useRef, useEffect, useState, useMemo } from 'react';
 import { Drawer as DrawerPrimitive } from "vaul";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
@@ -25,7 +24,6 @@ import { ScenarioManager } from './ScenarioManager';
 import { TransferBadge } from './TransferBadge';
 import type { PanelScope } from '../hooks/useScopedPanel';
 import type { DegreeSummary, ModuleData } from '../types/v5';
-import { useState, useMemo } from 'react';
 import type { ProviderType, ScoreBreakdown } from '../utils/optionScoring';
 import type { BasketItem } from '../state/usePlanBasket';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -82,6 +80,8 @@ interface DecisionDockRouterProps {
 export function DecisionDockRouter(props: DecisionDockRouterProps) {
   const { scope, onClose } = props;
   const previousFocusRef = useRef<HTMLElement | null>(null);
+  const [isResizing, setIsResizing] = useState(false);
+  const titleId = useMemo(() => `decision-dock-title-${scope ?? "closed"}`, [scope]);
 
   // Apply dimming effect to plan board
   useEffect(() => {
@@ -92,8 +92,6 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
       document.body.classList.remove('decision-dock-open');
     };
   }, [scope]);
-
-  if (!scope) return null;
 
   // Escape key handler
   useEffect(() => {
@@ -110,22 +108,45 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
     return () => window.removeEventListener('keydown', handleEscape);
   }, [scope, onClose]);
 
+  // Resize cursor leak guard (window-level listeners)
+  useEffect(() => {
+    if (!isResizing) return;
+    const handleMouseUp = () => {
+      setIsResizing(false);
+      document.body.style.cursor = "";
+    };
+    const handleMouseMove = () => {
+      // Optional: wire custom height control here if needed
+    };
+    window.addEventListener("mouseup", handleMouseUp);
+    window.addEventListener("mousemove", handleMouseMove);
+    return () => {
+      window.removeEventListener("mouseup", handleMouseUp);
+      window.removeEventListener("mousemove", handleMouseMove);
+    };
+  }, [isResizing]);
+
+  if (!scope) return null;
+
   return (
-    <Drawer
-      open={true}
-      onOpenChange={(open) => {
-        if (!open) onClose();
-      }}
+    <DrawerPrimitive.Root
+      open={!!scope}
+      onOpenChange={(open) => { if (!open) onClose(); }}
       modal={false}
       direction="bottom"
     >
-      <DrawerPortal>
+      <DrawerPrimitive.Portal>
         {/* Single click-through overlay - overrides vaul's default */}
-        <DrawerOverlay className="bg-black/40 backdrop-blur-sm pointer-events-none" />
+        <DrawerPrimitive.Overlay
+          data-testid="decision-dock-overlay"
+          aria-hidden="true"
+          className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm pointer-events-none"
+        />
         
         <DrawerPrimitive.Content 
+          data-testid="decision-dock-content"
           className={cn(
-            "z-[100] fixed inset-x-0 bottom-0 mt-24 flex flex-col",
+            "z-[110] fixed inset-x-0 bottom-0 mt-24 flex flex-col",
             "h-[40vh] min-h-[35vh] max-h-[80vh] resize-y",
             "pointer-events-auto border-t shadow-2xl",
             "rounded-t-[10px] bg-background"
@@ -134,6 +155,9 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
             backdropFilter: 'blur(2px)',
             backgroundColor: 'hsl(var(--background) / 0.95)'
           }}
+          role="dialog"
+          aria-modal="false"
+          aria-labelledby={titleId}
           onOpenAutoFocus={(e) => {
             e.preventDefault();
             previousFocusRef.current = document.activeElement as HTMLElement;
@@ -145,14 +169,22 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
         >
           {/* Visual resize handle */}
           <div 
-            className="mx-auto mt-2 mb-3 h-2 w-14 rounded-full bg-muted cursor-ns-resize"
+            data-testid="decision-dock-resize-handle"
+            className="mx-auto mt-2 mb-3 h-2 w-12 rounded-full bg-muted cursor-ns-resize"
             onMouseDown={() => {
+              setIsResizing(true);
               document.body.style.cursor = 'ns-resize';
             }}
-            onMouseUp={() => {
-              document.body.style.cursor = '';
-            }}
           />
+
+          {/* Header/title for ARIA */}
+          <div className="px-4 pb-2">
+            <h2 id={titleId} className="text-sm font-medium text-muted-foreground">
+              {scope === 'degree' && 'Degree Analyzer'}
+              {scope === 'year' && `Year ${props.year} Marketplace`}
+              {scope === 'module' && `${props.moduleLabel ?? 'Module'} Options`}
+            </h2>
+          </div>
           
           <div className="mx-auto w-full max-w-7xl h-full overflow-y-auto px-4 pb-4">
             {scope === 'degree' && <DegreeAnalyzerContent {...props} />}
@@ -160,8 +192,8 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
             {scope === 'module' && <MarketplaceContent {...props} />}
           </div>
         </DrawerPrimitive.Content>
-      </DrawerPortal>
-    </Drawer>
+      </DrawerPrimitive.Portal>
+    </DrawerPrimitive.Root>
   );
 }
 
@@ -175,14 +207,13 @@ function DegreeAnalyzerContent(props: DecisionDockRouterProps) {
 
   return (
     <>
-      <DrawerHeader className="pb-4">
+      <div className="pb-4">
         <ScopeBreadcrumbs
           scope="degree"
           degreeTitle={degreeSummary.degreeTitle}
           onNavigate={onNavigate}
         />
-        <DrawerTitle className="text-lg">Degree Analyzer</DrawerTitle>
-      </DrawerHeader>
+      </div>
 
       <Tabs value={activeTab} onValueChange={onTabChange} className="w-full">
         <TabsList className="grid w-full grid-cols-4 mb-6">
@@ -340,15 +371,14 @@ function YearMarketplaceContent(props: DecisionDockRouterProps) {
 
   return (
     <>
-      <DrawerHeader className="pb-4">
+      <div className="pb-4">
         <ScopeBreadcrumbs
           scope="year"
           year={year}
           degreeTitle={degreeSummary?.degreeTitle}
           onNavigate={onNavigate}
         />
-        <DrawerTitle className="text-lg">Year {year} Marketplace</DrawerTitle>
-      </DrawerHeader>
+      </div>
 
       <div className="bg-accent/30 rounded-lg p-4 mb-6">
         <div className="grid grid-cols-3 gap-4 text-sm mb-3">
@@ -536,11 +566,11 @@ function MarketplaceContent(props: DecisionDockRouterProps) {
 
   return (
     <>
-      <DrawerHeader className="pb-4">
-        <DrawerTitle className="flex items-center justify-between">
+      <div className="pb-4">
+        <div className="flex items-center justify-between">
           <div className="flex flex-col gap-1">
-            <span>{moduleLabel}</span>
-            <span className="text-xs text-muted-foreground font-normal">
+            <span className="font-medium">{moduleLabel}</span>
+            <span className="text-xs text-muted-foreground">
               {sortedOptions.length} option{sortedOptions.length !== 1 ? 's' : ''} • {
                 sortedOptions.filter(o => o.cost_usd === 0).length
               } free
@@ -549,11 +579,11 @@ function MarketplaceContent(props: DecisionDockRouterProps) {
           <span className="text-sm text-muted-foreground">
             {liveEarned}/{creditsRequired} cr
           </span>
-        </DrawerTitle>
-        <div className="text-xs text-muted-foreground">
+        </div>
+        <div className="text-xs text-muted-foreground mt-1">
           Year progress: {yearEarned}/{yearCap} cr
         </div>
-      </DrawerHeader>
+      </div>
       
       <ConstraintsPanel />
       
