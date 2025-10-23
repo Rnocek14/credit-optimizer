@@ -1,7 +1,7 @@
 import { supabase } from '@/integrations/supabase/client';
 import type { ModuleTemplate, TemplateValidation, CanonicalId } from '../types/templates';
 import type { BasketItem, Constraints } from '../state/usePlanBasket';
-import type { MarketplaceOption } from '../types/v5';
+import type { MarketplaceOption } from '../types/exports';
 import { resolveChain } from './prereqs';
 import { calculateTotals } from '../utils/totalsCalculator';
 import { getCanonicalIds } from '../data/canonicalMappings';
@@ -16,7 +16,7 @@ function validateCanonicalFit(
   const satisfied = new Set<CanonicalId>();
   
   for (const opt of template.options) {
-    const providerCode = opt.providerCode || opt.provider;
+    const providerCode = opt.providerCode || opt.provider || 'UNKNOWN';
     const canonicalIds = getCanonicalIds(providerCode, opt.courseId);
     canonicalIds.forEach(id => {
       if (targetIds.has(id)) satisfied.add(id);
@@ -73,7 +73,7 @@ async function validateTransferStatus(
   let allAccepted = true;
   
   for (const opt of template.options) {
-    const providerCode = opt.providerCode || opt.provider;
+    const providerCode = opt.providerCode || opt.provider || 'UNKNOWN';
     
     // Skip if course is from target school (in-residence)
     if (providerCode.toUpperCase() === targetSchool.toUpperCase()) {

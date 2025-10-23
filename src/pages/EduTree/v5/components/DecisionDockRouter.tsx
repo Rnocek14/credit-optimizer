@@ -23,10 +23,12 @@ import { FEATURE_FLAGS } from '../config/featureFlags';
 import { mapWeightsForEngine } from '../utils/weightMapping';
 import { ScenarioManager } from './ScenarioManager';
 import { TransferBadge } from './TransferBadge';
+import { ModuleTemplatesPanel } from './scope/ModuleTemplatesPanel';
 import type { PanelScope } from '../hooks/useScopedPanel';
 import type { DegreeSummary, ModuleData } from '../types/v5';
 import type { ProviderType, ScoreBreakdown } from '../utils/optionScoring';
 import type { BasketItem } from '../state/usePlanBasket';
+import type { ModuleTemplate } from '../types/templates';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 interface MarketplaceOption {
@@ -589,6 +591,25 @@ function MarketplaceContent(props: DecisionDockRouterProps) {
   const moduleData = useMemo(() => {
     return allModules.find(m => m.id === moduleId) as ModuleData | undefined;
   }, [allModules, moduleId]);
+  
+  // Handler for adding template
+  const handleAddTemplate = (template: ModuleTemplate) => {
+    // Add all courses from template to basket
+    template.options.forEach(course => {
+      addItemWithToast({
+        moduleId: moduleId,
+        courseId: course.courseId,
+        title: course.title,
+        credits: course.credits,
+        cost_usd: course.cost_usd,
+        duration_weeks: course.duration_weeks,
+        workload_weekly_hours: course.workload_weekly_hours ?? course.credits * 2.5,
+        cri_score: course.cri_score ?? 0,
+        status: 'pinned',
+        providerType: course.providerType
+      });
+    });
+  };
 
   // Helper functions
   const formatRelativeDate = (isoDate: string) => {
@@ -636,13 +657,11 @@ function MarketplaceContent(props: DecisionDockRouterProps) {
           </TabsList>
           
           <TabsContent value="templates" className="mt-4">
-            {/* Templates panel - imported lazily below */}
-            <div className="text-sm text-muted-foreground text-center py-8">
-              💡 Templates feature coming soon. Enable in console with:
-              <code className="block mt-2 bg-muted p-2 rounded">
-                localStorage.setItem('v5_templates_module', 'true')
-              </code>
-            </div>
+            <ModuleTemplatesPanel
+              module={moduleData}
+              allModules={allModules}
+              onAddTemplate={handleAddTemplate}
+            />
           </TabsContent>
           
           <TabsContent value="courses" className="mt-4">
