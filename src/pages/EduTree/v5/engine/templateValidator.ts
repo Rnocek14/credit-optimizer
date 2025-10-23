@@ -225,73 +225,90 @@ export async function rankTemplates(
   allOptions: MarketplaceOption[],
   evidence?: EvidenceSummary // Phase 1c: accept evidence parameter
 ): Promise<Array<{ template: ModuleTemplate; validation: TemplateValidation; score: number }>> {
-  // Phase 1c: Build fast lookups for evidence filtering
-  const completedIds = new Set((evidence?.completed ?? []).map(s => s.toUpperCase()));
-  const basketIds = new Set(basket.map(b => b.courseId.toUpperCase()));
-  
-  // Canonical sets derived from evidence + basket (treat both as "already satisfied")
-  const completedCanonical = new Set<string>();
-  completedIds.forEach(cid => {
-    // Evidence may have provider-agnostic IDs; pass empty providerCode if unknown
-    getCanonicalIds('', cid).forEach(canon => completedCanonical.add(canon));
-  });
-  basket.forEach(item => {
-    const providerCode = (item as any).providerCode || '';
-    getCanonicalIds(providerCode, item.courseId).forEach(canon => completedCanonical.add(canon));
-  });
-  
-  // Phase 1c: Filter templates by evidence
-  const filteredTemplates = templates.map(t => {
-    // 1) Direct duplicates: drop options that match completed or in-basket
-    const noDupes = t.options.filter(opt => {
-      const id = opt.courseId?.toUpperCase() || '';
-      return !completedIds.has(id) && !basketIds.has(id);
+  // Fix 1B: Wrap evidence filtering in try-catch for safety
+  try {
+    // Phase 1c: Build fast lookups for evidence filtering
+    const completedIds = new Set((evidence?.completed ?? []).map(s => s.toUpperCase()));
+    const basketIds = new Set(basket.map(b => b.courseId.toUpperCase()));
+    
+    // Canonical sets derived from evidence + basket (treat both as "already satisfied")
+    const completedCanonical = new Set<string>();
+    completedIds.forEach(cid => {
+      // Evidence may have provider-agnostic IDs; pass empty providerCode if unknown
+      getCanonicalIds('', cid).forEach(canon => completedCanonical.add(canon));
+    });
+    basket.forEach(item => {
+      const providerCode = (item as any).providerCode || '';
+      getCanonicalIds(providerCode, item.courseId).forEach(canon => completedCanonical.add(canon));
     });
     
-    // 2) Canonical-satisfied: drop options that only satisfy canonicals we already have
-    const canonAware = noDupes.filter(opt => {
-      const providerCode = opt.providerCode || opt.provider || '';
-      const optCanonicals = getCanonicalIds(providerCode, opt.courseId);
-      // keep if it adds at least one NEW canonical requirement
-      return optCanonicals.length === 0 || optCanonicals.some(c => !completedCanonical.has(c));
-    });
-    
-    return { ...t, options: canonAware };
-  })
-  // skip templates that have nothing left to add
-  .filter(t => t.options.length > 0);
-  
-  // Phase 1c: Rank filtered templates (not original templates)
-  const scored = await Promise.all(
-    filteredTemplates.map(async (t) => {
-      const validation = await validateModuleTemplate(t, basket, constraints, allOptions);
-      let score = 0;
+    // Phase 1c: Filter templates by evidence
+    const filteredTemplates = templates.map(t => {
+      // 1) Direct duplicates: drop options that match completed or in-basket
+      const noDupes = t.options.filter(opt => {
+        const id = opt.courseId?.toUpperCase() || '';
+        return !completedIds.has(id) && !basketIds.has(id);
+      });
       
-      // Priority 1: Validity (1000 points)
-      if (validation.isValid) score += 1000;
+      // 2) Canonical-satisfied: drop options that only satisfy canonicals we already have
+      const canonAware = noDupes.filter(opt => {
+        const providerCode = opt.providerCode || opt.provider || '';
+        const optCanonicals = getCanonicalIds(providerCode, opt.courseId);
+        // keep if it adds at least one NEW canonical requirement
+        return optCanonicals.length === 0 || optCanonicals.some(c => !completedCanonical.has(c));
+      });
       
-      // Priority 2: Canonical fit (500 points)
-      if (validation.canonicalFit.complete) score += 500;
-      
-      // Priority 3: Transfer acceptance (300 points)
-      if (validation.transferStatus?.accepted) score += 300;
-      
-      // Priority 4: Cost (lower is better, up to 100 points)
-      const maxCost = 2000;
-      score += Math.max(0, 100 - (validation.impact.costDelta / maxCost) * 100);
-      
-      // Priority 5: Speed (faster is better, up to 50 points)
-      const maxWeeks = 16;
-      score += Math.max(0, 50 - (validation.impact.weeksDelta / maxWeeks) * 50);
-      
-      // Priority 6: CRI (higher is better, up to 50 points)
-      score += (validation.impact.criDelta / 100) * 50;
-      
-      return { template: t, validation, score };
+      return { ...t, options: canonAware };
     })
-  );
+    // skip templates that have nothing left to add
+    .filter(t => t.options.length > 0);
   
-  return scored.sort((a, b) => b.score - a.score);
+    // Phase 1c: Rank filtered templates (not original templates)
+    const scored = await Promise.all(
+      filteredTemplates.map(async (t) => {
+        const validation = await validateModuleTemplate(t, basket, constraints, allOptions);
+        let score = 0;
+        
+        // Priority 1: Validity (1000 points)
+        if (validation.isValid) score += 1000;
+        
+        // Priority 2: Canonical fit (500 points)
+        if (validation.canonicalFit.complete) score += 500;
+        
+        // Priority 3: Transfer acceptance (300 points)
+        if (validation.transferStatus?.accepted) score += 300;
+        
+        // Priority 4: Cost (lower is better, up to 100 points)
+        const maxCost = 2000;
+        score += Math.max(0, 100 - (validation.impact.costDelta / maxCost) * 100);
+        
+        // Priority 5: Speed (faster is better, up to 50 points)
+        const maxWeeks = 16;
+        score += Math.max(0, 50 - (validation.impact.weeksDelta / maxWeeks) * 50);
+        
+        // Priority 6: CRI (higher is better, up to 50 points)
+        score += (validation.impact.criDelta / 100) * 50;
+        
+        return { template: t, validation, score };
+      })
+    );
+    
+    return scored.sort((a, b) => b.score - a.score);
+  } catch (error) {
+    // Fix 1B: Graceful degradation on evidence filtering failure
+    console.warn('[rankTemplates] Evidence filtering failed, returning unfiltered templates:', error);
+    
+    // Fallback: rank templates without evidence filtering
+    const scored = await Promise.all(
+      templates.map(async (t) => {
+        const validation = await validateModuleTemplate(t, basket, constraints, allOptions);
+        let score = validation.isValid ? 1000 : 0;
+        return { template: t, validation, score };
+      })
+    );
+    
+    return scored.sort((a, b) => b.score - a.score);
+  }
 }
 
 // ============ Cache Management ============

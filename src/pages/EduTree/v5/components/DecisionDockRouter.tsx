@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState, useMemo } from 'react';
+import { useRef, useEffect, useState, useMemo, Component, ReactNode } from 'react';
 import { Drawer as DrawerPrimitive } from "vaul";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
@@ -32,6 +32,34 @@ import type { ModuleTemplate } from '../types/templates';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { toast } from 'sonner'; // Phase 1: toast for dupe handling
 import { trackTelemetryEvent } from '@/utils/telemetry'; // Phase 1c: telemetry
+
+// Fix 1A: Error Boundary Component
+class ErrorBoundary extends Component<{ children: ReactNode; fallback: ReactNode }> {
+  state = { hasError: false, error: null as Error | null };
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: any) {
+    console.error('[ErrorBoundary] Caught error:', error, errorInfo);
+    void trackTelemetryEvent({
+      task: 'module_templates_crash',
+      scope: 'error',
+      complexity: { 
+        message: error.message,
+        stack: error.stack?.substring(0, 200)
+      }
+    });
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return this.props.fallback;
+    }
+    return this.props.children;
+  }
+}
 
 interface MarketplaceOption {
   id: string;
@@ -693,7 +721,7 @@ function MarketplaceContent(props: DecisionDockRouterProps) {
         </div>
       </div>
 
-      {FEATURE_FLAGS.v5_templates_module && moduleData && moduleData.id ? (
+      {FEATURE_FLAGS.v5_templates_module && moduleData && moduleData.id && allModules && allModules.length > 0 ? (
         <Tabs defaultValue="templates" className="w-full mb-4">
           <TabsList className="w-full grid grid-cols-2">
             <TabsTrigger value="templates">Templates</TabsTrigger>
@@ -701,17 +729,30 @@ function MarketplaceContent(props: DecisionDockRouterProps) {
           </TabsList>
           
           <TabsContent value="templates" className="mt-4">
-            {moduleData ? (
+            <ErrorBoundary
+              fallback={
+                <div className="text-center py-8 border border-destructive/50 rounded-lg bg-destructive/5">
+                  <p className="text-sm font-medium text-destructive mb-2">Templates temporarily unavailable</p>
+                  <p className="text-xs text-muted-foreground mb-3">Try the Individual Courses tab instead</p>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      const coursesTab = document.querySelector('[value="courses"]') as HTMLElement;
+                      coursesTab?.click();
+                    }}
+                  >
+                    Switch to Courses
+                  </Button>
+                </div>
+              }
+            >
               <ModuleTemplatesPanel
                 module={moduleData}
                 allModules={allModules}
                 onAddTemplate={handleAddTemplate}
               />
-            ) : (
-              <div className="text-center py-8 text-muted-foreground">
-                <p className="text-sm">Module data not available</p>
-              </div>
-            )}
+            </ErrorBoundary>
           </TabsContent>
           
           <TabsContent value="courses" className="mt-4">
