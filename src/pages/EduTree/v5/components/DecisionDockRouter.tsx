@@ -1,6 +1,8 @@
 import { useRef, useEffect } from 'react';
-import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerOverlay } from "@/components/ui/drawer";
+import { Drawer, DrawerHeader, DrawerTitle, DrawerOverlay, DrawerPortal } from "@/components/ui/drawer";
+import { Drawer as DrawerPrimitive } from "vaul";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { cn } from "@/lib/utils";
 import '../styles/decisionDock.css';
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -117,40 +119,48 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
       modal={false}
       direction="bottom"
     >
-      {/* Click-through overlay with dimming effect */}
-      <div className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm pointer-events-none" />
-      
-      <DrawerContent 
-        className="z-[100] h-[40vh] min-h-[35vh] max-h-[80vh] resize-y pointer-events-auto border-t shadow-2xl"
-        style={{ 
-          backdropFilter: 'blur(2px)',
-          backgroundColor: 'hsl(var(--background) / 0.95)'
-        }}
-        onOpenAutoFocus={(e) => {
-          previousFocusRef.current = document.activeElement as HTMLElement;
-        }}
-        onCloseAutoFocus={(e) => {
-          e.preventDefault();
-          previousFocusRef.current?.focus();
-        }}
-      >
-        {/* Visual resize handle */}
-        <div 
-          className="mx-auto mt-2 mb-3 h-2 w-14 rounded-full bg-muted cursor-ns-resize"
-          onMouseDown={() => {
-            document.body.style.cursor = 'ns-resize';
-          }}
-          onMouseUp={() => {
-            document.body.style.cursor = '';
-          }}
-        />
+      <DrawerPortal>
+        {/* Single click-through overlay - overrides vaul's default */}
+        <DrawerOverlay className="bg-black/40 backdrop-blur-sm pointer-events-none" />
         
-        <div className="mx-auto w-full max-w-7xl h-full overflow-y-auto px-4 pb-4">
-          {scope === 'degree' && <DegreeAnalyzerContent {...props} />}
-          {scope === 'year' && <YearMarketplaceContent {...props} />}
-          {scope === 'module' && <MarketplaceContent {...props} />}
-        </div>
-      </DrawerContent>
+        <DrawerPrimitive.Content 
+          className={cn(
+            "z-[100] fixed inset-x-0 bottom-0 mt-24 flex flex-col",
+            "h-[40vh] min-h-[35vh] max-h-[80vh] resize-y",
+            "pointer-events-auto border-t shadow-2xl",
+            "rounded-t-[10px] bg-background"
+          )}
+          style={{ 
+            backdropFilter: 'blur(2px)',
+            backgroundColor: 'hsl(var(--background) / 0.95)'
+          }}
+          onOpenAutoFocus={(e) => {
+            e.preventDefault();
+            previousFocusRef.current = document.activeElement as HTMLElement;
+          }}
+          onCloseAutoFocus={(e) => {
+            e.preventDefault();
+            previousFocusRef.current?.focus();
+          }}
+        >
+          {/* Visual resize handle */}
+          <div 
+            className="mx-auto mt-2 mb-3 h-2 w-14 rounded-full bg-muted cursor-ns-resize"
+            onMouseDown={() => {
+              document.body.style.cursor = 'ns-resize';
+            }}
+            onMouseUp={() => {
+              document.body.style.cursor = '';
+            }}
+          />
+          
+          <div className="mx-auto w-full max-w-7xl h-full overflow-y-auto px-4 pb-4">
+            {scope === 'degree' && <DegreeAnalyzerContent {...props} />}
+            {scope === 'year' && <YearMarketplaceContent {...props} />}
+            {scope === 'module' && <MarketplaceContent {...props} />}
+          </div>
+        </DrawerPrimitive.Content>
+      </DrawerPortal>
     </Drawer>
   );
 }
