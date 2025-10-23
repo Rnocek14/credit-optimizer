@@ -24,6 +24,7 @@ import { logEvent } from '@/lib/analytics';
 import { buildCourseIndex, getCourseFromIndex } from './utils/courseLookup';
 import { validateSemesterDrop } from './engine/semesterValidation';
 import { toast } from 'sonner';
+import { computeModuleSummary } from './types/nodeProgress';
 import './styles/v5.css';
 
 // Feature flag for quick rollback during demos
@@ -81,6 +82,12 @@ export default function EduTreeV5Page() {
     }
     return new Map();
   }, [USE_DATABASE, dbData]);
+  
+  // Basket key for efficient memoization (only re-compute when basket content changes)
+  const basketKey = useMemo(
+    () => basket.map(b => b.courseId).sort().join('|'),
+    [basket]
+  );
   
   // Persist sort preference
   useEffect(() => {
@@ -177,25 +184,38 @@ export default function EduTreeV5Page() {
   
   const getModulesForYear = useCallback((year: number): ModuleData[] => {
     if (USE_DATABASE && dbData?.modulesByYear) {
-      const modules = dbData.modulesByYear[year] || [];
+      const base = dbData.modulesByYear[year] || [];
       
-      // Enrich with live credits from store
-      const enriched = modules.map(m => {
-        const sel = selections[m.id];
-        const earned = sel?.selectedCredits ?? 0;
-        return { ...m, creditsEarned: earned };
+      // Re-compute selectedSummary on each read for live updates when basket changes
+      return base.map((mod) => {
+        // Re-calculate progress from current basket
+        const selectedSummary = computeModuleSummary(
+          mod.id,
+          mod.creditsRequired ?? 0,
+          basket.map(item => ({
+            moduleId: item.moduleId,
+            credits: item.credits,
+            cost_usd: item.cost_usd,
+            duration_weeks: item.duration_weeks,
+            cri_score: item.cri_score,
+            status: item.status,
+            autoFillReason: item.autoFillReason
+          }))
+        );
+        
+        // Also update creditsEarned from selections for legacy compatibility
+        const sel = selections[mod.id];
+        const creditsEarned = sel?.selectedCredits ?? 0;
+        
+        return { 
+          ...mod, 
+          selectedSummary,
+          creditsEarned 
+        };
       });
-      
-      console.log(`[V5] Year ${year}`, enriched.map(m => ({
-        id: m.id, 
-        label: m.label,
-        optionsCount: m.optionsCount,
-        creditsEarned: m.creditsEarned,
-      })));
-      return enriched;
     }
     return getModulesForYearFixtures(year);
-  }, [USE_DATABASE, dbData, getModulesForYearFixtures, selections]);
+  }, [USE_DATABASE, dbData, basketKey, selections, getModulesForYearFixtures]);
 
   // Get all modules for auto-fill dialog
   const allModules = useMemo(() => {
