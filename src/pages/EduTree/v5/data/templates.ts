@@ -13,11 +13,6 @@ const MODULE_ALIAS: Record<string, string> = {
   // TODO: Fill these after grabbing UUIDs from module URLs:
   'y1-math': '',      // TODO: Copy from URL when opening Math module
   'y1-genedAB': '',   // TODO: Copy from URL when opening GenEd module
-  // Year 3-4 Track-specific modules
-  'y3-se-core': '',   // TODO: Copy from URL when opening SE Core module
-  'y3-ds-core': '',   // TODO: Copy from URL when opening DS Core module
-  'y4-se-cap': '',    // TODO: Copy from URL when opening SE Capstone module
-  'y4-ds-cap': '',    // TODO: Copy from URL when opening DS Capstone module
 };
 
 /**
@@ -457,7 +452,7 @@ export const MODULE_TEMPLATES: ModuleTemplate[] = [
   {
     id: 'se-core-cheapest',
     kind: 'module',
-    moduleId: 'y3-se-core',
+    moduleId: '6240a033-42e0-475c-a430-22be194c5743',
     label: 'SE Core: Budget-Optimized',
     summary: '$198 • 8w • 6cr • CRI 78',
     badge: 'Cheapest',
@@ -504,7 +499,7 @@ export const MODULE_TEMPLATES: ModuleTemplate[] = [
   {
     id: 'se-core-fastest',
     kind: 'module',
-    moduleId: 'y3-se-core',
+    moduleId: '6240a033-42e0-475c-a430-22be194c5743',
     label: 'SE Core: Fast-Track',
     summary: '$318 • 4w • 6cr • CRI 82',
     badge: 'Fastest',
@@ -551,7 +546,7 @@ export const MODULE_TEMPLATES: ModuleTemplate[] = [
   {
     id: 'se-core-prestige',
     kind: 'module',
-    moduleId: 'y3-se-core',
+    moduleId: '6240a033-42e0-475c-a430-22be194c5743',
     label: 'SE Core: Premium Quality',
     summary: '$2400 • 16w • 6cr • CRI 94',
     badge: 'Prestige',
@@ -600,7 +595,7 @@ export const MODULE_TEMPLATES: ModuleTemplate[] = [
   {
     id: 'ds-core-cheapest',
     kind: 'module',
-    moduleId: 'y3-ds-core',
+    moduleId: '6240a033-42e0-475c-a430-22be194c5743',
     label: 'DS Core: Budget-Optimized',
     summary: '$198 • 8w • 6cr • CRI 79',
     badge: 'Cheapest',
@@ -647,7 +642,7 @@ export const MODULE_TEMPLATES: ModuleTemplate[] = [
   {
     id: 'ds-core-fastest',
     kind: 'module',
-    moduleId: 'y3-ds-core',
+    moduleId: '6240a033-42e0-475c-a430-22be194c5743',
     label: 'DS Core: Fast-Track',
     summary: '$318 • 4w • 6cr • CRI 83',
     badge: 'Fastest',
@@ -694,7 +689,7 @@ export const MODULE_TEMPLATES: ModuleTemplate[] = [
   {
     id: 'ds-core-prestige',
     kind: 'module',
-    moduleId: 'y3-ds-core',
+    moduleId: '6240a033-42e0-475c-a430-22be194c5743',
     label: 'DS Core: Premium Quality',
     summary: '$2400 • 16w • 6cr • CRI 95',
     badge: 'Prestige',
@@ -743,7 +738,7 @@ export const MODULE_TEMPLATES: ModuleTemplate[] = [
   {
     id: 'se-cap-cheapest',
     kind: 'module',
-    moduleId: 'y4-se-cap',
+    moduleId: 'a752a800-2ab3-4c00-9c58-4c7b7c1d42af',
     label: 'SE Capstone: Budget-Optimized',
     summary: '$99 • 6w • 3cr • CRI 80',
     badge: 'Cheapest',
@@ -774,7 +769,7 @@ export const MODULE_TEMPLATES: ModuleTemplate[] = [
   {
     id: 'se-cap-fastest',
     kind: 'module',
-    moduleId: 'y4-se-cap',
+    moduleId: 'a752a800-2ab3-4c00-9c58-4c7b7c1d42af',
     label: 'SE Capstone: Fast-Track',
     summary: '$159 • 4w • 3cr • CRI 84',
     badge: 'Fastest',
@@ -805,7 +800,7 @@ export const MODULE_TEMPLATES: ModuleTemplate[] = [
   {
     id: 'se-cap-prestige',
     kind: 'module',
-    moduleId: 'y4-se-cap',
+    moduleId: 'a752a800-2ab3-4c00-9c58-4c7b7c1d42af',
     label: 'SE Capstone: Premium Quality',
     summary: '$1200 • 12w • 3cr • CRI 96',
     badge: 'Prestige',
@@ -838,7 +833,7 @@ export const MODULE_TEMPLATES: ModuleTemplate[] = [
   {
     id: 'ds-cap-cheapest',
     kind: 'module',
-    moduleId: 'y4-ds-cap',
+    moduleId: 'a752a800-2ab3-4c00-9c58-4c7b7c1d42af',
     label: 'DS Capstone: Budget-Optimized',
     summary: '$99 • 6w • 3cr • CRI 81',
     badge: 'Cheapest',
@@ -869,7 +864,7 @@ export const MODULE_TEMPLATES: ModuleTemplate[] = [
   {
     id: 'ds-cap-fastest',
     kind: 'module',
-    moduleId: 'y4-ds-cap',
+    moduleId: 'a752a800-2ab3-4c00-9c58-4c7b7c1d42af',
     label: 'DS Capstone: Fast-Track',
     summary: '$159 • 4w • 3cr • CRI 85',
     badge: 'Fastest',
@@ -900,7 +895,7 @@ export const MODULE_TEMPLATES: ModuleTemplate[] = [
   {
     id: 'ds-cap-prestige',
     kind: 'module',
-    moduleId: 'y4-ds-cap',
+    moduleId: 'a752a800-2ab3-4c00-9c58-4c7b7c1d42af',
     label: 'DS Capstone: Premium Quality',
     summary: '$1200 • 12w • 3cr • CRI 97',
     badge: 'Prestige',
