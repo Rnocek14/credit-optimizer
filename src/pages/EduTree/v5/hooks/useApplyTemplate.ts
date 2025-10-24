@@ -75,7 +75,27 @@ export function useApplyTemplate() {
         toast.error('Template application failed: invalid module identifiers', {
           description: 'Some courses could not be added. Please contact support.',
         });
-        return; // Don't add items with invalid IDs
+        return;
+      }
+      
+      // Capture module state after successful template application
+      if (result.added.length > 0 && template.moduleId) {
+        const firstItem = result.added[0];
+        const setModuleState = usePlanBasket.getState().setModuleState;
+        
+        setModuleState(template.moduleId, {
+          templateId: template.id,
+          templateVersion: 1,
+          templateLabel: firstItem.source?.templateLabel,
+          appliedAt: new Date().toISOString(),
+          originalCourseIds: result.added.map(i => i.courseId),
+        });
+        
+        console.log('[Apply] ✅ Module state captured:', {
+          moduleId: template.moduleId,
+          templateId: template.id,
+          courseCount: result.added.length,
+        });
       }
 
       // Show conflicts as warnings (non-blocking)

@@ -13,17 +13,27 @@ import { trackTelemetryEvent } from '@/utils/telemetry';
 export interface BasketItem {
   moduleId: string;
   courseId: string;
-  title?: string; // Phase 1c: optional title for display
+  title?: string;
   credits: number;
   cost_usd: number | null;
   duration_weeks: number | null;
   workload_weekly_hours: number;
   cri_score: number;
-  status: 'pinned' | 'auto-filled';
+  status: 'pinned' | 'auto-filled' | 'prereq';
   providerType?: ProviderType;
-  providerCode?: string; // Phase 0-2: provider code for transfer rules
-  level?: number; // Phase 0-2: course level for upper-division tracking
-  autoFillReason?: string; // Phase 1b: inline reasoning for auto-filled items
+  providerCode?: string;
+  level?: number;
+  
+  // Structured provenance (replaces autoFillReason string parsing)
+  source?: {
+    type: 'template' | 'manual' | 'prereq';
+    templateId?: string;
+    templateVersion?: number;
+    templateLabel?: string;
+  };
+  
+  /** @deprecated Keep for backward compatibility */
+  autoFillReason?: string;
 }
 
 /**
@@ -41,15 +51,34 @@ export interface Constraints {
   target_school?: string; // Phase 0-2: anchor school for transfer policy tracking
 }
 
+// Per-module template tracking
+export interface ModuleState {
+  templateId?: string;
+  templateVersion?: number;
+  templateLabel?: string;
+  appliedAt?: string;
+  originalCourseIds?: string[];
+}
+
 interface PlanBasketState {
   items: BasketItem[];
   constraints: Constraints;
   scenarios: PlanScenario[];
+  moduleStates: Record<string, ModuleState>;
   
   // Actions
   addItem: (item: BasketItem) => void;
   removeItem: (courseId: string) => void;
   setConstraints: (c: Partial<Constraints>) => void;
+  
+  // Module state tracking
+  setModuleState: (moduleId: string, state: ModuleState) => void;
+  clearModuleState: (moduleId: string) => void;
+  isModuleModified: (moduleId: string) => boolean;
+  
+  // Pin/Unpin operations
+  pinAllItems: (moduleId: string) => void;
+  unpinAllItems: (moduleId: string) => void;
   
   // Scenarios
   saveScenario: (name: string) => string;
@@ -68,14 +97,47 @@ interface PlanBasketState {
 }
 
 /**
- * Migration helper: backfill missing fields from Phase 1a
+ * Migration helper: backfill missing fields and structured provenance
  */
 const migrateBasketItems = (items: BasketItem[]): BasketItem[] => {
-  return items.map(item => ({
-    ...item,
-    providerType: item.providerType ?? null,
-    workload_weekly_hours: item.workload_weekly_hours ?? (item.credits * 2.5)
-  }));
+  return items.map(item => {
+    const migrated = {
+      ...item,
+      providerType: item.providerType ?? null,
+      workload_weekly_hours: item.workload_weekly_hours ?? (item.credits * 2.5)
+    };
+    
+    // Backfill structured source from legacy autoFillReason
+    if (!migrated.source && (migrated.status || migrated.autoFillReason)) {
+      if (migrated.status === 'prereq') {
+        migrated.source = { type: 'prereq' as const };
+      } else if (migrated.autoFillReason?.includes('From template:')) {
+        // Best-effort extraction: "From template: found-cheapest" → templateId
+        const match = migrated.autoFillReason.match(/From template:\s*(\S+)/);
+        migrated.source = {
+          type: 'template' as const,
+          templateId: match?.[1] || 'unknown',
+          templateVersion: 1,
+        };
+      } else {
+        migrated.source = { type: 'manual' as const };
+      }
+    }
+    
+    return migrated;
+  });
+};
+
+/**
+ * Helper: Extract template label from templateId
+ * Examples: "found-cheapest" → "Cheapest", "found-fastest" → "Fastest"
+ */
+const inferTemplateLabel = (templateId?: string): string | undefined => {
+  if (!templateId) return undefined;
+  const match = templateId.match(/found-(\w+)/);
+  if (!match) return undefined;
+  const label = match[1];
+  return label.charAt(0).toUpperCase() + label.slice(1);
 };
 
 const CAP = 20;
@@ -85,10 +147,11 @@ export const usePlanBasket = create<PlanBasketState>()(
     (set, get) => ({
       items: [],
       constraints: {
-        max_ace_credits: 90, // default WGU-style cap
-        max_concurrent_courses: 2, // default: 2 courses at a time
+        max_ace_credits: 90,
+        max_concurrent_courses: 2,
       },
       scenarios: [],
+      moduleStates: {},
       
       addItem: (item) => {
         const items = get().items;
@@ -105,6 +168,76 @@ export const usePlanBasket = create<PlanBasketState>()(
       
       setConstraints: (c) => {
         set({ constraints: { ...get().constraints, ...c } });
+      },
+      
+      setModuleState: (moduleId, state) => {
+        set({
+          moduleStates: { ...get().moduleStates, [moduleId]: state }
+        });
+      },
+      
+      clearModuleState: (moduleId) => {
+        const { [moduleId]: _, ...rest } = get().moduleStates;
+        set({ moduleStates: rest });
+      },
+      
+      isModuleModified: (moduleId) => {
+        const moduleState = get().moduleStates[moduleId];
+        if (!moduleState?.originalCourseIds) return false;
+        
+        const currentCourseIds = new Set(
+          get().items
+            .filter(i => i.moduleId === moduleId)
+            .map(i => i.courseId)
+        );
+        const originalSet = new Set(moduleState.originalCourseIds);
+        
+        // Compare sets (order-independent)
+        if (currentCourseIds.size !== originalSet.size) return true;
+        for (const id of currentCourseIds) {
+          if (!originalSet.has(id)) return true;
+        }
+        return false;
+      },
+      
+      pinAllItems: (moduleId) => {
+        const items = get().items;
+        const updated = items.map(item =>
+          item.moduleId === moduleId && item.status === 'auto-filled'
+            ? { ...item, status: 'pinned' as const }
+            : item
+        );
+        set({ items: updated });
+        
+        void trackTelemetryEvent({
+          task: 'pin_all_clicked',
+          scope: 'module',
+          complexity: {
+            moduleId,
+            itemCount: updated.filter(i => i.moduleId === moduleId && i.status === 'pinned').length
+          }
+        });
+      },
+      
+      unpinAllItems: (moduleId) => {
+        const items = get().items;
+        const updated = items.map(item =>
+          item.moduleId === moduleId && 
+          item.status === 'pinned' && 
+          item.source?.type === 'template'
+            ? { ...item, status: 'auto-filled' as const }
+            : item
+        );
+        set({ items: updated });
+        
+        void trackTelemetryEvent({
+          task: 'unpin_all_clicked',
+          scope: 'module',
+          complexity: {
+            moduleId,
+            itemCount: updated.filter(i => i.moduleId === moduleId && i.status === 'auto-filled').length
+          }
+        });
       },
       
       saveScenario: (name) => {
@@ -189,12 +322,12 @@ export const usePlanBasket = create<PlanBasketState>()(
       // v1 = providerType + workload_weekly_hours
       // v2 = adds optional autoFillReason (no migration needed - optional field)
       // v3 = scenarios: Record → PlanScenario[] with cap enforcement
-      version: 3,
+      // v4 = structured provenance (source) + moduleStates tracking
+      version: 4,
       migrate: (persistedState: any, version: number) => {
         let state = persistedState ?? {};
         
         if (version === 0) {
-          // Migrate from v0 to v1: backfill providerType and workload_weekly_hours
           state = {
             ...state,
             items: migrateBasketItems(state.items || [])
@@ -224,6 +357,15 @@ export const usePlanBasket = create<PlanBasketState>()(
           .slice(0, CAP);
 
           state = { ...state, scenarios: newScenarios };
+        }
+        
+        // v3 → v4: Backfill structured source
+        if (version < 4) {
+          state = {
+            ...state,
+            items: migrateBasketItems(state.items || []),
+            moduleStates: {} // Initialize empty
+          };
         }
 
         return state;

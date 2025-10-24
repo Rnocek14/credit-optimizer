@@ -14,8 +14,18 @@ export interface BasketItem {
   duration_weeks: number | null;
   workload_weekly_hours: number;
   cri_score: number;
-  status: 'pinned' | 'auto-filled';
+  status: 'pinned' | 'auto-filled' | 'prereq';
   providerType?: ProviderType;
+  
+  // Structured provenance (replaces autoFillReason string parsing)
+  source?: {
+    type: 'template' | 'manual' | 'prereq';
+    templateId?: string;
+    templateVersion?: number;
+    templateLabel?: string; // "Cheapest", "Fastest", etc.
+  };
+  
+  /** @deprecated Keep for backward compatibility, but use source instead */
   autoFillReason?: string;
 }
 

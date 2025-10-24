@@ -42,11 +42,19 @@ export function computeModuleSummary(
       ? moduleItems.reduce((sum, i) => sum + i.cri_score, 0) / moduleItems.length
       : 0;
 
-  // Detect template source (if all items have same autoFillReason)
+  // Detect template source using structured provenance (fallback to autoFillReason)
   const templateSources = new Set(
     moduleItems
-      .filter(i => i.status === 'auto-filled' && i.autoFillReason)
-      .map(i => i.autoFillReason)
+      .filter(i => i.status === 'auto-filled')
+      .map(i => {
+        // Prefer structured source
+        if ((i as any).source?.templateLabel) {
+          return `From template: ${(i as any).source.templateLabel}`;
+        }
+        // Fallback to legacy autoFillReason
+        return (i as any).autoFillReason;
+      })
+      .filter(Boolean)
   );
   const templateSource = templateSources.size === 1 ? Array.from(templateSources)[0] : undefined;
 

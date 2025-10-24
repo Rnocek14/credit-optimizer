@@ -148,8 +148,14 @@ export interface PlanScenario {
     duration_weeks: number | null;
     workload_weekly_hours: number;
     cri_score: number;
-    status: 'pinned' | 'auto-filled';
+    status: 'pinned' | 'auto-filled' | 'prereq';
     providerType?: ProviderType;
+    source?: {
+      type: 'template' | 'manual' | 'prereq';
+      templateId?: string;
+      templateVersion?: number;
+      templateLabel?: string;
+    };
     autoFillReason?: string;
   }>;
   constraints: {

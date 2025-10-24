@@ -202,8 +202,14 @@ function convertToBasketItem(
     templateId
   });
 
+  // Extract template label from templateId
+  const templateLabel = templateId.match(/found-(\w+)/)?.[1];
+  const formattedLabel = templateLabel 
+    ? templateLabel.charAt(0).toUpperCase() + templateLabel.slice(1)
+    : undefined;
+
   return {
-    moduleId: resolvedModuleId, // Always a valid UUID
+    moduleId: resolvedModuleId,
     courseId: option.courseId,
     title: option.title ?? option.courseId,
     credits: option.credits,
@@ -213,6 +219,16 @@ function convertToBasketItem(
     cri_score: option.cri_score ?? 0,
     status: 'auto-filled',
     providerType: option.providerType,
+    
+    // Structured provenance
+    source: {
+      type: 'template',
+      templateId,
+      templateVersion: 1,
+      templateLabel: formattedLabel,
+    },
+    
+    // Keep for backward compatibility
     autoFillReason: `From template: ${templateId}`,
   };
 }
