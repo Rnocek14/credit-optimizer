@@ -120,6 +120,38 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
   const [isResizing, setIsResizing] = useState(false);
   const titleId = useMemo(() => `decision-dock-title-${scope ?? "closed"}`, [scope]);
   const openAtRef = useRef<number | null>(null);
+  
+  // SSR-safe tab persistence
+  const [activeTabInternal, setActiveTabInternal] = useState(props.activeTab || 'templates');
+
+  // Load from localStorage on mount (client-side only)
+  useEffect(() => {
+    if (typeof window !== 'undefined' && scope && props.nodeId) {
+      const key = `last-tab-${scope}-${props.nodeId}`;
+      const stored = localStorage.getItem(key);
+      if (stored) {
+        setActiveTabInternal(stored);
+        props.onTabChange?.(stored);
+      }
+    }
+  }, [scope, props.nodeId]);
+
+  const handleTabChange = (tab: string) => {
+    setActiveTabInternal(tab);
+    props.onTabChange?.(tab);
+    
+    // Persist to localStorage (client-side only)
+    if (typeof window !== 'undefined' && scope && props.nodeId) {
+      const key = `last-tab-${scope}-${props.nodeId}`;
+      localStorage.setItem(key, tab);
+    }
+    
+    void trackTelemetryEvent({
+      task: 'tab_changed',
+      scope: scope || 'unknown',
+      complexity: { tab, nodeId: props.nodeId }
+    });
+  };
 
   // Apply dimming effect to plan board
   useEffect(() => {
@@ -261,9 +293,9 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
           </div>
           
           <div className="w-full h-full overflow-y-auto px-4 pb-4">
-            {scope === 'degree' && <DegreeAnalyzerContent {...props} />}
+            {scope === 'degree' && <DegreeAnalyzerContent {...props} activeTab={activeTabInternal} onTabChange={handleTabChange} />}
             {scope === 'year' && <YearMarketplaceContent {...props} />}
-            {scope === 'module' && <MarketplaceContent {...props} />}
+            {scope === 'module' && <MarketplaceContent {...props} activeTab={activeTabInternal} onTabChange={handleTabChange} />}
           </div>
         </DrawerPrimitive.Content>
       </DrawerPrimitive.Portal>
@@ -568,7 +600,9 @@ function MarketplaceContent(props: DecisionDockRouterProps) {
     setSortBy,
     yearEarned = 0,
     yearCap = 30,
-    allModules = []
+    allModules = [],
+    activeTab,
+    onTabChange
   } = props;
 
   const toggleCourse = usePlanStore(s => s.toggleCourse);
@@ -708,22 +742,35 @@ function MarketplaceContent(props: DecisionDockRouterProps) {
     return days >= 0 && days <= 30;
   };
 
-  // Persist last tab per module
-  const [activeTabState, setActiveTabState] = useState(() => {
-    const storageKey = `edutree-last-tab-${moduleId}`;
-    return localStorage.getItem(storageKey) || 'templates';
-  });
+  // Persist last tab per module (SSR-safe)
+  const [activeTabState, setActiveTabState] = useState(activeTab || 'templates');
+
+  // Load from localStorage on mount (client-side only)
+  useEffect(() => {
+    if (typeof window !== 'undefined' && moduleId) {
+      const storageKey = `edutree-last-tab-${moduleId}`;
+      const stored = localStorage.getItem(storageKey);
+      if (stored) setActiveTabState(stored);
+    }
+  }, [moduleId]);
 
   const handleTabChange = (tab: string) => {
     setActiveTabState(tab);
-    const storageKey = `edutree-last-tab-${moduleId}`;
-    localStorage.setItem(storageKey, tab);
+    
+    // Persist to localStorage (client-side only)
+    if (typeof window !== 'undefined' && moduleId) {
+      const storageKey = `edutree-last-tab-${moduleId}`;
+      localStorage.setItem(storageKey, tab);
+    }
     
     void trackTelemetryEvent({
       task: 'tab_changed',
       scope: 'module',
       complexity: { from: activeTabState, to: tab, moduleId }
     });
+    
+    // Call parent onTabChange if provided
+    if (onTabChange) onTabChange(tab);
   };
 
   return (

@@ -48,7 +48,8 @@ export function useApplyTemplate() {
         allOptions,
       };
 
-      // Execute apply
+      // Execute apply - captures undoSnapshot BEFORE any filtering
+      // This ensures undo can restore the exact pre-apply state
       const result = applyTemplate({
         ...params,
         currentBasket: basket,
@@ -107,7 +108,8 @@ export function useApplyTemplate() {
         });
       }
 
-      // Respect keepPinned option
+      // Respect keepPinned option (filtering happens AFTER snapshot capture)
+      // This ensures undoSnapshot contains the original state before keepPinned logic
       let finalAdded = result.added;
       let finalRemoved = result.removed;
       

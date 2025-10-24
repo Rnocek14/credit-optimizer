@@ -28,6 +28,7 @@ export function ModuleTemplatesPanel({ module, allModules, onAddTemplate }: Modu
   
   const [previewingTemplate, setPreviewingTemplate] = useState<ModuleTemplate | null>(null);
   const [preview, setPreview] = useState<TemplatePreview | null>(null);
+  const [keepPinned, setKeepPinned] = useState(false);
   
   const allOptions = useMemo(() => allModules.flatMap(m => m.marketplaceOptions ?? []), [allModules]);
   const basketKey = useMemo(() => basket.map(b => b.courseId).sort().join('|'), [basket]);
@@ -43,11 +44,27 @@ export function ModuleTemplatesPanel({ module, allModules, onAddTemplate }: Modu
   });
 
   const handlePreviewTemplate = (template: ModuleTemplate) => {
-    const previewResult = previewTemplate({ template, moduleId: module.id, currentBasket: basket, constraints, allOptions });
+    const previewResult = previewTemplate({ template, moduleId: module.id, currentBasket: basket, constraints, allOptions, keepPinned: false });
     setPreviewingTemplate(template);
     setPreview(previewResult);
+    setKeepPinned(false); // Reset toggle when previewing new template
     void trackTelemetryEvent({ task: 'template_preview_shown', scope: 'module', complexity: { templateId: template.id }});
   };
+
+  // Live preview update when keepPinned changes
+  useEffect(() => {
+    if (previewingTemplate) {
+      const updated = previewTemplate({
+        template: previewingTemplate,
+        moduleId: module.id,
+        currentBasket: basket,
+        constraints,
+        allOptions,
+        keepPinned,
+      });
+      setPreview(updated);
+    }
+  }, [keepPinned, previewingTemplate, basket, constraints, allOptions, module.id]);
 
   const handleApplyPreview = (keepPinned: boolean) => {
     if (!previewingTemplate) return;
@@ -72,6 +89,8 @@ export function ModuleTemplatesPanel({ module, allModules, onAddTemplate }: Modu
   const handleCancelPreview = () => {
     setPreviewingTemplate(null);
     setPreview(null);
+    setKeepPinned(false);
+    void trackTelemetryEvent({ task: 'template_preview_cancelled', scope: 'module', complexity: { templateId: previewingTemplate?.id }});
   };
 
   if (isLoading) return <Skeleton className="h-32" />;
@@ -79,7 +98,16 @@ export function ModuleTemplatesPanel({ module, allModules, onAddTemplate }: Modu
 
   return (
     <div className="space-y-4">
-      {preview && previewingTemplate && <TemplateDiffStrip preview={preview} templateLabel={previewingTemplate.label} onApply={handleApplyPreview} onCancel={handleCancelPreview} />}
+      {preview && previewingTemplate && (
+        <TemplateDiffStrip 
+          preview={preview} 
+          templateLabel={previewingTemplate.label} 
+          keepPinned={keepPinned}
+          onKeepPinnedChange={setKeepPinned}
+          onApply={() => handleApplyPreview(keepPinned)} 
+          onCancel={handleCancelPreview} 
+        />
+      )}
       <div className="template-gallery">
         {rankedTemplates.map(rt => <TemplateCard key={rt.template.id} template={rt.template} validation={rt.validation} onAdd={() => handlePreviewTemplate(rt.template)} />)}
       </div>

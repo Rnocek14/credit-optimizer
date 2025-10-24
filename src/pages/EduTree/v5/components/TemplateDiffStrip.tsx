@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { AlertTriangle, ChevronDown, ChevronUp } from 'lucide-react';
@@ -8,18 +8,21 @@ import { cn } from '@/lib/utils';
 interface TemplateDiffStripProps {
   preview: TemplatePreview;
   templateLabel: string;
-  onApply: (keepPinned: boolean) => void;
+  keepPinned: boolean;
+  onKeepPinnedChange: (value: boolean) => void;
+  onApply: () => void;
   onCancel: () => void;
 }
 
 export function TemplateDiffStrip({
   preview,
   templateLabel,
+  keepPinned,
+  onKeepPinnedChange,
   onApply,
   onCancel,
 }: TemplateDiffStripProps) {
   const [showDetails, setShowDetails] = useState(false);
-  const [keepPinned, setKeepPinned] = useState(false);
 
   const hasRemovals = preview.removed.length > 0;
   const hasPinnedRemovals = preview.removedPinned.length > 0;
@@ -43,9 +46,26 @@ export function TemplateDiffStrip({
     ? diffParts.join(' • ') 
     : 'No net change';
 
+  // Keyboard navigation: Enter to apply, Escape to cancel
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Enter' && !isNoNetChange) {
+        e.preventDefault();
+        onApply();
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        onCancel();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isNoNetChange, onApply, onCancel]);
+
   return (
     <div
-      role="status"
+      role="region"
+      aria-label="Template change preview"
       aria-live="polite"
       className="sticky top-0 z-20 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg p-3 mb-4 space-y-3"
     >
@@ -92,14 +112,14 @@ export function TemplateDiffStrip({
         <div className="flex items-start gap-2">
           <Button
             size="sm"
-            onClick={() => onApply(keepPinned)}
+            onClick={onApply}
             className="h-8 text-xs"
             disabled={isNoNetChange}
             title={
               isNoNetChange 
                 ? 'No changes to apply' 
                 : !keepPinned && hasPinnedRemovals 
-                  ? 'Will replace pinned items'
+                  ? `Apply (will replace ${preview.removedPinned.length} pinned course${preview.removedPinned.length !== 1 ? 's' : ''})`
                   : 'Apply template changes'
             }
             autoFocus
@@ -123,7 +143,7 @@ export function TemplateDiffStrip({
           <input
             type="checkbox"
             checked={keepPinned}
-            onChange={(e) => setKeepPinned(e.target.checked)}
+            onChange={(e) => onKeepPinnedChange(e.target.checked)}
             className="w-4 h-4"
           />
           <span className="text-xs text-blue-900 dark:text-blue-100">

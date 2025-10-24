@@ -43,12 +43,15 @@ export function SelectedCourseChips({
     }
   };
   
-  // Smart removal suggestions (auto-filled first, lowest CRI)
+  // Smart removal suggestions: auto-filled/prereq first, exclude pinned, lowest CRI first
   const suggestedRemovals = useMemo(() => {
     if (!isOverCredits) return [];
     
     return [...basketItems]
-      .filter(item => item.status === 'auto-filled' || item.status === 'prereq')
+      .filter(item => 
+        item.status !== 'pinned' && 
+        (item.status === 'auto-filled' || item.status === 'prereq')
+      )
       .sort((a, b) => {
         // Auto-filled first
         if (a.status === 'auto-filled' && b.status !== 'auto-filled') return -1;
@@ -91,8 +94,16 @@ export function SelectedCourseChips({
             },
           });
           
-          // Move focus to next or previous chip
-          setFocusedIndex(Math.min(focusedIndex, basketItems.length - 2));
+          // Move focus after removal
+          const newIndex = Math.min(focusedIndex, basketItems.length - 2);
+          if (newIndex < 0) {
+            // Focus add course button or container if available
+            setFocusedIndex(-1);
+            const addBtn = document.querySelector('[data-add-course-btn]') as HTMLElement;
+            if (addBtn) addBtn.focus();
+          } else {
+            setFocusedIndex(newIndex);
+          }
         }
       } else if (e.key === 'Escape') {
         e.preventDefault();
@@ -111,6 +122,19 @@ export function SelectedCourseChips({
       chipsRef.current[focusedIndex]?.focus();
     }
   }, [focusedIndex]);
+
+  // Safe formatters for data
+  const formatCost = (cost: number | null | undefined) => 
+    cost != null && cost > 0 ? `$${cost}` : 'Free';
+  
+  const formatDuration = (weeks: number | null | undefined) =>
+    weeks != null && weeks > 0 ? `${weeks}w` : 'N/A';
+  
+  const formatCRI = (cri: number | null | undefined) =>
+    cri != null ? Math.round(cri) : 'N/A';
+  
+  const formatWorkload = (hours: number | null | undefined) =>
+    hours != null && hours > 0 ? `${Math.round(hours)}h/w` : 'N/A';
 
   return (
     <div className="space-y-3" role="group" aria-label="Selected courses">
@@ -173,23 +197,19 @@ export function SelectedCourseChips({
                 <div className="grid grid-cols-2 gap-2 pt-2 border-t">
                   <div>
                     <div className="text-muted-foreground">Cost</div>
-                    <div className="font-medium">
-                      {item.cost_usd !== null ? `$${item.cost_usd}` : 'Free'}
-                    </div>
+                    <div className="font-medium">{formatCost(item.cost_usd)}</div>
                   </div>
                   <div>
                     <div className="text-muted-foreground">Duration</div>
-                    <div className="font-medium">
-                      {item.duration_weeks ? `${item.duration_weeks}w` : 'N/A'}
-                    </div>
+                    <div className="font-medium">{formatDuration(item.duration_weeks)}</div>
                   </div>
                   <div>
                     <div className="text-muted-foreground">CRI Score</div>
-                    <div className="font-medium">{Math.round(item.cri_score)}</div>
+                    <div className="font-medium">{formatCRI(item.cri_score)}</div>
                   </div>
                   <div>
                     <div className="text-muted-foreground">Workload</div>
-                    <div className="font-medium">{Math.round(item.workload_weekly_hours)}h/w</div>
+                    <div className="font-medium">{formatWorkload(item.workload_weekly_hours)}</div>
                   </div>
                 </div>
                 
