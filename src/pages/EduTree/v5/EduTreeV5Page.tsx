@@ -188,6 +188,17 @@ export default function EduTreeV5Page() {
       
       // Re-compute selectedSummary on each read for live updates when basket changes
       return base.map((mod) => {
+        // Debug: Log basket items for this module
+        const basketItemsForModule = basket.filter(b => b.moduleId === mod.id);
+        if (basketItemsForModule.length > 0) {
+          console.log('[V5Page] 🎯 Found basket items for module:', {
+            moduleId: mod.id,
+            moduleLabel: mod.label,
+            itemCount: basketItemsForModule.length,
+            courseIds: basketItemsForModule.map(i => i.courseId)
+          });
+        }
+        
         // Re-calculate progress from current basket
         const selectedSummary = computeModuleSummary(
           mod.id,

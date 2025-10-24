@@ -181,32 +181,29 @@ function convertToBasketItem(
   templateId: string,
   moduleId?: string
 ): BasketItem {
-  // Critical: moduleId must be a valid UUID, not a fallback to subject
-  // This prevents items from being orphaned with generic subjects like "Computer Science"
-  if (!moduleId || moduleId.length < 10) {
-    console.error(
-      `[Apply] ❌ CRITICAL: Missing or invalid moduleId for course ${option.courseId}`,
-      {
-        moduleId,
-        templateId,
-        courseId: option.courseId,
-        subject: option.subject,
-        fallbackWouldBe: option.subject || 'unknown'
-      }
-    );
-    // Use fallback but log loudly - this indicates a template configuration error
-    moduleId = option.subject || 'unknown';
-    console.warn(`[Apply] ⚠️ Using fallback moduleId: "${moduleId}" - basket item may be orphaned!`);
+  // Resolve moduleId: prefer parameter, fallback to option.moduleId if it exists
+  const resolvedModuleId = moduleId || (option as any).moduleId;
+
+  // Hard guard: must be a valid UUID (36 chars with dashes)
+  if (!resolvedModuleId || !/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(resolvedModuleId)) {
+    const error = `[Apply] CRITICAL: Missing or invalid moduleId for course ${option.courseId} in template ${templateId}`;
+    console.error(error, {
+      providedModuleId: moduleId,
+      optionModuleId: (option as any).moduleId,
+      optionSubject: option.subject,
+      resolved: resolvedModuleId
+    });
+    throw new Error(error); // Fail loudly instead of corrupting data
   }
 
   console.log(`[Apply] ✅ Converting to basket item:`, {
     courseId: option.courseId,
-    moduleId,
+    moduleId: resolvedModuleId,
     templateId
   });
 
   return {
-    moduleId,
+    moduleId: resolvedModuleId, // Always a valid UUID
     courseId: option.courseId,
     title: option.title ?? option.courseId,
     credits: option.credits,

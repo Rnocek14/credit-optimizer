@@ -60,8 +60,23 @@ export function useApplyTemplate() {
         removed: result.removed.length,
         conflicts: result.conflicts.length,
         addedCourseIds: result.added.map(i => i.courseId),
-        addedModuleIds: [...new Set(result.added.map(i => i.moduleId))],
+        addedModuleIds: result.added.map(i => ({ courseId: i.courseId, moduleId: i.moduleId })),
       });
+
+      // Verify all added items have valid UUID moduleIds
+      const invalidItems = result.added.filter(item => 
+        !/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(item.moduleId)
+      );
+      if (invalidItems.length > 0) {
+        console.error('[Apply] ❌ Invalid moduleIds detected:', invalidItems.map(i => ({
+          courseId: i.courseId,
+          moduleId: i.moduleId
+        })));
+        toast.error('Template application failed: invalid module identifiers', {
+          description: 'Some courses could not be added. Please contact support.',
+        });
+        return; // Don't add items with invalid IDs
+      }
 
       // Show conflicts as warnings (non-blocking)
       if (result.conflicts.length > 0) {
