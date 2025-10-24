@@ -9,21 +9,26 @@ import { trackTelemetryEvent } from '@/utils/telemetry';
 interface TemplateDiffStripProps {
   preview: TemplatePreview;
   templateLabel: string;
+  moduleId: string;
   keepPinned: boolean;
   onKeepPinnedChange: (value: boolean) => void;
   onApply: () => void;
   onCancel: () => void;
+  isApplying?: boolean;
 }
 
 export function TemplateDiffStrip({
   preview,
   templateLabel,
+  moduleId,
   keepPinned,
   onKeepPinnedChange,
   onApply,
   onCancel,
+  isApplying = false,
 }: TemplateDiffStripProps) {
   const [showDetails, setShowDetails] = useState(false);
+  const [lastEnterPress, setLastEnterPress] = useState(0);
 
   const hasRemovals = preview.removed.length > 0;
   const hasPinnedRemovals = preview.removedPinned.length > 0;
@@ -49,11 +54,13 @@ export function TemplateDiffStrip({
 
   // Track when apply blocked or executed
   const handleApplyClick = () => {
+    if (isNoNetChange || isApplying) return;
+    
     if (isNoNetChange) {
       void trackTelemetryEvent({
         task: 'apply_blocked_no_net_change',
         scope: 'module',
-        complexity: { templateLabel }
+        complexity: { templateLabel, moduleId }
       });
       return;
     }
@@ -74,21 +81,6 @@ export function TemplateDiffStrip({
     });
   };
 
-  // Keyboard navigation: Enter to apply, Escape to cancel
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Enter' && !isNoNetChange) {
-        e.preventDefault();
-        handleApplyClick();
-      } else if (e.key === 'Escape') {
-        e.preventDefault();
-        onCancel();
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isNoNetChange, handleApplyClick, onCancel]);
 
   // Track cross-scope preview (once on mount/change)
   useEffect(() => {
@@ -105,11 +97,29 @@ export function TemplateDiffStrip({
     }
   }, [preview.touchesOtherScopes, preview.added, templateLabel]);
 
+  // Local keyboard handler (not global)
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !isNoNetChange && !isApplying) {
+      // Debounce double-press (250ms)
+      const now = Date.now();
+      if (now - lastEnterPress < 250) return;
+      setLastEnterPress(now);
+      
+      e.preventDefault();
+      handleApplyClick();
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      onCancel();
+    }
+  };
+
   return (
     <div
       role="region"
       aria-label="Template change preview"
       aria-live="polite"
+      tabIndex={-1}
+      onKeyDown={handleKeyDown}
       className="sticky top-0 z-20 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg p-3 mb-4 space-y-3"
     >
       {/* Header */}
@@ -157,7 +167,7 @@ export function TemplateDiffStrip({
             size="sm"
             onClick={handleApplyClick}
             className="h-8 text-xs"
-            disabled={isNoNetChange}
+            disabled={isNoNetChange || isApplying}
             title={
               isNoNetChange 
                 ? 'No changes to apply' 
@@ -167,7 +177,11 @@ export function TemplateDiffStrip({
             }
             autoFocus
           >
-            Apply
+            {isApplying 
+              ? 'Applying...' 
+              : !keepPinned && hasPinnedRemovals 
+                ? `Apply (replaces ${preview.removedPinned.length})`
+                : 'Apply'}
           </Button>
           <Button
             size="sm"
@@ -238,9 +252,16 @@ export function TemplateDiffStrip({
                 {preview.added.map(item => (
                   <div
                     key={item.courseId}
-                    className="text-xs px-2 py-1 rounded bg-green-50 dark:bg-green-950/20 text-green-700 dark:text-green-300"
+                    className="text-xs px-2 py-1 rounded bg-green-50 dark:bg-green-950/20 text-green-700 dark:text-green-300 flex items-center justify-between gap-2"
                   >
-                    {item.courseId} ({item.credits}cr, ${item.cost_usd || 0})
+                    <span>
+                      {item.courseId} ({item.credits}cr, ${item.cost_usd || 0})
+                    </span>
+                    {item.moduleId !== moduleId && (
+                      <Badge variant="outline" className="text-xs py-0">
+                        Other Module
+                      </Badge>
+                    )}
                   </div>
                 ))}
               </div>

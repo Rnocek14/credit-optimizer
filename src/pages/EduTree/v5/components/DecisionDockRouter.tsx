@@ -745,22 +745,30 @@ function MarketplaceContent(props: DecisionDockRouterProps) {
   // Persist last tab per module (SSR-safe)
   const [activeTabState, setActiveTabState] = useState(activeTab || 'templates');
 
-  // Load from localStorage on mount (client-side only)
+  // Load from localStorage on mount (client-side only, with error handling)
   useEffect(() => {
     if (typeof window !== 'undefined' && moduleId) {
       const storageKey = `edutree-last-tab-${moduleId}`;
-      const stored = localStorage.getItem(storageKey);
-      if (stored) setActiveTabState(stored);
+      try {
+        const stored = localStorage.getItem(storageKey);
+        if (stored) setActiveTabState(stored);
+      } catch (e) {
+        console.debug('[Persist] localStorage read failed:', e);
+      }
     }
   }, [moduleId]);
 
   const handleTabChange = (tab: string) => {
     setActiveTabState(tab);
     
-    // Persist to localStorage (client-side only)
+    // Persist to localStorage (client-side only, with error handling)
     if (typeof window !== 'undefined' && moduleId) {
       const storageKey = `edutree-last-tab-${moduleId}`;
-      localStorage.setItem(storageKey, tab);
+      try {
+        localStorage.setItem(storageKey, tab);
+      } catch (e) {
+        console.debug('[Persist] localStorage write failed:', e);
+      }
     }
     
     void trackTelemetryEvent({

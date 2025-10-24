@@ -64,64 +64,59 @@ export function SelectedCourseChips({
       .slice(0, 3);
   }, [basketItems, isOverCredits]);
   
-  // Keyboard navigation
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (focusedIndex === -1) return;
-      
-      if (e.key === 'ArrowLeft') {
-        e.preventDefault();
-        setFocusedIndex(Math.max(0, focusedIndex - 1));
-      } else if (e.key === 'ArrowRight') {
-        e.preventDefault();
-        setFocusedIndex(Math.min(basketItems.length - 1, focusedIndex + 1));
-      } else if (e.key === 'Delete' || e.key === 'Backspace') {
-        e.preventDefault();
-        const item = basketItems[focusedIndex];
-        if (item) {
-          onRemove(item.courseId);
-          toast.message(`Removed ${item.courseId}`, {
-            description: `${item.credits}cr freed`,
-          });
-          
-          void trackTelemetryEvent({
-            task: 'chip_removed',
-            scope: 'module',
-            complexity: {
-              moduleId,
-              courseId: item.courseId,
-              source: item.status,
-              credits: item.credits,
-              cri: item.cri_score,
-            },
-          });
-          
-          // Move focus after removal
-          const newIndex = Math.min(focusedIndex, basketItems.length - 2);
-          if (newIndex < 0) {
-            // Focus add course button or chips list container as fallback
-            setFocusedIndex(-1);
-            const addBtn = document.querySelector('[data-add-course-btn]') as HTMLElement;
-            const chipsList = document.querySelector('[data-chips-list]') as HTMLElement;
-            if (addBtn) {
-              addBtn.focus();
-            } else if (chipsList) {
-              chipsList.focus();
-            }
-          } else {
-            setFocusedIndex(newIndex);
-          }
-        }
-      } else if (e.key === 'Escape') {
-        e.preventDefault();
-        setFocusedIndex(-1);
-        chipsRef.current[focusedIndex]?.blur();
-      }
-    };
+  // Local keyboard handler (not global)
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (focusedIndex === -1) return;
     
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [focusedIndex, basketItems, onRemove, moduleId]);
+    if (e.key === 'ArrowLeft') {
+      e.preventDefault();
+      setFocusedIndex(Math.max(0, focusedIndex - 1));
+    } else if (e.key === 'ArrowRight') {
+      e.preventDefault();
+      setFocusedIndex(Math.min(basketItems.length - 1, focusedIndex + 1));
+    } else if (e.key === 'Delete' || e.key === 'Backspace') {
+      e.preventDefault();
+      const item = basketItems[focusedIndex];
+      if (item) {
+        onRemove(item.courseId);
+        toast.message(`Removed ${item.courseId}`, {
+          description: `${item.credits}cr freed`,
+        });
+        
+        void trackTelemetryEvent({
+          task: 'chip_removed',
+          scope: 'module',
+          complexity: {
+            moduleId,
+            courseId: item.courseId,
+            source: item.status,
+            credits: item.credits,
+            cri: item.cri_score,
+          },
+        });
+        
+        // Move focus after removal
+        const newIndex = Math.min(focusedIndex, basketItems.length - 2);
+        if (newIndex < 0) {
+          // Focus add course button or chips list container as fallback
+          setFocusedIndex(-1);
+          const addBtn = document.querySelector('[data-add-course-btn]') as HTMLElement;
+          const chipsList = document.querySelector('[data-chips-list]') as HTMLElement;
+          if (addBtn) {
+            addBtn.focus();
+          } else if (chipsList) {
+            chipsList.focus();
+          }
+        } else {
+          setFocusedIndex(newIndex);
+        }
+      }
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      setFocusedIndex(-1);
+      chipsRef.current[focusedIndex]?.blur();
+    }
+  };
   
   // Auto-focus when index changes
   useEffect(() => {
@@ -159,17 +154,19 @@ export function SelectedCourseChips({
         aria-label={`Selected courses for ${moduleLabel || 'this module'}`}
         aria-activedescendant={focusedIndex >= 0 ? `chip-${focusedIndex}` : undefined}
         data-chips-list
+        tabIndex={-1}
+        onKeyDown={handleKeyDown}
         className="flex flex-wrap gap-2"
       >
         {basketItems.map((item, index) => (
-          <HoverCard key={item.courseId} openDelay={150}>
+          <HoverCard key={`${item.moduleId}:${item.courseId}:${item.providerCode || ''}`} openDelay={150}>
             <HoverCardTrigger asChild>
               <div
                 id={`chip-${index}`}
                 ref={(el) => { chipsRef.current[index] = el; }}
                 role="option"
                 aria-selected={focusedIndex === index}
-                tabIndex={0}
+                tabIndex={focusedIndex === index || (focusedIndex === -1 && index === 0) ? 0 : -1}
                 onFocus={() => setFocusedIndex(index)}
                 onBlur={() => setFocusedIndex(-1)}
                 className="group relative flex items-center gap-1.5 px-2.5 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-900 dark:text-blue-100 rounded-md text-xs border border-blue-200 dark:border-blue-800 cursor-pointer focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all"

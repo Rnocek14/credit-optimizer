@@ -13,6 +13,7 @@ import { useApplyTemplate } from '../../hooks/useApplyTemplate';
 import { previewTemplate } from '../../engine/previewTemplate';
 import { TemplateDiffStrip } from '../TemplateDiffStrip';
 import type { TemplatePreview } from '../../engine/previewTemplate';
+import { X } from 'lucide-react';
 
 interface ModuleTemplatesPanelProps {
   module: ModuleData;
@@ -29,6 +30,9 @@ export function ModuleTemplatesPanel({ module, allModules, onAddTemplate }: Modu
   const [previewingTemplate, setPreviewingTemplate] = useState<ModuleTemplate | null>(null);
   const [preview, setPreview] = useState<TemplatePreview | null>(null);
   const [keepPinned, setKeepPinned] = useState(false);
+  const [isApplying, setIsApplying] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   
   const allOptions = useMemo(() => allModules.flatMap(m => m.marketplaceOptions ?? []), [allModules]);
   const basketKey = useMemo(() => basket.map(b => b.courseId).sort().join('|'), [basket]);
@@ -59,6 +63,12 @@ export function ModuleTemplatesPanel({ module, allModules, onAddTemplate }: Modu
     void trackTelemetryEvent({ task: 'template_preview_shown', scope: 'module', complexity: { templateId: template.id }});
   };
 
+  // Debounce search query (200ms)
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(searchQuery), 200);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
   // Live preview update when keepPinned changes
   useEffect(() => {
     if (previewingTemplate) {
@@ -75,31 +85,49 @@ export function ModuleTemplatesPanel({ module, allModules, onAddTemplate }: Modu
     }
   }, [keepPinned, previewingTemplate, basket, constraints, allOptions, module.id, module.creditsRequired]);
 
-  const handleApplyPreview = (keepPinned: boolean) => {
-    if (!previewingTemplate) return;
+  // Filter templates by search query
+  const filteredTemplates = useMemo(() => {
+    if (!rankedTemplates) return [];
+    if (!debouncedSearch.trim()) return rankedTemplates;
     
-    // Guard: ensure template ID still matches (avoid race if list re-ranked)
-    if (previewingTemplate.id !== preview?.added[0]?.source?.templateId && preview?.added.length) {
+    const query = debouncedSearch.toLowerCase();
+    return rankedTemplates.filter(rt => 
+      rt.template.label.toLowerCase().includes(query) ||
+      rt.template.summary?.toLowerCase().includes(query)
+    );
+  }, [rankedTemplates, debouncedSearch]);
+
+  const handleApplyPreview = async (keepPinned: boolean) => {
+    if (!previewingTemplate || !preview || isApplying) return;
+    
+    // Guard: ensure template ID still matches using preview.templateId
+    if (preview.templateId !== previewingTemplate.id) {
       console.warn('[Apply] Template mismatch detected, aborting');
       return;
     }
     
-    applyTemplateFn(previewingTemplate, allOptions, { keepPinned });
+    setIsApplying(true);
     
-    void trackTelemetryEvent({ 
-      task: 'template_preview_confirmed', 
-      scope: 'module', 
-      complexity: { 
-        templateId: previewingTemplate.id, 
-        keepPinned,
-        costDelta: preview?.costDelta,
-        weeksDelta: preview?.weeksDelta,
-      }
-    });
-    
-    setPreviewingTemplate(null);
-    setPreview(null);
-    onAddTemplate(previewingTemplate);
+    try {
+      applyTemplateFn(previewingTemplate, allOptions, { keepPinned });
+      
+      void trackTelemetryEvent({ 
+        task: 'template_preview_confirmed', 
+        scope: 'module', 
+        complexity: { 
+          templateId: previewingTemplate.id, 
+          keepPinned,
+          costDelta: preview.costDelta,
+          weeksDelta: preview.weeksDelta,
+        }
+      });
+      
+      setPreviewingTemplate(null);
+      setPreview(null);
+      onAddTemplate(previewingTemplate);
+    } finally {
+      setIsApplying(false);
+    }
   };
 
   const handleCancelPreview = () => {
@@ -117,15 +145,52 @@ export function ModuleTemplatesPanel({ module, allModules, onAddTemplate }: Modu
       {preview && previewingTemplate && (
         <TemplateDiffStrip 
           preview={preview} 
-          templateLabel={previewingTemplate.label} 
+          templateLabel={previewingTemplate.label}
+          moduleId={module.id}
           keepPinned={keepPinned}
           onKeepPinnedChange={setKeepPinned}
-          onApply={() => handleApplyPreview(keepPinned)} 
-          onCancel={handleCancelPreview} 
+          onApply={() => handleApplyPreview(keepPinned)}
+          onCancel={handleCancelPreview}
+          isApplying={isApplying}
         />
       )}
+      
+      {/* Search Input */}
+      {rankedTemplates && rankedTemplates.length > 5 && (
+        <div className="relative">
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search templates..."
+            className="w-full px-3 py-2 text-sm border border-border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-primary"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+      )}
+      
       <div className="template-gallery">
-        {rankedTemplates.map(rt => <TemplateCard key={rt.template.id} template={rt.template} validation={rt.validation} onAdd={() => handlePreviewTemplate(rt.template)} />)}
+        {filteredTemplates.length > 0 ? (
+          filteredTemplates.map(rt => (
+            <TemplateCard 
+              key={rt.template.id} 
+              template={rt.template} 
+              validation={rt.validation} 
+              onAdd={() => handlePreviewTemplate(rt.template)} 
+            />
+          ))
+        ) : (
+          <div className="text-center py-8 text-muted-foreground text-sm">
+            No templates match "{searchQuery}"
+          </div>
+        )}
       </div>
     </div>
   );

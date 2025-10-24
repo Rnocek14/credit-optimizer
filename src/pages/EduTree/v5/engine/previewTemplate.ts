@@ -3,6 +3,7 @@ import type { ModuleTemplate } from '../types/templates';
 import type { BasketItem, Constraints } from '../state/usePlanBasket';
 
 export interface TemplatePreview {
+  templateId: string; // Identity for safe preview→apply matching
   added: BasketItem[];
   removed: BasketItem[];
   removedPinned: BasketItem[];
@@ -91,6 +92,7 @@ export function previewTemplate({
   const exceedsBy = Math.max(0, projectedCredits - creditsRequired);
 
   return {
+    templateId: template.id, // For safe identity check in apply
     added: finalAdded,
     removed: finalRemoved,
     removedPinned,

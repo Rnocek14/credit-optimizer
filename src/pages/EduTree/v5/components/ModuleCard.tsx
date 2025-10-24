@@ -189,6 +189,7 @@ export function ModuleCard({
         <div className="p-4 pt-0 space-y-3" onClick={e => e.stopPropagation()}>
           <SelectedCourseChips 
             moduleId={id}
+            moduleLabel={label}
             basketItems={basketItems}
             onRemove={removeItemWithToast}
             creditsRequired={creditsRequired}

@@ -48,6 +48,11 @@ export function useApplyTemplate() {
         allOptions,
       };
 
+      // Capture module state BEFORE applying template (for undo restoration)
+      const previousModuleState = template.moduleId 
+        ? usePlanBasket.getState().moduleStates[template.moduleId] 
+        : undefined;
+
       // Execute apply - captures undoSnapshot BEFORE any filtering
       // This ensures undo can restore the exact pre-apply state
       const result = applyTemplate({
@@ -152,18 +157,25 @@ export function useApplyTemplate() {
             finalAdded.forEach(item => removeItem(item.courseId));
             result.undoSnapshot.forEach(item => addItem(item));
             
-            // Restore module state if template was tracked
+            // Restore module state to pre-template snapshot
             if (template.moduleId) {
-              const getModuleState = usePlanBasket.getState().moduleStates[template.moduleId];
               const clearModuleState = usePlanBasket.getState().clearModuleState;
+              const setModuleState = usePlanBasket.getState().setModuleState;
               
-              // Clear current module state (revert to pre-template)
-              clearModuleState(template.moduleId);
-              
-              console.log('[Undo] Module state restored:', {
-                moduleId: template.moduleId,
-                hadState: !!getModuleState
-              });
+              if (previousModuleState) {
+                // Restore exact previous state
+                setModuleState(template.moduleId, previousModuleState);
+                console.log('[Undo] Module state restored to previous:', {
+                  moduleId: template.moduleId,
+                  restoredTemplateId: previousModuleState.templateId
+                });
+              } else {
+                // No previous state - clear it
+                clearModuleState(template.moduleId);
+                console.log('[Undo] Module state cleared:', {
+                  moduleId: template.moduleId
+                });
+              }
             }
             
             toast.message('Template reverted');
