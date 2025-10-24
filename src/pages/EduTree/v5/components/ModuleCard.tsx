@@ -6,8 +6,14 @@ import { usePlanStore } from '../state/usePlanStore';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { DraggableCourseChip } from './drag/DraggableCourseChip';
+import { usePlanBasket } from '../state/usePlanBasket';
+import { usePlanBasketWithToasts } from '../hooks/usePlanBasketWithToasts';
+import { SelectedCourseChips } from './SelectedCourseChips';
+import { TemplateActions } from './TemplateActions';
+import type { NodeSelectedSummary } from '../types/nodeProgress';
 
 interface ModuleCardProps extends ModuleData {
+  selectedSummary?: NodeSelectedSummary;
   onToggle: () => void;
   onCourseClick?: (courseId: string) => void;
   cheapestOption?: number | null;
@@ -32,12 +38,20 @@ export function ModuleCard({
   cheapestOption,
   onOpenPanel,
   yearEarned = 0,
-  yearCap = 30
+  yearCap = 30,
+  selectedSummary
 }: ModuleCardProps) {
   const progress = creditsRequired > 0 ? (creditsEarned / creditsRequired) * 100 : 0;
   const selections = usePlanStore(s => s.selections);
   const toggleCourse = usePlanStore(s => s.toggleCourse);
   const selectedIds = selections[id]?.selected ?? [];
+  
+  const basket = usePlanBasket(s => s.items);
+  const { removeItemWithToast } = usePlanBasketWithToasts();
+  
+  // State detection: show chips view if user has selected courses in basket
+  const hasSelectedCourses = selectedSummary && !selectedSummary.isEmpty;
+  const basketItems = basket.filter(b => b.moduleId === id);
   
   const [sortBy, setSortBy] = useState<'cheapest' | 'shortest' | 'credits'>('cheapest');
 
@@ -151,146 +165,165 @@ export function ModuleCard({
         </div>
       </div>
       
-      {/* Courses List - Expandable */}
-      {!isCollapsed && courses.length > 0 && (
-        <div className="module-courses p-4 pt-0 space-y-2" onClick={e => e.stopPropagation()}>
-          {courses.map(course => (
-            <CourseCard
-              key={course.courseId}
-              courseId={course.courseId}
-              title={course.title}
-              credits={course.credits}
-              subject={course.subject}
-              onClick={() => onCourseClick?.(course.courseId)}
-            />
-          ))}
+      {/* Conditional rendering: chips view when courses selected, marketplace when empty */}
+      {!isCollapsed && hasSelectedCourses ? (
+        <div className="p-4 pt-0 space-y-3" onClick={e => e.stopPropagation()}>
+          <SelectedCourseChips 
+            moduleId={id}
+            basketItems={basketItems}
+            onRemove={removeItemWithToast}
+            creditsRequired={creditsRequired}
+          />
+          <TemplateActions 
+            moduleId={id}
+            hasTemplate={!!selectedSummary.templateSource}
+            onChangeTemplate={() => onOpenPanel?.()}
+          />
         </div>
-      )}
-      
-      {/* Available Options - Expandable */}
-      {!isCollapsed && marketplaceOptions && marketplaceOptions.length > 0 && (
-        <div className="module-courses p-4 pt-0 space-y-2" onClick={e => e.stopPropagation()}>
-          <div className="flex items-center justify-between mb-2">
-            <div className="text-xs font-semibold text-muted-foreground">
-              Available Options
+      ) : (
+        <>
+          {/* Courses List - Expandable */}
+          {!isCollapsed && courses.length > 0 && (
+            <div className="module-courses p-4 pt-0 space-y-2" onClick={e => e.stopPropagation()}>
+              {courses.map(course => (
+                <CourseCard
+                  key={course.courseId}
+                  courseId={course.courseId}
+                  title={course.title}
+                  credits={course.credits}
+                  subject={course.subject}
+                  onClick={() => onCourseClick?.(course.courseId)}
+                />
+              ))}
             </div>
-            <select 
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as any)}
-              className="text-xs px-2 py-1 rounded border border-border bg-background hover:bg-accent/50 cursor-pointer transition-colors"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <option value="cheapest">💰 Cheapest</option>
-              <option value="shortest">⚡ Shortest</option>
-              <option value="credits">📊 Most Credits</option>
-            </select>
-          </div>
-          {sortedOptions.map(option => {
-            const isSelected = selectedIds.includes(option.courseId);
-            const optionCredits = Number(option.credits) || 0;
-            const wouldExceedYearCap = !isSelected && yearEarned + optionCredits > yearCap;
-            const atMax = !isSelected && (selections[id]?.selectedCredits ?? 0) >= creditsRequired;
-            
-            return (
-              <DraggableCourseChip key={option.id} course={option}>
-                <div
-                  className={`course-card bg-background rounded-md p-1.5 hover:bg-accent/50 transition-all flex items-center gap-2 ${
-                    isSelected ? 'border-2 border-primary bg-primary/5' : 'border border-border'
-                  }`}
-                >
-                  <Checkbox 
-                    checked={isSelected}
-                    onCheckedChange={() => {
-                      if (!atMax && !wouldExceedYearCap) {
-                        toggleCourse(id, option.courseId, optionCredits, creditsRequired);
-                      }
-                    }}
-                    disabled={atMax || wouldExceedYearCap}
-                  />
-                  <div className="flex-1 min-w-0">
-                    <div className="text-[11px] font-medium truncate leading-tight">
-                      {option.courseId}: {option.title}
-                    </div>
-                    <div className="text-[10px] text-muted-foreground flex items-center gap-1 mt-0.5 flex-wrap">
-                      <span>{option.credits} cr</span>
-                      
-                      {/* Provider badge with icon */}
-                      {option.providerType && (
-                        <span className={`ml-1 px-1.5 py-0.5 rounded text-[10px] font-medium ${
-                          option.providerType === 'university' 
-                            ? 'bg-blue-100 text-blue-700'
-                            : option.providerType === 'mooc'
-                            ? 'bg-purple-100 text-purple-700'
-                            : option.providerType === 'bootcamp'
-                            ? 'bg-orange-100 text-orange-700'
-                            : option.providerType === 'testing_center'
-                            ? 'bg-amber-100 text-amber-700'
-                            : 'bg-gray-100 text-gray-700'
-                        }`}>
-                          {option.providerType === 'university' && '🎓'}
-                          {option.providerType === 'mooc' && '🌐'}
-                          {option.providerType === 'bootcamp' && '⚡'}
-                          {option.providerType === 'testing_center' && '📝'}
-                          {' '}{option.provider}
-                        </span>
-                      )}
-                      
-                      {/* Price badge */}
-                  {option.cost_usd !== null && (
-                    <span className="ml-1 px-1.5 py-0.5 rounded bg-green-100 text-green-700 text-[10px] font-medium">
-                      {option.cost_usd === 0 ? 'Included' : `$${new Intl.NumberFormat().format(option.cost_usd)}`}
-                    </span>
-                  )}
-                      
-                      {/* Duration */}
-                      {option.duration_weeks && (
-                        <span className="ml-1 text-[10px]">
-                          {option.duration_weeks}w
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  {isSelected ? (
-                    <Badge variant="default" className="text-[10px] px-2 py-0.5 whitespace-nowrap">
-                      ✓ Selected
-                    </Badge>
-                  ) : (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (!atMax && !wouldExceedYearCap) {
-                          toggleCourse(id, option.courseId, optionCredits, creditsRequired);
-                        }
-                      }}
-                      disabled={atMax || wouldExceedYearCap}
-                      className={`text-[10px] px-2 py-1 rounded transition-colors whitespace-nowrap ${
-                        atMax || wouldExceedYearCap
-                          ? 'bg-muted text-muted-foreground cursor-not-allowed'
-                          : 'bg-primary/10 text-primary hover:bg-primary/20'
-                      }`}
-                      title={
-                        wouldExceedYearCap && !isSelected
-                          ? `Year cap reached (${yearCap} cr)`
-                          : atMax
-                          ? 'Module max reached'
-                          : ''
-                      }
-                    >
-                      {(atMax || wouldExceedYearCap) ? 'Cap Reached' : 'Select'}
-                    </button>
-                  )}
+          )}
+          
+          {/* Available Options - Expandable */}
+          {!isCollapsed && marketplaceOptions && marketplaceOptions.length > 0 && (
+            <div className="module-courses p-4 pt-0 space-y-2" onClick={e => e.stopPropagation()}>
+              <div className="flex items-center justify-between mb-2">
+                <div className="text-xs font-semibold text-muted-foreground">
+                  Available Options
                 </div>
-              </DraggableCourseChip>
-            );
-          })}
-        </div>
-      )}
+                <select 
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value as any)}
+                  className="text-xs px-2 py-1 rounded border border-border bg-background hover:bg-accent/50 cursor-pointer transition-colors"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <option value="cheapest">💰 Cheapest</option>
+                  <option value="shortest">⚡ Shortest</option>
+                  <option value="credits">📊 Most Credits</option>
+                </select>
+              </div>
+              {sortedOptions.map(option => {
+                const isSelected = selectedIds.includes(option.courseId);
+                const optionCredits = Number(option.credits) || 0;
+                const wouldExceedYearCap = !isSelected && yearEarned + optionCredits > yearCap;
+                const atMax = !isSelected && (selections[id]?.selectedCredits ?? 0) >= creditsRequired;
+                
+                return (
+                  <DraggableCourseChip key={option.id} course={option}>
+                    <div
+                      className={`course-card bg-background rounded-md p-1.5 hover:bg-accent/50 transition-all flex items-center gap-2 ${
+                        isSelected ? 'border-2 border-primary bg-primary/5' : 'border border-border'
+                      }`}
+                    >
+                      <Checkbox 
+                        checked={isSelected}
+                        onCheckedChange={() => {
+                          if (!atMax && !wouldExceedYearCap) {
+                            toggleCourse(id, option.courseId, optionCredits, creditsRequired);
+                          }
+                        }}
+                        disabled={atMax || wouldExceedYearCap}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="text-[11px] font-medium truncate leading-tight">
+                          {option.courseId}: {option.title}
+                        </div>
+                        <div className="text-[10px] text-muted-foreground flex items-center gap-1 mt-0.5 flex-wrap">
+                          <span>{option.credits} cr</span>
+                          
+                          {/* Provider badge with icon */}
+                          {option.providerType && (
+                            <span className={`ml-1 px-1.5 py-0.5 rounded text-[10px] font-medium ${
+                              option.providerType === 'university' 
+                                ? 'bg-blue-100 text-blue-700'
+                                : option.providerType === 'mooc'
+                                ? 'bg-purple-100 text-purple-700'
+                                : option.providerType === 'bootcamp'
+                                ? 'bg-orange-100 text-orange-700'
+                                : option.providerType === 'testing_center'
+                                ? 'bg-amber-100 text-amber-700'
+                                : 'bg-gray-100 text-gray-700'
+                            }`}>
+                              {option.providerType === 'university' && '🎓'}
+                              {option.providerType === 'mooc' && '🌐'}
+                              {option.providerType === 'bootcamp' && '⚡'}
+                              {option.providerType === 'testing_center' && '📝'}
+                              {' '}{option.provider}
+                            </span>
+                          )}
+                          
+                          {/* Price badge */}
+                      {option.cost_usd !== null && (
+                        <span className="ml-1 px-1.5 py-0.5 rounded bg-green-100 text-green-700 text-[10px] font-medium">
+                          {option.cost_usd === 0 ? 'Included' : `$${new Intl.NumberFormat().format(option.cost_usd)}`}
+                        </span>
+                      )}
+                          
+                          {/* Duration */}
+                          {option.duration_weeks && (
+                            <span className="ml-1 text-[10px]">
+                              {option.duration_weeks}w
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      {isSelected ? (
+                        <Badge variant="default" className="text-[10px] px-2 py-0.5 whitespace-nowrap">
+                          ✓ Selected
+                        </Badge>
+                      ) : (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (!atMax && !wouldExceedYearCap) {
+                              toggleCourse(id, option.courseId, optionCredits, creditsRequired);
+                            }
+                          }}
+                          disabled={atMax || wouldExceedYearCap}
+                          className={`text-[10px] px-2 py-1 rounded transition-colors whitespace-nowrap ${
+                            atMax || wouldExceedYearCap
+                              ? 'bg-muted text-muted-foreground cursor-not-allowed'
+                              : 'bg-primary/10 text-primary hover:bg-primary/20'
+                          }`}
+                          title={
+                            wouldExceedYearCap && !isSelected
+                              ? `Year cap reached (${yearCap} cr)`
+                              : atMax
+                              ? 'Module max reached'
+                              : ''
+                          }
+                        >
+                          {(atMax || wouldExceedYearCap) ? 'Cap Reached' : 'Select'}
+                        </button>
+                      )}
+                    </div>
+                  </DraggableCourseChip>
+                );
+              })}
+            </div>
+          )}
 
-      {/* Empty state when no options available */}
-      {!isCollapsed && (!marketplaceOptions || marketplaceOptions.length === 0) && courses.length === 0 && (
-        <div className="p-4 text-xs text-muted-foreground italic text-center">
-          No options available yet.
-        </div>
+          {/* Empty state when no options available */}
+          {!isCollapsed && (!marketplaceOptions || marketplaceOptions.length === 0) && courses.length === 0 && (
+            <div className="p-4 text-xs text-muted-foreground italic text-center">
+              No options available yet.
+            </div>
+          )}
+        </>
       )}
     </div>
   );
