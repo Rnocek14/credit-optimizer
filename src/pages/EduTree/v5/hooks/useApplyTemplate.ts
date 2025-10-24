@@ -17,7 +17,7 @@ export function useApplyTemplate() {
   const removeItem = usePlanBasket(s => s.removeItem);
 
   const apply = useCallback(
-    (template: ModuleTemplate, allOptions: any[]) => {
+    (template: ModuleTemplate, allOptions: any[], opts?: { keepPinned?: boolean }) => {
       // Validate template has valid moduleId
       if (!template.moduleId || template.moduleId.length < 10) {
         console.error('[Apply] ❌ Template missing valid moduleId:', {
@@ -107,13 +107,31 @@ export function useApplyTemplate() {
         });
       }
 
+      // Respect keepPinned option
+      let finalAdded = result.added;
+      let finalRemoved = result.removed;
+      
+      if (opts?.keepPinned) {
+        const removedPinned = result.removed.filter(i => i.status === 'pinned');
+        if (removedPinned.length > 0) {
+          const pinnedIds = new Set(removedPinned.map(i => i.courseId));
+          finalRemoved = result.removed.filter(i => !pinnedIds.has(i.courseId));
+          finalAdded = result.added.filter(i => !pinnedIds.has(i.courseId));
+          
+          console.log('[Apply] ✅ Kept pinned items:', {
+            pinnedCount: removedPinned.length,
+            keptIds: removedPinned.map(i => i.courseId),
+          });
+        }
+      }
+
       // Remove old items (in scope)
-      result.removed.forEach(item => removeItem(item.courseId));
+      finalRemoved.forEach(item => removeItem(item.courseId));
 
       // Add new items
-      result.added.forEach(item => addItem(item));
+      finalAdded.forEach(item => addItem(item));
 
-      // Unified toast with diff + undo
+      // Unified toast with diff + undo (using final counts)
       const { costDelta, weeksDelta, creditsDelta } = result.diff;
       const diffDescription = [
         costDelta !== 0 && `${costDelta >= 0 ? '+' : ''}$${costDelta}`,
@@ -129,7 +147,7 @@ export function useApplyTemplate() {
           label: 'Undo All',
           onClick: () => {
             // Restore snapshot
-            result.added.forEach(item => removeItem(item.courseId));
+            finalAdded.forEach(item => removeItem(item.courseId));
             result.undoSnapshot.forEach(item => addItem(item));
             toast.message('Template reverted');
 
@@ -138,7 +156,8 @@ export function useApplyTemplate() {
               scope: params.scope,
               complexity: {
                 templateId: template.id,
-                itemsReverted: result.added.length,
+                itemsReverted: finalAdded.length,
+                keptPinned: opts?.keepPinned,
               },
             });
 
@@ -168,11 +187,12 @@ export function useApplyTemplate() {
       logEvent('template_applied', {
         templateId: template.id,
         scope: params.scope,
-        itemsAdded: result.added.length,
-        itemsRemoved: result.removed.length,
+        itemsAdded: finalAdded.length,
+        itemsRemoved: finalRemoved.length,
+        keptPinned: opts?.keepPinned,
       });
 
-      return result;
+      return { ...result, added: finalAdded, removed: finalRemoved };
     },
     [basket, constraints, addItem, removeItem]
   );

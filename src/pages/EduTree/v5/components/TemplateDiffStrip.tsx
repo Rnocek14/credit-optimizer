@@ -24,6 +24,7 @@ export function TemplateDiffStrip({
   const hasRemovals = preview.removed.length > 0;
   const hasPinnedRemovals = preview.removedPinned.length > 0;
   const hasAdditions = preview.added.length > 0;
+  const isNoNetChange = preview.added.length === 0 && preview.removed.length === 0;
 
   // Format delta with sign
   const formatDelta = (value: number, prefix = '', suffix = '') => {
@@ -93,6 +94,14 @@ export function TemplateDiffStrip({
             size="sm"
             onClick={() => onApply(keepPinned)}
             className="h-8 text-xs"
+            disabled={isNoNetChange}
+            title={
+              isNoNetChange 
+                ? 'No changes to apply' 
+                : !keepPinned && hasPinnedRemovals 
+                  ? 'Will replace pinned items'
+                  : 'Apply template changes'
+            }
             autoFocus
           >
             Apply

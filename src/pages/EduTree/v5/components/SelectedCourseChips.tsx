@@ -1,6 +1,10 @@
-import { Badge } from '@/components/ui/badge';
-import { AlertTriangle } from 'lucide-react';
-import type { BasketItem } from '../state/usePlanBasket';
+import { useState, useRef, useEffect, useMemo } from 'react';
+import { Badge } from "@/components/ui/badge";
+import { AlertTriangle, X } from "lucide-react";
+import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
+import { toast } from 'sonner';
+import { trackTelemetryEvent } from '@/utils/telemetry';
+import type { BasketItem } from "../state/usePlanBasket";
 
 interface SelectedCourseChipsProps {
   moduleId: string;
@@ -9,63 +13,236 @@ interface SelectedCourseChipsProps {
   creditsRequired: number;
 }
 
-export function SelectedCourseChips({ 
-  moduleId, 
-  basketItems, 
-  onRemove, 
-  creditsRequired 
+export function SelectedCourseChips({
+  moduleId,
+  basketItems,
+  onRemove,
+  creditsRequired,
 }: SelectedCourseChipsProps) {
-  const totalCredits = basketItems.reduce((sum, i) => sum + i.credits, 0);
+  const totalCredits = basketItems.reduce((sum, item) => sum + item.credits, 0);
   const isOverCredits = totalCredits > creditsRequired;
   
-  return (
-    <div className="space-y-2">
-      {/* Summary header */}
-      <div className="flex items-center justify-between text-xs">
-        <span className="text-muted-foreground">
-          {basketItems.length} {basketItems.length === 1 ? 'course' : 'courses'} selected
-        </span>
-        {isOverCredits && (
-          <Badge variant="outline" className="text-xs border-warning text-warning">
-            <AlertTriangle className="w-3 h-3 mr-1" />
-            Over by {totalCredits - creditsRequired}cr
-          </Badge>
-        )}
-      </div>
+  const [focusedIndex, setFocusedIndex] = useState(-1);
+  const chipsRef = useRef<(HTMLDivElement | null)[]>([]);
+  
+  const getStatusIcon = (status: BasketItem['status']) => {
+    switch (status) {
+      case 'auto-filled': return '🤖';
+      case 'pinned': return '👤';
+      case 'prereq': return '⛓️';
+      default: return null;
+    }
+  };
+  
+  const getStatusLabel = (status: BasketItem['status']) => {
+    switch (status) {
+      case 'auto-filled': return 'Auto-filled';
+      case 'pinned': return 'Pinned';
+      case 'prereq': return 'Prerequisite';
+      default: return 'Manual';
+    }
+  };
+  
+  // Smart removal suggestions (auto-filled first, lowest CRI)
+  const suggestedRemovals = useMemo(() => {
+    if (!isOverCredits) return [];
+    
+    return [...basketItems]
+      .filter(item => item.status === 'auto-filled' || item.status === 'prereq')
+      .sort((a, b) => {
+        // Auto-filled first
+        if (a.status === 'auto-filled' && b.status !== 'auto-filled') return -1;
+        if (b.status === 'auto-filled' && a.status !== 'auto-filled') return 1;
+        // Then by lowest CRI
+        return a.cri_score - b.cri_score;
+      })
+      .slice(0, 3);
+  }, [basketItems, isOverCredits]);
+  
+  // Keyboard navigation
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (focusedIndex === -1) return;
       
-      {/* Course chips grid */}
-      <div className="flex flex-wrap gap-2">
-        {basketItems.map(item => (
-          <div
-            key={item.courseId}
-            className="group flex items-center gap-1.5 px-2 py-1 rounded-md border bg-background hover:bg-accent/50 transition-all text-xs"
-            title={item.title || item.courseId}
-          >
-            {/* Status icon */}
-            <span 
-              className="text-[10px]" 
-              title={item.status === 'auto-filled' ? 'Auto-filled from template' : item.status === 'pinned' ? 'Manually pinned' : 'Prerequisite'}
-            >
-              {item.status === 'auto-filled' ? '🤖' : item.status === 'pinned' ? '👤' : '🔗'}
-            </span>
+      if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        setFocusedIndex(Math.max(0, focusedIndex - 1));
+      } else if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        setFocusedIndex(Math.min(basketItems.length - 1, focusedIndex + 1));
+      } else if (e.key === 'Delete' || e.key === 'Backspace') {
+        e.preventDefault();
+        const item = basketItems[focusedIndex];
+        if (item) {
+          onRemove(item.courseId);
+          toast.message(`Removed ${item.courseId}`, {
+            description: `${item.credits}cr freed`,
+          });
+          
+          void trackTelemetryEvent({
+            task: 'chip_removed',
+            scope: 'module',
+            complexity: {
+              moduleId,
+              courseId: item.courseId,
+              source: item.status,
+              credits: item.credits,
+              cri: item.cri_score,
+            },
+          });
+          
+          // Move focus to next or previous chip
+          setFocusedIndex(Math.min(focusedIndex, basketItems.length - 2));
+        }
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        setFocusedIndex(-1);
+        chipsRef.current[focusedIndex]?.blur();
+      }
+    };
+    
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [focusedIndex, basketItems, onRemove, moduleId]);
+  
+  // Auto-focus when index changes
+  useEffect(() => {
+    if (focusedIndex >= 0 && chipsRef.current[focusedIndex]) {
+      chipsRef.current[focusedIndex]?.focus();
+    }
+  }, [focusedIndex]);
+
+  return (
+    <div className="space-y-3" role="group" aria-label="Selected courses">
+      <div className="flex items-center justify-between text-xs mb-2">
+        <span className="text-muted-foreground">
+          {basketItems.length} course{basketItems.length !== 1 ? 's' : ''} selected
+        </span>
+        <span className={totalCredits > creditsRequired ? 'text-yellow-600 dark:text-yellow-400 font-medium' : 'text-muted-foreground'}>
+          {totalCredits}/{creditsRequired} cr
+        </span>
+      </div>
+
+      <div 
+        role="listbox" 
+        aria-label="Selected courses"
+        aria-activedescendant={focusedIndex >= 0 ? `chip-${focusedIndex}` : undefined}
+        className="flex flex-wrap gap-2"
+      >
+        {basketItems.map((item, index) => (
+          <HoverCard key={item.courseId} openDelay={150}>
+            <HoverCardTrigger asChild>
+              <div
+                id={`chip-${index}`}
+                ref={(el) => { chipsRef.current[index] = el; }}
+                role="option"
+                aria-selected={focusedIndex === index}
+                tabIndex={0}
+                onFocus={() => setFocusedIndex(index)}
+                onBlur={() => setFocusedIndex(-1)}
+                className="group relative flex items-center gap-1.5 px-2.5 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-900 dark:text-blue-100 rounded-md text-xs border border-blue-200 dark:border-blue-800 cursor-pointer focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all"
+              >
+                <span aria-hidden="true">{getStatusIcon(item.status)}</span>
+                <span className="font-medium truncate max-w-[140px]">{item.courseId}</span>
+                <span className="text-blue-700 dark:text-blue-300">({item.credits}cr)</span>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onRemove(item.courseId);
+                  }}
+                  className="ml-1 p-0.5 hover:bg-blue-200 dark:hover:bg-blue-800 rounded opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity"
+                  aria-label={`Remove ${item.courseId}`}
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </div>
+            </HoverCardTrigger>
             
-            {/* Course info */}
-            <span className="font-medium truncate max-w-[120px]">
-              {item.courseId}
-            </span>
-            <span className="text-muted-foreground">{item.credits}cr</span>
-            
-            {/* Remove button (appears on hover) */}
-            <button
-              onClick={() => onRemove(item.courseId)}
-              className="opacity-0 group-hover:opacity-100 transition-opacity ml-1 hover:text-destructive"
-              aria-label={`Remove ${item.courseId}`}
-            >
-              ✕
-            </button>
-          </div>
+            <HoverCardContent side="top" align="start" className="w-64">
+              <div className="space-y-2 text-xs">
+                <div>
+                  <div className="font-semibold text-sm mb-1 flex items-center gap-2">
+                    <span>{item.title || item.courseId}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <span aria-hidden="true">{getStatusIcon(item.status)}</span>
+                    <span>{getStatusLabel(item.status)}</span>
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-2 pt-2 border-t">
+                  <div>
+                    <div className="text-muted-foreground">Cost</div>
+                    <div className="font-medium">
+                      {item.cost_usd !== null ? `$${item.cost_usd}` : 'Free'}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-muted-foreground">Duration</div>
+                    <div className="font-medium">
+                      {item.duration_weeks ? `${item.duration_weeks}w` : 'N/A'}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-muted-foreground">CRI Score</div>
+                    <div className="font-medium">{Math.round(item.cri_score)}</div>
+                  </div>
+                  <div>
+                    <div className="text-muted-foreground">Workload</div>
+                    <div className="font-medium">{Math.round(item.workload_weekly_hours)}h/w</div>
+                  </div>
+                </div>
+                
+                {item.source?.templateLabel && (
+                  <div className="pt-2 border-t text-muted-foreground">
+                    From "{item.source.templateLabel}" template
+                  </div>
+                )}
+              </div>
+            </HoverCardContent>
+          </HoverCard>
         ))}
       </div>
+
+      {isOverCredits && (
+        <div className="px-3 py-2 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-md space-y-2">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="h-4 w-4 text-yellow-600 dark:text-yellow-400 flex-shrink-0" />
+            <span className="text-xs font-medium text-yellow-800 dark:text-yellow-200">
+              {totalCredits - creditsRequired} credits over requirement
+            </span>
+          </div>
+          
+          {suggestedRemovals.length > 0 && (
+            <div className="space-y-1">
+              <div className="text-xs font-medium text-yellow-800 dark:text-yellow-200">
+                💡 Suggested removals (lowest impact):
+              </div>
+              <div className="space-y-1">
+                {suggestedRemovals.map(item => (
+                  <button
+                    key={item.courseId}
+                    onClick={() => {
+                      onRemove(item.courseId);
+                      void trackTelemetryEvent({
+                        task: 'overcredit_suggestion_clicked',
+                        scope: 'module',
+                        complexity: { courseId: item.courseId, cri: item.cri_score }
+                      });
+                    }}
+                    className="w-full text-left text-xs px-2 py-1 rounded hover:bg-yellow-100 dark:hover:bg-yellow-900/40 transition-colors flex items-center justify-between"
+                  >
+                    <span>
+                      {getStatusIcon(item.status)} {item.courseId} (CRI {Math.round(item.cri_score)})
+                    </span>
+                    <X className="h-3 w-3 opacity-60" />
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

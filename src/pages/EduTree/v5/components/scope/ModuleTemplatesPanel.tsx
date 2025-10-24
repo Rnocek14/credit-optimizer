@@ -51,7 +51,19 @@ export function ModuleTemplatesPanel({ module, allModules, onAddTemplate }: Modu
 
   const handleApplyPreview = (keepPinned: boolean) => {
     if (!previewingTemplate) return;
-    applyTemplateFn(previewingTemplate, allOptions);
+    applyTemplateFn(previewingTemplate, allOptions, { keepPinned });
+    
+    void trackTelemetryEvent({ 
+      task: 'template_preview_confirmed', 
+      scope: 'module', 
+      complexity: { 
+        templateId: previewingTemplate.id, 
+        keepPinned,
+        costDelta: preview?.costDelta,
+        weeksDelta: preview?.weeksDelta,
+      }
+    });
+    
     setPreviewingTemplate(null);
     setPreview(null);
     onAddTemplate(previewingTemplate);
