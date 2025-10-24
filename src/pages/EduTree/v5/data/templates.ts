@@ -13,6 +13,11 @@ const MODULE_ALIAS: Record<string, string> = {
   // TODO: Fill these after grabbing UUIDs from module URLs:
   'y1-math': '',      // TODO: Copy from URL when opening Math module
   'y1-genedAB': '',   // TODO: Copy from URL when opening GenEd module
+  // Year 3-4 Track-specific modules
+  'y3-se-core': '',   // TODO: Copy from URL when opening SE Core module
+  'y3-ds-core': '',   // TODO: Copy from URL when opening DS Core module
+  'y4-se-cap': '',    // TODO: Copy from URL when opening SE Capstone module
+  'y4-ds-cap': '',    // TODO: Copy from URL when opening DS Capstone module
 };
 
 /**
@@ -445,6 +450,482 @@ export const MODULE_TEMPLATES: ModuleTemplate[] = [
     targetCanonicalIds: ['core-i'],
     semesterPlacement: 'fall',
     est: { costUsd: 2400, weeks: 16, credits: 6, cri: 93, workloadHours: 30 },
+    generatedFrom: 'manual'
+  },
+  
+  // Software Engineering Core (Year 3) - 3 variants
+  {
+    id: 'se-core-cheapest',
+    kind: 'module',
+    moduleId: 'y3-se-core',
+    label: 'SE Core: Budget-Optimized',
+    summary: '$198 • 8w • 6cr • CRI 78',
+    badge: 'Cheapest',
+    options: [
+      {
+        id: 'sophia-softeng301',
+        courseId: 'SE301',
+        title: 'Software Engineering Principles',
+        credits: 3,
+        subject: 'Software Engineering',
+        provider: 'Sophia Learning',
+        providerType: 'mooc',
+        providerCode: 'SOPHIA',
+        level: 300,
+        cost_usd: 99,
+        duration_weeks: 4,
+        workload_weekly_hours: 12,
+        cri_score: 76,
+        satisfies_requirements: ['core-ii']
+      },
+      {
+        id: 'sophia-design301',
+        courseId: 'SD301',
+        title: 'Software Design Patterns',
+        credits: 3,
+        subject: 'Software Engineering',
+        provider: 'Sophia Learning',
+        providerType: 'mooc',
+        providerCode: 'SOPHIA',
+        level: 300,
+        cost_usd: 99,
+        duration_weeks: 4,
+        workload_weekly_hours: 12,
+        cri_score: 80,
+        satisfies_requirements: ['core-ii']
+      }
+    ],
+    recommendedCourseId: 'SE301',
+    targetCanonicalIds: ['core-ii'],
+    semesterPlacement: 'any',
+    est: { costUsd: 198, weeks: 8, credits: 6, cri: 78, workloadHours: 24 },
+    generatedFrom: 'manual'
+  },
+  {
+    id: 'se-core-fastest',
+    kind: 'module',
+    moduleId: 'y3-se-core',
+    label: 'SE Core: Fast-Track',
+    summary: '$318 • 4w • 6cr • CRI 82',
+    badge: 'Fastest',
+    options: [
+      {
+        id: 'straighterline-se301',
+        courseId: 'SE301',
+        title: 'Software Engineering',
+        credits: 3,
+        subject: 'Software Engineering',
+        provider: 'StraighterLine',
+        providerType: 'mooc',
+        providerCode: 'STRAIGHTERLINE',
+        level: 300,
+        cost_usd: 159,
+        duration_weeks: 2,
+        workload_weekly_hours: 18,
+        cri_score: 81,
+        satisfies_requirements: ['core-ii']
+      },
+      {
+        id: 'straighterline-design301',
+        courseId: 'SD301',
+        title: 'Software Design & Architecture',
+        credits: 3,
+        subject: 'Software Engineering',
+        provider: 'StraighterLine',
+        providerType: 'mooc',
+        providerCode: 'STRAIGHTERLINE',
+        level: 300,
+        cost_usd: 159,
+        duration_weeks: 2,
+        workload_weekly_hours: 18,
+        cri_score: 83,
+        satisfies_requirements: ['core-ii']
+      }
+    ],
+    recommendedCourseId: 'SE301',
+    targetCanonicalIds: ['core-ii'],
+    semesterPlacement: 'any',
+    est: { costUsd: 318, weeks: 4, credits: 6, cri: 82, workloadHours: 36 },
+    generatedFrom: 'manual'
+  },
+  {
+    id: 'se-core-prestige',
+    kind: 'module',
+    moduleId: 'y3-se-core',
+    label: 'SE Core: Premium Quality',
+    summary: '$2400 • 16w • 6cr • CRI 94',
+    badge: 'Prestige',
+    options: [
+      {
+        id: 'wgu-c964',
+        courseId: 'C964',
+        title: 'Computer Science Capstone',
+        credits: 3,
+        subject: 'Software Engineering',
+        provider: 'Western Governors University',
+        providerType: 'university',
+        providerCode: 'WGU',
+        level: 300,
+        cost_usd: 1200,
+        duration_weeks: 8,
+        workload_weekly_hours: 15,
+        cri_score: 93,
+        satisfies_requirements: ['core-ii']
+      },
+      {
+        id: 'wgu-c960',
+        courseId: 'C960',
+        title: 'Discrete Mathematics II',
+        credits: 3,
+        subject: 'Software Engineering',
+        provider: 'Western Governors University',
+        providerType: 'university',
+        providerCode: 'WGU',
+        level: 300,
+        cost_usd: 1200,
+        duration_weeks: 8,
+        workload_weekly_hours: 15,
+        cri_score: 95,
+        satisfies_requirements: ['core-ii']
+      }
+    ],
+    recommendedCourseId: 'C964',
+    targetCanonicalIds: ['core-ii'],
+    semesterPlacement: 'fall',
+    est: { costUsd: 2400, weeks: 16, credits: 6, cri: 94, workloadHours: 30 },
+    generatedFrom: 'manual'
+  },
+  
+  // Data Science Core (Year 3) - 3 variants
+  {
+    id: 'ds-core-cheapest',
+    kind: 'module',
+    moduleId: 'y3-ds-core',
+    label: 'DS Core: Budget-Optimized',
+    summary: '$198 • 8w • 6cr • CRI 79',
+    badge: 'Cheapest',
+    options: [
+      {
+        id: 'sophia-stats301',
+        courseId: 'STAT301',
+        title: 'Applied Statistics',
+        credits: 3,
+        subject: 'Data Science',
+        provider: 'Sophia Learning',
+        providerType: 'mooc',
+        providerCode: 'SOPHIA',
+        level: 300,
+        cost_usd: 99,
+        duration_weeks: 4,
+        workload_weekly_hours: 12,
+        cri_score: 77,
+        satisfies_requirements: ['core-ii']
+      },
+      {
+        id: 'sophia-ml301',
+        courseId: 'ML301',
+        title: 'Machine Learning Fundamentals',
+        credits: 3,
+        subject: 'Data Science',
+        provider: 'Sophia Learning',
+        providerType: 'mooc',
+        providerCode: 'SOPHIA',
+        level: 300,
+        cost_usd: 99,
+        duration_weeks: 4,
+        workload_weekly_hours: 12,
+        cri_score: 81,
+        satisfies_requirements: ['core-ii']
+      }
+    ],
+    recommendedCourseId: 'STAT301',
+    targetCanonicalIds: ['core-ii'],
+    semesterPlacement: 'any',
+    est: { costUsd: 198, weeks: 8, credits: 6, cri: 79, workloadHours: 24 },
+    generatedFrom: 'manual'
+  },
+  {
+    id: 'ds-core-fastest',
+    kind: 'module',
+    moduleId: 'y3-ds-core',
+    label: 'DS Core: Fast-Track',
+    summary: '$318 • 4w • 6cr • CRI 83',
+    badge: 'Fastest',
+    options: [
+      {
+        id: 'straighterline-stats301',
+        courseId: 'STAT301',
+        title: 'Statistics for Data Science',
+        credits: 3,
+        subject: 'Data Science',
+        provider: 'StraighterLine',
+        providerType: 'mooc',
+        providerCode: 'STRAIGHTERLINE',
+        level: 300,
+        cost_usd: 159,
+        duration_weeks: 2,
+        workload_weekly_hours: 18,
+        cri_score: 82,
+        satisfies_requirements: ['core-ii']
+      },
+      {
+        id: 'straighterline-ml301',
+        courseId: 'ML301',
+        title: 'Machine Learning',
+        credits: 3,
+        subject: 'Data Science',
+        provider: 'StraighterLine',
+        providerType: 'mooc',
+        providerCode: 'STRAIGHTERLINE',
+        level: 300,
+        cost_usd: 159,
+        duration_weeks: 2,
+        workload_weekly_hours: 18,
+        cri_score: 84,
+        satisfies_requirements: ['core-ii']
+      }
+    ],
+    recommendedCourseId: 'STAT301',
+    targetCanonicalIds: ['core-ii'],
+    semesterPlacement: 'any',
+    est: { costUsd: 318, weeks: 4, credits: 6, cri: 83, workloadHours: 36 },
+    generatedFrom: 'manual'
+  },
+  {
+    id: 'ds-core-prestige',
+    kind: 'module',
+    moduleId: 'y3-ds-core',
+    label: 'DS Core: Premium Quality',
+    summary: '$2400 • 16w • 6cr • CRI 95',
+    badge: 'Prestige',
+    options: [
+      {
+        id: 'wgu-c749',
+        courseId: 'C749',
+        title: 'Data Mining I',
+        credits: 3,
+        subject: 'Data Science',
+        provider: 'Western Governors University',
+        providerType: 'university',
+        providerCode: 'WGU',
+        level: 300,
+        cost_usd: 1200,
+        duration_weeks: 8,
+        workload_weekly_hours: 15,
+        cri_score: 94,
+        satisfies_requirements: ['core-ii']
+      },
+      {
+        id: 'wgu-c750',
+        courseId: 'C750',
+        title: 'Data Mining II',
+        credits: 3,
+        subject: 'Data Science',
+        provider: 'Western Governors University',
+        providerType: 'university',
+        providerCode: 'WGU',
+        level: 300,
+        cost_usd: 1200,
+        duration_weeks: 8,
+        workload_weekly_hours: 15,
+        cri_score: 96,
+        satisfies_requirements: ['core-ii']
+      }
+    ],
+    recommendedCourseId: 'C749',
+    targetCanonicalIds: ['core-ii'],
+    semesterPlacement: 'fall',
+    est: { costUsd: 2400, weeks: 16, credits: 6, cri: 95, workloadHours: 30 },
+    generatedFrom: 'manual'
+  },
+  
+  // Software Engineering Capstone (Year 4) - 3 variants
+  {
+    id: 'se-cap-cheapest',
+    kind: 'module',
+    moduleId: 'y4-se-cap',
+    label: 'SE Capstone: Budget-Optimized',
+    summary: '$99 • 6w • 3cr • CRI 80',
+    badge: 'Cheapest',
+    options: [
+      {
+        id: 'sophia-capstone',
+        courseId: 'CAP401',
+        title: 'Software Engineering Capstone',
+        credits: 3,
+        subject: 'Software Engineering',
+        provider: 'Sophia Learning',
+        providerType: 'mooc',
+        providerCode: 'SOPHIA',
+        level: 400,
+        cost_usd: 99,
+        duration_weeks: 6,
+        workload_weekly_hours: 15,
+        cri_score: 80,
+        satisfies_requirements: ['capstone']
+      }
+    ],
+    recommendedCourseId: 'CAP401',
+    targetCanonicalIds: ['capstone'],
+    semesterPlacement: 'any',
+    est: { costUsd: 99, weeks: 6, credits: 3, cri: 80, workloadHours: 15 },
+    generatedFrom: 'manual'
+  },
+  {
+    id: 'se-cap-fastest',
+    kind: 'module',
+    moduleId: 'y4-se-cap',
+    label: 'SE Capstone: Fast-Track',
+    summary: '$159 • 4w • 3cr • CRI 84',
+    badge: 'Fastest',
+    options: [
+      {
+        id: 'straighterline-capstone',
+        courseId: 'CAP401',
+        title: 'Software Engineering Capstone Project',
+        credits: 3,
+        subject: 'Software Engineering',
+        provider: 'StraighterLine',
+        providerType: 'mooc',
+        providerCode: 'STRAIGHTERLINE',
+        level: 400,
+        cost_usd: 159,
+        duration_weeks: 4,
+        workload_weekly_hours: 20,
+        cri_score: 84,
+        satisfies_requirements: ['capstone']
+      }
+    ],
+    recommendedCourseId: 'CAP401',
+    targetCanonicalIds: ['capstone'],
+    semesterPlacement: 'any',
+    est: { costUsd: 159, weeks: 4, credits: 3, cri: 84, workloadHours: 20 },
+    generatedFrom: 'manual'
+  },
+  {
+    id: 'se-cap-prestige',
+    kind: 'module',
+    moduleId: 'y4-se-cap',
+    label: 'SE Capstone: Premium Quality',
+    summary: '$1200 • 12w • 3cr • CRI 96',
+    badge: 'Prestige',
+    options: [
+      {
+        id: 'wgu-c964-cap',
+        courseId: 'C964',
+        title: 'Computer Science Capstone',
+        credits: 3,
+        subject: 'Software Engineering',
+        provider: 'Western Governors University',
+        providerType: 'university',
+        providerCode: 'WGU',
+        level: 400,
+        cost_usd: 1200,
+        duration_weeks: 12,
+        workload_weekly_hours: 18,
+        cri_score: 96,
+        satisfies_requirements: ['capstone']
+      }
+    ],
+    recommendedCourseId: 'C964',
+    targetCanonicalIds: ['capstone'],
+    semesterPlacement: 'fall',
+    est: { costUsd: 1200, weeks: 12, credits: 3, cri: 96, workloadHours: 18 },
+    generatedFrom: 'manual'
+  },
+  
+  // Data Science Capstone (Year 4) - 3 variants
+  {
+    id: 'ds-cap-cheapest',
+    kind: 'module',
+    moduleId: 'y4-ds-cap',
+    label: 'DS Capstone: Budget-Optimized',
+    summary: '$99 • 6w • 3cr • CRI 81',
+    badge: 'Cheapest',
+    options: [
+      {
+        id: 'sophia-ds-capstone',
+        courseId: 'DSCAP401',
+        title: 'Data Science Capstone',
+        credits: 3,
+        subject: 'Data Science',
+        provider: 'Sophia Learning',
+        providerType: 'mooc',
+        providerCode: 'SOPHIA',
+        level: 400,
+        cost_usd: 99,
+        duration_weeks: 6,
+        workload_weekly_hours: 15,
+        cri_score: 81,
+        satisfies_requirements: ['capstone']
+      }
+    ],
+    recommendedCourseId: 'DSCAP401',
+    targetCanonicalIds: ['capstone'],
+    semesterPlacement: 'any',
+    est: { costUsd: 99, weeks: 6, credits: 3, cri: 81, workloadHours: 15 },
+    generatedFrom: 'manual'
+  },
+  {
+    id: 'ds-cap-fastest',
+    kind: 'module',
+    moduleId: 'y4-ds-cap',
+    label: 'DS Capstone: Fast-Track',
+    summary: '$159 • 4w • 3cr • CRI 85',
+    badge: 'Fastest',
+    options: [
+      {
+        id: 'straighterline-ds-capstone',
+        courseId: 'DSCAP401',
+        title: 'Data Science Capstone Project',
+        credits: 3,
+        subject: 'Data Science',
+        provider: 'StraighterLine',
+        providerType: 'mooc',
+        providerCode: 'STRAIGHTERLINE',
+        level: 400,
+        cost_usd: 159,
+        duration_weeks: 4,
+        workload_weekly_hours: 20,
+        cri_score: 85,
+        satisfies_requirements: ['capstone']
+      }
+    ],
+    recommendedCourseId: 'DSCAP401',
+    targetCanonicalIds: ['capstone'],
+    semesterPlacement: 'any',
+    est: { costUsd: 159, weeks: 4, credits: 3, cri: 85, workloadHours: 20 },
+    generatedFrom: 'manual'
+  },
+  {
+    id: 'ds-cap-prestige',
+    kind: 'module',
+    moduleId: 'y4-ds-cap',
+    label: 'DS Capstone: Premium Quality',
+    summary: '$1200 • 12w • 3cr • CRI 97',
+    badge: 'Prestige',
+    options: [
+      {
+        id: 'wgu-c769',
+        courseId: 'C769',
+        title: 'IT Capstone Written Project',
+        credits: 3,
+        subject: 'Data Science',
+        provider: 'Western Governors University',
+        providerType: 'university',
+        providerCode: 'WGU',
+        level: 400,
+        cost_usd: 1200,
+        duration_weeks: 12,
+        workload_weekly_hours: 18,
+        cri_score: 97,
+        satisfies_requirements: ['capstone']
+      }
+    ],
+    recommendedCourseId: 'C769',
+    targetCanonicalIds: ['capstone'],
+    semesterPlacement: 'fall',
+    est: { costUsd: 1200, weeks: 12, credits: 3, cri: 97, workloadHours: 18 },
     generatedFrom: 'manual'
   }
 ];
