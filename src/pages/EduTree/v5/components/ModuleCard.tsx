@@ -10,6 +10,7 @@ import { usePlanBasket } from '../state/usePlanBasket';
 import { usePlanBasketWithToasts } from '../hooks/usePlanBasketWithToasts';
 import { SelectedCourseChips } from './SelectedCourseChips';
 import { TemplateActions } from './TemplateActions';
+import { EmptyTemplateState } from './EmptyTemplateState';
 import type { NodeSelectedSummary } from '../types/nodeProgress';
 
 interface ModuleCardProps extends ModuleData {
@@ -47,11 +48,29 @@ export function ModuleCard({
   const selectedIds = selections[id]?.selected ?? [];
   
   const basket = usePlanBasket(s => s.items);
+  const moduleStates = usePlanBasket(s => s.moduleStates);
   const { removeItemWithToast } = usePlanBasketWithToasts();
   
-  // State detection: show chips view if user has selected courses in basket
-  const hasSelectedCourses = selectedSummary && !selectedSummary.isEmpty;
   const basketItems = basket.filter(b => b.moduleId === id);
+  
+  // 4-state machine for module view
+  const getModuleViewState = (): 'empty' | 'template-intact' | 'modified' | 'custom' => {
+    const moduleState = moduleStates[id];
+    const hasItems = basketItems.length > 0;
+    
+    if (!hasItems && !moduleState?.templateId) return 'empty';
+    if (!hasItems && moduleState?.templateId) return 'template-intact'; // Empty but template applied
+    if (hasItems && moduleState?.templateId) {
+      // Check if modified (has manual additions/removals)
+      const allFromTemplate = basketItems.every(item => 
+        item.status === 'auto-filled' && item.source?.templateId === moduleState.templateId
+      );
+      return allFromTemplate ? 'template-intact' : 'modified';
+    }
+    return 'custom'; // Has items but no template provenance
+  };
+  
+  const viewState = getModuleViewState();
   
   const [sortBy, setSortBy] = useState<'cheapest' | 'shortest' | 'credits'>('cheapest');
 
@@ -165,8 +184,8 @@ export function ModuleCard({
         </div>
       </div>
       
-      {/* Conditional rendering: chips view when courses selected, marketplace when empty */}
-      {!isCollapsed && hasSelectedCourses ? (
+      {/* State-based rendering */}
+      {!isCollapsed && (viewState === 'template-intact' || viewState === 'modified' || viewState === 'custom') && basketItems.length > 0 ? (
         <div className="p-4 pt-0 space-y-3" onClick={e => e.stopPropagation()}>
           <SelectedCourseChips 
             moduleId={id}
@@ -174,10 +193,24 @@ export function ModuleCard({
             onRemove={removeItemWithToast}
             creditsRequired={creditsRequired}
           />
+          {viewState === 'modified' && (
+            <p className="text-xs text-muted-foreground italic">
+              ✏️ Modified from template
+            </p>
+          )}
           <TemplateActions 
             moduleId={id}
-            hasTemplate={!!selectedSummary.templateSource}
+            hasTemplate={!!moduleStates[id]?.templateId}
             onChangeTemplate={() => onOpenPanel?.()}
+            onAddCourse={() => onOpenPanel?.()}
+          />
+        </div>
+      ) : !isCollapsed && viewState === 'template-intact' && basketItems.length === 0 ? (
+        <div className="p-4 pt-0" onClick={e => e.stopPropagation()}>
+          <EmptyTemplateState
+            templateLabel={moduleStates[id]?.templateLabel}
+            onBrowseTemplates={() => onOpenPanel?.()}
+            onAddCourse={() => onOpenPanel?.()}
           />
         </div>
       ) : (
@@ -317,10 +350,16 @@ export function ModuleCard({
             </div>
           )}
 
-          {/* Empty state when no options available */}
+          {/* Enhanced empty state */}
           {!isCollapsed && (!marketplaceOptions || marketplaceOptions.length === 0) && courses.length === 0 && (
-            <div className="p-4 text-xs text-muted-foreground italic text-center">
-              No options available yet.
+            <div className="p-8 text-center space-y-3">
+              <div className="text-5xl">🔍</div>
+              <div>
+                <h4 className="font-semibold text-sm">No courses available</h4>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Marketplace options for {label} are being curated.
+                </p>
+              </div>
             </div>
           )}
         </>

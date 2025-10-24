@@ -6,12 +6,14 @@ interface TemplateActionsProps {
   moduleId: string;
   hasTemplate: boolean;
   onChangeTemplate: () => void;
+  onAddCourse: () => void;
 }
 
 export function TemplateActions({ 
   moduleId, 
   hasTemplate, 
-  onChangeTemplate 
+  onChangeTemplate,
+  onAddCourse
 }: TemplateActionsProps) {
   const pinAllItems = usePlanBasket(s => s.pinAllItems);
   const basket = usePlanBasket(s => s.items);
@@ -44,7 +46,7 @@ export function TemplateActions({
       <Button
         variant="ghost"
         size="sm"
-        onClick={onChangeTemplate}
+        onClick={onAddCourse}
         className="text-xs h-8"
         title="Add individual course"
       >

@@ -124,8 +124,8 @@ export function ModuleTemplatesPanel({ module, allModules, onAddTemplate }: Modu
   }
   
   return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between mb-2">
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
         <h3 className="text-sm font-medium">Pre-Built Paths</h3>
         {constraints.target_school && (
           <span className="text-xs text-muted-foreground">
@@ -134,15 +134,17 @@ export function ModuleTemplatesPanel({ module, allModules, onAddTemplate }: Modu
         )}
       </div>
       
-      {rankedTemplates.map(({ template, validation }) => (
-        <TemplateCard
-          key={template.id}
-          template={template}
-          validation={validation}
-          onAdd={() => handleAddTemplate(template)}
-          isDraggable={true}
-        />
-      ))}
+      <div className="template-gallery">
+        {rankedTemplates.map(({ template, validation }) => (
+          <TemplateCard
+            key={template.id}
+            template={template}
+            validation={validation}
+            onAdd={() => handleAddTemplate(template)}
+            isDraggable={true}
+          />
+        ))}
+      </div>
       
       {!constraints.target_school && (
         <div className="text-xs text-muted-foreground bg-muted/30 rounded-lg p-3 mt-4">

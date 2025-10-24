@@ -43,11 +43,11 @@ export function TemplateCard({ template, validation, onAdd, isDraggable = true }
     <Card
       ref={setNodeRef}
       style={style}
-      className={`p-4 transition-colors ${
-        validation.isValid ? "bg-card hover:bg-accent/50" : "bg-muted/50 opacity-75"
+      className={`template-card flex flex-col h-full min-h-[200px] p-4 transition-all ${
+        validation.isValid ? "bg-card hover:bg-accent/50 hover:shadow-md" : "bg-muted/50 opacity-75"
       }`}
     >
-      <div className="flex items-start gap-3">
+      <div className="flex items-start gap-3 flex-1">
         {/* Drag Handle */}
         {isDraggable && validation.isValid && (
           <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing mt-1">
@@ -55,7 +55,7 @@ export function TemplateCard({ template, validation, onAdd, isDraggable = true }
           </div>
         )}
         
-        <div className="flex-1 min-w-0">
+        <div className="flex-1 min-w-0 flex flex-col">
           {/* Header */}
           <div className="flex items-center gap-2 mb-2">
             <h4 className="font-medium text-sm truncate">{template.label}</h4>
@@ -75,8 +75,8 @@ export function TemplateCard({ template, validation, onAdd, isDraggable = true }
             )}
           </div>
           
-          {/* Summary */}
-          <p className="text-sm text-muted-foreground mb-3">{template.summary}</p>
+          {/* Summary - grows to fill space */}
+          <p className="text-sm text-muted-foreground mb-3 flex-grow">{template.summary}</p>
           
           {/* Canonical Fit Badge */}
           {validation.canonicalFit.complete ? (
@@ -173,15 +173,17 @@ export function TemplateCard({ template, validation, onAdd, isDraggable = true }
             </details>
           )}
         </div>
-        
-        {/* Action Button */}
+      </div>
+      
+      {/* Action Button - pinned to bottom */}
+      <div className="mt-auto pt-3 border-t">
         <Button
           size="sm"
           onClick={onAdd}
           disabled={!validation.isValid}
           aria-disabled={!validation.isValid}
           role="button"
-          className="flex-shrink-0"
+          className="w-full"
         >
           {validation.isValid ? 'Add' : 'Blocked'}
         </Button>
