@@ -708,8 +708,38 @@ function MarketplaceContent(props: DecisionDockRouterProps) {
     return days >= 0 && days <= 30;
   };
 
+  // Persist last tab per module
+  const [activeTabState, setActiveTabState] = useState(() => {
+    const storageKey = `edutree-last-tab-${moduleId}`;
+    return localStorage.getItem(storageKey) || 'templates';
+  });
+
+  const handleTabChange = (tab: string) => {
+    setActiveTabState(tab);
+    const storageKey = `edutree-last-tab-${moduleId}`;
+    localStorage.setItem(storageKey, tab);
+    
+    void trackTelemetryEvent({
+      task: 'tab_changed',
+      scope: 'module',
+      complexity: { from: activeTabState, to: tab, moduleId }
+    });
+  };
+
   return (
     <>
+      {/* Breadcrumb Navigation */}
+      <div className="pb-4">
+        <ScopeBreadcrumbs
+          scope="module"
+          nodeLabel={moduleLabel}
+          year={props.year}
+          degreeTitle={props.degreeSummary?.degreeTitle}
+          onNavigate={props.onNavigate}
+        />
+      </div>
+
+      {/* Module Header */}
       <div className="pb-4">
         <div className="flex items-center justify-between">
           <div className="flex flex-col gap-1">
@@ -730,10 +760,10 @@ function MarketplaceContent(props: DecisionDockRouterProps) {
       </div>
 
       {FEATURE_FLAGS.v5_templates_module && moduleData && moduleData.id && allModules && allModules.length > 0 ? (
-        <Tabs defaultValue="templates" className="w-full mb-4">
-          <TabsList className="w-full grid grid-cols-2">
+        <Tabs value={activeTabState} onValueChange={handleTabChange} className="w-full mb-4">
+          <TabsList className="w-full grid grid-cols-2" role="tablist">
             <TabsTrigger value="templates">Templates</TabsTrigger>
-            <TabsTrigger value="courses">Individual Courses</TabsTrigger>
+            <TabsTrigger value="courses">Courses</TabsTrigger>
           </TabsList>
           
           <TabsContent value="templates" className="mt-4">

@@ -1,4 +1,4 @@
-import { useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { TemplateCard } from '../TemplateCard';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -8,8 +8,11 @@ import { getTemplatesForModule } from '../../data/templates';
 import type { ModuleData } from '../../types/v5';
 import type { ModuleTemplate } from '../../types/templates';
 import { trackTelemetryEvent } from '@/utils/telemetry';
-import { useUserEvidence } from '@/pages/EduTree/hooks/useUserEvidence'; // Phase 1c
+import { useUserEvidence } from '@/pages/EduTree/hooks/useUserEvidence';
 import { useApplyTemplate } from '../../hooks/useApplyTemplate';
+import { previewTemplate } from '../../engine/previewTemplate';
+import { TemplateDiffStrip } from '../TemplateDiffStrip';
+import type { TemplatePreview } from '../../engine/previewTemplate';
 
 interface ModuleTemplatesPanelProps {
   module: ModuleData;
@@ -20,137 +23,54 @@ interface ModuleTemplatesPanelProps {
 export function ModuleTemplatesPanel({ module, allModules, onAddTemplate }: ModuleTemplatesPanelProps) {
   const basket = usePlanBasket(s => s.items);
   const constraints = usePlanBasket(s => s.constraints);
-  const evidence = useUserEvidence({ enabled: true }); // Phase 1c: evidence integration (opt-in)
+  const evidence = useUserEvidence({ enabled: true });
+  const { applyTemplate: applyTemplateFn } = useApplyTemplate();
   
-  // Get all marketplace options for validation
-  const allOptions = useMemo(() => 
-    allModules.flatMap(m => m.marketplaceOptions ?? []),
-    [allModules]
-  );
+  const [previewingTemplate, setPreviewingTemplate] = useState<ModuleTemplate | null>(null);
+  const [preview, setPreview] = useState<TemplatePreview | null>(null);
   
-  // Phase 1: Throttle re-ranking with basketKey memo
-  const basketKey = useMemo(
-    () => basket.map(b => b.courseId).sort().join('|'),
-    [basket]
-  );
+  const allOptions = useMemo(() => allModules.flatMap(m => m.marketplaceOptions ?? []), [allModules]);
+  const basketKey = useMemo(() => basket.map(b => b.courseId).sort().join('|'), [basket]);
   
-  // Fetch and rank templates reactively
   const { data: rankedTemplates, isLoading } = useQuery({
-    queryKey: [
-      'module-templates-ranked', 
-      module.id, 
-      basketKey, // Phase 1: throttle via memo
-      constraints,
-      evidence.raw?.completed?.length ?? 0 // Phase 1c: evidence in key
-    ],
+    queryKey: ['module-templates-ranked', module.id, basketKey, constraints, evidence.raw?.completed?.length ?? 0],
     queryFn: async () => {
-      console.log('[ModuleTemplatesPanel] 🔍 Query running for module:', {
-        moduleId: module.id,
-        moduleLabel: module.label,
-        basketCount: basket.length
-      });
-      
       const templates = getTemplatesForModule(module.id);
-      console.log('[ModuleTemplatesPanel] 📦 Templates fetched:', templates.length);
-      
-      if (templates.length === 0) {
-        console.log('[ModuleTemplatesPanel] ⚠️ No templates found, returning empty array');
-        return [];
-      }
-      
-      const ranked = await rankTemplates(templates, basket, constraints, allOptions, evidence.raw);
-      console.log('[ModuleTemplatesPanel] 📊 Ranked templates:', ranked.length);
-      
-      return ranked;
+      return await rankTemplates(templates, basket, constraints, allOptions, evidence.raw);
     },
-    staleTime: 5000, // 5 seconds
+    staleTime: 5000,
     enabled: !!module.id
   });
-  
-  // Track template views (Phase 1c: add evidence telemetry)
-  useEffect(() => {
-    if (rankedTemplates && rankedTemplates.length > 0) {
-      try {
-        void trackTelemetryEvent({
-          task: 'template_tab_opened',
-          scope: 'module',
-          complexity: {
-            moduleId: module.id,
-            templateCount: rankedTemplates.length,
-            validCount: rankedTemplates.filter(t => t.validation.isValid).length,
-            hasAnchorSchool: !!constraints.target_school,
-            hasEvidence: !!evidence.raw?.completed?.length
-          }
-        });
-      } catch (telemetryError) {
-        console.warn('[Telemetry] Failed to track template view:', telemetryError);
-      }
-    }
-  }, [rankedTemplates, module.id, constraints.target_school, evidence.raw]);
-  
-  const { applyTemplate } = useApplyTemplate();
-  
-  // Track template add with telemetry
-  const handleAddTemplate = (template: ModuleTemplate) => {
-    // Use new apply engine with automatic prereqs, deduplication, undo
-    applyTemplate(template, allOptions);
-    
-    // Call parent callback (for UI state like tab switching)
-    onAddTemplate(template);
+
+  const handlePreviewTemplate = (template: ModuleTemplate) => {
+    const previewResult = previewTemplate({ template, moduleId: module.id, currentBasket: basket, constraints, allOptions });
+    setPreviewingTemplate(template);
+    setPreview(previewResult);
+    void trackTelemetryEvent({ task: 'template_preview_shown', scope: 'module', complexity: { templateId: template.id }});
   };
-  
-  if (isLoading) {
-    console.log('[ModuleTemplatesPanel] ⏳ Loading templates...');
-    return (
-      <div className="space-y-3">
-        <Skeleton className="h-32 w-full" />
-        <Skeleton className="h-32 w-full" />
-        <Skeleton className="h-32 w-full" />
-      </div>
-    );
-  }
-  
-  if (!rankedTemplates || rankedTemplates.length === 0) {
-    console.log('[ModuleTemplatesPanel] ❌ No templates to display:', {
-      rankedTemplates: rankedTemplates?.length ?? 'null',
-      moduleId: module.id
-    });
-    return (
-      <div className="text-center py-8 text-muted-foreground">
-        <p className="text-sm">No templates available for this module yet.</p>
-        <p className="text-xs mt-2">Use the "Courses" tab to browse individual options.</p>
-      </div>
-    );
-  }
-  
+
+  const handleApplyPreview = (keepPinned: boolean) => {
+    if (!previewingTemplate) return;
+    applyTemplateFn(previewingTemplate, allOptions);
+    setPreviewingTemplate(null);
+    setPreview(null);
+    onAddTemplate(previewingTemplate);
+  };
+
+  const handleCancelPreview = () => {
+    setPreviewingTemplate(null);
+    setPreview(null);
+  };
+
+  if (isLoading) return <Skeleton className="h-32" />;
+  if (!rankedTemplates?.length) return <div>No templates</div>;
+
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h3 className="text-sm font-medium">Pre-Built Paths</h3>
-        {constraints.target_school && (
-          <span className="text-xs text-muted-foreground">
-            Validated for {constraints.target_school}
-          </span>
-        )}
-      </div>
-      
+      {preview && previewingTemplate && <TemplateDiffStrip preview={preview} templateLabel={previewingTemplate.label} onApply={handleApplyPreview} onCancel={handleCancelPreview} />}
       <div className="template-gallery">
-        {rankedTemplates.map(({ template, validation }) => (
-          <TemplateCard
-            key={template.id}
-            template={template}
-            validation={validation}
-            onAdd={() => handleAddTemplate(template)}
-            isDraggable={true}
-          />
-        ))}
+        {rankedTemplates.map(rt => <TemplateCard key={rt.template.id} template={rt.template} validation={rt.validation} onAdd={() => handlePreviewTemplate(rt.template)} />)}
       </div>
-      
-      {!constraints.target_school && (
-        <div className="text-xs text-muted-foreground bg-muted/30 rounded-lg p-3 mt-4">
-          💡 <strong>Tip:</strong> Set a graduation school in Constraints to verify transfer acceptance.
-        </div>
-      )}
     </div>
   );
 }

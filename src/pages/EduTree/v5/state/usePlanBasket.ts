@@ -94,6 +94,10 @@ interface PlanBasketState {
     totalWorkloadHours: number;
     aceCredits: number;
   };
+  
+  // Memoized selectors
+  selectModuleItems: (moduleId: string) => BasketItem[];
+  selectModuleViewState: (moduleId: string) => 'empty' | 'template-intact' | 'modified' | 'custom';
 }
 
 /**
@@ -314,6 +318,24 @@ export const usePlanBasket = create<PlanBasketState>()(
         
         // Phase 1c: Use shared totals calculator (single source of truth)
         return calculateTotals(items, constraints);
+      },
+      
+      // Memoized selectors to prevent re-render storms
+      selectModuleItems: (moduleId: string) => {
+        return get().items.filter(item => item.moduleId === moduleId);
+      },
+      
+      selectModuleViewState: (moduleId: string) => {
+        const moduleState = get().moduleStates[moduleId];
+        const items = get().items.filter(item => item.moduleId === moduleId);
+        const hasItems = items.length > 0;
+        
+        if (!hasItems && !moduleState?.templateId) return 'empty';
+        if (!hasItems && moduleState?.templateId) return 'template-intact';
+        if (hasItems && moduleState?.templateId) {
+          return get().isModuleModified(moduleId) ? 'modified' : 'template-intact';
+        }
+        return 'custom';
       }
     }),
     { 
