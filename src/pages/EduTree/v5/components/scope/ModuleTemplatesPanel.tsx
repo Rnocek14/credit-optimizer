@@ -44,7 +44,15 @@ export function ModuleTemplatesPanel({ module, allModules, onAddTemplate }: Modu
   });
 
   const handlePreviewTemplate = (template: ModuleTemplate) => {
-    const previewResult = previewTemplate({ template, moduleId: module.id, currentBasket: basket, constraints, allOptions, keepPinned: false });
+    const previewResult = previewTemplate({ 
+      template, 
+      moduleId: module.id, 
+      currentBasket: basket, 
+      constraints, 
+      allOptions, 
+      keepPinned: false,
+      moduleCreditsRequired: module.creditsRequired
+    });
     setPreviewingTemplate(template);
     setPreview(previewResult);
     setKeepPinned(false); // Reset toggle when previewing new template
@@ -61,13 +69,21 @@ export function ModuleTemplatesPanel({ module, allModules, onAddTemplate }: Modu
         constraints,
         allOptions,
         keepPinned,
+        moduleCreditsRequired: module.creditsRequired
       });
       setPreview(updated);
     }
-  }, [keepPinned, previewingTemplate, basket, constraints, allOptions, module.id]);
+  }, [keepPinned, previewingTemplate, basket, constraints, allOptions, module.id, module.creditsRequired]);
 
   const handleApplyPreview = (keepPinned: boolean) => {
     if (!previewingTemplate) return;
+    
+    // Guard: ensure template ID still matches (avoid race if list re-ranked)
+    if (previewingTemplate.id !== preview?.added[0]?.source?.templateId && preview?.added.length) {
+      console.warn('[Apply] Template mismatch detected, aborting');
+      return;
+    }
+    
     applyTemplateFn(previewingTemplate, allOptions, { keepPinned });
     
     void trackTelemetryEvent({ 

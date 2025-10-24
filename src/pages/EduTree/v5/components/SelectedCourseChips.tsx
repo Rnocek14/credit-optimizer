@@ -8,6 +8,7 @@ import type { BasketItem } from "../state/usePlanBasket";
 
 interface SelectedCourseChipsProps {
   moduleId: string;
+  moduleLabel?: string;
   basketItems: BasketItem[];
   onRemove: (courseId: string) => void;
   creditsRequired: number;
@@ -15,6 +16,7 @@ interface SelectedCourseChipsProps {
 
 export function SelectedCourseChips({
   moduleId,
+  moduleLabel,
   basketItems,
   onRemove,
   creditsRequired,
@@ -97,10 +99,15 @@ export function SelectedCourseChips({
           // Move focus after removal
           const newIndex = Math.min(focusedIndex, basketItems.length - 2);
           if (newIndex < 0) {
-            // Focus add course button or container if available
+            // Focus add course button or chips list container as fallback
             setFocusedIndex(-1);
             const addBtn = document.querySelector('[data-add-course-btn]') as HTMLElement;
-            if (addBtn) addBtn.focus();
+            const chipsList = document.querySelector('[data-chips-list]') as HTMLElement;
+            if (addBtn) {
+              addBtn.focus();
+            } else if (chipsList) {
+              chipsList.focus();
+            }
           } else {
             setFocusedIndex(newIndex);
           }
@@ -149,8 +156,9 @@ export function SelectedCourseChips({
 
       <div 
         role="listbox" 
-        aria-label="Selected courses"
+        aria-label={`Selected courses for ${moduleLabel || 'this module'}`}
         aria-activedescendant={focusedIndex >= 0 ? `chip-${focusedIndex}` : undefined}
+        data-chips-list
         className="flex flex-wrap gap-2"
       >
         {basketItems.map((item, index) => (
@@ -192,6 +200,11 @@ export function SelectedCourseChips({
                     <span aria-hidden="true">{getStatusIcon(item.status)}</span>
                     <span>{getStatusLabel(item.status)}</span>
                   </div>
+                  {item.providerCode && (
+                    <div className="text-muted-foreground mt-1">
+                      Provider: {item.providerCode}
+                    </div>
+                  )}
                 </div>
                 
                 <div className="grid grid-cols-2 gap-2 pt-2 border-t">

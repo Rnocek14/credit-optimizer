@@ -24,7 +24,8 @@ export function previewTemplate({
   currentBasket,
   constraints,
   allOptions,
-  keepPinned = false
+  keepPinned = false,
+  moduleCreditsRequired
 }: {
   template: ModuleTemplate;
   moduleId: string;
@@ -32,6 +33,7 @@ export function previewTemplate({
   constraints: Constraints;
   allOptions: any[];
   keepPinned?: boolean;
+  moduleCreditsRequired?: number;
 }): TemplatePreview {
   // Compute full apply result
   const params: Omit<ApplyTemplateParams, 'currentBasket' | 'constraints'> = {
@@ -81,11 +83,12 @@ export function previewTemplate({
     .reduce((sum, i) => sum + i.credits, 0);
   
   const projectedCredits = currentModuleCredits - removedCredits + addedCredits;
-  // Use total template credits as requirement
-  const moduleCreditsRequired = template.options.reduce((sum, o) => sum + o.credits, 0);
   
-  const wouldExceedCredits = projectedCredits > moduleCreditsRequired;
-  const exceedsBy = Math.max(0, projectedCredits - moduleCreditsRequired);
+  // Use module's canonical requirement, fallback to template sum if missing
+  const creditsRequired = moduleCreditsRequired ?? template.options.reduce((sum, o) => sum + o.credits, 0);
+  
+  const wouldExceedCredits = projectedCredits > creditsRequired;
+  const exceedsBy = Math.max(0, projectedCredits - creditsRequired);
 
   return {
     added: finalAdded,

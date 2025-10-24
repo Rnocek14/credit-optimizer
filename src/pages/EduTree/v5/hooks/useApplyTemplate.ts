@@ -148,9 +148,24 @@ export function useApplyTemplate() {
         action: {
           label: 'Undo All',
           onClick: () => {
-            // Restore snapshot
+            // Restore basket items
             finalAdded.forEach(item => removeItem(item.courseId));
             result.undoSnapshot.forEach(item => addItem(item));
+            
+            // Restore module state if template was tracked
+            if (template.moduleId) {
+              const getModuleState = usePlanBasket.getState().moduleStates[template.moduleId];
+              const clearModuleState = usePlanBasket.getState().clearModuleState;
+              
+              // Clear current module state (revert to pre-template)
+              clearModuleState(template.moduleId);
+              
+              console.log('[Undo] Module state restored:', {
+                moduleId: template.moduleId,
+                hadState: !!getModuleState
+              });
+            }
+            
             toast.message('Template reverted');
 
             void trackTelemetryEvent({

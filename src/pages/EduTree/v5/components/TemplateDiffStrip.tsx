@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { AlertTriangle, ChevronDown, ChevronUp } from 'lucide-react';
 import type { TemplatePreview } from '../engine/previewTemplate';
 import { cn } from '@/lib/utils';
+import { trackTelemetryEvent } from '@/utils/telemetry';
 
 interface TemplateDiffStripProps {
   preview: TemplatePreview;
@@ -46,12 +47,39 @@ export function TemplateDiffStrip({
     ? diffParts.join(' • ') 
     : 'No net change';
 
+  // Track when apply blocked or executed
+  const handleApplyClick = () => {
+    if (isNoNetChange) {
+      void trackTelemetryEvent({
+        task: 'apply_blocked_no_net_change',
+        scope: 'module',
+        complexity: { templateLabel }
+      });
+      return;
+    }
+    onApply();
+  };
+
+  // Telemetry for keepPinned toggle
+  const handleKeepPinnedChange = (checked: boolean) => {
+    onKeepPinnedChange(checked);
+    void trackTelemetryEvent({
+      task: 'diff_keep_pinned_toggled',
+      scope: 'module',
+      complexity: {
+        templateLabel,
+        value: checked,
+        affectedCount: preview.removedPinned.length
+      }
+    });
+  };
+
   // Keyboard navigation: Enter to apply, Escape to cancel
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Enter' && !isNoNetChange) {
         e.preventDefault();
-        onApply();
+        handleApplyClick();
       } else if (e.key === 'Escape') {
         e.preventDefault();
         onCancel();
@@ -60,7 +88,22 @@ export function TemplateDiffStrip({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isNoNetChange, onApply, onCancel]);
+  }, [isNoNetChange, handleApplyClick, onCancel]);
+
+  // Track cross-scope preview (once on mount/change)
+  useEffect(() => {
+    if (preview.touchesOtherScopes) {
+      const crossScopeCount = preview.added.filter(i => i.moduleId !== preview.added[0]?.moduleId).length;
+      void trackTelemetryEvent({
+        task: 'cross_scope_preview_seen',
+        scope: 'module',
+        complexity: {
+          templateLabel,
+          affectedModules: crossScopeCount
+        }
+      });
+    }
+  }, [preview.touchesOtherScopes, preview.added, templateLabel]);
 
   return (
     <div
@@ -112,7 +155,7 @@ export function TemplateDiffStrip({
         <div className="flex items-start gap-2">
           <Button
             size="sm"
-            onClick={onApply}
+            onClick={handleApplyClick}
             className="h-8 text-xs"
             disabled={isNoNetChange}
             title={
@@ -138,12 +181,12 @@ export function TemplateDiffStrip({
       </div>
 
       {/* Keep Pinned Toggle */}
-      {hasPinnedRemovals && (
+      {hasPinnedRemovals && !isNoNetChange && (
         <label className="flex items-center gap-2 cursor-pointer">
           <input
             type="checkbox"
             checked={keepPinned}
-            onChange={(e) => onKeepPinnedChange(e.target.checked)}
+            onChange={(e) => handleKeepPinnedChange(e.target.checked)}
             className="w-4 h-4"
           />
           <span className="text-xs text-blue-900 dark:text-blue-100">
