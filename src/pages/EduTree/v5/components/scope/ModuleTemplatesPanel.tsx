@@ -14,6 +14,7 @@ import { previewTemplate } from '../../engine/previewTemplate';
 import { TemplateDiffStrip } from '../TemplateDiffStrip';
 import type { TemplatePreview } from '../../engine/previewTemplate';
 import { X } from 'lucide-react';
+import { FEATURE_FLAGS } from '../../config/featureFlags';
 
 interface ModuleTemplatesPanelProps {
   module: ModuleData;
@@ -138,11 +139,23 @@ export function ModuleTemplatesPanel({ module, allModules, onAddTemplate }: Modu
   };
 
   if (isLoading) return <Skeleton className="h-32" />;
-  if (!rankedTemplates?.length) return <div>No templates</div>;
+  if (!rankedTemplates?.length) {
+    return (
+      <div className="text-center py-8 space-y-2">
+        <div className="text-4xl">📝</div>
+        <div className="text-muted-foreground text-sm">
+          No templates available for this module
+        </div>
+        <div className="text-xs text-muted-foreground">
+          Add courses manually or check back later
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
-      {preview && previewingTemplate && (
+      {preview && previewingTemplate && FEATURE_FLAGS.v5_diff_strip && (
         <TemplateDiffStrip 
           preview={preview} 
           templateLabel={previewingTemplate.label}

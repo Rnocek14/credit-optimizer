@@ -13,4 +13,7 @@ export const FEATURE_FLAGS = {
   v5_decision_dock: true,
   v5_templates_module: true, // Hardcoded for testing - templates feature enabled
   v5_pivot_mode: typeof window !== 'undefined' && localStorage.getItem('v5_pivot_mode') === 'true', // Phase 1d: dark launch
+  v5_diff_strip: true, // Phase 3: Template diff strip with keepPinned toggle
+  v5_template_search: true, // Phase 3: Template search/filtering
+  v5_cross_scope_details: true, // Phase 3: Show module names for cross-scope items
 };

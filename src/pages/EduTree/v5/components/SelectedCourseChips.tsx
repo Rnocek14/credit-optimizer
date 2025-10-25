@@ -1,9 +1,12 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { Badge } from "@/components/ui/badge";
-import { AlertTriangle, X } from "lucide-react";
+import { AlertTriangle, X, HelpCircle } from "lucide-react";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from 'sonner';
 import { trackTelemetryEvent } from '@/utils/telemetry';
+import { shouldSample, getClientSessionId } from '@/utils/telemetrySampling';
+import { formatCost, formatDuration, formatCRI, formatWorkload } from '../utils/formatters';
 import type { BasketItem } from "../state/usePlanBasket";
 
 interface SelectedCourseChipsProps {
@@ -83,17 +86,21 @@ export function SelectedCourseChips({
           description: `${item.credits}cr freed`,
         });
         
-        void trackTelemetryEvent({
-          task: 'chip_removed',
-          scope: 'module',
-          complexity: {
-            moduleId,
-            courseId: item.courseId,
-            source: item.status,
-            credits: item.credits,
-            cri: item.cri_score,
-          },
-        });
+        // Sample chip removal events at 25%
+        if (shouldSample(0.25)) {
+          void trackTelemetryEvent({
+            task: 'chip_removed',
+            scope: 'module',
+            complexity: {
+              moduleId,
+              courseId: item.courseId,
+              source: item.status,
+              credits: item.credits,
+              cri: item.cri_score,
+              sessionId: getClientSessionId(),
+            },
+          });
+        }
         
         // Move focus after removal
         const newIndex = Math.min(focusedIndex, basketItems.length - 2);
@@ -124,19 +131,6 @@ export function SelectedCourseChips({
       chipsRef.current[focusedIndex]?.focus();
     }
   }, [focusedIndex]);
-
-  // Safe formatters for data
-  const formatCost = (cost: number | null | undefined) => 
-    cost != null && cost > 0 ? `$${cost}` : 'Free';
-  
-  const formatDuration = (weeks: number | null | undefined) =>
-    weeks != null && weeks > 0 ? `${weeks}w` : 'N/A';
-  
-  const formatCRI = (cri: number | null | undefined) =>
-    cri != null ? Math.round(cri) : 'N/A';
-  
-  const formatWorkload = (hours: number | null | undefined) =>
-    hours != null && hours > 0 ? `${Math.round(hours)}h/w` : 'N/A';
 
   return (
     <div className="space-y-3" role="group" aria-label="Selected courses">
@@ -241,6 +235,19 @@ export function SelectedCourseChips({
             <span className="text-xs font-medium text-yellow-800 dark:text-yellow-200">
               {totalCredits - creditsRequired} credits over requirement
             </span>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button className="text-yellow-600 dark:text-yellow-400 hover:text-yellow-700 dark:hover:text-yellow-300">
+                    <HelpCircle className="h-3 w-3" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent className="max-w-xs text-xs">
+                  You've selected more credits than required. Consider removing auto-filled or 
+                  low-impact courses (shown below) to meet the exact requirement.
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </div>
           
           {suggestedRemovals.length > 0 && (
@@ -257,7 +264,11 @@ export function SelectedCourseChips({
                       void trackTelemetryEvent({
                         task: 'overcredit_suggestion_clicked',
                         scope: 'module',
-                        complexity: { courseId: item.courseId, cri: item.cri_score }
+                        complexity: { 
+                          courseId: item.courseId, 
+                          cri: item.cri_score,
+                          sessionId: getClientSessionId(),
+                        }
                       });
                     }}
                     className="w-full text-left text-xs px-2 py-1 rounded hover:bg-yellow-100 dark:hover:bg-yellow-900/40 transition-colors flex items-center justify-between"

@@ -5,6 +5,9 @@ import { AlertTriangle, ChevronDown, ChevronUp } from 'lucide-react';
 import type { TemplatePreview } from '../engine/previewTemplate';
 import { cn } from '@/lib/utils';
 import { trackTelemetryEvent } from '@/utils/telemetry';
+import { getClientSessionId } from '@/utils/telemetrySampling';
+import { formatCost } from '../utils/formatters';
+import { FEATURE_FLAGS } from '../config/featureFlags';
 
 interface TemplateDiffStripProps {
   preview: TemplatePreview;
@@ -60,10 +63,27 @@ export function TemplateDiffStrip({
       void trackTelemetryEvent({
         task: 'apply_blocked_no_net_change',
         scope: 'module',
-        complexity: { templateLabel, moduleId }
+        complexity: { 
+          templateLabel, 
+          moduleId,
+          sessionId: getClientSessionId(),
+        }
       });
       return;
     }
+    
+    void trackTelemetryEvent({
+      task: 'template_preview_confirmed',
+      scope: 'module',
+      complexity: { 
+        templateLabel, 
+        keepPinned,
+        costDelta: preview.costDelta,
+        weeksDelta: preview.weeksDelta,
+        sessionId: getClientSessionId(),
+      }
+    });
+    
     onApply();
   };
 
@@ -255,9 +275,9 @@ export function TemplateDiffStrip({
                     className="text-xs px-2 py-1 rounded bg-green-50 dark:bg-green-950/20 text-green-700 dark:text-green-300 flex items-center justify-between gap-2"
                   >
                     <span>
-                      {item.courseId} ({item.credits}cr, ${item.cost_usd || 0})
+                      {item.courseId} ({item.credits}cr, {formatCost(item.cost_usd)})
                     </span>
-                    {item.moduleId !== moduleId && (
+                    {FEATURE_FLAGS.v5_cross_scope_details && item.moduleId !== moduleId && (
                       <Badge variant="outline" className="text-xs py-0">
                         Other Module
                       </Badge>

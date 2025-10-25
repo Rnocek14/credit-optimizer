@@ -24,6 +24,7 @@ export function ScopeBreadcrumbs({ scope, nodeLabel, year, degreeTitle, onNaviga
       <button
         onClick={() => onNavigate('degree')}
         aria-current={scope === 'degree' ? 'page' : undefined}
+        title="Go to Degree overview"
         className={`hover:underline transition-colors ${
           scope === 'degree' ? getScopeColor('degree') : 'text-muted-foreground hover:text-foreground'
         }`}
@@ -37,6 +38,7 @@ export function ScopeBreadcrumbs({ scope, nodeLabel, year, degreeTitle, onNaviga
           <button
             onClick={() => onNavigate('year', String(year))}
             aria-current={scope === 'year' ? 'page' : undefined}
+            title={`Go to Year ${year} overview`}
             className={`hover:underline transition-colors ${
               scope === 'year' ? getScopeColor('year') : 'text-muted-foreground hover:text-foreground'
             }`}
