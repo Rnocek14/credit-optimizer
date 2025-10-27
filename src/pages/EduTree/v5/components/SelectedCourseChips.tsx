@@ -143,6 +143,7 @@ export function SelectedCourseChips({
         </span>
       </div>
 
+      {/* Phase 4: Chip container with vertical spacing */}
       <div 
         role="listbox" 
         aria-label={`Selected courses for ${moduleLabel || 'this module'}`}
@@ -150,7 +151,7 @@ export function SelectedCourseChips({
         data-chips-list
         tabIndex={-1}
         onKeyDown={handleKeyDown}
-        className="flex flex-wrap gap-2"
+        className="flex flex-wrap gap-2 mt-2"
       >
         {basketItems.map((item, index) => (
           <HoverCard key={`${item.moduleId}:${item.courseId}:${item.providerCode || ''}`} openDelay={150}>

@@ -32,9 +32,9 @@ export function TemplateActions({
   
   return (
     <div className="flex gap-2">
-      {/* Primary: Change template */}
+      {/* Primary: Change template - Phase 3: secondary for balance */}
       <Button
-        variant="outline"
+        variant="secondary"
         size="sm"
         onClick={onChangeTemplate}
         className="flex-1 text-xs h-8"
@@ -42,9 +42,9 @@ export function TemplateActions({
         {hasTemplate ? 'Change Template' : 'Browse Templates'}
       </Button>
       
-      {/* Secondary: Add course */}
+      {/* Secondary: Add course - Phase 3: outline for parity */}
       <Button
-        variant="ghost"
+        variant="outline"
         size="sm"
         onClick={onAddCourse}
         className="text-xs h-8"

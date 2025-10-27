@@ -98,63 +98,52 @@ export function ModuleCard({
     return opts.sort((a, b) => b.credits - a.credits);
   }, [marketplaceOptions, sortBy]);
   
-  // Progressive border fill with conic-gradient
-  const getBorderStyle = useCallback((progress: number): React.CSSProperties => {
+  // Phase 1: SVG-based progressive border (replaces fragile conic-gradient)
+  const getBorderClass = useCallback((progress: number): string => {
     if (!FEATURE_FLAGS.v5_module_border_progress) {
-      return { 
-        borderWidth: '2px', 
-        borderStyle: 'solid', 
-        borderColor: 'hsl(var(--border))' 
-      };
+      return 'border-2 border-border';
     }
+    // Always 3px to prevent layout shift
+    return progress === 0 ? 'border-[3px] border-border' : 'border-[3px] border-transparent';
+  }, []);
+  
+  // SVG progress border overlay
+  const ProgressBorder = useCallback(({ progress }: { progress: number }) => {
+    if (!FEATURE_FLAGS.v5_module_border_progress || progress === 0) return null;
     
     const progressClamped = Math.max(0, Math.min(100, progress));
+    const color = progressClamped >= 100 ? '#f59e0b' : '#22c55e';
     
-    // Empty state: gray border
-    if (progressClamped === 0) {
-      return {
-        borderWidth: '2px',
-        borderStyle: 'solid',
-        borderColor: 'hsl(var(--border))'
-      };
-    }
+    // Rounded rect path (viewBox 0-100)
+    const path = "M8,2 H92 Q98,2 98,8 V92 Q98,92 92,98 H8 Q2,98 2,92 V8 Q2,2 8,2 Z";
+    const perimeter = 360;
+    const dashLength = (progressClamped / 100) * perimeter;
+    const gapLength = perimeter - dashLength;
     
-    // Check for conic-gradient support
-    const supportsConicGradient = typeof CSS !== 'undefined' && 
-      CSS.supports('background', 'conic-gradient(red, blue)');
-    
-    // Fallback for older browsers
-    if (!supportsConicGradient) {
-      const color = progressClamped >= 100 ? '#f59e0b' : '#22c55e';
-      return {
-        borderWidth: '3px',
-        borderStyle: 'solid',
-        borderColor: color,
-        borderRadius: '0.5rem',
-        boxShadow: progressClamped >= 100 ? '0 10px 15px -3px rgba(245, 158, 11, 0.2)' : 'none'
-      };
-    }
-    
-    // Progressive fill with conic-gradient
-    const color = progressClamped >= 100 ? '#f59e0b' : '#22c55e'; // amber : green
-    const angle = (progressClamped / 100) * 360;
-    
-    // Respect reduced motion preference
     const prefersReducedMotion = typeof window !== 'undefined' && 
       window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     
-    return {
-      borderWidth: '3px',
-      borderStyle: 'solid',
-      borderColor: 'transparent',
-      borderRadius: '0.5rem',
-      background: `
-        linear-gradient(var(--card), var(--card)) padding-box,
-        conic-gradient(from -90deg, ${color} ${angle}deg, hsl(var(--border)) 0) border-box
-      `,
-      boxShadow: progressClamped >= 100 ? '0 10px 15px -3px rgba(245, 158, 11, 0.2)' : 'none',
-      transition: prefersReducedMotion ? 'none' : 'background 0.3s ease-out, box-shadow 0.3s ease-out'
-    };
+    return (
+      <svg 
+        className="absolute inset-0 pointer-events-none rounded-lg" 
+        viewBox="0 0 100 100" 
+        preserveAspectRatio="none"
+        style={{ overflow: 'visible' }}
+      >
+        <path
+          d={path}
+          fill="none"
+          stroke={color}
+          strokeWidth="3"
+          vectorEffect="non-scaling-stroke"
+          strokeDasharray={`${dashLength} ${gapLength}`}
+          strokeDashoffset="0"
+          style={{
+            transition: prefersReducedMotion ? 'none' : 'stroke-dasharray 0.3s ease-out, stroke 0.3s ease-out'
+          }}
+        />
+      </svg>
+    );
   }, []);
   
   // Full-card click handler with guards
@@ -219,127 +208,79 @@ export function ModuleCard({
   
   return (
     <div
-      className={`module-card bg-card rounded-lg overflow-hidden transition-all duration-200 ${
+      className={`module-card bg-card rounded-lg overflow-visible relative transition-all duration-200 ${
+        getBorderClass(progress)
+      } ${
         FEATURE_FLAGS.v5_module_border_progress 
           ? 'cursor-pointer hover:scale-[1.01] hover:shadow-md' 
-          : 'border-2 border-border'
+          : ''
       }`}
-      style={FEATURE_FLAGS.v5_module_border_progress ? getBorderStyle(progress) : undefined}
+      style={
+        FEATURE_FLAGS.v5_module_border_progress && progress >= 100
+          ? { boxShadow: '0 0 12px rgba(245, 158, 11, 0.25)' }
+          : undefined
+      }
       onClick={FEATURE_FLAGS.v5_module_border_progress ? onCardActivate : undefined}
       onKeyDown={FEATURE_FLAGS.v5_module_border_progress ? onCardKeyDown : undefined}
       tabIndex={FEATURE_FLAGS.v5_module_border_progress && onOpenPanel ? 0 : undefined}
       role={FEATURE_FLAGS.v5_module_border_progress && onOpenPanel ? "button" : undefined}
       aria-label={FEATURE_FLAGS.v5_module_border_progress && onOpenPanel ? `Open ${label} module to browse options` : undefined}
     >
-      {/* Module Header */}
-      <div
-        onClick={FEATURE_FLAGS.v5_module_border_progress ? undefined : (e) => {
-          e.stopPropagation();
-          onToggle();
-        }}
-        role={FEATURE_FLAGS.v5_module_border_progress ? undefined : "button"}
-        aria-expanded={FEATURE_FLAGS.v5_module_border_progress ? undefined : !isCollapsed}
-        aria-label={FEATURE_FLAGS.v5_module_border_progress ? undefined : `${isCollapsed ? 'Expand' : 'Collapse'} ${label} module`}
-        className={`module-header p-3 flex items-center gap-3 ${
-          FEATURE_FLAGS.v5_module_border_progress ? '' : 'cursor-pointer hover:bg-accent/50 transition-colors'
-        }`}
-      >
-        {/* Icon */}
-        <div className="text-2xl flex-shrink-0">{icon}</div>
+      {/* SVG progress border overlay */}
+      <ProgressBorder progress={progress} />
+      {/* Module Header - Phase 2: Two-row structure */}
+      <div className="module-header p-3 space-y-1">
+        {/* Row 1: Identity + Status */}
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2 flex-1 min-w-0">
+            <div className="text-2xl flex-shrink-0">{icon}</div>
+            <h3 className="font-semibold text-sm truncate">{label}</h3>
+            {FEATURE_FLAGS.v5_module_border_progress && progress >= 100 && (
+              <Badge variant="default" size="sm" className="bg-amber-500 text-white flex-shrink-0 hover:bg-amber-500">
+                ✓ Complete
+              </Badge>
+            )}
+          </div>
+          <div className="text-right flex-shrink-0">
+            <div className="text-sm font-semibold">{creditsEarned}/{creditsRequired} cr</div>
+          </div>
+        </div>
         
-        {/* Content */}
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <h3 className="font-semibold text-sm">{label}</h3>
-            {!FEATURE_FLAGS.v5_module_border_progress && (
+        {/* Row 2: Metadata + Actions */}
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            {optionsCount > 0 && (
               <>
-                {isCollapsed ? <ChevronRight size={16} /> : <ChevronDown size={16} />}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onOpenPanel?.();
+                  }}
+                  className="text-primary hover:underline"
+                  data-interactive="true"
+                >
+                  {optionsCount} {optionsCount === 1 ? 'option' : 'options'}
+                </button>
+                {cheapestOption !== undefined && cheapestOption !== null && (
+                  <span>{cheapestOption === 0 ? 'Free' : `from $${cheapestOption}`}</span>
+                )}
               </>
             )}
           </div>
-          <div className="flex items-center gap-2 mt-0.5">
-            <p className="text-xs text-muted-foreground truncate">{description}</p>
-            {optionsCount && optionsCount > 0 && (
-              <div className="flex items-center gap-2">
-                <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full whitespace-nowrap">
-                  {optionsCount} {optionsCount === 1 ? 'option' : 'options'} available
-                </span>
-                {isCollapsed && cheapestOption !== undefined && cheapestOption !== null && (
-                  <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full whitespace-nowrap">
-                    {cheapestOption === 0 ? 'free options' : `from $${cheapestOption}`}
-                  </span>
-                )}
-                {!FEATURE_FLAGS.v5_module_border_progress && onOpenPanel && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onOpenPanel();
-                    }}
-                    className="text-xs px-2 py-0.5 rounded bg-accent hover:bg-accent/80 text-accent-foreground transition-colors"
-                    data-interactive="true"
-                  >
-                    🔍 Compare
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
+          <button
+            onClick={FEATURE_FLAGS.v5_module_border_progress ? onChevronToggle : (e) => {
+              e.stopPropagation();
+              onToggle();
+            }}
+            className="p-1 rounded hover:bg-accent transition-colors touch-target-icon"
+            aria-label={isCollapsed ? `Expand ${label}` : `Collapse ${label}`}
+            aria-expanded={!isCollapsed}
+            data-interactive="true"
+          >
+            {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+          </button>
         </div>
         
-        {/* Progress Indicator */}
-        <div className="flex-shrink-0 flex items-center gap-2">
-          <div className="text-right">
-            <div className="text-sm font-semibold">{creditsEarned}/{creditsRequired}</div>
-            <div className="text-xs text-muted-foreground">credits</div>
-          </div>
-          
-          {FEATURE_FLAGS.v5_module_border_progress ? (
-            <>
-              {progress >= 100 && (
-                <div className="text-2xl" aria-label="Complete">✓</div>
-              )}
-              <button
-                onClick={onChevronToggle}
-                className="p-1.5 hover:bg-muted rounded transition-colors touch-target-icon"
-                aria-label={isCollapsed ? `Expand ${label} module` : `Collapse ${label} module`}
-                aria-expanded={!isCollapsed}
-                data-interactive="true"
-              >
-                {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-              </button>
-            </>
-          ) : (
-            <div className="relative w-12 h-12">
-              <svg className="transform -rotate-90" width="48" height="48">
-                <circle
-                  cx="24"
-                  cy="24"
-                  r="20"
-                  stroke="currentColor"
-                  strokeWidth="4"
-                  fill="none"
-                  className="text-muted/20"
-                />
-                <circle
-                  cx="24"
-                  cy="24"
-                  r="20"
-                  stroke="currentColor"
-                  strokeWidth="4"
-                  fill="none"
-                  strokeDasharray={`${2 * Math.PI * 20}`}
-                  strokeDashoffset={`${2 * Math.PI * 20 * (1 - progress / 100)}`}
-                  className="text-primary transition-all duration-300"
-                />
-              </svg>
-              <div className="absolute inset-0 flex items-center justify-center text-xs font-bold">
-                {Math.round(progress)}%
-              </div>
-            </div>
-          )}
-        </div>
-        
-        {/* Completion announcement for screen readers */}
         {FEATURE_FLAGS.v5_module_border_progress && progress >= 100 && (
           <div className="sr-only" role="status" aria-live="polite">
             {label} module completed!
