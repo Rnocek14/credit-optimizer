@@ -109,12 +109,13 @@ export function ModuleCard({
   
   // SVG progress border overlay
   const ProgressBorder = useCallback(({ progress }: { progress: number }) => {
-    if (!FEATURE_FLAGS.v5_module_border_progress || progress === 0) return null;
+    const safeProgress = Number.isFinite(progress) ? progress : 0;
+    if (!FEATURE_FLAGS.v5_module_border_progress || safeProgress === 0) return null;
     
-    const progressClamped = Math.max(0, Math.min(100, progress));
+    const progressClamped = Math.max(0, Math.min(100, safeProgress));
     const color = progressClamped >= 100 
-      ? 'oklch(var(--warning))' 
-      : 'oklch(var(--success))';
+      ? 'var(--warning)' 
+      : 'var(--success)';
     
     // Use pathLength=100 for easy percentage-based dash control
     const filledLength = progressClamped;
@@ -127,7 +128,7 @@ export function ModuleCard({
       <svg 
         className="absolute inset-0 pointer-events-none" 
         viewBox="0 0 100 100" 
-        preserveAspectRatio="none"
+        preserveAspectRatio="xMidYMid meet"
         style={{ overflow: 'visible' }}
       >
         <rect
@@ -224,7 +225,7 @@ export function ModuleCard({
       }`}
       style={
         FEATURE_FLAGS.v5_module_border_progress && progress >= 100
-          ? { boxShadow: '0 0 20px oklch(var(--warning) / 0.5), 0 0 40px oklch(var(--warning) / 0.2)' }
+          ? { boxShadow: '0 0 20px color-mix(in oklch, var(--warning), transparent 50%), 0 0 40px color-mix(in oklch, var(--warning), transparent 80%)' }
           : undefined
       }
       onClick={FEATURE_FLAGS.v5_module_border_progress ? onCardActivate : undefined}
