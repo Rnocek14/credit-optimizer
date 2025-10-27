@@ -113,9 +113,10 @@ export function ModuleCard({
     if (!FEATURE_FLAGS.v5_module_border_progress || safeProgress === 0) return null;
     
     const progressClamped = Math.max(0, Math.min(100, safeProgress));
+    // Phase 2: Inline OKLCH colors for debugging (bypass CSS variable resolution)
     const color = progressClamped >= 100 
-      ? 'var(--warning)' 
-      : 'var(--success)';
+      ? 'oklch(0.85 0.15 70)'   // Warning gold
+      : 'oklch(0.77 0.12 142)'; // Success green
     
     // Use pathLength=100 for easy percentage-based dash control
     const filledLength = progressClamped;
@@ -128,23 +129,32 @@ export function ModuleCard({
       <svg 
         className="absolute inset-0 pointer-events-none" 
         viewBox="0 0 100 100" 
-        preserveAspectRatio="xMidYMid meet"
+        preserveAspectRatio="none"
         style={{ overflow: 'visible' }}
       >
+        {/* Phase 3: Debug rect - remove after confirming SVG renders */}
+        <rect 
+          x="0" y="0" width="100" height="100" 
+          fill="rgba(255, 0, 0, 0.1)" 
+          stroke="red" 
+          strokeWidth="1"
+        />
+        
+        {/* Phase 1: Fixed geometry - full viewBox coverage */}
         <rect
-          x="2" 
-          y="2"
-          width="96" 
-          height="96"
-          rx="6"
-          ry="6"
+          x="0" 
+          y="0"
+          width="100" 
+          height="100"
+          rx="8"
+          ry="8"
           fill="none"
           stroke={color}
-          strokeWidth="4"
+          strokeWidth="3"
           vectorEffect="non-scaling-stroke"
           pathLength="100"
           strokeDasharray={`${filledLength} ${emptyLength}`}
-          strokeDashoffset="25"
+          strokeDashoffset="0"
           strokeLinecap="round"
           style={{
             transition: prefersReducedMotion ? 'none' : 'stroke-dasharray 0.4s ease-out, stroke 0.4s ease-out'
