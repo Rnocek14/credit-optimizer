@@ -16,4 +16,5 @@ export const FEATURE_FLAGS = {
   v5_diff_strip: true, // Phase 3: Template diff strip with keepPinned toggle
   v5_template_search: true, // Phase 3: Template search/filtering
   v5_cross_scope_details: true, // Phase 3: Show module names for cross-scope items
+  v5_module_border_progress: true, // Phase 4: Border progression + full-card click
 };

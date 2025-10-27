@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { CourseCard } from './CourseCard';
 import { ModuleData } from '../types/v5';
@@ -12,6 +12,8 @@ import { SelectedCourseChips } from './SelectedCourseChips';
 import { TemplateActions } from './TemplateActions';
 import { EmptyTemplateState } from './EmptyTemplateState';
 import type { NodeSelectedSummary } from '../types/nodeProgress';
+import { trackTelemetryEvent } from '@/utils/telemetry';
+import { FEATURE_FLAGS } from '../config/featureFlags';
 
 interface ModuleCardProps extends ModuleData {
   selectedSummary?: NodeSelectedSummary;
@@ -96,20 +98,106 @@ export function ModuleCard({
     return opts.sort((a, b) => b.credits - a.credits);
   }, [marketplaceOptions, sortBy]);
   
+  // Border progression styling
+  const getBorderStyle = useCallback((progress: number) => {
+    if (!FEATURE_FLAGS.v5_module_border_progress) {
+      return 'border-2 border-border';
+    }
+    
+    if (progress === 0) {
+      return 'border-2 border-border';
+    }
+    if (progress >= 100) {
+      return 'border-[3px] border-amber-500 shadow-lg shadow-amber-500/20';
+    }
+    return 'border-[3px] border-green-500';
+  }, []);
+  
+  // Full-card click handler with guards
+  const onCardActivate = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    if (!FEATURE_FLAGS.v5_module_border_progress || !onOpenPanel) return;
+    
+    // Selection guard
+    const sel = window.getSelection?.();
+    if (sel && sel.type === 'Range') return;
+    
+    // Interactive-descendant guard
+    const target = e.target as HTMLElement;
+    if (target.closest('button, a, input, select, textarea, [contenteditable], [data-interactive]')) {
+      return;
+    }
+    
+    // Track & open
+    void trackTelemetryEvent({
+      task: 'module_card_clicked',
+      scope: 'module',
+      complexity: { 
+        moduleId: id, 
+        optionsCount, 
+        hasBasket: basketItems.length > 0,
+        source: 'card_click' 
+      }
+    });
+    
+    onOpenPanel();
+  }, [onOpenPanel, id, optionsCount, basketItems.length]);
+  
+  const onCardKeyDown = useCallback((e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (!FEATURE_FLAGS.v5_module_border_progress || !onOpenPanel) return;
+    
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      void trackTelemetryEvent({
+        task: 'module_card_clicked',
+        scope: 'module',
+        complexity: { 
+          moduleId: id, 
+          optionsCount,
+          source: 'keyboard' 
+        }
+      });
+      onOpenPanel();
+    }
+  }, [onOpenPanel, id, optionsCount]);
+  
+  const onChevronToggle = useCallback((e: React.MouseEvent<HTMLButtonElement>) => {
+    e.stopPropagation();
+    void trackTelemetryEvent({
+      task: 'module_chevron_toggled',
+      scope: 'module',
+      complexity: { 
+        moduleId: id, 
+        expanded: isCollapsed 
+      }
+    });
+    onToggle();
+  }, [onToggle, id, isCollapsed]);
+  
   return (
     <div
-      className="module-card bg-card border-2 border-border rounded-lg overflow-hidden"
+      className={`module-card bg-card rounded-lg overflow-hidden transition-all duration-200 ${
+        FEATURE_FLAGS.v5_module_border_progress 
+          ? `${getBorderStyle(progress)} cursor-pointer hover:scale-[1.01] hover:shadow-md` 
+          : 'border-2 border-border'
+      }`}
+      onClick={FEATURE_FLAGS.v5_module_border_progress ? onCardActivate : undefined}
+      onKeyDown={FEATURE_FLAGS.v5_module_border_progress ? onCardKeyDown : undefined}
+      tabIndex={FEATURE_FLAGS.v5_module_border_progress && onOpenPanel ? 0 : undefined}
+      role={FEATURE_FLAGS.v5_module_border_progress && onOpenPanel ? "button" : undefined}
+      aria-label={FEATURE_FLAGS.v5_module_border_progress && onOpenPanel ? `Open ${label} module to browse options` : undefined}
     >
-      {/* Module Header - Clickable */}
+      {/* Module Header */}
       <div
-        onClick={(e) => {
+        onClick={FEATURE_FLAGS.v5_module_border_progress ? undefined : (e) => {
           e.stopPropagation();
           onToggle();
         }}
-        role="button"
-        aria-expanded={!isCollapsed}
-        aria-label={`${isCollapsed ? 'Expand' : 'Collapse'} ${label} module`}
-        className="module-header p-3 cursor-pointer hover:bg-accent/50 transition-colors flex items-center gap-3"
+        role={FEATURE_FLAGS.v5_module_border_progress ? undefined : "button"}
+        aria-expanded={FEATURE_FLAGS.v5_module_border_progress ? undefined : !isCollapsed}
+        aria-label={FEATURE_FLAGS.v5_module_border_progress ? undefined : `${isCollapsed ? 'Expand' : 'Collapse'} ${label} module`}
+        className={`module-header p-3 flex items-center gap-3 ${
+          FEATURE_FLAGS.v5_module_border_progress ? '' : 'cursor-pointer hover:bg-accent/50 transition-colors'
+        }`}
       >
         {/* Icon */}
         <div className="text-2xl flex-shrink-0">{icon}</div>
@@ -118,7 +206,11 @@ export function ModuleCard({
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
             <h3 className="font-semibold text-sm">{label}</h3>
-            {isCollapsed ? <ChevronRight size={16} /> : <ChevronDown size={16} />}
+            {!FEATURE_FLAGS.v5_module_border_progress && (
+              <>
+                {isCollapsed ? <ChevronRight size={16} /> : <ChevronDown size={16} />}
+              </>
+            )}
           </div>
           <div className="flex items-center gap-2 mt-0.5">
             <p className="text-xs text-muted-foreground truncate">{description}</p>
@@ -132,13 +224,14 @@ export function ModuleCard({
                     {cheapestOption === 0 ? 'free options' : `from $${cheapestOption}`}
                   </span>
                 )}
-                {onOpenPanel && (
+                {!FEATURE_FLAGS.v5_module_border_progress && onOpenPanel && (
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
                       onOpenPanel();
                     }}
                     className="text-xs px-2 py-0.5 rounded bg-accent hover:bg-accent/80 text-accent-foreground transition-colors"
+                    data-interactive="true"
                   >
                     🔍 Compare
                   </button>
@@ -151,37 +244,62 @@ export function ModuleCard({
         {/* Progress Indicator */}
         <div className="flex-shrink-0 flex items-center gap-2">
           <div className="text-right">
-            <div className="text-xs font-semibold">{creditsEarned}/{creditsRequired}</div>
+            <div className="text-sm font-semibold">{creditsEarned}/{creditsRequired}</div>
             <div className="text-xs text-muted-foreground">credits</div>
           </div>
-          <div className="relative w-12 h-12">
-            <svg className="transform -rotate-90" width="48" height="48">
-              <circle
-                cx="24"
-                cy="24"
-                r="20"
-                stroke="currentColor"
-                strokeWidth="4"
-                fill="none"
-                className="text-muted/20"
-              />
-              <circle
-                cx="24"
-                cy="24"
-                r="20"
-                stroke="currentColor"
-                strokeWidth="4"
-                fill="none"
-                strokeDasharray={`${2 * Math.PI * 20}`}
-                strokeDashoffset={`${2 * Math.PI * 20 * (1 - progress / 100)}`}
-                className="text-primary transition-all duration-300"
-              />
-            </svg>
-            <div className="absolute inset-0 flex items-center justify-center text-xs font-bold">
-              {Math.round(progress)}%
+          
+          {FEATURE_FLAGS.v5_module_border_progress ? (
+            <>
+              {progress >= 100 && (
+                <div className="text-2xl" aria-label="Complete">✓</div>
+              )}
+              <button
+                onClick={onChevronToggle}
+                className="p-1.5 hover:bg-muted rounded transition-colors touch-target-icon"
+                aria-label={isCollapsed ? `Expand ${label} module` : `Collapse ${label} module`}
+                aria-expanded={!isCollapsed}
+                data-interactive="true"
+              >
+                {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+              </button>
+            </>
+          ) : (
+            <div className="relative w-12 h-12">
+              <svg className="transform -rotate-90" width="48" height="48">
+                <circle
+                  cx="24"
+                  cy="24"
+                  r="20"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                  fill="none"
+                  className="text-muted/20"
+                />
+                <circle
+                  cx="24"
+                  cy="24"
+                  r="20"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                  fill="none"
+                  strokeDasharray={`${2 * Math.PI * 20}`}
+                  strokeDashoffset={`${2 * Math.PI * 20 * (1 - progress / 100)}`}
+                  className="text-primary transition-all duration-300"
+                />
+              </svg>
+              <div className="absolute inset-0 flex items-center justify-center text-xs font-bold">
+                {Math.round(progress)}%
+              </div>
             </div>
-          </div>
+          )}
         </div>
+        
+        {/* Completion announcement for screen readers */}
+        {FEATURE_FLAGS.v5_module_border_progress && progress >= 100 && (
+          <div className="sr-only" role="status" aria-live="polite">
+            {label} module completed!
+          </div>
+        )}
       </div>
       
       {/* State-based rendering */}
@@ -244,6 +362,7 @@ export function ModuleCard({
                   onChange={(e) => setSortBy(e.target.value as any)}
                   className="text-xs px-2 py-1 rounded border border-border bg-background hover:bg-accent/50 cursor-pointer transition-colors"
                   onClick={(e) => e.stopPropagation()}
+                  data-interactive="true"
                 >
                   <option value="cheapest">💰 Cheapest</option>
                   <option value="shortest">⚡ Shortest</option>
@@ -271,6 +390,7 @@ export function ModuleCard({
                           }
                         }}
                         disabled={atMax || wouldExceedYearCap}
+                        data-interactive="true"
                       />
                       <div className="flex-1 min-w-0">
                         <div className="text-[11px] font-medium truncate leading-tight">
@@ -340,6 +460,7 @@ export function ModuleCard({
                               ? 'Module max reached'
                               : ''
                           }
+                          data-interactive="true"
                         >
                           {(atMax || wouldExceedYearCap) ? 'Cap Reached' : 'Select'}
                         </button>

@@ -214,9 +214,8 @@ export default function EduTreeV5Page() {
           }))
         );
         
-        // Also update creditsEarned from selections for legacy compatibility
-        const sel = selections[mod.id];
-        const creditsEarned = sel?.selectedCredits ?? 0;
+        // Calculate creditsEarned from basket (fixes progress bug with templates)
+        const creditsEarned = basketItemsForModule.reduce((sum, item) => sum + item.credits, 0);
         
         return { 
           ...mod, 
