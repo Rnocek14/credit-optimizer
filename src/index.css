@@ -823,7 +823,7 @@
   .touch-target-icon {
     @apply h-12 w-12 min-h-12 min-w-12 inline-flex items-center justify-center;
     @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2;
-    @apply transition-colors hover:bg-secondary/60;
+    @apply transition-colors hover:bg-accent;
   }
   
   /* Focus ring utility for all interactive elements */
