@@ -113,8 +113,8 @@ export function ModuleCard({
     
     const progressClamped = Math.max(0, Math.min(100, progress));
     const color = progressClamped >= 100 
-      ? 'hsl(var(--warning))' 
-      : 'hsl(var(--success))';
+      ? 'oklch(var(--warning))' 
+      : 'oklch(var(--success))';
     
     // Use pathLength=100 for easy percentage-based dash control
     const filledLength = progressClamped;
@@ -224,7 +224,7 @@ export function ModuleCard({
       }`}
       style={
         FEATURE_FLAGS.v5_module_border_progress && progress >= 100
-          ? { boxShadow: '0 0 20px hsl(var(--warning) / 0.5), 0 0 40px hsl(var(--warning) / 0.2)' }
+          ? { boxShadow: '0 0 20px oklch(var(--warning) / 0.5), 0 0 40px oklch(var(--warning) / 0.2)' }
           : undefined
       }
       onClick={FEATURE_FLAGS.v5_module_border_progress ? onCardActivate : undefined}
