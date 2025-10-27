@@ -103,8 +103,8 @@ export function ModuleCard({
     if (!FEATURE_FLAGS.v5_module_border_progress) {
       return 'border-2 border-border';
     }
-    // Always 3px to prevent layout shift
-    return progress === 0 ? 'border-[3px] border-border' : 'border-[3px] border-transparent';
+    // Always 4px to prevent layout shift
+    return progress === 0 ? 'border-[4px] border-border' : 'border-[4px] border-transparent';
   }, []);
   
   // SVG progress border overlay
@@ -112,34 +112,41 @@ export function ModuleCard({
     if (!FEATURE_FLAGS.v5_module_border_progress || progress === 0) return null;
     
     const progressClamped = Math.max(0, Math.min(100, progress));
-    const color = progressClamped >= 100 ? '#f59e0b' : '#22c55e';
+    const color = progressClamped >= 100 
+      ? 'hsl(var(--warning))' 
+      : 'hsl(var(--success))';
     
-    // Rounded rect path (viewBox 0-100)
-    const path = "M8,2 H92 Q98,2 98,8 V92 Q98,92 92,98 H8 Q2,98 2,92 V8 Q2,2 8,2 Z";
-    const perimeter = 360;
-    const dashLength = (progressClamped / 100) * perimeter;
-    const gapLength = perimeter - dashLength;
+    // Use pathLength=100 for easy percentage-based dash control
+    const filledLength = progressClamped;
+    const emptyLength = 100 - progressClamped;
     
     const prefersReducedMotion = typeof window !== 'undefined' && 
       window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     
     return (
       <svg 
-        className="absolute inset-0 pointer-events-none rounded-lg" 
+        className="absolute inset-0 pointer-events-none" 
         viewBox="0 0 100 100" 
         preserveAspectRatio="none"
         style={{ overflow: 'visible' }}
       >
-        <path
-          d={path}
+        <rect
+          x="2" 
+          y="2"
+          width="96" 
+          height="96"
+          rx="6"
+          ry="6"
           fill="none"
           stroke={color}
-          strokeWidth="3"
+          strokeWidth="4"
           vectorEffect="non-scaling-stroke"
-          strokeDasharray={`${dashLength} ${gapLength}`}
-          strokeDashoffset="0"
+          pathLength="100"
+          strokeDasharray={`${filledLength} ${emptyLength}`}
+          strokeDashoffset="25"
+          strokeLinecap="round"
           style={{
-            transition: prefersReducedMotion ? 'none' : 'stroke-dasharray 0.3s ease-out, stroke 0.3s ease-out'
+            transition: prefersReducedMotion ? 'none' : 'stroke-dasharray 0.4s ease-out, stroke 0.4s ease-out'
           }}
         />
       </svg>
@@ -217,7 +224,7 @@ export function ModuleCard({
       }`}
       style={
         FEATURE_FLAGS.v5_module_border_progress && progress >= 100
-          ? { boxShadow: '0 0 12px rgba(245, 158, 11, 0.25)' }
+          ? { boxShadow: '0 0 20px hsl(var(--warning) / 0.5), 0 0 40px hsl(var(--warning) / 0.2)' }
           : undefined
       }
       onClick={FEATURE_FLAGS.v5_module_border_progress ? onCardActivate : undefined}
