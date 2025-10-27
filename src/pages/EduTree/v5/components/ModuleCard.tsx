@@ -98,19 +98,63 @@ export function ModuleCard({
     return opts.sort((a, b) => b.credits - a.credits);
   }, [marketplaceOptions, sortBy]);
   
-  // Border progression styling
-  const getBorderStyle = useCallback((progress: number) => {
+  // Progressive border fill with conic-gradient
+  const getBorderStyle = useCallback((progress: number): React.CSSProperties => {
     if (!FEATURE_FLAGS.v5_module_border_progress) {
-      return 'border-2 border-border';
+      return { 
+        borderWidth: '2px', 
+        borderStyle: 'solid', 
+        borderColor: 'hsl(var(--border))' 
+      };
     }
     
-    if (progress === 0) {
-      return 'border-2 border-border';
+    const progressClamped = Math.max(0, Math.min(100, progress));
+    
+    // Empty state: gray border
+    if (progressClamped === 0) {
+      return {
+        borderWidth: '2px',
+        borderStyle: 'solid',
+        borderColor: 'hsl(var(--border))'
+      };
     }
-    if (progress >= 100) {
-      return 'border-[3px] border-amber-500 shadow-lg shadow-amber-500/20';
+    
+    // Check for conic-gradient support
+    const supportsConicGradient = typeof CSS !== 'undefined' && 
+      CSS.supports('background', 'conic-gradient(red, blue)');
+    
+    // Fallback for older browsers
+    if (!supportsConicGradient) {
+      const color = progressClamped >= 100 ? '#f59e0b' : '#22c55e';
+      return {
+        borderWidth: '3px',
+        borderStyle: 'solid',
+        borderColor: color,
+        borderRadius: '0.5rem',
+        boxShadow: progressClamped >= 100 ? '0 10px 15px -3px rgba(245, 158, 11, 0.2)' : 'none'
+      };
     }
-    return 'border-[3px] border-green-500';
+    
+    // Progressive fill with conic-gradient
+    const color = progressClamped >= 100 ? '#f59e0b' : '#22c55e'; // amber : green
+    const angle = (progressClamped / 100) * 360;
+    
+    // Respect reduced motion preference
+    const prefersReducedMotion = typeof window !== 'undefined' && 
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    
+    return {
+      borderWidth: '3px',
+      borderStyle: 'solid',
+      borderColor: 'transparent',
+      borderRadius: '0.5rem',
+      background: `
+        linear-gradient(var(--card), var(--card)) padding-box,
+        conic-gradient(from -90deg, ${color} ${angle}deg, hsl(var(--border)) 0) border-box
+      `,
+      boxShadow: progressClamped >= 100 ? '0 10px 15px -3px rgba(245, 158, 11, 0.2)' : 'none',
+      transition: prefersReducedMotion ? 'none' : 'background 0.3s ease-out, box-shadow 0.3s ease-out'
+    };
   }, []);
   
   // Full-card click handler with guards
@@ -177,9 +221,10 @@ export function ModuleCard({
     <div
       className={`module-card bg-card rounded-lg overflow-hidden transition-all duration-200 ${
         FEATURE_FLAGS.v5_module_border_progress 
-          ? `${getBorderStyle(progress)} cursor-pointer hover:scale-[1.01] hover:shadow-md` 
+          ? 'cursor-pointer hover:scale-[1.01] hover:shadow-md' 
           : 'border-2 border-border'
       }`}
+      style={FEATURE_FLAGS.v5_module_border_progress ? getBorderStyle(progress) : undefined}
       onClick={FEATURE_FLAGS.v5_module_border_progress ? onCardActivate : undefined}
       onKeyDown={FEATURE_FLAGS.v5_module_border_progress ? onCardKeyDown : undefined}
       tabIndex={FEATURE_FLAGS.v5_module_border_progress && onOpenPanel ? 0 : undefined}
