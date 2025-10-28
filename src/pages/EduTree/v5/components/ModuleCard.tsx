@@ -98,75 +98,16 @@ export function ModuleCard({
     return opts.sort((a, b) => b.credits - a.credits);
   }, [marketplaceOptions, sortBy]);
   
-  // Phase 1: SVG-based progressive border (replaces fragile conic-gradient)
-  const getBorderClass = useCallback((progress: number): string => {
-    if (!FEATURE_FLAGS.v5_module_border_progress) {
-      return 'border-2 border-border';
-    }
-    // Always 4px to prevent layout shift
-    return progress === 0 ? 'border-[4px] border-border' : 'border-[4px] border-transparent';
-  }, []);
-  
-  // SVG progress border overlay
-  const ProgressBorder = useCallback(({ progress }: { progress: number }) => {
-    const safeProgress = Number.isFinite(progress) ? progress : 0;
-    if (!FEATURE_FLAGS.v5_module_border_progress || safeProgress === 0) return null;
-    
-    const progressClamped = Math.max(0, Math.min(100, safeProgress));
-    // Phase 2: Inline OKLCH colors for debugging (bypass CSS variable resolution)
-    const color = progressClamped >= 100 
-      ? 'oklch(0.85 0.15 70)'   // Warning gold
-      : 'oklch(0.77 0.12 142)'; // Success green
-    
-    // Use pathLength=100 for easy percentage-based dash control
-    const filledLength = progressClamped;
-    const emptyLength = 100 - progressClamped;
-    
-    const prefersReducedMotion = typeof window !== 'undefined' && 
-      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    
-    return (
-      <svg 
-        className="absolute inset-0 pointer-events-none" 
-        viewBox="0 0 100 100" 
-        preserveAspectRatio="none"
-        style={{ overflow: 'visible' }}
-      >
-        {/* Phase 3: Debug rect - remove after confirming SVG renders */}
-        <rect 
-          x="0" y="0" width="100" height="100" 
-          fill="rgba(255, 0, 0, 0.1)" 
-          stroke="red" 
-          strokeWidth="1"
-        />
-        
-        {/* Phase 1: Fixed geometry - full viewBox coverage */}
-        <rect
-          x="0" 
-          y="0"
-          width="100" 
-          height="100"
-          rx="8"
-          ry="8"
-          fill="none"
-          stroke={color}
-          strokeWidth="3"
-          vectorEffect="non-scaling-stroke"
-          pathLength="100"
-          strokeDasharray={`${filledLength} ${emptyLength}`}
-          strokeDashoffset="0"
-          strokeLinecap="round"
-          style={{
-            transition: prefersReducedMotion ? 'none' : 'stroke-dasharray 0.4s ease-out, stroke 0.4s ease-out'
-          }}
-        />
-      </svg>
-    );
+  // Phase 0: Simple stateful CSS border (no SVG geometry issues)
+  const getProgressBorderClass = useCallback((progress: number): string => {
+    if (progress === 0) return 'border-[3px] border-border'; // Gray
+    if (progress < 100) return 'border-[3px] border-success'; // Green
+    return 'border-[3px] border-warning shadow-[0_0_12px_oklch(0.85_0.15_70/0.3)]'; // Gold + glow
   }, []);
   
   // Full-card click handler with guards
   const onCardActivate = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    if (!FEATURE_FLAGS.v5_module_border_progress || !onOpenPanel) return;
+    if (!FEATURE_FLAGS.V5_SIMPLIFIED_CARDS || !onOpenPanel) return;
     
     // Selection guard
     const sel = window.getSelection?.();
@@ -194,7 +135,7 @@ export function ModuleCard({
   }, [onOpenPanel, id, optionsCount, basketItems.length]);
   
   const onCardKeyDown = useCallback((e: React.KeyboardEvent<HTMLDivElement>) => {
-    if (!FEATURE_FLAGS.v5_module_border_progress || !onOpenPanel) return;
+    if (!FEATURE_FLAGS.V5_SIMPLIFIED_CARDS || !onOpenPanel) return;
     
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
@@ -226,117 +167,118 @@ export function ModuleCard({
   
   return (
     <div
-      className={`module-card bg-card rounded-lg overflow-visible relative transition-all duration-200 ${
-        getBorderClass(progress)
-      } ${
-        FEATURE_FLAGS.v5_module_border_progress 
-          ? 'cursor-pointer hover:scale-[1.01] hover:shadow-md' 
-          : ''
-      }`}
-      style={
-        FEATURE_FLAGS.v5_module_border_progress && progress >= 100
-          ? { boxShadow: '0 0 20px color-mix(in oklch, var(--warning), transparent 50%), 0 0 40px color-mix(in oklch, var(--warning), transparent 80%)' }
-          : undefined
-      }
-      onClick={FEATURE_FLAGS.v5_module_border_progress ? onCardActivate : undefined}
-      onKeyDown={FEATURE_FLAGS.v5_module_border_progress ? onCardKeyDown : undefined}
-      tabIndex={FEATURE_FLAGS.v5_module_border_progress && onOpenPanel ? 0 : undefined}
-      role={FEATURE_FLAGS.v5_module_border_progress && onOpenPanel ? "button" : undefined}
-      aria-label={FEATURE_FLAGS.v5_module_border_progress && onOpenPanel ? `Open ${label} module to browse options` : undefined}
+      className={`
+        module-card bg-card rounded-lg relative transition-all duration-200
+        ${getProgressBorderClass(progress)}
+        ${onOpenPanel ? 'cursor-pointer hover:scale-[1.01] hover:shadow-md' : ''}
+      `}
+      onClick={onOpenPanel ? onCardActivate : undefined}
+      onKeyDown={onOpenPanel ? onCardKeyDown : undefined}
+      tabIndex={onOpenPanel ? 0 : undefined}
+      role={onOpenPanel ? "button" : undefined}
+      aria-label={onOpenPanel ? `Open ${label} module to browse options` : undefined}
     >
-      {/* SVG progress border overlay */}
-      <ProgressBorder progress={progress} />
-      {/* Module Header - Phase 2: Two-row structure */}
-      <div className="module-header p-3 space-y-1">
-        {/* Row 1: Identity + Status */}
-        <div className="flex items-center justify-between gap-3">
+      {/* Module Header: 2-row clean layout */}
+      <div className="module-header p-3 space-y-2">
+        {/* Row 1: Icon + Title + Status + Credits */}
+        <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2 flex-1 min-w-0">
-            <div className="text-2xl flex-shrink-0">{icon}</div>
+            {icon && <span className="text-xl flex-shrink-0">{icon}</span>}
             <h3 className="font-semibold text-sm truncate">{label}</h3>
-            {FEATURE_FLAGS.v5_module_border_progress && progress >= 100 && (
-              <Badge variant="default" size="sm" className="bg-amber-500 text-white flex-shrink-0 hover:bg-amber-500">
+            {progress >= 100 && (
+              <Badge variant="default" className="text-[10px] ml-auto flex-shrink-0">
                 ✓ Complete
               </Badge>
             )}
           </div>
           <div className="text-right flex-shrink-0">
-            <div className="text-sm font-semibold">{creditsEarned}/{creditsRequired} cr</div>
+            <div className="text-xs font-semibold">{creditsEarned}/{creditsRequired}</div>
+            <div className="text-[10px] text-muted-foreground">credits</div>
           </div>
         </div>
-        
-        {/* Row 2: Metadata + Actions */}
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            {optionsCount > 0 && (
-              <>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onOpenPanel?.();
-                  }}
-                  className="text-primary hover:underline"
-                  data-interactive="true"
-                >
-                  {optionsCount} {optionsCount === 1 ? 'option' : 'options'}
-                </button>
-                {cheapestOption !== undefined && cheapestOption !== null && (
-                  <span>{cheapestOption === 0 ? 'Free' : `from $${cheapestOption}`}</span>
-                )}
-              </>
-            )}
-          </div>
-          <button
-            onClick={FEATURE_FLAGS.v5_module_border_progress ? onChevronToggle : (e) => {
+
+        {/* Row 2: Options count + Chevron */}
+        <div className="flex items-center justify-between text-xs text-muted-foreground">
+          <button 
+            onClick={(e) => {
               e.stopPropagation();
-              onToggle();
+              onOpenPanel?.();
             }}
-            className="p-1 rounded hover:bg-accent transition-colors touch-target-icon"
-            aria-label={isCollapsed ? `Expand ${label}` : `Collapse ${label}`}
-            aria-expanded={!isCollapsed}
+            className="hover:text-foreground transition-colors"
+            data-interactive="true"
+          >
+            {optionsCount || 0} {optionsCount === 1 ? 'option' : 'options'} available
+          </button>
+          <button
+            onClick={onChevronToggle}
+            className="p-1 hover:bg-muted rounded transition-colors"
+            aria-label={isCollapsed ? 'Expand module details' : 'Collapse module details'}
             data-interactive="true"
           >
             {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
           </button>
         </div>
         
-        {FEATURE_FLAGS.v5_module_border_progress && progress >= 100 && (
+        {progress >= 100 && (
           <div className="sr-only" role="status" aria-live="polite">
             {label} module completed!
           </div>
         )}
       </div>
       
-      {/* State-based rendering */}
-      {!isCollapsed && (viewState === 'template-intact' || viewState === 'modified' || viewState === 'custom') && basketItems.length > 0 ? (
-        <div className="p-4 pt-0 space-y-3" onClick={e => e.stopPropagation()}>
-          <SelectedCourseChips 
-            moduleId={id}
-            moduleLabel={label}
-            basketItems={basketItems}
-            onRemove={removeItemWithToast}
-            creditsRequired={creditsRequired}
-          />
-          {viewState === 'modified' && (
+      {/* Expanded content */}
+      {!isCollapsed && (
+        <div className="p-3 pt-0 space-y-3" onClick={e => e.stopPropagation()}>
+          {/* Description */}
+          {description && (
             <p className="text-xs text-muted-foreground italic">
-              ✏️ Modified from template
+              {description}
             </p>
           )}
-          <TemplateActions 
-            moduleId={id}
-            hasTemplate={!!moduleStates[id]?.templateId}
-            onChangeTemplate={() => onOpenPanel?.()}
-            onAddCourse={() => onOpenPanel?.()}
-          />
+
+          {/* Course Chips (if selected) */}
+          {basketItems.length > 0 && (
+            <>
+              <SelectedCourseChips 
+                moduleId={id}
+                moduleLabel={label}
+                basketItems={basketItems}
+                onRemove={removeItemWithToast}
+                creditsRequired={creditsRequired}
+              />
+              {viewState === 'modified' && (
+                <p className="text-xs text-muted-foreground italic">
+                  ✏️ Modified from template
+                </p>
+              )}
+            </>
+          )}
+
+          {/* Empty template state */}
+          {viewState === 'template-intact' && basketItems.length === 0 && (
+            <EmptyTemplateState
+              templateLabel={moduleStates[id]?.templateLabel}
+              onBrowseTemplates={() => onOpenPanel?.()}
+              onAddCourse={() => onOpenPanel?.()}
+            />
+          )}
+
+          {/* Clear CTA to open dock */}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onOpenPanel?.();
+            }}
+            className="w-full mt-3 py-2 text-xs text-primary hover:text-primary/80 hover:bg-primary/5 rounded transition-colors border border-primary/20"
+            data-interactive="true"
+          >
+            Open in dock to manage courses →
+          </button>
         </div>
-      ) : !isCollapsed && viewState === 'template-intact' && basketItems.length === 0 ? (
-        <div className="p-4 pt-0" onClick={e => e.stopPropagation()}>
-          <EmptyTemplateState
-            templateLabel={moduleStates[id]?.templateLabel}
-            onBrowseTemplates={() => onOpenPanel?.()}
-            onAddCourse={() => onOpenPanel?.()}
-          />
-        </div>
-      ) : (
+      )}
+      
+      {/* Old expanded view (keep for now if needed) */}
+      {!isCollapsed && false && (
         <>
           {/* Courses List - Expandable */}
           {!isCollapsed && courses.length > 0 && (

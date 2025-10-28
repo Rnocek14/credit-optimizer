@@ -111,19 +111,30 @@ export function YearCard({
         }
       `}
     >
-      {/* Header */}
-      <div className="flex items-center justify-center gap-2 text-primary font-bold text-lg">
-        <span>Year {year}</span>
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onToggle();
-          }}
-          aria-label={isCollapsed ? 'Expand year' : 'Collapse year'}
-          className="p-1 hover:bg-primary/10 rounded transition-colors"
-        >
-          {isCollapsed ? <ChevronRight size={20} /> : <ChevronDown size={20} />}
-        </button>
+      {/* Header: 2-row layout */}
+      <div className="space-y-1">
+        {/* Row 1: Title + Status */}
+        <div className="flex items-center justify-center gap-2">
+          <span className="text-primary font-bold text-lg">Year {year}</span>
+          {creditsSummary.planned >= creditsSummary.required && (
+            <Badge variant="default" className="text-[10px]">✓ Complete</Badge>
+          )}
+        </div>
+        
+        {/* Row 2: Summary + Chevron */}
+        <div className="flex items-center justify-between text-xs text-muted-foreground">
+          <span>{creditsSummary.planned}/{creditsSummary.required} cr • {modulesSummary.completed}/{modulesSummary.total} modules</span>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggle();
+            }}
+            aria-label={isCollapsed ? 'Expand year' : 'Collapse year'}
+            className="p-1 hover:bg-primary/10 rounded transition-colors"
+          >
+            {isCollapsed ? <ChevronRight size={16} /> : <ChevronDown size={16} />}
+          </button>
+        </div>
       </div>
       
       {isCollapsed ? (

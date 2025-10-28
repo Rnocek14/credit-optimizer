@@ -155,7 +155,7 @@ export function ModuleTemplatesPanel({ module, allModules, onAddTemplate }: Modu
 
   return (
     <div className="space-y-4">
-      {preview && previewingTemplate && FEATURE_FLAGS.v5_diff_strip && (
+      {preview && previewingTemplate && FEATURE_FLAGS.V5_SIMPLIFIED_CARDS && (
         <TemplateDiffStrip 
           preview={preview} 
           templateLabel={previewingTemplate.label}

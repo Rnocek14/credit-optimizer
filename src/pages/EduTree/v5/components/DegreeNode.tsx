@@ -149,39 +149,40 @@ function DegreeNodeImpl({
       `}
     >
       {isCollapsed ? (
-        /* Collapsed State */
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4 text-sm">
-            <GraduationCap className="h-5 w-5 text-primary" />
-            <span className="font-semibold">{degreeTitle}</span>
-            <span className="text-muted-foreground">•</span>
-            <span className="text-muted-foreground">
+        /* Collapsed State: 2-row layout */
+        <div className="space-y-2">
+          {/* Row 1: Icon + Title + Status */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <GraduationCap className="h-5 w-5 text-primary flex-shrink-0" />
+              <span className="font-semibold">{degreeTitle}</span>
+              {isComplete && (
+                <Badge variant="default" className="text-xs">✅ Completed</Badge>
+              )}
+            </div>
+            <div className="text-sm text-muted-foreground">
               {earnedLabel} ({fmtPercentage(earnedProgressPct)})
-            </span>
-            <span className="text-muted-foreground">•</span>
-            <span className="text-muted-foreground">Planned: {fmtCredits(totalCreditsPlanned, totalCreditsRequired)}</span>
-            <span className="text-muted-foreground">•</span>
-            {isComplete ? (
-              <Badge variant="default" className="text-xs">✅ Completed</Badge>
-            ) : (
-              <>
-                <span className="text-muted-foreground">~{fmtDuration(estimatedMonths)}</span>
-                <span className="text-muted-foreground">•</span>
-                <span className="text-muted-foreground">{fmtCurrency(estimatedCost)}</span>
-              </>
-            )}
+            </div>
           </div>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onToggle();
-            }}
-            aria-label="Expand degree details"
-            className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
-          >
-            Expand
-            <ChevronRight className="h-4 w-4" />
-          </button>
+          
+          {/* Row 2: Summary + Expand Button */}
+          <div className="flex items-center justify-between text-xs text-muted-foreground">
+            <span>
+              Planned: {fmtCredits(totalCreditsPlanned, totalCreditsRequired)}
+              {!isComplete && ` • ~${fmtDuration(estimatedMonths)} • ${fmtCurrency(estimatedCost)}`}
+            </span>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggle();
+              }}
+              aria-label="Expand degree details"
+              className="flex items-center gap-1 hover:text-foreground transition-colors"
+            >
+              Expand
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
         </div>
       ) : (
         /* Expanded State */

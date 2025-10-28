@@ -1,20 +1,18 @@
 /**
- * V5 Feature Flags - Local Development Toggles
- * Use localStorage to enable/disable features during development
- * 
- * Usage:
- * localStorage.setItem('v5_autofill_enabled', 'true');
- * localStorage.setItem('v5_design_v2', 'true');
+ * V5 Feature Flags - Simplified for Phase 0
+ * Core features are always on; experimental features use localStorage
  */
 
 export const FEATURE_FLAGS = {
-  v5_autofill_enabled: typeof window !== 'undefined' && localStorage.getItem('v5_autofill_enabled') === 'true',
-  v5_design_v2: typeof window !== 'undefined' && localStorage.getItem('v5_design_v2') === 'true',
+  // Core V5 features (always on)
   v5_decision_dock: true,
-  v5_templates_module: true, // Hardcoded for testing - templates feature enabled
-  v5_pivot_mode: typeof window !== 'undefined' && localStorage.getItem('v5_pivot_mode') === 'true', // Phase 1d: dark launch
-  v5_diff_strip: true, // Phase 3: Template diff strip with keepPinned toggle
-  v5_template_search: true, // Phase 3: Template search/filtering
-  v5_cross_scope_details: true, // Phase 3: Show module names for cross-scope items
-  v5_module_border_progress: true, // Phase 4: Border progression + full-card click
+  v5_templates_module: true,
+  v5_cross_scope_details: true,
+  
+  // Phase 0: Simplified cards (default on)
+  V5_SIMPLIFIED_CARDS: true, // Full-card click, dock-only actions, simple progress
+  
+  // Experimental features (dark launch via localStorage)
+  v5_autofill_enabled: typeof window !== 'undefined' && localStorage.getItem('v5_autofill_enabled') === 'true',
+  v5_pivot_mode: typeof window !== 'undefined' && localStorage.getItem('v5_pivot_mode') === 'true',
 };
