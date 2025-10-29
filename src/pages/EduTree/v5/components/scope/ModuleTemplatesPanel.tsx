@@ -15,6 +15,7 @@ import { TemplateDiffStrip } from '../TemplateDiffStrip';
 import type { TemplatePreview } from '../../engine/previewTemplate';
 import { X } from 'lucide-react';
 import { FEATURE_FLAGS } from '../../config/featureFlags';
+import { getTemplateCourses, sanitizeTelemetryPayload } from '../../utils/templateHelpers';
 
 interface ModuleTemplatesPanelProps {
   module: ModuleData;
@@ -61,7 +62,16 @@ export function ModuleTemplatesPanel({ module, allModules, onAddTemplate }: Modu
     setPreviewingTemplate(template);
     setPreview(previewResult);
     setKeepPinned(false); // Reset toggle when previewing new template
-    void trackTelemetryEvent({ task: 'template_preview_shown', scope: 'module', complexity: { template_id: template.id, module_id: module.id }});
+    
+    void trackTelemetryEvent({ 
+      task: 'template_preview_shown', 
+      scope: 'module', 
+      complexity: sanitizeTelemetryPayload({ 
+        template_id: template.id, 
+        module_id: module.id,
+        template_label: template.label
+      })
+    });
   };
 
   // Debounce search query (200ms)
@@ -112,30 +122,32 @@ export function ModuleTemplatesPanel({ module, allModules, onAddTemplate }: Modu
     try {
       applyTemplateFn(previewingTemplate, allOptions, { keepPinned });
       
+      const templateCourses = getTemplateCourses(previewingTemplate);
+      
       void trackTelemetryEvent({ 
         task: 'template_preview_confirmed', 
         scope: 'module', 
-        complexity: { 
+        complexity: sanitizeTelemetryPayload({ 
           template_id: previewingTemplate.id,
           module_id: module.id,
           keep_pinned: keepPinned,
           cost_delta: preview.costDelta,
           weeks_delta: preview.weeksDelta,
-        }
+        })
       });
       
       // Track decision applied
       void trackTelemetryEvent({
         task: 'decision_applied',
         route: '/edu-tree-v5',
-        complexity: {
+        complexity: sanitizeTelemetryPayload({
           action: 'template_applied',
           template_id: previewingTemplate.id,
           module_id: module.id,
-          courses_added: previewingTemplate.options.length,
-          credit_delta: previewingTemplate.options.reduce((sum, c) => sum + (c.credits || 0), 0),
+          courses_added: templateCourses.length,
+          credit_delta: templateCourses.reduce((sum, c) => sum + (c.credits || 0), 0),
           keep_pinned: keepPinned
-        }
+        })
       });
       
       setPreviewingTemplate(null);
@@ -150,7 +162,15 @@ export function ModuleTemplatesPanel({ module, allModules, onAddTemplate }: Modu
     setPreviewingTemplate(null);
     setPreview(null);
     setKeepPinned(false);
-    void trackTelemetryEvent({ task: 'template_preview_cancelled', scope: 'module', complexity: { template_id: previewingTemplate?.id, module_id: module.id }});
+    
+    void trackTelemetryEvent({ 
+      task: 'template_preview_cancelled', 
+      scope: 'module', 
+      complexity: sanitizeTelemetryPayload({ 
+        template_id: previewingTemplate?.id, 
+        module_id: module.id 
+      })
+    });
   };
 
   if (isLoading) return <Skeleton className="h-32" />;

@@ -684,7 +684,8 @@ function MarketplaceContent(props: DecisionDockRouterProps) {
   // Handler for adding template (Phase 1: dupe prevention)
   const handleAddTemplate = (template: ModuleTemplate) => {
     const inBasket = new Set(basket.map(b => b.courseId.toUpperCase()));
-    const toAdd = template.options.filter(course => !inBasket.has(course.courseId.toUpperCase()));
+    const templateCourses = template.options; // Using .options consistently
+    const toAdd = templateCourses.filter(course => !inBasket.has(course.courseId.toUpperCase()));
     
     if (toAdd.length === 0) {
       toast.message('All courses already in plan', {
@@ -735,9 +736,9 @@ function MarketplaceContent(props: DecisionDockRouterProps) {
         task: 'template_added',
         scope: 'module',
         complexity: {
-          templateId: template.id,
-          coursesAdded: toAdd.length,
-          duplicatesFiltered: template.options.length - toAdd.length
+          template_id: template.id,
+          courses_added: toAdd.length,
+          duplicates_filtered: templateCourses.length - toAdd.length
         }
       });
     } catch (telemetryError) {
