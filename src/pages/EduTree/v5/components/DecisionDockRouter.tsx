@@ -32,6 +32,7 @@ import type { ModuleTemplate } from '../types/templates';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { toast } from 'sonner'; // Phase 1: toast for dupe handling
 import { trackTelemetryEvent } from '@/utils/telemetry'; // Phase 1c: telemetry
+import { getTemplateCourses } from '../utils/templateHelpers';
 
 // Fix 1A: Error Boundary Component
 class ErrorBoundary extends Component<{ children: ReactNode; fallback: ReactNode }> {
@@ -213,21 +214,22 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
         });
       }
       
-      trackTelemetryEvent({
-        task: 'dock_opened',
-        route: '/edu-tree-v5',
-        complexity: { scope }
-      });
+    trackTelemetryEvent({
+      task: 'dock_opened',
+      route: '/edu-tree-v5',
+      complexity: { schema_version: 1, scope }
+    });
     } else if (!scope && openAtRef.current) {
       const durationMs = Date.now() - openAtRef.current;
-      trackTelemetryEvent({
-        task: 'dock_closed',
-        route: '/edu-tree-v5',
-        complexity: { 
-          duration_ms: durationMs,
-          duration_sec: Math.round(durationMs / 1000)
-        }
-      });
+    trackTelemetryEvent({
+      task: 'dock_closed',
+      route: '/edu-tree-v5',
+      complexity: { 
+        schema_version: 1,
+        duration_ms: durationMs,
+        duration_sec: Math.round(durationMs / 1000)
+      }
+    });
       openAtRef.current = null;
     }
   }, [scope]);
@@ -684,7 +686,7 @@ function MarketplaceContent(props: DecisionDockRouterProps) {
   // Handler for adding template (Phase 1: dupe prevention)
   const handleAddTemplate = (template: ModuleTemplate) => {
     const inBasket = new Set(basket.map(b => b.courseId.toUpperCase()));
-    const templateCourses = template.options; // Using .options consistently
+    const templateCourses = getTemplateCourses(template);
     const toAdd = templateCourses.filter(course => !inBasket.has(course.courseId.toUpperCase()));
     
     if (toAdd.length === 0) {
@@ -736,6 +738,7 @@ function MarketplaceContent(props: DecisionDockRouterProps) {
         task: 'template_added',
         scope: 'module',
         complexity: {
+          schema_version: 1,
           template_id: template.id,
           courses_added: toAdd.length,
           duplicates_filtered: templateCourses.length - toAdd.length

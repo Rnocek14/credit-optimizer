@@ -67,6 +67,7 @@ export function ModuleTemplatesPanel({ module, allModules, onAddTemplate }: Modu
       task: 'template_preview_shown', 
       scope: 'module', 
       complexity: sanitizeTelemetryPayload({ 
+        schema_version: 1,
         template_id: template.id, 
         module_id: module.id,
         template_label: template.label
@@ -128,6 +129,7 @@ export function ModuleTemplatesPanel({ module, allModules, onAddTemplate }: Modu
         task: 'template_preview_confirmed', 
         scope: 'module', 
         complexity: sanitizeTelemetryPayload({ 
+          schema_version: 1,
           template_id: previewingTemplate.id,
           module_id: module.id,
           keep_pinned: keepPinned,
@@ -141,6 +143,7 @@ export function ModuleTemplatesPanel({ module, allModules, onAddTemplate }: Modu
         task: 'decision_applied',
         route: '/edu-tree-v5',
         complexity: sanitizeTelemetryPayload({
+          schema_version: 1,
           action: 'template_applied',
           template_id: previewingTemplate.id,
           module_id: module.id,
@@ -167,6 +170,7 @@ export function ModuleTemplatesPanel({ module, allModules, onAddTemplate }: Modu
       task: 'template_preview_cancelled', 
       scope: 'module', 
       complexity: sanitizeTelemetryPayload({ 
+        schema_version: 1,
         template_id: previewingTemplate?.id, 
         module_id: module.id 
       })

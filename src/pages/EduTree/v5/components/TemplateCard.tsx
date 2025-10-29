@@ -5,6 +5,7 @@ import { Card } from '@/components/ui/card';
 import { CheckCircle, AlertCircle, AlertTriangle, Info, GripVertical } from 'lucide-react';
 import { useDraggable } from '@dnd-kit/core';
 import type { ModuleTemplate, TemplateValidation } from '../types/templates';
+import { getTemplateCourses } from '../utils/templateHelpers';
 
 interface TemplateCardProps {
   template: ModuleTemplate;
@@ -141,7 +142,7 @@ export function TemplateCard({ template, validation, onAdd, isDraggable = true }
           )}
           
           {/* Phase 1c: Empty state message when all courses satisfied */}
-          {template.options.length === 0 && (
+          {getTemplateCourses(template).length === 0 && (
             <div className="mt-2 text-xs text-muted-foreground bg-muted/30 rounded-lg p-3">
               ✓ All courses in this template are already satisfied by your completed work or current plan.
             </div>

@@ -57,6 +57,7 @@ export default function EduTreeV5Page() {
       task: 'board_loaded',
       route: '/edu-tree-v5',
       complexity: {
+        schema_version: 1,
         use_database: USE_DATABASE,
         degree_collapsed: degreeCollapsed,
       }
