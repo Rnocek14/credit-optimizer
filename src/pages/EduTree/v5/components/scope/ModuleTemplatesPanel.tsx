@@ -123,6 +123,20 @@ export function ModuleTemplatesPanel({ module, allModules, onAddTemplate }: Modu
         }
       });
       
+      // Track decision applied
+      void trackTelemetryEvent({
+        task: 'decision_applied',
+        route: '/edu-tree-v5',
+        complexity: {
+          action: 'template_applied',
+          template_id: previewingTemplate.id,
+          module_id: module.id,
+          courses_added: previewingTemplate.options.length,
+          credit_delta: previewingTemplate.options.reduce((sum, c) => sum + (c.credits || 0), 0),
+          keep_pinned: keepPinned
+        }
+      });
+      
       setPreviewingTemplate(null);
       setPreview(null);
       onAddTemplate(previewingTemplate);

@@ -25,6 +25,7 @@ import { buildCourseIndex, getCourseFromIndex } from './utils/courseLookup';
 import { validateSemesterDrop } from './engine/semesterValidation';
 import { toast } from 'sonner';
 import { computeModuleSummary, computeYearSummary } from './types/nodeProgress';
+import { trackTelemetryEvent } from '@/utils/telemetry';
 import './styles/v5.css';
 
 // Feature flag for quick rollback during demos
@@ -49,6 +50,18 @@ export default function EduTreeV5Page() {
     if (typeof window === 'undefined') return false;
     return localStorage.getItem('v5.degreeCollapsed') === 'true';
   });
+  
+  // Track board load on mount
+  useEffect(() => {
+    trackTelemetryEvent({
+      task: 'board_loaded',
+      route: '/edu-tree-v5',
+      complexity: {
+        use_database: USE_DATABASE,
+        degree_collapsed: degreeCollapsed,
+      }
+    });
+  }, []); // Only run once on mount
   const [collapsedYears, setCollapsedYears] = useState<Record<number, boolean>>({});
   const [collapsedModules, setCollapsedModules] = useState<Record<string, boolean>>({});
   

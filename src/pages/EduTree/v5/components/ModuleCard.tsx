@@ -168,7 +168,7 @@ export function ModuleCard({
   return (
     <div
       className={`
-        module-card bg-card rounded-lg relative transition-all duration-200
+        module-card bg-card rounded-lg relative transition-[border-color,box-shadow] duration-200 motion-reduce:transition-none
         ${getProgressBorderClass(progress)}
         ${onOpenPanel ? 'cursor-pointer hover:scale-[1.01] hover:shadow-md' : ''}
       `}
@@ -211,7 +211,7 @@ export function ModuleCard({
           </button>
           <button
             onClick={onChevronToggle}
-            className="p-1 hover:bg-muted rounded transition-colors"
+            className="min-w-[44px] min-h-[44px] p-2 flex items-center justify-center hover:bg-muted rounded transition-colors"
             aria-label={isCollapsed ? 'Expand module details' : 'Collapse module details'}
             data-interactive="true"
           >
@@ -263,8 +263,8 @@ export function ModuleCard({
             />
           )}
 
-          {/* Clear CTA to open dock (only show if incomplete or modified) */}
-          {(progress < 100 || viewState === 'modified') && (
+          {/* Clear CTA to open dock (only show if incomplete/modified AND has options) */}
+          {(progress < 100 || viewState === 'modified') && optionsCount && optionsCount > 0 && (
             <button
               onClick={(e) => {
                 e.stopPropagation();
@@ -275,6 +275,13 @@ export function ModuleCard({
             >
               Open in dock to manage courses →
             </button>
+          )}
+          
+          {/* Fallback message when no options available */}
+          {optionsCount === 0 && progress < 100 && (
+            <p className="text-xs text-muted-foreground text-center mt-3 px-2">
+              No marketplace options available yet
+            </p>
           )}
         </div>
       )}

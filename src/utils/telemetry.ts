@@ -39,7 +39,9 @@ export type AltCourseTelemetryTask =
   | 'template_dupe_prevented' // Phase 1c
   | 'gap_analysis_viewed' // Phase 1c
   | 'module_card_clicked' // Full-card interaction
-  | 'module_chevron_toggled'; // Collapse/expand toggle
+  | 'module_chevron_toggled' // Collapse/expand toggle
+  | 'board_loaded' // V5.5: Track page load
+  | 'decision_applied'; // V5.5: Track template/course additions
 
 export const trackTelemetryEvent = async (event: TelemetryEvent): Promise<void> => {
   try {

@@ -200,13 +200,35 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
   useEffect(() => {
     if (scope && !openAtRef.current) {
       openAtRef.current = Date.now();
-      console.log('[telemetry] dock_opened', { scope, timestamp: new Date().toISOString() });
+      
+      // First-time guidance toast
+      if (!localStorage.getItem('v5_dock_hint_shown')) {
+        toast("💡 Tip: All course decisions happen in the Decision Dock", {
+          duration: 6000,
+          action: {
+            label: "Got it",
+            onClick: () => {
+              localStorage.setItem('v5_dock_hint_shown', '1');
+            }
+          }
+        });
+        localStorage.setItem('v5_dock_hint_shown', '1');
+      }
+      
+      trackTelemetryEvent({
+        task: 'dock_opened',
+        route: '/edu-tree-v5',
+        complexity: { scope }
+      });
     } else if (!scope && openAtRef.current) {
       const durationMs = Date.now() - openAtRef.current;
-      console.log('[telemetry] dock_closed', { 
-        duration_ms: durationMs, 
-        duration_sec: Math.round(durationMs / 1000),
-        timestamp: new Date().toISOString()
+      trackTelemetryEvent({
+        task: 'dock_closed',
+        route: '/edu-tree-v5',
+        complexity: { 
+          duration_ms: durationMs,
+          duration_sec: Math.round(durationMs / 1000)
+        }
       });
       openAtRef.current = null;
     }
