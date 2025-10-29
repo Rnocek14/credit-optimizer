@@ -39,11 +39,22 @@ type EvidenceSets = {
 export function useUserEvidence(options?: { enabled?: boolean }) {
   const { state } = useUnifiedData();
   const user = state?.user;
+  
+  // Check if we have a valid Supabase session (not just a user object)
+  const [hasSession, setHasSession] = React.useState(false);
+  
+  React.useEffect(() => {
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      setHasSession(!!session);
+    };
+    checkSession();
+  }, [user?.id]);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['student-evidence', EVIDENCE_VERSION, user?.id ?? 'anon'],
-    enabled: (options?.enabled ?? false) && !!user?.id,  // ✅ Opt-in only
-    retry: false,                 // ❗️no retry loops on 400s
+    enabled: (options?.enabled ?? false) && !!user?.id && hasSession, // ✅ Requires real auth session
+    retry: false,
     staleTime: 60_000,
     queryFn: async () => {
       const { data, error } = await supabase.functions.invoke('evidence-summary');
