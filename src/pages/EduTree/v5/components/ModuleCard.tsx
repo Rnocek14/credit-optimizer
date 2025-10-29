@@ -101,7 +101,7 @@ export function ModuleCard({
   // Phase 0: Simple stateful CSS border (no SVG geometry issues)
   const getProgressBorderClass = useCallback((progress: number): string => {
     if (progress === 0) return 'border-[3px] border-border'; // Gray
-    if (progress < 100) return 'border-[3px] border-success'; // Green
+    if (progress < 100) return 'border-[3px] border-green-500 dark:border-green-400'; // Bright green
     return 'border-[3px] border-warning shadow-[0_0_12px_oklch(0.85_0.15_70/0.3)]'; // Gold + glow
   }, []);
   
@@ -186,7 +186,7 @@ export function ModuleCard({
             {icon && <span className="text-xl flex-shrink-0">{icon}</span>}
             <h3 className="font-semibold text-sm truncate">{label}</h3>
             {progress >= 100 && (
-              <Badge variant="default" className="text-[10px] ml-auto flex-shrink-0">
+              <Badge variant="default" className="text-[10px] flex-shrink-0">
                 ✓ Complete
               </Badge>
             )}
@@ -263,17 +263,19 @@ export function ModuleCard({
             />
           )}
 
-          {/* Clear CTA to open dock */}
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onOpenPanel?.();
-            }}
-            className="w-full mt-3 py-2 text-xs text-primary hover:text-primary/80 hover:bg-primary/5 rounded transition-colors border border-primary/20"
-            data-interactive="true"
-          >
-            Open in dock to manage courses →
-          </button>
+          {/* Clear CTA to open dock (only show if incomplete or modified) */}
+          {(progress < 100 || viewState === 'modified') && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onOpenPanel?.();
+              }}
+              className="w-full mt-3 py-2 text-xs text-primary hover:text-primary/80 hover:bg-primary/5 rounded transition-colors border border-primary/20"
+              data-interactive="true"
+            >
+              Open in dock to manage courses →
+            </button>
+          )}
         </div>
       )}
       
