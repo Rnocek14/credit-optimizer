@@ -39,34 +39,30 @@ type EvidenceSets = {
 export function useUserEvidence(options?: { enabled?: boolean }) {
   const { state } = useUnifiedData();
   const user = state?.user;
-  
-  // Check if we have a valid Supabase session (not just a user object)
-  const [hasSession, setHasSession] = React.useState(false);
-  
-  React.useEffect(() => {
-    const checkSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      setHasSession(!!session);
-    };
-    checkSession();
-  }, [user?.id]);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['student-evidence', EVIDENCE_VERSION, user?.id ?? 'anon'],
-    enabled: (options?.enabled ?? false) && !!user?.id && hasSession, // ✅ Requires real auth session
+    enabled: (options?.enabled ?? false) && !!user?.id,
     retry: false,
     staleTime: 60_000,
     queryFn: async () => {
+      // ✅ Check session INSIDE queryFn (not in hook body)
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        console.warn('[Evidence] No session found, returning empty evidence');
+        return { completed: [], inProgress: [], transferPending: [] } as EvidenceSummary;
+      }
+
       const { data, error } = await supabase.functions.invoke('evidence-summary');
 
       if (error) {
         // Treat 400 as "no evidence data" (quiet, non-blocking)
         if (error.message?.includes('400') || error.status === 400) {
-          console.warn('[Evidence] 400 from evidence-summary → returning null (no data)');
+          console.warn('[Evidence] 400 from evidence-summary → returning empty (no data)');
           return { completed: [], inProgress: [], transferPending: [] } as EvidenceSummary;
         }
         warnOnce('evidence-400', '[Evidence] summary failed once:', { status: error.status, message: error.message });
-        return { completed: [], inProgress: [], transferPending: [] } as EvidenceSummary; // graceful fallback
+        return { completed: [], inProgress: [], transferPending: [] } as EvidenceSummary;
       }
       return data as EvidenceSummary;
     },
