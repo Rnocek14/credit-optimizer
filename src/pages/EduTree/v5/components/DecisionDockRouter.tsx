@@ -203,16 +203,14 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
       
       // First-time guidance toast
       if (!localStorage.getItem('v5_dock_hint_shown')) {
+        localStorage.setItem('v5_dock_hint_shown', '1');
         toast("💡 Tip: All course decisions happen in the Decision Dock", {
           duration: 6000,
           action: {
             label: "Got it",
-            onClick: () => {
-              localStorage.setItem('v5_dock_hint_shown', '1');
-            }
+            onClick: () => {}
           }
         });
-        localStorage.setItem('v5_dock_hint_shown', '1');
       }
       
       trackTelemetryEvent({

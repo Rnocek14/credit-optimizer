@@ -41,7 +41,10 @@ export type AltCourseTelemetryTask =
   | 'module_card_clicked' // Full-card interaction
   | 'module_chevron_toggled' // Collapse/expand toggle
   | 'board_loaded' // V5.5: Track page load
-  | 'decision_applied'; // V5.5: Track template/course additions
+  | 'decision_applied' // V5.5: Track template/course additions
+  | 'template_preview_shown' // V5.5: Template preview opened
+  | 'template_preview_confirmed' // V5.5: Template preview applied
+  | 'template_preview_cancelled'; // V5.5: Template preview cancelled
 
 export const trackTelemetryEvent = async (event: TelemetryEvent): Promise<void> => {
   try {

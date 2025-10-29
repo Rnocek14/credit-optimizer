@@ -61,7 +61,7 @@ export function ModuleTemplatesPanel({ module, allModules, onAddTemplate }: Modu
     setPreviewingTemplate(template);
     setPreview(previewResult);
     setKeepPinned(false); // Reset toggle when previewing new template
-    void trackTelemetryEvent({ task: 'template_preview_shown', scope: 'module', complexity: { templateId: template.id }});
+    void trackTelemetryEvent({ task: 'template_preview_shown', scope: 'module', complexity: { template_id: template.id, module_id: module.id }});
   };
 
   // Debounce search query (200ms)
@@ -116,10 +116,11 @@ export function ModuleTemplatesPanel({ module, allModules, onAddTemplate }: Modu
         task: 'template_preview_confirmed', 
         scope: 'module', 
         complexity: { 
-          templateId: previewingTemplate.id, 
-          keepPinned,
-          costDelta: preview.costDelta,
-          weeksDelta: preview.weeksDelta,
+          template_id: previewingTemplate.id,
+          module_id: module.id,
+          keep_pinned: keepPinned,
+          cost_delta: preview.costDelta,
+          weeks_delta: preview.weeksDelta,
         }
       });
       
@@ -149,7 +150,7 @@ export function ModuleTemplatesPanel({ module, allModules, onAddTemplate }: Modu
     setPreviewingTemplate(null);
     setPreview(null);
     setKeepPinned(false);
-    void trackTelemetryEvent({ task: 'template_preview_cancelled', scope: 'module', complexity: { templateId: previewingTemplate?.id }});
+    void trackTelemetryEvent({ task: 'template_preview_cancelled', scope: 'module', complexity: { template_id: previewingTemplate?.id, module_id: module.id }});
   };
 
   if (isLoading) return <Skeleton className="h-32" />;
