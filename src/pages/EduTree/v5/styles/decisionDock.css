@@ -48,3 +48,21 @@
   90% { opacity: 1; }
   100% { opacity: 0; }
 }
+
+/* Smooth snap transitions */
+[data-vaul-drawer][data-vaul-drawer-visible='true'] {
+  transition: height 200ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+/* Respect reduced motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  [data-vaul-drawer][data-vaul-drawer-visible='true'] {
+    transition: none;
+  }
+}
+
+/* Enhanced drag handle feedback */
+[data-vaul-drawer] [data-testid="decision-dock-resize-handle"]:hover {
+  transform: scaleX(1.08);
+  transition: transform 150ms ease-out;
+}

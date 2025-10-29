@@ -122,6 +122,21 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
   const titleId = useMemo(() => `decision-dock-title-${scope ?? "closed"}`, [scope]);
   const openAtRef = useRef<number | null>(null);
   
+  // Snap points state with localStorage persistence
+  const [activeSnapPoint, setActiveSnapPoint] = useState<string | number | null>(() => {
+    if (typeof window === 'undefined') return 355; // SSR guard
+    const stored = localStorage.getItem('v5_dock_snap');
+    return stored ? (stored.includes('calc') ? stored : Number(stored)) : 355;
+  });
+
+  const snapPoints = useMemo(() => {
+    // Responsive snap points for mobile
+    if (typeof window !== 'undefined' && window.innerWidth < 640) {
+      return [120, 280, 'calc(100vh - 80px)'];
+    }
+    return [148, 355, 'calc(100vh - 120px)']; // Small, Medium, Large
+  }, []);
+  
   // SSR-safe tab persistence
   const [activeTabInternal, setActiveTabInternal] = useState(props.activeTab || 'templates');
 
@@ -179,23 +194,12 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
     return () => window.removeEventListener('keydown', handleEscape);
   }, [scope, onClose]);
 
-  // Resize cursor leak guard (window-level listeners)
+  // Clean up any stray cursor styles on unmount
   useEffect(() => {
-    if (!isResizing) return;
-    const handleMouseUp = () => {
-      setIsResizing(false);
+    return () => {
       document.body.style.cursor = "";
     };
-    const handleMouseMove = () => {
-      // Optional: wire custom height control here if needed
-    };
-    window.addEventListener("mouseup", handleMouseUp);
-    window.addEventListener("mousemove", handleMouseMove);
-    return () => {
-      window.removeEventListener("mouseup", handleMouseUp);
-      window.removeEventListener("mousemove", handleMouseMove);
-    };
-  }, [isResizing]);
+  }, []);
 
   // Telemetry: track dock open/close and duration
   useEffect(() => {
@@ -242,6 +246,29 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
       onOpenChange={(open) => { if (!open) onClose(); }}
       modal={false}
       direction="bottom"
+      snapPoints={snapPoints}
+      activeSnapPoint={activeSnapPoint}
+      setActiveSnapPoint={(point) => {
+        if (!point) return;
+        setActiveSnapPoint(point);
+        
+        // Persist to localStorage
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('v5_dock_snap', String(point));
+        }
+        
+        // Track telemetry
+        trackTelemetryEvent({
+          task: 'dock_resized',
+          route: '/edu-tree-v5',
+          complexity: {
+            schema_version: 1,
+            snap_point: String(point),
+            scope
+          }
+        });
+      }}
+      dismissible={false}
     >
       <DrawerPrimitive.Portal>
         {/* Single click-through overlay - overrides vaul's default */}
@@ -255,7 +282,7 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
           data-testid="decision-dock-content"
           className={cn(
             "z-[110] fixed inset-x-0 bottom-0 mt-24 flex flex-col",
-            "h-[28vh] min-h-[25vh] max-h-[85vh] resize-y",
+            "max-h-[90vh]",
             "pointer-events-auto border-t shadow-2xl",
             "rounded-t-[10px] bg-background"
           )}
@@ -278,11 +305,8 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
           {/* Visual resize handle */}
           <div 
             data-testid="decision-dock-resize-handle"
-            className="mx-auto mt-2 mb-3 h-4 w-16 rounded-full bg-muted/80 cursor-ns-resize select-none touch-none"
-            onMouseDown={() => {
-              setIsResizing(true);
-              document.body.style.cursor = 'ns-resize';
-            }}
+            className="mx-auto mt-4 h-1 w-[120px] rounded-full bg-muted hover:bg-muted-foreground/40 transition-colors cursor-ns-resize select-none touch-none"
+            aria-label="Drag to resize"
           />
 
           {/* Scroll hint - auto-dismisses after 3s */}
@@ -298,12 +322,36 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
           )}
 
           {/* Header/title for ARIA */}
-          <div className="flex items-center justify-between px-4 pb-2 border-b">
+          <div className="flex items-center justify-between px-4 pb-2 border-b relative">
             <h2 id={titleId} className="text-sm font-medium text-muted-foreground">
               {scope === 'degree' && 'Degree Analyzer'}
               {scope === 'year' && `Year ${props.year} Marketplace`}
               {scope === 'module' && `${props.moduleLabel ?? 'Module'} Options`}
             </h2>
+            
+            {/* Snap point indicator badges */}
+            <div className="absolute top-1/2 -translate-y-1/2 right-12 flex gap-1 z-10 pointer-events-none">
+              {snapPoints.map((point, i) => {
+                const pointStr = String(point);
+                const isActive = String(activeSnapPoint) === pointStr;
+                const labels = ['Small', 'Medium', 'Large'];
+                const sizes = ['S', 'M', 'L'];
+                return (
+                  <div
+                    key={pointStr}
+                    className={cn(
+                      "w-1.5 h-1.5 rounded-full transition-all duration-200",
+                      isActive 
+                        ? "bg-primary scale-125 shadow-md" 
+                        : "bg-muted-foreground/30 scale-100"
+                    )}
+                    title={`${labels[i]} (${sizes[i]})`}
+                    aria-label={isActive ? `Current size: ${labels[i]}` : labels[i]}
+                  />
+                );
+              })}
+            </div>
+            
             <button
               onClick={onClose}
               className="p-1.5 hover:bg-accent rounded-md transition-colors"
