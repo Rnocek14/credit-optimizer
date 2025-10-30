@@ -127,8 +127,8 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
     if (typeof window === 'undefined') {
       return {
         viewport: { width: 1024, height: 768 },
-        snapPoints: [148, 355, 648], // SSR fallback
-        defaultSnap: 355
+        snapPoints: ["148px", "355px", "648px"], // SSR fallback
+        defaultSnap: "355px"
       };
     }
     
@@ -137,8 +137,8 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
     const isMobile = width < 640;
     
     const snapPoints = isMobile
-      ? [120, 280, height - 80]
-      : [148, 355, height - 120];
+      ? ["120px", "280px", `${height - 80}px`]
+      : ["148px", "355px", `${height - 120}px`];
     
     return {
       viewport: { width, height },
@@ -161,11 +161,9 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
     if (typeof window !== 'undefined') {
       const stored = localStorage.getItem('v5_dock_snap');
       if (stored && !stored.includes('calc')) {
-        const parsed = parseInt(stored, 10);
-        
-        // Only use stored value if it exists in current snapPoints
-        if (!isNaN(parsed) && initial.snapPoints.includes(parsed)) {
-          return parsed;
+        // Validate stored value exists in current snapPoints
+        if (initial.snapPoints.includes(stored)) {
+          return stored;
         }
       }
     }
@@ -180,22 +178,22 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
     
     if (isMobile) {
       return [
-        120,              // Small: ~120px
-        280,              // Medium: ~280px  
-        height - 80       // Large: nearly full screen minus header
+        "120px",              // Small: ~120px
+        "280px",              // Medium: ~280px  
+        `${height - 80}px`    // Large: nearly full screen minus header
       ];
     }
     
     return [
-      148,                  // Small: just header + 1 row
-      355,                  // Medium: comfortable working space
-      height - 120          // Large: nearly full screen
+      "148px",                  // Small: just header + 1 row
+      "355px",                  // Medium: comfortable working space
+      `${height - 120}px`       // Large: nearly full screen
     ];
   }, [viewportDimensions]);
 
   // Debug: Log snap configuration
   useEffect(() => {
-    const isValid = typeof activeSnapPoint === 'number' && snapPoints.includes(activeSnapPoint);
+    const isValid = typeof activeSnapPoint === 'string' && snapPoints.includes(activeSnapPoint);
     
     console.log('[DecisionDock] Snap configuration:', {
       snapPoints,
@@ -250,7 +248,7 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
   useEffect(() => {
     if (activeSnapPoint === null) return;
     
-    const isValid = typeof activeSnapPoint === 'number' && snapPoints.includes(activeSnapPoint);
+    const isValid = typeof activeSnapPoint === 'string' && snapPoints.includes(activeSnapPoint);
     
     if (!isValid) {
       console.warn('[DecisionDock] Snap point invalidated by viewport change, resetting:', {
@@ -264,7 +262,7 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
       setActiveSnapPoint(newSnap);
       
       if (typeof window !== 'undefined') {
-        localStorage.setItem('v5_dock_snap', String(newSnap));
+        localStorage.setItem('v5_dock_snap', newSnap);
       }
     }
   }, [snapPoints]); // Only depend on snapPoints, not activeSnapPoint (avoid loops)
@@ -384,7 +382,7 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
         if (!point) return;
         setActiveSnapPoint(point);
         
-        // Persist to localStorage (store as number)
+        // Persist to localStorage (convert to string for type safety)
         if (typeof window !== 'undefined') {
           localStorage.setItem('v5_dock_snap', String(point));
         }
@@ -395,8 +393,8 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
           route: '/edu-tree-v5',
           complexity: {
             schema_version: 1,
-            snap_point: Number(point), // Ensure numeric for analytics
-            snap_point_px: `${point}px`, // Human-readable
+            snap_point: String(point),
+            snap_point_px: String(point),
             scope
           }
         });
