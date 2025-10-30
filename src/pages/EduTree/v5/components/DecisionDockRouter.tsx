@@ -435,6 +435,18 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
     return null; // Skip this render, wait for corrected state
   }
 
+  // Diagnostic logging
+  useEffect(() => {
+    console.log('[DecisionDock] Render state:', {
+      scope,
+      isOpen: !!scope,
+      activeSnapPoint,
+      snapPoints,
+      hasOverlay: document.querySelector('[data-testid="decision-dock-overlay"]') !== null,
+      hasContent: document.querySelector('[data-testid="decision-dock-content"]') !== null
+    });
+  }, [scope, activeSnapPoint]);
+
   return (
     <DrawerPrimitive.Root
       open={!!scope}
@@ -470,10 +482,17 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
       dismissible={false}
     >
       <DrawerPrimitive.Portal>
+        {/* Overlay required by Vaul - but make it invisible and non-blocking */}
+        <DrawerPrimitive.Overlay
+          data-testid="decision-dock-overlay"
+          className="fixed inset-0 z-[55] pointer-events-none"
+          style={{ backgroundColor: 'transparent' }}
+        />
+        
         <DrawerPrimitive.Content
           data-testid="decision-dock-content"
           className={cn(
-            "z-[110] fixed inset-x-0 bottom-0 mt-24 flex flex-col",
+            "z-[65] fixed inset-x-0 bottom-0 mt-24 flex flex-col",
             "min-h-[148px]",
             "pointer-events-auto border-t shadow-2xl",
             "rounded-t-[10px] bg-background"

@@ -85,5 +85,5 @@
 
 /* Allow drawer to expand while respecting viewport bounds */
 [data-vaul-drawer][data-vaul-drawer-direction='bottom'] {
-  max-height: calc(100vh - 80px) !important;
+  max-height: 95vh !important; /* More permissive, let snap points control height */
 }
