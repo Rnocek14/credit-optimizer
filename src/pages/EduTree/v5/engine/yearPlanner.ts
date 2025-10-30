@@ -286,21 +286,59 @@ export function buildYearPlan(
       selectedOption = scored[0];
     }
 
-    if (!selectedOption) continue;
+    if (!selectedOption) {
+      console.warn('[yearPlanner] No selectedOption for module', module.id);
+      continue;
+    }
 
     // Skip if already in basket
-    if (basketCourseIds.has(selectedOption.courseId)) continue;
+    if (basketCourseIds.has(selectedOption.courseId)) {
+      console.log('[yearPlanner] Skipping duplicate', {
+        courseId: selectedOption.courseId,
+        title: selectedOption.title,
+        alreadyInBasket: true,
+      });
+      continue;
+    }
 
     // Assign to lighter semester
     const fallLoad = sumCredits(plan.fall);
     const springLoad = sumCredits(plan.spring);
 
+    console.log('[yearPlanner] Attempting placement', {
+      courseId: selectedOption.courseId,
+      title: selectedOption.title,
+      credits: selectedOption.credits,
+      fallLoad,
+      springLoad,
+      targetFall: preset.targetLoads.fall,
+      targetSpring: preset.targetLoads.spring,
+      willFitFall: fallLoad + selectedOption.credits <= preset.targetLoads.fall && fallLoad <= springLoad,
+      willFitSpring: springLoad + selectedOption.credits <= preset.targetLoads.spring,
+    });
+
     if (fallLoad + selectedOption.credits <= preset.targetLoads.fall && fallLoad <= springLoad) {
       plan.fall.push(toBasketItem(selectedOption, 'fall', module.id));
+      console.log('[yearPlanner] ✅ Placed in FALL', {
+        courseId: selectedOption.courseId,
+        title: selectedOption.title,
+        newFallLoad: sumCredits(plan.fall),
+      });
     } else if (springLoad + selectedOption.credits <= preset.targetLoads.spring) {
       plan.spring.push(toBasketItem(selectedOption, 'spring', module.id));
+      console.log('[yearPlanner] ✅ Placed in SPRING', {
+        courseId: selectedOption.courseId,
+        title: selectedOption.title,
+        newSpringLoad: sumCredits(plan.spring),
+      });
     } else {
       // Both semesters full
+      console.warn('[yearPlanner] ❌ Both semesters full, stopping', {
+        courseId: selectedOption.courseId,
+        fallLoad,
+        springLoad,
+        targetLoads: preset.targetLoads,
+      });
       break;
     }
 
