@@ -26,6 +26,8 @@ import { validateSemesterDrop } from './engine/semesterValidation';
 import { toast } from 'sonner';
 import { computeModuleSummary, computeYearSummary } from './types/nodeProgress';
 import { trackTelemetryEvent } from '@/utils/telemetry';
+import { useRequirementBlocks } from './hooks/useRequirementBlocks';
+import { getAnchorPolicyFromConstraints } from './utils/anchorPolicyAdapter';
 import './styles/v5.css';
 
 // Feature flag for quick rollback during demos
@@ -44,6 +46,9 @@ export default function EduTreeV5Page() {
     programId: 'bs_cs',
     enabled: USE_DATABASE,
   });
+
+  // Week 2: Fetch requirement blocks for year progress computation
+  const { data: requirementBlocks = [] } = useRequirementBlocks('bs_cs', USE_DATABASE);
 
   // Initialize from localStorage (SSR-safe)
   const [degreeCollapsed, setDegreeCollapsed] = useState<boolean>(() => {
@@ -73,6 +78,13 @@ export default function EduTreeV5Page() {
   const [graphDialogOpen, setGraphDialogOpen] = useState(false);
   const basket = usePlanBasket(s => s.items);
   const constraints = usePlanBasket(s => s.constraints);
+  
+  // Week 2: Extract anchor policy from constraints for year summaries
+  const anchorPolicy = useMemo(() => 
+    getAnchorPolicyFromConstraints(constraints), 
+    [constraints]
+  );
+  
   const [panelSortBy, setPanelSortBy] = useState<'cheapest' | 'shortest' | 'credits' | 'best-match'>(() => {
     if (typeof window === 'undefined') return 'best-match';
     const saved = localStorage.getItem('v5-market-sort');
@@ -620,15 +632,21 @@ export default function EduTreeV5Page() {
             year,
             yearModules.map(m => ({ 
               id: m.id, 
-              creditsRequired: m.creditsRequired ?? 0 
+              creditsRequired: m.creditsRequired ?? 0,
+              requirement_block_id: m.requirement_block_id,
+              upper_division: m.upper_division,
             })),
             basket.map(item => ({
               moduleId: item.moduleId,
               credits: item.credits,
               cost_usd: item.cost_usd,
               duration_weeks: item.duration_weeks,
-              cri_score: item.cri_score
-            }))
+              cri_score: item.cri_score,
+              providerType: item.providerType,
+              level: item.level,
+            })),
+            requirementBlocks,
+            anchorPolicy
           );
           
           return (

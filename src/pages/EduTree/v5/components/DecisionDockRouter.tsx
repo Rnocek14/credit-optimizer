@@ -35,6 +35,7 @@ import { trackTelemetryEvent } from '@/utils/telemetry'; // Phase 1c: telemetry
 import { getTemplateCourses } from '../utils/templateHelpers';
 import { buildYearPlan, YEAR_PRESETS } from '../engine/yearPlanner'; // Week 1: Year planner
 import { getAnchorPolicyFromConstraints } from '../utils/anchorPolicyAdapter'; // Week 1.5: Anchor policy extraction
+import { useRequirementBlocks } from '../hooks/useRequirementBlocks'; // Week 2: Requirement blocks for year planner
 
 // Fix 1A: Error Boundary Component
 class ErrorBoundary extends Component<{ children: ReactNode; fallback: ReactNode }> {
@@ -752,6 +753,10 @@ function YearMarketplaceContent(props: DecisionDockRouterProps) {
     return stats;
   }, [yearModules]);
 
+  // Week 2: Fetch requirement blocks for year planner (defaults to bs_cs)
+  const programId = 'bs_cs'; // TODO: Pass programId from parent when degree selection is implemented
+  const { data: requirementBlocks = [] } = useRequirementBlocks(programId, true);
+
   // Week 1: Gated year planner call (with apply mode)
   const handleAutoFillYear = () => {
     if (!FEATURE_FLAGS.v5_year_scope_v1) {
@@ -778,7 +783,7 @@ function YearMarketplaceContent(props: DecisionDockRouterProps) {
         preset,
         year,
         yearModules,
-        [], // blocks: TODO Week 2 - fetch from database
+        requirementBlocks, // ✅ Real blocks from database
         allOptions,
         basketItems,
         constraints,
