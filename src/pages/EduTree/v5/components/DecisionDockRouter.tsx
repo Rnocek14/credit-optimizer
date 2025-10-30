@@ -149,7 +149,7 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
     return {
       viewport: { width, height },
       snapPoints,
-      defaultSnap: snapPoints[1] // Always use middle snap as default
+      defaultSnap: snapPoints[0] // Start with smallest snap for reliability
     };
   };
 
@@ -422,6 +422,29 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
     });
   }, [scope, activeSnapPoint, snapPoints]);
 
+  // Log actual DOM transform to catch off-screen positioning
+  useEffect(() => {
+    if (!scope) return;
+    
+    const checkTransform = () => {
+      const content = document.querySelector('[data-testid="decision-dock-content"]');
+      if (content) {
+        const transform = window.getComputedStyle(content).transform;
+        console.log('[DecisionDock] DOM transform check:', {
+          scope,
+          transform,
+          isOffScreen: transform.includes('1038px') || transform.includes('1000px'),
+          snapPoint: activeSnapPoint
+        });
+      }
+    };
+    
+    // Check immediately and after a short delay
+    checkTransform();
+    const timer = setTimeout(checkTransform, 100);
+    return () => clearTimeout(timer);
+  }, [scope, activeSnapPoint]);
+
   // DEBUG: Log scope and open state
   console.log('[DecisionDockRouter] Render check:', {
     scope,
@@ -449,8 +472,10 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
 
   return (
     <DrawerPrimitive.Root
+      key={scope || 'closed'}
       open={!!scope}
-      onOpenChange={(open) => { 
+      shouldScaleBackground={false}
+      onOpenChange={(open) => {
         console.log('[DecisionDockRouter] onOpenChange:', { open, scope });
         if (!open) onClose(); 
       }}
