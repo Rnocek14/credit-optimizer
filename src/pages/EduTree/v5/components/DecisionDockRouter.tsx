@@ -149,7 +149,7 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
     return {
       viewport: { width, height },
       snapPoints,
-      defaultSnap: snapPoints[0] // Start with smallest snap for reliability
+      defaultSnap: snapPoints[1] // Use medium snap (~50vh) for better initial visibility
     };
   };
 
@@ -472,7 +472,6 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
 
   return (
     <DrawerPrimitive.Root
-      key={scope || 'closed'}
       open={!!scope}
       shouldScaleBackground={false}
       onOpenChange={(open) => {
@@ -597,25 +596,27 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
             </button>
           </div>
           
-          <div className="flex-1 min-h-0 w-full overflow-y-auto px-4 pb-4">
-            {/* DEBUG: Log conditional rendering */}
-            {(() => {
-              console.log('[DecisionDockRouter] Content render decision:', {
-                scope,
-                willRenderDegree: scope === 'degree',
-                willRenderYear: scope === 'year',
-                willRenderModule: scope === 'module',
-                props: {
-                  year: props.year,
-                  yearModulesCount: props.yearModules?.length ?? 0,
-                  nodeId: props.nodeId
-                }
-              });
-              return null;
-            })()}
-            {scope === 'degree' && <DegreeAnalyzerContent {...props} activeTab={activeTabInternal} onTabChange={handleTabChange} />}
-            {scope === 'year' && <YearMarketplaceContent {...props} />}
-            {scope === 'module' && <MarketplaceContent {...props} activeTab={activeTabInternal} onTabChange={handleTabChange} />}
+          <div className="flex-1 min-h-0 w-full overflow-y-auto overflow-x-hidden px-4 pb-4 flex flex-col">
+            <div className="flex-1 min-h-0 space-y-4">
+              {/* DEBUG: Log conditional rendering */}
+              {(() => {
+                console.log('[DecisionDockRouter] Content render decision:', {
+                  scope,
+                  willRenderDegree: scope === 'degree',
+                  willRenderYear: scope === 'year',
+                  willRenderModule: scope === 'module',
+                  props: {
+                    year: props.year,
+                    yearModulesCount: props.yearModules?.length ?? 0,
+                    nodeId: props.nodeId
+                  }
+                });
+                return null;
+              })()}
+              {scope === 'degree' && <DegreeAnalyzerContent {...props} activeTab={activeTabInternal} onTabChange={handleTabChange} />}
+              {scope === 'year' && <YearMarketplaceContent {...props} />}
+              {scope === 'module' && <MarketplaceContent {...props} activeTab={activeTabInternal} onTabChange={handleTabChange} />}
+            </div>
           </div>
         </DrawerPrimitive.Content>
       </DrawerPrimitive.Portal>
@@ -833,6 +834,22 @@ function YearMarketplaceContent(props: DecisionDockRouterProps) {
     hasAnchorPolicy: !!anchorPolicy,
     moduleSample: enrichedModules[0]
   });
+
+  // Early return if no modules and no options available
+  if (enrichedModules.length === 0 && allOptions.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center p-8 text-center">
+        <div className="text-6xl mb-4">📚</div>
+        <h3 className="text-lg font-semibold mb-2">No modules found for Year {year}</h3>
+        <p className="text-sm text-muted-foreground mb-4">
+          This year may not have course data loaded yet, or the database query failed.
+        </p>
+        <Button variant="outline" onClick={() => window.location.reload()}>
+          Refresh Page
+        </Button>
+      </div>
+    );
+  }
 
   const yearStats = useMemo(() => {
     const totalCreditsRequired = yearModules.reduce((sum, m) => sum + m.creditsRequired, 0);

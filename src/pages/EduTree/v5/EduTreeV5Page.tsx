@@ -656,7 +656,32 @@ export default function EduTreeV5Page() {
                 year={year}
                 isCollapsed={collapsedYears[year] || false}
                 onToggle={() => toggleYear(year)}
-                onClick={() => openPanel('year', String(year), { year, modules: yearModules })}
+                onClick={() => {
+                  const modules = getModulesForYear(year);
+                  console.log('[EduTreeV5Page] Opening year panel:', {
+                    year,
+                    modulesCount: modules.length,
+                    isLoading,
+                    hasDbData: !!dbData,
+                    modulesByYear: Object.keys(dbData?.modulesByYear || {})
+                  });
+                  
+                  if (USE_DATABASE && isLoading) {
+                    toast.info('Loading year data...', {
+                      description: 'Please wait while we fetch course information'
+                    });
+                    return;
+                  }
+                  
+                  if (USE_DATABASE && !dbData?.modulesByYear) {
+                    toast.error('Year data not available', {
+                      description: 'Try refreshing the page or check your connection'
+                    });
+                    return;
+                  }
+                  
+                  openPanel('year', String(year), { year, modules });
+                }}
                 creditsSummary={yearData.creditsSummary}
                 selectedSummary={yearSelectedSummary}
                 loadHealth={yearData.loadHealth}
