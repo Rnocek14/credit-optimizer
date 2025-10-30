@@ -470,14 +470,7 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
       dismissible={false}
     >
       <DrawerPrimitive.Portal>
-        {/* Single click-through overlay - overrides vaul's default */}
-        <DrawerPrimitive.Overlay
-          data-testid="decision-dock-overlay"
-          aria-hidden="true"
-          className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm pointer-events-none"
-        />
-        
-        <DrawerPrimitive.Content 
+        <DrawerPrimitive.Content
           data-testid="decision-dock-content"
           className={cn(
             "z-[110] fixed inset-x-0 bottom-0 mt-24 flex flex-col",

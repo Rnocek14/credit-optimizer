@@ -619,7 +619,7 @@ export default function EduTreeV5Page() {
       
       {/* Grid Layout: 4 columns for 4 years - hidden when degree collapsed */}
       <div 
-        className={`year-spine-grid grid grid-cols-4 gap-6 items-start transition-opacity duration-300 ${
+        className={`year-spine-grid relative z-[60] grid grid-cols-4 gap-6 items-start transition-opacity duration-300 ${
           degreeCollapsed ? 'hidden' : 'grid'
         }`}
       >
