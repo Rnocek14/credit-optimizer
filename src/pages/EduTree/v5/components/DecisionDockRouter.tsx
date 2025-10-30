@@ -124,17 +124,34 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
   
   // Snap points state with localStorage persistence
   const [activeSnapPoint, setActiveSnapPoint] = useState<string | number | null>(() => {
-    if (typeof window === 'undefined') return '355px';
+    if (typeof window === 'undefined') return 355;
     const stored = localStorage.getItem('v5_dock_snap');
-    return stored || '355px';
+    if (!stored) return 355; // Default to medium
+    
+    // Handle legacy string values (convert '355px' → 355)
+    const parsed = stored.includes('calc') ? null : parseInt(stored, 10);
+    return isNaN(parsed as number) ? 355 : parsed;
   });
 
   const snapPoints = useMemo(() => {
-    // Responsive snap points for mobile
-    if (typeof window !== 'undefined' && window.innerWidth < 640) {
-      return ['120px', '280px', 'calc(100vh - 80px)'];
+    if (typeof window === 'undefined') return [148, 355, 600]; // SSR fallback
+    
+    const viewportHeight = window.innerHeight;
+    const isMobile = window.innerWidth < 640;
+    
+    if (isMobile) {
+      return [
+        120,              // Small: ~120px
+        280,              // Medium: ~280px  
+        viewportHeight - 80  // Large: nearly full screen minus header
+      ];
     }
-    return ['148px', '355px', 'calc(100vh - 120px)']; // Small, Medium, Large
+    
+    return [
+      148,                  // Small: just header + 1 row
+      355,                  // Medium: comfortable working space
+      viewportHeight - 120  // Large: nearly full screen
+    ];
   }, []);
 
   // Debug: Log snap configuration on mount
@@ -146,6 +163,26 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
       isOpen: !!scope
     });
   }, [snapPoints, activeSnapPoint, scope]);
+
+  // Recalculate snap points on window resize
+  useEffect(() => {
+    const handleResize = () => {
+      const viewportHeight = window.innerHeight;
+      const isMobile = window.innerWidth < 640;
+      
+      // Force recalculation by triggering a re-render
+      setActiveSnapPoint(prev => {
+        // If current snap was "large", recalculate it
+        if (prev && typeof prev === 'number' && prev > 400) {
+          return isMobile ? viewportHeight - 80 : viewportHeight - 120;
+        }
+        return prev;
+      });
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
   
   // SSR-safe tab persistence
   const [activeTabInternal, setActiveTabInternal] = useState(props.activeTab || 'templates');
@@ -262,7 +299,7 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
         if (!point) return;
         setActiveSnapPoint(point);
         
-        // Persist to localStorage
+        // Persist to localStorage (store as number)
         if (typeof window !== 'undefined') {
           localStorage.setItem('v5_dock_snap', String(point));
         }
@@ -273,7 +310,8 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
           route: '/edu-tree-v5',
           complexity: {
             schema_version: 1,
-            snap_point: String(point),
+            snap_point: Number(point), // Ensure numeric for analytics
+            snap_point_px: `${point}px`, // Human-readable
             scope
           }
         });
@@ -342,20 +380,19 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
             {/* Snap point indicator badges */}
             <div className="absolute top-1/2 -translate-y-1/2 right-12 flex gap-1 z-10 pointer-events-none">
               {snapPoints.map((point, i) => {
-                const pointStr = String(point);
-                const isActive = String(activeSnapPoint) === pointStr;
+                const isActive = activeSnapPoint === point;
                 const labels = ['Small', 'Medium', 'Large'];
                 const sizes = ['S', 'M', 'L'];
                 return (
                   <div
-                    key={pointStr}
+                    key={i}
                     className={cn(
                       "w-1.5 h-1.5 rounded-full transition-all duration-200",
                       isActive 
                         ? "bg-primary scale-125 shadow-md" 
                         : "bg-muted-foreground/30 scale-100"
                     )}
-                    title={`${labels[i]} (${sizes[i]})`}
+                    title={`${labels[i]} (${sizes[i]}) - ${point}px`}
                     aria-label={isActive ? `Current size: ${labels[i]}` : labels[i]}
                   />
                 );
