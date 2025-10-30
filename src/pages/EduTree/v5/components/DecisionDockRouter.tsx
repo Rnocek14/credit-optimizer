@@ -662,6 +662,7 @@ function YearMarketplaceContent(props: DecisionDockRouterProps) {
   const { year, yearModules = [], degreeSummary, onNavigate, onOpenModulePanel, onClose } = props;
   const basketItems = usePlanBasket(s => s.items);
   const constraints = usePlanBasket(s => s.constraints);
+  const addItem = usePlanBasket(s => s.addItem);
 
   const yearStats = useMemo(() => {
     const totalCreditsRequired = yearModules.reduce((sum, m) => sum + m.creditsRequired, 0);
@@ -678,7 +679,7 @@ function YearMarketplaceContent(props: DecisionDockRouterProps) {
     };
   }, [yearModules]);
 
-  // Week 1: Gated year planner call (no-apply mode)
+  // Week 1: Gated year planner call (with apply mode)
   const handleAutoFillYear = () => {
     if (!FEATURE_FLAGS.v5_year_scope_v1) {
       toast.info('Year Scope V1 feature is not enabled', {
@@ -687,7 +688,7 @@ function YearMarketplaceContent(props: DecisionDockRouterProps) {
       return;
     }
 
-    console.log('[Week 1 Scaffold] Auto-Fill Year clicked', { year });
+    console.log('[Week 1] Auto-Fill Year clicked (Apply Mode)', { year });
 
     // Use first preset (Balanced 15/15) for testing
     const preset = YEAR_PRESETS[0];
@@ -698,34 +699,55 @@ function YearMarketplaceContent(props: DecisionDockRouterProps) {
         preset,
         year,
         yearModules,
-        [], // blocks: TODO - fetch from database
+        [], // blocks: TODO Week 2 - fetch from database
         allOptions,
         basketItems,
         constraints,
-        undefined // anchorPolicy: TODO - fetch from constraints.target_school
+        undefined // anchorPolicy: TODO Week 2 - fetch from constraints.target_school
       );
 
-      console.log('[Week 1 Scaffold] Year plan generated:', plan);
+      console.log('[Week 1] Year plan generated:', plan);
 
-      // Show projection in toast
-      toast.success(`Year ${year} Plan Projection (${preset.label})`, {
-        description: `${plan.metadata.totalCredits} cr • $${plan.metadata.totalCost} • ${plan.metadata.totalWeeks}w • CRI ${Math.round(plan.metadata.avgCri)}`,
-        duration: 10000,
-      });
-
-      void trackTelemetryEvent({
-        task: 'year_planner_scaffold_test',
-        scope: 'year',
-        complexity: {
-          year,
-          preset: preset.id,
-          creditsPlanned: plan.metadata.totalCredits,
-          warningsCount: plan.warnings.length,
-        },
-      });
+      // Apply to basket (Week 1 minimal apply)
+      const allItems = [...plan.fall, ...plan.spring];
+      if (allItems.length > 0) {
+        allItems.forEach(item => {
+          // Add with source metadata
+          const itemWithSource = {
+            ...item,
+            source: { 
+              type: 'template' as const, 
+              templateLabel: preset.label,
+              templateId: preset.id,
+            },
+          };
+          addItem(itemWithSource);
+        });
+        
+        toast.success(`Applied ${preset.label} to Year ${year}`, {
+          description: `Added ${allItems.length} courses • ${plan.metadata.totalCredits}cr • $${plan.metadata.totalCost}`,
+          duration: 5000,
+        });
+        
+        void trackTelemetryEvent({
+          task: 'year_preset_applied',
+          scope: 'year',
+          complexity: {
+            year,
+            presetId: preset.id,
+            creditsAdded: plan.metadata.totalCredits,
+            aceUsed: plan.metadata.aceCreditsUsed,
+            residencyEarned: plan.metadata.residencyCreditsEarned,
+          },
+        });
+      } else {
+        toast.info('No courses to add', {
+          description: 'Year plan is empty. Check requirement blocks or marketplace options.',
+        });
+      }
     } catch (error) {
-      console.error('[Week 1 Scaffold] Year planner error:', error);
-      toast.error('Year planner test failed', {
+      console.error('[Week 1] Year planner error:', error);
+      toast.error('Year planner failed', {
         description: error instanceof Error ? error.message : 'Unknown error',
       });
     }
