@@ -87,3 +87,16 @@
 [data-vaul-drawer][data-vaul-drawer-direction='bottom'] {
   max-height: 95vh !important; /* More permissive, let snap points control height */
 }
+
+/* Force drawer to respect snap points */
+[data-vaul-drawer][data-vaul-drawer-direction='bottom'][data-vaul-snap-points] {
+  height: var(--snap-point-height, auto) !important;
+}
+
+/* Ensure content can scroll within drawer bounds */
+[data-vaul-drawer] [data-vaul-drawer-content] {
+  display: flex;
+  flex-direction: column;
+  max-height: inherit;
+  overflow: hidden;
+}

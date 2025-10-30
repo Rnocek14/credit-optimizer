@@ -516,7 +516,7 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
         <DrawerPrimitive.Content
           data-testid="decision-dock-content"
           className={cn(
-            "z-[65] fixed inset-x-0 bottom-0 mt-24 flex flex-col",
+            "z-[65] fixed inset-x-0 bottom-0 mt-24 flex flex-col h-full",
             "min-h-[148px]",
             "pointer-events-auto border-t shadow-2xl",
             "rounded-t-[10px] bg-background"
@@ -596,27 +596,25 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
             </button>
           </div>
           
-          <div className="flex-1 min-h-0 w-full overflow-y-auto overflow-x-hidden px-4 pb-4 flex flex-col">
-            <div className="flex-1 min-h-0 space-y-4">
-              {/* DEBUG: Log conditional rendering */}
-              {(() => {
-                console.log('[DecisionDockRouter] Content render decision:', {
-                  scope,
-                  willRenderDegree: scope === 'degree',
-                  willRenderYear: scope === 'year',
-                  willRenderModule: scope === 'module',
-                  props: {
-                    year: props.year,
-                    yearModulesCount: props.yearModules?.length ?? 0,
-                    nodeId: props.nodeId
-                  }
-                });
-                return null;
-              })()}
-              {scope === 'degree' && <DegreeAnalyzerContent {...props} activeTab={activeTabInternal} onTabChange={handleTabChange} />}
-              {scope === 'year' && <YearMarketplaceContent {...props} />}
-              {scope === 'module' && <MarketplaceContent {...props} activeTab={activeTabInternal} onTabChange={handleTabChange} />}
-            </div>
+          <div className="flex-1 min-h-0 w-full overflow-y-auto overflow-x-hidden px-4 pb-4 space-y-4">
+            {/* DEBUG: Log conditional rendering */}
+            {(() => {
+              console.log('[DecisionDockRouter] Content render decision:', {
+                scope,
+                willRenderDegree: scope === 'degree',
+                willRenderYear: scope === 'year',
+                willRenderModule: scope === 'module',
+                props: {
+                  year: props.year,
+                  yearModulesCount: props.yearModules?.length ?? 0,
+                  nodeId: props.nodeId
+                }
+              });
+              return null;
+            })()}
+            {scope === 'degree' && <DegreeAnalyzerContent {...props} activeTab={activeTabInternal} onTabChange={handleTabChange} />}
+            {scope === 'year' && <YearMarketplaceContent {...props} />}
+            {scope === 'module' && <MarketplaceContent {...props} activeTab={activeTabInternal} onTabChange={handleTabChange} />}
           </div>
         </DrawerPrimitive.Content>
       </DrawerPrimitive.Portal>
