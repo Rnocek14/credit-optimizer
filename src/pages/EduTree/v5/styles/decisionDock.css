@@ -87,3 +87,8 @@
 [data-vaul-drawer][data-vaul-drawer-direction='bottom'] {
   max-height: none !important;
 }
+
+/* Ensure drawer content can scroll properly */
+[data-vaul-drawer] [data-testid="decision-dock-content"] {
+  overflow: hidden !important;
+}

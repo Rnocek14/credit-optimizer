@@ -480,7 +480,7 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
         <DrawerPrimitive.Content 
           data-testid="decision-dock-content"
           className={cn(
-            "z-[110] fixed inset-x-0 bottom-0 mt-24 flex flex-col",
+            "z-[110] fixed inset-x-0 bottom-0 mt-24 flex flex-col overflow-hidden",
             "min-h-[148px]",
             "pointer-events-auto border-t shadow-2xl",
             "rounded-t-[10px] bg-background"
@@ -490,6 +490,16 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
             backgroundColor: 'hsl(var(--background) / 0.95)',
             maxHeight: activeSnapPoint || snapPoints[1],
             height: activeSnapPoint || snapPoints[1]
+          }}
+          ref={(el) => {
+            if (el) {
+              console.log('[DecisionDock] Content height check:', {
+                snapPoint: activeSnapPoint,
+                computedHeight: window.getComputedStyle(el).height,
+                scrollHeight: el.scrollHeight,
+                clientHeight: el.clientHeight
+              });
+            }
           }}
           role="dialog"
           aria-modal="false"
@@ -562,7 +572,20 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
             </button>
           </div>
           
-          <div className="flex-1 min-h-0 w-full overflow-y-auto px-4 pb-4">
+          <div 
+            className="flex-1 min-h-0 w-full overflow-y-auto px-4 pb-4"
+            ref={(el) => {
+              if (el) {
+                console.log('[DecisionDock] Scroll container check:', {
+                  computedHeight: window.getComputedStyle(el).height,
+                  scrollHeight: el.scrollHeight,
+                  clientHeight: el.clientHeight,
+                  isScrollable: el.scrollHeight > el.clientHeight,
+                  overflowY: window.getComputedStyle(el).overflowY
+                });
+              }
+            }}
+          >
             {/* DEBUG: Log conditional rendering */}
             {(() => {
               console.log('[DecisionDockRouter] Content render decision:', {
