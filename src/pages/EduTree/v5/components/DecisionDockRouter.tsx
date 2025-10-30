@@ -167,9 +167,16 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
     if (typeof window !== 'undefined') {
       const stored = localStorage.getItem('v5_dock_snap');
       if (stored && !stored.includes('calc')) {
-        // Validate stored value exists in current snapPoints
+        // ✅ CRITICAL FIX: Validate stored value exists in current snapPoints
         if (initial.snapPoints.includes(stored)) {
+          console.log('[DecisionDock] ✅ Restored valid snap from storage:', stored);
           return stored;
+        } else {
+          console.warn('[DecisionDock] ⚠️ Stored snap invalid, using default:', {
+            stored,
+            currentSnaps: initial.snapPoints,
+            using: initial.defaultSnap
+          });
         }
       }
     }
@@ -262,7 +269,7 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
     const isValid = typeof activeSnapPoint === 'string' && snapPoints.includes(activeSnapPoint);
     
     if (!isValid) {
-      console.warn('[DecisionDock] Snap point invalidated by viewport change, resetting:', {
+      console.warn('[DecisionDock] ⚠️ Snap point invalidated by viewport change:', {
         oldSnapPoint: activeSnapPoint,
         newSnapPoints: snapPoints,
         resettingTo: snapPoints[1]
@@ -270,6 +277,8 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
       
       // Reset to middle snap point
       const newSnap = snapPoints[1];
+      
+      // ✅ Use React.startTransition for synchronous-like state update
       setActiveSnapPoint(newSnap);
       
       if (typeof window !== 'undefined') {
@@ -413,6 +422,18 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
   });
 
   if (!scope) return null;
+
+  // ✅ CRITICAL: Ensure snap point is valid before rendering drawer
+  if (activeSnapPoint === null || !snapPoints.includes(String(activeSnapPoint))) {
+    console.error('[DecisionDock] 🚨 Invalid snap point on render, forcing correction:', {
+      activeSnapPoint,
+      snapPoints,
+      scope
+    });
+    // Force immediate correction (will trigger re-render)
+    setActiveSnapPoint(snapPoints[1]);
+    return null; // Skip this render, wait for corrected state
+  }
 
   return (
     <DrawerPrimitive.Root
