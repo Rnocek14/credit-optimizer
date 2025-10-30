@@ -76,6 +76,12 @@ export interface ModuleData {
   
   // Progress visualization (from basket selections)
   selectedSummary?: NodeSelectedSummary;
+  
+  // Week 1: Anchor-aware year planning
+  requirement_block_id?: string; // Links module to degree requirement
+  fulfills_area?: 'foundation' | 'core' | 'major' | 'capstone' | 'elective';
+  upper_division?: boolean; // Counts toward upper-division minimum (300/400 level)
+  year?: number; // Year this module belongs to
 }
 
 export interface Requirement {

@@ -14,6 +14,31 @@ export interface NodeSelectedSummary {
   isComplete: boolean;
   isEmpty: boolean;
   templateSource?: string; // Which template filled this node
+  
+  // Week 1: Anchor-aware metrics
+  unmetRequirements?: Array<{
+    blockId: string;
+    blockSlug: string;
+    label: string;
+    rule_type: 'ALL' | 'K_OF_N' | 'CREDITS';
+    creditsNeeded: number;
+    moduleIds: string[];
+    violations?: string[];
+  }>;
+  transferMetrics?: {
+    aceUsed: number;
+    aceCap: number;
+    residencyEarned: number;
+    residencyRequired: number;
+    upperDivisionEarned: number;
+    upperDivisionRequired: number;
+  };
+  policyWarnings?: Array<{
+    type: 'transfer_cap' | 'residency' | 'upper_division' | 'prerequisite';
+    severity: 'error' | 'warning' | 'info';
+    message: string;
+    affectedModuleIds: string[];
+  }>;
 }
 
 /**
@@ -74,18 +99,37 @@ export function computeModuleSummary(
 }
 
 /**
- * Compute year-level selection summary
+ * Compute year-level selection summary (Week 1: Extended with anchor metrics)
  */
 export function computeYearSummary(
   year: number,
-  modulesInYear: Array<{ id: string; creditsRequired: number }>,
+  modulesInYear: Array<{ 
+    id: string; 
+    creditsRequired: number;
+    requirement_block_id?: string;
+    upper_division?: boolean;
+  }>,
   basketItems: Array<{
     moduleId: string;
     credits: number;
     cost_usd: number | null;
     duration_weeks: number | null;
     cri_score: number;
-  }>
+    providerType?: 'university' | 'mooc' | 'bootcamp' | 'testing_center' | null;
+    level?: number;
+  }>,
+  blocks?: Array<{ 
+    id: string; 
+    slug?: string; 
+    title: string; 
+    rule_type: 'ALL' | 'K_OF_N' | 'CREDITS'; 
+    credits_needed?: number | null;
+  }>,
+  anchorPolicy?: { 
+    max_alt_credits: number; 
+    min_residency_credits: number; 
+    upper_division_min: number;
+  }
 ): NodeSelectedSummary {
   const moduleIds = new Set(modulesInYear.map(m => m.id));
   const yearItems = basketItems.filter(item => moduleIds.has(item.moduleId));
@@ -96,6 +140,38 @@ export function computeYearSummary(
   const maxWeeks = Math.max(...yearItems.map(i => i.duration_weeks ?? 0), 0);
   const avgCri =
     yearItems.length > 0 ? yearItems.reduce((sum, i) => sum + i.cri_score, 0) / yearItems.length : 0;
+
+  // Week 1: Compute unmet requirements (placeholder - requires isBlockComplete)
+  let unmetRequirements: NodeSelectedSummary['unmetRequirements'];
+  if (blocks) {
+    const yearBlocks = blocks.filter(b => 
+      modulesInYear.some(m => m.requirement_block_id === b.id)
+    );
+    
+    // TODO: Integrate isBlockComplete() to filter unmet blocks
+    unmetRequirements = yearBlocks.map(block => ({
+      blockId: block.id,
+      blockSlug: block.slug || '',
+      label: block.title,
+      rule_type: block.rule_type,
+      creditsNeeded: block.credits_needed || 0,
+      moduleIds: modulesInYear.filter(m => m.requirement_block_id === block.id).map(m => m.id),
+      violations: [], // Placeholder
+    }));
+  }
+
+  // Week 1: Compute transfer/residency metrics
+  let transferMetrics: NodeSelectedSummary['transferMetrics'];
+  if (anchorPolicy) {
+    transferMetrics = {
+      aceUsed: yearItems.filter(i => i.providerType === 'mooc' || i.providerType === 'testing_center').reduce((sum, i) => sum + i.credits, 0),
+      aceCap: anchorPolicy.max_alt_credits,
+      residencyEarned: yearItems.filter(i => i.providerType === 'university').reduce((sum, i) => sum + i.credits, 0),
+      residencyRequired: anchorPolicy.min_residency_credits,
+      upperDivisionEarned: yearItems.filter(i => (i.level || 0) >= 300).reduce((sum, i) => sum + i.credits, 0),
+      upperDivisionRequired: anchorPolicy.upper_division_min,
+    };
+  }
 
   return {
     scope: 'year',
@@ -108,5 +184,7 @@ export function computeYearSummary(
     progressPercent: totalCreditsRequired > 0 ? (totalCredits / totalCreditsRequired) * 100 : 0,
     isComplete: totalCredits >= totalCreditsRequired,
     isEmpty: yearItems.length === 0,
+    unmetRequirements,
+    transferMetrics,
   };
 }

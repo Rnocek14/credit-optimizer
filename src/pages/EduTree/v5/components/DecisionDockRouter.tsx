@@ -33,6 +33,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { toast } from 'sonner'; // Phase 1: toast for dupe handling
 import { trackTelemetryEvent } from '@/utils/telemetry'; // Phase 1c: telemetry
 import { getTemplateCourses } from '../utils/templateHelpers';
+import { buildYearPlan, YEAR_PRESETS } from '../engine/yearPlanner'; // Week 1: Year planner
 
 // Fix 1A: Error Boundary Component
 class ErrorBoundary extends Component<{ children: ReactNode; fallback: ReactNode }> {
@@ -659,6 +660,8 @@ function DegreeAnalyzerContent(props: DecisionDockRouterProps) {
 // Extract Year Marketplace content
 function YearMarketplaceContent(props: DecisionDockRouterProps) {
   const { year, yearModules = [], degreeSummary, onNavigate, onOpenModulePanel, onClose } = props;
+  const basketItems = usePlanBasket(s => s.items);
+  const constraints = usePlanBasket(s => s.constraints);
 
   const yearStats = useMemo(() => {
     const totalCreditsRequired = yearModules.reduce((sum, m) => sum + m.creditsRequired, 0);
@@ -674,6 +677,59 @@ function YearMarketplaceContent(props: DecisionDockRouterProps) {
         : 0
     };
   }, [yearModules]);
+
+  // Week 1: Gated year planner call (no-apply mode)
+  const handleAutoFillYear = () => {
+    if (!FEATURE_FLAGS.v5_year_scope_v1) {
+      toast.info('Year Scope V1 feature is not enabled', {
+        description: 'Set localStorage.v5_year_scope_v1=true to enable',
+      });
+      return;
+    }
+
+    console.log('[Week 1 Scaffold] Auto-Fill Year clicked', { year });
+
+    // Use first preset (Balanced 15/15) for testing
+    const preset = YEAR_PRESETS[0];
+    const allOptions = yearModules.flatMap(m => m.marketplaceOptions || []);
+
+    try {
+      const plan = buildYearPlan(
+        preset,
+        year,
+        yearModules,
+        [], // blocks: TODO - fetch from database
+        allOptions,
+        basketItems,
+        constraints,
+        undefined // anchorPolicy: TODO - fetch from constraints.target_school
+      );
+
+      console.log('[Week 1 Scaffold] Year plan generated:', plan);
+
+      // Show projection in toast
+      toast.success(`Year ${year} Plan Projection (${preset.label})`, {
+        description: `${plan.metadata.totalCredits} cr • $${plan.metadata.totalCost} • ${plan.metadata.totalWeeks}w • CRI ${Math.round(plan.metadata.avgCri)}`,
+        duration: 10000,
+      });
+
+      void trackTelemetryEvent({
+        task: 'year_planner_scaffold_test',
+        scope: 'year',
+        complexity: {
+          year,
+          preset: preset.id,
+          creditsPlanned: plan.metadata.totalCredits,
+          warningsCount: plan.warnings.length,
+        },
+      });
+    } catch (error) {
+      console.error('[Week 1 Scaffold] Year planner error:', error);
+      toast.error('Year planner test failed', {
+        description: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  };
 
   return (
     <>
@@ -706,7 +762,12 @@ function YearMarketplaceContent(props: DecisionDockRouterProps) {
         </div>
 
         <div className="flex gap-2">
-          <Button size="sm" variant="default" className="flex-1">
+          <Button 
+            size="sm" 
+            variant="default" 
+            className="flex-1"
+            onClick={handleAutoFillYear}
+          >
             ✨ Auto-Fill Year
           </Button>
           <Button size="sm" variant="outline" className="flex-1">
