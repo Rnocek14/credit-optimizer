@@ -186,7 +186,7 @@ export function transformToModuleData(
       icon: mapCategoryToIcon(req.category),
       description: req.description ?? '',
       courses: [], // Empty for now - would come from user's selected courses
-      creditsEarned: 0, // Would come from user progress
+      creditsEarned: selectedSummary.credits, // Real progress from basket
       creditsRequired: req.credits_required ?? 0,
       isCollapsed: false,
       selectedSummary, // Attach progress summary
