@@ -487,7 +487,9 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
           )}
           style={{ 
             backdropFilter: 'blur(2px)',
-            backgroundColor: 'hsl(var(--background) / 0.95)'
+            backgroundColor: 'hsl(var(--background) / 0.95)',
+            maxHeight: activeSnapPoint || snapPoints[1],
+            height: activeSnapPoint || snapPoints[1]
           }}
           role="dialog"
           aria-modal="false"
@@ -560,7 +562,7 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
             </button>
           </div>
           
-          <div className="flex-1 w-full overflow-y-auto px-4 pb-4">
+          <div className="flex-1 min-h-0 w-full overflow-y-auto px-4 pb-4">
             {/* DEBUG: Log conditional rendering */}
             {(() => {
               console.log('[DecisionDockRouter] Content render decision:', {

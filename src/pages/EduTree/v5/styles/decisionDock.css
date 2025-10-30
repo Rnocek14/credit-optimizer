@@ -76,3 +76,14 @@
   0%, 100% { opacity: 1; transform: scaleY(1); }
   50% { opacity: 0.6; transform: scaleY(1.2); }
 }
+
+/* CRITICAL FIX: Override Vaul's internal ::after height restriction */
+/* See: https://github.com/emilkowalski/vaul/issues/575 */
+[data-vaul-drawer][data-vaul-drawer-direction='bottom']::after {
+  height: unset !important;
+}
+
+/* Allow drawer content to expand to snap point heights */
+[data-vaul-drawer][data-vaul-drawer-direction='bottom'] {
+  max-height: none !important;
+}
