@@ -7,17 +7,41 @@ import type { PartnerPolicy } from '../engine/yearPlanner';
 
 /**
  * Extract anchor policy from constraints for year planner
- * Note: target_school is currently just a string identifier
- * TODO Week 2: Fetch actual policy from partner_policies table
+ * Week 1.5: Basic policy extraction with sane defaults
+ * Week 2: Fetch actual policy from partner_policies table
  */
 export function getAnchorPolicyFromConstraints(
   constraints: Constraints
 ): PartnerPolicy | undefined {
-  // Week 1: Return undefined (no policy integration yet)
-  // Week 2: Query partner_policies table using constraints.target_school
-  if (!constraints.target_school) return undefined;
+  // If no target school, return undefined
+  const targetSchool = constraints.target_school;
+  if (!targetSchool) return undefined;
   
-  // Placeholder for Week 2 implementation
+  // Week 1.5: Extract from constraints if available (Week 2 will query DB)
+  if (typeof targetSchool === 'object') {
+    const school = targetSchool as any;
+    if (school?.policy) {
+      return {
+        partner_name: school.name || 'Unknown',
+        max_alt_credits: Number(school.policy.max_alt_credits ?? 60),
+        min_residency_credits: Number(school.policy.min_residency_credits ?? 30),
+        upper_division_min: Number(school.policy.upper_division_min ?? 0),
+        notes: school.policy.notes,
+      };
+    }
+  }
+  
+  // If target_school is just a string, return default policy (prevents crashes)
+  if (typeof targetSchool === 'string') {
+    console.warn('[anchorPolicy] Using default policy for string target_school:', targetSchool);
+    return {
+      partner_name: targetSchool,
+      max_alt_credits: 60,
+      min_residency_credits: 30,
+      upper_division_min: 0,
+    };
+  }
+  
   return undefined;
 }
 

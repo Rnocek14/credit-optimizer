@@ -34,6 +34,7 @@ import { toast } from 'sonner'; // Phase 1: toast for dupe handling
 import { trackTelemetryEvent } from '@/utils/telemetry'; // Phase 1c: telemetry
 import { getTemplateCourses } from '../utils/templateHelpers';
 import { buildYearPlan, YEAR_PRESETS } from '../engine/yearPlanner'; // Week 1: Year planner
+import { getAnchorPolicyFromConstraints } from '../utils/anchorPolicyAdapter'; // Week 1.5: Anchor policy extraction
 
 // Fix 1A: Error Boundary Component
 class ErrorBoundary extends Component<{ children: ReactNode; fallback: ReactNode }> {
@@ -765,6 +766,12 @@ function YearMarketplaceContent(props: DecisionDockRouterProps) {
     // Use first preset (Balanced 15/15) for testing
     const preset = YEAR_PRESETS[0];
     const allOptions = yearModules.flatMap(m => m.marketplaceOptions || []);
+    
+    // Week 1.5: Extract anchor policy from constraints
+    const anchorPolicy = getAnchorPolicyFromConstraints(constraints);
+    if (anchorPolicy) {
+      console.log('[Week 1.5] Anchor policy extracted:', anchorPolicy);
+    }
 
     try {
       const plan = buildYearPlan(
@@ -775,26 +782,34 @@ function YearMarketplaceContent(props: DecisionDockRouterProps) {
         allOptions,
         basketItems,
         constraints,
-        undefined // anchorPolicy: TODO Week 2 - fetch from constraints.target_school
+        anchorPolicy
       );
 
       console.log('[Week 1] Year plan generated:', plan);
 
-      // Apply to basket (Week 1 minimal apply)
-      const allItems = [...plan.fall, ...plan.spring];
+      // Apply to basket with semester metadata (Week 1.5)
+      const fallItems = plan.fall.map(i => ({ 
+        ...i, 
+        semester: 'fall' as const,
+        source: { 
+          type: 'template' as const, 
+          templateLabel: preset.label,
+          templateId: preset.id,
+        },
+      }));
+      const springItems = plan.spring.map(i => ({ 
+        ...i, 
+        semester: 'spring' as const,
+        source: { 
+          type: 'template' as const, 
+          templateLabel: preset.label,
+          templateId: preset.id,
+        },
+      }));
+      
+      const allItems = [...fallItems, ...springItems];
       if (allItems.length > 0) {
-        allItems.forEach(item => {
-          // Add with source metadata
-          const itemWithSource = {
-            ...item,
-            source: { 
-              type: 'template' as const, 
-              templateLabel: preset.label,
-              templateId: preset.id,
-            },
-          };
-          addItem(itemWithSource);
-        });
+        allItems.forEach(item => addItem(item));
         
         toast.success(`Applied ${preset.label} to Year ${year}`, {
           description: `Added ${allItems.length} courses • ${plan.metadata.totalCredits}cr • $${plan.metadata.totalCost}`,

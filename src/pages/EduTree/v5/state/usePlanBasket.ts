@@ -23,6 +23,7 @@ export interface BasketItem {
   providerType?: ProviderType;
   providerCode?: string;
   level?: number;
+  semester?: 'fall' | 'spring' | 'summer'; // Week 1.5: Track semester assignment for DnD
   
   // Structured provenance (replaces autoFillReason string parsing)
   source?: {
@@ -108,7 +109,9 @@ const migrateBasketItems = (items: BasketItem[]): BasketItem[] => {
     const migrated = {
       ...item,
       providerType: item.providerType ?? null,
-      workload_weekly_hours: item.workload_weekly_hours ?? (item.credits * 2.5)
+      // Align with marketplace defaults: (credits × 45hrs) / duration or 3hrs/week fallback
+      workload_weekly_hours: item.workload_weekly_hours ?? 
+        (item.duration_weeks ? (item.credits * 45) / item.duration_weeks : item.credits * 3)
     };
     
     // Backfill structured source from legacy autoFillReason
@@ -159,8 +162,13 @@ export const usePlanBasket = create<PlanBasketState>()(
       
       addItem: (item) => {
         const items = get().items;
-        // Prevent duplicates
-        if (items.some(i => i.courseId === item.courseId)) {
+        // Prevent duplicates (semester-aware)
+        const isDuplicate = items.some(i => 
+          i.courseId === item.courseId && 
+          (!item.semester || !i.semester || i.semester === item.semester)
+        );
+        if (isDuplicate) {
+          console.warn('[Basket] Duplicate prevented:', item.courseId, item.semester);
           return;
         }
         set({ items: [...items, item] });

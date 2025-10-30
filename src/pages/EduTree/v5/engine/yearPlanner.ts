@@ -128,6 +128,16 @@ export function buildYearPlan(
     anchorPolicy: anchorPolicy?.partner_name,
   });
 
+  // Week 1.5: Add safety margin for Transfer-Max preset
+  let effectiveAceLimit = constraints.max_ace_credits ?? 90;
+  if (preset.strategy === 'transfer-maximizer' && anchorPolicy) {
+    effectiveAceLimit = Math.min(effectiveAceLimit, anchorPolicy.max_alt_credits - 6);
+    console.log('[yearPlanner] Transfer-Max safety margin:', {
+      originalCap: anchorPolicy.max_alt_credits,
+      safeLimit: effectiveAceLimit,
+    });
+  }
+
   // Week 1: Return empty plan
   const plan: SemesterPlan = {
     fall: [],
