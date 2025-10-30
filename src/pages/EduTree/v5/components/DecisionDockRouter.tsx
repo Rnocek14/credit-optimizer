@@ -369,12 +369,26 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
     }
   }, [scope]);
 
+  // DEBUG: Log scope and open state
+  console.log('[DecisionDockRouter] Render check:', {
+    scope,
+    isOpen: !!scope,
+    nodeId: props.nodeId,
+    year: props.year,
+    yearModulesCount: props.yearModules?.length ?? 0,
+    snapPoints,
+    activeSnapPoint
+  });
+
   if (!scope) return null;
 
   return (
     <DrawerPrimitive.Root
       open={!!scope}
-      onOpenChange={(open) => { if (!open) onClose(); }}
+      onOpenChange={(open) => { 
+        console.log('[DecisionDockRouter] onOpenChange:', { open, scope });
+        if (!open) onClose(); 
+      }}
       modal={false}
       direction="bottom"
       snapPoints={snapPoints}
@@ -494,6 +508,21 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
           </div>
           
           <div className="w-full h-full overflow-y-auto px-4 pb-4">
+            {/* DEBUG: Log conditional rendering */}
+            {(() => {
+              console.log('[DecisionDockRouter] Content render decision:', {
+                scope,
+                willRenderDegree: scope === 'degree',
+                willRenderYear: scope === 'year',
+                willRenderModule: scope === 'module',
+                props: {
+                  year: props.year,
+                  yearModulesCount: props.yearModules?.length ?? 0,
+                  nodeId: props.nodeId
+                }
+              });
+              return null;
+            })()}
             {scope === 'degree' && <DegreeAnalyzerContent {...props} activeTab={activeTabInternal} onTabChange={handleTabChange} />}
             {scope === 'year' && <YearMarketplaceContent {...props} />}
             {scope === 'module' && <MarketplaceContent {...props} activeTab={activeTabInternal} onTabChange={handleTabChange} />}
@@ -664,12 +693,23 @@ function YearMarketplaceContent(props: DecisionDockRouterProps) {
   const constraints = usePlanBasket(s => s.constraints);
   const addItem = usePlanBasket(s => s.addItem);
 
+  // DEBUG: Log component render and props
+  console.log('[YearMarketplaceContent] Component rendering:', {
+    year,
+    yearModulesCount: yearModules.length,
+    yearModules: yearModules.map(m => ({ id: m.id, label: m.label, creditsRequired: m.creditsRequired })),
+    basketItemsCount: basketItems.length,
+    hasDegreeSummary: !!degreeSummary,
+    constraints,
+    allProps: props
+  });
+
   const yearStats = useMemo(() => {
     const totalCreditsRequired = yearModules.reduce((sum, m) => sum + m.creditsRequired, 0);
     const totalCreditsEarned = yearModules.reduce((sum, m) => sum + (m.creditsEarned || 0), 0);
     const unmetModules = yearModules.filter(m => (m.creditsEarned || 0) < m.creditsRequired);
     
-    return {
+    const stats = {
       totalCreditsRequired,
       totalCreditsEarned,
       unmetModules,
@@ -677,6 +717,11 @@ function YearMarketplaceContent(props: DecisionDockRouterProps) {
         ? Math.round((totalCreditsEarned / totalCreditsRequired) * 100)
         : 0
     };
+
+    // DEBUG: Log computed stats
+    console.log('[YearMarketplaceContent] Computed yearStats:', stats);
+
+    return stats;
   }, [yearModules]);
 
   // Week 1: Gated year planner call (with apply mode)
