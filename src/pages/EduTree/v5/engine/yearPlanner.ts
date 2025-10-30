@@ -8,8 +8,20 @@
  */
 
 import type { BasketItem, Constraints } from '../state/usePlanBasket';
-import type { ModuleData, MarketplaceOption, ScoringWeights } from '../types/v5';
+import type { ModuleData, MarketplaceOption } from '../types/v5';
 import type { RequirementBlock, RuleType } from '@/lib/types/eduTree';
+import type { ScoringWeights as EngineScoringWeights } from '../types/v5';
+import { scoreOptions, compareByScore, type ScoredOption } from './optionFilters';
+import { calculateAnchorTotals } from '../utils/anchorPolicyAdapter';
+
+// Map engine weights (cri) to scoring weights (quality)
+function mapWeights(engineWeights: EngineScoringWeights): { cost: number; time: number; quality: number } {
+  return {
+    cost: engineWeights.cost,
+    time: engineWeights.time,
+    quality: engineWeights.cri, // Map cri → quality
+  };
+}
 
 // ============= Interfaces =============
 
@@ -18,7 +30,7 @@ export interface YearPreset {
   label: string;
   description: string;
   targetLoads: { fall: number; spring: number }; // Target credits per semester
-  weights: ScoringWeights; // Reuse from autoCompletePlan
+  weights: EngineScoringWeights; // Reuse from autoCompletePlan
   filters?: string[]; // 'self-paced-only', 'async-friendly', 'prefer-fast-paced'
   strategy?: 'balanced' | 'sprint' | 'working-adult' | 'transfer-maximizer' | 'residency-closer';
 }
@@ -104,11 +116,54 @@ export const YEAR_PRESETS: YearPreset[] = [
   },
 ];
 
-// ============= Core Functions (Stubs) =============
+// ============= Helper Functions =============
+
+function sumCredits(items: BasketItem[]): number {
+  return items.reduce((sum, i) => sum + i.credits, 0);
+}
+
+function sumCost(items: BasketItem[]): number {
+  return items.reduce((sum, i) => sum + (i.cost_usd ?? 0), 0);
+}
+
+function maxWeeks(items: BasketItem[]): number {
+  return Math.max(0, ...items.map(i => i.duration_weeks ?? 0));
+}
+
+function avgCri(items: BasketItem[]): number {
+  if (items.length === 0) return 0;
+  return items.reduce((sum, i) => sum + i.cri_score, 0) / items.length;
+}
+
+function isAceOption(item: BasketItem | MarketplaceOption): boolean {
+  return item.providerType === 'mooc' || item.providerType === 'testing_center';
+}
+
+function toBasketItem(option: ScoredOption, semester: 'fall' | 'spring', moduleId: string): BasketItem {
+  return {
+    moduleId,
+    courseId: option.courseId,
+    title: option.title,
+    credits: option.credits,
+    cost_usd: option.cost_usd,
+    duration_weeks: option.duration_weeks,
+    workload_weekly_hours: option.workload_weekly_hours ?? option.credits * 2.5,
+    cri_score: option.cri_score ?? option.scoreBreakdown?.cri ?? 0,
+    status: 'auto-filled',
+    providerType: option.providerType,
+    source: {
+      type: 'template',
+      templateLabel: `Year ${semester}`,
+    },
+    autoFillReason: `Year planner: ${semester}`,
+  };
+}
+
+// ============= Core Functions =============
 
 /**
- * Week 1 Scaffold: Build a semester plan for a given year
- * Returns empty plan with no-op warnings for now
+ * Week 1.5: Build a semester plan for a given year
+ * Implements strategy-based scoring and assignment
  */
 export function buildYearPlan(
   preset: YearPreset,
@@ -120,7 +175,7 @@ export function buildYearPlan(
   constraints: Constraints,
   anchorPolicy?: PartnerPolicy
 ): SemesterPlan {
-  console.log('[yearPlanner] buildYearPlan called (Week 1 Scaffold)', {
+  console.log('[yearPlanner] buildYearPlan called', {
     preset: preset.id,
     year,
     modulesCount: modules.length,
@@ -128,7 +183,7 @@ export function buildYearPlan(
     anchorPolicy: anchorPolicy?.partner_name,
   });
 
-  // Week 1.5: Add safety margin for Transfer-Max preset
+  // Calculate effective ACE limit with safety margin for Transfer-Max
   let effectiveAceLimit = constraints.max_ace_credits ?? 90;
   if (preset.strategy === 'transfer-maximizer' && anchorPolicy) {
     effectiveAceLimit = Math.min(effectiveAceLimit, anchorPolicy.max_alt_credits - 6);
@@ -138,7 +193,6 @@ export function buildYearPlan(
     });
   }
 
-  // Week 1: Return empty plan
   const plan: SemesterPlan = {
     fall: [],
     spring: [],
@@ -156,37 +210,164 @@ export function buildYearPlan(
     },
   };
 
-  // TODO: Implement actual planning logic
-  // 1. Seed with pinned items
-  // 2. Identify unmet requirement blocks
-  // 3. Score and select best options per preset
-  // 4. Assign to semesters based on load targets
-  // 5. Validate prerequisites
-  // 6. Rebalance if needed
-  // 7. Validate anchor policies
+  // 1. Seed with pinned items from basket for this year
+  const basketCourseIds = new Set(basket.map(b => b.courseId));
+
+  // 2. Find unmet modules with marketplace options
+  const unmetModules = modules.filter(m => {
+    const creditsNeeded = m.creditsRequired - (m.creditsEarned || 0);
+    const hasOptions = (m.marketplaceOptions?.length || 0) > 0;
+    return creditsNeeded > 0 && hasOptions;
+  });
+
+  console.log('[yearPlanner] Found unmet modules:', unmetModules.length);
+
+  // Calculate running totals
+  let aceUsed = basket.filter(isAceOption).reduce((sum, i) => sum + i.credits, 0);
+  let residencyEarned = basket.filter(i => i.providerType === 'university').reduce((sum, i) => sum + i.credits, 0);
+
+  // 3. Score and assign options to semesters
+  for (const module of unmetModules) {
+    const options = module.marketplaceOptions || [];
+
+    const scoringWeights = mapWeights(preset.weights);
+    const scored = scoreOptions(options, scoringWeights).sort(compareByScore);
+
+    if (scored.length === 0) continue;
+
+    let selectedOption: ScoredOption | null = null;
+
+    // Strategy-specific selection logic
+    if (preset.strategy === 'transfer-maximizer') {
+      // Prefer ACE/NCCRS until near cap
+      const aceOptions = scored.filter(o => isAceOption(o) && aceUsed + o.credits <= effectiveAceLimit);
+      selectedOption = aceOptions[0] || scored[0];
+    } else if (preset.strategy === 'residency-closer' && anchorPolicy) {
+      // Force university courses until residency met
+      if (residencyEarned < anchorPolicy.min_residency_credits) {
+        const universityOptions = scored.filter(o => o.providerType === 'university');
+        selectedOption = universityOptions[0] || scored[0];
+      } else {
+        selectedOption = scored[0];
+      }
+    } else {
+      // Balanced, Sprint, Working Adult - use best scored option
+      selectedOption = scored[0];
+    }
+
+    if (!selectedOption) continue;
+
+    // Skip if already in basket
+    if (basketCourseIds.has(selectedOption.courseId)) continue;
+
+    // Assign to lighter semester
+    const fallLoad = sumCredits(plan.fall);
+    const springLoad = sumCredits(plan.spring);
+
+    if (fallLoad + selectedOption.credits <= preset.targetLoads.fall && fallLoad <= springLoad) {
+      plan.fall.push(toBasketItem(selectedOption, 'fall', module.id));
+    } else if (springLoad + selectedOption.credits <= preset.targetLoads.spring) {
+      plan.spring.push(toBasketItem(selectedOption, 'spring', module.id));
+    } else {
+      // Both semesters full
+      break;
+    }
+
+    // Update running totals
+    if (isAceOption(selectedOption)) aceUsed += selectedOption.credits;
+    if (selectedOption.providerType === 'university') residencyEarned += selectedOption.credits;
+  }
+
+  // 4. Calculate metadata
+  const allItems = [...plan.fall, ...plan.spring];
+  const totals = calculateAnchorTotals(allItems);
+
+  plan.metadata = {
+    totalCredits: sumCredits(allItems),
+    totalCost: sumCost(allItems),
+    totalWeeks: maxWeeks(allItems),
+    avgCri: avgCri(allItems),
+    fallLoad: sumCredits(plan.fall),
+    springLoad: sumCredits(plan.spring),
+    aceCreditsUsed: totals.aceCredits,
+    residencyCreditsEarned: totals.residencyCredits,
+    upperDivisionCreditsEarned: totals.upperDivisionCredits,
+  };
+
+  // 5. Validate anchor policies
+  if (anchorPolicy) {
+    plan.warnings = validateAnchorPolicies(plan, anchorPolicy, totals);
+  }
+
+  console.log('[yearPlanner] Plan generated:', {
+    fall: plan.fall.length,
+    spring: plan.spring.length,
+    warnings: plan.warnings.length,
+    metadata: plan.metadata,
+  });
 
   return plan;
 }
 
 /**
- * Week 1 Scaffold: Validate plan against anchor policies
+ * Week 1.5: Validate plan against anchor policies
  */
 export function validateAnchorPolicies(
   plan: SemesterPlan,
   policy: PartnerPolicy,
   totals: { aceCredits: number; residencyCredits: number; upperDivisionCredits: number }
 ): Violation[] {
-  console.log('[yearPlanner] validateAnchorPolicies called (Week 1 Scaffold)', {
+  console.log('[yearPlanner] validateAnchorPolicies called', {
     policy: policy.partner_name,
     totals,
   });
 
   const warnings: Violation[] = [];
 
-  // TODO: Implement validation logic
   // 1. Check transfer cap (with safety margin)
+  if (totals.aceCredits > policy.max_alt_credits) {
+    warnings.push({
+      type: 'transfer_cap',
+      severity: 'error',
+      message: `Exceeds transfer cap by ${totals.aceCredits - policy.max_alt_credits} credits`,
+      affectedCourses: plan.fall.concat(plan.spring)
+        .filter(i => isAceOption(i))
+        .map(i => i.courseId),
+      suggestedFix: `Replace ${Math.ceil((totals.aceCredits - policy.max_alt_credits) / 3)} ACE courses with university courses`,
+    });
+  } else if (totals.aceCredits > policy.max_alt_credits - 6) {
+    warnings.push({
+      type: 'transfer_cap',
+      severity: 'warning',
+      message: `Approaching transfer cap (${totals.aceCredits}/${policy.max_alt_credits} credits used)`,
+      affectedCourses: [],
+      suggestedFix: 'Consider institutional courses for remaining modules',
+    });
+  }
+
   // 2. Check residency requirement
+  if (totals.residencyCredits < policy.min_residency_credits) {
+    const shortfall = policy.min_residency_credits - totals.residencyCredits;
+    warnings.push({
+      type: 'residency',
+      severity: shortfall > 12 ? 'error' : 'warning',
+      message: `Need ${shortfall} more institutional credits to meet residency requirement`,
+      affectedCourses: [],
+      suggestedFix: `Add ${Math.ceil(shortfall / 3)} university courses`,
+    });
+  }
+
   // 3. Check upper-division requirement
+  if (totals.upperDivisionCredits < policy.upper_division_min) {
+    const shortfall = policy.upper_division_min - totals.upperDivisionCredits;
+    warnings.push({
+      type: 'upper_division',
+      severity: shortfall > 9 ? 'error' : 'warning',
+      message: `Need ${shortfall} more upper-division credits (300/400 level)`,
+      affectedCourses: [],
+      suggestedFix: `Replace lower-division courses with 300/400 level options`,
+    });
+  }
 
   return warnings;
 }
