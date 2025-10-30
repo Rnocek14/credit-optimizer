@@ -12,8 +12,8 @@ export const FEATURE_FLAGS = {
   // Phase 0: Simplified cards (default on)
   V5_SIMPLIFIED_CARDS: true, // Full-card click, dock-only actions, simple progress
   
-  // Week 1: Year Scope Card (behind flag)
-  v5_year_scope_v1: typeof window !== 'undefined' && localStorage.getItem('v5_year_scope_v1') === 'true',
+  // Week 1: Year Scope Card (enabled by default, disable via localStorage)
+  v5_year_scope_v1: typeof window !== 'undefined' ? localStorage.getItem('v5_year_scope_v1') !== 'false' : true,
   
   // Experimental features (dark launch via localStorage)
   v5_autofill_enabled: typeof window !== 'undefined' && localStorage.getItem('v5_autofill_enabled') === 'true',
