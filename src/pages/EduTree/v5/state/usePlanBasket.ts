@@ -162,13 +162,14 @@ export const usePlanBasket = create<PlanBasketState>()(
       
       addItem: (item) => {
         const items = get().items;
-        // Prevent duplicates (semester-aware)
+        // Prevent duplicates within same module + semester (allow course to satisfy different modules)
         const isDuplicate = items.some(i => 
           i.courseId === item.courseId && 
+          i.moduleId === item.moduleId &&
           (!item.semester || !i.semester || i.semester === item.semester)
         );
         if (isDuplicate) {
-          console.warn('[Basket] Duplicate prevented:', item.courseId, item.semester);
+          console.warn('[Basket] Duplicate prevented:', item.courseId, item.moduleId, item.semester);
           return;
         }
         set({ items: [...items, item] });

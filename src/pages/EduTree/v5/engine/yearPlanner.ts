@@ -291,12 +291,16 @@ export function buildYearPlan(
       continue;
     }
 
-    // Skip if already in basket
-    if (basketCourseIds.has(selectedOption.courseId)) {
+    // Skip if already in basket for this module (allow same course for different modules)
+    const alreadyInSameModule = basket.some(b => 
+      b.courseId === selectedOption.courseId && b.moduleId === module.id
+    );
+    if (alreadyInSameModule) {
       console.log('[yearPlanner] Skipping duplicate', {
         courseId: selectedOption.courseId,
         title: selectedOption.title,
-        alreadyInBasket: true,
+        moduleId: module.id,
+        alreadyInSameModule: true,
       });
       continue;
     }
