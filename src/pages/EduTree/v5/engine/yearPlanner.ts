@@ -230,10 +230,41 @@ export function buildYearPlan(
   for (const module of unmetModules) {
     const options = module.marketplaceOptions || [];
 
+    // Diagnostic: log option data quality before scoring
+    console.log('[yearPlanner] Module options', {
+      moduleId: module.id,
+      moduleLabel: (module as any).label,
+      optionsCount: options.length,
+      hasCost: options.some(o => o.cost_usd != null),
+      hasDuration: options.some(o => o.duration_weeks != null),
+      hasCri: options.some(o => o.cri_score != null),
+      sampleOption: options[0] ? {
+        title: options[0].title,
+        cost: options[0].cost_usd,
+        duration: options[0].duration_weeks,
+        cri: options[0].cri_score,
+        provider: options[0].providerType,
+      } : null,
+    });
+
     const scoringWeights = mapWeights(preset.weights);
     const scored = scoreOptions(options, scoringWeights).sort(compareByScore);
 
-    if (scored.length === 0) continue;
+    console.log('[yearPlanner] Scored options', {
+      moduleId: module.id,
+      scoredCount: scored.length,
+      topScore: scored[0]?.score,
+      topOption: scored[0] ? {
+        title: scored[0].title,
+        score: scored[0].score,
+        breakdown: scored[0].scoreBreakdown,
+      } : null,
+    });
+
+    if (scored.length === 0) {
+      console.warn('[yearPlanner] No scored options for module', module.id);
+      continue;
+    }
 
     let selectedOption: ScoredOption | null = null;
 

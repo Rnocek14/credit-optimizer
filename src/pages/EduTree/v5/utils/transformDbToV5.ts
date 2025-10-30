@@ -62,6 +62,27 @@ export function mapCategoryToIcon(category: string): string {
   }
 }
 
+/**
+ * Enrich marketplace option with sensible defaults when DB data is missing
+ * Prevents scoring from failing on incomplete data
+ */
+function enrichOption(opt: any): any {
+  const credits = opt.credits || 3;
+  return {
+    ...opt,
+    // Cost defaults: typical ACE course pricing
+    cost_usd: opt.cost_usd ?? 89,
+    // Duration defaults: typical self-paced course
+    duration_weeks: opt.duration_weeks ?? 6,
+    // Workload estimate if missing
+    workload_weekly_hours: opt.workload_weekly_hours ?? credits * 2.5,
+    // Provider type fallback
+    providerType: opt.providerType ?? (opt.provider?.type || 'mooc'),
+    // CRI score fallback (moderate quality)
+    cri_score: opt.cri_score ?? 70,
+  };
+}
+
 export function transformToModuleData(
   requirements: DbRequirement[],
   allOptions: DbOption[],
@@ -173,9 +194,11 @@ export function transformToModuleData(
 
     // Add marketplace metadata if available
     if (marketplaceOptions.length > 0) {
-      (module as any).optionsCount = marketplaceOptions.length;
+      // Enrich options with defaults before attaching to module
+      const enrichedOptions = marketplaceOptions.map(enrichOption);
+      (module as any).optionsCount = enrichedOptions.length;
       (module as any).cheapestOption = cheapestOption;
-      (module as any).marketplaceOptions = marketplaceOptions;
+      (module as any).marketplaceOptions = enrichedOptions;
     }
 
     const year = Math.min(4, Math.max(1, req.year));

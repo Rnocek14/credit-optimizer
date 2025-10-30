@@ -31,6 +31,11 @@ export interface MarketplaceOption {
   equivalency_key?: string;
   cri_score?: number; // Phase 1c: CRI quality score
   
+  // CRI signals from provider registry
+  aceNccrs?: boolean; // ACE/NCCRS accreditation
+  proctored?: boolean; // Proctored assessment
+  providerRep?: number; // Provider reputation score
+  
   // Phase 1b: Scoring metadata (added by scoring engine)
   score?: number;
   scoreBreakdown?: {

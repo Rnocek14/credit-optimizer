@@ -62,6 +62,7 @@ export function filterEligibleOptions(
 
 /**
  * Score marketplace options and attach metadata
+ * Defensive: provides defaults for missing cost/duration/cri
  */
 export function scoreOptions(
   options: MarketplaceOption[],
@@ -70,10 +71,12 @@ export function scoreOptions(
   return options.map((opt) => {
     const breakdown = calculateOptionScore(
       {
-        cost_usd: opt.cost_usd,
-        duration_weeks: opt.duration_weeks,
-        providerType: opt.providerType,
-        // Add any other fields needed by calculateOptionScore
+        cost_usd: opt.cost_usd ?? 100, // Defensive: typical ACE course
+        duration_weeks: opt.duration_weeks ?? 8, // Defensive: typical semester
+        providerType: opt.providerType || 'university',
+        aceNccrs: opt.aceNccrs ?? false,
+        proctored: opt.proctored ?? false,
+        providerRep: opt.providerRep ?? 0,
       },
       options, // Pass all options for normalization
       weights
