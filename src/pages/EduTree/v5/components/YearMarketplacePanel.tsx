@@ -39,6 +39,13 @@ export function YearMarketplacePanel({
 }: YearMarketplacePanelProps) {
   const { applyYearTemplate } = useApplyYearTemplate();
   const [activeTab, setActiveTab] = useState('templates');
+  
+  console.log('[YearMarketplacePanel] Legacy Sheet rendering:', {
+    open,
+    year,
+    modulesCount: modules.length,
+    allOptionsCount: allOptions.length
+  });
 
   // Calculate year totals
   const yearStats = useMemo(() => {

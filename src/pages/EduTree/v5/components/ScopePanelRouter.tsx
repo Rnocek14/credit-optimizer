@@ -45,6 +45,13 @@ interface ScopePanelRouterProps {
 export function ScopePanelRouter(props: ScopePanelRouterProps) {
   const { scope, nodeId, activeTab, onClose, onNavigate, onTabChange } = props;
   
+  console.log('[ScopePanelRouter] 🚀 Rendering:', {
+    scope,
+    nodeId,
+    yearModulesCount: props.yearModules?.length,
+    dockFlag: FEATURE_FLAGS.v5_decision_dock
+  });
+  
   // Fetch data needed for year templates
   const constraints = usePlanBasket(s => s.constraints);
   const programId = 'bs_cs'; // TODO: Pass programId from parent when degree selection is implemented
@@ -64,9 +71,17 @@ export function ScopePanelRouter(props: ScopePanelRouterProps) {
     : undefined;
 
   // Feature flag check: use Decision Dock if enabled
+  console.log('[ScopePanelRouter] Feature flag check:', {
+    flag: FEATURE_FLAGS.v5_decision_dock,
+    willUseDock: !!FEATURE_FLAGS.v5_decision_dock
+  });
+  
   if (FEATURE_FLAGS.v5_decision_dock) {
+    console.log('[ScopePanelRouter] ✅ Routing to DecisionDockRouter');
     return <DecisionDockRouter {...props} />;
   }
+  
+  console.log('[ScopePanelRouter] ⚠️ Routing to legacy Sheet panels');
 
   // Legacy Sheet-based panels
   if (!scope) return null;
