@@ -778,6 +778,24 @@ function DegreeAnalyzerContent(props: DecisionDockRouterProps) {
 // Extract Year Marketplace content
 function YearMarketplaceContent(props: DecisionDockRouterProps) {
   const { year, yearModules = [], degreeSummary, onNavigate, onOpenModulePanel, onClose } = props;
+  
+  // CRITICAL: Check for empty data FIRST, before any hooks
+  if (!yearModules || yearModules.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center p-8 text-center">
+        <div className="text-6xl mb-4">📚</div>
+        <h3 className="text-lg font-semibold mb-2">No modules found for Year {year}</h3>
+        <p className="text-sm text-muted-foreground mb-4">
+          This year may not have course data loaded yet, or the database query failed.
+        </p>
+        <Button variant="outline" onClick={() => window.location.reload()}>
+          Refresh Page
+        </Button>
+      </div>
+    );
+  }
+  
+  // Now safe to call hooks (data is guaranteed to exist)
   const basketItems = usePlanBasket(s => s.items);
   const constraints = usePlanBasket(s => s.constraints);
   const addItem = usePlanBasket(s => s.addItem);
@@ -832,22 +850,6 @@ function YearMarketplaceContent(props: DecisionDockRouterProps) {
     hasAnchorPolicy: !!anchorPolicy,
     moduleSample: enrichedModules[0]
   });
-
-  // Early return if no modules and no options available
-  if (enrichedModules.length === 0 && allOptions.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center p-8 text-center">
-        <div className="text-6xl mb-4">📚</div>
-        <h3 className="text-lg font-semibold mb-2">No modules found for Year {year}</h3>
-        <p className="text-sm text-muted-foreground mb-4">
-          This year may not have course data loaded yet, or the database query failed.
-        </p>
-        <Button variant="outline" onClick={() => window.location.reload()}>
-          Refresh Page
-        </Button>
-      </div>
-    );
-  }
 
   const yearStats = useMemo(() => {
     const totalCreditsRequired = yearModules.reduce((sum, m) => sum + m.creditsRequired, 0);
