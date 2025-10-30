@@ -410,6 +410,18 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
     }
   }, [scope]);
 
+  // Diagnostic logging - must run before conditional returns
+  useEffect(() => {
+    console.log('[DecisionDock] Render state:', {
+      scope,
+      isOpen: !!scope,
+      activeSnapPoint,
+      snapPoints,
+      hasOverlay: document.querySelector('[data-testid="decision-dock-overlay"]') !== null,
+      hasContent: document.querySelector('[data-testid="decision-dock-content"]') !== null
+    });
+  }, [scope, activeSnapPoint, snapPoints]);
+
   // DEBUG: Log scope and open state
   console.log('[DecisionDockRouter] Render check:', {
     scope,
@@ -434,18 +446,6 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
     setActiveSnapPoint(snapPoints[1]);
     return null; // Skip this render, wait for corrected state
   }
-
-  // Diagnostic logging
-  useEffect(() => {
-    console.log('[DecisionDock] Render state:', {
-      scope,
-      isOpen: !!scope,
-      activeSnapPoint,
-      snapPoints,
-      hasOverlay: document.querySelector('[data-testid="decision-dock-overlay"]') !== null,
-      hasContent: document.querySelector('[data-testid="decision-dock-content"]') !== null
-    });
-  }, [scope, activeSnapPoint]);
 
   return (
     <DrawerPrimitive.Root
