@@ -106,7 +106,7 @@ export function YearTemplatesPanel({
 
   return (
     <>
-      <div className="space-y-4">
+            <div className="template-gallery">
         {templates.map(template => {
           const badgeColor = {
             Cheapest: 'bg-green-500/10 text-green-700 dark:text-green-400 hover:bg-green-500/20',
