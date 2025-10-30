@@ -5,6 +5,9 @@ import { DecisionDockRouter } from './DecisionDockRouter';
 import { FEATURE_FLAGS } from '../config/featureFlags';
 import type { PanelScope } from '../hooks/useScopedPanel';
 import type { DegreeSummary, ModuleData } from '../types/v5';
+import { usePlanBasket } from '../state/usePlanBasket';
+import { useRequirementBlocks } from '../hooks/useRequirementBlocks';
+import { useV5DatabaseData } from '../hooks/useV5DatabaseData';
 
 interface ScopePanelRouterProps {
   // Panel state
@@ -41,6 +44,24 @@ interface ScopePanelRouterProps {
 
 export function ScopePanelRouter(props: ScopePanelRouterProps) {
   const { scope, nodeId, activeTab, onClose, onNavigate, onTabChange } = props;
+  
+  // Fetch data needed for year templates
+  const constraints = usePlanBasket(s => s.constraints);
+  const programId = 'bs_cs'; // TODO: Pass programId from parent when degree selection is implemented
+  const { data: requirementBlocks = [] } = useRequirementBlocks(programId);
+  const { data: dbData } = useV5DatabaseData({ programId, enabled: true });
+  const allOptions = Object.values(dbData?.modulesByYear || {})
+    .flat()
+    .flatMap(m => m.marketplaceOptions || []);
+  
+  const anchorPolicy = constraints.target_school 
+    ? {
+        partner_name: constraints.target_school,
+        max_alt_credits: constraints.max_ace_credits ?? 90,
+        min_residency_credits: 30, // Default from common anchor policies
+        upper_division_min: 30, // Default from common anchor policies
+      }
+    : undefined;
 
   // Feature flag check: use Decision Dock if enabled
   if (FEATURE_FLAGS.v5_decision_dock) {
@@ -73,6 +94,10 @@ export function ScopePanelRouter(props: ScopePanelRouterProps) {
           degreeTitle={props.degreeSummary?.degreeTitle}
           onNavigate={onNavigate}
           onOpenModulePanel={props.onOpenModulePanel!}
+          requirementBlocks={requirementBlocks}
+          allOptions={allOptions}
+          anchorPolicy={anchorPolicy}
+          programId={programId}
         />
       );
 
