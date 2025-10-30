@@ -124,18 +124,28 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
   
   // Snap points state with localStorage persistence
   const [activeSnapPoint, setActiveSnapPoint] = useState<string | number | null>(() => {
-    if (typeof window === 'undefined') return 355; // SSR guard
+    if (typeof window === 'undefined') return '355px';
     const stored = localStorage.getItem('v5_dock_snap');
-    return stored ? (stored.includes('calc') ? stored : Number(stored)) : 355;
+    return stored || '355px';
   });
 
   const snapPoints = useMemo(() => {
     // Responsive snap points for mobile
     if (typeof window !== 'undefined' && window.innerWidth < 640) {
-      return [120, 280, 'calc(100vh - 80px)'];
+      return ['120px', '280px', 'calc(100vh - 80px)'];
     }
-    return [148, 355, 'calc(100vh - 120px)']; // Small, Medium, Large
+    return ['148px', '355px', 'calc(100vh - 120px)']; // Small, Medium, Large
   }, []);
+
+  // Debug: Log snap configuration on mount
+  useEffect(() => {
+    console.log('[DecisionDock] Snap configuration:', {
+      snapPoints,
+      activeSnapPoint,
+      scope,
+      isOpen: !!scope
+    });
+  }, [snapPoints, activeSnapPoint, scope]);
   
   // SSR-safe tab persistence
   const [activeTabInternal, setActiveTabInternal] = useState(props.activeTab || 'templates');
