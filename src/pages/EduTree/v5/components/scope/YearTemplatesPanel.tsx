@@ -3,7 +3,7 @@
  * Displays 4 year-level templates with preview and apply functionality
  */
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -57,12 +57,25 @@ export function YearTemplatesPanel({
         modules,
         blocks,
         allOptions,
-        basket,
+        [], // Generate with empty basket so plans aren't "already satisfied"
         constraints,
         anchorPolicy
       ) as (YearTemplate & { semesterDistribution: any; warnings: any })[],
     staleTime: 5000,
   });
+
+  // Diagnostic log
+  useEffect(() => {
+    console.log('[YearTemplatesPanel] Generation inputs:', {
+      year,
+      modulesCount: modules?.length ?? 0,
+      allOptionsCount: allOptions?.length ?? 0,
+      blocksCount: blocks?.length ?? 0,
+      basketSize: basket.length,
+      templatesGenerated: templates?.length ?? 0,
+      moduleSample: modules?.[0]
+    });
+  }, [year, modules, allOptions, blocks, basket, templates]);
 
   // Loading state
   if (isLoading) {
