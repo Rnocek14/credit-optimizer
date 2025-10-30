@@ -66,3 +66,13 @@
   transform: scaleX(1.08);
   transition: transform 150ms ease-out;
 }
+
+/* Year drawer visual hint - subtle pulse on handle */
+[data-vaul-drawer][data-scope="year"] [data-testid="decision-dock-resize-handle"] {
+  animation: handlePulse 2s ease-in-out 3;
+}
+
+@keyframes handlePulse {
+  0%, 100% { opacity: 1; transform: scaleY(1); }
+  50% { opacity: 0.6; transform: scaleY(1.2); }
+}

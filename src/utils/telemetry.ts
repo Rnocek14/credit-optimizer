@@ -44,7 +44,8 @@ export type AltCourseTelemetryTask =
   | 'decision_applied' // V5.5: Track template/course additions
   | 'template_preview_shown' // V5.5: Template preview opened
   | 'template_preview_confirmed' // V5.5: Template preview applied
-  | 'template_preview_cancelled'; // V5.5: Template preview cancelled
+  | 'template_preview_cancelled' // V5.5: Template preview cancelled
+  | 'year_drawer_auto_scroll'; // V5.5: Year drawer auto-scroll to reveal drawer
 
 export const trackTelemetryEvent = async (event: TelemetryEvent): Promise<void> => {
   try {

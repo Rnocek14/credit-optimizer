@@ -185,12 +185,17 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
       ];
     }
     
+    // Year scope gets taller default snap point for better visibility
+    const mediumHeight = scope === 'year' 
+      ? Math.round(height * 0.65)  // 65% for year scope
+      : Math.round(height * 0.5);   // 50% for module/degree scope
+    
     return [
       "148px",                            // Small: just header + 1 row
-      `${Math.round(height * 0.5)}px`,    // Medium: 50% of screen for analysis
+      `${mediumHeight}px`,                // Medium: 50-65% depending on scope
       `${height - 120}px`                 // Large: nearly full screen
     ];
-  }, [viewportDimensions]);
+  }, [viewportDimensions, scope]);
 
   // Debug: Log snap configuration
   useEffect(() => {
@@ -300,15 +305,37 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
     });
   };
 
-  // Apply dimming effect to plan board
+  // Apply dimming effect to plan board + auto-scroll for year scope
   useEffect(() => {
     if (scope) {
       document.body.classList.add('decision-dock-open');
+      
+      // Auto-scroll to reveal year drawer at bottom
+      if (scope === 'year') {
+        setTimeout(() => {
+          window.scrollTo({
+            top: document.documentElement.scrollHeight,
+            behavior: 'smooth'
+          });
+          
+          // Track auto-scroll behavior
+          trackTelemetryEvent({
+            task: 'year_drawer_auto_scroll',
+            route: '/edu-tree-v5',
+            complexity: {
+              scrollTop: window.scrollY,
+              docHeight: document.documentElement.scrollHeight,
+              viewportHeight: window.innerHeight,
+              year: props.year
+            }
+          });
+        }, 100); // Small delay for drawer mount animation
+      }
     }
     return () => {
       document.body.classList.remove('decision-dock-open');
     };
-  }, [scope]);
+  }, [scope, props.year]);
 
   // Escape key handler
   useEffect(() => {
