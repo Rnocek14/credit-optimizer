@@ -137,8 +137,8 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
     const isMobile = width < 640;
     
     const snapPoints = isMobile
-      ? ["120px", "280px", `${height - 80}px`]
-      : ["148px", "355px", `${height - 120}px`];
+      ? ["120px", `${Math.round(height * 0.45)}px`, `${height - 80}px`]
+      : ["148px", `${Math.round(height * 0.5)}px`, `${height - 120}px`];
     
     return {
       viewport: { width, height },
@@ -178,16 +178,16 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
     
     if (isMobile) {
       return [
-        "120px",              // Small: ~120px
-        "280px",              // Medium: ~280px  
-        `${height - 80}px`    // Large: nearly full screen minus header
+        "120px",                            // Small: ~120px
+        `${Math.round(height * 0.45)}px`,   // Medium: 45% of screen for analysis
+        `${height - 80}px`                  // Large: nearly full screen minus header
       ];
     }
     
     return [
-      "148px",                  // Small: just header + 1 row
-      "355px",                  // Medium: comfortable working space
-      `${height - 120}px`       // Large: nearly full screen
+      "148px",                            // Small: just header + 1 row
+      `${Math.round(height * 0.5)}px`,    // Medium: 50% of screen for analysis
+      `${height - 120}px`                 // Large: nearly full screen
     ];
   }, [viewportDimensions]);
 
