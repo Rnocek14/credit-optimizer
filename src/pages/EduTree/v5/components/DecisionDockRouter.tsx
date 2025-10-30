@@ -24,18 +24,21 @@ import { mapWeightsForEngine } from '../utils/weightMapping';
 import { ScenarioManager } from './ScenarioManager';
 import { TransferBadge } from './TransferBadge';
 import { ModuleTemplatesPanel } from './scope/ModuleTemplatesPanel';
+import { YearTemplatesPanel } from './scope/YearTemplatesPanel';
+import { useApplyYearTemplate } from '../hooks/useApplyYearTemplate';
+import { useV5DatabaseData } from '../hooks/useV5DatabaseData';
 import type { PanelScope } from '../hooks/useScopedPanel';
 import type { DegreeSummary, ModuleData } from '../types/v5';
 import type { ProviderType, ScoreBreakdown } from '../utils/optionScoring';
 import type { BasketItem } from '../state/usePlanBasket';
 import type { ModuleTemplate } from '../types/templates';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { toast } from 'sonner'; // Phase 1: toast for dupe handling
-import { trackTelemetryEvent } from '@/utils/telemetry'; // Phase 1c: telemetry
+import { toast } from 'sonner';
+import { trackTelemetryEvent } from '@/utils/telemetry';
 import { getTemplateCourses } from '../utils/templateHelpers';
-import { buildYearPlan, YEAR_PRESETS } from '../engine/yearPlanner'; // Week 1: Year planner
-import { getAnchorPolicyFromConstraints } from '../utils/anchorPolicyAdapter'; // Week 1.5: Anchor policy extraction
-import { useRequirementBlocks } from '../hooks/useRequirementBlocks'; // Week 2: Requirement blocks for year planner
+import { buildYearPlan, YEAR_PRESETS } from '../engine/yearPlanner';
+import { getAnchorPolicyFromConstraints } from '../utils/anchorPolicyAdapter';
+import { useRequirementBlocks } from '../hooks/useRequirementBlocks';
 
 // Fix 1A: Error Boundary Component
 class ErrorBoundary extends Component<{ children: ReactNode; fallback: ReactNode }> {
@@ -721,16 +724,56 @@ function YearMarketplaceContent(props: DecisionDockRouterProps) {
   const basketItems = usePlanBasket(s => s.items);
   const constraints = usePlanBasket(s => s.constraints);
   const addItem = usePlanBasket(s => s.addItem);
+  const [activeTab, setActiveTab] = useState('templates');
 
-  // DEBUG: Log component render and props
-  console.log('[YearMarketplaceContent] Component rendering:', {
+  // Fetch full database data for enrichment
+  const programId = 'bs_cs';
+  const { data: dbData } = useV5DatabaseData({ programId, enabled: true });
+  const { data: requirementBlocks = [] } = useRequirementBlocks(programId, true);
+  const { applyYearTemplate } = useApplyYearTemplate();
+
+  // Extract all options from modules
+  const allOptions = useMemo(() => {
+    return Object.values(dbData?.modulesByYear || {})
+      .flat()
+      .flatMap((m: any) => m.marketplaceOptions || []);
+  }, [dbData]);
+
+  // Ensure modules have marketplaceOptions
+  const enrichedModules = useMemo(() => {
+    if (!yearModules?.length) return [];
+    if (yearModules.some(m => (m.marketplaceOptions?.length ?? 0) > 0)) return yearModules;
+    
+    const byBlock = new Map<string, any[]>();
+    (allOptions || []).forEach((o: any) => {
+      if (!o.requirement_block_id) return;
+      const arr = byBlock.get(o.requirement_block_id) || [];
+      arr.push(o);
+      byBlock.set(o.requirement_block_id, arr);
+    });
+    
+    return yearModules.map(m => ({
+      ...m,
+      marketplaceOptions: m.marketplaceOptions?.length
+        ? m.marketplaceOptions
+        : (byBlock.get(m.requirement_block_id) || [])
+    }));
+  }, [yearModules, allOptions]);
+
+  // Extract anchor policy
+  const anchorPolicy = useMemo(() => 
+    getAnchorPolicyFromConstraints(constraints),
+    [constraints]
+  );
+
+  // DEBUG: Log data check
+  console.log('[YearMarketplaceContent] Data check:', {
     year,
-    yearModulesCount: yearModules.length,
-    yearModules: yearModules.map(m => ({ id: m.id, label: m.label, creditsRequired: m.creditsRequired })),
-    basketItemsCount: basketItems.length,
-    hasDegreeSummary: !!degreeSummary,
-    constraints,
-    allProps: props
+    modulesCount: enrichedModules.length,
+    allOptionsCount: allOptions.length,
+    blocksCount: requirementBlocks.length,
+    hasAnchorPolicy: !!anchorPolicy,
+    moduleSample: enrichedModules[0]
   });
 
   const yearStats = useMemo(() => {
@@ -738,7 +781,7 @@ function YearMarketplaceContent(props: DecisionDockRouterProps) {
     const totalCreditsEarned = yearModules.reduce((sum, m) => sum + (m.creditsEarned || 0), 0);
     const unmetModules = yearModules.filter(m => (m.creditsEarned || 0) < m.creditsRequired);
     
-    const stats = {
+    return {
       totalCreditsRequired,
       totalCreditsEarned,
       unmetModules,
@@ -746,18 +789,9 @@ function YearMarketplaceContent(props: DecisionDockRouterProps) {
         ? Math.round((totalCreditsEarned / totalCreditsRequired) * 100)
         : 0
     };
-
-    // DEBUG: Log computed stats
-    console.log('[YearMarketplaceContent] Computed yearStats:', stats);
-
-    return stats;
   }, [yearModules]);
 
-  // Week 2: Fetch requirement blocks for year planner (defaults to bs_cs)
-  const programId = 'bs_cs'; // TODO: Pass programId from parent when degree selection is implemented
-  const { data: requirementBlocks = [] } = useRequirementBlocks(programId, true);
-
-  // Week 1: Gated year planner call (with apply mode)
+  // Legacy auto-fill handler (kept for fallback)
   const handleAutoFillYear = () => {
     if (!FEATURE_FLAGS.v5_year_scope_v1) {
       toast.info('Year Scope V1 feature is not enabled', {
@@ -874,91 +908,98 @@ function YearMarketplaceContent(props: DecisionDockRouterProps) {
             <div className="text-xs text-muted-foreground">modules</div>
           </div>
         </div>
-
-        <div className="flex gap-2">
-          <Button 
-            size="sm" 
-            variant="default" 
-            className="flex-1"
-            onClick={handleAutoFillYear}
-          >
-            ✨ Auto-Fill Year
-          </Button>
-          <Button size="sm" variant="outline" className="flex-1">
-            🗑️ Clear Year
-          </Button>
-        </div>
       </div>
 
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h3 className="font-medium">Unmet Requirements</h3>
-          <Badge variant="secondary">{yearStats.unmetModules.length} modules</Badge>
-        </div>
+      {/* Tabs for Templates and Unmet Modules */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="w-full grid grid-cols-2 mb-4">
+          <TabsTrigger value="templates">Templates</TabsTrigger>
+          <TabsTrigger value="unmet">Unmet Modules</TabsTrigger>
+        </TabsList>
 
-        {yearStats.unmetModules.length === 0 ? (
-          <div className="bg-green-500/10 text-green-600 dark:text-green-400 rounded-lg p-6 text-center">
-            <div className="text-2xl mb-2">✓</div>
-            <div className="font-medium">All requirements met for Year {year}!</div>
+        <TabsContent value="templates">
+          <YearTemplatesPanel
+            year={year!}
+            modules={enrichedModules}
+            allOptions={allOptions}
+            anchorPolicy={anchorPolicy}
+            programId={programId}
+            onApplyTemplate={(template) => {
+              applyYearTemplate(template);
+            }}
+          />
+        </TabsContent>
+
+        <TabsContent value="unmet" className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="font-medium">Unmet Requirements</h3>
+            <Badge variant="secondary">{yearStats.unmetModules.length} modules</Badge>
           </div>
-        ) : (
-          <div className="space-y-3">
-            {yearStats.unmetModules.map(module => (
-              <div
-                key={module.id}
-                className="border rounded-lg p-4 hover:bg-accent/50 transition-colors"
-              >
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex-1">
-                    <div className="font-medium text-sm mb-1">{module.label}</div>
-                    <div className="text-xs text-muted-foreground line-clamp-2">
-                      {module.description}
-                    </div>
-                  </div>
-                  <Badge variant="outline" className="ml-2">
-                    {module.creditsRequired} cr
-                  </Badge>
-                </div>
 
-                {module.marketplaceOptions && module.marketplaceOptions.length > 0 && (
-                  <div className="space-y-1 mb-3">
-                    {module.marketplaceOptions.slice(0, 3).map((option, idx) => (
-                      <div
-                        key={option.id}
-                        className="text-xs text-muted-foreground flex items-center justify-between"
-                      >
-                        <span className="truncate">{option.provider}: {option.title}</span>
-                        <span className="ml-2 text-nowrap">
-                          {option.cost_usd !== null ? `$${option.cost_usd}` : 'Free'}
-                        </span>
-                      </div>
-                    ))}
-                    {module.marketplaceOptions.length > 3 && (
-                      <div className="text-xs text-muted-foreground">
-                        +{module.marketplaceOptions.length - 3} more options
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="w-full"
-                  onClick={() => {
-                    if (onOpenModulePanel) {
-                      onOpenModulePanel(module);
-                      onClose();
-                    }
-                  }}
+          {yearStats.unmetModules.length === 0 ? (
+            <div className="bg-green-500/10 text-green-600 dark:text-green-400 rounded-lg p-6 text-center">
+              <div className="text-2xl mb-2">✓</div>
+              <div className="font-medium">All requirements met for Year {year}!</div>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {yearStats.unmetModules.map(module => (
+                <div
+                  key={module.id}
+                  className="border rounded-lg p-4 hover:bg-accent/50 transition-colors"
                 >
-                  View All Options ({module.optionsCount || 0})
-                </Button>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex-1">
+                      <div className="font-medium text-sm mb-1">{module.label}</div>
+                      <div className="text-xs text-muted-foreground line-clamp-2">
+                        {module.description}
+                      </div>
+                    </div>
+                    <Badge variant="outline" className="ml-2">
+                      {module.creditsRequired} cr
+                    </Badge>
+                  </div>
+
+                  {module.marketplaceOptions && module.marketplaceOptions.length > 0 && (
+                    <div className="space-y-1 mb-3">
+                      {module.marketplaceOptions.slice(0, 3).map((option, idx) => (
+                        <div
+                          key={option.id}
+                          className="text-xs text-muted-foreground flex items-center justify-between"
+                        >
+                          <span className="truncate">{option.provider}: {option.title}</span>
+                          <span className="ml-2 text-nowrap">
+                            {option.cost_usd !== null ? `$${option.cost_usd}` : 'Free'}
+                          </span>
+                        </div>
+                      ))}
+                      {module.marketplaceOptions.length > 3 && (
+                        <div className="text-xs text-muted-foreground">
+                          +{module.marketplaceOptions.length - 3} more options
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => {
+                      if (onOpenModulePanel) {
+                        onOpenModulePanel(module);
+                        onClose();
+                      }
+                    }}
+                  >
+                    View All Options ({module.optionsCount || 0})
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+        </TabsContent>
+      </Tabs>
     </>
   );
 }
