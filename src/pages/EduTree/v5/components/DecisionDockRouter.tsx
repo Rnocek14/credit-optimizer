@@ -122,6 +122,12 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
   const titleId = useMemo(() => `decision-dock-title-${scope ?? "closed"}`, [scope]);
   const openAtRef = useRef<number | null>(null);
   
+  // Track viewport dimensions for reactive snap point calculation
+  const [viewportDimensions, setViewportDimensions] = useState(() => {
+    if (typeof window === 'undefined') return { width: 1024, height: 768 };
+    return { width: window.innerWidth, height: window.innerHeight };
+  });
+  
   // Snap points state with localStorage persistence
   const [activeSnapPoint, setActiveSnapPoint] = useState<string | number | null>(() => {
     if (typeof window === 'undefined') return 355;
@@ -134,55 +140,82 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
   });
 
   const snapPoints = useMemo(() => {
-    if (typeof window === 'undefined') return [148, 355, 600]; // SSR fallback
-    
-    const viewportHeight = window.innerHeight;
-    const isMobile = window.innerWidth < 640;
+    const { width, height } = viewportDimensions;
+    const isMobile = width < 640;
     
     if (isMobile) {
       return [
         120,              // Small: ~120px
         280,              // Medium: ~280px  
-        viewportHeight - 80  // Large: nearly full screen minus header
+        height - 80       // Large: nearly full screen minus header
       ];
     }
     
     return [
       148,                  // Small: just header + 1 row
       355,                  // Medium: comfortable working space
-      viewportHeight - 120  // Large: nearly full screen
+      height - 120          // Large: nearly full screen
     ];
-  }, []);
+  }, [viewportDimensions]);
 
   // Debug: Log snap configuration on mount
   useEffect(() => {
     console.log('[DecisionDock] Snap configuration:', {
       snapPoints,
       activeSnapPoint,
+      viewportDimensions,
+      isValidSnap: snapPoints.includes(activeSnapPoint as number),
       scope,
       isOpen: !!scope
     });
-  }, [snapPoints, activeSnapPoint, scope]);
+  }, [snapPoints, activeSnapPoint, viewportDimensions, scope]);
 
-  // Recalculate snap points on window resize
+  // Update viewport dimensions on window resize
   useEffect(() => {
     const handleResize = () => {
-      const viewportHeight = window.innerHeight;
-      const isMobile = window.innerWidth < 640;
+      const newWidth = window.innerWidth;
+      const newHeight = window.innerHeight;
       
-      // Force recalculation by triggering a re-render
-      setActiveSnapPoint(prev => {
-        // If current snap was "large", recalculate it
-        if (prev && typeof prev === 'number' && prev > 400) {
-          return isMobile ? viewportHeight - 80 : viewportHeight - 120;
+      setViewportDimensions(prev => {
+        // Only update if dimensions actually changed (avoid unnecessary recalcs)
+        if (prev.width === newWidth && prev.height === newHeight) {
+          return prev;
         }
-        return prev;
+        return { width: newWidth, height: newHeight };
       });
     };
 
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    // Throttle resize events (max once per 100ms)
+    let timeoutId: NodeJS.Timeout;
+    const throttledResize = () => {
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(handleResize, 100);
+    };
+
+    window.addEventListener('resize', throttledResize);
+    return () => {
+      clearTimeout(timeoutId);
+      window.removeEventListener('resize', throttledResize);
+    };
   }, []);
+
+  // Ensure activeSnapPoint is always valid
+  useEffect(() => {
+    if (activeSnapPoint === null) return;
+    
+    // Check if current active snap point exists in snapPoints
+    const isValid = snapPoints.includes(activeSnapPoint as number);
+    
+    if (!isValid) {
+      console.warn('[DecisionDock] Invalid snap point detected, resetting to medium:', {
+        activeSnapPoint,
+        snapPoints
+      });
+      // Reset to middle snap point (index 1)
+      setActiveSnapPoint(snapPoints[1]);
+      localStorage.setItem('v5_dock_snap', String(snapPoints[1]));
+    }
+  }, [snapPoints, activeSnapPoint]);
   
   // SSR-safe tab persistence
   const [activeTabInternal, setActiveTabInternal] = useState(props.activeTab || 'templates');
