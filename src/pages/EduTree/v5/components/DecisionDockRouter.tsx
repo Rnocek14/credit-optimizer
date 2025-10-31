@@ -412,7 +412,7 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
     }
   }, [scope]);
 
-  // DEBUG: Log scope and open state
+  // DEBUG: Log scope and open state with module-specific props
   console.log('[DecisionDockRouter] Render check:', {
     scope,
     isOpen: !!scope,
@@ -420,7 +420,16 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
     year: props.year,
     yearModulesCount: props.yearModules?.length ?? 0,
     snapPoints,
-    activeSnapPoint
+    activeSnapPoint,
+    // Module-specific debug
+    moduleProps: scope === 'module' ? {
+      moduleId: props.moduleId,
+      moduleLabel: props.moduleLabel,
+      creditsEarned: props.creditsEarned,
+      creditsRequired: props.creditsRequired,
+      optionsCount: props.options?.length || 0,
+      allModulesCount: props.allModules?.length || 0
+    } : undefined
   });
 
   if (!scope) return null;
@@ -1040,6 +1049,26 @@ function MarketplaceContent(props: DecisionDockRouterProps) {
     activeTab,
     onTabChange
   } = props;
+
+  // DEBUG: Log what props MarketplaceContent receives
+  console.log('[MarketplaceContent] Props received:', {
+    moduleId,
+    moduleLabel,
+    creditsEarned,
+    creditsRequired,
+    optionsCount: options?.length || 0,
+    hasOptions: !!options && options.length > 0,
+    allModulesCount: allModules?.length || 0
+  });
+  
+  // Check for missing required data
+  if (!moduleId || !options || options.length === 0) {
+    console.warn('[MarketplaceContent] ⚠️ Missing required props:', {
+      hasModuleId: !!moduleId,
+      hasOptions: !!options,
+      optionsLength: options?.length || 0
+    });
+  }
 
   const toggleCourse = usePlanStore(s => s.toggleCourse);
   const selected = usePlanStore(s => s.selections[moduleId]?.selected || []);

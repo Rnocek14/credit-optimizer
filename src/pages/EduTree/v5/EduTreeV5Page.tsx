@@ -143,6 +143,13 @@ export default function EduTreeV5Page() {
   };
 
   const handleOpenPanel = useCallback((module: ModuleData, year: number) => {
+    console.log('[V5 Page] Opening module panel:', {
+      moduleId: module.id,
+      moduleLabel: module.label,
+      hasMarketplaceOptions: !!module.marketplaceOptions,
+      optionsCount: module.marketplaceOptions?.length || 0,
+      year
+    });
     openPanel('module', module.id, { module, year });
   }, [openPanel]);
 
