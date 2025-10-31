@@ -570,7 +570,7 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
             </button>
           </div>
           
-          <div className="flex-1 min-h-0 w-full px-4 pb-4">
+          <div className="flex-1 min-h-0 w-full overflow-y-auto px-4 pb-4">
             {/* DEBUG: Log conditional rendering */}
             {(() => {
               console.log('[DecisionDockRouter] Content render decision:', {
@@ -1296,9 +1296,9 @@ function MarketplaceContent(props: DecisionDockRouterProps) {
   };
 
   return (
-    <>
-      {/* Breadcrumb Navigation */}
-      <div className="pb-4">
+    <div className="flex flex-col h-full">
+      {/* Fixed header section */}
+      <div className="flex-shrink-0 pb-4">
         <ScopeBreadcrumbs
           scope="module"
           nodeLabel={effectiveModuleLabel}
@@ -1307,9 +1307,9 @@ function MarketplaceContent(props: DecisionDockRouterProps) {
           onNavigate={props.onNavigate}
         />
       </div>
-
-      {/* Module Header */}
-      <div className="pb-4">
+      
+      {/* Fixed module header */}
+      <div className="flex-shrink-0 pb-4">
         <div className="flex items-center justify-between">
           <div className="flex flex-col gap-1">
             <span className="font-medium">{effectiveModuleLabel}</span>
@@ -1328,185 +1328,192 @@ function MarketplaceContent(props: DecisionDockRouterProps) {
         </div>
       </div>
 
-      {FEATURE_FLAGS.v5_templates_module && moduleData && moduleData.id && allModules && allModules.length > 0 ? (
-        <Tabs value={activeTabState} onValueChange={handleTabChange} className="w-full mb-4">
-          <TabsList className="w-full grid grid-cols-2" role="tablist">
-            <TabsTrigger value="templates">Templates</TabsTrigger>
-            <TabsTrigger value="courses">Courses</TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="templates" className="mt-4">
-            <ErrorBoundary
-              fallback={
-                <div className="text-center py-8 border border-destructive/50 rounded-lg bg-destructive/5">
-                  <p className="text-sm font-medium text-destructive mb-2">Templates temporarily unavailable</p>
-                  <p className="text-xs text-muted-foreground mb-3">Try the Individual Courses tab instead</p>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => {
-                      const coursesTab = document.querySelector('[value="courses"]') as HTMLElement;
-                      coursesTab?.click();
-                    }}
-                  >
-                    Switch to Courses
-                  </Button>
-                </div>
-              }
+      {/* Scrollable content area */}
+      <div className="flex-1 min-h-0 overflow-y-auto space-y-4">
+        {/* Sort controls FIRST */}
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground">Sort by</span>
+            <select
+              value={sortBy}
+              onChange={e => setSortBy?.(e.target.value as any)}
+              className="text-xs px-2 py-1 rounded border border-border bg-background"
             >
-              <ModuleTemplatesPanel
-                module={moduleData}
-                allModules={allModules}
-                onAddTemplate={handleAddTemplate}
-              />
-            </ErrorBoundary>
-          </TabsContent>
-          
-          <TabsContent value="courses" className="mt-4">
-            <CoursesList 
-              sortedOptions={sortedOptions}
-              selected={selected}
-              basket={basket}
-              moduleId={moduleId}
-              creditsRequired={effectiveCreditsRequired}
-              yearEarned={yearEarned}
-              yearCap={yearCap}
-              isAtMax={isAtMax}
-              toggleCourse={toggleCourse}
-              formatRelativeDate={formatRelativeDate}
-              isWithin30Days={isWithin30Days}
-            />
-          </TabsContent>
-        </Tabs>
-      ) : (
-        <CoursesList 
-          sortedOptions={sortedOptions}
-          selected={selected}
-          basket={basket}
-          moduleId={moduleId}
-          creditsRequired={effectiveCreditsRequired}
-          yearEarned={yearEarned}
-          yearCap={yearCap}
-          isAtMax={isAtMax}
-          toggleCourse={toggleCourse}
-          formatRelativeDate={formatRelativeDate}
-          isWithin30Days={isWithin30Days}
-        />
-      )}
-      
-      <ConstraintsPanel />
-      
-      {basket.length > 0 && (
-        <div className="sticky top-0 z-10 bg-background/95 backdrop-blur p-4 border rounded-lg mb-4">
-          <div className="grid grid-cols-3 gap-3 text-sm mb-3">
-            <div>
-              <div className="text-xs text-muted-foreground">Total Cost</div>
-              <div className="font-semibold text-lg">
-                ${(totals.totalCost ?? 0).toLocaleString()}
-              </div>
-            </div>
-            <div>
-              <div className="text-xs text-muted-foreground">Duration</div>
-              <div className="font-semibold text-lg">
-                {totals.totalWeeks ?? 0}wks
-              </div>
-              <div className="text-xs text-muted-foreground">
-                (max ×{constraints.max_concurrent_courses ?? 2})
-              </div>
-            </div>
-            <div>
-              <div className="text-xs text-muted-foreground">Weekly Load</div>
-              <div className="font-semibold text-lg">
-                {totals.totalWorkloadHours ?? 0}hrs/wk
-              </div>
-            </div>
+              <option value="best-match">🎯 Best Match</option>
+              <option value="cheapest">💰 Cheapest</option>
+              <option value="shortest">⚡ Shortest</option>
+              <option value="credits">📊 Most Credits</option>
+            </select>
+            
+            <button
+              className="text-xs px-2 py-1 rounded bg-accent hover:bg-accent/80 transition-colors ml-auto"
+              onClick={() => setShowWeights(v => !v)}
+            >
+              ⚙️ Priorities
+            </button>
           </div>
-          
-          {violations.length > 0 && (
-            <div className="space-y-1 mb-3">
-              {violations.map((v, i) => (
-                <div key={i} className={`text-xs px-2 py-1 rounded-md ${
-                  v.severity === 'error' ? 'bg-destructive/10 text-destructive' :
-                  v.severity === 'warning' ? 'bg-yellow-500/10 text-yellow-600' :
-                  'bg-blue-500/10 text-blue-600'
-                }`}>
-                  {v.severity === 'error' ? '🚫' : v.severity === 'warning' ? '⚠️' : 'ℹ️'} {v.message}
-                </div>
-              ))}
+
+          {showWeights && (
+            <div className="p-3 bg-accent/30 rounded-lg">
+              <div className="flex items-center justify-between mb-2">
+                <div className="text-xs font-medium">Adjust what matters to you:</div>
+                <button
+                  onClick={resetWeights}
+                  className="text-[10px] text-muted-foreground hover:text-foreground underline"
+                >
+                  Reset to default
+                </button>
+              </div>
+              <div className="space-y-2">
+                {(['cost', 'time', 'quality'] as const).map(key => (
+                  <label key={key} className="flex items-center gap-2">
+                    <span className="text-xs w-20 capitalize">
+                      {key === 'cost' && '💰'} {key === 'time' && '⚡'} {key === 'quality' && '⭐'} {key}
+                    </span>
+                    <input
+                      type="range"
+                      min={0}
+                      max={100}
+                      value={Math.round(weights[key] * 100)}
+                      onChange={(e) => setWeights({ [key]: (+e.target.value) / 100 })}
+                      className="flex-1"
+                    />
+                    <span className="text-xs w-10 text-right font-medium">{Math.round(weights[key] * 100)}%</span>
+                  </label>
+                ))}
+              </div>
             </div>
           )}
-          
-          {FEATURE_FLAGS.v5_autofill_enabled && (
-            <AutoFillPlanButton
-              modules={allModules as ModuleData[]}
-              constraints={constraints}
-              weights={mapWeightsForEngine(weights)}
-              disabled={violations.some(v => v.severity === 'error')}
-            />
-          )}
-          
-          <ScenarioManager />
-        </div>
-      )}
-
-      <div className="mb-4 space-y-3">
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-muted-foreground">Sort by</span>
-          <select
-            value={sortBy}
-            onChange={e => setSortBy?.(e.target.value as any)}
-            className="text-xs px-2 py-1 rounded border border-border bg-background"
-          >
-            <option value="best-match">🎯 Best Match</option>
-            <option value="cheapest">💰 Cheapest</option>
-            <option value="shortest">⚡ Shortest</option>
-            <option value="credits">📊 Most Credits</option>
-          </select>
-          
-          <button
-            className="text-xs px-2 py-1 rounded bg-accent hover:bg-accent/80 transition-colors ml-auto"
-            onClick={() => setShowWeights(v => !v)}
-          >
-            ⚙️ Priorities
-          </button>
         </div>
 
-        {showWeights && (
-          <div className="p-3 bg-accent/30 rounded-lg">
-            <div className="flex items-center justify-between mb-2">
-              <div className="text-xs font-medium">Adjust what matters to you:</div>
-              <button
-                onClick={resetWeights}
-                className="text-[10px] text-muted-foreground hover:text-foreground underline"
+        {/* Tabs or CoursesList */}
+        {FEATURE_FLAGS.v5_templates_module && moduleData && moduleData.id && allModules && allModules.length > 0 ? (
+          <Tabs value={activeTabState} onValueChange={handleTabChange} className="w-full">
+            <TabsList className="w-full grid grid-cols-2" role="tablist">
+              <TabsTrigger value="templates">Templates</TabsTrigger>
+              <TabsTrigger value="courses">Courses</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="templates" className="mt-4">
+              <ErrorBoundary
+                fallback={
+                  <div className="text-center py-8 border border-destructive/50 rounded-lg bg-destructive/5">
+                    <p className="text-sm font-medium text-destructive mb-2">Templates temporarily unavailable</p>
+                    <p className="text-xs text-muted-foreground mb-3">Try the Individual Courses tab instead</p>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        const coursesTab = document.querySelector('[value="courses"]') as HTMLElement;
+                        coursesTab?.click();
+                      }}
+                    >
+                      Switch to Courses
+                    </Button>
+                  </div>
+                }
               >
-                Reset to default
-              </button>
+                <ModuleTemplatesPanel
+                  module={moduleData}
+                  allModules={allModules}
+                  onAddTemplate={handleAddTemplate}
+                />
+              </ErrorBoundary>
+            </TabsContent>
+            
+            <TabsContent value="courses" className="mt-4">
+              <CoursesList 
+                sortedOptions={sortedOptions}
+                selected={selected}
+                basket={basket}
+                moduleId={moduleId}
+                creditsRequired={effectiveCreditsRequired}
+                yearEarned={yearEarned}
+                yearCap={yearCap}
+                isAtMax={isAtMax}
+                toggleCourse={toggleCourse}
+                formatRelativeDate={formatRelativeDate}
+                isWithin30Days={isWithin30Days}
+              />
+            </TabsContent>
+          </Tabs>
+        ) : (
+          <CoursesList 
+            sortedOptions={sortedOptions}
+            selected={selected}
+            basket={basket}
+            moduleId={moduleId}
+            creditsRequired={effectiveCreditsRequired}
+            yearEarned={yearEarned}
+            yearCap={yearCap}
+            isAtMax={isAtMax}
+            toggleCourse={toggleCourse}
+            formatRelativeDate={formatRelativeDate}
+            isWithin30Days={isWithin30Days}
+          />
+        )}
+        
+        {/* Constraints Panel */}
+        <ConstraintsPanel />
+        
+        {/* Basket Summary - at bottom, NOT sticky */}
+        {basket.length > 0 && (
+          <div className="bg-background/95 backdrop-blur p-4 border rounded-lg">
+            <div className="grid grid-cols-3 gap-3 text-sm mb-3">
+              <div>
+                <div className="text-xs text-muted-foreground">Total Cost</div>
+                <div className="font-semibold text-lg">
+                  ${(totals.totalCost ?? 0).toLocaleString()}
+                </div>
+              </div>
+              <div>
+                <div className="text-xs text-muted-foreground">Duration</div>
+                <div className="font-semibold text-lg">
+                  {totals.totalWeeks ?? 0}wks
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  (max ×{constraints.max_concurrent_courses ?? 2})
+                </div>
+              </div>
+              <div>
+                <div className="text-xs text-muted-foreground">Weekly Load</div>
+                <div className="font-semibold text-lg">
+                  {totals.totalWorkloadHours ?? 0}hrs/wk
+                </div>
+              </div>
             </div>
-            <div className="space-y-2">
-              {(['cost', 'time', 'quality'] as const).map(key => (
-                <label key={key} className="flex items-center gap-2">
-                  <span className="text-xs w-20 capitalize">
-                    {key === 'cost' && '💰'} {key === 'time' && '⚡'} {key === 'quality' && '⭐'} {key}
-                  </span>
-                  <input
-                    type="range"
-                    min={0}
-                    max={100}
-                    value={Math.round(weights[key] * 100)}
-                    onChange={(e) => setWeights({ [key]: (+e.target.value) / 100 })}
-                    className="flex-1"
-                  />
-                  <span className="text-xs w-10 text-right font-medium">{Math.round(weights[key] * 100)}%</span>
-                </label>
-              ))}
-            </div>
+            
+            {violations.length > 0 && (
+              <div className="space-y-1 mb-3">
+                {violations.map((v, i) => (
+                  <div key={i} className={`text-xs px-2 py-1 rounded-md ${
+                    v.severity === 'error' ? 'bg-destructive/10 text-destructive' :
+                    v.severity === 'warning' ? 'bg-yellow-500/10 text-yellow-600' :
+                    'bg-blue-500/10 text-blue-600'
+                  }`}>
+                    {v.severity === 'error' ? '🚫' : v.severity === 'warning' ? '⚠️' : 'ℹ️'} {v.message}
+                  </div>
+                ))}
+              </div>
+            )}
+            
+            {FEATURE_FLAGS.v5_autofill_enabled && (
+              <AutoFillPlanButton
+                modules={allModules as ModuleData[]}
+                constraints={constraints}
+                weights={mapWeightsForEngine(weights)}
+                disabled={violations.some(v => v.severity === 'error')}
+              />
+            )}
+            
+            <ScenarioManager />
           </div>
         )}
-      </div>
 
-      {!FEATURE_FLAGS.v5_templates_module && (
-        <div className="space-y-2">
-          {sortedOptions.map(option => {
+        {/* Legacy non-tabs rendering */}
+        {!FEATURE_FLAGS.v5_templates_module && (
+          <div className="space-y-2">
+            {sortedOptions.map(option => {
           const isSelected = selected.includes(option.courseId);
           const isInBasket = basket.some(b => b.courseId === option.courseId);
           const optionCredits = Number(option.credits) || 0;
@@ -1601,7 +1608,8 @@ function MarketplaceContent(props: DecisionDockRouterProps) {
         })}
         </div>
       )}
-    </>
+      </div>
+    </div>
   );
 }
 
