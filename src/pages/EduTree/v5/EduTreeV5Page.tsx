@@ -303,11 +303,6 @@ export default function EduTreeV5Page() {
       }
     }
     
-    // Reset the programmatic flag after hydration check completes
-    if (panelOpenedProgrammatically.current) {
-      panelOpenedProgrammatically.current = false;
-    }
-    
     // Hydrate year data - check for missing year-specific data
     if (panelState.scope === 'year' && panelState.nodeId && (!panelState.nodeData || !panelState.nodeData.modules)) {
       console.log('[V5 Page] 🔧 Hydrating missing year data from URL:', panelState.nodeId);
@@ -324,6 +319,13 @@ export default function EduTreeV5Page() {
       openPanel('year', String(year), { year, modules: yearModules }, panelState.tab);
     }
   }, [panelState.scope, panelState.nodeId, panelState.nodeData, allModules, getModulesForYear, openPanel]);
+  
+  // Reset programmatic flag when panel closes
+  useEffect(() => {
+    if (!panelState.scope) {
+      panelOpenedProgrammatically.current = false;
+    }
+  }, [panelState.scope]);
 
   // Calculate total credits for a year (planned = required, earned = selected)
   const getYearCredits = useCallback((year: number): { planned: number; earned: number } => {
