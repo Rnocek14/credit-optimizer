@@ -754,11 +754,22 @@ function DegreeAnalyzerContent(props: DecisionDockRouterProps) {
 
 // Extract Year Marketplace content
 function YearMarketplaceContent(props: DecisionDockRouterProps) {
-  const { year, yearModules = [], degreeSummary, onNavigate, onOpenModulePanel, onClose } = props;
+  const { year, yearModules = [], degreeSummary, onNavigate, onOpenModulePanel, onClose, nodeData } = props;
   const basketItems = usePlanBasket(s => s.items);
   const constraints = usePlanBasket(s => s.constraints);
   const addItem = usePlanBasket(s => s.addItem);
-  const [activeTab, setActiveTab] = useState('templates');
+  
+  // Respect UI hints from navigation (e.g., focusTab from semester auto-fill buttons)
+  const focusTab = nodeData?.ui?.focusTab || 'templates';
+  const focusTerm = nodeData?.ui?.focusTerm; // 'fall' | 'spring'
+  const [activeTab, setActiveTab] = useState(focusTab);
+  
+  // Update tab if focusTab hint changes
+  useEffect(() => {
+    if (nodeData?.ui?.focusTab) {
+      setActiveTab(nodeData.ui.focusTab);
+    }
+  }, [nodeData?.ui?.focusTab]);
 
   // Fetch full database data for enrichment
   const programId = 'bs_cs';
@@ -958,6 +969,7 @@ function YearMarketplaceContent(props: DecisionDockRouterProps) {
             allOptions={allOptions}
             anchorPolicy={anchorPolicy}
             programId={programId}
+            focusTerm={focusTerm}
             onApplyTemplate={(template) => {
               applyYearTemplate(template);
             }}

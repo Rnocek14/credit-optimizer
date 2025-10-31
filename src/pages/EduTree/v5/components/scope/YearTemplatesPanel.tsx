@@ -25,6 +25,7 @@ interface YearTemplatesPanelProps {
   allOptions: MarketplaceOption[];
   anchorPolicy?: PartnerPolicy;
   programId?: string;
+  focusTerm?: 'fall' | 'spring'; // Target semester for smart filtering
   onApplyTemplate: (template: YearTemplate & { semesterDistribution: any; warnings: any }) => void;
 }
 
@@ -34,6 +35,7 @@ export function YearTemplatesPanel({
   allOptions,
   anchorPolicy,
   programId,
+  focusTerm,
   onApplyTemplate,
 }: YearTemplatesPanelProps) {
   const basket = usePlanBasket(s => s.items);
@@ -64,6 +66,17 @@ export function YearTemplatesPanel({
     staleTime: 5000,
   });
 
+  // Sort templates to prioritize target semester when focusTerm is set
+  const sortedTemplates = useMemo(() => {
+    if (!templates || !focusTerm) return templates;
+    
+    return [...templates].sort((a, b) => {
+      const aCourses = (a as any).semesterDistribution?.[focusTerm]?.length ?? 0;
+      const bCourses = (b as any).semesterDistribution?.[focusTerm]?.length ?? 0;
+      return bCourses - aCourses; // More courses in target term = higher priority
+    });
+  }, [templates, focusTerm]);
+
   // Diagnostic log
   useEffect(() => {
     console.log('[YearTemplatesPanel] Generation inputs:', {
@@ -73,9 +86,10 @@ export function YearTemplatesPanel({
       blocksCount: blocks?.length ?? 0,
       basketSize: basket.length,
       templatesGenerated: templates?.length ?? 0,
+      focusTerm,
       moduleSample: modules?.[0]
     });
-  }, [year, modules, allOptions, blocks, basket, templates]);
+  }, [year, modules, allOptions, blocks, basket, templates, focusTerm]);
 
   // Loading state
   if (isLoading) {
@@ -90,7 +104,7 @@ export function YearTemplatesPanel({
   }
 
   // Empty state
-  if (!templates || templates.length === 0) {
+  if (!sortedTemplates || sortedTemplates.length === 0) {
     return (
       <Alert>
         <AlertDescription className="text-center py-8">
@@ -106,8 +120,20 @@ export function YearTemplatesPanel({
 
   return (
     <>
-            <div className="template-gallery">
-        {templates.map(template => {
+      {/* Target semester indicator */}
+      {focusTerm && (
+        <div className="mb-4 flex items-center gap-2 px-3 py-2 bg-primary/5 border border-primary/20 rounded-lg">
+          <span className="text-sm font-medium text-primary">
+            🎯 Target: {focusTerm === 'fall' ? 'Fall' : 'Spring'} • Year {year}
+          </span>
+          <span className="text-xs text-muted-foreground">
+            (Templates sorted by {focusTerm} semester load)
+          </span>
+        </div>
+      )}
+
+      <div className="template-gallery">
+        {sortedTemplates.map(template => {
           const badgeColor = {
             Cheapest: 'bg-green-500/10 text-green-700 dark:text-green-400 hover:bg-green-500/20',
             Fastest: 'bg-blue-500/10 text-blue-700 dark:text-blue-400 hover:bg-blue-500/20',

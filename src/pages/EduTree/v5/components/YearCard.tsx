@@ -64,7 +64,7 @@ interface YearCardProps {
   year: number;
   isCollapsed: boolean;
   onToggle: () => void;
-  onClick?: () => void;
+  onClick?: (ui?: { focusTab?: 'templates' | 'unmet'; focusTerm?: 'fall' | 'spring' }) => void;
   creditsSummary: CreditsSummary;
   selectedSummary?: NodeSelectedSummary;
   loadHealth: LoadHealth;
@@ -222,14 +222,16 @@ export function YearCard({
                 year={year} 
                 term="fall"
                 onAutoFill={({ year, term }) => {
-                  onClick?.(); // Opens year panel with templates
+                  // Pass UI hints to open Year panel on Templates with semester focus
+                  onClick?.({ focusTab: 'templates', focusTerm: term });
                 }}
               />
               <SemesterLane 
                 year={year} 
                 term="spring"
                 onAutoFill={({ year, term }) => {
-                  onClick?.(); // Opens year panel with templates
+                  // Pass UI hints to open Year panel on Templates with semester focus
+                  onClick?.({ focusTab: 'templates', focusTerm: term });
                 }}
               />
             </div>

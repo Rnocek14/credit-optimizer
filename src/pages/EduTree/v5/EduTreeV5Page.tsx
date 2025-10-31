@@ -736,7 +736,11 @@ export default function EduTreeV5Page() {
                 year={year}
                 isCollapsed={collapsedYears[year] || false}
                 onToggle={() => toggleYear(year)}
-                onClick={() => openPanel('year', String(year), { year, modules: yearModules })}
+                onClick={(ui) => openPanel('year', String(year), { 
+                  year, 
+                  modules: yearModules,
+                  ui // Pass UI hints (focusTab, focusTerm) through
+                })}
                 creditsSummary={yearData.creditsSummary}
                 selectedSummary={yearSelectedSummary}
                 loadHealth={yearData.loadHealth}
