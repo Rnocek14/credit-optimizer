@@ -6,7 +6,15 @@ import type { NodeSelectedSummary } from '../types/nodeProgress';
 import { DroppableSemester } from './drag/DroppableSemester';
 import { usePlanStore } from '../state/usePlanStore';
 
-function SemesterLane({ year, term }: { year: number; term: 'fall' | 'spring' }) {
+function SemesterLane({ 
+  year, 
+  term,
+  onAutoFill
+}: { 
+  year: number; 
+  term: 'fall' | 'spring';
+  onAutoFill?: (opts: { year: number; term: 'fall' | 'spring' }) => void;
+}) {
   const semesters = usePlanStore(s => s.semesters);
   const semesterId = `${year}-${term}`;
   const semester = semesters[semesterId] || { credits: 0, workloadHours: 0, courseIds: [] };
@@ -32,23 +40,20 @@ function SemesterLane({ year, term }: { year: number; term: 'fall' | 'spring' })
           ))}
         </div>
       ) : (
-        <div className="text-xs text-muted-foreground py-5 text-center space-y-2">
-          {term === 'fall' && year === 1 ? (
-            <>
-              <div className="font-medium text-foreground/80">🎯 Start here</div>
-              <div className="text-[11px]">Browse templates or drag courses</div>
-            </>
-          ) : term === 'fall' ? (
-            <>
-              <div className="font-medium text-foreground/80">📚 Fall {year}</div>
-              <div className="text-[11px]">Drag courses or browse dock</div>
-            </>
-          ) : (
-            <>
-              <div className="font-medium text-foreground/80">💡 Spring balance</div>
-              <div className="text-[11px]">Add courses to balance year</div>
-            </>
-          )}
+        <div className="flex h-32 flex-col items-center justify-center gap-2.5 text-sm text-muted-foreground">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onAutoFill?.({ year, term });
+            }}
+            className="px-4 py-2 text-sm font-medium rounded-md bg-primary/90 text-primary-foreground hover:bg-primary transition-colors shadow-sm min-h-[32px]"
+            aria-label={`Auto-fill ${term === 'fall' ? 'Fall' : 'Spring'} Year ${year}`}
+          >
+            {term === 'fall' && year === 1 ? '🎯 Auto-fill Fall 1' : `📚 Auto-fill ${term === 'fall' ? 'Fall' : 'Spring'} ${year}`}
+          </button>
+          <div className="text-xs text-muted-foreground/80">
+            or drag courses here
+          </div>
         </div>
       )}
     </DroppableSemester>
@@ -213,8 +218,20 @@ export function YearCard({
           {/* Semester Lanes */}
           <div className="mt-2 pt-2 border-t border-muted">
             <div className="grid grid-cols-2 gap-3">
-              <SemesterLane year={year} term="fall" />
-              <SemesterLane year={year} term="spring" />
+              <SemesterLane 
+                year={year} 
+                term="fall"
+                onAutoFill={({ year, term }) => {
+                  onClick?.(); // Opens year panel with templates
+                }}
+              />
+              <SemesterLane 
+                year={year} 
+                term="spring"
+                onAutoFill={({ year, term }) => {
+                  onClick?.(); // Opens year panel with templates
+                }}
+              />
             </div>
           </div>
           
