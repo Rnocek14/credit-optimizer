@@ -16,6 +16,7 @@ import { generateYearTemplates } from '../../engine/yearTemplateGenerator';
 import { usePlanBasket } from '../../state/usePlanBasket';
 import { useRequirementBlocks } from '../../hooks/useRequirementBlocks';
 import { trackTelemetryEvent } from '@/utils/telemetry';
+import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import type { YearTemplate } from '../../types/templates';
 import type { ModuleData, MarketplaceOption } from '../../types/v5';
 import type { PartnerPolicy } from '../../engine/yearPlanner';
@@ -47,10 +48,16 @@ export function YearTemplatesPanel({
   const [previewingTemplate, setPreviewingTemplate] = useState<(YearTemplate & { semesterDistribution: any; warnings: any }) | null>(null);
   const [localFocusTerm, setLocalFocusTerm] = useState<'fall' | 'spring' | undefined>(focusTerm);
   const firstCardRef = useRef<HTMLDivElement>(null);
+  const uiHintAppliedRef = useRef(false);
 
-  // Update local focus term when prop changes
+  // Debounce focus term to prevent double-runs when toggling Fall↔Spring
+  const debouncedFocusTerm = useDebouncedValue(localFocusTerm, 80);
+
+  // One-shot UI hint consumption - only apply once when opened from lane
   useEffect(() => {
-    if (focusTerm && focusTerm !== localFocusTerm) {
+    if (uiHintAppliedRef.current) return;
+    if (focusTerm) {
+      uiHintAppliedRef.current = true;
       setLocalFocusTerm(focusTerm);
       
       // Track focus change
@@ -60,7 +67,7 @@ export function YearTemplatesPanel({
         complexity: { term: focusTerm, reason: 'lane', year }
       });
     }
-  }, [focusTerm, localFocusTerm, year]);
+  }, [focusTerm, year]);
 
   // Generate templates with stable memo key to prevent thrash
   const basketKey = useMemo(
@@ -78,15 +85,35 @@ export function YearTemplatesPanel({
     [constraints]
   );
 
+  // Guard early: if all modules satisfied, short-circuit generation
+  const hasUnmetModules = useMemo(
+    () => modules.some(m => m.creditsEarned < m.creditsRequired),
+    [modules]
+  );
+
   const generationKey = useMemo(
-    () => JSON.stringify({ year, basketKey, constraintsKey, focusTerm: localFocusTerm }),
-    [year, basketKey, constraintsKey, localFocusTerm]
+    () => JSON.stringify({ year, basketKey, constraintsKey, focusTerm: debouncedFocusTerm }),
+    [year, basketKey, constraintsKey, debouncedFocusTerm]
   );
 
   const { data: templates, isLoading } = useQuery({
     queryKey: ['year-templates', generationKey],
-    queryFn: () =>
-      generateYearTemplates(
+    queryFn: () => {
+      // Short-circuit if all modules are met
+      if (!hasUnmetModules) {
+        console.log('[YearTemplateGenerator] All modules satisfied, skipping generation:', { year });
+        void trackTelemetryEvent({
+          task: 'year_templates_empty',
+          scope: 'year',
+          complexity: {
+            reason: 'all_met',
+            year,
+          },
+        });
+        return [] as (YearTemplate & { semesterDistribution: any; warnings: any })[];
+      }
+
+      return generateYearTemplates(
         year,
         modules,
         blocks,
@@ -94,8 +121,13 @@ export function YearTemplatesPanel({
         [], // Generate with empty basket so plans aren't "already satisfied"
         constraints,
         anchorPolicy
-      ) as (YearTemplate & { semesterDistribution: any; warnings: any })[],
-    staleTime: 5000,
+      ) as (YearTemplate & { semesterDistribution: any; warnings: any })[];
+    },
+    staleTime: 30_000,
+    gcTime: 5 * 60_000,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+    refetchOnReconnect: false,
   });
 
   // Sort templates to prioritize target semester when localFocusTerm is set
@@ -182,12 +214,12 @@ export function YearTemplatesPanel({
     }
     
     // Focus first card when opened from lane with focus term (double-raf guards against portal/layout shifts)
-    if (localFocusTerm && sortedTemplates && sortedTemplates.length > 0 && firstCardRef.current) {
+    if (debouncedFocusTerm && sortedTemplates && sortedTemplates.length > 0 && firstCardRef.current) {
       requestAnimationFrame(() =>
         requestAnimationFrame(() => firstCardRef.current?.focus())
       );
     }
-  }, [year, modules, allOptions, blocks, basket, templates, localFocusTerm, sortedTemplates, constraints]);
+  }, [year, modules, allOptions, blocks, basket, templates, debouncedFocusTerm, sortedTemplates, constraints]);
 
   // Loading state
   if (isLoading) {

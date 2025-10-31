@@ -17,12 +17,13 @@ export function useApplyYearTemplate() {
 
   const apply = useCallback(
     (template: YearTemplate & { semesterDistribution: { fall: BasketItem[]; spring: BasketItem[] }; warnings?: any[] }) => {
-      console.log('[ApplyYearTemplate] Starting', {
-        templateId: template.id,
-        label: template.label,
-        fallCourses: template.semesterDistribution.fall.length,
-        springCourses: template.semesterDistribution.spring.length,
-      });
+      try {
+        console.log('[ApplyYearTemplate] Starting', {
+          templateId: template.id,
+          label: template.label,
+          fallCourses: template.semesterDistribution.fall.length,
+          springCourses: template.semesterDistribution.spring.length,
+        });
 
       // Capture undo snapshot (all courses in this year's modules)
       const yearModuleIds = new Set(template.moduleTemplates.map(mt => mt.moduleId));
@@ -140,20 +141,24 @@ export function useApplyYearTemplate() {
         });
       }
 
-      // Telemetry
-      void trackTelemetryEvent({
-        task: 'year_template_applied',
-        scope: 'year',
-        complexity: {
-          templateId: template.id,
-          year: template.year,
-          coursesAdded: totalAdded,
-          fallCount: fallAdded.length,
-          springCount: springAdded.length,
-          creditsAdded: template.est.credits,
-          costAdded: template.est.costUsd,
-        },
-      });
+        // Telemetry
+        void trackTelemetryEvent({
+          task: 'year_template_applied',
+          scope: 'year',
+          complexity: {
+            templateId: template.id,
+            year: template.year,
+            coursesAdded: totalAdded,
+            fallCount: fallAdded.length,
+            springCount: springAdded.length,
+            creditsAdded: template.est.credits,
+            costAdded: template.est.costUsd,
+          },
+        });
+      } catch (error) {
+        console.error('[ApplyYearTemplate] Failed', error);
+        toast.error('Could not apply template. Your plan was not changed.');
+      }
     },
     [basket, addItem, removeItem]
   );
