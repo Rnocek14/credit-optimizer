@@ -777,16 +777,18 @@ function DegreeAnalyzerContent(props: DecisionDockRouterProps) {
 
 // Extract Year Marketplace content
 function YearMarketplaceContent(props: DecisionDockRouterProps) {
-  const { year, yearModules = [], degreeSummary, onNavigate, onOpenModulePanel, onClose } = props;
+  const { year, yearModules, degreeSummary, onNavigate, onOpenModulePanel, onClose } = props;
   
-  // CRITICAL: Check for empty data FIRST, before any hooks
-  if (!yearModules || yearModules.length === 0) {
+  // CRITICAL: Check for actually missing data (undefined/null) vs empty array
+  // undefined/null = not provided yet (show error)
+  // [] = provided but empty (this is valid, proceed to hooks)
+  if (yearModules === undefined || yearModules === null) {
     return (
       <div className="flex flex-col items-center justify-center p-8 text-center">
         <div className="text-6xl mb-4">📚</div>
-        <h3 className="text-lg font-semibold mb-2">No modules found for Year {year}</h3>
+        <h3 className="text-lg font-semibold mb-2">No modules data for Year {year}</h3>
         <p className="text-sm text-muted-foreground mb-4">
-          This year may not have course data loaded yet, or the database query failed.
+          Data not loaded or unavailable. Check console for errors.
         </p>
         <Button variant="outline" onClick={() => window.location.reload()}>
           Refresh Page
@@ -794,6 +796,9 @@ function YearMarketplaceContent(props: DecisionDockRouterProps) {
       </div>
     );
   }
+
+  // Now yearModules is guaranteed to be an array (could be empty [], that's OK)
+  const safeYearModules = yearModules || [];
   
   // Now safe to call hooks (data is guaranteed to exist)
   const basketItems = usePlanBasket(s => s.items);
@@ -816,8 +821,8 @@ function YearMarketplaceContent(props: DecisionDockRouterProps) {
 
   // Ensure modules have marketplaceOptions
   const enrichedModules = useMemo(() => {
-    if (!yearModules?.length) return [];
-    if (yearModules.some(m => (m.marketplaceOptions?.length ?? 0) > 0)) return yearModules;
+    if (!safeYearModules?.length) return [];
+    if (safeYearModules.some(m => (m.marketplaceOptions?.length ?? 0) > 0)) return safeYearModules;
     
     const byBlock = new Map<string, any[]>();
     (allOptions || []).forEach((o: any) => {
@@ -827,13 +832,13 @@ function YearMarketplaceContent(props: DecisionDockRouterProps) {
       byBlock.set(o.requirement_block_id, arr);
     });
     
-    return yearModules.map(m => ({
+    return safeYearModules.map(m => ({
       ...m,
       marketplaceOptions: m.marketplaceOptions?.length
         ? m.marketplaceOptions
         : (byBlock.get(m.requirement_block_id) || [])
     }));
-  }, [yearModules, allOptions]);
+  }, [safeYearModules, allOptions]);
 
   // Extract anchor policy
   const anchorPolicy = useMemo(() => 
@@ -841,20 +846,25 @@ function YearMarketplaceContent(props: DecisionDockRouterProps) {
     [constraints]
   );
 
-  // DEBUG: Log data check
-  console.log('[YearMarketplaceContent] Data check:', {
+  // DEBUG: Detailed prop inspection
+  console.log('[YearMarketplaceContent] Props analysis:', {
     year,
-    modulesCount: enrichedModules.length,
+    yearModulesType: typeof yearModules,
+    yearModulesIsArray: Array.isArray(yearModules),
+    yearModulesValue: yearModules,
+    safeModulesCount: safeYearModules.length,
+    enrichedModulesCount: enrichedModules.length,
     allOptionsCount: allOptions.length,
     blocksCount: requirementBlocks.length,
     hasAnchorPolicy: !!anchorPolicy,
-    moduleSample: enrichedModules[0]
+    moduleSample: enrichedModules[0],
+    propsKeys: Object.keys(props)
   });
 
   const yearStats = useMemo(() => {
-    const totalCreditsRequired = yearModules.reduce((sum, m) => sum + m.creditsRequired, 0);
-    const totalCreditsEarned = yearModules.reduce((sum, m) => sum + (m.creditsEarned || 0), 0);
-    const unmetModules = yearModules.filter(m => (m.creditsEarned || 0) < m.creditsRequired);
+    const totalCreditsRequired = safeYearModules.reduce((sum, m) => sum + m.creditsRequired, 0);
+    const totalCreditsEarned = safeYearModules.reduce((sum, m) => sum + (m.creditsEarned || 0), 0);
+    const unmetModules = safeYearModules.filter(m => (m.creditsEarned || 0) < m.creditsRequired);
     
     return {
       totalCreditsRequired,
@@ -1095,6 +1105,19 @@ function MarketplaceContent(props: DecisionDockRouterProps) {
     activeTab,
     onTabChange
   } = props;
+
+  // CRITICAL: Guard against missing module data
+  if (!moduleId || !moduleLabel) {
+    return (
+      <div className="flex flex-col items-center justify-center p-8 text-center">
+        <div className="text-6xl mb-4">📚</div>
+        <h3 className="text-lg font-semibold mb-2">No module selected</h3>
+        <p className="text-sm text-muted-foreground mb-4">
+          Please select a module to view course options.
+        </p>
+      </div>
+    );
+  }
 
   const toggleCourse = usePlanStore(s => s.toggleCourse);
   const selected = usePlanStore(s => s.selections[moduleId]?.selected || []);
