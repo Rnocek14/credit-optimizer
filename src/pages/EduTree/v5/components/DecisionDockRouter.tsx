@@ -482,7 +482,7 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
           data-testid="decision-dock-content"
           className={cn(
             "z-[110] fixed inset-x-0 bottom-0 mt-24 flex flex-col",
-            "min-h-[148px]",
+            "min-h-[148px] h-[var(--vaul-drawer-height,50vh)]",
             "pointer-events-auto border-t shadow-2xl",
             "rounded-t-[10px] bg-background"
           )}
@@ -570,7 +570,7 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
             </button>
           </div>
           
-          <div className="flex-1 min-h-0 w-full overflow-y-auto px-4 pb-4">
+          <div className="flex-1 min-h-0 w-full max-h-full overflow-y-auto px-4 pb-4">
             {/* DEBUG: Log conditional rendering */}
             {(() => {
               console.log('[DecisionDockRouter] Content render decision:', {
