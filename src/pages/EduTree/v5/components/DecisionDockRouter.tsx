@@ -570,7 +570,7 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
             </button>
           </div>
           
-          <div className="flex-1 min-h-0 w-full overflow-y-auto px-4 pb-4">
+          <div className="flex-1 min-h-0 w-full px-4 pb-4">
             {/* DEBUG: Log conditional rendering */}
             {(() => {
               console.log('[DecisionDockRouter] Content render decision:', {
@@ -911,8 +911,9 @@ function YearMarketplaceContent(props: DecisionDockRouterProps) {
   };
 
   return (
-    <>
-      <div className="pb-4">
+    <div className="flex flex-col h-full">
+      {/* Sticky header */}
+      <div className="flex-shrink-0 pb-4">
         <ScopeBreadcrumbs
           scope="year"
           year={year}
@@ -921,7 +922,8 @@ function YearMarketplaceContent(props: DecisionDockRouterProps) {
         />
       </div>
 
-      <div className="bg-accent/30 rounded-lg p-4 mb-6">
+      {/* Stats card */}
+      <div className="flex-shrink-0 bg-accent/30 rounded-lg p-4 mb-6">
         <div className="grid grid-cols-3 gap-4 text-sm mb-3">
           <div>
             <div className="text-xs text-muted-foreground">Credits</div>
@@ -941,97 +943,99 @@ function YearMarketplaceContent(props: DecisionDockRouterProps) {
         </div>
       </div>
 
-      {/* Tabs for Templates and Unmet Modules */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="w-full grid grid-cols-2 mb-4">
-          <TabsTrigger value="templates">Templates</TabsTrigger>
-          <TabsTrigger value="unmet">Unmet Modules</TabsTrigger>
-        </TabsList>
+      {/* Scrollable tabs area */}
+      <div className="flex-1 min-h-0 overflow-y-auto">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="w-full grid grid-cols-2 mb-4">
+            <TabsTrigger value="templates">Templates</TabsTrigger>
+            <TabsTrigger value="unmet">Unmet Modules</TabsTrigger>
+          </TabsList>
 
-        <TabsContent value="templates">
-          <YearTemplatesPanel
-            year={year!}
-            modules={enrichedModules}
-            allOptions={allOptions}
-            anchorPolicy={anchorPolicy}
-            programId={programId}
-            onApplyTemplate={(template) => {
-              applyYearTemplate(template);
-            }}
-          />
-        </TabsContent>
+          <TabsContent value="templates" className="h-full overflow-y-auto">
+            <YearTemplatesPanel
+              year={year!}
+              modules={enrichedModules}
+              allOptions={allOptions}
+              anchorPolicy={anchorPolicy}
+              programId={programId}
+              onApplyTemplate={(template) => {
+                applyYearTemplate(template);
+              }}
+            />
+          </TabsContent>
 
-        <TabsContent value="unmet" className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="font-medium">Unmet Requirements</h3>
-            <Badge variant="secondary">{yearStats.unmetModules.length} modules</Badge>
-          </div>
-
-          {yearStats.unmetModules.length === 0 ? (
-            <div className="bg-green-500/10 text-green-600 dark:text-green-400 rounded-lg p-6 text-center">
-              <div className="text-2xl mb-2">✓</div>
-              <div className="font-medium">All requirements met for Year {year}!</div>
+          <TabsContent value="unmet" className="h-full overflow-y-auto space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="font-medium">Unmet Requirements</h3>
+              <Badge variant="secondary">{yearStats.unmetModules.length} modules</Badge>
             </div>
-          ) : (
-            <div className="space-y-3">
-              {yearStats.unmetModules.map(module => (
-                <div
-                  key={module.id}
-                  className="border rounded-lg p-4 hover:bg-accent/50 transition-colors"
-                >
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex-1">
-                      <div className="font-medium text-sm mb-1">{module.label}</div>
-                      <div className="text-xs text-muted-foreground line-clamp-2">
-                        {module.description}
-                      </div>
-                    </div>
-                    <Badge variant="outline" className="ml-2">
-                      {module.creditsRequired} cr
-                    </Badge>
-                  </div>
 
-                  {module.marketplaceOptions && module.marketplaceOptions.length > 0 && (
-                    <div className="space-y-1 mb-3">
-                      {module.marketplaceOptions.slice(0, 3).map((option, idx) => (
-                        <div
-                          key={option.id}
-                          className="text-xs text-muted-foreground flex items-center justify-between"
-                        >
-                          <span className="truncate">{option.provider}: {option.title}</span>
-                          <span className="ml-2 text-nowrap">
-                            {option.cost_usd !== null ? `$${option.cost_usd}` : 'Free'}
-                          </span>
-                        </div>
-                      ))}
-                      {module.marketplaceOptions.length > 3 && (
-                        <div className="text-xs text-muted-foreground">
-                          +{module.marketplaceOptions.length - 3} more options
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="w-full"
-                    onClick={() => {
-                      if (onOpenModulePanel) {
-                        onOpenModulePanel(module);
-                        onClose();
-                      }
-                    }}
+            {yearStats.unmetModules.length === 0 ? (
+              <div className="bg-green-500/10 text-green-600 dark:text-green-400 rounded-lg p-6 text-center">
+                <div className="text-2xl mb-2">✓</div>
+                <div className="font-medium">All requirements met for Year {year}!</div>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {yearStats.unmetModules.map(module => (
+                  <div
+                    key={module.id}
+                    className="border rounded-lg p-4 hover:bg-accent/50 transition-colors"
                   >
-                    View All Options ({module.optionsCount || 0})
-                  </Button>
-                </div>
-              ))}
-            </div>
-          )}
-        </TabsContent>
-      </Tabs>
-    </>
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex-1">
+                        <div className="font-medium text-sm mb-1">{module.label}</div>
+                        <div className="text-xs text-muted-foreground line-clamp-2">
+                          {module.description}
+                        </div>
+                      </div>
+                      <Badge variant="outline" className="ml-2">
+                        {module.creditsRequired} cr
+                      </Badge>
+                    </div>
+
+                    {module.marketplaceOptions && module.marketplaceOptions.length > 0 && (
+                      <div className="space-y-1 mb-3">
+                        {module.marketplaceOptions.slice(0, 3).map((option, idx) => (
+                          <div
+                            key={option.id}
+                            className="text-xs text-muted-foreground flex items-center justify-between"
+                          >
+                            <span className="truncate">{option.provider}: {option.title}</span>
+                            <span className="ml-2 text-nowrap">
+                              {option.cost_usd !== null ? `$${option.cost_usd}` : 'Free'}
+                            </span>
+                          </div>
+                        ))}
+                        {module.marketplaceOptions.length > 3 && (
+                          <div className="text-xs text-muted-foreground">
+                            +{module.marketplaceOptions.length - 3} more options
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="w-full"
+                      onClick={() => {
+                        if (onOpenModulePanel) {
+                          onOpenModulePanel(module);
+                          onClose();
+                        }
+                      }}
+                    >
+                      View All Options ({module.optionsCount || 0})
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
+      </div>
+    </div>
   );
 }
 
