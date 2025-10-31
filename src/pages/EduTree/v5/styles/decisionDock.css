@@ -107,12 +107,6 @@
   -webkit-overflow-scrolling: touch !important;
 }
 
-/* Neutralize any overflow:hidden up the Year scope chain */
-.dd-year-scroll,
-.dd-year-scroll * {
-  overflow: visible;
-}
-
 /* Exception: keep our scroll container scrollable */
 .dd-year-scroll {
   overflow-y: auto !important;
