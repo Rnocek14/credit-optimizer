@@ -501,7 +501,7 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
         <DrawerPrimitive.Content 
           data-testid="decision-dock-content"
           className={cn(
-            "z-[110] fixed inset-x-0 bottom-0 mt-24 flex flex-col overflow-y-auto",
+            "z-[110] fixed inset-x-0 bottom-0 mt-24 flex flex-col",
             "min-h-[148px]",
             "pointer-events-auto border-t shadow-2xl",
             "rounded-t-[10px] bg-background"
@@ -510,9 +510,6 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
             backdropFilter: 'blur(2px)',
             backgroundColor: 'hsl(var(--background) / 0.95)',
             maxHeight: (activeSnapPoint && snapPoints.includes(String(activeSnapPoint)))
-              ? activeSnapPoint 
-              : snapPoints[1],
-            height: (activeSnapPoint && snapPoints.includes(String(activeSnapPoint)))
               ? activeSnapPoint 
               : snapPoints[1],
             display: 'flex',
@@ -594,7 +591,7 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
             </button>
           </div>
           
-          <div className="flex-1 min-h-0 w-full overflow-y-auto px-4 pb-4">
+          <div className="flex-1 px-4 pb-4">
             {/* DEBUG: Log conditional rendering */}
             {(() => {
               console.log('[DecisionDockRouter] Content render decision:', {
