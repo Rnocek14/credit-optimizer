@@ -161,11 +161,22 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
 
   // Initialize activeSnapPoint with guaranteed-valid value
   const [activeSnapPoint, setActiveSnapPoint] = useState<string | number | null>(() => {
-    // ALWAYS initialize with null to force fallback to medium snap point
-    // This ignores localStorage which might have stale small snap point (148px)
-    console.log('[DecisionDock] 🎯 Initializing with null to force medium snap fallback');
-    return null; // Will fallback to snapPoints[1] via validation logic
+    const initial = getInitialViewportAndSnaps();
+    
+    // Try to restore from localStorage
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('v5_dock_snap');
+      if (stored && initial.snapPoints.includes(stored)) {
+        console.log('[DecisionDock] ✅ Restored valid snap from storage:', stored);
+        return stored;
+      }
+    }
+    
+    // Default to medium snap point (not small, not null)
+    console.log('[DecisionDock] 🎯 Initializing with medium snap:', initial.snapPoints[1]);
+    return initial.snapPoints[1];
   });
+
 
   const snapPoints = useMemo(() => {
     const { width, height } = viewportDimensions;
@@ -190,6 +201,18 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
       `${height - 120}px`                 // Large: nearly full screen
     ];
   }, [viewportDimensions, scope]);
+
+  // Safely correct invalid snap points after render
+  useEffect(() => {
+    if (activeSnapPoint === null || !snapPoints.includes(String(activeSnapPoint))) {
+      console.warn('[DecisionDock] ⚠️ Correcting invalid snap point in useEffect:', {
+        current: activeSnapPoint,
+        correcting: snapPoints[1]
+      });
+      setActiveSnapPoint(snapPoints[1]);
+    }
+  }, [activeSnapPoint, snapPoints]);
+
 
   // Debug: Log snap configuration
   useEffect(() => {
@@ -405,19 +428,6 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
 
   if (!scope) return null;
 
-  // Auto-correct invalid snap points without blocking render
-  if (activeSnapPoint === null || 
-      !snapPoints.includes(String(activeSnapPoint)) ||
-      activeSnapPoint === snapPoints[0]) { // Also force correction if on "Small" snap
-    console.warn('[DecisionDock] ⚠️ Invalid or too-small snap point detected, forcing medium:', {
-      activeSnapPoint,
-      snapPoints,
-      fallback: snapPoints[1]
-    });
-    // Force medium snap immediately
-    setActiveSnapPoint(snapPoints[1]);
-  }
-
   return (
     <DrawerPrimitive.Root
       open={!!scope}
@@ -428,11 +438,7 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
       modal={false}
       direction="bottom"
       snapPoints={snapPoints}
-      activeSnapPoint={
-        activeSnapPoint && snapPoints.includes(String(activeSnapPoint))
-          ? activeSnapPoint
-          : snapPoints[1] // Always fallback to middle snap
-      }
+      activeSnapPoint={activeSnapPoint || snapPoints[1]}
       setActiveSnapPoint={(point) => {
         if (!point) return;
         setActiveSnapPoint(point);
@@ -481,7 +487,6 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
             height: (activeSnapPoint && snapPoints.includes(String(activeSnapPoint)))
               ? activeSnapPoint 
               : snapPoints[1],
-            minHeight: '400px', // Ensure drawer is tall enough to show content
             display: 'flex',
             flexDirection: 'column',
             visibility: 'visible'
