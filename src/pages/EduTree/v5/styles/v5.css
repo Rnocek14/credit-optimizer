@@ -99,8 +99,6 @@ body.dragging .react-flow__renderer {
   grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
   gap: 1rem;
   padding: 0.5rem 0;
-  max-height: 600px;
-  overflow-y: auto;
 }
 
 @media (min-width: 1024px) {

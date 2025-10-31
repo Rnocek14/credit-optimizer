@@ -377,6 +377,26 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
     };
   }, []);
 
+  // Prevent body scroll when drawer is open
+  useEffect(() => {
+    if (scope) {
+      // Drawer is open - prevent page scroll
+      const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
+      document.body.style.overflow = 'hidden';
+      document.body.style.paddingRight = `${scrollbarWidth}px`; // Prevent layout shift
+    } else {
+      // Drawer is closed - restore page scroll
+      document.body.style.overflow = '';
+      document.body.style.paddingRight = '';
+    }
+    
+    return () => {
+      // Cleanup on unmount
+      document.body.style.overflow = '';
+      document.body.style.paddingRight = '';
+    };
+  }, [scope]);
+
   // Telemetry: track dock open/close and duration
   useEffect(() => {
     if (scope && !openAtRef.current) {
@@ -497,7 +517,11 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
               : snapPoints[1],
             display: 'flex',
             flexDirection: 'column',
-            visibility: 'visible'
+            visibility: 'visible',
+            position: 'fixed',
+            bottom: 0,
+            left: 0,
+            right: 0
           }}
           role="dialog"
           aria-modal="false"
@@ -951,7 +975,7 @@ function YearMarketplaceContent(props: DecisionDockRouterProps) {
             <TabsTrigger value="unmet">Unmet Modules</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="templates" className="h-full overflow-y-auto">
+          <TabsContent value="templates" className="mt-4">
             <YearTemplatesPanel
               year={year!}
               modules={enrichedModules}
@@ -964,7 +988,7 @@ function YearMarketplaceContent(props: DecisionDockRouterProps) {
             />
           </TabsContent>
 
-          <TabsContent value="unmet" className="h-full overflow-y-auto space-y-4">
+          <TabsContent value="unmet" className="mt-4 space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="font-medium">Unmet Requirements</h3>
               <Badge variant="secondary">{yearStats.unmetModules.length} modules</Badge>
