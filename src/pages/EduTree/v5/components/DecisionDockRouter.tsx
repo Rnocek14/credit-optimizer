@@ -190,7 +190,9 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
     // Year scope gets taller default snap point for better visibility
     const mediumHeight = scope === 'year' 
       ? Math.round(height * 0.65)  // 65% for year scope
-      : Math.round(height * 0.5);   // 50% for module/degree scope
+      : scope === 'module'
+        ? Math.round(height * 0.6)   // 60% for module scope (taller)
+        : Math.round(height * 0.5);  // 50% for degree scope
     
     return [
       "148px",                            // Small: just header + 1 row
@@ -1080,15 +1082,6 @@ function MarketplaceContent(props: DecisionDockRouterProps) {
   const effectiveOptions = (options?.length > 0) 
     ? options 
     : (moduleFromDb?.marketplaceOptions || []);
-  
-  console.log('[MarketplaceContent] Using effective values:', {
-    moduleId,
-    label: effectiveModuleLabel,
-    earnedFromBasket: liveCreditsEarned,
-    earnedFromProps: creditsEarned,
-    usingDbFallback: !moduleLabel || options.length === 0,
-    optionsCount: effectiveOptions.length
-  });
 
   const toggleCourse = usePlanStore(s => s.toggleCourse);
   const selected = usePlanStore(s => s.selections[moduleId]?.selected || []);
@@ -1140,10 +1133,41 @@ function MarketplaceContent(props: DecisionDockRouterProps) {
 
   const isAtMax = effectiveCreditsEarned >= effectiveCreditsRequired;
   
-  // Module data for templates
+  // Module data for templates - with fallback to moduleFromDb
   const moduleData = useMemo(() => {
-    return allModules.find(m => m.id === moduleId) as ModuleData | undefined;
-  }, [allModules, moduleId]);
+    // Try allModules first, then fall back to moduleFromDb
+    if (allModules && allModules.length > 0) {
+      return allModules.find(m => m.id === moduleId) as ModuleData | undefined;
+    }
+    // Fallback: construct from moduleFromDb
+    if (moduleFromDb) {
+      return {
+        id: moduleFromDb.id,
+        label: moduleFromDb.label,
+        creditsEarned: liveCreditsEarned,
+        creditsRequired: moduleFromDb.creditsRequired,
+        marketplaceOptions: moduleFromDb.marketplaceOptions || [],
+        courses: [],
+        requirement_block_id: moduleFromDb.requirement_block_id
+      } as ModuleData;
+    }
+    return undefined;
+  }, [allModules, moduleId, moduleFromDb, liveCreditsEarned]);
+  
+  // Debug logging - after all variables are defined
+  console.log('[MarketplaceContent] Render state:', {
+    moduleId,
+    label: effectiveModuleLabel,
+    earnedFromBasket: liveCreditsEarned,
+    earnedFromProps: creditsEarned,
+    usingDbFallback: !moduleLabel || options.length === 0,
+    optionsCount: effectiveOptions.length,
+    sortedOptionsCount: sortedOptions.length,
+    hasModuleData: !!moduleData,
+    hasAllModules: allModules && allModules.length > 0,
+    willRenderTabs: FEATURE_FLAGS.v5_templates_module && !!moduleData && !!moduleData.id && allModules && allModules.length > 0,
+    basketCount: basket.length
+  });
   
   // Handler for adding template (Phase 1: dupe prevention)
   const handleAddTemplate = (template: ModuleTemplate) => {
