@@ -377,26 +377,6 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
     };
   }, []);
 
-  // Prevent body scroll when drawer is open
-  useEffect(() => {
-    if (scope) {
-      // Drawer is open - prevent page scroll
-      const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
-      document.body.style.overflow = 'hidden';
-      document.body.style.paddingRight = `${scrollbarWidth}px`; // Prevent layout shift
-    } else {
-      // Drawer is closed - restore page scroll
-      document.body.style.overflow = '';
-      document.body.style.paddingRight = '';
-    }
-    
-    return () => {
-      // Cleanup on unmount
-      document.body.style.overflow = '';
-      document.body.style.paddingRight = '';
-    };
-  }, [scope]);
-
   // Telemetry: track dock open/close and duration
   useEffect(() => {
     if (scope && !openAtRef.current) {
@@ -512,13 +492,12 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
             maxHeight: (activeSnapPoint && snapPoints.includes(String(activeSnapPoint)))
               ? activeSnapPoint 
               : snapPoints[1],
+            height: (activeSnapPoint && snapPoints.includes(String(activeSnapPoint)))
+              ? activeSnapPoint 
+              : snapPoints[1],
             display: 'flex',
             flexDirection: 'column',
-            visibility: 'visible',
-            position: 'fixed',
-            bottom: 0,
-            left: 0,
-            right: 0
+            visibility: 'visible'
           }}
           role="dialog"
           aria-modal="false"
@@ -591,7 +570,7 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
             </button>
           </div>
           
-          <div className="flex-1 px-4 pb-4">
+          <div className="flex-1 min-h-0 w-full overflow-y-auto px-4 pb-4">
             {/* DEBUG: Log conditional rendering */}
             {(() => {
               console.log('[DecisionDockRouter] Content render decision:', {
@@ -626,8 +605,8 @@ function DegreeAnalyzerContent(props: DecisionDockRouterProps) {
   const progressPercent = (degreeSummary.totalCreditsEarned / degreeSummary.totalCreditsRequired) * 100;
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="flex-shrink-0 pb-4">
+    <>
+      <div className="pb-4">
         <ScopeBreadcrumbs
           scope="degree"
           degreeTitle={degreeSummary.degreeTitle}
@@ -635,140 +614,138 @@ function DegreeAnalyzerContent(props: DecisionDockRouterProps) {
         />
       </div>
 
-      <div className="flex-1 min-h-0 overflow-y-auto">
-        <Tabs value={activeTab} onValueChange={onTabChange} className="w-full">
-          <TabsList className="grid w-full grid-cols-4 mb-6">
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="requirements">Requirements</TabsTrigger>
-            <TabsTrigger value="transfer">Transfer</TabsTrigger>
-            <TabsTrigger value="optimize">Optimize</TabsTrigger>
-          </TabsList>
+      <Tabs value={activeTab} onValueChange={onTabChange} className="w-full">
+        <TabsList className="grid w-full grid-cols-4 mb-6">
+          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="requirements">Requirements</TabsTrigger>
+          <TabsTrigger value="transfer">Transfer</TabsTrigger>
+          <TabsTrigger value="optimize">Optimize</TabsTrigger>
+        </TabsList>
 
-          <TabsContent value="overview" className="space-y-6">
-            <div className="bg-accent/30 rounded-lg p-6">
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h3 className="font-semibold text-lg">{degreeSummary.degreeTitle}</h3>
-                  <p className="text-sm text-muted-foreground">Bachelor's Degree</p>
+        <TabsContent value="overview" className="space-y-6">
+          <div className="bg-accent/30 rounded-lg p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="font-semibold text-lg">{degreeSummary.degreeTitle}</h3>
+                <p className="text-sm text-muted-foreground">Bachelor's Degree</p>
+              </div>
+              <div className="text-right">
+                <div className="text-3xl font-bold text-primary">{Math.round(progressPercent)}%</div>
+                <div className="text-xs text-muted-foreground">Complete</div>
+              </div>
+            </div>
+            
+            <Progress value={progressPercent} className="h-3 mb-2" />
+            
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">
+                {degreeSummary.totalCreditsEarned} / {degreeSummary.totalCreditsRequired} credits
+              </span>
+              <span className="text-muted-foreground">
+                {degreeSummary.totalCreditsRequired - degreeSummary.totalCreditsEarned} remaining
+              </span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 gap-4">
+            <div className="bg-card border rounded-lg p-4">
+              <div className="text-xs text-muted-foreground mb-1">Total Cost</div>
+              <div className="text-2xl font-bold">${degreeSummary.estimatedCost.toLocaleString()}</div>
+            </div>
+            <div className="bg-card border rounded-lg p-4">
+              <div className="text-xs text-muted-foreground mb-1">Duration</div>
+              <div className="text-2xl font-bold">{Math.round(degreeSummary.estimatedMonths / 12)}y</div>
+              <div className="text-xs text-muted-foreground">{degreeSummary.estimatedMonths} months</div>
+            </div>
+            <div className="bg-card border rounded-lg p-4">
+              <div className="text-xs text-muted-foreground mb-1">Credits Planned</div>
+              <div className="text-2xl font-bold">{degreeSummary.totalCreditsPlanned}</div>
+            </div>
+          </div>
+
+          {degreeSummary.warnings.length > 0 && (
+            <div className="space-y-2">
+              <h4 className="font-medium text-sm">⚠️ Warnings</h4>
+              {degreeSummary.warnings.map((warning, i) => (
+                <div key={i} className="text-sm p-3 rounded-md bg-yellow-500/10 text-yellow-600 dark:text-yellow-400">
+                  {warning}
                 </div>
-                <div className="text-right">
-                  <div className="text-3xl font-bold text-primary">{Math.round(progressPercent)}%</div>
-                  <div className="text-xs text-muted-foreground">Complete</div>
-                </div>
-              </div>
-              
-              <Progress value={progressPercent} className="h-3 mb-2" />
-              
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">
-                  {degreeSummary.totalCreditsEarned} / {degreeSummary.totalCreditsRequired} credits
-                </span>
-                <span className="text-muted-foreground">
-                  {degreeSummary.totalCreditsRequired - degreeSummary.totalCreditsEarned} remaining
-                </span>
-              </div>
+              ))}
             </div>
+          )}
 
-            <div className="grid grid-cols-3 gap-4">
-              <div className="bg-card border rounded-lg p-4">
-                <div className="text-xs text-muted-foreground mb-1">Total Cost</div>
-                <div className="text-2xl font-bold">${degreeSummary.estimatedCost.toLocaleString()}</div>
-              </div>
-              <div className="bg-card border rounded-lg p-4">
-                <div className="text-xs text-muted-foreground mb-1">Duration</div>
-                <div className="text-2xl font-bold">{Math.round(degreeSummary.estimatedMonths / 12)}y</div>
-                <div className="text-xs text-muted-foreground">{degreeSummary.estimatedMonths} months</div>
-              </div>
-              <div className="bg-card border rounded-lg p-4">
-                <div className="text-xs text-muted-foreground mb-1">Credits Planned</div>
-                <div className="text-2xl font-bold">{degreeSummary.totalCreditsPlanned}</div>
-              </div>
+          <div className="bg-accent/20 rounded-lg p-4">
+            <h4 className="font-medium text-sm mb-3">🎯 What's Blocking Completion?</h4>
+            <div className="space-y-2 text-sm">
+              {degreeSummary.totalCreditsEarned < degreeSummary.totalCreditsRequired ? (
+                <p className="text-muted-foreground">
+                  Complete {degreeSummary.totalCreditsRequired - degreeSummary.totalCreditsEarned} more credits to finish your degree.
+                </p>
+              ) : (
+                <p className="text-green-600 dark:text-green-400">
+                  ✓ All degree requirements met!
+                </p>
+              )}
             </div>
+          </div>
 
-            {degreeSummary.warnings.length > 0 && (
-              <div className="space-y-2">
-                <h4 className="font-medium text-sm">⚠️ Warnings</h4>
-                {degreeSummary.warnings.map((warning, i) => (
-                  <div key={i} className="text-sm p-3 rounded-md bg-yellow-500/10 text-yellow-600 dark:text-yellow-400">
-                    {warning}
-                  </div>
-                ))}
-              </div>
-            )}
+          <div className="flex gap-3">
+            <Button variant="outline" className="flex-1">
+              📊 Export Plan (PDF)
+            </Button>
+            <Button variant="outline" className="flex-1">
+              📤 Share with Advisor
+            </Button>
+          </div>
+        </TabsContent>
 
-            <div className="bg-accent/20 rounded-lg p-4">
-              <h4 className="font-medium text-sm mb-3">🎯 What's Blocking Completion?</h4>
-              <div className="space-y-2 text-sm">
-                {degreeSummary.totalCreditsEarned < degreeSummary.totalCreditsRequired ? (
-                  <p className="text-muted-foreground">
-                    Complete {degreeSummary.totalCreditsRequired - degreeSummary.totalCreditsEarned} more credits to finish your degree.
-                  </p>
-                ) : (
-                  <p className="text-green-600 dark:text-green-400">
-                    ✓ All degree requirements met!
-                  </p>
-                )}
-              </div>
+        <TabsContent value="requirements" className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            View all requirements grouped by category (Gen Ed, Core, Major, Electives).
+          </p>
+          <div className="bg-accent/20 rounded-lg p-8 text-center">
+            <div className="text-muted-foreground text-sm">
+              Requirements breakdown coming soon...
             </div>
+          </div>
+        </TabsContent>
 
-            <div className="flex gap-3">
-              <Button variant="outline" className="flex-1">
-                📊 Export Plan (PDF)
-              </Button>
-              <Button variant="outline" className="flex-1">
-                📤 Share with Advisor
-              </Button>
+        <TabsContent value="transfer" className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Visualize credit transfer flow from providers to target institution.
+          </p>
+          <div className="bg-accent/20 rounded-lg p-8 text-center">
+            <div className="text-muted-foreground text-sm">
+              Transfer flow diagram coming soon...
             </div>
-          </TabsContent>
+          </div>
+        </TabsContent>
 
-          <TabsContent value="requirements" className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              View all requirements grouped by category (Gen Ed, Core, Major, Electives).
-            </p>
-            <div className="bg-accent/20 rounded-lg p-8 text-center">
-              <div className="text-muted-foreground text-sm">
-                Requirements breakdown coming soon...
-              </div>
-            </div>
-          </TabsContent>
-
-          <TabsContent value="transfer" className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              Visualize credit transfer flow from providers to target institution.
-            </p>
-            <div className="bg-accent/20 rounded-lg p-8 text-center">
-              <div className="text-muted-foreground text-sm">
-                Transfer flow diagram coming soon...
-              </div>
-            </div>
-          </TabsContent>
-
-          <TabsContent value="optimize" className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              Auto-fill entire degree with optimized course selections.
-            </p>
-            <div className="grid grid-cols-2 gap-3">
-              <Button variant="outline" className="h-auto flex-col items-start p-4">
-                <div className="text-sm font-medium mb-1">⚡ Fastest Path</div>
-                <div className="text-xs text-muted-foreground">Minimize duration</div>
-              </Button>
-              <Button variant="outline" className="h-auto flex-col items-start p-4">
-                <div className="text-sm font-medium mb-1">💰 Cheapest Path</div>
-                <div className="text-xs text-muted-foreground">Minimize cost</div>
-              </Button>
-              <Button variant="outline" className="h-auto flex-col items-start p-4">
-                <div className="text-sm font-medium mb-1">🎓 Transfer-Safe</div>
-                <div className="text-xs text-muted-foreground">Guaranteed acceptance</div>
-              </Button>
-              <Button variant="outline" className="h-auto flex-col items-start p-4">
-                <div className="text-sm font-medium mb-1">⚖️ Balanced</div>
-                <div className="text-xs text-muted-foreground">Best overall</div>
-              </Button>
-            </div>
-          </TabsContent>
-        </Tabs>
-      </div>
-    </div>
+        <TabsContent value="optimize" className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Auto-fill entire degree with optimized course selections.
+          </p>
+          <div className="grid grid-cols-2 gap-3">
+            <Button variant="outline" className="h-auto flex-col items-start p-4">
+              <div className="text-sm font-medium mb-1">⚡ Fastest Path</div>
+              <div className="text-xs text-muted-foreground">Minimize duration</div>
+            </Button>
+            <Button variant="outline" className="h-auto flex-col items-start p-4">
+              <div className="text-sm font-medium mb-1">💰 Cheapest Path</div>
+              <div className="text-xs text-muted-foreground">Minimize cost</div>
+            </Button>
+            <Button variant="outline" className="h-auto flex-col items-start p-4">
+              <div className="text-sm font-medium mb-1">🎓 Transfer-Safe</div>
+              <div className="text-xs text-muted-foreground">Guaranteed acceptance</div>
+            </Button>
+            <Button variant="outline" className="h-auto flex-col items-start p-4">
+              <div className="text-sm font-medium mb-1">⚖️ Balanced</div>
+              <div className="text-xs text-muted-foreground">Best overall</div>
+            </Button>
+          </div>
+        </TabsContent>
+      </Tabs>
+    </>
   );
 }
 
@@ -934,9 +911,8 @@ function YearMarketplaceContent(props: DecisionDockRouterProps) {
   };
 
   return (
-    <div className="flex flex-col h-full">
-      {/* Sticky header */}
-      <div className="flex-shrink-0 pb-4">
+    <>
+      <div className="pb-4">
         <ScopeBreadcrumbs
           scope="year"
           year={year}
@@ -945,8 +921,7 @@ function YearMarketplaceContent(props: DecisionDockRouterProps) {
         />
       </div>
 
-      {/* Stats card */}
-      <div className="flex-shrink-0 bg-accent/30 rounded-lg p-4 mb-6">
+      <div className="bg-accent/30 rounded-lg p-4 mb-6">
         <div className="grid grid-cols-3 gap-4 text-sm mb-3">
           <div>
             <div className="text-xs text-muted-foreground">Credits</div>
@@ -966,99 +941,97 @@ function YearMarketplaceContent(props: DecisionDockRouterProps) {
         </div>
       </div>
 
-      {/* Scrollable tabs area */}
-      <div className="flex-1 min-h-0 overflow-y-auto">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="w-full grid grid-cols-2 mb-4">
-            <TabsTrigger value="templates">Templates</TabsTrigger>
-            <TabsTrigger value="unmet">Unmet Modules</TabsTrigger>
-          </TabsList>
+      {/* Tabs for Templates and Unmet Modules */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="w-full grid grid-cols-2 mb-4">
+          <TabsTrigger value="templates">Templates</TabsTrigger>
+          <TabsTrigger value="unmet">Unmet Modules</TabsTrigger>
+        </TabsList>
 
-          <TabsContent value="templates" className="mt-4">
-            <YearTemplatesPanel
-              year={year!}
-              modules={enrichedModules}
-              allOptions={allOptions}
-              anchorPolicy={anchorPolicy}
-              programId={programId}
-              onApplyTemplate={(template) => {
-                applyYearTemplate(template);
-              }}
-            />
-          </TabsContent>
+        <TabsContent value="templates">
+          <YearTemplatesPanel
+            year={year!}
+            modules={enrichedModules}
+            allOptions={allOptions}
+            anchorPolicy={anchorPolicy}
+            programId={programId}
+            onApplyTemplate={(template) => {
+              applyYearTemplate(template);
+            }}
+          />
+        </TabsContent>
 
-          <TabsContent value="unmet" className="mt-4 space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="font-medium">Unmet Requirements</h3>
-              <Badge variant="secondary">{yearStats.unmetModules.length} modules</Badge>
+        <TabsContent value="unmet" className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="font-medium">Unmet Requirements</h3>
+            <Badge variant="secondary">{yearStats.unmetModules.length} modules</Badge>
+          </div>
+
+          {yearStats.unmetModules.length === 0 ? (
+            <div className="bg-green-500/10 text-green-600 dark:text-green-400 rounded-lg p-6 text-center">
+              <div className="text-2xl mb-2">✓</div>
+              <div className="font-medium">All requirements met for Year {year}!</div>
             </div>
-
-            {yearStats.unmetModules.length === 0 ? (
-              <div className="bg-green-500/10 text-green-600 dark:text-green-400 rounded-lg p-6 text-center">
-                <div className="text-2xl mb-2">✓</div>
-                <div className="font-medium">All requirements met for Year {year}!</div>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {yearStats.unmetModules.map(module => (
-                  <div
-                    key={module.id}
-                    className="border rounded-lg p-4 hover:bg-accent/50 transition-colors"
-                  >
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex-1">
-                        <div className="font-medium text-sm mb-1">{module.label}</div>
-                        <div className="text-xs text-muted-foreground line-clamp-2">
-                          {module.description}
-                        </div>
+          ) : (
+            <div className="space-y-3">
+              {yearStats.unmetModules.map(module => (
+                <div
+                  key={module.id}
+                  className="border rounded-lg p-4 hover:bg-accent/50 transition-colors"
+                >
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex-1">
+                      <div className="font-medium text-sm mb-1">{module.label}</div>
+                      <div className="text-xs text-muted-foreground line-clamp-2">
+                        {module.description}
                       </div>
-                      <Badge variant="outline" className="ml-2">
-                        {module.creditsRequired} cr
-                      </Badge>
                     </div>
-
-                    {module.marketplaceOptions && module.marketplaceOptions.length > 0 && (
-                      <div className="space-y-1 mb-3">
-                        {module.marketplaceOptions.slice(0, 3).map((option, idx) => (
-                          <div
-                            key={option.id}
-                            className="text-xs text-muted-foreground flex items-center justify-between"
-                          >
-                            <span className="truncate">{option.provider}: {option.title}</span>
-                            <span className="ml-2 text-nowrap">
-                              {option.cost_usd !== null ? `$${option.cost_usd}` : 'Free'}
-                            </span>
-                          </div>
-                        ))}
-                        {module.marketplaceOptions.length > 3 && (
-                          <div className="text-xs text-muted-foreground">
-                            +{module.marketplaceOptions.length - 3} more options
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="w-full"
-                      onClick={() => {
-                        if (onOpenModulePanel) {
-                          onOpenModulePanel(module);
-                          onClose();
-                        }
-                      }}
-                    >
-                      View All Options ({module.optionsCount || 0})
-                    </Button>
+                    <Badge variant="outline" className="ml-2">
+                      {module.creditsRequired} cr
+                    </Badge>
                   </div>
-                ))}
-              </div>
-            )}
-          </TabsContent>
-        </Tabs>
-      </div>
-    </div>
+
+                  {module.marketplaceOptions && module.marketplaceOptions.length > 0 && (
+                    <div className="space-y-1 mb-3">
+                      {module.marketplaceOptions.slice(0, 3).map((option, idx) => (
+                        <div
+                          key={option.id}
+                          className="text-xs text-muted-foreground flex items-center justify-between"
+                        >
+                          <span className="truncate">{option.provider}: {option.title}</span>
+                          <span className="ml-2 text-nowrap">
+                            {option.cost_usd !== null ? `$${option.cost_usd}` : 'Free'}
+                          </span>
+                        </div>
+                      ))}
+                      {module.marketplaceOptions.length > 3 && (
+                        <div className="text-xs text-muted-foreground">
+                          +{module.marketplaceOptions.length - 3} more options
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => {
+                      if (onOpenModulePanel) {
+                        onOpenModulePanel(module);
+                        onClose();
+                      }
+                    }}
+                  >
+                    View All Options ({module.optionsCount || 0})
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+        </TabsContent>
+      </Tabs>
+    </>
   );
 }
 
@@ -1319,9 +1292,9 @@ function MarketplaceContent(props: DecisionDockRouterProps) {
   };
 
   return (
-    <div className="flex flex-col h-full">
-      {/* Fixed header section */}
-      <div className="flex-shrink-0 pb-4">
+    <>
+      {/* Breadcrumb Navigation */}
+      <div className="pb-4">
         <ScopeBreadcrumbs
           scope="module"
           nodeLabel={effectiveModuleLabel}
@@ -1330,9 +1303,9 @@ function MarketplaceContent(props: DecisionDockRouterProps) {
           onNavigate={props.onNavigate}
         />
       </div>
-      
-      {/* Fixed module header */}
-      <div className="flex-shrink-0 pb-4">
+
+      {/* Module Header */}
+      <div className="pb-4">
         <div className="flex items-center justify-between">
           <div className="flex flex-col gap-1">
             <span className="font-medium">{effectiveModuleLabel}</span>
@@ -1351,192 +1324,185 @@ function MarketplaceContent(props: DecisionDockRouterProps) {
         </div>
       </div>
 
-      {/* Scrollable content area */}
-      <div className="flex-1 min-h-0 overflow-y-auto space-y-4">
-        {/* Sort controls FIRST */}
-        <div className="space-y-3">
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-muted-foreground">Sort by</span>
-            <select
-              value={sortBy}
-              onChange={e => setSortBy?.(e.target.value as any)}
-              className="text-xs px-2 py-1 rounded border border-border bg-background"
+      {FEATURE_FLAGS.v5_templates_module && moduleData && moduleData.id && allModules && allModules.length > 0 ? (
+        <Tabs value={activeTabState} onValueChange={handleTabChange} className="w-full mb-4">
+          <TabsList className="w-full grid grid-cols-2" role="tablist">
+            <TabsTrigger value="templates">Templates</TabsTrigger>
+            <TabsTrigger value="courses">Courses</TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="templates" className="mt-4">
+            <ErrorBoundary
+              fallback={
+                <div className="text-center py-8 border border-destructive/50 rounded-lg bg-destructive/5">
+                  <p className="text-sm font-medium text-destructive mb-2">Templates temporarily unavailable</p>
+                  <p className="text-xs text-muted-foreground mb-3">Try the Individual Courses tab instead</p>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      const coursesTab = document.querySelector('[value="courses"]') as HTMLElement;
+                      coursesTab?.click();
+                    }}
+                  >
+                    Switch to Courses
+                  </Button>
+                </div>
+              }
             >
-              <option value="best-match">🎯 Best Match</option>
-              <option value="cheapest">💰 Cheapest</option>
-              <option value="shortest">⚡ Shortest</option>
-              <option value="credits">📊 Most Credits</option>
-            </select>
-            
-            <button
-              className="text-xs px-2 py-1 rounded bg-accent hover:bg-accent/80 transition-colors ml-auto"
-              onClick={() => setShowWeights(v => !v)}
-            >
-              ⚙️ Priorities
-            </button>
+              <ModuleTemplatesPanel
+                module={moduleData}
+                allModules={allModules}
+                onAddTemplate={handleAddTemplate}
+              />
+            </ErrorBoundary>
+          </TabsContent>
+          
+          <TabsContent value="courses" className="mt-4">
+            <CoursesList 
+              sortedOptions={sortedOptions}
+              selected={selected}
+              basket={basket}
+              moduleId={moduleId}
+              creditsRequired={effectiveCreditsRequired}
+              yearEarned={yearEarned}
+              yearCap={yearCap}
+              isAtMax={isAtMax}
+              toggleCourse={toggleCourse}
+              formatRelativeDate={formatRelativeDate}
+              isWithin30Days={isWithin30Days}
+            />
+          </TabsContent>
+        </Tabs>
+      ) : (
+        <CoursesList 
+          sortedOptions={sortedOptions}
+          selected={selected}
+          basket={basket}
+          moduleId={moduleId}
+          creditsRequired={effectiveCreditsRequired}
+          yearEarned={yearEarned}
+          yearCap={yearCap}
+          isAtMax={isAtMax}
+          toggleCourse={toggleCourse}
+          formatRelativeDate={formatRelativeDate}
+          isWithin30Days={isWithin30Days}
+        />
+      )}
+      
+      <ConstraintsPanel />
+      
+      {basket.length > 0 && (
+        <div className="sticky top-0 z-10 bg-background/95 backdrop-blur p-4 border rounded-lg mb-4">
+          <div className="grid grid-cols-3 gap-3 text-sm mb-3">
+            <div>
+              <div className="text-xs text-muted-foreground">Total Cost</div>
+              <div className="font-semibold text-lg">
+                ${(totals.totalCost ?? 0).toLocaleString()}
+              </div>
+            </div>
+            <div>
+              <div className="text-xs text-muted-foreground">Duration</div>
+              <div className="font-semibold text-lg">
+                {totals.totalWeeks ?? 0}wks
+              </div>
+              <div className="text-xs text-muted-foreground">
+                (max ×{constraints.max_concurrent_courses ?? 2})
+              </div>
+            </div>
+            <div>
+              <div className="text-xs text-muted-foreground">Weekly Load</div>
+              <div className="font-semibold text-lg">
+                {totals.totalWorkloadHours ?? 0}hrs/wk
+              </div>
+            </div>
           </div>
-
-          {showWeights && (
-            <div className="p-3 bg-accent/30 rounded-lg">
-              <div className="flex items-center justify-between mb-2">
-                <div className="text-xs font-medium">Adjust what matters to you:</div>
-                <button
-                  onClick={resetWeights}
-                  className="text-[10px] text-muted-foreground hover:text-foreground underline"
-                >
-                  Reset to default
-                </button>
-              </div>
-              <div className="space-y-2">
-                {(['cost', 'time', 'quality'] as const).map(key => (
-                  <label key={key} className="flex items-center gap-2">
-                    <span className="text-xs w-20 capitalize">
-                      {key === 'cost' && '💰'} {key === 'time' && '⚡'} {key === 'quality' && '⭐'} {key}
-                    </span>
-                    <input
-                      type="range"
-                      min={0}
-                      max={100}
-                      value={Math.round(weights[key] * 100)}
-                      onChange={(e) => setWeights({ [key]: (+e.target.value) / 100 })}
-                      className="flex-1"
-                    />
-                    <span className="text-xs w-10 text-right font-medium">{Math.round(weights[key] * 100)}%</span>
-                  </label>
-                ))}
-              </div>
+          
+          {violations.length > 0 && (
+            <div className="space-y-1 mb-3">
+              {violations.map((v, i) => (
+                <div key={i} className={`text-xs px-2 py-1 rounded-md ${
+                  v.severity === 'error' ? 'bg-destructive/10 text-destructive' :
+                  v.severity === 'warning' ? 'bg-yellow-500/10 text-yellow-600' :
+                  'bg-blue-500/10 text-blue-600'
+                }`}>
+                  {v.severity === 'error' ? '🚫' : v.severity === 'warning' ? '⚠️' : 'ℹ️'} {v.message}
+                </div>
+              ))}
             </div>
           )}
+          
+          {FEATURE_FLAGS.v5_autofill_enabled && (
+            <AutoFillPlanButton
+              modules={allModules as ModuleData[]}
+              constraints={constraints}
+              weights={mapWeightsForEngine(weights)}
+              disabled={violations.some(v => v.severity === 'error')}
+            />
+          )}
+          
+          <ScenarioManager />
+        </div>
+      )}
+
+      <div className="mb-4 space-y-3">
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-muted-foreground">Sort by</span>
+          <select
+            value={sortBy}
+            onChange={e => setSortBy?.(e.target.value as any)}
+            className="text-xs px-2 py-1 rounded border border-border bg-background"
+          >
+            <option value="best-match">🎯 Best Match</option>
+            <option value="cheapest">💰 Cheapest</option>
+            <option value="shortest">⚡ Shortest</option>
+            <option value="credits">📊 Most Credits</option>
+          </select>
+          
+          <button
+            className="text-xs px-2 py-1 rounded bg-accent hover:bg-accent/80 transition-colors ml-auto"
+            onClick={() => setShowWeights(v => !v)}
+          >
+            ⚙️ Priorities
+          </button>
         </div>
 
-        {/* Tabs or CoursesList */}
-        {FEATURE_FLAGS.v5_templates_module && moduleData && moduleData.id && allModules && allModules.length > 0 ? (
-          <Tabs value={activeTabState} onValueChange={handleTabChange} className="w-full">
-            <TabsList className="w-full grid grid-cols-2" role="tablist">
-              <TabsTrigger value="templates">Templates</TabsTrigger>
-              <TabsTrigger value="courses">Courses</TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="templates" className="mt-4">
-              <ErrorBoundary
-                fallback={
-                  <div className="text-center py-8 border border-destructive/50 rounded-lg bg-destructive/5">
-                    <p className="text-sm font-medium text-destructive mb-2">Templates temporarily unavailable</p>
-                    <p className="text-xs text-muted-foreground mb-3">Try the Individual Courses tab instead</p>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => {
-                        const coursesTab = document.querySelector('[value="courses"]') as HTMLElement;
-                        coursesTab?.click();
-                      }}
-                    >
-                      Switch to Courses
-                    </Button>
-                  </div>
-                }
+        {showWeights && (
+          <div className="p-3 bg-accent/30 rounded-lg">
+            <div className="flex items-center justify-between mb-2">
+              <div className="text-xs font-medium">Adjust what matters to you:</div>
+              <button
+                onClick={resetWeights}
+                className="text-[10px] text-muted-foreground hover:text-foreground underline"
               >
-                <ModuleTemplatesPanel
-                  module={moduleData}
-                  allModules={allModules}
-                  onAddTemplate={handleAddTemplate}
-                />
-              </ErrorBoundary>
-            </TabsContent>
-            
-            <TabsContent value="courses" className="mt-4">
-              <CoursesList 
-                sortedOptions={sortedOptions}
-                selected={selected}
-                basket={basket}
-                moduleId={moduleId}
-                creditsRequired={effectiveCreditsRequired}
-                yearEarned={yearEarned}
-                yearCap={yearCap}
-                isAtMax={isAtMax}
-                toggleCourse={toggleCourse}
-                formatRelativeDate={formatRelativeDate}
-                isWithin30Days={isWithin30Days}
-              />
-            </TabsContent>
-          </Tabs>
-        ) : (
-          <CoursesList 
-            sortedOptions={sortedOptions}
-            selected={selected}
-            basket={basket}
-            moduleId={moduleId}
-            creditsRequired={effectiveCreditsRequired}
-            yearEarned={yearEarned}
-            yearCap={yearCap}
-            isAtMax={isAtMax}
-            toggleCourse={toggleCourse}
-            formatRelativeDate={formatRelativeDate}
-            isWithin30Days={isWithin30Days}
-          />
-        )}
-        
-        {/* Constraints Panel */}
-        <ConstraintsPanel />
-        
-        {/* Basket Summary - at bottom, NOT sticky */}
-        {basket.length > 0 && (
-          <div className="bg-background/95 backdrop-blur p-4 border rounded-lg">
-            <div className="grid grid-cols-3 gap-3 text-sm mb-3">
-              <div>
-                <div className="text-xs text-muted-foreground">Total Cost</div>
-                <div className="font-semibold text-lg">
-                  ${(totals.totalCost ?? 0).toLocaleString()}
-                </div>
-              </div>
-              <div>
-                <div className="text-xs text-muted-foreground">Duration</div>
-                <div className="font-semibold text-lg">
-                  {totals.totalWeeks ?? 0}wks
-                </div>
-                <div className="text-xs text-muted-foreground">
-                  (max ×{constraints.max_concurrent_courses ?? 2})
-                </div>
-              </div>
-              <div>
-                <div className="text-xs text-muted-foreground">Weekly Load</div>
-                <div className="font-semibold text-lg">
-                  {totals.totalWorkloadHours ?? 0}hrs/wk
-                </div>
-              </div>
+                Reset to default
+              </button>
             </div>
-            
-            {violations.length > 0 && (
-              <div className="space-y-1 mb-3">
-                {violations.map((v, i) => (
-                  <div key={i} className={`text-xs px-2 py-1 rounded-md ${
-                    v.severity === 'error' ? 'bg-destructive/10 text-destructive' :
-                    v.severity === 'warning' ? 'bg-yellow-500/10 text-yellow-600' :
-                    'bg-blue-500/10 text-blue-600'
-                  }`}>
-                    {v.severity === 'error' ? '🚫' : v.severity === 'warning' ? '⚠️' : 'ℹ️'} {v.message}
-                  </div>
-                ))}
-              </div>
-            )}
-            
-            {FEATURE_FLAGS.v5_autofill_enabled && (
-              <AutoFillPlanButton
-                modules={allModules as ModuleData[]}
-                constraints={constraints}
-                weights={mapWeightsForEngine(weights)}
-                disabled={violations.some(v => v.severity === 'error')}
-              />
-            )}
-            
-            <ScenarioManager />
+            <div className="space-y-2">
+              {(['cost', 'time', 'quality'] as const).map(key => (
+                <label key={key} className="flex items-center gap-2">
+                  <span className="text-xs w-20 capitalize">
+                    {key === 'cost' && '💰'} {key === 'time' && '⚡'} {key === 'quality' && '⭐'} {key}
+                  </span>
+                  <input
+                    type="range"
+                    min={0}
+                    max={100}
+                    value={Math.round(weights[key] * 100)}
+                    onChange={(e) => setWeights({ [key]: (+e.target.value) / 100 })}
+                    className="flex-1"
+                  />
+                  <span className="text-xs w-10 text-right font-medium">{Math.round(weights[key] * 100)}%</span>
+                </label>
+              ))}
+            </div>
           </div>
         )}
+      </div>
 
-        {/* Legacy non-tabs rendering */}
-        {!FEATURE_FLAGS.v5_templates_module && (
-          <div className="space-y-2">
-            {sortedOptions.map(option => {
+      {!FEATURE_FLAGS.v5_templates_module && (
+        <div className="space-y-2">
+          {sortedOptions.map(option => {
           const isSelected = selected.includes(option.courseId);
           const isInBasket = basket.some(b => b.courseId === option.courseId);
           const optionCredits = Number(option.credits) || 0;
@@ -1631,8 +1597,7 @@ function MarketplaceContent(props: DecisionDockRouterProps) {
         })}
         </div>
       )}
-      </div>
-    </div>
+    </>
   );
 }
 
