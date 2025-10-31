@@ -87,3 +87,40 @@
 [data-vaul-drawer][data-vaul-drawer-direction='bottom'] {
   max-height: none !important;
 }
+
+/* ==== DEFINITIVE YEAR DRAWER SCROLL FIX ==== */
+
+/* Force drawer content to respect Vaul's height */
+[data-vaul-drawer][data-vaul-drawer-direction='bottom'] [data-testid="decision-dock-content"] {
+  display: flex !important;
+  flex-direction: column !important;
+  /* Use Vaul's inline height; it sets --vaul-drawer-height */
+  height: var(--vaul-drawer-height, 50vh) !important;
+  max-height: 90dvh !important;
+}
+
+/* The single scroll area inside the drawer */
+.dd-year-scroll {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;  /* CRUCIAL for flex shrinking */
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch !important;
+}
+
+/* Neutralize any overflow:hidden up the Year scope chain */
+.dd-year-scroll,
+.dd-year-scroll * {
+  overflow: visible;
+}
+
+/* Exception: keep our scroll container scrollable */
+.dd-year-scroll {
+  overflow-y: auto !important;
+}
+
+/* Tabs must not create scroll; content flows into parent scroll */
+.dd-year-scroll [role="tablist"],
+.dd-year-scroll [role="tabpanel"] {
+  overflow: visible !important;
+  height: auto !important;
+}

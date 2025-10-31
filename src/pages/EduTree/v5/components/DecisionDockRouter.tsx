@@ -570,7 +570,10 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
             </button>
           </div>
           
-          <div className="flex-1 min-h-0 w-full max-h-full overflow-y-auto px-4 pb-4">
+          <div className={cn(
+            "flex-1 min-h-0 w-full overflow-y-auto px-4 pb-4",
+            scope === 'year' && "dd-year-scroll"
+          )}>
             {/* DEBUG: Log conditional rendering */}
             {(() => {
               console.log('[DecisionDockRouter] Content render decision:', {
