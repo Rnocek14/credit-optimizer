@@ -729,40 +729,57 @@ export default function EduTreeV5Page() {
       />
       
       {/* Scoped Panel System */}
-      <ScopePanelRouter
-        scope={panelState.scope}
-        nodeId={panelState.nodeId}
-        nodeData={panelState.nodeData}
-        activeTab={panelState.tab}
-        onClose={closePanel}
-        onNavigate={openPanel}
-        onTabChange={setTab}
-        
-        // Degree-specific props
-        degreeSummary={degreeSummary}
-        
-        // Year-specific props  
-        year={panelState.scope === 'year' ? Number(panelState.nodeId) : undefined}
-        yearModules={panelState.scope === 'year' ? panelState.nodeData?.modules : undefined}
-        onOpenModulePanel={(module: ModuleData) => {
-          const year = panelState.nodeData?.year;
-          if (year) {
-            openPanel('module', module.id, { module, year });
-          }
-        }}
-        
-        // Module-specific props (existing marketplace logic)
-        moduleId={panelState.scope === 'module' ? panelState.nodeId : undefined}
-        moduleLabel={panelState.scope === 'module' ? panelState.nodeData?.module?.label : undefined}
-        creditsEarned={panelState.scope === 'module' ? panelState.nodeData?.module?.creditsEarned : 0}
-        creditsRequired={panelState.scope === 'module' ? panelState.nodeData?.module?.creditsRequired : 0}
-        options={panelState.scope === 'module' ? panelState.nodeData?.module?.marketplaceOptions : []}
-        sortBy={panelSortBy}
-        setSortBy={setPanelSortBy}
-        yearEarned={panelState.scope === 'module' ? getYearEarnedCredits(panelState.nodeData?.year || 1) : 0}
-        yearCap={YEAR_CREDIT_CAP}
-        allModules={allModules}
-      />
+      {/* Reconstruct module data from database if nodeData is missing (URL load scenario) */}
+      {(() => {
+        const currentModule = useMemo(() => {
+          if (panelState.scope !== 'module' || !panelState.nodeId) return null;
+          // Prefer nodeData (has live updates), fallback to database lookup
+          return panelState.nodeData?.module ?? allModules.find(m => m.id === panelState.nodeId);
+        }, [panelState.scope, panelState.nodeId, panelState.nodeData?.module, allModules]);
+
+        // Reconstruct year data from database if nodeData is missing
+        const currentYearModules = useMemo(() => {
+          if (panelState.scope !== 'year' || !panelState.nodeId) return undefined;
+          const year = Number(panelState.nodeId);
+          // Prefer nodeData (has live updates), fallback to database lookup
+          return panelState.nodeData?.modules ?? getModulesForYear(year);
+        }, [panelState.scope, panelState.nodeId, panelState.nodeData?.modules]);
+
+        return (
+          <ScopePanelRouter
+            scope={panelState.scope}
+            nodeId={panelState.nodeId}
+            nodeData={panelState.nodeData}
+            activeTab={panelState.tab}
+            onClose={closePanel}
+            onNavigate={openPanel}
+            onTabChange={setTab}
+            
+            // Degree-specific props
+            degreeSummary={degreeSummary}
+            
+            // Year-specific props with database fallback
+            year={panelState.scope === 'year' ? Number(panelState.nodeId) : undefined}
+            yearModules={currentYearModules}
+            onOpenModulePanel={(module: ModuleData) => {
+              const year = panelState.nodeData?.year ?? Number(panelState.nodeId);
+              openPanel('module', module.id, { module, year });
+            }}
+            
+            // Module-specific props with database fallback
+            moduleId={panelState.scope === 'module' ? panelState.nodeId : undefined}
+            moduleLabel={currentModule?.label}
+            creditsEarned={currentModule?.creditsEarned ?? 0}
+            creditsRequired={currentModule?.creditsRequired ?? 0}
+            options={currentModule?.marketplaceOptions ?? []}
+            sortBy={panelSortBy}
+            setSortBy={setPanelSortBy}
+            yearEarned={panelState.scope === 'module' ? getYearEarnedCredits(panelState.nodeData?.year ?? 1) : 0}
+            yearCap={YEAR_CREDIT_CAP}
+            allModules={allModules}
+          />
+        );
+      })()}
       </div>
     </DragProvider>
   );

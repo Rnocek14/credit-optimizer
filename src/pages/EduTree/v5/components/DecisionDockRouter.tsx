@@ -1106,8 +1106,21 @@ function MarketplaceContent(props: DecisionDockRouterProps) {
     onTabChange
   } = props;
 
+  // DEBUG: Log module data reconstruction
+  console.log('[MarketplaceContent] Module data check:', {
+    moduleId,
+    moduleLabel,
+    hasLabel: !!moduleLabel,
+    creditsEarned,
+    creditsRequired,
+    optionsCount: options?.length ?? 0,
+    propsKeys: Object.keys(props),
+    allPropsReceived: props
+  });
+
   // CRITICAL: Guard against missing module data
   if (!moduleId || !moduleLabel) {
+    console.warn('[MarketplaceContent] Missing required props, showing empty state');
     return (
       <div className="flex flex-col items-center justify-center p-8 text-center">
         <div className="text-6xl mb-4">📚</div>
