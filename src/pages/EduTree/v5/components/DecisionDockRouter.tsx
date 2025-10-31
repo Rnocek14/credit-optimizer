@@ -149,7 +149,7 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
     return {
       viewport: { width, height },
       snapPoints,
-      defaultSnap: snapPoints[1] // Use medium snap (~50vh) for better initial visibility
+      defaultSnap: snapPoints[1] // Always use middle snap as default
     };
   };
 
@@ -410,41 +410,6 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
     }
   }, [scope]);
 
-  // Diagnostic logging - must run before conditional returns
-  useEffect(() => {
-    console.log('[DecisionDock] Render state:', {
-      scope,
-      isOpen: !!scope,
-      activeSnapPoint,
-      snapPoints,
-      hasOverlay: document.querySelector('[data-testid="decision-dock-overlay"]') !== null,
-      hasContent: document.querySelector('[data-testid="decision-dock-content"]') !== null
-    });
-  }, [scope, activeSnapPoint, snapPoints]);
-
-  // Log actual DOM transform to catch off-screen positioning
-  useEffect(() => {
-    if (!scope) return;
-    
-    const checkTransform = () => {
-      const content = document.querySelector('[data-testid="decision-dock-content"]');
-      if (content) {
-        const transform = window.getComputedStyle(content).transform;
-        console.log('[DecisionDock] DOM transform check:', {
-          scope,
-          transform,
-          isOffScreen: transform.includes('1038px') || transform.includes('1000px'),
-          snapPoint: activeSnapPoint
-        });
-      }
-    };
-    
-    // Check immediately and after a short delay
-    checkTransform();
-    const timer = setTimeout(checkTransform, 100);
-    return () => clearTimeout(timer);
-  }, [scope, activeSnapPoint]);
-
   // DEBUG: Log scope and open state
   console.log('[DecisionDockRouter] Render check:', {
     scope,
@@ -473,8 +438,7 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
   return (
     <DrawerPrimitive.Root
       open={!!scope}
-      shouldScaleBackground={false}
-      onOpenChange={(open) => {
+      onOpenChange={(open) => { 
         console.log('[DecisionDockRouter] onOpenChange:', { open, scope });
         if (!open) onClose(); 
       }}
@@ -506,24 +470,26 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
       dismissible={false}
     >
       <DrawerPrimitive.Portal>
-        {/* Overlay required by Vaul - but make it invisible and non-blocking */}
+        {/* Single click-through overlay - overrides vaul's default */}
         <DrawerPrimitive.Overlay
           data-testid="decision-dock-overlay"
-          className="fixed inset-0 z-[55] pointer-events-none"
-          style={{ backgroundColor: 'transparent' }}
+          aria-hidden="true"
+          className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm pointer-events-none"
         />
         
-        <DrawerPrimitive.Content
+        <DrawerPrimitive.Content 
           data-testid="decision-dock-content"
           className={cn(
-            "z-[65] fixed inset-x-0 bottom-0 mt-24 flex flex-col h-full",
+            "z-[110] fixed inset-x-0 bottom-0 mt-24 flex flex-col",
             "min-h-[148px]",
             "pointer-events-auto border-t shadow-2xl",
             "rounded-t-[10px] bg-background"
           )}
           style={{ 
             backdropFilter: 'blur(2px)',
-            backgroundColor: 'hsl(var(--background) / 0.95)'
+            backgroundColor: 'hsl(var(--background) / 0.95)',
+            maxHeight: activeSnapPoint || snapPoints[1],
+            height: activeSnapPoint || snapPoints[1]
           }}
           role="dialog"
           aria-modal="false"
@@ -596,7 +562,7 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
             </button>
           </div>
           
-          <div className="flex-1 min-h-0 w-full overflow-y-auto overflow-x-hidden px-4 pb-4 space-y-4">
+          <div className="flex-1 min-h-0 w-full overflow-y-auto px-4 pb-4">
             {/* DEBUG: Log conditional rendering */}
             {(() => {
               console.log('[DecisionDockRouter] Content render decision:', {
@@ -777,48 +743,15 @@ function DegreeAnalyzerContent(props: DecisionDockRouterProps) {
 
 // Extract Year Marketplace content
 function YearMarketplaceContent(props: DecisionDockRouterProps) {
-  const { year, yearModules, degreeSummary, onNavigate, onOpenModulePanel, onClose } = props;
-  
-  // Fetch full database data for enrichment - MOVED UP to check loading state
-  const programId = 'bs_cs';
-  const { data: dbData, isLoading: isDbLoading } = useV5DatabaseData({ programId, enabled: true });
-  
-  // Show loading state while database is fetching
-  if (isDbLoading) {
-    return (
-      <div className="flex flex-col items-center justify-center p-12">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-muted border-t-primary mb-4" />
-        <p className="text-sm text-muted-foreground">Loading year data...</p>
-      </div>
-    );
-  }
-  
-  // CRITICAL: Check for actually missing data (undefined/null) vs empty array
-  // undefined/null = not provided yet (show error)
-  // [] = provided but empty (this is valid, proceed to hooks)
-  if (yearModules === undefined || yearModules === null) {
-    return (
-      <div className="flex flex-col items-center justify-center p-8 text-center">
-        <div className="text-6xl mb-4">📚</div>
-        <h3 className="text-lg font-semibold mb-2">No modules data for Year {year}</h3>
-        <p className="text-sm text-muted-foreground mb-4">
-          Data not loaded or unavailable. Check console for errors.
-        </p>
-        <Button variant="outline" onClick={() => window.location.reload()}>
-          Refresh Page
-        </Button>
-      </div>
-    );
-  }
-
-  // Now yearModules is guaranteed to be an array (could be empty [], that's OK)
-  const safeYearModules = yearModules || [];
-  
-  // Now safe to call hooks (data is guaranteed to exist)
+  const { year, yearModules = [], degreeSummary, onNavigate, onOpenModulePanel, onClose } = props;
   const basketItems = usePlanBasket(s => s.items);
   const constraints = usePlanBasket(s => s.constraints);
   const addItem = usePlanBasket(s => s.addItem);
   const [activeTab, setActiveTab] = useState('templates');
+
+  // Fetch full database data for enrichment
+  const programId = 'bs_cs';
+  const { data: dbData } = useV5DatabaseData({ programId, enabled: true });
   const { data: requirementBlocks = [] } = useRequirementBlocks(programId, true);
   const { applyYearTemplate } = useApplyYearTemplate();
 
@@ -831,8 +764,8 @@ function YearMarketplaceContent(props: DecisionDockRouterProps) {
 
   // Ensure modules have marketplaceOptions
   const enrichedModules = useMemo(() => {
-    if (!safeYearModules?.length) return [];
-    if (safeYearModules.some(m => (m.marketplaceOptions?.length ?? 0) > 0)) return safeYearModules;
+    if (!yearModules?.length) return [];
+    if (yearModules.some(m => (m.marketplaceOptions?.length ?? 0) > 0)) return yearModules;
     
     const byBlock = new Map<string, any[]>();
     (allOptions || []).forEach((o: any) => {
@@ -842,13 +775,13 @@ function YearMarketplaceContent(props: DecisionDockRouterProps) {
       byBlock.set(o.requirement_block_id, arr);
     });
     
-    return safeYearModules.map(m => ({
+    return yearModules.map(m => ({
       ...m,
       marketplaceOptions: m.marketplaceOptions?.length
         ? m.marketplaceOptions
         : (byBlock.get(m.requirement_block_id) || [])
     }));
-  }, [safeYearModules, allOptions]);
+  }, [yearModules, allOptions]);
 
   // Extract anchor policy
   const anchorPolicy = useMemo(() => 
@@ -856,25 +789,20 @@ function YearMarketplaceContent(props: DecisionDockRouterProps) {
     [constraints]
   );
 
-  // DEBUG: Detailed prop inspection
-  console.log('[YearMarketplaceContent] Props analysis:', {
+  // DEBUG: Log data check
+  console.log('[YearMarketplaceContent] Data check:', {
     year,
-    yearModulesType: typeof yearModules,
-    yearModulesIsArray: Array.isArray(yearModules),
-    yearModulesValue: yearModules,
-    safeModulesCount: safeYearModules.length,
-    enrichedModulesCount: enrichedModules.length,
+    modulesCount: enrichedModules.length,
     allOptionsCount: allOptions.length,
     blocksCount: requirementBlocks.length,
     hasAnchorPolicy: !!anchorPolicy,
-    moduleSample: enrichedModules[0],
-    propsKeys: Object.keys(props)
+    moduleSample: enrichedModules[0]
   });
 
   const yearStats = useMemo(() => {
-    const totalCreditsRequired = safeYearModules.reduce((sum, m) => sum + m.creditsRequired, 0);
-    const totalCreditsEarned = safeYearModules.reduce((sum, m) => sum + (m.creditsEarned || 0), 0);
-    const unmetModules = safeYearModules.filter(m => (m.creditsEarned || 0) < m.creditsRequired);
+    const totalCreditsRequired = yearModules.reduce((sum, m) => sum + m.creditsRequired, 0);
+    const totalCreditsEarned = yearModules.reduce((sum, m) => sum + (m.creditsEarned || 0), 0);
+    const unmetModules = yearModules.filter(m => (m.creditsEarned || 0) < m.creditsRequired);
     
     return {
       totalCreditsRequired,
@@ -1115,32 +1043,6 @@ function MarketplaceContent(props: DecisionDockRouterProps) {
     activeTab,
     onTabChange
   } = props;
-
-  // DEBUG: Log module data reconstruction
-  console.log('[MarketplaceContent] Module data check:', {
-    moduleId,
-    moduleLabel,
-    hasLabel: !!moduleLabel,
-    creditsEarned,
-    creditsRequired,
-    optionsCount: options?.length ?? 0,
-    propsKeys: Object.keys(props),
-    allPropsReceived: props
-  });
-
-  // CRITICAL: Guard against missing module data
-  if (!moduleId || !moduleLabel) {
-    console.warn('[MarketplaceContent] Missing required props, showing empty state');
-    return (
-      <div className="flex flex-col items-center justify-center p-8 text-center">
-        <div className="text-6xl mb-4">📚</div>
-        <h3 className="text-lg font-semibold mb-2">No module selected</h3>
-        <p className="text-sm text-muted-foreground mb-4">
-          Please select a module to view course options.
-        </p>
-      </div>
-    );
-  }
 
   const toggleCourse = usePlanStore(s => s.toggleCourse);
   const selected = usePlanStore(s => s.selections[moduleId]?.selected || []);

@@ -24,7 +24,7 @@ export async function seedMarketplace() {
 // Auto-seed in development mode if environment supports it
 if (typeof window !== 'undefined' && import.meta.env.DEV) {
   // Only run once per session - updated key to force re-seed
-  const SEED_KEY = 'marketplace_seeded_v2_phase3_full';
+  const SEED_KEY = 'marketplace_seeded_v2_phase2';
   if (!sessionStorage.getItem(SEED_KEY)) {
     console.log('🌱 Initiating marketplace seeding...');
     seedMarketplace()

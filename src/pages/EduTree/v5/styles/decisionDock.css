@@ -80,23 +80,10 @@
 /* CRITICAL FIX: Override Vaul's internal ::after height restriction */
 /* See: https://github.com/emilkowalski/vaul/issues/575 */
 [data-vaul-drawer][data-vaul-drawer-direction='bottom']::after {
-  content: none !important;
+  height: unset !important;
 }
 
-/* Allow drawer to expand while respecting viewport bounds */
+/* Allow drawer content to expand to snap point heights */
 [data-vaul-drawer][data-vaul-drawer-direction='bottom'] {
-  max-height: 95vh !important; /* More permissive, let snap points control height */
-}
-
-/* Force drawer to respect snap points */
-[data-vaul-drawer][data-vaul-drawer-direction='bottom'][data-vaul-snap-points] {
-  height: var(--snap-point-height, auto) !important;
-}
-
-/* Ensure content can scroll within drawer bounds */
-[data-vaul-drawer] [data-vaul-drawer-content] {
-  display: flex;
-  flex-direction: column;
-  max-height: inherit;
-  overflow: hidden;
+  max-height: none !important;
 }

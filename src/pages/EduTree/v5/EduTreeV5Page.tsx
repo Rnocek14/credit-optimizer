@@ -12,7 +12,9 @@ import { TransferWarningBanner } from './components/TransferWarningBanner';
 import { SmartReplaceModal } from './components/SmartReplaceModal';
 import SeedStatus from '@/components/SeedStatus';
 import { DragProvider } from './components/drag/DragProvider';
-import { ModuleData, LoadHealth, DegreeSummary } from './types/v5';
+import canonicalCourses from '@/fixtures/prereqs/canonical-courses.json';
+import requirements from '@/fixtures/requirements/cs-degree-requirements.json';
+import { ModuleData, Course, Requirement, LoadHealth, DegreeSummary } from './types/v5';
 import { useV5DatabaseData } from './hooks/useV5DatabaseData';
 import { usePlanStore } from './state/usePlanStore';
 import { usePlanBasket } from './state/usePlanBasket';
@@ -32,11 +34,11 @@ import './styles/v5.css';
 const ENABLE_DEGREE_NODE = true;
 
 export default function EduTreeV5Page() {
-  // Database mode is now the default (opt-out with ?db=0)
+  // Feature flag: Database vs Fixtures
   const USE_DATABASE = useMemo(() => {
-    if (typeof window === 'undefined') return true;
+    if (typeof window === 'undefined') return false;
     const params = new URLSearchParams(window.location.search);
-    return params.get('db') !== '0';
+    return params.get('db') === '1' || localStorage.getItem('v5.useDatabase') === 'true';
   }, []);
 
   // Database mode
@@ -144,71 +146,112 @@ export default function EduTreeV5Page() {
     openPanel('module', module.id, { module, year });
   }, [openPanel]);
 
-  // Toggle database mode (now toggles between default-on and force-off)
+  // Toggle database mode
   const handleToggleMode = useCallback(() => {
     const next = !USE_DATABASE;
-    if (next) {
-      // Enable database (remove ?db=0 param)
-      const url = new URL(window.location.href);
-      url.searchParams.delete('db');
-      window.location.href = url.toString();
-    } else {
-      // Disable database (add ?db=0 param)
-      const url = new URL(window.location.href);
-      url.searchParams.set('db', '0');
-      window.location.href = url.toString();
-    }
+    localStorage.setItem('v5.useDatabase', String(next));
+    window.location.reload();
   }, [USE_DATABASE]);
 
-  // Get modules for a specific year (database only)
+  // Mock course mapping to years
+  const coursesByYear: Record<number, string[]> = {
+    1: ['MATH-ALGEBRA-101', 'CS-INTRO-101'],
+    2: ['MATH-CALCULUS-201', 'BIO-ANATOMY-201'],
+    3: ['CS-DATA-STRUCTURES-301', 'BIO-ANATOMY-202'],
+    4: ['BIO-MICROBIOLOGY-301']
+  };
+
+  // Get course details from canonical courses
+  const getCourseDetails = (courseId: string): Course | null => {
+    const course = canonicalCourses.canonicalCourses[courseId as keyof typeof canonicalCourses.canonicalCourses];
+    if (!course) return null;
+    return {
+      courseId: course.id,
+      title: course.title,
+      credits: course.credits,
+      subject: course.subject
+    };
+  };
+
+  // Get modules for a specific year (fixtures mode)
+  const getModulesForYearFixtures = useMemo(() => {
+    return (year: number): ModuleData[] => {
+      const yearCourseIds = coursesByYear[year] || [];
+      const modules: ModuleData[] = [];
+
+      requirements.requirements.forEach((req: Requirement) => {
+        // Find courses in this module that are in this year
+        const moduleCourses = req.courseIds
+          .filter(id => yearCourseIds.includes(id))
+          .map(id => getCourseDetails(id))
+          .filter((c): c is Course => c !== null);
+
+        if (moduleCourses.length > 0) {
+          const creditsEarned = moduleCourses.reduce((sum, c) => sum + c.credits, 0);
+          modules.push({
+            id: req.id,
+            label: req.label,
+            icon: req.icon,
+            description: req.description,
+            courses: moduleCourses,
+            creditsEarned,
+            creditsRequired: req.minCredits,
+            isCollapsed: !!collapsedModules[req.id]
+          });
+        }
+      });
+
+      return modules;
+    };
+  }, [collapsedModules]);
+
+  // Get modules for a specific year (database or fixtures)
   const selections = usePlanStore(s => s.selections);
   
   const getModulesForYear = useCallback((year: number): ModuleData[] => {
-    if (!dbData?.modulesByYear) {
-      console.warn('[V5Page] No database data available for year:', year);
-      return [];
+    if (USE_DATABASE && dbData?.modulesByYear) {
+      const base = dbData.modulesByYear[year] || [];
+      
+      // Re-compute selectedSummary on each read for live updates when basket changes
+      return base.map((mod) => {
+        // Debug: Log basket items for this module
+        const basketItemsForModule = basket.filter(b => b.moduleId === mod.id);
+        if (basketItemsForModule.length > 0) {
+          console.log('[V5Page] 🎯 Found basket items for module:', {
+            moduleId: mod.id,
+            moduleLabel: mod.label,
+            itemCount: basketItemsForModule.length,
+            courseIds: basketItemsForModule.map(i => i.courseId)
+          });
+        }
+        
+        // Re-calculate progress from current basket
+        const selectedSummary = computeModuleSummary(
+          mod.id,
+          mod.creditsRequired ?? 0,
+          basket.map(item => ({
+            moduleId: item.moduleId,
+            credits: item.credits,
+            cost_usd: item.cost_usd,
+            duration_weeks: item.duration_weeks,
+            cri_score: item.cri_score,
+            status: item.status,
+            autoFillReason: item.autoFillReason
+          }))
+        );
+        
+        // Calculate creditsEarned from basket (fixes progress bug with templates)
+        const creditsEarned = basketItemsForModule.reduce((sum, item) => sum + item.credits, 0);
+        
+        return { 
+          ...mod, 
+          selectedSummary,
+          creditsEarned 
+        };
+      });
     }
-    
-    const base = dbData.modulesByYear[year] || [];
-    
-    // Re-compute selectedSummary on each read for live updates when basket changes
-    return base.map((mod) => {
-      // Debug: Log basket items for this module
-      const basketItemsForModule = basket.filter(b => b.moduleId === mod.id);
-      if (basketItemsForModule.length > 0) {
-        console.log('[V5Page] 🎯 Found basket items for module:', {
-          moduleId: mod.id,
-          moduleLabel: mod.label,
-          itemCount: basketItemsForModule.length,
-          courseIds: basketItemsForModule.map(i => i.courseId)
-        });
-      }
-      
-      // Re-calculate progress from current basket
-      const selectedSummary = computeModuleSummary(
-        mod.id,
-        mod.creditsRequired ?? 0,
-        basket.map(item => ({
-          moduleId: item.moduleId,
-          credits: item.credits,
-          cost_usd: item.cost_usd,
-          duration_weeks: item.duration_weeks,
-          cri_score: item.cri_score,
-          status: item.status,
-          autoFillReason: item.autoFillReason
-        }))
-      );
-      
-      // Calculate creditsEarned from basket (fixes progress bug with templates)
-      const creditsEarned = basketItemsForModule.reduce((sum, item) => sum + item.credits, 0);
-      
-      return { 
-        ...mod, 
-        selectedSummary,
-        creditsEarned 
-      };
-    });
-  }, [dbData, basketKey, selections]);
+    return getModulesForYearFixtures(year);
+  }, [USE_DATABASE, dbData, basketKey, selections, getModulesForYearFixtures]);
 
   // Get all modules for auto-fill dialog
   const allModules = useMemo(() => {
@@ -260,21 +303,6 @@ export default function EduTreeV5Page() {
   const clampEarned = (earned?: number, required?: number): number => {
     return Math.max(0, Math.min(earned ?? 0, required ?? 0));
   };
-
-  // Reconstruct module data from database when nodeData is missing (URL load scenario)
-  const currentModule = useMemo(() => {
-    if (panelState.scope !== 'module' || !panelState.nodeId) return null;
-    // Prefer nodeData (has live updates), fallback to database lookup
-    return panelState.nodeData?.module ?? allModules.find(m => m.id === panelState.nodeId);
-  }, [panelState.scope, panelState.nodeId, panelState.nodeData, allModules]);
-
-  // Reconstruct year data from database when nodeData is missing
-  const currentYearModules = useMemo(() => {
-    if (panelState.scope !== 'year' || !panelState.nodeId) return undefined;
-    const year = Number(panelState.nodeId);
-    // Prefer nodeData (has live updates), fallback to database lookup
-    return panelState.nodeData?.modules ?? getModulesForYear(year);
-  }, [panelState.scope, panelState.nodeId, panelState.nodeData, getModulesForYear]);
 
   // Calculate actual earned credits from all modules
   // NOTE: Uses clamped creditsEarned (min: 0, max: creditsRequired) to safely
@@ -591,7 +619,7 @@ export default function EduTreeV5Page() {
       
       {/* Grid Layout: 4 columns for 4 years - hidden when degree collapsed */}
       <div 
-        className={`year-spine-grid relative z-[60] grid grid-cols-4 gap-6 items-start transition-opacity duration-300 ${
+        className={`year-spine-grid grid grid-cols-4 gap-6 items-start transition-opacity duration-300 ${
           degreeCollapsed ? 'hidden' : 'grid'
         }`}
       >
@@ -628,32 +656,7 @@ export default function EduTreeV5Page() {
                 year={year}
                 isCollapsed={collapsedYears[year] || false}
                 onToggle={() => toggleYear(year)}
-                onClick={() => {
-                  const modules = getModulesForYear(year);
-                  console.log('[EduTreeV5Page] Opening year panel:', {
-                    year,
-                    modulesCount: modules.length,
-                    isLoading,
-                    hasDbData: !!dbData,
-                    modulesByYear: Object.keys(dbData?.modulesByYear || {})
-                  });
-                  
-                  if (USE_DATABASE && isLoading) {
-                    toast.info('Loading year data...', {
-                      description: 'Please wait while we fetch course information'
-                    });
-                    return;
-                  }
-                  
-                  if (USE_DATABASE && !dbData?.modulesByYear) {
-                    toast.error('Year data not available', {
-                      description: 'Try refreshing the page or check your connection'
-                    });
-                    return;
-                  }
-                  
-                  openPanel('year', String(year), { year, modules });
-                }}
+                onClick={() => openPanel('year', String(year), { year, modules: yearModules })}
                 creditsSummary={yearData.creditsSummary}
                 selectedSummary={yearSelectedSummary}
                 loadHealth={yearData.loadHealth}
@@ -713,23 +716,25 @@ export default function EduTreeV5Page() {
         // Degree-specific props
         degreeSummary={degreeSummary}
         
-        // Year-specific props with database fallback
+        // Year-specific props  
         year={panelState.scope === 'year' ? Number(panelState.nodeId) : undefined}
-        yearModules={currentYearModules}
+        yearModules={panelState.scope === 'year' ? panelState.nodeData?.modules : undefined}
         onOpenModulePanel={(module: ModuleData) => {
-          const year = panelState.nodeData?.year ?? Number(panelState.nodeId);
-          openPanel('module', module.id, { module, year });
+          const year = panelState.nodeData?.year;
+          if (year) {
+            openPanel('module', module.id, { module, year });
+          }
         }}
         
-        // Module-specific props with database fallback
+        // Module-specific props (existing marketplace logic)
         moduleId={panelState.scope === 'module' ? panelState.nodeId : undefined}
-        moduleLabel={currentModule?.label}
-        creditsEarned={currentModule?.creditsEarned ?? 0}
-        creditsRequired={currentModule?.creditsRequired ?? 0}
-        options={currentModule?.marketplaceOptions ?? []}
+        moduleLabel={panelState.scope === 'module' ? panelState.nodeData?.module?.label : undefined}
+        creditsEarned={panelState.scope === 'module' ? panelState.nodeData?.module?.creditsEarned : 0}
+        creditsRequired={panelState.scope === 'module' ? panelState.nodeData?.module?.creditsRequired : 0}
+        options={panelState.scope === 'module' ? panelState.nodeData?.module?.marketplaceOptions : []}
         sortBy={panelSortBy}
         setSortBy={setPanelSortBy}
-        yearEarned={panelState.scope === 'module' ? getYearEarnedCredits(panelState.nodeData?.year ?? 1) : 0}
+        yearEarned={panelState.scope === 'module' ? getYearEarnedCredits(panelState.nodeData?.year || 1) : 0}
         yearCap={YEAR_CREDIT_CAP}
         allModules={allModules}
       />
