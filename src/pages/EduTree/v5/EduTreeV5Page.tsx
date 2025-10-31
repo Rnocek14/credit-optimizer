@@ -258,6 +258,35 @@ export default function EduTreeV5Page() {
     return [1, 2, 3, 4].flatMap(year => getModulesForYear(year));
   }, [getModulesForYear]);
 
+  // Hydrate module data when opening from URL
+  useEffect(() => {
+    if (panelState.scope === 'module' && panelState.nodeId && !panelState.nodeData) {
+      console.log('[V5 Page] 🔧 Hydrating missing module data from URL:', panelState.nodeId);
+      
+      // Find the module by ID from all modules
+      const targetModule = allModules.find(m => m.id === panelState.nodeId);
+      
+      if (targetModule) {
+        // Find which year this module belongs to
+        const moduleYear = [1, 2, 3, 4].find(y => 
+          getModulesForYear(y).some(m => m.id === panelState.nodeId)
+        ) || 1;
+        
+        console.log('[V5 Page] ✅ Found module:', {
+          id: targetModule.id,
+          label: targetModule.label,
+          year: moduleYear,
+          optionsCount: targetModule.marketplaceOptions?.length || 0
+        });
+        
+        // Reconstruct nodeData object that ScopePanelRouter expects
+        openPanel('module', targetModule.id, { module: targetModule, year: moduleYear }, panelState.tab);
+      } else {
+        console.warn('[V5 Page] ⚠️ Could not find module with ID:', panelState.nodeId);
+      }
+    }
+  }, [panelState.scope, panelState.nodeId, panelState.nodeData, allModules, getModulesForYear, openPanel]);
+
   // Calculate total credits for a year (planned = required, earned = selected)
   const getYearCredits = useCallback((year: number): { planned: number; earned: number } => {
     const modules = getModulesForYear(year);
