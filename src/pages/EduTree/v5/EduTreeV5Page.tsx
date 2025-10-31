@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { YearCard } from './components/YearCard';
 import { ModuleCard } from './components/ModuleCard';
 import { DegreeNode } from './components/DegreeNode';
@@ -73,6 +73,9 @@ export default function EduTreeV5Page() {
   
   // Scoped panel system
   const { panelState, openPanel, closePanel, setTab } = useScopedPanel();
+  
+  // Track if panel was opened programmatically to prevent hydration race condition
+  const panelOpenedProgrammatically = useRef(false);
   
   // Graph view dialog state
   const [graphDialogOpen, setGraphDialogOpen] = useState(false);
@@ -150,6 +153,8 @@ export default function EduTreeV5Page() {
       optionsCount: module.marketplaceOptions?.length || 0,
       year
     });
+    // Set flag to prevent hydration from overwriting this data
+    panelOpenedProgrammatically.current = true;
     openPanel('module', module.id, { module, year });
   }, [openPanel]);
 
@@ -268,7 +273,14 @@ export default function EduTreeV5Page() {
   // Hydrate panel data when opening from URL (handles both module and year scopes)
   useEffect(() => {
     // Hydrate module data - check for missing module-specific data
-    if (panelState.scope === 'module' && panelState.nodeId && !panelState.nodeData?.module) {
+    // GUARD: Only hydrate when data is ready and panel wasn't just opened programmatically
+    if (
+      panelState.scope === 'module' && 
+      panelState.nodeId && 
+      !panelState.nodeData?.module &&
+      allModules.length > 0 &&
+      !panelOpenedProgrammatically.current
+    ) {
       console.log('[V5 Page] 🔧 Hydrating missing module data from URL:', panelState.nodeId);
       
       const targetModule = allModules.find(m => m.id === panelState.nodeId);
@@ -289,6 +301,11 @@ export default function EduTreeV5Page() {
       } else {
         console.warn('[V5 Page] ⚠️ Could not find module with ID:', panelState.nodeId);
       }
+    }
+    
+    // Reset the programmatic flag after hydration check completes
+    if (panelOpenedProgrammatically.current) {
+      panelOpenedProgrammatically.current = false;
     }
     
     // Hydrate year data - check for missing year-specific data
