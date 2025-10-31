@@ -423,16 +423,14 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
 
   if (!scope) return null;
 
-  // ✅ CRITICAL: Ensure snap point is valid before rendering drawer
+  // Auto-correct invalid snap points without blocking render
   if (activeSnapPoint === null || !snapPoints.includes(String(activeSnapPoint))) {
-    console.error('[DecisionDock] 🚨 Invalid snap point on render, forcing correction:', {
+    console.warn('[DecisionDock] ⚠️ Invalid snap point detected, will use fallback:', {
       activeSnapPoint,
       snapPoints,
-      scope
+      fallback: snapPoints[1]
     });
-    // Force immediate correction (will trigger re-render)
-    setActiveSnapPoint(snapPoints[1]);
-    return null; // Skip this render, wait for corrected state
+    // Don't return null - let drawer render with fallback snap point
   }
 
   return (
@@ -445,7 +443,11 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
       modal={false}
       direction="bottom"
       snapPoints={snapPoints}
-      activeSnapPoint={activeSnapPoint}
+      activeSnapPoint={
+        activeSnapPoint && snapPoints.includes(String(activeSnapPoint))
+          ? activeSnapPoint
+          : snapPoints[1] // Always fallback to middle snap
+      }
       setActiveSnapPoint={(point) => {
         if (!point) return;
         setActiveSnapPoint(point);
@@ -488,8 +490,15 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
           style={{ 
             backdropFilter: 'blur(2px)',
             backgroundColor: 'hsl(var(--background) / 0.95)',
-            maxHeight: activeSnapPoint || snapPoints[1],
-            height: activeSnapPoint || snapPoints[1]
+            maxHeight: (activeSnapPoint && snapPoints.includes(String(activeSnapPoint)))
+              ? activeSnapPoint 
+              : snapPoints[1],
+            height: (activeSnapPoint && snapPoints.includes(String(activeSnapPoint)))
+              ? activeSnapPoint 
+              : snapPoints[1],
+            display: 'flex',
+            flexDirection: 'column',
+            visibility: 'visible'
           }}
           role="dialog"
           aria-modal="false"
