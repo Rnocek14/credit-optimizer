@@ -220,7 +220,11 @@ export function YearCard({
                 term="fall"
                 onAutoFill={({ year, term }) => {
                   console.log('[YearCard] Auto-fill clicked:', { year, term, event: 'open_year_templates_from_lane' });
-                  onClick?.({ focusTab: 'templates', focusTerm: term });
+                  if (!onClick) {
+                    console.warn('[YearCard] onClick missing; cannot open Year panel');
+                    return;
+                  }
+                  onClick({ focusTab: 'templates', focusTerm: term });
                 }}
               />
               <SemesterLane 
@@ -228,7 +232,11 @@ export function YearCard({
                 term="spring"
                 onAutoFill={({ year, term }) => {
                   console.log('[YearCard] Auto-fill clicked:', { year, term, event: 'open_year_templates_from_lane' });
-                  onClick?.({ focusTab: 'templates', focusTerm: term });
+                  if (!onClick) {
+                    console.warn('[YearCard] onClick missing; cannot open Year panel');
+                    return;
+                  }
+                  onClick({ focusTab: 'templates', focusTerm: term });
                 }}
               />
             </div>

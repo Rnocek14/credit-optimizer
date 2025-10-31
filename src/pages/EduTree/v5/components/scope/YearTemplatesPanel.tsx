@@ -15,7 +15,7 @@ import { Eye, Plus, AlertTriangle, Calendar } from 'lucide-react';
 import { generateYearTemplates } from '../../engine/yearTemplateGenerator';
 import { usePlanBasket } from '../../state/usePlanBasket';
 import { useRequirementBlocks } from '../../hooks/useRequirementBlocks';
-import { trackTelemetryEvent } from '@/utils/telemetry';
+import { safeTrack } from '../../utils/safeTelemetry';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import type { YearTemplate } from '../../types/templates';
 import type { ModuleData, MarketplaceOption } from '../../types/v5';
@@ -60,8 +60,8 @@ export function YearTemplatesPanel({
       uiHintAppliedRef.current = true;
       setLocalFocusTerm(focusTerm);
       
-      // Track focus change
-      void trackTelemetryEvent({
+      // Track focus change (safe telemetry - never throws)
+      safeTrack({
         task: 'year_templates_focus_set',
         scope: 'year',
         complexity: { term: focusTerm, reason: 'lane', year }
@@ -102,7 +102,7 @@ export function YearTemplatesPanel({
       // Short-circuit if all modules are met
       if (!hasUnmetModules) {
         console.log('[YearTemplateGenerator] All modules satisfied, skipping generation:', { year });
-        void trackTelemetryEvent({
+        safeTrack({
           task: 'year_templates_empty',
           scope: 'year',
           complexity: {
@@ -185,7 +185,7 @@ export function YearTemplatesPanel({
     
     // Track sorting telemetry when templates are sorted
     if (sortedTemplates && sortedTemplates.length > 0 && localFocusTerm) {
-      void trackTelemetryEvent({
+      safeTrack({
         task: 'year_templates_sorted',
         scope: 'year',
         complexity: {
@@ -199,7 +199,7 @@ export function YearTemplatesPanel({
     
     // Track empty state
     if (templates && templates.length === 0) {
-      void trackTelemetryEvent({
+      safeTrack({
         task: 'year_templates_empty',
         scope: 'year',
         complexity: {
@@ -272,8 +272,8 @@ export function YearTemplatesPanel({
               const newTerm = localFocusTerm === 'fall' ? 'spring' : 'fall';
               setLocalFocusTerm(newTerm);
               
-              // Track toggle
-              void trackTelemetryEvent({
+              // Track toggle (safe telemetry - never throws)
+              safeTrack({
                 task: 'year_templates_focus_set',
                 scope: 'year',
                 complexity: { term: newTerm, reason: 'toggle', year }

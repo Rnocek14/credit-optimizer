@@ -6,7 +6,7 @@
 import { useCallback } from 'react';
 import { usePlanBasket } from '../state/usePlanBasket';
 import { toast } from 'sonner';
-import { trackTelemetryEvent } from '@/utils/telemetry';
+import { safeTrack } from '../utils/safeTelemetry';
 import type { YearTemplate } from '../types/templates';
 import type { BasketItem } from '../state/usePlanBasket';
 
@@ -119,7 +119,7 @@ export function useApplyYearTemplate() {
 
             toast.message('Year template reverted');
 
-            void trackTelemetryEvent({
+            safeTrack({
               task: 'year_template_undo',
               scope: 'year',
               complexity: {
@@ -142,7 +142,7 @@ export function useApplyYearTemplate() {
       }
 
         // Telemetry
-        void trackTelemetryEvent({
+        safeTrack({
           task: 'year_template_applied',
           scope: 'year',
           complexity: {
