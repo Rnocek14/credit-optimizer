@@ -5,6 +5,7 @@ import { OverlayRegistryProvider } from "@/components/ui/overlay-registry"
 import App from './App.tsx'
 import './index.css'
 import './lib/initDevData'
+import './lib/fixMarketplaceData'
 import '@xyflow/react/dist/style.css'
 
 // Import edge diagnostics to make available globally
