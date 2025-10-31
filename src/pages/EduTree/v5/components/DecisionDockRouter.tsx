@@ -512,6 +512,9 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
             maxHeight: (activeSnapPoint && snapPoints.includes(String(activeSnapPoint)))
               ? activeSnapPoint 
               : snapPoints[1],
+            height: (activeSnapPoint && snapPoints.includes(String(activeSnapPoint)))
+              ? activeSnapPoint 
+              : snapPoints[1],
             display: 'flex',
             flexDirection: 'column',
             visibility: 'visible',
@@ -591,7 +594,7 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
             </button>
           </div>
           
-          <div className="flex-1 overflow-y-auto px-4 pb-4">
+          <div className="flex-1 min-h-0 w-full overflow-y-auto px-4 pb-4">
             {/* DEBUG: Log conditional rendering */}
             {(() => {
               console.log('[DecisionDockRouter] Content render decision:', {
