@@ -44,6 +44,12 @@ export function YearTemplatesPanel({
   const { data: blocks = [] } = useRequirementBlocks(programId, !!programId);
 
   const [previewingTemplate, setPreviewingTemplate] = useState<(YearTemplate & { semesterDistribution: any; warnings: any }) | null>(null);
+  const [localFocusTerm, setLocalFocusTerm] = useState<'fall' | 'spring' | undefined>(focusTerm);
+
+  // Update local focus term when prop changes
+  useEffect(() => {
+    setLocalFocusTerm(focusTerm);
+  }, [focusTerm]);
 
   // Generate templates on mount
   const basketKey = useMemo(
@@ -66,30 +72,59 @@ export function YearTemplatesPanel({
     staleTime: 5000,
   });
 
-  // Sort templates to prioritize target semester when focusTerm is set
+  // Sort templates to prioritize target semester when localFocusTerm is set
   const sortedTemplates = useMemo(() => {
-    if (!templates || !focusTerm) return templates;
+    if (!templates) return templates;
+    
+    // No focus term = default order from generator
+    if (!localFocusTerm) return templates;
     
     return [...templates].sort((a, b) => {
-      const aCourses = (a as any).semesterDistribution?.[focusTerm]?.length ?? 0;
-      const bCourses = (b as any).semesterDistribution?.[focusTerm]?.length ?? 0;
-      return bCourses - aCourses; // More courses in target term = higher priority
+      // Primary: More courses in target term
+      const aCourses = (a as any).semesterDistribution?.[localFocusTerm]?.length ?? 0;
+      const bCourses = (b as any).semesterDistribution?.[localFocusTerm]?.length ?? 0;
+      if (bCourses !== aCourses) return bCourses - aCourses;
+      
+      // Tie-breaker 1: Lower cost
+      const aCost = (a as any).metadata?.totalCost ?? Infinity;
+      const bCost = (b as any).metadata?.totalCost ?? Infinity;
+      if (aCost !== bCost) return aCost - bCost;
+      
+      // Tie-breaker 2: Shorter duration
+      const aWeeks = (a as any).metadata?.totalWeeks ?? Infinity;
+      const bWeeks = (b as any).metadata?.totalWeeks ?? Infinity;
+      if (aWeeks !== bWeeks) return aWeeks - bWeeks;
+      
+      // Tie-breaker 3: Higher CRI
+      const aCri = (a as any).metadata?.avgCri ?? 0;
+      const bCri = (b as any).metadata?.avgCri ?? 0;
+      return bCri - aCri;
     });
-  }, [templates, focusTerm]);
+  }, [templates, localFocusTerm]);
 
   // Diagnostic log
   useEffect(() => {
-    console.log('[YearTemplatesPanel] Generation inputs:', {
+    const first3 = sortedTemplates?.slice(0, 3).map(t => ({
+      id: t.id,
+      label: t.label,
+      fallCourses: (t as any).semesterDistribution?.fall?.length ?? 0,
+      springCourses: (t as any).semesterDistribution?.spring?.length ?? 0,
+      cost: (t as any).metadata?.totalCost,
+      weeks: (t as any).metadata?.totalWeeks,
+    }));
+    
+    console.log('[YearTemplatesPanel] Render state:', {
       year,
       modulesCount: modules?.length ?? 0,
       allOptionsCount: allOptions?.length ?? 0,
       blocksCount: blocks?.length ?? 0,
       basketSize: basket.length,
       templatesGenerated: templates?.length ?? 0,
-      focusTerm,
-      moduleSample: modules?.[0]
+      focusTerm: localFocusTerm,
+      sortedCount: sortedTemplates?.length ?? 0,
+      first3Templates: first3
     });
-  }, [year, modules, allOptions, blocks, basket, templates, focusTerm]);
+  }, [year, modules, allOptions, blocks, basket, templates, localFocusTerm, sortedTemplates]);
 
   // Loading state
   if (isLoading) {
@@ -120,15 +155,28 @@ export function YearTemplatesPanel({
 
   return (
     <>
-      {/* Target semester indicator */}
-      {focusTerm && (
-        <div className="mb-4 flex items-center gap-2 px-3 py-2 bg-primary/5 border border-primary/20 rounded-lg">
-          <span className="text-sm font-medium text-primary">
-            🎯 Target: {focusTerm === 'fall' ? 'Fall' : 'Spring'} • Year {year}
-          </span>
-          <span className="text-xs text-muted-foreground">
-            (Templates sorted by {focusTerm} semester load)
-          </span>
+      {/* Target semester indicator with toggle */}
+      {localFocusTerm && (
+        <div 
+          className="mb-4 flex items-center justify-between px-3 py-2 bg-primary/5 border border-primary/20 rounded-lg"
+          role="status"
+          aria-live="polite"
+        >
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium text-primary">
+              🎯 Target: {localFocusTerm === 'fall' ? 'Fall' : 'Spring'} • Year {year}
+            </span>
+            <span className="text-xs text-muted-foreground">
+              (Sorted by {localFocusTerm} load → cost → time → CRI)
+            </span>
+          </div>
+          <button
+            onClick={() => setLocalFocusTerm(localFocusTerm === 'fall' ? 'spring' : 'fall')}
+            className="text-xs text-primary hover:text-primary/80 hover:underline font-medium px-2 py-1 rounded hover:bg-primary/10 transition-colors"
+            aria-label={`Switch target to ${localFocusTerm === 'fall' ? 'Spring' : 'Fall'}`}
+          >
+            Switch to {localFocusTerm === 'fall' ? 'Spring' : 'Fall'}
+          </button>
         </div>
       )}
 

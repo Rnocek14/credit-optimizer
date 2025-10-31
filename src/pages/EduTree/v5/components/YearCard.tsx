@@ -40,7 +40,7 @@ function SemesterLane({
           ))}
         </div>
       ) : (
-        <div className="flex h-32 flex-col items-center justify-center gap-2.5 text-sm text-muted-foreground">
+        <div className="flex h-32 flex-col items-center justify-center text-sm text-muted-foreground">
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -51,9 +51,6 @@ function SemesterLane({
           >
             {term === 'fall' && year === 1 ? '🎯 Auto-fill Fall 1' : `📚 Auto-fill ${term === 'fall' ? 'Fall' : 'Spring'} ${year}`}
           </button>
-          <div className="text-xs text-muted-foreground/80">
-            or drag courses here
-          </div>
         </div>
       )}
     </DroppableSemester>
@@ -222,7 +219,7 @@ export function YearCard({
                 year={year} 
                 term="fall"
                 onAutoFill={({ year, term }) => {
-                  // Pass UI hints to open Year panel on Templates with semester focus
+                  console.log('[YearCard] Auto-fill clicked:', { year, term, event: 'open_year_templates_from_lane' });
                   onClick?.({ focusTab: 'templates', focusTerm: term });
                 }}
               />
@@ -230,7 +227,7 @@ export function YearCard({
                 year={year} 
                 term="spring"
                 onAutoFill={({ year, term }) => {
-                  // Pass UI hints to open Year panel on Templates with semester focus
+                  console.log('[YearCard] Auto-fill clicked:', { year, term, event: 'open_year_templates_from_lane' });
                   onClick?.({ focusTab: 'templates', focusTerm: term });
                 }}
               />

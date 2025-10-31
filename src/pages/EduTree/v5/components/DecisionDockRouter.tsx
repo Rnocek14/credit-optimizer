@@ -767,6 +767,11 @@ function YearMarketplaceContent(props: DecisionDockRouterProps) {
   // Update tab if focusTab hint changes
   useEffect(() => {
     if (nodeData?.ui?.focusTab) {
+      console.log('[YearMarketplaceContent] Tab set from UI hint:', { 
+        focusTab: nodeData.ui.focusTab, 
+        focusTerm: nodeData.ui.focusTerm,
+        source: 'navigation_hint' 
+      });
       setActiveTab(nodeData.ui.focusTab);
     }
   }, [nodeData?.ui?.focusTab]);
