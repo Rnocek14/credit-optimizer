@@ -260,8 +260,8 @@ export default function EduTreeV5Page() {
 
   // Hydrate panel data when opening from URL (handles both module and year scopes)
   useEffect(() => {
-    // Hydrate module data
-    if (panelState.scope === 'module' && panelState.nodeId && !panelState.nodeData) {
+    // Hydrate module data - check for missing module-specific data
+    if (panelState.scope === 'module' && panelState.nodeId && !panelState.nodeData?.module) {
       console.log('[V5 Page] 🔧 Hydrating missing module data from URL:', panelState.nodeId);
       
       const targetModule = allModules.find(m => m.id === panelState.nodeId);
@@ -284,8 +284,8 @@ export default function EduTreeV5Page() {
       }
     }
     
-    // Hydrate year data
-    if (panelState.scope === 'year' && panelState.nodeId && !panelState.nodeData) {
+    // Hydrate year data - check for missing year-specific data
+    if (panelState.scope === 'year' && panelState.nodeId && (!panelState.nodeData || !panelState.nodeData.modules)) {
       console.log('[V5 Page] 🔧 Hydrating missing year data from URL:', panelState.nodeId);
       
       const year = Number(panelState.nodeId);

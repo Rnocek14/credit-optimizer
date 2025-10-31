@@ -30,7 +30,9 @@ export function useScopedPanel() {
       if (prev.scope === scope && prev.nodeId === nodeId && prev.tab === tab) {
         return prev;
       }
-      return scope ? { scope, nodeId, tab } : { scope: null };
+      // CRITICAL: Set nodeData to undefined when loading from URL
+      // This triggers hydration logic in EduTreeV5Page
+      return scope ? { scope, nodeId, tab, nodeData: undefined } : { scope: null };
     });
   }, [location.search]);
 
