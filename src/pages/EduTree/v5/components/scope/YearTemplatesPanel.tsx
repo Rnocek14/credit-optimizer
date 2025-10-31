@@ -62,14 +62,29 @@ export function YearTemplatesPanel({
     }
   }, [focusTerm, localFocusTerm, year]);
 
-  // Generate templates on mount
+  // Generate templates with stable memo key to prevent thrash
   const basketKey = useMemo(
     () => basket.map(i => i.courseId).sort().join(','),
     [basket]
   );
 
+  const constraintsKey = useMemo(
+    () => JSON.stringify({
+      maxBudget: constraints.max_budget_usd,
+      targetSchool: constraints.target_school,
+      maxWeekly: constraints.max_weekly_hours,
+      targetGrad: constraints.target_graduation_date,
+    }),
+    [constraints]
+  );
+
+  const generationKey = useMemo(
+    () => JSON.stringify({ year, basketKey, constraintsKey, focusTerm: localFocusTerm }),
+    [year, basketKey, constraintsKey, localFocusTerm]
+  );
+
   const { data: templates, isLoading } = useQuery({
-    queryKey: ['year-templates', year, basketKey, constraints.max_budget_usd],
+    queryKey: ['year-templates', generationKey],
     queryFn: () =>
       generateYearTemplates(
         year,
@@ -166,9 +181,11 @@ export function YearTemplatesPanel({
       });
     }
     
-    // Focus first card when opened from lane with focus term
+    // Focus first card when opened from lane with focus term (double-raf guards against portal/layout shifts)
     if (localFocusTerm && sortedTemplates && sortedTemplates.length > 0 && firstCardRef.current) {
-      setTimeout(() => firstCardRef.current?.focus(), 100);
+      requestAnimationFrame(() =>
+        requestAnimationFrame(() => firstCardRef.current?.focus())
+      );
     }
   }, [year, modules, allOptions, blocks, basket, templates, localFocusTerm, sortedTemplates, constraints]);
 

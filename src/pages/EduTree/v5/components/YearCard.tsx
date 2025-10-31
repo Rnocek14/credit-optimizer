@@ -1,7 +1,7 @@
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
-import type { LoadHealth, CreditsSummary, ModulesSummary } from '../types/v5';
+import type { LoadHealth, CreditsSummary, ModulesSummary, YearPanelHint } from '../types/v5';
 import type { NodeSelectedSummary } from '../types/nodeProgress';
 import { DroppableSemester } from './drag/DroppableSemester';
 import { usePlanStore } from '../state/usePlanStore';
@@ -61,7 +61,7 @@ interface YearCardProps {
   year: number;
   isCollapsed: boolean;
   onToggle: () => void;
-  onClick?: (ui?: { focusTab?: 'templates' | 'unmet'; focusTerm?: 'fall' | 'spring' }) => void;
+  onClick?: (hint?: YearPanelHint) => void;
   creditsSummary: CreditsSummary;
   selectedSummary?: NodeSelectedSummary;
   loadHealth: LoadHealth;

@@ -125,6 +125,12 @@ export interface DegreeSummary {
 
 export type DegreeStatus = 'on-track' | 'ahead' | 'behind';
 
+// UI hint for opening year panel with specific focus
+export interface YearPanelHint {
+  focusTab?: 'templates' | 'unmet';
+  focusTerm?: 'fall' | 'spring';
+}
+
 // Phase 2: Semester planning
 export interface SemesterLane {
   id: string;
