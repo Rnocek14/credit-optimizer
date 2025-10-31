@@ -106,9 +106,7 @@ export function YearTemplatesPanel({
 
   return (
     <>
-      <div className="flex flex-col h-full">
-        <div className="flex-1 min-h-0 overflow-y-auto">
-          <div className="template-gallery">
+      <div className="template-gallery">
         {templates.map(template => {
           const badgeColor = {
             Cheapest: 'bg-green-500/10 text-green-700 dark:text-green-400 hover:bg-green-500/20',
@@ -181,8 +179,6 @@ export function YearTemplatesPanel({
             </Card>
           );
         })}
-          </div>
-        </div>
       </div>
 
       {/* Preview Modal */}
@@ -302,7 +298,7 @@ export function YearTemplatesPanel({
             </DialogFooter>
           </DialogContent>
         </Dialog>
-        )}
+      )}
     </>
   );
 }
