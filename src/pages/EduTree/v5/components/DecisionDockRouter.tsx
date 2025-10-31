@@ -968,7 +968,7 @@ function YearMarketplaceContent(props: DecisionDockRouterProps) {
       </div>
 
       {/* Scrollable tabs area */}
-      <div className="flex-1">
+      <div className="flex-1 min-h-0 overflow-y-auto">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="w-full grid grid-cols-2 mb-4">
             <TabsTrigger value="templates">Templates</TabsTrigger>
