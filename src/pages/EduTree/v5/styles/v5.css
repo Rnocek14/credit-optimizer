@@ -31,6 +31,26 @@
   min-height: 140px;
 }
 
+/* Completion state subtle animation */
+.year-card.completed {
+  animation: subtle-pulse 3s ease-in-out infinite;
+}
+
+@keyframes subtle-pulse {
+  0%, 100% { 
+    box-shadow: 0 0 20px rgba(34, 197, 94, 0.12);
+  }
+  50% { 
+    box-shadow: 0 0 25px rgba(34, 197, 94, 0.18);
+  }
+}
+
+/* Improve button click targets */
+.year-card button {
+  min-width: 28px;
+  min-height: 28px;
+}
+
 /* Module Card Styles */
 .module-card {
   user-select: none;

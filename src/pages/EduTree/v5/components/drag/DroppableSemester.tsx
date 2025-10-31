@@ -21,15 +21,14 @@ export function DroppableSemester({ id, header, credits, workloadHours, children
       <div
         ref={setNodeRef}
         data-semester-id={id}
-        className={`rounded-lg border p-3 min-h-[120px] transition-colors
-          ${isOver ? 'border-primary bg-primary/10' : 'border-muted bg-muted/30'}`}
+        className={`rounded-lg border-2 p-3 min-h-[120px] transition-all duration-200
+          ${isOver 
+            ? 'border-primary bg-primary/15 scale-[0.98] shadow-inner' 
+            : 'border-dashed border-muted bg-muted/20 hover:border-muted-foreground/50 hover:bg-muted/30'
+          }`}
         aria-label={`${header} drop zone`}
       >
-        {children || (
-          <div className="flex items-center justify-center h-full text-xs text-muted-foreground">
-            Drop courses here
-          </div>
-        )}
+        {children}
       </div>
     </div>
   );

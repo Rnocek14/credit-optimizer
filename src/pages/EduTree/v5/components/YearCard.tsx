@@ -11,7 +11,7 @@ function SemesterLane({ year, term }: { year: number; term: 'fall' | 'spring' })
   const semesterId = `${year}-${term}`;
   const semester = semesters[semesterId] || { credits: 0, workloadHours: 0, courseIds: [] };
   
-  const header = term === 'fall' ? `Fall ${year}` : `Spring ${year + 1}`;
+  const header = term === 'fall' ? `Fall • Year ${year}` : `Spring • Year ${year}`;
   
   return (
     <DroppableSemester 
@@ -32,8 +32,23 @@ function SemesterLane({ year, term }: { year: number; term: 'fall' | 'spring' })
           ))}
         </div>
       ) : (
-        <div className="text-xs text-muted-foreground py-6 text-center">
-          Add courses from the dock below — or drag them here.
+        <div className="text-xs text-muted-foreground py-5 text-center space-y-2">
+          {term === 'fall' && year === 1 ? (
+            <>
+              <div className="font-medium text-foreground/80">🎯 Start here</div>
+              <div className="text-[11px]">Browse templates or drag courses</div>
+            </>
+          ) : term === 'fall' ? (
+            <>
+              <div className="font-medium text-foreground/80">📚 Fall {year}</div>
+              <div className="text-[11px]">Drag courses or browse dock</div>
+            </>
+          ) : (
+            <>
+              <div className="font-medium text-foreground/80">💡 Spring balance</div>
+              <div className="text-[11px]">Add courses to balance year</div>
+            </>
+          )}
         </div>
       )}
     </DroppableSemester>
@@ -79,6 +94,8 @@ export function YearCard({
   };
 
   const loadBadge = getLoadHealthBadge();
+  const moduleText = modulesSummary.total === 1 ? 'module' : 'modules';
+  const isComplete = creditsSummary.planned >= creditsSummary.required;
   
   return (
     <div
@@ -106,41 +123,62 @@ export function YearCard({
         flex flex-col gap-3
         hover:scale-[1.02] hover:shadow-lg
         ${isCollapsed 
-          ? 'collapsed bg-primary/5 border-primary border-dashed opacity-70 min-h-[90px]' 
-          : 'expanded bg-primary/10 border-primary min-h-[140px]'
+          ? `collapsed opacity-70 min-h-[90px] border-dashed ${isComplete ? 'bg-success/5 border-success/30' : 'bg-primary/5 border-primary'}` 
+          : `expanded min-h-[140px] ${isComplete ? 'bg-success/10 border-success shadow-[0_0_20px_rgba(34,197,94,0.15)]' : 'bg-primary/10 border-primary'}`
         }
       `}
     >
-      {/* Header: 2-row layout */}
-      <div className="space-y-1">
-        {/* Row 1: Title + Status */}
-        <div className="flex items-center justify-center gap-2">
-          <span className="text-primary font-bold text-lg">Year {year}</span>
-          {creditsSummary.planned >= creditsSummary.required && (
-            <Badge variant="default" className="text-[10px]">✓ Complete</Badge>
-          )}
-        </div>
-        
-        {/* Row 2: Summary + Chevron */}
-        <div className="flex items-center justify-between text-xs text-muted-foreground">
-          <span>{creditsSummary.planned}/{creditsSummary.required} cr • {modulesSummary.completed}/{modulesSummary.total} modules</span>
+      {/* Header: Clean 3-tier layout */}
+      <div className="space-y-2">
+        {/* Tier 1: Title + Complete Badge + Chevron */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="text-primary font-bold text-lg">Year {year}</span>
+            {isComplete && (
+              <Badge variant="success" size="sm" className="text-[10px] h-5">
+                ✓ Complete
+              </Badge>
+            )}
+          </div>
           <button
             onClick={(e) => {
               e.stopPropagation();
               onToggle();
             }}
             aria-label={isCollapsed ? 'Expand year' : 'Collapse year'}
-            className="p-1 hover:bg-primary/10 rounded transition-colors"
+            className="p-1.5 hover:bg-primary/20 rounded transition-colors min-w-[28px] min-h-[28px]"
           >
             {isCollapsed ? <ChevronRight size={16} /> : <ChevronDown size={16} />}
           </button>
         </div>
+        
+        {/* Tier 2: Progress + Stats + Load Badge (single row) */}
+        <div className="flex items-center gap-2.5">
+          <Progress value={progressPercentage} className="h-1.5 flex-1" />
+          <span className="text-[11px] text-foreground/90 font-medium whitespace-nowrap">
+            {creditsSummary.planned}/{creditsSummary.required} cr
+          </span>
+          <span className="text-[11px] text-muted-foreground">•</span>
+          <span className="text-[11px] text-foreground/80 whitespace-nowrap">
+            {modulesSummary.completed}/{modulesSummary.total} {moduleText}
+          </span>
+          <Badge variant={loadBadge.variant} size="sm" className="text-[10px] h-5 px-2">
+            {loadBadge.emoji} {loadBadge.label}
+          </Badge>
+        </div>
+        
+        {/* Tier 3: Meta (Cost/Time/CRI) - improved contrast */}
+        {selectedSummary && !selectedSummary.isEmpty && (
+          <div className="text-center text-[11px] text-foreground/75 font-medium">
+            ${selectedSummary.cost} • {selectedSummary.weeks}w • CRI {Math.round(selectedSummary.avgCri)}
+          </div>
+        )}
       </div>
       
       {isCollapsed ? (
         /* Collapsed State: Compact Summary */
         <div className="text-center text-xs text-muted-foreground space-y-1">
-          <div>{modulesSummary.total} modules • {modulesSummary.completed} complete • {creditsSummary.planned} cr</div>
+          <div>{modulesSummary.total} {moduleText} • {modulesSummary.completed} complete • {creditsSummary.planned} cr</div>
           {selectedSummary && !selectedSummary.isEmpty && (
             <div className="text-[10px]">
               ${selectedSummary.cost} • {selectedSummary.weeks}w • CRI {Math.round(selectedSummary.avgCri)}
@@ -150,32 +188,26 @@ export function YearCard({
       ) : (
         /* Expanded State: Full Details */
         <>
-          {/* Progress Bar */}
-          <div className="space-y-1">
-            <Progress value={progressPercentage} className="h-1.5" />
-            <div className="text-center text-[10px] text-muted-foreground space-y-0.5">
-              <div>{creditsSummary.planned} / {creditsSummary.required} cr</div>
-              {selectedSummary && !selectedSummary.isEmpty && (
-                <div className="text-[9px]">
-                  ${selectedSummary.cost} • {selectedSummary.weeks}w • CRI {Math.round(selectedSummary.avgCri)}
-                </div>
-              )}
-            </div>
-          </div>
-          
-          {/* Status Badges */}
-          <div className="flex justify-center gap-2 flex-wrap">
-            <Badge variant={loadBadge.variant} size="sm" className="text-[10px]">
-              {loadBadge.emoji} {loadBadge.label}
-            </Badge>
-            {creditsSummary.planned >= 30 && (
-              <Badge variant="destructive" size="sm" className="text-[10px]">
-                🔒 Year Cap
-              </Badge>
-            )}
-            <Badge variant="secondary" size="sm" className="text-[10px]">
-              📚 {modulesSummary.total} modules
-            </Badge>
+          {/* Quick Actions Toolbar */}
+          <div className="flex gap-2 justify-center pt-1 pb-2 border-t border-muted/30">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onClick?.(); // Opens year panel with templates
+              }}
+              className="text-[11px] text-primary hover:text-primary/80 font-medium flex items-center gap-1.5 px-3 py-1.5 rounded-md hover:bg-primary/10 transition-colors"
+            >
+              📋 Browse Templates
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                // TODO: Wire up clear year action
+              }}
+              className="text-[11px] text-muted-foreground hover:text-foreground flex items-center gap-1.5 px-3 py-1.5 rounded-md hover:bg-muted/50 transition-colors"
+            >
+              🗑️ Clear Year
+            </button>
           </div>
           
           {/* Semester Lanes */}
