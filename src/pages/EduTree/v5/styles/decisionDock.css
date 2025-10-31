@@ -83,10 +83,6 @@
   height: unset !important;
 }
 
-/* Allow drawer content to expand to snap point heights */
-[data-vaul-drawer][data-vaul-drawer-direction='bottom'] {
-  max-height: none !important;
-}
 
 /* Template gallery grid layout */
 .template-gallery {
