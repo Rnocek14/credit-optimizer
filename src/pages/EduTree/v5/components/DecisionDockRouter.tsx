@@ -779,6 +779,20 @@ function DegreeAnalyzerContent(props: DecisionDockRouterProps) {
 function YearMarketplaceContent(props: DecisionDockRouterProps) {
   const { year, yearModules, degreeSummary, onNavigate, onOpenModulePanel, onClose } = props;
   
+  // Fetch full database data for enrichment - MOVED UP to check loading state
+  const programId = 'bs_cs';
+  const { data: dbData, isLoading: isDbLoading } = useV5DatabaseData({ programId, enabled: true });
+  
+  // Show loading state while database is fetching
+  if (isDbLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center p-12">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-muted border-t-primary mb-4" />
+        <p className="text-sm text-muted-foreground">Loading year data...</p>
+      </div>
+    );
+  }
+  
   // CRITICAL: Check for actually missing data (undefined/null) vs empty array
   // undefined/null = not provided yet (show error)
   // [] = provided but empty (this is valid, proceed to hooks)
@@ -805,10 +819,6 @@ function YearMarketplaceContent(props: DecisionDockRouterProps) {
   const constraints = usePlanBasket(s => s.constraints);
   const addItem = usePlanBasket(s => s.addItem);
   const [activeTab, setActiveTab] = useState('templates');
-
-  // Fetch full database data for enrichment
-  const programId = 'bs_cs';
-  const { data: dbData } = useV5DatabaseData({ programId, enabled: true });
   const { data: requirementBlocks = [] } = useRequirementBlocks(programId, true);
   const { applyYearTemplate } = useApplyYearTemplate();
 

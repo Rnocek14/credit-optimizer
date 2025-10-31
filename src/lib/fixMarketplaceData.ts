@@ -2,6 +2,22 @@ import { supabase } from "@/integrations/supabase/client";
 
 export async function fixMarketplaceData() {
   try {
+    console.log('🔧 Checking marketplace data...');
+    
+    // Check if data already exists
+    const { count, error: countError } = await supabase
+      .from('marketplace_courses')
+      .select('*', { count: 'exact', head: true });
+
+    if (countError) {
+      console.error('Count check error:', countError);
+    }
+
+    if (count && count > 0) {
+      console.log('✅ Marketplace data already exists, skipping fix');
+      return { success: true, skipped: true };
+    }
+
     console.log('🔧 Fixing marketplace data...');
     
     // Insert providers
@@ -121,27 +137,18 @@ export async function fixMarketplaceData() {
     }
 
     console.log('✅ Marketplace data fixed successfully');
+    
+    // Store completion in localStorage (persists across sessions)
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('marketplace_fixed_v2', JSON.stringify({
+        fixed: true,
+        timestamp: Date.now()
+      }));
+    }
+    
     return { success: true };
   } catch (error) {
     console.error('❌ Failed to fix marketplace data:', error);
     throw error;
-  }
-}
-
-// Auto-run on mount
-if (typeof window !== 'undefined') {
-  const FIX_KEY = 'marketplace_fixed_v1';
-  if (!sessionStorage.getItem(FIX_KEY)) {
-    console.log('🔧 Initiating marketplace fix...');
-    fixMarketplaceData()
-      .then(() => {
-        sessionStorage.setItem(FIX_KEY, 'true');
-        console.log('✅ Marketplace fix complete - refresh to see data');
-        // Force reload after fix
-        setTimeout(() => window.location.reload(), 1000);
-      })
-      .catch((error) => {
-        console.error('❌ Marketplace fix failed:', error?.message ?? error);
-      });
   }
 }
