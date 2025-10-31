@@ -224,24 +224,24 @@ export default function EduTreeV5Page() {
     if (USE_DATABASE && dbData?.modulesByYear) {
       const base = dbData.modulesByYear[year] || [];
       
-      // Re-compute selectedSummary on each read for live updates when basket changes
+      // PART 2: ALWAYS use fresh basket state for real-time sync
+      const currentBasket = usePlanBasket.getState().items;
+      
       return base.map((mod) => {
-        // Debug: Log basket items for this module
-        const basketItemsForModule = basket.filter(b => b.moduleId === mod.id);
-        if (basketItemsForModule.length > 0) {
-          console.log('[V5Page] 🎯 Found basket items for module:', {
-            moduleId: mod.id,
-            moduleLabel: mod.label,
-            itemCount: basketItemsForModule.length,
-            courseIds: basketItemsForModule.map(i => i.courseId)
-          });
-        }
+        // Get basket items for this module RIGHT NOW
+        const basketItemsForModule = currentBasket.filter(b => b.moduleId === mod.id);
         
-        // Re-calculate progress from current basket
+        // Calculate live earned credits from current basket
+        const liveCreditsEarned = basketItemsForModule.reduce(
+          (sum, item) => sum + item.credits, 
+          0
+        );
+        
+        // Re-calculate summary from current basket
         const selectedSummary = computeModuleSummary(
           mod.id,
           mod.creditsRequired ?? 0,
-          basket.map(item => ({
+          currentBasket.map(item => ({
             moduleId: item.moduleId,
             credits: item.credits,
             cost_usd: item.cost_usd,
@@ -252,18 +252,19 @@ export default function EduTreeV5Page() {
           }))
         );
         
-        // Calculate creditsEarned from basket (fixes progress bug with templates)
-        const creditsEarned = basketItemsForModule.reduce((sum, item) => sum + item.credits, 0);
+        // Get selected course IDs from basket for tracking
+        const selectedCourseIds = new Set(basketItemsForModule.map(b => b.courseId));
         
         return { 
           ...mod, 
           selectedSummary,
-          creditsEarned 
+          creditsEarned: liveCreditsEarned, // LIVE from basket
+          selectedCourseIds: Array.from(selectedCourseIds)
         };
       });
     }
     return getModulesForYearFixtures(year);
-  }, [USE_DATABASE, dbData, basketKey, selections, getModulesForYearFixtures]);
+  }, [USE_DATABASE, dbData, basketKey, getModulesForYearFixtures]);
 
   // Get all modules for auto-fill dialog
   const allModules = useMemo(() => {
@@ -283,17 +284,27 @@ export default function EduTreeV5Page() {
     ) {
       console.log('[V5 Page] 🔧 Hydrating missing module data from URL:', panelState.nodeId);
       
-      const targetModule = allModules.find(m => m.id === panelState.nodeId);
+      // PART 3: Force fresh data - get live basket state before finding module
+      const currentBasket = usePlanBasket.getState().items;
+      const freshModules = allModules.map(m => {
+        const liveEarned = currentBasket
+          .filter(b => b.moduleId === m.id)
+          .reduce((sum, item) => sum + item.credits, 0);
+        return { ...m, creditsEarned: liveEarned };
+      });
+      
+      const targetModule = freshModules.find(m => m.id === panelState.nodeId);
       
       if (targetModule) {
         const moduleYear = [1, 2, 3, 4].find(y => 
           getModulesForYear(y).some(m => m.id === panelState.nodeId)
         ) || 1;
         
-        console.log('[V5 Page] ✅ Found module:', {
+        console.log('[V5 Page] ✅ Found module with fresh data:', {
           id: targetModule.id,
           label: targetModule.label,
           year: moduleYear,
+          creditsEarned: targetModule.creditsEarned,
           optionsCount: targetModule.marketplaceOptions?.length || 0
         });
         
@@ -795,12 +806,12 @@ export default function EduTreeV5Page() {
           }
         }}
         
-        // Module-specific props (existing marketplace logic)
+        // Module-specific props - PART 4: Simplified with fallbacks (component is now self-sufficient)
         moduleId={panelState.scope === 'module' ? panelState.nodeId : undefined}
-        moduleLabel={panelState.scope === 'module' ? panelState.nodeData?.module?.label : undefined}
-        creditsEarned={panelState.scope === 'module' ? panelState.nodeData?.module?.creditsEarned : 0}
-        creditsRequired={panelState.scope === 'module' ? panelState.nodeData?.module?.creditsRequired : 0}
-        options={panelState.scope === 'module' ? panelState.nodeData?.module?.marketplaceOptions : []}
+        moduleLabel={panelState.scope === 'module' ? (panelState.nodeData?.module?.label ?? '') : undefined}
+        creditsEarned={panelState.scope === 'module' ? (panelState.nodeData?.module?.creditsEarned ?? 0) : 0}
+        creditsRequired={panelState.scope === 'module' ? (panelState.nodeData?.module?.creditsRequired ?? 0) : 0}
+        options={panelState.scope === 'module' ? (panelState.nodeData?.module?.marketplaceOptions ?? []) : []}
         sortBy={panelSortBy}
         setSortBy={setPanelSortBy}
         yearEarned={panelState.scope === 'module' ? getYearEarnedCredits(panelState.nodeData?.year || 1) : 0}

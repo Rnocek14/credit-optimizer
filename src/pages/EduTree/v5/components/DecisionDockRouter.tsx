@@ -1050,25 +1050,45 @@ function MarketplaceContent(props: DecisionDockRouterProps) {
     onTabChange
   } = props;
 
-  // DEBUG: Log what props MarketplaceContent receives
-  console.log('[MarketplaceContent] Props received:', {
-    moduleId,
-    moduleLabel,
-    creditsEarned,
-    creditsRequired,
-    optionsCount: options?.length || 0,
-    hasOptions: !!options && options.length > 0,
-    allModulesCount: allModules?.length || 0
+  // PART 1: Self-sufficient data fetching (defensive pattern like YearMarketplaceContent)
+  const programId = 'bs_cs';
+  const basket = usePlanBasket(s => s.items);
+  const { data: dbData } = useV5DatabaseData({ 
+    programId, 
+    enabled: !!moduleId && (!options || options.length === 0) 
   });
   
-  // Check for missing required data
-  if (!moduleId || !options || options.length === 0) {
-    console.warn('[MarketplaceContent] ⚠️ Missing required props:', {
-      hasModuleId: !!moduleId,
-      hasOptions: !!options,
-      optionsLength: options?.length || 0
-    });
-  }
+  // Find module from database if props are incomplete
+  const moduleFromDb = useMemo(() => {
+    if (!dbData?.modulesByYear || !moduleId) return null;
+    return Object.values(dbData.modulesByYear)
+      .flat()
+      .find((m: any) => m.id === moduleId);
+  }, [dbData, moduleId]);
+  
+  // Calculate live credits from basket (real-time sync)
+  const liveCreditsEarned = useMemo(() => {
+    return basket
+      .filter(item => item.moduleId === moduleId)
+      .reduce((sum, item) => sum + item.credits, 0);
+  }, [basket, moduleId]);
+  
+  // Use effective values with fallback chain
+  const effectiveModuleLabel = moduleLabel || moduleFromDb?.label || 'Module';
+  const effectiveCreditsEarned = liveCreditsEarned || creditsEarned || 0;
+  const effectiveCreditsRequired = creditsRequired || moduleFromDb?.creditsRequired || 0;
+  const effectiveOptions = (options?.length > 0) 
+    ? options 
+    : (moduleFromDb?.marketplaceOptions || []);
+  
+  console.log('[MarketplaceContent] Using effective values:', {
+    moduleId,
+    label: effectiveModuleLabel,
+    earnedFromBasket: liveCreditsEarned,
+    earnedFromProps: creditsEarned,
+    usingDbFallback: !moduleLabel || options.length === 0,
+    optionsCount: effectiveOptions.length
+  });
 
   const toggleCourse = usePlanStore(s => s.toggleCourse);
   const selected = usePlanStore(s => s.selections[moduleId]?.selected || []);
@@ -1077,7 +1097,6 @@ function MarketplaceContent(props: DecisionDockRouterProps) {
   const { weights, setWeights, resetWeights } = useScoringPrefs();
   const [showWeights, setShowWeights] = useState(false);
   
-  const basket = usePlanBasket(s => s.items);
   const totals = usePlanBasket(s => s.getTotals());
   const constraints = usePlanBasket(s => s.constraints);
   const addItem = usePlanBasket(s => s.addItem);
@@ -1085,11 +1104,11 @@ function MarketplaceContent(props: DecisionDockRouterProps) {
   const { addItemWithToast, removeItemWithToast } = usePlanBasketWithToasts();
 
   const enriched = useMemo(() => {
-    return options.map(o => {
-      const breakdown = calculateOptionScore(o, options, weights);
+    return effectiveOptions.map(o => {
+      const breakdown = calculateOptionScore(o, effectiveOptions, weights);
       return { ...o, score: breakdown.total, scoreBreakdown: breakdown };
     });
-  }, [options, weights]);
+  }, [effectiveOptions, weights]);
 
   const sortedOptions = useMemo(() => {
     const opts = [...enriched];
@@ -1119,7 +1138,7 @@ function MarketplaceContent(props: DecisionDockRouterProps) {
     [basket, sortedOptions, constraints]
   );
 
-  const isAtMax = creditsEarned >= creditsRequired;
+  const isAtMax = effectiveCreditsEarned >= effectiveCreditsRequired;
   
   // Module data for templates
   const moduleData = useMemo(() => {
@@ -1254,7 +1273,7 @@ function MarketplaceContent(props: DecisionDockRouterProps) {
       <div className="pb-4">
         <ScopeBreadcrumbs
           scope="module"
-          nodeLabel={moduleLabel}
+          nodeLabel={effectiveModuleLabel}
           year={props.year}
           degreeTitle={props.degreeSummary?.degreeTitle}
           onNavigate={props.onNavigate}
@@ -1265,7 +1284,7 @@ function MarketplaceContent(props: DecisionDockRouterProps) {
       <div className="pb-4">
         <div className="flex items-center justify-between">
           <div className="flex flex-col gap-1">
-            <span className="font-medium">{moduleLabel}</span>
+            <span className="font-medium">{effectiveModuleLabel}</span>
             <span className="text-xs text-muted-foreground">
               {sortedOptions.length} option{sortedOptions.length !== 1 ? 's' : ''} • {
                 sortedOptions.filter(o => o.cost_usd === 0).length
@@ -1273,7 +1292,7 @@ function MarketplaceContent(props: DecisionDockRouterProps) {
             </span>
           </div>
           <span className="text-sm text-muted-foreground">
-            {liveEarned}/{creditsRequired} cr
+            {effectiveCreditsEarned}/{effectiveCreditsRequired} cr
           </span>
         </div>
         <div className="text-xs text-muted-foreground mt-1">
@@ -1321,7 +1340,7 @@ function MarketplaceContent(props: DecisionDockRouterProps) {
               selected={selected}
               basket={basket}
               moduleId={moduleId}
-              creditsRequired={creditsRequired}
+              creditsRequired={effectiveCreditsRequired}
               yearEarned={yearEarned}
               yearCap={yearCap}
               isAtMax={isAtMax}
@@ -1337,7 +1356,7 @@ function MarketplaceContent(props: DecisionDockRouterProps) {
           selected={selected}
           basket={basket}
           moduleId={moduleId}
-          creditsRequired={creditsRequired}
+          creditsRequired={effectiveCreditsRequired}
           yearEarned={yearEarned}
           yearCap={yearCap}
           isAtMax={isAtMax}
