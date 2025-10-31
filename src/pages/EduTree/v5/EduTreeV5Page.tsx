@@ -12,9 +12,7 @@ import { TransferWarningBanner } from './components/TransferWarningBanner';
 import { SmartReplaceModal } from './components/SmartReplaceModal';
 import SeedStatus from '@/components/SeedStatus';
 import { DragProvider } from './components/drag/DragProvider';
-import canonicalCourses from '@/fixtures/prereqs/canonical-courses.json';
-import requirements from '@/fixtures/requirements/cs-degree-requirements.json';
-import { ModuleData, Course, Requirement, LoadHealth, DegreeSummary } from './types/v5';
+import { ModuleData, LoadHealth, DegreeSummary } from './types/v5';
 import { useV5DatabaseData } from './hooks/useV5DatabaseData';
 import { usePlanStore } from './state/usePlanStore';
 import { usePlanBasket } from './state/usePlanBasket';
@@ -34,11 +32,11 @@ import './styles/v5.css';
 const ENABLE_DEGREE_NODE = true;
 
 export default function EduTreeV5Page() {
-  // Feature flag: Database vs Fixtures
+  // Database mode is now the default (opt-out with ?db=0)
   const USE_DATABASE = useMemo(() => {
-    if (typeof window === 'undefined') return false;
+    if (typeof window === 'undefined') return true;
     const params = new URLSearchParams(window.location.search);
-    return params.get('db') === '1' || localStorage.getItem('v5.useDatabase') === 'true';
+    return params.get('db') !== '0';
   }, []);
 
   // Database mode
@@ -146,112 +144,71 @@ export default function EduTreeV5Page() {
     openPanel('module', module.id, { module, year });
   }, [openPanel]);
 
-  // Toggle database mode
+  // Toggle database mode (now toggles between default-on and force-off)
   const handleToggleMode = useCallback(() => {
     const next = !USE_DATABASE;
-    localStorage.setItem('v5.useDatabase', String(next));
-    window.location.reload();
+    if (next) {
+      // Enable database (remove ?db=0 param)
+      const url = new URL(window.location.href);
+      url.searchParams.delete('db');
+      window.location.href = url.toString();
+    } else {
+      // Disable database (add ?db=0 param)
+      const url = new URL(window.location.href);
+      url.searchParams.set('db', '0');
+      window.location.href = url.toString();
+    }
   }, [USE_DATABASE]);
 
-  // Mock course mapping to years
-  const coursesByYear: Record<number, string[]> = {
-    1: ['MATH-ALGEBRA-101', 'CS-INTRO-101'],
-    2: ['MATH-CALCULUS-201', 'BIO-ANATOMY-201'],
-    3: ['CS-DATA-STRUCTURES-301', 'BIO-ANATOMY-202'],
-    4: ['BIO-MICROBIOLOGY-301']
-  };
-
-  // Get course details from canonical courses
-  const getCourseDetails = (courseId: string): Course | null => {
-    const course = canonicalCourses.canonicalCourses[courseId as keyof typeof canonicalCourses.canonicalCourses];
-    if (!course) return null;
-    return {
-      courseId: course.id,
-      title: course.title,
-      credits: course.credits,
-      subject: course.subject
-    };
-  };
-
-  // Get modules for a specific year (fixtures mode)
-  const getModulesForYearFixtures = useMemo(() => {
-    return (year: number): ModuleData[] => {
-      const yearCourseIds = coursesByYear[year] || [];
-      const modules: ModuleData[] = [];
-
-      requirements.requirements.forEach((req: Requirement) => {
-        // Find courses in this module that are in this year
-        const moduleCourses = req.courseIds
-          .filter(id => yearCourseIds.includes(id))
-          .map(id => getCourseDetails(id))
-          .filter((c): c is Course => c !== null);
-
-        if (moduleCourses.length > 0) {
-          const creditsEarned = moduleCourses.reduce((sum, c) => sum + c.credits, 0);
-          modules.push({
-            id: req.id,
-            label: req.label,
-            icon: req.icon,
-            description: req.description,
-            courses: moduleCourses,
-            creditsEarned,
-            creditsRequired: req.minCredits,
-            isCollapsed: !!collapsedModules[req.id]
-          });
-        }
-      });
-
-      return modules;
-    };
-  }, [collapsedModules]);
-
-  // Get modules for a specific year (database or fixtures)
+  // Get modules for a specific year (database only)
   const selections = usePlanStore(s => s.selections);
   
   const getModulesForYear = useCallback((year: number): ModuleData[] => {
-    if (USE_DATABASE && dbData?.modulesByYear) {
-      const base = dbData.modulesByYear[year] || [];
-      
-      // Re-compute selectedSummary on each read for live updates when basket changes
-      return base.map((mod) => {
-        // Debug: Log basket items for this module
-        const basketItemsForModule = basket.filter(b => b.moduleId === mod.id);
-        if (basketItemsForModule.length > 0) {
-          console.log('[V5Page] 🎯 Found basket items for module:', {
-            moduleId: mod.id,
-            moduleLabel: mod.label,
-            itemCount: basketItemsForModule.length,
-            courseIds: basketItemsForModule.map(i => i.courseId)
-          });
-        }
-        
-        // Re-calculate progress from current basket
-        const selectedSummary = computeModuleSummary(
-          mod.id,
-          mod.creditsRequired ?? 0,
-          basket.map(item => ({
-            moduleId: item.moduleId,
-            credits: item.credits,
-            cost_usd: item.cost_usd,
-            duration_weeks: item.duration_weeks,
-            cri_score: item.cri_score,
-            status: item.status,
-            autoFillReason: item.autoFillReason
-          }))
-        );
-        
-        // Calculate creditsEarned from basket (fixes progress bug with templates)
-        const creditsEarned = basketItemsForModule.reduce((sum, item) => sum + item.credits, 0);
-        
-        return { 
-          ...mod, 
-          selectedSummary,
-          creditsEarned 
-        };
-      });
+    if (!dbData?.modulesByYear) {
+      console.warn('[V5Page] No database data available for year:', year);
+      return [];
     }
-    return getModulesForYearFixtures(year);
-  }, [USE_DATABASE, dbData, basketKey, selections, getModulesForYearFixtures]);
+    
+    const base = dbData.modulesByYear[year] || [];
+    
+    // Re-compute selectedSummary on each read for live updates when basket changes
+    return base.map((mod) => {
+      // Debug: Log basket items for this module
+      const basketItemsForModule = basket.filter(b => b.moduleId === mod.id);
+      if (basketItemsForModule.length > 0) {
+        console.log('[V5Page] 🎯 Found basket items for module:', {
+          moduleId: mod.id,
+          moduleLabel: mod.label,
+          itemCount: basketItemsForModule.length,
+          courseIds: basketItemsForModule.map(i => i.courseId)
+        });
+      }
+      
+      // Re-calculate progress from current basket
+      const selectedSummary = computeModuleSummary(
+        mod.id,
+        mod.creditsRequired ?? 0,
+        basket.map(item => ({
+          moduleId: item.moduleId,
+          credits: item.credits,
+          cost_usd: item.cost_usd,
+          duration_weeks: item.duration_weeks,
+          cri_score: item.cri_score,
+          status: item.status,
+          autoFillReason: item.autoFillReason
+        }))
+      );
+      
+      // Calculate creditsEarned from basket (fixes progress bug with templates)
+      const creditsEarned = basketItemsForModule.reduce((sum, item) => sum + item.credits, 0);
+      
+      return { 
+        ...mod, 
+        selectedSummary,
+        creditsEarned 
+      };
+    });
+  }, [dbData, basketKey, selections]);
 
   // Get all modules for auto-fill dialog
   const allModules = useMemo(() => {
