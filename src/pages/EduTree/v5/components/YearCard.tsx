@@ -85,7 +85,7 @@ export function YearCard({
   const getLoadHealthBadge = () => {
     switch (loadHealth) {
       case 'underloaded':
-        return { emoji: '🟡', label: 'Light', variant: 'warning' as const };
+        return { emoji: '📘', label: 'Light', variant: 'secondary' as const };
       case 'overloaded':
         return { emoji: '🔴', label: 'Heavy', variant: 'destructive' as const };
       default:
@@ -124,7 +124,7 @@ export function YearCard({
         hover:scale-[1.02] hover:shadow-lg
         ${isCollapsed 
           ? `collapsed opacity-70 min-h-[90px] border-dashed ${isComplete ? 'bg-success/5 border-success/30' : 'bg-primary/5 border-primary'}` 
-          : `expanded min-h-[140px] ${isComplete ? 'bg-success/10 border-success shadow-[0_0_20px_rgba(34,197,94,0.15)]' : 'bg-primary/10 border-primary'}`
+          : `expanded min-h-[140px] ${isComplete ? 'bg-success/10 border-success/70 shadow-[0_0_20px_rgba(34,197,94,0.15)]' : 'bg-primary/10 border-primary'}`
         }
       `}
     >
@@ -135,7 +135,7 @@ export function YearCard({
           <div className="flex items-center gap-2">
             <span className="text-primary font-bold text-lg">Year {year}</span>
             {isComplete && (
-              <Badge variant="success" size="sm" className="text-[10px] h-5">
+              <Badge variant="success" size="sm" className="text-[10px] h-5 ml-1">
                 ✓ Complete
               </Badge>
             )}
@@ -153,8 +153,8 @@ export function YearCard({
         </div>
         
         {/* Tier 2: Progress + Stats + Load Badge (single row) */}
-        <div className="flex items-center gap-2.5">
-          <Progress value={progressPercentage} className="h-1.5 flex-1" />
+        <div className="flex items-center gap-2">
+          <Progress value={progressPercentage} className="h-1.5 flex-1 bg-white/12" />
           <span className="text-[11px] text-foreground/90 font-medium whitespace-nowrap">
             {creditsSummary.planned}/{creditsSummary.required} cr
           </span>
@@ -169,7 +169,7 @@ export function YearCard({
         
         {/* Tier 3: Meta (Cost/Time/CRI) - improved contrast */}
         {selectedSummary && !selectedSummary.isEmpty && (
-          <div className="text-center text-[11px] text-foreground/75 font-medium">
+          <div className="text-center text-[11px] text-foreground/85 font-medium">
             ${selectedSummary.cost} • {selectedSummary.weeks}w • CRI {Math.round(selectedSummary.avgCri)}
           </div>
         )}
@@ -195,7 +195,7 @@ export function YearCard({
                 e.stopPropagation();
                 onClick?.(); // Opens year panel with templates
               }}
-              className="text-[11px] text-primary hover:text-primary/80 font-medium flex items-center gap-1.5 px-3 py-1.5 rounded-md hover:bg-primary/10 transition-colors"
+              className="text-[11px] text-primary hover:text-primary/80 hover:underline font-medium flex items-center gap-1.5 px-3 py-1.5 rounded-md hover:bg-primary/10 transition-colors"
             >
               📋 Browse Templates
             </button>
