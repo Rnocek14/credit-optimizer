@@ -148,6 +148,8 @@ export function useApplyYearTemplate() {
           templateId: template.id,
           year: template.year,
           coursesAdded: totalAdded,
+          fallCount: fallAdded.length,
+          springCount: springAdded.length,
           creditsAdded: template.est.credits,
           costAdded: template.est.costUsd,
         },

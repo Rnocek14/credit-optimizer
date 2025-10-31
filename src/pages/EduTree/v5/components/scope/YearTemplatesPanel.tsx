@@ -3,7 +3,7 @@
  * Displays 4 year-level templates with preview and apply functionality
  */
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -15,6 +15,7 @@ import { Eye, Plus, AlertTriangle, Calendar } from 'lucide-react';
 import { generateYearTemplates } from '../../engine/yearTemplateGenerator';
 import { usePlanBasket } from '../../state/usePlanBasket';
 import { useRequirementBlocks } from '../../hooks/useRequirementBlocks';
+import { trackTelemetryEvent } from '@/utils/telemetry';
 import type { YearTemplate } from '../../types/templates';
 import type { ModuleData, MarketplaceOption } from '../../types/v5';
 import type { PartnerPolicy } from '../../engine/yearPlanner';
@@ -45,11 +46,21 @@ export function YearTemplatesPanel({
 
   const [previewingTemplate, setPreviewingTemplate] = useState<(YearTemplate & { semesterDistribution: any; warnings: any }) | null>(null);
   const [localFocusTerm, setLocalFocusTerm] = useState<'fall' | 'spring' | undefined>(focusTerm);
+  const firstCardRef = useRef<HTMLDivElement>(null);
 
   // Update local focus term when prop changes
   useEffect(() => {
-    setLocalFocusTerm(focusTerm);
-  }, [focusTerm]);
+    if (focusTerm && focusTerm !== localFocusTerm) {
+      setLocalFocusTerm(focusTerm);
+      
+      // Track focus change
+      void trackTelemetryEvent({
+        task: 'year_templates_focus_set',
+        scope: 'year',
+        complexity: { term: focusTerm, reason: 'lane', year }
+      });
+    }
+  }, [focusTerm, localFocusTerm, year]);
 
   // Generate templates on mount
   const basketKey = useMemo(
@@ -102,7 +113,7 @@ export function YearTemplatesPanel({
     });
   }, [templates, localFocusTerm]);
 
-  // Diagnostic log
+  // Diagnostic log with telemetry
   useEffect(() => {
     const first3 = sortedTemplates?.slice(0, 3).map(t => ({
       id: t.id,
@@ -124,7 +135,42 @@ export function YearTemplatesPanel({
       sortedCount: sortedTemplates?.length ?? 0,
       first3Templates: first3
     });
-  }, [year, modules, allOptions, blocks, basket, templates, localFocusTerm, sortedTemplates]);
+    
+    // Track sorting telemetry when templates are sorted
+    if (sortedTemplates && sortedTemplates.length > 0 && localFocusTerm) {
+      void trackTelemetryEvent({
+        task: 'year_templates_sorted',
+        scope: 'year',
+        complexity: {
+          term: localFocusTerm,
+          sort: ['termLoad', 'cost', 'weeks', 'cri'],
+          top3: sortedTemplates.slice(0, 3).map(t => t.id),
+          year
+        }
+      });
+    }
+    
+    // Track empty state
+    if (templates && templates.length === 0) {
+      void trackTelemetryEvent({
+        task: 'year_templates_empty',
+        scope: 'year',
+        complexity: {
+          year,
+          term: localFocusTerm,
+          constraintsSnapshot: {
+            maxBudget: constraints.max_budget_usd,
+            targetSchool: constraints.target_school
+          }
+        }
+      });
+    }
+    
+    // Focus first card when opened from lane with focus term
+    if (localFocusTerm && sortedTemplates && sortedTemplates.length > 0 && firstCardRef.current) {
+      setTimeout(() => firstCardRef.current?.focus(), 100);
+    }
+  }, [year, modules, allOptions, blocks, basket, templates, localFocusTerm, sortedTemplates, constraints]);
 
   // Loading state
   if (isLoading) {
@@ -146,7 +192,9 @@ export function YearTemplatesPanel({
           <div className="text-4xl mb-2">📝</div>
           <div className="font-medium">No year templates available</div>
           <div className="text-sm text-muted-foreground mt-1">
-            All requirements may already be met, or courses need to be added to the catalog.
+            {localFocusTerm 
+              ? `No templates match your current constraints for ${localFocusTerm === 'fall' ? 'Fall' : 'Spring'}. Try relaxing budget/residency constraints or switch to Unmet Modules.`
+              : 'All requirements may already be met, or courses need to be added to the catalog.'}
           </div>
         </AlertDescription>
       </Alert>
@@ -171,7 +219,17 @@ export function YearTemplatesPanel({
             </span>
           </div>
           <button
-            onClick={() => setLocalFocusTerm(localFocusTerm === 'fall' ? 'spring' : 'fall')}
+            onClick={() => {
+              const newTerm = localFocusTerm === 'fall' ? 'spring' : 'fall';
+              setLocalFocusTerm(newTerm);
+              
+              // Track toggle
+              void trackTelemetryEvent({
+                task: 'year_templates_focus_set',
+                scope: 'year',
+                complexity: { term: newTerm, reason: 'toggle', year }
+              });
+            }}
             className="text-xs text-primary hover:text-primary/80 hover:underline font-medium px-2 py-1 rounded hover:bg-primary/10 transition-colors"
             aria-label={`Switch target to ${localFocusTerm === 'fall' ? 'Spring' : 'Fall'}`}
           >
@@ -181,7 +239,7 @@ export function YearTemplatesPanel({
       )}
 
       <div className="template-gallery">
-        {sortedTemplates.map(template => {
+        {sortedTemplates.map((template, idx) => {
           const badgeColor = {
             Cheapest: 'bg-green-500/10 text-green-700 dark:text-green-400 hover:bg-green-500/20',
             Fastest: 'bg-blue-500/10 text-blue-700 dark:text-blue-400 hover:bg-blue-500/20',
@@ -196,7 +254,12 @@ export function YearTemplatesPanel({
           const firstWarning = (template as any).warnings?.[0];
 
           return (
-            <Card key={template.id} className="hover:border-primary/50 transition-colors">
+            <Card 
+              key={template.id} 
+              className="hover:border-primary/50 transition-colors"
+              ref={idx === 0 ? firstCardRef : undefined}
+              tabIndex={idx === 0 ? 0 : -1}
+            >
               <CardHeader>
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
