@@ -501,7 +501,7 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
         <DrawerPrimitive.Content 
           data-testid="decision-dock-content"
           className={cn(
-            "z-[110] fixed inset-x-0 bottom-0 mt-24 flex flex-col",
+            "z-[110] fixed inset-x-0 bottom-0 mt-24 flex flex-col overflow-y-auto",
             "min-h-[148px]",
             "pointer-events-auto border-t shadow-2xl",
             "rounded-t-[10px] bg-background"
@@ -968,7 +968,7 @@ function YearMarketplaceContent(props: DecisionDockRouterProps) {
       </div>
 
       {/* Scrollable tabs area */}
-      <div className="flex-1 min-h-0 overflow-y-auto">
+      <div className="flex-1">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="w-full grid grid-cols-2 mb-4">
             <TabsTrigger value="templates">Templates</TabsTrigger>
