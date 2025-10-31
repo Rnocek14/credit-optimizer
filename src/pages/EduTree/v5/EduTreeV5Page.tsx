@@ -258,16 +258,15 @@ export default function EduTreeV5Page() {
     return [1, 2, 3, 4].flatMap(year => getModulesForYear(year));
   }, [getModulesForYear]);
 
-  // Hydrate module data when opening from URL
+  // Hydrate panel data when opening from URL (handles both module and year scopes)
   useEffect(() => {
+    // Hydrate module data
     if (panelState.scope === 'module' && panelState.nodeId && !panelState.nodeData) {
       console.log('[V5 Page] 🔧 Hydrating missing module data from URL:', panelState.nodeId);
       
-      // Find the module by ID from all modules
       const targetModule = allModules.find(m => m.id === panelState.nodeId);
       
       if (targetModule) {
-        // Find which year this module belongs to
         const moduleYear = [1, 2, 3, 4].find(y => 
           getModulesForYear(y).some(m => m.id === panelState.nodeId)
         ) || 1;
@@ -279,11 +278,26 @@ export default function EduTreeV5Page() {
           optionsCount: targetModule.marketplaceOptions?.length || 0
         });
         
-        // Reconstruct nodeData object that ScopePanelRouter expects
         openPanel('module', targetModule.id, { module: targetModule, year: moduleYear }, panelState.tab);
       } else {
         console.warn('[V5 Page] ⚠️ Could not find module with ID:', panelState.nodeId);
       }
+    }
+    
+    // Hydrate year data
+    if (panelState.scope === 'year' && panelState.nodeId && !panelState.nodeData) {
+      console.log('[V5 Page] 🔧 Hydrating missing year data from URL:', panelState.nodeId);
+      
+      const year = Number(panelState.nodeId);
+      const yearModules = getModulesForYear(year);
+      
+      console.log('[V5 Page] ✅ Found year data:', {
+        year,
+        modulesCount: yearModules.length,
+        moduleIds: yearModules.map(m => m.id)
+      });
+      
+      openPanel('year', String(year), { year, modules: yearModules }, panelState.tab);
     }
   }, [panelState.scope, panelState.nodeId, panelState.nodeData, allModules, getModulesForYear, openPanel]);
 

@@ -159,21 +159,18 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
     return initial.viewport;
   });
 
-  // Initialize activeSnapPoint with guaranteed-valid value
+  // Initialize activeSnapPoint - always start at medium snap, ignore localStorage to fix stuck-at-148px bug
   const [activeSnapPoint, setActiveSnapPoint] = useState<string | number | null>(() => {
     const initial = getInitialViewportAndSnaps();
     
-    // Try to restore from localStorage
+    // ALWAYS start at medium snap (index 1) to ensure content is visible
+    // User reported drawer stuck at 148px (small snap) due to localStorage restoration
+    // Clear stale localStorage value
     if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem('v5_dock_snap');
-      if (stored && initial.snapPoints.includes(stored)) {
-        console.log('[DecisionDock] ✅ Restored valid snap from storage:', stored);
-        return stored;
-      }
+      localStorage.removeItem('v5_dock_snap');
     }
     
-    // Default to medium snap point (not small, not null)
-    console.log('[DecisionDock] 🎯 Initializing with medium snap:', initial.snapPoints[1]);
+    console.log('[DecisionDock] 🎯 Initializing with MEDIUM snap (localStorage cleared):', initial.snapPoints[1]);
     return initial.snapPoints[1];
   });
 
