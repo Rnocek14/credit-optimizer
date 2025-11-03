@@ -401,6 +401,39 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
     };
   }, []);
 
+  // Monitor and correct drawer transform to prevent off-screen positioning
+  useEffect(() => {
+    if (!scope) return;
+    
+    const drawerElement = document.querySelector('[data-vaul-drawer][data-vaul-drawer-direction="bottom"]');
+    if (!drawerElement) return;
+    
+    const observer = new MutationObserver(() => {
+      const transform = window.getComputedStyle(drawerElement).transform;
+      
+      // Parse translate3d values
+      const match = transform.match(/translate3d\(([^,]+),\s*([^,]+),\s*([^)]+)\)/);
+      if (match) {
+        const translateY = parseFloat(match[2]);
+        const drawerHeight = drawerElement.getBoundingClientRect().height;
+        
+        // If translateY would push drawer significantly off-screen, reset it
+        // Allow small positive values for drag animation, but clamp large ones
+        if (translateY > drawerHeight * 0.1) {
+          (drawerElement as HTMLElement).style.transform = 'translate3d(0px, 0px, 0px)';
+          console.warn('[DecisionDock] Corrected off-screen transform:', translateY);
+        }
+      }
+    });
+    
+    observer.observe(drawerElement, {
+      attributes: true,
+      attributeFilter: ['style']
+    });
+    
+    return () => observer.disconnect();
+  }, [scope]);
+
   // Telemetry: track dock open/close and duration
   useEffect(() => {
     if (scope && !openAtRef.current) {
@@ -512,8 +545,6 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
         });
       }}
       dismissible={false}
-      noBodyStyles={true}
-      setBackgroundColorOnScale={false}
     >
       <DrawerPrimitive.Portal>
         {/* Single click-through overlay - overrides vaul's default */}
