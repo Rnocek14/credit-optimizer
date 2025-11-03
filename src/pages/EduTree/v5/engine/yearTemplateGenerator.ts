@@ -10,6 +10,7 @@ import type { BasketItem, Constraints } from '../state/usePlanBasket';
 import type { RequirementBlock } from '@/lib/types/eduTree';
 import type { PartnerPolicy } from './yearPlanner';
 import { formatCost, formatDuration, formatCRI, formatCredits } from '../utils/formatters';
+import { dbg } from '../utils/dbg';
 
 interface YearTemplateProfile {
   name: string;
@@ -60,6 +61,17 @@ export function generateYearTemplates(
   anchorPolicy?: PartnerPolicy
 ): YearTemplate[] {
   const startTime = Date.now();
+  const emptyReasons = new Set<string>();
+
+  dbg('YearTpl/gen.start', {
+    year,
+    modules: modules.map(m => ({
+      id: m.id,
+      need: m.creditsRequired - (m.creditsEarned || 0),
+      options: m.marketplaceOptions?.length || 0
+    }))
+  });
+
   console.log('[YearTemplateGenerator] Starting generation:', {
     year,
     modulesCount: modules.length,
@@ -92,12 +104,33 @@ export function generateYearTemplates(
         anchorPolicy
       );
 
-      // Skip empty plans
+      // Wave 1 Fix: Track empty reasons instead of silently skipping
       const totalCourses = plan.fall.length + plan.spring.length;
       if (totalCourses === 0) {
+        const unmetModulesForPreset = modules.filter(m => {
+          const need = m.creditsRequired - (m.creditsEarned || 0);
+          return need > 0;
+        });
+        
+        const reason = unmetModulesForPreset.length === 0 
+          ? 'all_satisfied' 
+          : 'no_eligible_options';
+        
+        emptyReasons.add(reason);
+        
+        dbg('YearTpl/gen.empty', {
+          profile: profile.name,
+          preset: preset.id,
+          reason,
+          unmetModules: unmetModulesForPreset.map(m => m.id),
+          fallItems: plan.fall.length,
+          springItems: plan.spring.length
+        });
+
         console.log('[YearTemplateGenerator] Empty plan, skipping:', {
           profile: profile.name,
           preset: preset.id,
+          reason
         });
         continue;
       }
@@ -199,6 +232,13 @@ export function generateYearTemplates(
   console.log('[YearTemplateGenerator] Generation complete:', {
     templatesGenerated: templates.length,
     totalDuration: Date.now() - startTime,
+    emptyReasons: Array.from(emptyReasons)
+  });
+
+  dbg('YearTpl/gen.summary', {
+    generated: templates.length,
+    emptyReasons: Array.from(emptyReasons),
+    duration: Date.now() - startTime
   });
 
   return templates;

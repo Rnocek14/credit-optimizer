@@ -2,6 +2,7 @@ import type { BasketItem, Constraints } from '../state/usePlanBasket';
 import type { MarketplaceOption } from '../types/v5';
 import type { ScoringWeights } from '../utils/optionScoring';
 import { calculateOptionScore } from '../utils/optionScoring';
+import { dbg } from '../utils/dbg';
 
 /**
  * Phase 1c: Shared filtering and scoring logic
@@ -43,11 +44,21 @@ export function filterEligibleOptions(
       return false;
     }
 
-    // Transfer cap check
+    // Wave 1 Fix: Incremental ACE cap check - allow partial credits
     const isAltCredit = opt.providerType === 'mooc' || opt.providerType === 'testing_center';
     if (isAltCredit && constraints.max_ace_credits) {
-      const newAceCredits = runningTotals.aceCredits + opt.credits;
-      if (newAceCredits > constraints.max_ace_credits) return false;
+      const remaining = constraints.max_ace_credits - runningTotals.aceCredits;
+      if (opt.credits > remaining) {
+        dbg('OptFilters/cut', {
+          why: 'ace_cap',
+          courseId: opt.courseId,
+          need: opt.credits,
+          remaining,
+          runningAce: runningTotals.aceCredits,
+          max: constraints.max_ace_credits
+        });
+        return false;
+      }
     }
 
     // Prerequisite check

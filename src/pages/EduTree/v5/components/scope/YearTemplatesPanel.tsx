@@ -85,11 +85,13 @@ export function YearTemplatesPanel({
     [constraints]
   );
 
-  // Guard early: if all modules satisfied, short-circuit generation
-  const hasUnmetModules = useMemo(
-    () => modules.some(m => m.creditsEarned < m.creditsRequired),
-    [modules]
-  );
+  // Wave 1 Fix: Check remaining credits (not just earned vs required)
+  const hasUnmetModules = useMemo(() => {
+    return modules.some(m => {
+      const need = m.creditsRequired - (m.creditsEarned || 0);
+      return need > 0;
+    });
+  }, [modules]);
 
   const generationKey = useMemo(
     () => JSON.stringify({ year, basketKey, constraintsKey, focusTerm: debouncedFocusTerm }),
@@ -233,18 +235,23 @@ export function YearTemplatesPanel({
     );
   }
 
-  // Empty state
+  // Wave 1 Fix: More specific empty state messages
   if (!sortedTemplates || sortedTemplates.length === 0) {
+    const allSatisfied = !hasUnmetModules;
+    const message = allSatisfied
+      ? 'All requirements for this year are already met! 🎉'
+      : 'No templates could be generated with current constraints.';
+    
+    const suggestion = allSatisfied
+      ? 'Check other years or review your plan.'
+      : 'Try: 1) Increasing budget, 2) Relaxing CRI minimum, 3) Adjusting ACE credit cap, or 4) Browse courses manually in Unmet Modules tab.';
+    
     return (
       <Alert>
         <AlertDescription className="text-center py-8">
-          <div className="text-4xl mb-2">📝</div>
-          <div className="font-medium">No year templates available</div>
-          <div className="text-sm text-muted-foreground mt-1">
-            {localFocusTerm 
-              ? `No templates match your current constraints for ${localFocusTerm === 'fall' ? 'Fall' : 'Spring'}. Try relaxing budget/residency constraints or switch to Unmet Modules.`
-              : 'All requirements may already be met, or courses need to be added to the catalog.'}
-          </div>
+          <div className="text-4xl mb-2">{allSatisfied ? '✅' : '📝'}</div>
+          <div className="font-medium">{message}</div>
+          <div className="text-sm text-muted-foreground mt-1">{suggestion}</div>
         </AlertDescription>
       </Alert>
     );
