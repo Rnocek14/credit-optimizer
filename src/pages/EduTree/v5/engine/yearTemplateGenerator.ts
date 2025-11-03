@@ -120,16 +120,19 @@ export function generateYearTemplates(
       // Extract first warning for preview
       const firstWarning = plan.warnings[0];
 
-      // Debug: Check metadata before template creation
-      console.log('[YearTemplateGenerator] 📊 Metadata check:', {
+      // Debug: Check metadata with clean serialization
+      const metadataCheck = {
         profile: profile.name,
-        planMetadata: plan.metadata,
+        totalCost: plan.metadata?.totalCost,
+        totalWeeks: plan.metadata?.totalWeeks,
+        totalCredits: plan.metadata?.totalCredits,
+        avgCri: plan.metadata?.avgCri,
         fallItems: plan.fall.length,
         springItems: plan.spring.length,
         sampleCost: plan.fall[0]?.cost_usd,
         sampleWeeks: plan.fall[0]?.duration_weeks,
-        sampleCri: plan.fall[0]?.cri_score,
-      });
+      };
+      console.log('[YearTemplateGenerator] 📊 Metadata:', JSON.stringify(metadataCheck, null, 2));
 
       // Build YearTemplate with fallbacks
       const est = {
@@ -142,6 +145,16 @@ export function generateYearTemplates(
           0
         ),
       };
+
+      // Assertion: Check if metadata is valid
+      if (est.costUsd === 0 || est.weeks === 0) {
+        console.error('[YearTemplateGenerator] ⚠️ Invalid metadata detected:', {
+          profile: profile.name,
+          est,
+          planMetadata: plan.metadata,
+          fallSample: plan.fall[0],
+        });
+      }
 
       const template: YearTemplate = {
         id: `year-${year}-${profile.badge.toLowerCase()}`,

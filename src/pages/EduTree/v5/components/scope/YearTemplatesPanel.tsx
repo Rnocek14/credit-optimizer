@@ -118,7 +118,7 @@ export function YearTemplatesPanel({
         modules,
         blocks,
         allOptions,
-        [], // Generate with empty basket so plans aren't "already satisfied"
+        basket, // Use current basket to avoid duplicates
         constraints,
         anchorPolicy
       ) as (YearTemplate & { semesterDistribution: any; warnings: any })[];
@@ -350,7 +350,15 @@ export function YearTemplatesPanel({
                   </Button>
                   <Button
                     size="sm"
-                    onClick={() => onApplyTemplate(template)}
+                    onClick={() => {
+                      console.log('[YearTemplatesPanel] Apply clicked:', {
+                        templateId: template.id,
+                        fallCourses: (template as any).semesterDistribution?.fall?.length ?? 0,
+                        springCourses: (template as any).semesterDistribution?.spring?.length ?? 0,
+                        totalCourses,
+                      });
+                      onApplyTemplate(template);
+                    }}
                     className="flex-1"
                   >
                     <Plus className="h-4 w-4 mr-2" />

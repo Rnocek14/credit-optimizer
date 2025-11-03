@@ -47,6 +47,12 @@ export function useApplyYearTemplate() {
       // Add fall courses with semester='fall'
       const fallAdded: BasketItem[] = [];
       template.semesterDistribution.fall.forEach(item => {
+        // Defensive check: Skip items with missing moduleId
+        if (!item.moduleId) {
+          console.error('[ApplyYearTemplate] Missing moduleId for Fall course, skipping:', item);
+          return;
+        }
+
         const newItem: BasketItem = {
           ...item,
           semester: 'fall' as const,
@@ -69,6 +75,12 @@ export function useApplyYearTemplate() {
       // Add spring courses with semester='spring'
       const springAdded: BasketItem[] = [];
       template.semesterDistribution.spring.forEach(item => {
+        // Defensive check: Skip items with missing moduleId
+        if (!item.moduleId) {
+          console.error('[ApplyYearTemplate] Missing moduleId for Spring course, skipping:', item);
+          return;
+        }
+
         const newItem: BasketItem = {
           ...item,
           semester: 'spring' as const,
