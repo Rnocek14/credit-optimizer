@@ -47,14 +47,6 @@ export function useV5DatabaseData(options: UseV5DatabaseDataOptions = {}) {
       // Note: We fetch all course IDs and check both tables since option_kind is generic ("course", "exam", "cert")
       const allOptionIds = options?.map(o => o.option_ref_id) || [];
 
-      console.log('[useV5DatabaseData] Fetching course data:', {
-        programId,
-        requirementCount: requirements.length,
-        optionsCount: options?.length || 0,
-        allOptionIdsCount: allOptionIds.length,
-        sampleOptionIds: allOptionIds.slice(0, 3)
-      });
-
       const { data: eduCourses } = await supabase
         .from('edu_courses')
         .select('id, code, title, credits')
@@ -64,13 +56,6 @@ export function useV5DatabaseData(options: UseV5DatabaseDataOptions = {}) {
         .from('marketplace_courses')
         .select('id, code, title, credits, cost_usd, duration_weeks, provider_id')
         .in('id', allOptionIds.length > 0 ? allOptionIds : ['']);
-
-      console.log('[useV5DatabaseData] Course data fetched:', {
-        eduCoursesCount: eduCourses?.length || 0,
-        marketplaceCoursesCount: marketplaceCourses?.length || 0,
-        eduCourseSample: eduCourses?.slice(0, 2),
-        marketplaceCourseSample: marketplaceCourses?.slice(0, 2)
-      });
 
       // 3.5. Fetch provider details for marketplace courses
       const providerIds = marketplaceCourses?.map(c => c.provider_id).filter(Boolean) || [];
@@ -95,15 +80,6 @@ export function useV5DatabaseData(options: UseV5DatabaseDataOptions = {}) {
           provider: provider || null
         };
       }) || [];
-
-      console.log('[useV5DatabaseData] Options enrichment:', {
-        enrichedOptionsCount: enrichedOptions.length,
-        withEduCourses: enrichedOptions.filter(o => o.edu_courses).length,
-        withMarketplaceCourses: enrichedOptions.filter(o => o.marketplace_courses).length,
-        withBoth: enrichedOptions.filter(o => o.edu_courses && o.marketplace_courses).length,
-        withNeither: enrichedOptions.filter(o => !o.edu_courses && !o.marketplace_courses).length,
-        sampleEnrichedOption: enrichedOptions[0]
-      });
 
       // 5. Transform to V5 format with basket for progress calculation
       const modulesByYear = transformToModuleData(

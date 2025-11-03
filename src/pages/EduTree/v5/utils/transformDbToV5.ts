@@ -70,8 +70,6 @@ function enrichOption(opt: any): any {
   const credits = opt.credits || 3;
   return {
     ...opt,
-    // Ensure courseId exists
-    courseId: opt.courseId || opt.id,
     // Cost defaults: typical ACE course pricing
     cost_usd: opt.cost_usd ?? 89,
     // Duration defaults: typical self-paced course
@@ -79,15 +77,9 @@ function enrichOption(opt: any): any {
     // Workload estimate if missing
     workload_weekly_hours: opt.workload_weekly_hours ?? credits * 2.5,
     // Provider type fallback
-    providerType: opt.providerType ?? (opt.provider?.type || 'university'),
-    // Provider code fallback
-    providerCode: opt.providerCode ?? 'EDU',
-    // Level fallback
-    level: opt.level ?? 100,
-    // CRI score fallback (moderate quality) - critical for filters
-    cri_score: opt.cri_score ?? 75,
-    // Ensure scoreBreakdown exists for filtering
-    scoreBreakdown: opt.scoreBreakdown ?? { cri: opt.cri_score ?? 75 },
+    providerType: opt.providerType ?? (opt.provider?.type || 'mooc'),
+    // CRI score fallback (moderate quality)
+    cri_score: opt.cri_score ?? 70,
   };
 }
 
@@ -114,43 +106,13 @@ export function transformToModuleData(
   // Track warned providers to prevent duplicate logs
   const warnedProviders = new Set<string>();
 
-  console.log('[transformDbToV5] Starting transformation:', {
-    requirementCount: requirements.length,
-    allOptionsCount: allOptions.length,
-    basketSize: basket.length
-  });
-
   requirements.forEach((req) => {
     const reqOptions = allOptions.filter((opt) => opt.requirement_id === req.id);
     
-    console.log(`[transformDbToV5] Processing requirement "${req.name}" (${req.id}):`, {
-      year: req.year,
-      reqOptionsCount: reqOptions.length,
-      creditsRequired: req.credits_required
-    });
-    
     const marketplaceOptions = reqOptions
-      .map((opt, idx) => {
+      .map((opt) => {
         const course = opt.marketplace_courses || opt.edu_courses;
-        
-        console.log(`[transformDbToV5]   Option ${idx + 1}/${reqOptions.length}:`, {
-          optionId: opt.id,
-          optionRefId: opt.option_ref_id,
-          hasMarketplaceCourse: !!opt.marketplace_courses,
-          hasEduCourse: !!opt.edu_courses,
-          courseFound: !!course,
-          courseData: course ? {
-            id: course.id,
-            code: course.code,
-            title: course.title,
-            credits: course.credits
-          } : null
-        });
-        
-        if (!course) {
-          console.warn(`[transformDbToV5]   ⚠️ No course data for option ${opt.id} (ref: ${opt.option_ref_id})`);
-          return null;
-        }
+        if (!course) return null;
 
         // For edu courses without a provider, use a default university provider
         const provider = opt.provider || (opt.edu_courses ? {
@@ -231,36 +193,16 @@ export function transformToModuleData(
     };
 
     // Add marketplace metadata if available
-    console.log(`[transformDbToV5] Module "${req.name}" marketplace summary:`, {
-      marketplaceOptionsCount: marketplaceOptions.length,
-      cheapestOption,
-      willEnrich: marketplaceOptions.length > 0
-    });
-    
     if (marketplaceOptions.length > 0) {
       // Enrich options with defaults before attaching to module
       const enrichedOptions = marketplaceOptions.map(enrichOption);
       (module as any).optionsCount = enrichedOptions.length;
       (module as any).cheapestOption = cheapestOption;
       (module as any).marketplaceOptions = enrichedOptions;
-      
-      console.log(`[transformDbToV5]   ✅ Attached ${enrichedOptions.length} enriched options to module`);
-    } else {
-      console.warn(`[transformDbToV5]   ❌ No marketplace options for module "${req.name}" - year templates will skip this module`);
     }
 
     const year = Math.min(4, Math.max(1, req.year));
     modulesByYear[year].push(module);
-  });
-
-  console.log('[transformDbToV5] Transformation complete:', {
-    year1Modules: modulesByYear[1].length,
-    year2Modules: modulesByYear[2].length,
-    year3Modules: modulesByYear[3].length,
-    year4Modules: modulesByYear[4].length,
-    totalModulesWithOptions: Object.values(modulesByYear)
-      .flat()
-      .filter(m => (m as any).marketplaceOptions?.length > 0).length
   });
 
   return modulesByYear;

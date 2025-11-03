@@ -18,7 +18,4 @@ export const FEATURE_FLAGS = {
   // Experimental features (dark launch via localStorage)
   v5_autofill_enabled: typeof window !== 'undefined' && localStorage.getItem('v5_autofill_enabled') === 'true',
   v5_pivot_mode: typeof window !== 'undefined' && localStorage.getItem('v5_pivot_mode') === 'true',
-  
-  // Wave 1: Autofill V2 (enabled by default, rollback flag)
-  AUTO_FILL_V2: true,
 };

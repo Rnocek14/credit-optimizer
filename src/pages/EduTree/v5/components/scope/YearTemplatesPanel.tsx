@@ -85,13 +85,11 @@ export function YearTemplatesPanel({
     [constraints]
   );
 
-  // Wave 1 Fix: Check remaining credits (not just earned vs required)
-  const hasUnmetModules = useMemo(() => {
-    return modules.some(m => {
-      const need = m.creditsRequired - (m.creditsEarned || 0);
-      return need > 0;
-    });
-  }, [modules]);
+  // Guard early: if all modules satisfied, short-circuit generation
+  const hasUnmetModules = useMemo(
+    () => modules.some(m => m.creditsEarned < m.creditsRequired),
+    [modules]
+  );
 
   const generationKey = useMemo(
     () => JSON.stringify({ year, basketKey, constraintsKey, focusTerm: debouncedFocusTerm }),
@@ -101,14 +99,19 @@ export function YearTemplatesPanel({
   const { data: templates, isLoading } = useQuery({
     queryKey: ['year-templates', generationKey],
     queryFn: () => {
-      // Wave 1 Rollback: Always generate templates for comparison/optimization
-      // Users may want to see alternatives even when requirements are met
-      console.log('[YearTemplatesPanel] Generating templates:', { 
-        year, 
-        hasUnmetModules,
-        modulesCount: modules.length,
-        allOptionsCount: allOptions.length
-      });
+      // Short-circuit if all modules are met
+      if (!hasUnmetModules) {
+        console.log('[YearTemplateGenerator] All modules satisfied, skipping generation:', { year });
+        safeTrack({
+          task: 'year_templates_empty',
+          scope: 'year',
+          complexity: {
+            reason: 'all_met',
+            year,
+          },
+        });
+        return [] as (YearTemplate & { semesterDistribution: any; warnings: any })[];
+      }
 
       return generateYearTemplates(
         year,
@@ -230,23 +233,17 @@ export function YearTemplatesPanel({
     );
   }
 
-  // Empty state with helpful context
+  // Empty state
   if (!sortedTemplates || sortedTemplates.length === 0) {
-    const allSatisfied = !hasUnmetModules;
-    
     return (
       <Alert>
         <AlertDescription className="text-center py-8">
           <div className="text-4xl mb-2">📝</div>
-          <div className="font-medium">No templates could be generated</div>
-          <div className="text-sm text-muted-foreground mt-2 space-y-1">
-            <div>Possible reasons:</div>
-            <div>• Insufficient marketplace options for modules</div>
-            <div>• Constraints too tight (budget, CRI, ACE cap)</div>
-            <div>• Missing course data in database</div>
-          </div>
-          <div className="text-sm text-muted-foreground mt-3">
-            Try: Increasing budget, relaxing constraints, or check console logs with <code className="px-1 py-0.5 bg-muted rounded">?debug=1</code>
+          <div className="font-medium">No year templates available</div>
+          <div className="text-sm text-muted-foreground mt-1">
+            {localFocusTerm 
+              ? `No templates match your current constraints for ${localFocusTerm === 'fall' ? 'Fall' : 'Spring'}. Try relaxing budget/residency constraints or switch to Unmet Modules.`
+              : 'All requirements may already be met, or courses need to be added to the catalog.'}
           </div>
         </AlertDescription>
       </Alert>

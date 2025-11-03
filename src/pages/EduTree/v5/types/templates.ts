@@ -64,14 +64,6 @@ export interface ModuleTemplate {
   targetSchool?: string; // If template is school-specific
   transferVerified?: boolean;
   
-  // Transfer status summary (Phase 4)
-  transferStatus?: {
-    totalCourses: number;
-    likelyTransfers: number;
-    needsReview: number;
-    wontTransfer: number;
-  };
-  
   // Placement hint for validation
   semesterPlacement?: 'fall' | 'spring' | 'any';
   

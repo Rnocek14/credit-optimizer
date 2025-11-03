@@ -15,8 +15,6 @@ import {
   withinConstraints,
 } from './optionFilters';
 import { resolveChain } from './prereqs';
-import { dbg } from '../utils/dbg';
-import { normalizeWeights } from '../utils/weightNorm';
 
 export interface PlanAutoCompleteResult {
   suggestions: BasketItem[];
@@ -29,8 +27,9 @@ export interface PlanAutoCompleteResult {
 /** Convert an option to a BasketItem for a given moduleId */
 function toBasketItem(moduleId: string, opt: MarketplaceOption, isPrereq = false): BasketItem {
   return {
-    // Wave 1 Fix: Prerequisites should count toward target module credits
-    moduleId, // Always assign to target module
+    // Put prerequisites into a neutral bucket so they don't masquerade
+    // as part of the current module (cleaner UI/compare)
+    moduleId: isPrereq ? 'prereqs' : moduleId,
     courseId: opt.courseId,
     title: opt.title ?? opt.courseId,
     credits: opt.credits ?? 0,
@@ -39,9 +38,7 @@ function toBasketItem(moduleId: string, opt: MarketplaceOption, isPrereq = false
     workload_weekly_hours: opt.workload_weekly_hours ?? (opt.credits ? opt.credits * 2.5 : 0),
     cri_score: opt.cri_score ?? (opt.scoreBreakdown?.cri ?? 0),
     providerType: opt.providerType,
-    providerCode: opt.providerCode,
-    level: opt.level,
-    status: isPrereq ? 'prereq' : 'auto-filled',
+    status: 'auto-filled',
     autoFillReason: isPrereq ? 'Required prerequisite' : (opt.autoFillReason ?? inferReason(opt)),
   };
 }
@@ -84,13 +81,6 @@ export function autoCompletePlan(
 
   const unfilled = modules.filter(m => (m.creditsRequired - m.creditsEarned) > 0);
 
-  dbg('AutoComplete/start', {
-    totalModules: modules.length,
-    unfilled: unfilled.length,
-    basketSize: basket.length,
-    constraints: { maxBudget: constraints.max_budget_usd, maxAce: constraints.max_ace_credits }
-  });
-
   for (const mod of unfilled) {
     const options = (mod.marketplaceOptions ?? []);
     if (options.length === 0) continue;
@@ -99,32 +89,16 @@ export function autoCompletePlan(
     const runningBefore = computeRunning();
     const eligible = filterEligibleOptions(options, constraints, runningBefore, basketIds);
 
-    // Enhanced debug logging
-    dbg('AutoComplete/filter', {
-      module: mod.id,
-      total: options.length,
-      eligible: eligible.length,
-      runningBefore,
-      cuts: options.length - eligible.length
-    });
-
-    console.log('[AutoComplete] Module:', mod.id);
-    console.log('[AutoComplete] Total options:', options.length);
-    console.log('[AutoComplete] Eligible after filters:', eligible.length);
-    if (eligible.length === 0 && options.length > 0) {
-      console.log('[AutoComplete] All options filtered out!', {
-        runningBefore,
-        constraints,
-        sampleOption: options[0]
-      });
-    }
-
     if (eligible.length === 0) {
       continue;
     }
 
-    // Score and pick best using normalized weights
-    const scoringWeights = normalizeWeights(weights);
+    // Score and pick best (convert 3-weight to optionScoring's quality format)
+    const scoringWeights = {
+      cost: weights.cost,
+      time: weights.time,
+      quality: weights.cri, // map cri to quality for optionScoring
+    };
     const scored = scoreOptions(eligible, scoringWeights);
     const best = pickBestOption(scored);
     if (!best) continue;

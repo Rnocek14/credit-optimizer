@@ -9,43 +9,33 @@ import { usePlanStore } from '../state/usePlanStore';
 function SemesterLane({ 
   year, 
   term,
-  basketItems,
   onAutoFill
 }: { 
   year: number; 
   term: 'fall' | 'spring';
-  basketItems: Array<{
-    courseId: string;
-    credits: number;
-    workload_weekly_hours: number;
-    semester?: string;
-  }>;
   onAutoFill?: (opts: { year: number; term: 'fall' | 'spring' }) => void;
 }) {
+  const semesters = usePlanStore(s => s.semesters);
   const semesterId = `${year}-${term}`;
-  
-  // ✅ Compute from basket items instead of usePlanStore
-  const semesterCourses = basketItems.filter(item => item.semester === semesterId);
-  const credits = semesterCourses.reduce((sum, c) => sum + c.credits, 0);
-  const workloadHours = semesterCourses.reduce((sum, c) => sum + (c.workload_weekly_hours || 0), 0);
+  const semester = semesters[semesterId] || { credits: 0, workloadHours: 0, courseIds: [] };
   
   const header = term === 'fall' ? `Fall • Year ${year}` : `Spring • Year ${year}`;
   
   return (
     <DroppableSemester 
-      id={`${year}-${term}`}
+      id={semesterId}
       header={header}
-      credits={credits}
-      workloadHours={workloadHours}
+      credits={semester.credits}
+      workloadHours={semester.workloadHours}
     >
-      {semesterCourses.length > 0 ? (
+      {semester.courseIds.length > 0 ? (
         <div className="space-y-1">
-          {semesterCourses.map(item => (
+          {semester.courseIds.map(courseId => (
             <div 
-              key={item.courseId}
+              key={courseId}
               className="text-[10px] px-2 py-1 bg-card rounded border border-border"
             >
-              {item.courseId} ({item.credits}cr)
+              {courseId}
             </div>
           ))}
         </div>
@@ -77,13 +67,6 @@ interface YearCardProps {
   loadHealth: LoadHealth;
   modulesSummary: ModulesSummary;
   warnings?: string[];
-  basketItems?: Array<{
-    courseId: string;
-    credits: number;
-    workload_weekly_hours: number;
-    semester?: string;
-    moduleId: string;
-  }>;
 }
 
 export function YearCard({ 
@@ -95,8 +78,7 @@ export function YearCard({
   selectedSummary,
   loadHealth,
   modulesSummary,
-  warnings,
-  basketItems = []
+  warnings 
 }: YearCardProps) {
   const progressPercentage = creditsSummary.required > 0 
     ? (creditsSummary.planned / creditsSummary.required) * 100 
@@ -236,7 +218,6 @@ export function YearCard({
               <SemesterLane 
                 year={year} 
                 term="fall"
-                basketItems={basketItems}
                 onAutoFill={({ year, term }) => {
                   console.log('[YearCard] Auto-fill clicked:', { year, term, event: 'open_year_templates_from_lane' });
                   if (!onClick) {
@@ -249,7 +230,6 @@ export function YearCard({
               <SemesterLane 
                 year={year} 
                 term="spring"
-                basketItems={basketItems}
                 onAutoFill={({ year, term }) => {
                   console.log('[YearCard] Auto-fill clicked:', { year, term, event: 'open_year_templates_from_lane' });
                   if (!onClick) {

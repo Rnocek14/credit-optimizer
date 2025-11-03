@@ -13,8 +13,6 @@ import type { RequirementBlock, RuleType } from '@/lib/types/eduTree';
 import type { ScoringWeights as EngineScoringWeights } from '../types/v5';
 import { scoreOptions, compareByScore, type ScoredOption } from './optionFilters';
 import { calculateAnchorTotals } from '../utils/anchorPolicyAdapter';
-import { dbg } from '../utils/dbg';
-import { normalizeWeights } from '../utils/weightNorm';
 
 // Map engine weights (cri) to scoring weights (quality)
 function mapWeights(engineWeights: EngineScoringWeights): { cost: number; time: number; quality: number } {
@@ -219,25 +217,11 @@ export function buildYearPlan(
   // 1. Seed with pinned items from basket for this year
   const basketCourseIds = new Set(basket.map(b => b.courseId));
 
-  // Wave 1 Fix: Account for in-flight basket additions when checking remaining credits
-  const basketCreditsByModule = basket.reduce((acc, item) => {
-    acc[item.moduleId] = (acc[item.moduleId] || 0) + item.credits;
-    return acc;
-  }, {} as Record<string, number>);
-
+  // 2. Find unmet modules with marketplace options
   const unmetModules = modules.filter(m => {
-    const earned = (m.creditsEarned || 0) + (basketCreditsByModule[m.id] || 0);
-    const remaining = m.creditsRequired - earned;
+    const creditsNeeded = m.creditsRequired - (m.creditsEarned || 0);
     const hasOptions = (m.marketplaceOptions?.length || 0) > 0;
-    return remaining > 0 && hasOptions;
-  });
-
-  dbg('YearPlan/unmet', {
-    total: unmetModules.length,
-    modules: unmetModules.map(m => ({
-      id: m.id,
-      need: m.creditsRequired - ((m.creditsEarned || 0) + (basketCreditsByModule[m.id] || 0))
-    }))
+    return creditsNeeded > 0 && hasOptions;
   });
 
   console.log('[yearPlanner] Found unmet modules:', unmetModules.length);
@@ -267,7 +251,7 @@ export function buildYearPlan(
       } : null,
     });
 
-    const scoringWeights = normalizeWeights(preset.weights);
+    const scoringWeights = mapWeights(preset.weights);
     const scored = scoreOptions(options, scoringWeights).sort(compareByScore);
 
     console.log('[yearPlanner] Scored options', {
@@ -311,70 +295,44 @@ export function buildYearPlan(
       continue;
     }
 
-    // Wave 1 Fix: Only skip if module is fully satisfied OR exact slot duplicate
-    const basketCreditsInModule = basket
-      .filter(b => b.moduleId === module.id)
-      .reduce((sum, b) => sum + b.credits, 0);
-    const earnedInModule = (module.creditsEarned || 0) + basketCreditsInModule;
-    const remainingInModule = module.creditsRequired - earnedInModule;
-
-    if (remainingInModule <= 0) {
-      dbg('YearPlan/skip.satisfied', { module: module.id, earnedInModule });
-      continue; // Module fully satisfied
-    }
-
-    // Determine target semester for slot check
-    const fallLoad = sumCredits(plan.fall);
-    const springLoad = sumCredits(plan.spring);
-    const targetSemester = (fallLoad <= springLoad && fallLoad + selectedOption.credits <= preset.targetLoads.fall) 
-      ? 'fall' 
-      : 'spring';
-
-    // Only block if exact course+module+semester combo exists in basket or plan
-    const inSameSlot = 
-      basket.some(b => 
-        b.courseId === selectedOption.courseId && 
-        b.moduleId === module.id &&
-        b.semester === targetSemester
-      ) ||
-      plan[targetSemester].some(p => 
-        p.courseId === selectedOption.courseId && 
-        p.moduleId === module.id
-      );
-
-    if (inSameSlot) {
-      dbg('YearPlan/skip.dupSlot', {
-        module: module.id,
+    // Skip if already in basket for this module (allow same course for different modules)
+    const alreadyInSameModule = basket.some(b => 
+      b.courseId === selectedOption.courseId && b.moduleId === module.id
+    );
+    if (alreadyInSameModule) {
+      console.log('[yearPlanner] Skipping duplicate', {
         courseId: selectedOption.courseId,
-        semester: targetSemester
+        title: selectedOption.title,
+        moduleId: module.id,
+        alreadyInSameModule: true,
       });
       continue;
     }
 
-    // Assign to lighter semester (recalculate after slot check)
-    const finalFallLoad = sumCredits(plan.fall);
-    const finalSpringLoad = sumCredits(plan.spring);
+    // Assign to lighter semester
+    const fallLoad = sumCredits(plan.fall);
+    const springLoad = sumCredits(plan.spring);
 
     console.log('[yearPlanner] Attempting placement', {
       courseId: selectedOption.courseId,
       title: selectedOption.title,
       credits: selectedOption.credits,
-      fallLoad: finalFallLoad,
-      springLoad: finalSpringLoad,
+      fallLoad,
+      springLoad,
       targetFall: preset.targetLoads.fall,
       targetSpring: preset.targetLoads.spring,
-      willFitFall: finalFallLoad + selectedOption.credits <= preset.targetLoads.fall && finalFallLoad <= finalSpringLoad,
-      willFitSpring: finalSpringLoad + selectedOption.credits <= preset.targetLoads.spring,
+      willFitFall: fallLoad + selectedOption.credits <= preset.targetLoads.fall && fallLoad <= springLoad,
+      willFitSpring: springLoad + selectedOption.credits <= preset.targetLoads.spring,
     });
 
-    if (finalFallLoad + selectedOption.credits <= preset.targetLoads.fall && finalFallLoad <= finalSpringLoad) {
+    if (fallLoad + selectedOption.credits <= preset.targetLoads.fall && fallLoad <= springLoad) {
       plan.fall.push(toBasketItem(selectedOption, 'fall', module.id));
       console.log('[yearPlanner] ✅ Placed in FALL', {
         courseId: selectedOption.courseId,
         title: selectedOption.title,
         newFallLoad: sumCredits(plan.fall),
       });
-    } else if (finalSpringLoad + selectedOption.credits <= preset.targetLoads.spring) {
+    } else if (springLoad + selectedOption.credits <= preset.targetLoads.spring) {
       plan.spring.push(toBasketItem(selectedOption, 'spring', module.id));
       console.log('[yearPlanner] ✅ Placed in SPRING', {
         courseId: selectedOption.courseId,
@@ -385,8 +343,8 @@ export function buildYearPlan(
       // Both semesters full
       console.warn('[yearPlanner] ❌ Both semesters full, stopping', {
         courseId: selectedOption.courseId,
-        fallLoad: finalFallLoad,
-        springLoad: finalSpringLoad,
+        fallLoad,
+        springLoad,
         targetLoads: preset.targetLoads,
       });
       break;
