@@ -44,6 +44,14 @@ export async function generateModuleTemplates(
   const templates: ModuleTemplate[] = [];
   
   for (const profile of GENERATION_PROFILES) {
+    console.log('[TemplateGenerator] 🎯 Attempting profile:', {
+      profile: profile.name,
+      moduleId: module.id,
+      moduleLabel: module.label,
+      moduleOptionsCount: module.marketplaceOptions?.length ?? 0,
+      basketSize: basket.length
+    });
+    
     // Run auto-fill with specific weight profile
     const result = autoCompletePlan(
       [module], // Only this module
@@ -51,6 +59,17 @@ export async function generateModuleTemplates(
       constraints,
       profile.weights
     );
+    
+    console.log('[TemplateGenerator] 📊 Auto-fill result:', {
+      profile: profile.name,
+      suggestionsCount: result.suggestions.length,
+      status: result.status,
+      stoppedReason: result.stoppedReason,
+      suggestions: result.suggestions.map(s => ({
+        courseId: s.courseId,
+        reason: s.autoFillReason
+      }))
+    });
     
     if (result.suggestions.length === 0) continue;
     

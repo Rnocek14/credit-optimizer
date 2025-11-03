@@ -42,9 +42,24 @@ export function ModuleTemplatesPanel({ module, allModules, onAddTemplate }: Modu
   const { data: rankedTemplates, isLoading } = useQuery({
     queryKey: ['module-templates-ranked', module.id, basketKey, constraints, evidence.raw?.completed?.length ?? 0],
     queryFn: async () => {
+      console.log('[ModuleTemplatesPanel] 🔍 Pre-generation check:', {
+        moduleId: module.id,
+        moduleLabel: module.label,
+        hasMarketplaceOptions: !!module.marketplaceOptions,
+        optionsCount: module.marketplaceOptions?.length ?? 0,
+        basketSize: basket.length,
+        allModulesCount: allModules.length,
+        constraintsKeys: Object.keys(constraints),
+        sampleOption: module.marketplaceOptions?.[0]
+      });
+      
       // Generate templates dynamically from module data
       const templates = await generateModuleTemplates(module, basket, constraints);
-      console.log('[ModuleTemplatesPanel] Generated templates:', templates.length);
+      console.log('[ModuleTemplatesPanel] ✅ Generation result:', {
+        moduleId: module.id,
+        templatesGenerated: templates.length,
+        templateBadges: templates.map(t => t.badge)
+      });
       return await rankTemplates(templates, basket, constraints, allOptions, evidence.raw);
     },
     staleTime: 5000,
