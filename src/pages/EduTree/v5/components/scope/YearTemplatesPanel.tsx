@@ -73,6 +73,11 @@ export function YearTemplatesPanel({
     }
   }, [focusTerm, year]);
 
+  // Reset focus hint on year change
+  useEffect(() => {
+    setLocalFocusTerm(focusTerm);
+  }, [year, focusTerm]);
+
   // Generate templates with stable memo key to prevent thrash
   const basketKey = useMemo(
     () => basket.map(i => i.courseId).sort().join(','),
@@ -94,6 +99,17 @@ export function YearTemplatesPanel({
     () => modules.every(m => (m.creditsRequired - (m.creditsEarned || 0)) <= 0),
     [modules]
   );
+
+  // Modules signature for detecting structural changes
+  const modulesSignature = useMemo(
+    () => JSON.stringify(modules.map(m => [m.id, m.creditsEarned, m.creditsRequired])),
+    [modules]
+  );
+
+  // Auto-unfreeze when context changes (constraints, year, focus term, or modules)
+  useEffect(() => {
+    setIsFrozen(false);
+  }, [constraintsKey, year, debouncedFocusTerm, modulesSignature]);
 
   // Freeze mechanism: don't tie to basketKey when frozen (keeps list stable after apply)
   const generationKey = useMemo(
@@ -139,6 +155,9 @@ export function YearTemplatesPanel({
   const visibleTemplates = isFrozen && lastTemplatesRef.current
     ? lastTemplatesRef.current
     : templates;
+
+  // Don't show empty list when frozen but nothing cached yet (show loading instead)
+  const showLoading = isLoading || (isFrozen && !lastTemplatesRef.current);
 
   // Handle template application with freeze
   const handleApplyTemplate = useCallback((template: YearTemplate & { semesterDistribution: any; warnings: any }) => {
@@ -241,8 +260,8 @@ export function YearTemplatesPanel({
     }
   }, [year, modules, allOptions, blocks, basket, visibleTemplates, debouncedFocusTerm, sortedTemplates, constraints]);
 
-  // Loading state
-  if (isLoading) {
+  // Loading state (also during first freeze with no cache)
+  if (showLoading) {
     return (
       <div className="space-y-4">
         <Skeleton className="h-32 w-full" />
@@ -301,6 +320,7 @@ export function YearTemplatesPanel({
             variant="outline"
             size="sm"
             className="ml-2"
+            autoFocus
             aria-label="Refresh year suggestions"
           >
             <RefreshCw className="h-4 w-4 mr-2" />
@@ -419,7 +439,7 @@ export function YearTemplatesPanel({
                     className="flex-1"
                   >
                     <Plus className="h-4 w-4 mr-2" />
-                    Apply Template
+                    {isFrozen ? 'Apply (frozen)' : 'Apply & keep list'}
                   </Button>
                 </div>
 
