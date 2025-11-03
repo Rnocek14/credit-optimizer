@@ -84,8 +84,16 @@ export function useAutoFillModule() {
 
         console.log('[QuickPick] Successfully added:', suggestion.title);
       } else {
+        const totalOptions = module.marketplaceOptions?.length || 0;
         toast.error('No options available', {
-          description: 'Try browsing options manually',
+          description: totalOptions > 0 
+            ? `${totalOptions} options found but filtered out by constraints. Try adjusting your budget or CRI requirements.`
+            : 'Try browsing options manually',
+        });
+        console.log('[QuickPick] No suggestions generated:', {
+          totalOptions,
+          result: result.status,
+          stoppedReason: result.stoppedReason
         });
       }
     } catch (error) {

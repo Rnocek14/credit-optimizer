@@ -91,6 +91,18 @@ export function autoCompletePlan(
     const runningBefore = computeRunning();
     const eligible = filterEligibleOptions(options, constraints, runningBefore, basketIds);
 
+    // Debug logging for filtering
+    console.log('[AutoComplete] Module:', mod.id);
+    console.log('[AutoComplete] Total options:', options.length);
+    console.log('[AutoComplete] Eligible after filters:', eligible.length);
+    if (eligible.length === 0 && options.length > 0) {
+      console.log('[AutoComplete] All options filtered out!', {
+        runningBefore,
+        constraints,
+        sampleOption: options[0]
+      });
+    }
+
     if (eligible.length === 0) {
       continue;
     }

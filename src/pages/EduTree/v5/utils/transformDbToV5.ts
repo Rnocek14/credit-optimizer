@@ -70,6 +70,8 @@ function enrichOption(opt: any): any {
   const credits = opt.credits || 3;
   return {
     ...opt,
+    // Ensure courseId exists
+    courseId: opt.courseId || opt.id,
     // Cost defaults: typical ACE course pricing
     cost_usd: opt.cost_usd ?? 89,
     // Duration defaults: typical self-paced course
@@ -77,9 +79,15 @@ function enrichOption(opt: any): any {
     // Workload estimate if missing
     workload_weekly_hours: opt.workload_weekly_hours ?? credits * 2.5,
     // Provider type fallback
-    providerType: opt.providerType ?? (opt.provider?.type || 'mooc'),
-    // CRI score fallback (moderate quality)
-    cri_score: opt.cri_score ?? 70,
+    providerType: opt.providerType ?? (opt.provider?.type || 'university'),
+    // Provider code fallback
+    providerCode: opt.providerCode ?? 'EDU',
+    // Level fallback
+    level: opt.level ?? 100,
+    // CRI score fallback (moderate quality) - critical for filters
+    cri_score: opt.cri_score ?? 75,
+    // Ensure scoreBreakdown exists for filtering
+    scoreBreakdown: opt.scoreBreakdown ?? { cri: opt.cri_score ?? 75 },
   };
 }
 
