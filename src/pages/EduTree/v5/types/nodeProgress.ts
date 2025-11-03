@@ -25,13 +25,21 @@ export interface NodeSelectedSummary {
     moduleIds: string[];
     violations?: string[];
   }>;
+  // Year-level: only this year's metrics (no caps/requirements)
+  // Degree-level: cumulative metrics with caps/requirements
   transferMetrics?: {
-    aceUsed: number;
-    aceCap: number;
-    residencyEarned: number;
-    residencyRequired: number;
-    upperDivisionEarned: number;
-    upperDivisionRequired: number;
+    // For YEAR scope: this year only
+    aceCreditsThisYear?: number;
+    residencyCreditsThisYear?: number;
+    upperDivisionCreditsThisYear?: number;
+    
+    // For DEGREE scope: cumulative across all years
+    aceCumulative?: number;
+    aceCap?: number;
+    residencyCumulative?: number;
+    residencyRequired?: number;
+    upperDivisionCumulative?: number;
+    upperDivisionRequired?: number;
   };
   policyWarnings?: Array<{
     type: 'transfer_cap' | 'residency' | 'upper_division' | 'prerequisite';
@@ -39,6 +47,7 @@ export interface NodeSelectedSummary {
     message: string;
     affectedModuleIds: string[];
   }>;
+  warnings?: string[]; // Year or degree-level warnings
 }
 
 /**
@@ -175,16 +184,14 @@ export function computeYearSummary(
       .filter(Boolean) as NonNullable<typeof unmetRequirements>;
   }
 
-  // Week 1: Compute transfer/residency metrics
+  // Week 1: Compute year-local transfer/residency metrics only
+  // Do NOT compare to degree-level caps/requirements here
   let transferMetrics: NodeSelectedSummary['transferMetrics'];
   if (anchorPolicy) {
     transferMetrics = {
-      aceUsed: yearItems.filter(i => i.providerType === 'mooc' || i.providerType === 'testing_center').reduce((sum, i) => sum + i.credits, 0),
-      aceCap: anchorPolicy.max_alt_credits,
-      residencyEarned: yearItems.filter(i => i.providerType === 'university').reduce((sum, i) => sum + i.credits, 0),
-      residencyRequired: anchorPolicy.min_residency_credits,
-      upperDivisionEarned: yearItems.filter(i => (i.level || 0) >= 300).reduce((sum, i) => sum + i.credits, 0),
-      upperDivisionRequired: anchorPolicy.upper_division_min,
+      aceCreditsThisYear: yearItems.filter(i => i.providerType === 'mooc' || i.providerType === 'testing_center').reduce((sum, i) => sum + i.credits, 0),
+      residencyCreditsThisYear: yearItems.filter(i => i.providerType === 'university').reduce((sum, i) => sum + i.credits, 0),
+      upperDivisionCreditsThisYear: yearItems.filter(i => (i.level || 0) >= 300).reduce((sum, i) => sum + i.credits, 0),
     };
   }
 

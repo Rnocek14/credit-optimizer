@@ -417,8 +417,23 @@ export default function EduTreeV5Page() {
     const totalRequired = 120;
     const costPerCredit = 375;
     
-    // Collect warnings from all years
+    // Calculate degree-level residency metrics
+    const residencyCumulative = basket
+      .filter(i => i.providerType === 'university')
+      .reduce((sum, i) => sum + i.credits, 0);
+    
+    const aceCumulative = basket
+      .filter(i => i.providerType === 'mooc' || i.providerType === 'testing_center')
+      .reduce((sum, i) => sum + i.credits, 0);
+    
+    const upperDivisionCumulative = basket
+      .filter(i => (i.level || 0) >= 300)
+      .reduce((sum, i) => sum + i.credits, 0);
+    
+    // Collect warnings: year-specific + degree-level policy warnings
     const allWarnings: string[] = [];
+    
+    // Year load warnings
     allYears.forEach(year => {
       const yearData = getYearData(year);
       if (yearData.loadHealth === 'overloaded') {
@@ -427,6 +442,24 @@ export default function EduTreeV5Page() {
         allWarnings.push(`Year ${year} is underloaded (${yearData.creditsSummary.planned} credits)`);
       }
     });
+    
+    // Degree-level policy warnings (residency, transfer caps, upper division)
+    if (anchorPolicy) {
+      const residencyShortfall = anchorPolicy.min_residency_credits - residencyCumulative;
+      if (residencyShortfall > 0) {
+        allWarnings.push(`Need ${residencyShortfall} more institutional credits to meet residency requirement`);
+      }
+      
+      const aceOverage = aceCumulative - anchorPolicy.max_alt_credits;
+      if (aceOverage > 0) {
+        allWarnings.push(`Exceeded transfer credit cap by ${aceOverage} credits`);
+      }
+      
+      const upperDivShortfall = anchorPolicy.upper_division_min - upperDivisionCumulative;
+      if (upperDivShortfall > 0) {
+        allWarnings.push(`Need ${upperDivShortfall} more upper-division credits`);
+      }
+    }
     
     // Dynamic time estimation based on pace
     const avgCreditsPerYear = totalPlanned / allYears.length;
@@ -451,7 +484,7 @@ export default function EduTreeV5Page() {
       estimatedCost: remainingCredits * costPerCredit,
       warnings: allWarnings
     };
-  }, [getYearCredits]);
+  }, [getYearCredits, basket, anchorPolicy]);
 
   // Toggle degree with localStorage persistence (memoized for React.memo optimization)
   const toggleDegree = useCallback(() => {
