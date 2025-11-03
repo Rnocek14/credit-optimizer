@@ -123,11 +123,15 @@ function sumCredits(items: BasketItem[]): number {
 }
 
 function sumCost(items: BasketItem[]): number {
-  return items.reduce((sum, i) => sum + (i.cost_usd ?? 0), 0);
+  const total = items.reduce((sum, i) => sum + (i.cost_usd ?? 0), 0);
+  console.log('[yearPlanner] sumCost:', { count: items.length, total, sample: items[0]?.cost_usd });
+  return total;
 }
 
 function maxWeeks(items: BasketItem[]): number {
-  return Math.max(0, ...items.map(i => i.duration_weeks ?? 0));
+  const weeks = Math.max(0, ...items.map(i => i.duration_weeks ?? 0));
+  console.log('[yearPlanner] maxWeeks:', { count: items.length, weeks, sample: items[0]?.duration_weeks });
+  return weeks;
 }
 
 function avgCri(items: BasketItem[]): number {

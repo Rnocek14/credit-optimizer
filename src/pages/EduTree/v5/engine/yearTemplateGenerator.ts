@@ -120,25 +120,38 @@ export function generateYearTemplates(
       // Extract first warning for preview
       const firstWarning = plan.warnings[0];
 
-      // Build YearTemplate
+      // Debug: Check metadata before template creation
+      console.log('[YearTemplateGenerator] 📊 Metadata check:', {
+        profile: profile.name,
+        planMetadata: plan.metadata,
+        fallItems: plan.fall.length,
+        springItems: plan.spring.length,
+        sampleCost: plan.fall[0]?.cost_usd,
+        sampleWeeks: plan.fall[0]?.duration_weeks,
+        sampleCri: plan.fall[0]?.cri_score,
+      });
+
+      // Build YearTemplate with fallbacks
+      const est = {
+        costUsd: plan.metadata.totalCost ?? 0,
+        weeks: plan.metadata.totalWeeks ?? 0,
+        credits: plan.metadata.totalCredits ?? 0,
+        cri: Math.round(plan.metadata.avgCri ?? 0),
+        workloadHours: [...plan.fall, ...plan.spring].reduce(
+          (sum, i) => sum + (i.workload_weekly_hours ?? i.credits * 2.5),
+          0
+        ),
+      };
+
       const template: YearTemplate = {
         id: `year-${year}-${profile.badge.toLowerCase()}`,
         kind: 'year',
         year,
         label: `${profile.icon} ${profile.name} Year ${year}`,
-        summary: `${plan.metadata.totalCredits}cr • $${plan.metadata.totalCost} • ${plan.metadata.totalWeeks}w • CRI ${Math.round(plan.metadata.avgCri)}`,
+        summary: `${est.credits}cr • $${est.costUsd} • ${est.weeks}w • CRI ${est.cri}`,
         badge: profile.badge,
         moduleTemplates,
-        est: {
-          costUsd: plan.metadata.totalCost,
-          weeks: plan.metadata.totalWeeks,
-          credits: plan.metadata.totalCredits,
-          cri: Math.round(plan.metadata.avgCri),
-          workloadHours: [...plan.fall, ...plan.spring].reduce(
-            (sum, i) => sum + (i.workload_weekly_hours ?? i.credits * 2.5),
-            0
-          ),
-        },
+        est,
         // Add semester distribution (extended field)
         semesterDistribution: {
           fall: plan.fall,
