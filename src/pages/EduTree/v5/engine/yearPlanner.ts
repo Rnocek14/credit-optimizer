@@ -136,7 +136,7 @@ function maxWeeks(items: BasketItem[]): number {
 
 function avgCri(items: BasketItem[]): number {
   if (items.length === 0) return 0;
-  return items.reduce((sum, i) => sum + i.cri_score, 0) / items.length;
+  return items.reduce((sum, i) => sum + (i.cri_score ?? 0), 0) / items.length;
 }
 
 function isAceOption(item: BasketItem | MarketplaceOption): boolean {

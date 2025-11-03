@@ -9,6 +9,7 @@ import type { ModuleData, MarketplaceOption } from '../types/v5';
 import type { BasketItem, Constraints } from '../state/usePlanBasket';
 import type { RequirementBlock } from '@/lib/types/eduTree';
 import type { PartnerPolicy } from './yearPlanner';
+import { formatCost, formatDuration, formatCRI, formatCredits } from '../utils/formatters';
 
 interface YearTemplateProfile {
   name: string;
@@ -161,7 +162,7 @@ export function generateYearTemplates(
         kind: 'year',
         year,
         label: `${profile.icon} ${profile.name} Year ${year}`,
-        summary: `${est.credits}cr • $${est.costUsd} • ${est.weeks}w • CRI ${est.cri}`,
+        summary: `${formatCredits(est.credits)} • ${formatCost(est.costUsd)} • ${formatDuration(est.weeks)} • CRI ${formatCRI(est.cri)}`,
         badge: profile.badge,
         moduleTemplates,
         est,

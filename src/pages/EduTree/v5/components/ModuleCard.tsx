@@ -14,6 +14,8 @@ import { EmptyTemplateState } from './EmptyTemplateState';
 import type { NodeSelectedSummary } from '../types/nodeProgress';
 import { trackTelemetryEvent } from '@/utils/telemetry';
 import { FEATURE_FLAGS } from '../config/featureFlags';
+import { useAutoFillModule } from '../hooks/useAutoFillModule';
+import { Sparkles } from 'lucide-react';
 
 interface ModuleCardProps extends ModuleData {
   selectedSummary?: NodeSelectedSummary;
@@ -54,6 +56,7 @@ export function ModuleCard({
   const { removeItemWithToast } = usePlanBasketWithToasts();
   
   const basketItems = basket.filter(b => b.moduleId === id);
+  const { quickPick } = useAutoFillModule();
   
   // 4-state machine for module view
   const getModuleViewState = (): 'empty' | 'template-intact' | 'modified' | 'custom' => {
@@ -197,21 +200,49 @@ export function ModuleCard({
           </div>
         </div>
 
-        {/* Row 2: Options count + Chevron */}
-        <div className="flex items-center justify-between text-xs text-muted-foreground">
+        {/* Row 2: Options count + Quick Pick + Chevron */}
+        <div className="flex items-center justify-between text-xs text-muted-foreground gap-2">
           <button 
             onClick={(e) => {
               e.stopPropagation();
               onOpenPanel?.();
             }}
-            className="hover:text-foreground transition-colors"
+            className="hover:text-foreground transition-colors flex-1 text-left"
             data-interactive="true"
           >
             {optionsCount || 0} {optionsCount === 1 ? 'option' : 'options'} available
           </button>
+          
+          {/* Quick Pick button - only show if incomplete and has options */}
+          {progress < 100 && optionsCount && optionsCount > 0 && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                quickPick({
+                  id,
+                  label,
+                  icon,
+                  description,
+                  courses,
+                  creditsEarned,
+                  creditsRequired,
+                  isCollapsed,
+                  optionsCount,
+                  marketplaceOptions,
+                });
+              }}
+              className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-primary hover:text-primary/80 hover:bg-primary/10 rounded transition-colors border border-primary/20"
+              title="Automatically pick the best option for this module"
+              data-interactive="true"
+            >
+              <Sparkles className="h-3 w-3" />
+              Quick Pick
+            </button>
+          )}
+
           <button
             onClick={onChevronToggle}
-            className="min-w-[44px] min-h-[44px] p-2 flex items-center justify-center hover:bg-muted rounded transition-colors"
+            className="min-w-[44px] min-h-[44px] p-2 flex items-center justify-center hover:bg-muted rounded transition-colors flex-shrink-0"
             aria-label={isCollapsed ? 'Expand module details' : 'Collapse module details'}
             data-interactive="true"
           >
