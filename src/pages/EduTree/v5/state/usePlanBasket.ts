@@ -23,7 +23,7 @@ export interface BasketItem {
   providerType?: ProviderType;
   providerCode?: string;
   level?: number;
-  semester?: 'fall' | 'spring' | 'summer'; // Week 1.5: Track semester assignment for DnD
+  semester?: string; // Week 1.5: Track semester assignment for DnD (format: "1-fall", "2-spring", etc.)
   
   // Structured provenance (replaces autoFillReason string parsing)
   source?: {

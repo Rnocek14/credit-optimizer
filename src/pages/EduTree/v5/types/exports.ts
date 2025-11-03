@@ -18,7 +18,7 @@ export interface BasketItem {
   providerType?: ProviderType;
   providerCode?: string; // ✅ Phase 1: Provider institution code for transfer validation
   level?: number; // ✅ Phase 1: Course level for upper-division tracking
-  semester?: 'fall' | 'spring' | 'summer'; // ✅ Semester assignment for DnD
+  semester?: string; // ✅ Semester assignment for DnD (format: "1-fall", "2-spring", etc.)
   
   // Structured provenance (replaces autoFillReason string parsing)
   source?: {

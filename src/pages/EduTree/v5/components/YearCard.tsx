@@ -22,8 +22,10 @@ function SemesterLane({
   }>;
   onAutoFill?: (opts: { year: number; term: 'fall' | 'spring' }) => void;
 }) {
-  // ✅ Phase 2: Compute semester metrics directly from basket items
-  const semesterCourses = basketItems.filter(item => item.semester === term);
+  const semesterId = `${year}-${term}`;
+  
+  // ✅ Compute from basket items instead of usePlanStore
+  const semesterCourses = basketItems.filter(item => item.semester === semesterId);
   const credits = semesterCourses.reduce((sum, c) => sum + c.credits, 0);
   const workloadHours = semesterCourses.reduce((sum, c) => sum + (c.workload_weekly_hours || 0), 0);
   

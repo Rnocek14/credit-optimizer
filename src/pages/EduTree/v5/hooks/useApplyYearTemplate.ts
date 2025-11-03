@@ -55,7 +55,7 @@ export function useApplyYearTemplate() {
 
         const newItem: BasketItem = {
           ...item,
-          semester: 'fall' as const,
+          semester: `${template.year}-fall`,
           status: 'pinned' as const, // Use pinned instead of user-selected
           source: {
             type: 'template',
@@ -83,7 +83,7 @@ export function useApplyYearTemplate() {
 
         const newItem: BasketItem = {
           ...item,
-          semester: 'spring' as const,
+          semester: `${template.year}-spring`,
           status: 'pinned' as const, // Use pinned instead of user-selected
           source: {
             type: 'template',
