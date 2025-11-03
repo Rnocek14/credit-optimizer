@@ -3,7 +3,7 @@
  * Displays 4 year-level templates with preview and apply functionality
  */
 
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -11,12 +11,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Eye, Plus, AlertTriangle, Calendar } from 'lucide-react';
+import { Eye, Plus, AlertTriangle, Calendar, RefreshCw } from 'lucide-react';
 import { generateYearTemplates } from '../../engine/yearTemplateGenerator';
 import { usePlanBasket } from '../../state/usePlanBasket';
 import { useRequirementBlocks } from '../../hooks/useRequirementBlocks';
 import { safeTrack } from '../../utils/safeTelemetry';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
+import { useToast } from '@/hooks/use-toast';
 import type { YearTemplate } from '../../types/templates';
 import type { ModuleData, MarketplaceOption } from '../../types/v5';
 import type { PartnerPolicy } from '../../engine/yearPlanner';
@@ -42,13 +43,16 @@ export function YearTemplatesPanel({
 }: YearTemplatesPanelProps) {
   const basket = usePlanBasket(s => s.items);
   const constraints = usePlanBasket(s => s.constraints);
+  const { toast } = useToast();
   
   const { data: blocks = [] } = useRequirementBlocks(programId, !!programId);
 
   const [previewingTemplate, setPreviewingTemplate] = useState<(YearTemplate & { semesterDistribution: any; warnings: any }) | null>(null);
   const [localFocusTerm, setLocalFocusTerm] = useState<'fall' | 'spring' | undefined>(focusTerm);
+  const [isFrozen, setIsFrozen] = useState(false);
   const firstCardRef = useRef<HTMLDivElement>(null);
   const uiHintAppliedRef = useRef(false);
+  const lastTemplatesRef = useRef<(YearTemplate & { semesterDistribution: any; warnings: any })[] | null>(null);
 
   // Debounce focus term to prevent double-runs when toggling Fall↔Spring
   const debouncedFocusTerm = useDebouncedValue(localFocusTerm, 80);
@@ -91,25 +95,32 @@ export function YearTemplatesPanel({
     [modules]
   );
 
+  // Freeze mechanism: don't tie to basketKey when frozen (keeps list stable after apply)
   const generationKey = useMemo(
-    () => JSON.stringify({ year, basketKey, constraintsKey, focusTerm: debouncedFocusTerm }),
-    [year, basketKey, constraintsKey, debouncedFocusTerm]
+    () => JSON.stringify({ 
+      year, 
+      key: isFrozen ? 'frozen' : basketKey, 
+      constraintsKey, 
+      focusTerm: debouncedFocusTerm 
+    }),
+    [year, isFrozen, basketKey, constraintsKey, debouncedFocusTerm]
   );
 
   const { data: templates, isLoading } = useQuery({
     queryKey: ['year-templates', generationKey],
     queryFn: () => {
-      // Let generator decide - don't block here
+      // Use empty basket for stable, comparable suggestions
       return generateYearTemplates(
         year,
         modules,
         blocks,
         allOptions,
-        basket, // Use current basket to avoid duplicates
+        [], // Empty basket keeps results stable and comparable
         constraints,
         anchorPolicy
       ) as (YearTemplate & { semesterDistribution: any; warnings: any })[];
     },
+    enabled: !isFrozen, // Freeze stops re-fetching
     staleTime: 30_000,
     gcTime: 5 * 60_000,
     refetchOnWindowFocus: false,
@@ -117,14 +128,36 @@ export function YearTemplatesPanel({
     refetchOnReconnect: false,
   });
 
+  // Cache templates when they resolve
+  useEffect(() => {
+    if (templates && templates.length > 0) {
+      lastTemplatesRef.current = templates;
+    }
+  }, [templates]);
+
+  // Prefer cached list when frozen so it never disappears
+  const visibleTemplates = isFrozen && lastTemplatesRef.current
+    ? lastTemplatesRef.current
+    : templates;
+
+  // Handle template application with freeze
+  const handleApplyTemplate = useCallback((template: YearTemplate & { semesterDistribution: any; warnings: any }) => {
+    onApplyTemplate(template);
+    setIsFrozen(true); // Freeze after first apply
+    toast({
+      title: "Template applied",
+      description: "You can pick a different template or refresh suggestions to recompute.",
+    });
+  }, [onApplyTemplate, toast]);
+
   // Sort templates to prioritize target semester when localFocusTerm is set
   const sortedTemplates = useMemo(() => {
-    if (!templates) return templates;
+    if (!visibleTemplates) return visibleTemplates;
     
     // No focus term = default order from generator
-    if (!localFocusTerm) return templates;
+    if (!localFocusTerm) return visibleTemplates;
     
-    return [...templates].sort((a, b) => {
+    return [...visibleTemplates].sort((a, b) => {
       // Primary: More courses in target term
       const aCourses = (a as any).semesterDistribution?.[localFocusTerm]?.length ?? 0;
       const bCourses = (b as any).semesterDistribution?.[localFocusTerm]?.length ?? 0;
@@ -145,7 +178,7 @@ export function YearTemplatesPanel({
       const bCri = (b as any).metadata?.avgCri ?? 0;
       return bCri - aCri;
     });
-  }, [templates, localFocusTerm]);
+  }, [visibleTemplates, localFocusTerm]);
 
   // Diagnostic log with telemetry
   useEffect(() => {
@@ -185,7 +218,7 @@ export function YearTemplatesPanel({
     }
     
     // Track empty state
-    if (templates && templates.length === 0) {
+    if (visibleTemplates && visibleTemplates.length === 0) {
       safeTrack({
         task: 'year_templates_empty',
         scope: 'year',
@@ -203,10 +236,10 @@ export function YearTemplatesPanel({
     // Focus first card when opened from lane with focus term (double-raf guards against portal/layout shifts)
     if (debouncedFocusTerm && sortedTemplates && sortedTemplates.length > 0 && firstCardRef.current) {
       requestAnimationFrame(() =>
-        requestAnimationFrame(() => firstCardRef.current?.focus())
+      requestAnimationFrame(() => firstCardRef.current?.focus())
       );
     }
-  }, [year, modules, allOptions, blocks, basket, templates, debouncedFocusTerm, sortedTemplates, constraints]);
+  }, [year, modules, allOptions, blocks, basket, visibleTemplates, debouncedFocusTerm, sortedTemplates, constraints]);
 
   // Loading state
   if (isLoading) {
@@ -246,6 +279,36 @@ export function YearTemplatesPanel({
 
   return (
     <>
+      {/* Frozen indicator + Refresh button */}
+      {isFrozen && (
+        <div className="mb-4 flex items-center justify-between px-3 py-2 bg-amber-500/10 border border-amber-500/20 rounded-lg">
+          <div className="flex items-center gap-2">
+            <Badge variant="secondary" className="bg-amber-500/10 text-amber-700 dark:text-amber-400">
+              Frozen
+            </Badge>
+            <span className="text-sm text-muted-foreground">
+              Suggestions frozen after apply. Refresh to recompute against your updated plan.
+            </span>
+          </div>
+          <Button
+            onClick={() => {
+              setIsFrozen(false);
+              toast({
+                title: "Refreshing suggestions",
+                description: "Recomputing templates against your current plan...",
+              });
+            }}
+            variant="outline"
+            size="sm"
+            className="ml-2"
+            aria-label="Refresh year suggestions"
+          >
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Refresh
+          </Button>
+        </div>
+      )}
+
       {/* Target semester indicator with toggle */}
       {localFocusTerm && (
         <div 
@@ -351,7 +414,7 @@ export function YearTemplatesPanel({
                         springCourses: (template as any).semesterDistribution?.spring?.length ?? 0,
                         totalCourses,
                       });
-                      onApplyTemplate(template);
+                      handleApplyTemplate(template);
                     }}
                     className="flex-1"
                   >
