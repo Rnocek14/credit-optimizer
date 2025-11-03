@@ -72,7 +72,7 @@ export interface ModuleData {
   isCollapsed: boolean;
   
   // Available options for this module
-  optionsCount?: number;
+  optionsCount: number; // Required: always derived from marketplaceOptions.length
   marketplaceOptions?: MarketplaceOption[];
   cheapestOption?: number | null;
   
@@ -189,5 +189,16 @@ export interface PlanScenario {
     avgCRI: number;
     totalWorkloadHours: number;
     aceCredits: number;
+  };
+}
+
+/**
+ * Normalize module data with derived fields
+ * Ensures optionsCount is always in sync with marketplaceOptions
+ */
+export function normalizeModuleData(partial: Omit<ModuleData, 'optionsCount'>): ModuleData {
+  return {
+    ...partial,
+    optionsCount: partial.marketplaceOptions?.length ?? 0,
   };
 }

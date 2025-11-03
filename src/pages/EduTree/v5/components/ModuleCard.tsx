@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { CourseCard } from './CourseCard';
 import { ModuleData } from '../types/v5';
@@ -16,6 +16,7 @@ import { trackTelemetryEvent } from '@/utils/telemetry';
 import { FEATURE_FLAGS } from '../config/featureFlags';
 import { useAutoFillModule } from '../hooks/useAutoFillModule';
 import { Sparkles } from 'lucide-react';
+import { safeTrack } from '../utils/safeTelemetry';
 
 interface ModuleCardProps extends ModuleData {
   selectedSummary?: NodeSelectedSummary;
@@ -46,6 +47,9 @@ export function ModuleCard({
   yearCap = 30,
   selectedSummary
 }: ModuleCardProps) {
+  // Derive options count locally (belt + suspenders: guards against stale prop)
+  const derivedOptionsCount = marketplaceOptions?.length ?? optionsCount ?? 0;
+  
   const progress = creditsRequired > 0 ? (creditsEarned / creditsRequired) * 100 : 0;
   const selections = usePlanStore(s => s.selections);
   const toggleCourse = usePlanStore(s => s.toggleCourse);
@@ -57,6 +61,35 @@ export function ModuleCard({
   
   const basketItems = basket.filter(b => b.moduleId === id);
   const { quickPick } = useAutoFillModule();
+  
+  // Mismatch detection: log if optionsCount prop doesn't match actual array length
+  useEffect(() => {
+    const propCount = optionsCount ?? 0;
+    const actualCount = marketplaceOptions?.length ?? 0;
+    
+    if (propCount !== actualCount && process.env.NODE_ENV === 'development') {
+      console.warn(
+        `[ModuleCard] optionsCount mismatch for ${id}:`,
+        { propCount, actualCount, hasMarketplaceOptions: !!marketplaceOptions }
+      );
+    }
+    
+    // Telemetry for production (when stale prop shows 0 but array has items)
+    if (propCount === 0 && actualCount > 0) {
+      safeTrack({
+        task: 'v5_options_count_mismatch',
+        scope: 'module',
+        complexity: { moduleId: id, propCount, actualCount }
+      });
+    }
+  }, [id, optionsCount, marketplaceOptions]);
+  
+  // Defensive log if marketplaceOptions is undefined (prevents silent "0 options" bugs)
+  useEffect(() => {
+    if (marketplaceOptions === undefined && progress < 100) {
+      console.warn(`[ModuleCard] marketplaceOptions is undefined for incomplete module ${id}`);
+    }
+  }, [id, marketplaceOptions, progress]);
   
   // 4-state machine for module view
   const getModuleViewState = (): 'empty' | 'template-intact' | 'modified' | 'custom' => {
@@ -128,14 +161,14 @@ export function ModuleCard({
       scope: 'module',
       complexity: { 
         moduleId: id, 
-        optionsCount, 
+        optionsCount: derivedOptionsCount, 
         hasBasket: basketItems.length > 0,
         source: 'card_click' 
       }
     });
     
     onOpenPanel();
-  }, [onOpenPanel, id, optionsCount, basketItems.length]);
+  }, [onOpenPanel, id, derivedOptionsCount, basketItems.length]);
   
   const onCardKeyDown = useCallback((e: React.KeyboardEvent<HTMLDivElement>) => {
     if (!FEATURE_FLAGS.V5_SIMPLIFIED_CARDS || !onOpenPanel) return;
@@ -147,13 +180,13 @@ export function ModuleCard({
         scope: 'module',
         complexity: { 
           moduleId: id, 
-          optionsCount,
+          optionsCount: derivedOptionsCount,
           source: 'keyboard' 
         }
       });
       onOpenPanel();
     }
-  }, [onOpenPanel, id, optionsCount]);
+  }, [onOpenPanel, id, derivedOptionsCount]);
   
   const onChevronToggle = useCallback((e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
@@ -210,11 +243,11 @@ export function ModuleCard({
             className="hover:text-foreground transition-colors flex-1 text-left"
             data-interactive="true"
           >
-            {optionsCount || 0} {optionsCount === 1 ? 'option' : 'options'} available
+            {derivedOptionsCount} {derivedOptionsCount === 1 ? 'option' : 'options'} available
           </button>
           
           {/* Quick Pick button - only show if incomplete and has options */}
-          {progress < 100 && optionsCount && optionsCount > 0 && (
+          {progress < 100 && derivedOptionsCount > 0 && (
             <button
               onClick={(e) => {
                 e.stopPropagation();
@@ -295,7 +328,7 @@ export function ModuleCard({
           )}
 
           {/* Clear CTA to open dock (only show if incomplete/modified AND has options) */}
-          {(progress < 100 || viewState === 'modified') && optionsCount && optionsCount > 0 && (
+          {(progress < 100 || viewState === 'modified') && derivedOptionsCount > 0 && (
             <button
               onClick={(e) => {
                 e.stopPropagation();
@@ -308,11 +341,20 @@ export function ModuleCard({
             </button>
           )}
           
-          {/* Fallback message when no options available */}
-          {optionsCount === 0 && progress < 100 && (
-            <p className="text-xs text-muted-foreground text-center mt-3 px-2">
-              No marketplace options available yet
-            </p>
+          {/* Smart empty state with context */}
+          {derivedOptionsCount === 0 && progress < 100 && (
+            <div className="text-xs text-muted-foreground text-center mt-3 px-2 space-y-1">
+              {marketplaceOptions === undefined ? (
+                // Loading/hydrating state
+                <p className="italic">Loading options…</p>
+              ) : marketplaceOptions.length === 0 ? (
+                // Truly empty
+                <p>No marketplace options available yet</p>
+              ) : (
+                // Filtered out (shouldn't happen with derivedOptionsCount, but defensive)
+                <p>No eligible options match current filters</p>
+              )}
+            </div>
           )}
         </div>
       )}

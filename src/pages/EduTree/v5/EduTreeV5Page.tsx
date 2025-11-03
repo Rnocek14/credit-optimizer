@@ -220,6 +220,7 @@ export default function EduTreeV5Page() {
           description: programModule.description,
           courses: [], // Courses come from basket
           marketplaceOptions, // ALL available options for this block
+          optionsCount: marketplaceOptions?.length ?? 0, // Derive count from options
           creditsEarned,
           creditsRequired: programModule.creditsRequired,
           isCollapsed: !!collapsedModules[programModule.id],
@@ -269,7 +270,8 @@ export default function EduTreeV5Page() {
         const selectedCourseIds = new Set(basketItemsForModule.map(b => b.courseId));
         
         return { 
-          ...mod, 
+          ...mod,
+          optionsCount: mod.optionsCount ?? mod.marketplaceOptions?.length ?? 0, // Defensive derivation
           selectedSummary,
           creditsEarned: liveCreditsEarned, // LIVE from basket
           selectedCourseIds: Array.from(selectedCourseIds)

@@ -189,6 +189,7 @@ export function transformToModuleData(
       creditsEarned: selectedSummary.credits, // Real progress from basket
       creditsRequired: req.credits_required ?? 0,
       isCollapsed: false,
+      optionsCount: 0, // Will be populated with marketplace options below
       selectedSummary, // Attach progress summary
     };
 
