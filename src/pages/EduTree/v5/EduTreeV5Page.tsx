@@ -777,6 +777,7 @@ export default function EduTreeV5Page() {
                 selectedSummary={yearSelectedSummary}
                 loadHealth={yearData.loadHealth}
                 modulesSummary={yearData.modulesSummary}
+                basketItems={basket}
               />
             
             {/* Module Cards - Stack vertically below */}

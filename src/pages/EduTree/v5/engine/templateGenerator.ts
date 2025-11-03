@@ -120,7 +120,21 @@ export async function generateModuleTemplates(
       semesterPlacement: 'any',
       est,
       generatedFrom: 'auto-fill',
-      weightProfile: profile.weights
+      weightProfile: profile.weights,
+      // ✅ Phase 4: Pre-compute transfer status for template preview
+      transferStatus: constraints.target_school ? {
+        totalCourses: selected.length,
+        likelyTransfers: selected.filter(opt => 
+          opt.providerType === 'university' || 
+          opt.providerType === 'testing_center'
+        ).length,
+        needsReview: selected.filter(opt => 
+          opt.providerType === 'mooc'
+        ).length,
+        wontTransfer: selected.filter(opt => 
+          opt.providerType === 'bootcamp'
+        ).length
+      } : undefined
     });
     
     console.log('[TemplateGenerator] ✅ Generated template:', {

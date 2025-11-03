@@ -16,6 +16,9 @@ export interface BasketItem {
   cri_score: number;
   status: 'pinned' | 'auto-filled' | 'prereq';
   providerType?: ProviderType;
+  providerCode?: string; // ✅ Phase 1: Provider institution code for transfer validation
+  level?: number; // ✅ Phase 1: Course level for upper-division tracking
+  semester?: 'fall' | 'spring' | 'summer'; // ✅ Semester assignment for DnD
   
   // Structured provenance (replaces autoFillReason string parsing)
   source?: {

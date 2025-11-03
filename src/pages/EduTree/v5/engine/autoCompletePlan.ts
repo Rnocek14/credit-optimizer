@@ -38,6 +38,8 @@ function toBasketItem(moduleId: string, opt: MarketplaceOption, isPrereq = false
     workload_weekly_hours: opt.workload_weekly_hours ?? (opt.credits ? opt.credits * 2.5 : 0),
     cri_score: opt.cri_score ?? (opt.scoreBreakdown?.cri ?? 0),
     providerType: opt.providerType,
+    providerCode: opt.providerCode, // ✅ Phase 1: Add provider code for transfer validation
+    level: opt.level, // ✅ Phase 1: Add level for upper-division tracking
     status: 'auto-filled',
     autoFillReason: isPrereq ? 'Required prerequisite' : (opt.autoFillReason ?? inferReason(opt)),
   };
