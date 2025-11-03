@@ -14,6 +14,8 @@ import SeedStatus from '@/components/SeedStatus';
 import { DragProvider } from './components/drag/DragProvider';
 import canonicalCourses from '@/fixtures/prereqs/canonical-courses.json';
 import requirements from '@/fixtures/requirements/cs-degree-requirements.json';
+import { PROGRAM_MODULES, getModulesByYear } from '@/fixtures/v5/programModules';
+import { COURSE_OPTIONS, getOptionsForBlock } from '@/fixtures/v5/courseOptions';
 import { ModuleData, Course, Requirement, LoadHealth, DegreeSummary } from './types/v5';
 import { useV5DatabaseData } from './hooks/useV5DatabaseData';
 import { usePlanStore } from './state/usePlanStore';
@@ -165,14 +167,6 @@ export default function EduTreeV5Page() {
     window.location.reload();
   }, [USE_DATABASE]);
 
-  // Mock course mapping to years
-  const coursesByYear: Record<number, string[]> = {
-    1: ['MATH-ALGEBRA-101', 'CS-INTRO-101'],
-    2: ['MATH-CALCULUS-201', 'BIO-ANATOMY-201'],
-    3: ['CS-DATA-STRUCTURES-301', 'BIO-ANATOMY-202'],
-    4: ['BIO-MICROBIOLOGY-301']
-  };
-
   // Get course details from canonical courses
   const getCourseDetails = (courseId: string): Course | null => {
     const course = canonicalCourses.canonicalCourses[courseId as keyof typeof canonicalCourses.canonicalCourses];
@@ -185,37 +179,49 @@ export default function EduTreeV5Page() {
     };
   };
 
-  // Get modules for a specific year (fixtures mode)
+  // Get modules for a specific year (fixtures mode) - NEW: Use complete fixtures
   const getModulesForYearFixtures = useMemo(() => {
     return (year: number): ModuleData[] => {
-      const yearCourseIds = coursesByYear[year] || [];
-      const modules: ModuleData[] = [];
-
-      requirements.requirements.forEach((req: Requirement) => {
-        // Find courses in this module that are in this year
-        const moduleCourses = req.courseIds
-          .filter(id => yearCourseIds.includes(id))
-          .map(id => getCourseDetails(id))
-          .filter((c): c is Course => c !== null);
-
-        if (moduleCourses.length > 0) {
-          const creditsEarned = moduleCourses.reduce((sum, c) => sum + c.credits, 0);
-          modules.push({
-            id: req.id,
-            label: req.label,
-            icon: req.icon,
-            description: req.description,
-            courses: moduleCourses,
-            creditsEarned,
-            creditsRequired: req.minCredits,
-            isCollapsed: !!collapsedModules[req.id]
-          });
-        }
+      const yearModules = getModulesByYear(year);
+      
+      return yearModules.map((programModule) => {
+        // Get all course options for this module's block
+        const allOptions = getOptionsForBlock(programModule.blockId);
+        
+        // Filter to suggested courses for this specific module
+        const marketplaceOptions = allOptions
+          .filter(opt => programModule.courseIds.includes(opt.courseId))
+          .map(opt => ({
+            ...opt,
+            credits: opt.credits,
+            cost_usd: opt.cost_usd ?? 0,
+            duration_weeks: opt.duration_weeks ?? 8,
+            cri_score: opt.cri_score ?? 70,
+            workload_weekly_hours: opt.workload_weekly_hours ?? opt.credits * 2.5,
+            level: opt.level ?? 100,
+          }));
+        
+        // Get selected courses from basket for this module
+        const basketItems = basket.filter(b => b.moduleId === programModule.id);
+        const creditsEarned = basketItems.reduce((sum, b) => sum + b.credits, 0);
+        
+        return {
+          id: programModule.id,
+          label: programModule.label,
+          icon: programModule.icon ?? '📖',
+          description: programModule.description,
+          courses: [], // Courses come from basket
+          marketplaceOptions, // Available options to choose from
+          creditsEarned,
+          creditsRequired: programModule.creditsRequired,
+          isCollapsed: !!collapsedModules[programModule.id],
+          requirementBlockId: programModule.blockId,
+          year: programModule.year,
+          term: programModule.term,
+        } as ModuleData;
       });
-
-      return modules;
     };
-  }, [collapsedModules]);
+  }, [collapsedModules, basket]);
 
   // Get modules for a specific year (database or fixtures)
   const selections = usePlanStore(s => s.selections);
