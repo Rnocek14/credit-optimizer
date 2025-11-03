@@ -49,17 +49,16 @@ export async function generateModuleTemplates(
     return [];
   }
   
-  // Calculate remaining credits needed
-  const creditsNeeded = (module.creditsRequired ?? 0) - (module.creditsEarned ?? 0);
-  if (creditsNeeded <= 0) {
-    console.log('[TemplateGenerator] Module already satisfied:', module.id);
-    return [];
-  }
+  // Calculate remaining credits needed (show templates even if satisfied)
+  const creditsNeeded = Math.max(0, (module.creditsRequired ?? 0) - (module.creditsEarned ?? 0));
   
   console.log('[TemplateGenerator] 🎯 Generating templates:', {
     moduleId: module.id,
     moduleLabel: module.label,
     creditsNeeded,
+    creditsEarned: module.creditsEarned,
+    creditsRequired: module.creditsRequired,
+    status: creditsNeeded === 0 ? 'satisfied' : 'incomplete',
     optionsCount: module.marketplaceOptions.length
   });
   
@@ -83,11 +82,13 @@ export async function generateModuleTemplates(
     }).sort((a, b) => b.totalScore - a.totalScore);
     
     // Pick best option(s) to satisfy credits
+    // Always select at least one option, even if module is satisfied
     const selected: any[] = [];
     let totalCredits = 0;
+    const targetCredits = creditsNeeded > 0 ? creditsNeeded : (module.creditsRequired ?? 0);
     
     for (const opt of scored) {
-      if (totalCredits >= creditsNeeded) break;
+      if (totalCredits >= targetCredits && selected.length > 0) break;
       selected.push(opt);
       totalCredits += opt.credits;
     }
