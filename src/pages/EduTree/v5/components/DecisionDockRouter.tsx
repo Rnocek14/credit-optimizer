@@ -323,16 +323,28 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
     });
   };
 
-  // Apply dimming effect to plan board + auto-scroll for year scope
+  // Apply dimming effect to plan board + ensure drawer stays visible
   useEffect(() => {
     if (scope) {
       document.body.classList.add('decision-dock-open');
       
-      // Auto-scroll to reveal year drawer at bottom
-      if (scope === 'year') {
-        setTimeout(() => {
+      // Ensure drawer is visible by scrolling it into view
+      // This prevents the drawer from being stuck below the viewport
+      setTimeout(() => {
+        // Calculate safe scroll position that keeps drawer visible
+        const viewportHeight = window.innerHeight;
+        const drawerHeight = typeof activeSnapPoint === 'string' 
+          ? parseInt(activeSnapPoint) 
+          : Math.round(viewportHeight * 0.5);
+        
+        // Scroll to a position that ensures the drawer is visible
+        // For year scope, scroll to bottom but leave room for drawer
+        if (scope === 'year') {
+          const maxScroll = document.documentElement.scrollHeight - viewportHeight;
+          const safeScroll = Math.max(0, maxScroll);
+          
           window.scrollTo({
-            top: document.documentElement.scrollHeight,
+            top: safeScroll,
             behavior: 'smooth'
           });
           
@@ -341,19 +353,31 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
             task: 'year_drawer_auto_scroll',
             route: '/edu-tree-v5',
             complexity: {
-              scrollTop: window.scrollY,
+              scrollTop: safeScroll,
               docHeight: document.documentElement.scrollHeight,
               viewportHeight: window.innerHeight,
+              drawerHeight,
               year: props.year
             }
           });
-        }, 100); // Small delay for drawer mount animation
-      }
+        } else {
+          // For other scopes, ensure drawer is visible by checking current scroll
+          const currentScroll = window.scrollY;
+          const maxVisibleScroll = document.documentElement.scrollHeight - viewportHeight - drawerHeight;
+          
+          if (currentScroll > maxVisibleScroll) {
+            window.scrollTo({
+              top: maxVisibleScroll,
+              behavior: 'smooth'
+            });
+          }
+        }
+      }, 150); // Delay for drawer mount animation
     }
     return () => {
       document.body.classList.remove('decision-dock-open');
     };
-  }, [scope, props.year]);
+  }, [scope, props.year, activeSnapPoint]);
 
   // Escape key handler
   useEffect(() => {
@@ -451,6 +475,25 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
         if (!point) return;
         setActiveSnapPoint(point);
         
+        // Ensure drawer stays visible after resize
+        setTimeout(() => {
+          const viewportHeight = window.innerHeight;
+          const drawerHeight = typeof point === 'string' 
+            ? parseInt(point) 
+            : Math.round(viewportHeight * 0.5);
+          
+          const currentScroll = window.scrollY;
+          const maxVisibleScroll = document.documentElement.scrollHeight - viewportHeight - drawerHeight;
+          
+          // If drawer would be below viewport, scroll it into view
+          if (currentScroll > maxVisibleScroll && maxVisibleScroll >= 0) {
+            window.scrollTo({
+              top: maxVisibleScroll,
+              behavior: 'smooth'
+            });
+          }
+        }, 100);
+        
         // Persist to localStorage (convert to string for type safety)
         if (typeof window !== 'undefined') {
           localStorage.setItem('v5_dock_snap', String(point));
@@ -497,7 +540,10 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
               : snapPoints[1],
             display: 'flex',
             flexDirection: 'column',
-            visibility: 'visible'
+            visibility: 'visible',
+            // Ensure drawer stays at bottom of viewport, not document
+            position: 'fixed',
+            bottom: 0
           }}
           role="dialog"
           aria-modal="false"
