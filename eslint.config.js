@@ -24,6 +24,8 @@ export default tseslint.config(
         { allowConstantExport: true },
       ],
       "@typescript-eslint/no-unused-vars": "off",
+      // Restrict console in production builds (allow in development)
+      "no-console": ["error", { "allow": ["warn", "error"] }],
       // Block undersized touch targets in interactive elements
       "no-restricted-syntax": [
         "error",

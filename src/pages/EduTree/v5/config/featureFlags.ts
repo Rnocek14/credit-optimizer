@@ -18,4 +18,7 @@ export const FEATURE_FLAGS = {
   // Experimental features (dark launch via localStorage)
   v5_autofill_enabled: typeof window !== 'undefined' && localStorage.getItem('v5_autofill_enabled') === 'true',
   v5_pivot_mode: typeof window !== 'undefined' && localStorage.getItem('v5_pivot_mode') === 'true',
+  
+  // Rollback flags (always on, can disable via localStorage for testing)
+  SMART_EMPTY_STATES: typeof window !== 'undefined' ? localStorage.getItem('v5_smart_empty_states') !== 'false' : true,
 };

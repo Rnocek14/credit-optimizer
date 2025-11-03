@@ -64,7 +64,11 @@ export function ModuleCard({
   selectedSummary
 }: ModuleCardProps) {
   // Derive options count locally (belt + suspenders: guards against stale prop)
-  const derivedOptionsCount = marketplaceOptions?.length ?? optionsCount ?? 0;
+  // Memoized for performance with large marketplace options arrays
+  const derivedOptionsCount = useMemo(
+    () => marketplaceOptions?.length ?? optionsCount ?? 0,
+    [marketplaceOptions, optionsCount]
+  );
   
   const progress = creditsRequired > 0 ? (creditsEarned / creditsRequired) * 100 : 0;
   const selections = usePlanStore(s => s.selections);
@@ -90,8 +94,9 @@ export function ModuleCard({
       );
     }
     
-    // Telemetry for production (sampled at 10% to reduce noise)
-    if (propCount === 0 && actualCount > 0 && shouldSample(0.1)) {
+    // Telemetry for production (sampled at 10% to reduce noise, override with ?telemetry=full)
+    const fullTelemetry = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('telemetry') === 'full';
+    if (propCount === 0 && actualCount > 0 && (fullTelemetry || shouldSample(0.1))) {
       safeTrack({
         task: 'v5_options_count_mismatch',
         scope: 'module',
@@ -386,8 +391,8 @@ export function ModuleCard({
             </button>
           )}
           
-          {/* Smart empty state with context */}
-          {derivedOptionsCount === 0 && progress < 100 && (() => {
+          {/* Smart empty state with context (can disable with localStorage) */}
+          {FEATURE_FLAGS.SMART_EMPTY_STATES && derivedOptionsCount === 0 && progress < 100 && (() => {
             const state = getOptionsState(marketplaceOptions, derivedOptionsCount);
             return (
               <div className="text-xs text-muted-foreground text-center mt-3 px-2 space-y-1">
