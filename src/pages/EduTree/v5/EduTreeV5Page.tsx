@@ -16,6 +16,7 @@ import canonicalCourses from '@/fixtures/prereqs/canonical-courses.json';
 import requirements from '@/fixtures/requirements/cs-degree-requirements.json';
 import { PROGRAM_MODULES, getModulesByYear } from '@/fixtures/v5/programModules';
 import { COURSE_OPTIONS, getOptionsForBlock } from '@/fixtures/v5/courseOptions';
+import { REQUIREMENT_BLOCKS } from '@/fixtures/v5/requirementBlocks';
 import { ModuleData, Course, Requirement, LoadHealth, DegreeSummary } from './types/v5';
 import { useV5DatabaseData } from './hooks/useV5DatabaseData';
 import { usePlanStore } from './state/usePlanStore';
@@ -36,11 +37,12 @@ import './styles/v5.css';
 const ENABLE_DEGREE_NODE = true;
 
 export default function EduTreeV5Page() {
-  // Feature flag: Database vs Fixtures
+  // Feature flag: Database vs Fixtures (default to fixtures now)
   const USE_DATABASE = useMemo(() => {
     if (typeof window === 'undefined') return false;
     const params = new URLSearchParams(window.location.search);
-    return params.get('db') === '1' || localStorage.getItem('v5.useDatabase') === 'true';
+    // Only use database if explicitly set to '1' in URL (ignore localStorage)
+    return params.get('db') === '1';
   }, []);
 
   // Database mode
@@ -50,7 +52,12 @@ export default function EduTreeV5Page() {
   });
 
   // Week 2: Fetch requirement blocks for year progress computation
-  const { data: requirementBlocks = [] } = useRequirementBlocks('bs_cs', USE_DATABASE);
+  const { data: dbBlocks = [] } = useRequirementBlocks('bs_cs', USE_DATABASE);
+  
+  // Use fixture blocks when not in database mode
+  const requirementBlocks = useMemo(() => {
+    return USE_DATABASE ? dbBlocks : REQUIREMENT_BLOCKS as any[];
+  }, [USE_DATABASE, dbBlocks]);
 
   // Initialize from localStorage (SSR-safe)
   const [degreeCollapsed, setDegreeCollapsed] = useState<boolean>(() => {
@@ -215,9 +222,8 @@ export default function EduTreeV5Page() {
           creditsEarned,
           creditsRequired: programModule.creditsRequired,
           isCollapsed: !!collapsedModules[programModule.id],
-          requirementBlockId: programModule.blockId,
+          requirement_block_id: programModule.blockId, // Link to requirement block
           year: programModule.year,
-          term: programModule.term,
         } as ModuleData;
       });
     };
