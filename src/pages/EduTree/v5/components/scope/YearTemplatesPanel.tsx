@@ -112,6 +112,8 @@ export function YearTemplatesPanel({
   }, [constraintsKey, year, debouncedFocusTerm, modulesSignature]);
 
   // Freeze mechanism: don't tie to basketKey when frozen (keeps list stable after apply)
+  // NOTE: Do not include basketKey when frozen or we'll recompute and lose the visible list.
+  // Users expect the same suggestions after apply, until they hit Refresh or context changes.
   const generationKey = useMemo(
     () => JSON.stringify({ 
       year, 
@@ -297,7 +299,7 @@ export function YearTemplatesPanel({
   }
 
   return (
-    <>
+    <section aria-label={`Year ${year} template suggestions`} tabIndex={-1}>
       {/* Frozen indicator + Refresh button */}
       {isFrozen && (
         <div 
@@ -575,6 +577,6 @@ export function YearTemplatesPanel({
           </DialogContent>
         </Dialog>
       )}
-    </>
+    </section>
   );
 }

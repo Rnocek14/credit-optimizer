@@ -162,8 +162,22 @@ export default function EduTreeV5Page() {
       optionsCount: module.marketplaceOptions?.length || 0,
       year
     });
+    
+    // P1 Health Check: Assert module data exists before opening
+    console.assert(
+      module.marketplaceOptions !== undefined,
+      '[V5 Page] Panel opened without marketplace options (should be populated first)'
+    );
+    
     // Set flag to prevent hydration from overwriting this data
     panelOpenedProgrammatically.current = true;
+    
+    // Race-proof: Reset flag after microtask to allow URL hydration on future loads
+    queueMicrotask(() => { 
+      panelOpenedProgrammatically.current = false;
+      console.log('[V5 Page] Programmatic flag reset (microtask)');
+    });
+    
     openPanel('module', module.id, { module, year });
   }, [openPanel]);
 
@@ -272,16 +286,19 @@ export default function EduTreeV5Page() {
 
   // Hydrate panel data when opening from URL (handles both module and year scopes)
   useEffect(() => {
+    // URL state canonicalization: normalize node IDs to avoid casing/slug mismatches
+    const canonicalId = panelState.nodeId ? String(panelState.nodeId).trim() : undefined;
+    
     // DEBUG: Always log hydration check state
     if (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('debug') === '1') {
       console.log('[V5 Page/Hydration] Check state:', {
         scope: panelState.scope,
-        nodeId: panelState.nodeId,
+        nodeId: canonicalId,
         hasNodeData: !!panelState.nodeData?.module,
         allModulesCount: allModules.length,
         programmaticFlag: panelOpenedProgrammatically.current,
         willHydrate: panelState.scope === 'module' && 
-          panelState.nodeId && 
+          canonicalId && 
           !panelState.nodeData?.module &&
           allModules.length > 0 &&
           !panelOpenedProgrammatically.current
@@ -292,12 +309,12 @@ export default function EduTreeV5Page() {
     // GUARD: Only hydrate when data is ready and panel wasn't just opened programmatically
     if (
       panelState.scope === 'module' && 
-      panelState.nodeId && 
+      canonicalId && 
       !panelState.nodeData?.module &&
       allModules.length > 0 &&
       !panelOpenedProgrammatically.current
     ) {
-      console.log('[V5 Page] 🔧 Hydrating missing module data from URL:', panelState.nodeId);
+      console.log('[V5 Page] 🔧 Hydrating missing module data from URL:', canonicalId);
       
       // PART 3: Force fresh data - get live basket state before finding module
       const currentBasket = usePlanBasket.getState().items;
@@ -308,11 +325,11 @@ export default function EduTreeV5Page() {
         return { ...m, creditsEarned: liveEarned };
       });
       
-      const targetModule = freshModules.find(m => m.id === panelState.nodeId);
+      const targetModule = freshModules.find(m => m.id === canonicalId);
       
       if (targetModule) {
         const moduleYear = [1, 2, 3, 4].find(y => 
-          getModulesForYear(y).some(m => m.id === panelState.nodeId)
+          getModulesForYear(y).some(m => m.id === canonicalId)
         ) || 1;
         
         console.log('[V5 Page] ✅ Found module with fresh data:', {
@@ -320,14 +337,24 @@ export default function EduTreeV5Page() {
           label: targetModule.label,
           year: moduleYear,
           creditsEarned: targetModule.creditsEarned,
-          optionsCount: targetModule.marketplaceOptions?.length || 0,
+          optionsCount: targetModule.marketplaceOptions?.length ?? 0,
           sampleOption: targetModule.marketplaceOptions?.[0]
+        });
+        
+        // Telemetry: Track successful hydration
+        trackTelemetryEvent({
+          task: 'v5_panel_hydrated_from_url',
+          scope: panelState.scope,
+          complexity: { 
+            nodeId: canonicalId, 
+            optionsCount: targetModule.marketplaceOptions?.length ?? 0 
+          }
         });
         
         openPanel('module', targetModule.id, { module: targetModule, year: moduleYear }, panelState.tab);
       } else {
         console.error('[V5 Page] ⚠️ Could not find module with ID:', {
-          requestedId: panelState.nodeId,
+          requestedId: canonicalId,
           availableIds: allModules.map(m => m.id)
         });
       }
