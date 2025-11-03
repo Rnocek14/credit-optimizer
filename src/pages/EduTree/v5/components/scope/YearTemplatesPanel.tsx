@@ -101,19 +101,14 @@ export function YearTemplatesPanel({
   const { data: templates, isLoading } = useQuery({
     queryKey: ['year-templates', generationKey],
     queryFn: () => {
-      // Short-circuit if all modules are met
-      if (!hasUnmetModules) {
-        console.log('[YearTemplateGenerator] All modules satisfied, skipping generation:', { year });
-        safeTrack({
-          task: 'year_templates_empty',
-          scope: 'year',
-          complexity: {
-            reason: 'all_met',
-            year,
-          },
-        });
-        return [] as (YearTemplate & { semesterDistribution: any; warnings: any })[];
-      }
+      // Wave 1 Rollback: Always generate templates for comparison/optimization
+      // Users may want to see alternatives even when requirements are met
+      console.log('[YearTemplatesPanel] Generating templates:', { 
+        year, 
+        hasUnmetModules,
+        modulesCount: modules.length,
+        allOptionsCount: allOptions.length
+      });
 
       return generateYearTemplates(
         year,
@@ -235,23 +230,24 @@ export function YearTemplatesPanel({
     );
   }
 
-  // Wave 1 Fix: More specific empty state messages
+  // Empty state with helpful context
   if (!sortedTemplates || sortedTemplates.length === 0) {
     const allSatisfied = !hasUnmetModules;
-    const message = allSatisfied
-      ? 'All requirements for this year are already met! 🎉'
-      : 'No templates could be generated with current constraints.';
-    
-    const suggestion = allSatisfied
-      ? 'Check other years or review your plan.'
-      : 'Try: 1) Increasing budget, 2) Relaxing CRI minimum, 3) Adjusting ACE credit cap, or 4) Browse courses manually in Unmet Modules tab.';
     
     return (
       <Alert>
         <AlertDescription className="text-center py-8">
-          <div className="text-4xl mb-2">{allSatisfied ? '✅' : '📝'}</div>
-          <div className="font-medium">{message}</div>
-          <div className="text-sm text-muted-foreground mt-1">{suggestion}</div>
+          <div className="text-4xl mb-2">📝</div>
+          <div className="font-medium">No templates could be generated</div>
+          <div className="text-sm text-muted-foreground mt-2 space-y-1">
+            <div>Possible reasons:</div>
+            <div>• Insufficient marketplace options for modules</div>
+            <div>• Constraints too tight (budget, CRI, ACE cap)</div>
+            <div>• Missing course data in database</div>
+          </div>
+          <div className="text-sm text-muted-foreground mt-3">
+            Try: Increasing budget, relaxing constraints, or check console logs with <code className="px-1 py-0.5 bg-muted rounded">?debug=1</code>
+          </div>
         </AlertDescription>
       </Alert>
     );
