@@ -181,7 +181,7 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
     
     if (isMobile) {
       return [
-        "120px",                            // Small: ~120px
+        "180px",                            // Small: increased from 120px to prevent off-screen transform
         `${Math.round(height * 0.45)}px`,   // Medium: 45% of screen for analysis
         `${height - 80}px`                  // Large: nearly full screen minus header
       ];
@@ -195,7 +195,7 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
         : Math.round(height * 0.5);  // 50% for degree scope
     
     return [
-      "148px",                            // Small: just header + 1 row
+      "220px",                            // Small: increased from 148px to prevent off-screen transform
       `${mediumHeight}px`,                // Medium: 50-65% depending on scope
       `${height - 120}px`                 // Large: nearly full screen
     ];
@@ -401,38 +401,6 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
     };
   }, []);
 
-  // Monitor and correct drawer transform to prevent off-screen positioning
-  useEffect(() => {
-    if (!scope) return;
-    
-    const drawerElement = document.querySelector('[data-vaul-drawer][data-vaul-drawer-direction="bottom"]');
-    if (!drawerElement) return;
-    
-    const observer = new MutationObserver(() => {
-      const transform = window.getComputedStyle(drawerElement).transform;
-      
-      // Parse translate3d values
-      const match = transform.match(/translate3d\(([^,]+),\s*([^,]+),\s*([^)]+)\)/);
-      if (match) {
-        const translateY = parseFloat(match[2]);
-        const drawerHeight = drawerElement.getBoundingClientRect().height;
-        
-        // If translateY would push drawer significantly off-screen, reset it
-        // Allow small positive values for drag animation, but clamp large ones
-        if (translateY > drawerHeight * 0.1) {
-          (drawerElement as HTMLElement).style.transform = 'translate3d(0px, 0px, 0px)';
-          console.warn('[DecisionDock] Corrected off-screen transform:', translateY);
-        }
-      }
-    });
-    
-    observer.observe(drawerElement, {
-      attributes: true,
-      attributeFilter: ['style']
-    });
-    
-    return () => observer.disconnect();
-  }, [scope]);
 
   // Telemetry: track dock open/close and duration
   useEffect(() => {
