@@ -168,3 +168,68 @@ describe('ModuleCard - Options Count Display', () => {
     expect(getByText(/2 options available/i)).toBeInTheDocument();
   });
 });
+
+describe('ModuleCard - Edge Cases', () => {
+  const baseProps = {
+    id: 'test-mod',
+    label: 'Test Module',
+    icon: '📖',
+    description: 'Test description',
+    courses: [],
+    creditsEarned: 0,
+    creditsRequired: 6,
+    isCollapsed: false,
+    onToggle: jest.fn(),
+    optionsCount: 0,
+  };
+
+  const mockOption: MarketplaceOption = {
+    id: '1',
+    courseId: 'C1',
+    title: 'Course 1',
+    credits: 3,
+    subject: 'CS',
+    provider: 'Test',
+    cost_usd: 100,
+    duration_weeks: 8,
+  };
+
+  it('prefers actual array length over stale optionsCount prop', () => {
+    const { getByText, queryByText } = render(
+      <ModuleCard
+        {...baseProps}
+        optionsCount={5} // Stale prop says 5
+        marketplaceOptions={[]} // But array is actually empty
+      />
+    );
+    
+    // Should show empty state, not "5 options"
+    expect(getByText(/No marketplace options available/i)).toBeInTheDocument();
+    expect(queryByText(/5 options available/i)).not.toBeInTheDocument();
+  });
+
+  it('derives from array when prop differs from actual array', () => {
+    const { getByText } = render(
+      <ModuleCard
+        {...baseProps}
+        optionsCount={0} // Stale prop
+        marketplaceOptions={[mockOption]} // Has options
+      />
+    );
+    
+    // With actual array present, should derive count as 1
+    expect(getByText(/1 option available/i)).toBeInTheDocument();
+  });
+
+  it('shows loading state for undefined marketplaceOptions', () => {
+    const { getByText } = render(
+      <ModuleCard
+        {...baseProps}
+        optionsCount={0}
+        marketplaceOptions={undefined} // Still hydrating
+      />
+    );
+    
+    expect(getByText(/Loading options/i)).toBeInTheDocument();
+  });
+});

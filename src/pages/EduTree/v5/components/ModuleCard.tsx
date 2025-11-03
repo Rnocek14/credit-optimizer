@@ -17,6 +17,22 @@ import { FEATURE_FLAGS } from '../config/featureFlags';
 import { useAutoFillModule } from '../hooks/useAutoFillModule';
 import { Sparkles } from 'lucide-react';
 import { safeTrack } from '../utils/safeTelemetry';
+import { shouldSample } from '@/utils/telemetrySampling';
+
+// Helper: Pluralization utility (reusable across components)
+const plural = (n: number, singular: string, pluralForm: string) => (n === 1 ? singular : pluralForm);
+
+// Helper: Determine options display state
+type OptionsState = 'loading' | 'empty' | 'filtered' | 'has';
+const getOptionsState = (
+  marketplaceOptions: ModuleData['marketplaceOptions'],
+  derivedOptionsCount: number
+): OptionsState => {
+  if (marketplaceOptions === undefined) return 'loading';
+  if (marketplaceOptions.length === 0) return 'empty';
+  if (derivedOptionsCount === 0) return 'filtered';
+  return 'has';
+};
 
 interface ModuleCardProps extends ModuleData {
   selectedSummary?: NodeSelectedSummary;
@@ -74,8 +90,8 @@ export function ModuleCard({
       );
     }
     
-    // Telemetry for production (when stale prop shows 0 but array has items)
-    if (propCount === 0 && actualCount > 0) {
+    // Telemetry for production (sampled at 10% to reduce noise)
+    if (propCount === 0 && actualCount > 0 && shouldSample(0.1)) {
       safeTrack({
         task: 'v5_options_count_mismatch',
         scope: 'module',
@@ -90,6 +106,33 @@ export function ModuleCard({
       console.warn(`[ModuleCard] marketplaceOptions is undefined for incomplete module ${id}`);
     }
   }, [id, marketplaceOptions, progress]);
+  
+  // Hydration lag detector: log if marketplaceOptions stays undefined >3s
+  useEffect(() => {
+    if (marketplaceOptions !== undefined) return;
+    
+    const timer = setTimeout(() => {
+      safeTrack({
+        task: 'v5_marketplace_hydration_lag',
+        scope: 'module',
+        complexity: { moduleId: id, waitedMs: 3000 }
+      });
+    }, 3000);
+    
+    return () => clearTimeout(timer);
+  }, [marketplaceOptions, id]);
+  
+  // Break-glass invariant: catch derived/array mismatches in dev
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development' && marketplaceOptions) {
+      if (derivedOptionsCount !== marketplaceOptions.length) {
+        console.warn(
+          '[ModuleCard] INVARIANT: Derived count does not match array length',
+          { id, derivedOptionsCount, arrayLength: marketplaceOptions.length }
+        );
+      }
+    }
+  }, [id, derivedOptionsCount, marketplaceOptions]);
   
   // 4-state machine for module view
   const getModuleViewState = (): 'empty' | 'template-intact' | 'modified' | 'custom' => {
@@ -203,6 +246,8 @@ export function ModuleCard({
   
   return (
     <div
+      data-module-card
+      data-module-id={id}
       className={`
         module-card bg-card rounded-lg relative transition-[border-color,box-shadow] duration-200 motion-reduce:transition-none
         ${getProgressBorderClass(progress)}
@@ -243,7 +288,7 @@ export function ModuleCard({
             className="hover:text-foreground transition-colors flex-1 text-left"
             data-interactive="true"
           >
-            {derivedOptionsCount} {derivedOptionsCount === 1 ? 'option' : 'options'} available
+            {derivedOptionsCount} {plural(derivedOptionsCount, 'option', 'options')} available
           </button>
           
           {/* Quick Pick button - only show if incomplete and has options */}
@@ -342,20 +387,16 @@ export function ModuleCard({
           )}
           
           {/* Smart empty state with context */}
-          {derivedOptionsCount === 0 && progress < 100 && (
-            <div className="text-xs text-muted-foreground text-center mt-3 px-2 space-y-1">
-              {marketplaceOptions === undefined ? (
-                // Loading/hydrating state
-                <p className="italic">Loading options…</p>
-              ) : marketplaceOptions.length === 0 ? (
-                // Truly empty
-                <p>No marketplace options available yet</p>
-              ) : (
-                // Filtered out (shouldn't happen with derivedOptionsCount, but defensive)
-                <p>No eligible options match current filters</p>
-              )}
-            </div>
-          )}
+          {derivedOptionsCount === 0 && progress < 100 && (() => {
+            const state = getOptionsState(marketplaceOptions, derivedOptionsCount);
+            return (
+              <div className="text-xs text-muted-foreground text-center mt-3 px-2 space-y-1">
+                {state === 'loading' && <p className="italic">Loading options…</p>}
+                {state === 'empty' && <p>No marketplace options available yet</p>}
+                {state === 'filtered' && <p>No eligible options match current filters</p>}
+              </div>
+            );
+          })()}
         </div>
       )}
       
