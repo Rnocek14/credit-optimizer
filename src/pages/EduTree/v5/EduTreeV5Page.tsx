@@ -272,6 +272,22 @@ export default function EduTreeV5Page() {
 
   // Hydrate panel data when opening from URL (handles both module and year scopes)
   useEffect(() => {
+    // DEBUG: Always log hydration check state
+    if (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('debug') === '1') {
+      console.log('[V5 Page/Hydration] Check state:', {
+        scope: panelState.scope,
+        nodeId: panelState.nodeId,
+        hasNodeData: !!panelState.nodeData?.module,
+        allModulesCount: allModules.length,
+        programmaticFlag: panelOpenedProgrammatically.current,
+        willHydrate: panelState.scope === 'module' && 
+          panelState.nodeId && 
+          !panelState.nodeData?.module &&
+          allModules.length > 0 &&
+          !panelOpenedProgrammatically.current
+      });
+    }
+    
     // Hydrate module data - check for missing module-specific data
     // GUARD: Only hydrate when data is ready and panel wasn't just opened programmatically
     if (
@@ -304,12 +320,16 @@ export default function EduTreeV5Page() {
           label: targetModule.label,
           year: moduleYear,
           creditsEarned: targetModule.creditsEarned,
-          optionsCount: targetModule.marketplaceOptions?.length || 0
+          optionsCount: targetModule.marketplaceOptions?.length || 0,
+          sampleOption: targetModule.marketplaceOptions?.[0]
         });
         
         openPanel('module', targetModule.id, { module: targetModule, year: moduleYear }, panelState.tab);
       } else {
-        console.warn('[V5 Page] ⚠️ Could not find module with ID:', panelState.nodeId);
+        console.error('[V5 Page] ⚠️ Could not find module with ID:', {
+          requestedId: panelState.nodeId,
+          availableIds: allModules.map(m => m.id)
+        });
       }
     }
     
@@ -328,14 +348,19 @@ export default function EduTreeV5Page() {
       
       openPanel('year', String(year), { year, modules: yearModules }, panelState.tab);
     }
-  }, [panelState.scope, panelState.nodeId, panelState.nodeData, allModules, getModulesForYear, openPanel]);
+  }, [panelState.scope, panelState.nodeId, panelState.nodeData, allModules, getModulesForYear, openPanel, panelState.tab]);
   
-  // Reset programmatic flag when panel closes
+  // Reset programmatic flag when panel closes OR when URL state is loaded
   useEffect(() => {
     if (!panelState.scope) {
+      // Panel closed - reset flag
       panelOpenedProgrammatically.current = false;
+    } else if (panelState.scope && !panelState.nodeData) {
+      // URL state loaded without data - reset flag to allow hydration
+      panelOpenedProgrammatically.current = false;
+      console.log('[V5 Page] Reset programmatic flag for URL hydration');
     }
-  }, [panelState.scope]);
+  }, [panelState.scope, panelState.nodeData]);
 
   // Calculate total credits for a year (planned = required, earned = selected)
   const getYearCredits = useCallback((year: number): { planned: number; earned: number } => {

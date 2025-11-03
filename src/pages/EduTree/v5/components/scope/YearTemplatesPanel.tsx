@@ -300,7 +300,11 @@ export function YearTemplatesPanel({
     <>
       {/* Frozen indicator + Refresh button */}
       {isFrozen && (
-        <div className="mb-4 flex items-center justify-between px-3 py-2 bg-amber-500/10 border border-amber-500/20 rounded-lg">
+        <div 
+          role="status" 
+          aria-live="polite" 
+          className="mb-4 flex items-center justify-between px-3 py-2 bg-amber-500/10 border border-amber-500/20 rounded-lg"
+        >
           <div className="flex items-center gap-2">
             <Badge variant="secondary" className="bg-amber-500/10 text-amber-700 dark:text-amber-400">
               Frozen
@@ -308,6 +312,7 @@ export function YearTemplatesPanel({
             <span className="text-sm text-muted-foreground">
               Suggestions frozen after apply. Refresh to recompute against your updated plan.
             </span>
+            <span className="sr-only">Template suggestions are frozen.</span>
           </div>
           <Button
             onClick={() => {
@@ -319,9 +324,9 @@ export function YearTemplatesPanel({
             }}
             variant="outline"
             size="sm"
-            className="ml-2"
+            className="shrink-0"
             autoFocus
-            aria-label="Refresh year suggestions"
+            aria-label="Refresh year template suggestions"
           >
             <RefreshCw className="h-4 w-4 mr-2" />
             Refresh
