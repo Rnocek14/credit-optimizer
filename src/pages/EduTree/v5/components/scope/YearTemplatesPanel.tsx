@@ -85,9 +85,9 @@ export function YearTemplatesPanel({
     [constraints]
   );
 
-  // Guard early: if all modules satisfied, short-circuit generation
-  const hasUnmetModules = useMemo(
-    () => modules.some(m => m.creditsEarned < m.creditsRequired),
+  // Compute completion status without blocking generation
+  const allModulesSatisfied = useMemo(
+    () => modules.every(m => (m.creditsRequired - (m.creditsEarned || 0)) <= 0),
     [modules]
   );
 
@@ -99,20 +99,7 @@ export function YearTemplatesPanel({
   const { data: templates, isLoading } = useQuery({
     queryKey: ['year-templates', generationKey],
     queryFn: () => {
-      // Short-circuit if all modules are met
-      if (!hasUnmetModules) {
-        console.log('[YearTemplateGenerator] All modules satisfied, skipping generation:', { year });
-        safeTrack({
-          task: 'year_templates_empty',
-          scope: 'year',
-          complexity: {
-            reason: 'all_met',
-            year,
-          },
-        });
-        return [] as (YearTemplate & { semesterDistribution: any; warnings: any })[];
-      }
-
+      // Let generator decide - don't block here
       return generateYearTemplates(
         year,
         modules,
@@ -233,17 +220,24 @@ export function YearTemplatesPanel({
     );
   }
 
-  // Empty state
+  // Empty state with helpful messaging
   if (!sortedTemplates || sortedTemplates.length === 0) {
+    const message = allModulesSatisfied
+      ? 'All requirements for this year are already met! 🎉'
+      : 'No templates could be generated with current constraints.';
+    const suggestion = allModulesSatisfied
+      ? 'Check other years or review your plan.'
+      : 'Try: increase budget, relax CRI minimum, adjust ACE cap, or use Unmet Modules.';
+    
     return (
       <Alert>
         <AlertDescription className="text-center py-8">
-          <div className="text-4xl mb-2">📝</div>
-          <div className="font-medium">No year templates available</div>
+          <div className="text-4xl mb-2">{allModulesSatisfied ? '✅' : '📝'}</div>
+          <div className="font-medium">{message}</div>
           <div className="text-sm text-muted-foreground mt-1">
             {localFocusTerm 
-              ? `No templates match your current constraints for ${localFocusTerm === 'fall' ? 'Fall' : 'Spring'}. Try relaxing budget/residency constraints or switch to Unmet Modules.`
-              : 'All requirements may already be met, or courses need to be added to the catalog.'}
+              ? `Target: ${localFocusTerm === 'fall' ? 'Fall' : 'Spring'} • ${suggestion}`
+              : suggestion}
           </div>
         </AlertDescription>
       </Alert>

@@ -10,6 +10,7 @@ import type { BasketItem, Constraints } from '../state/usePlanBasket';
 import type { RequirementBlock } from '@/lib/types/eduTree';
 import type { PartnerPolicy } from './yearPlanner';
 import { formatCost, formatDuration, formatCRI, formatCredits } from '../utils/formatters';
+import { dbg } from '../utils/dbg';
 
 interface YearTemplateProfile {
   name: string;
@@ -68,6 +69,17 @@ export function generateYearTemplates(
     anchorPolicy: anchorPolicy?.partner_name,
   });
 
+  // Debug logging (gated by ?debug=1)
+  dbg('YearTpl/gen.start', {
+    year,
+    modules: modules.map(m => ({
+      id: m.id,
+      need: m.creditsRequired - (m.creditsEarned || 0),
+      options: m.marketplaceOptions?.length || 0
+    })),
+    basketSize: basket.length
+  });
+
   const templates: YearTemplate[] = [];
 
   for (const profile of YEAR_TEMPLATE_PROFILES) {
@@ -99,6 +111,16 @@ export function generateYearTemplates(
           profile: profile.name,
           preset: preset.id,
         });
+
+        // Debug: log reason for empty plan
+        const needList = modules.filter(m => (m.creditsRequired - (m.creditsEarned || 0)) > 0).map(m => m.id);
+        dbg('YearTpl/gen.empty', { 
+          profile: profile.name, 
+          preset: preset.id, 
+          reason: needList.length ? 'no_eligible_options' : 'all_satisfied', 
+          unmetModules: needList 
+        });
+        
         continue;
       }
 

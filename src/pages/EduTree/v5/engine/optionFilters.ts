@@ -43,11 +43,22 @@ export function filterEligibleOptions(
       return false;
     }
 
-    // Transfer cap check
+    // Transfer cap check (incremental enforcement)
     const isAltCredit = opt.providerType === 'mooc' || opt.providerType === 'testing_center';
     if (isAltCredit && constraints.max_ace_credits) {
-      const newAceCredits = runningTotals.aceCredits + opt.credits;
-      if (newAceCredits > constraints.max_ace_credits) return false;
+      const remaining = constraints.max_ace_credits - runningTotals.aceCredits;
+      if (opt.credits > remaining) {
+        // Debug log when ACE cap blocks an option
+        if (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('debug') === '1') {
+          console.debug('[EduV5:OptFilters/cut]', { 
+            why: 'ace_cap', 
+            courseId: opt.courseId, 
+            need: opt.credits, 
+            remaining 
+          });
+        }
+        return false;
+      }
     }
 
     // Prerequisite check
