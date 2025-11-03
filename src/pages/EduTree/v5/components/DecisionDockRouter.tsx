@@ -512,6 +512,8 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
         });
       }}
       dismissible={false}
+      noBodyStyles={true}
+      setBackgroundColorOnScale={false}
     >
       <DrawerPrimitive.Portal>
         {/* Single click-through overlay - overrides vaul's default */}
