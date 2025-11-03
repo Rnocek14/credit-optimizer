@@ -181,7 +181,7 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
     
     if (isMobile) {
       return [
-        "180px",                            // Small: increased from 120px to prevent off-screen transform
+        `${Math.round(height * 0.15)}px`,   // Small: 15% of viewport (always visible)
         `${Math.round(height * 0.45)}px`,   // Medium: 45% of screen for analysis
         `${height - 80}px`                  // Large: nearly full screen minus header
       ];
@@ -194,8 +194,11 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
         ? Math.round(height * 0.6)   // 60% for module scope (taller)
         : Math.round(height * 0.5);  // 50% for degree scope
     
+    // Desktop: Use percentage-based snap points to avoid Vaul transform overflow
+    const minHeight = Math.round(height * 0.18); // 18% minimum (always visible)
+    
     return [
-      "220px",                            // Small: increased from 148px to prevent off-screen transform
+      `${minHeight}px`,                   // Small: percentage-based to prevent overflow
       `${mediumHeight}px`,                // Medium: 50-65% depending on scope
       `${height - 120}px`                 // Large: nearly full screen
     ];
@@ -400,51 +403,6 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
       document.body.style.cursor = "";
     };
   }, []);
-
-  // Smart transform monitor: only clamp when drawer would disappear off-screen
-  useEffect(() => {
-    if (!scope) return;
-    
-    const drawerElement = document.querySelector('[data-vaul-drawer][data-vaul-drawer-direction="bottom"]') as HTMLElement;
-    if (!drawerElement) return;
-    
-    let rafId: number;
-    
-    const checkAndClampTransform = () => {
-      const style = window.getComputedStyle(drawerElement);
-      const transform = style.transform;
-      
-      if (transform && transform !== 'none') {
-        const match = transform.match(/translate3d\(([^,]+),\s*([^,]+),\s*([^)]+)\)/);
-        if (match) {
-          const translateY = parseFloat(match[2]);
-          const drawerHeight = drawerElement.getBoundingClientRect().height;
-          const viewportHeight = window.innerHeight;
-          
-          // Only clamp if drawer would be pushed more than 30% off-screen
-          // This preserves drag animations but prevents disappearing
-          const maxSafeTranslateY = drawerHeight * 0.3;
-          
-          if (translateY > maxSafeTranslateY) {
-            // Drawer is going off-screen, force it back to visible position
-            drawerElement.style.transform = 'translate3d(0px, 0px, 0px)';
-            console.warn('[DecisionDock] Clamped off-screen transform:', {
-              translateY,
-              maxSafe: maxSafeTranslateY,
-              drawerHeight,
-              viewportHeight
-            });
-          }
-        }
-      }
-      
-      rafId = requestAnimationFrame(checkAndClampTransform);
-    };
-    
-    rafId = requestAnimationFrame(checkAndClampTransform);
-    
-    return () => cancelAnimationFrame(rafId);
-  }, [scope]);
 
 
   // Telemetry: track dock open/close and duration
