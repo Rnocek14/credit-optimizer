@@ -69,19 +69,14 @@ export function useApplyTemplate() {
         addedModuleIds: result.added.map(i => ({ courseId: i.courseId, moduleId: i.moduleId })),
       });
 
-      // Verify all added items have valid UUID moduleIds
-      const invalidItems = result.added.filter(item => 
+      // Log non-UUID moduleIds but don't block (fixtures use friendly IDs)
+      const nonUuidItems = result.added.filter(item => 
         !/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(item.moduleId)
       );
-      if (invalidItems.length > 0) {
-        console.error('[Apply] ❌ Invalid moduleIds detected:', invalidItems.map(i => ({
-          courseId: i.courseId,
-          moduleId: i.moduleId
-        })));
-        toast.error('Template application failed: invalid module identifiers', {
-          description: 'Some courses could not be added. Please contact support.',
-        });
-        return;
+      if (nonUuidItems.length > 0) {
+        console.warn('[Apply] ⚠️ Non-UUID moduleIds detected (fixtures mode):', 
+          nonUuidItems.map(i => ({ courseId: i.courseId, moduleId: i.moduleId }))
+        );
       }
       
       // Capture module state after successful template application

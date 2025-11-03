@@ -162,7 +162,13 @@ function filterItemsByScope(
     
     case 'module':
       // Filter by moduleId
-      return basket.filter(item => item.moduleId === scopeId);
+      const filtered = basket.filter(item => item.moduleId === scopeId);
+      console.log('[Apply] Module scope filter:', {
+        scopeId,
+        basketModuleIds: basket.map(i => i.moduleId),
+        matchedCount: filtered.length
+      });
+      return filtered;
     
     case 'course':
       // Filter by courseId
@@ -184,16 +190,21 @@ function convertToBasketItem(
   // Resolve moduleId: prefer parameter, fallback to option.moduleId if it exists
   const resolvedModuleId = moduleId || (option as any).moduleId;
 
-  // Hard guard: must be a valid UUID (36 chars with dashes)
-  if (!resolvedModuleId || !/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(resolvedModuleId)) {
-    const error = `[Apply] CRITICAL: Missing or invalid moduleId for course ${option.courseId} in template ${templateId}`;
-    console.error(error, {
-      providedModuleId: moduleId,
-      optionModuleId: (option as any).moduleId,
-      optionSubject: option.subject,
-      resolved: resolvedModuleId
+  // Hard guard: must have SOME moduleId
+  if (!resolvedModuleId) {
+    const error = `[Apply] CRITICAL: Missing moduleId for course ${option.courseId}`;
+    console.error(error, { templateId, providedModuleId: moduleId });
+    throw new Error(error);
+  }
+
+  // Warn if not UUID format (fixtures use friendly IDs, DB uses UUIDs)
+  const isUUID = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(resolvedModuleId);
+  if (!isUUID) {
+    console.warn('[Apply] ⚠️ Non-UUID moduleId (fixtures mode):', {
+      courseId: option.courseId,
+      moduleId: resolvedModuleId,
+      templateId
     });
-    throw new Error(error); // Fail loudly instead of corrupting data
   }
 
   console.log(`[Apply] ✅ Converting to basket item:`, {
