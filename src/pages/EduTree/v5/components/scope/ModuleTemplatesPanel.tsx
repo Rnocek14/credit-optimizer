@@ -50,7 +50,10 @@ export function ModuleTemplatesPanel({ module, allModules, onAddTemplate }: Modu
         basketSize: basket.length,
         allModulesCount: allModules.length,
         constraintsKeys: Object.keys(constraints),
-        sampleOption: module.marketplaceOptions?.[0]
+        sampleOption: module.marketplaceOptions?.[0],
+        creditsEarned: module.creditsEarned,
+        creditsRequired: module.creditsRequired,
+        creditsNeeded: (module.creditsRequired ?? 0) - (module.creditsEarned ?? 0)
       });
       
       // Generate templates dynamically from module data

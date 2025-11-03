@@ -61,10 +61,16 @@ export function YearSpineNode({ data, selected }: YearSpineNodeProps) {
         <Button
           variant="ghost"
           size="sm"
-          className="w-full flex items-center justify-center gap-2 font-bold text-base"
+          className="w-full flex items-center justify-center gap-2 font-bold text-base hover:bg-primary/10"
+          title="Click to browse year templates and modules"
         >
           {data.isCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
           <span>Year {data.year}</span>
+          {!data.isCollapsed && selectedSummary && !selectedSummary.isComplete && (
+            <Badge variant="outline" className="text-xs ml-2">
+              Templates Available
+            </Badge>
+          )}
         </Button>
         
         {/* Progress chip */}

@@ -1155,24 +1155,55 @@ function MarketplaceContent(props: DecisionDockRouterProps) {
   
   // Module data for templates - with fallback to moduleFromDb
   const moduleData = useMemo(() => {
-    // Try allModules first, then fall back to moduleFromDb
+    // Try allModules first (has complete data including marketplaceOptions)
     if (allModules && allModules.length > 0) {
-      return allModules.find(m => m.id === moduleId) as ModuleData | undefined;
+      const found = allModules.find(m => m.id === moduleId) as ModuleData | undefined;
+      if (found) {
+        console.log('[DecisionDockRouter] Using allModules data:', {
+          moduleId,
+          hasMarketplaceOptions: !!found.marketplaceOptions,
+          optionsCount: found.marketplaceOptions?.length ?? 0
+        });
+        return found;
+      }
     }
-    // Fallback: construct from moduleFromDb
+    
+    // Fallback: construct from moduleFromDb - PRESERVE marketplaceOptions
     if (moduleFromDb) {
-      return {
+      const fallbackData = {
         id: moduleFromDb.id,
         label: moduleFromDb.label,
         creditsEarned: liveCreditsEarned,
         creditsRequired: moduleFromDb.creditsRequired,
-        marketplaceOptions: moduleFromDb.marketplaceOptions || [],
+        marketplaceOptions: moduleFromDb.marketplaceOptions || [], // ✅ Preserve options
         courses: [],
-        requirement_block_id: moduleFromDb.requirement_block_id
+        requirement_block_id: moduleFromDb.requirement_block_id,
+        description: moduleFromDb.description,
+        icon: moduleFromDb.icon
       } as ModuleData;
+      
+      console.log('[DecisionDockRouter] Using moduleFromDb fallback:', {
+        moduleId,
+        hasMarketplaceOptions: !!fallbackData.marketplaceOptions,
+        optionsCount: fallbackData.marketplaceOptions?.length ?? 0
+      });
+      
+      return fallbackData;
     }
+    
+    // Last resort: Check if props.nodeData has original module
+    if (props.nodeData?.module) {
+      console.log('[DecisionDockRouter] Using props.nodeData.module:', {
+        moduleId: props.nodeData.module.id,
+        hasMarketplaceOptions: !!props.nodeData.module.marketplaceOptions,
+        optionsCount: props.nodeData.module.marketplaceOptions?.length ?? 0
+      });
+      return props.nodeData.module;
+    }
+    
+    console.warn('[DecisionDockRouter] No module data available for:', moduleId);
     return undefined;
-  }, [allModules, moduleId, moduleFromDb, liveCreditsEarned]);
+  }, [allModules, moduleId, moduleFromDb, liveCreditsEarned, props.nodeData]);
   
   // Debug logging - after all variables are defined
   console.log('[MarketplaceContent] Render state:', {

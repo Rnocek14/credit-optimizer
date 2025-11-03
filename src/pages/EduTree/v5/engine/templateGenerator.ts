@@ -33,8 +33,8 @@ export const GENERATION_PROFILES: TemplateGenerationProfile[] = [
 ];
 
 /**
- * Generate module templates using auto-fill engine
- * Phase 1: Manual seeds preferred, use this for future expansion
+ * Generate module templates by directly ranking marketplace options
+ * Uses profile weights to score and select best options for each strategy
  */
 export async function generateModuleTemplates(
   module: ModuleData,
@@ -43,75 +43,100 @@ export async function generateModuleTemplates(
 ): Promise<ModuleTemplate[]> {
   const templates: ModuleTemplate[] = [];
   
+  // Guard: No options = no templates
+  if (!module.marketplaceOptions || module.marketplaceOptions.length === 0) {
+    console.warn('[TemplateGenerator] No marketplace options for module:', module.id);
+    return [];
+  }
+  
+  // Calculate remaining credits needed
+  const creditsNeeded = (module.creditsRequired ?? 0) - (module.creditsEarned ?? 0);
+  if (creditsNeeded <= 0) {
+    console.log('[TemplateGenerator] Module already satisfied:', module.id);
+    return [];
+  }
+  
+  console.log('[TemplateGenerator] 🎯 Generating templates:', {
+    moduleId: module.id,
+    moduleLabel: module.label,
+    creditsNeeded,
+    optionsCount: module.marketplaceOptions.length
+  });
+  
   for (const profile of GENERATION_PROFILES) {
-    console.log('[TemplateGenerator] 🎯 Attempting profile:', {
-      profile: profile.name,
-      moduleId: module.id,
-      moduleLabel: module.label,
-      moduleOptionsCount: module.marketplaceOptions?.length ?? 0,
-      basketSize: basket.length
-    });
+    // Score options by profile weights (normalize to 0-100)
+    const scored = module.marketplaceOptions.map(opt => {
+      const costScore = profile.weights.cost > 0 
+        ? profile.weights.cost * (1 / ((opt.cost_usd ?? 1) + 1)) * 100
+        : 0;
+      const timeScore = profile.weights.time > 0
+        ? profile.weights.time * (1 / ((opt.duration_weeks ?? 8) + 1)) * 100
+        : 0;
+      const criScore = profile.weights.cri > 0
+        ? profile.weights.cri * (opt.cri_score ?? 0)
+        : 0;
+      
+      return {
+        ...opt,
+        totalScore: costScore + timeScore + criScore
+      };
+    }).sort((a, b) => b.totalScore - a.totalScore);
     
-    // Run auto-fill with specific weight profile
-    const result = autoCompletePlan(
-      [module], // Only this module
-      basket,
-      constraints,
-      profile.weights
-    );
+    // Pick best option(s) to satisfy credits
+    const selected: any[] = [];
+    let totalCredits = 0;
     
-    console.log('[TemplateGenerator] 📊 Auto-fill result:', {
-      profile: profile.name,
-      suggestionsCount: result.suggestions.length,
-      status: result.status,
-      stoppedReason: result.stoppedReason,
-      suggestions: result.suggestions.map(s => ({
-        courseId: s.courseId,
-        reason: s.autoFillReason
-      }))
-    });
+    for (const opt of scored) {
+      if (totalCredits >= creditsNeeded) break;
+      selected.push(opt);
+      totalCredits += opt.credits;
+    }
     
-    if (result.suggestions.length === 0) continue;
-    
-    // Extract options from suggestions
-    const options = result.suggestions
-      .map(s => {
-        const opt = module.marketplaceOptions?.find(o => o.courseId === s.courseId);
-        if (!opt) return null;
-        return {
-          ...opt,
-          autoFillReason: s.autoFillReason
-        };
-      })
-      .filter(Boolean) as any[];
-    
-    if (options.length === 0) continue;
+    if (selected.length === 0) {
+      console.warn('[TemplateGenerator] No options selected for profile:', profile.name);
+      continue;
+    }
     
     // Calculate estimated totals
     const est = {
-      costUsd: options.reduce((sum, o) => sum + (o.cost_usd ?? 0), 0),
-      weeks: options.reduce((sum, o) => sum + (o.duration_weeks ?? 8), 0),
-      credits: options.reduce((sum, o) => sum + o.credits, 0),
-      cri: Math.round(options.reduce((sum, o) => sum + (o.cri_score ?? 0), 0) / options.length),
-      workloadHours: options.reduce((sum, o) => sum + (o.workload_weekly_hours ?? o.credits * 2.5), 0)
+      costUsd: selected.reduce((sum, o) => sum + (o.cost_usd ?? 0), 0),
+      weeks: Math.max(...selected.map(o => o.duration_weeks ?? 8)),
+      credits: selected.reduce((sum, o) => sum + o.credits, 0),
+      cri: Math.round(selected.reduce((sum, o) => sum + (o.cri_score ?? 0), 0) / selected.length),
+      workloadHours: selected.reduce((sum, o) => sum + (o.workload_weekly_hours ?? o.credits * 2.5), 0)
     };
     
     templates.push({
       id: `${module.id}-${profile.badge.toLowerCase()}`,
       kind: 'module',
       moduleId: module.id,
-      label: `${module.label}: ${profile.name}`,
+      label: `${profile.name}`,
       summary: `$${est.costUsd} • ${est.weeks}w • ${est.credits}cr • CRI ${est.cri}`,
       badge: profile.badge,
-      options,
-      recommendedCourseId: options[0]?.courseId,
+      options: selected,
+      recommendedCourseId: selected[0]?.courseId,
       targetCanonicalIds: module.requiredCanonicalIds ?? [],
       semesterPlacement: 'any',
       est,
       generatedFrom: 'auto-fill',
       weightProfile: profile.weights
     });
+    
+    console.log('[TemplateGenerator] ✅ Generated template:', {
+      profile: profile.name,
+      badge: profile.badge,
+      coursesSelected: selected.length,
+      totalCost: est.costUsd,
+      totalWeeks: est.weeks,
+      totalCredits: est.credits,
+      avgCri: est.cri
+    });
   }
+  
+  console.log('[TemplateGenerator] 📊 Final result:', {
+    moduleId: module.id,
+    templatesGenerated: templates.length
+  });
   
   return templates;
 }
