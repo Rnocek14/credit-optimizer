@@ -192,21 +192,8 @@ export default function EduTreeV5Page() {
       const yearModules = getModulesByYear(year);
       
       return yearModules.map((programModule) => {
-        // Get all course options for this module's block
-        const allOptions = getOptionsForBlock(programModule.blockId);
-        
-        // Filter to suggested courses for this specific module
-        const marketplaceOptions = allOptions
-          .filter(opt => programModule.courseIds.includes(opt.courseId))
-          .map(opt => ({
-            ...opt,
-            credits: opt.credits,
-            cost_usd: opt.cost_usd ?? 0,
-            duration_weeks: opt.duration_weeks ?? 8,
-            cri_score: opt.cri_score ?? 70,
-            workload_weekly_hours: opt.workload_weekly_hours ?? opt.credits * 2.5,
-            level: opt.level ?? 100,
-          }));
+        // Get ALL course options for this module's block (not just suggested ones)
+        const marketplaceOptions = getOptionsForBlock(programModule.blockId);
         
         // Get selected courses from basket for this module
         const basketItems = basket.filter(b => b.moduleId === programModule.id);
@@ -218,7 +205,7 @@ export default function EduTreeV5Page() {
           icon: programModule.icon ?? '📖',
           description: programModule.description,
           courses: [], // Courses come from basket
-          marketplaceOptions, // Available options to choose from
+          marketplaceOptions, // ALL available options for this block
           creditsEarned,
           creditsRequired: programModule.creditsRequired,
           isCollapsed: !!collapsedModules[programModule.id],

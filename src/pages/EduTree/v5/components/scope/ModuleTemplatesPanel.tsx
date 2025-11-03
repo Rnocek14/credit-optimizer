@@ -4,7 +4,7 @@ import { TemplateCard } from '../TemplateCard';
 import { Skeleton } from '@/components/ui/skeleton';
 import { usePlanBasket } from '../../state/usePlanBasket';
 import { rankTemplates } from '../../engine/templateValidator';
-import { getTemplatesForModule } from '../../data/templates';
+import { generateModuleTemplates } from '../../engine/templateGenerator';
 import type { ModuleData } from '../../types/v5';
 import type { ModuleTemplate } from '../../types/templates';
 import { trackTelemetryEvent } from '@/utils/telemetry';
@@ -42,11 +42,13 @@ export function ModuleTemplatesPanel({ module, allModules, onAddTemplate }: Modu
   const { data: rankedTemplates, isLoading } = useQuery({
     queryKey: ['module-templates-ranked', module.id, basketKey, constraints, evidence.raw?.completed?.length ?? 0],
     queryFn: async () => {
-      const templates = getTemplatesForModule(module.id);
+      // Generate templates dynamically from module data
+      const templates = await generateModuleTemplates(module, basket, constraints);
+      console.log('[ModuleTemplatesPanel] Generated templates:', templates.length);
       return await rankTemplates(templates, basket, constraints, allOptions, evidence.raw);
     },
     staleTime: 5000,
-    enabled: !!module.id
+    enabled: !!module.id && !!module.marketplaceOptions && module.marketplaceOptions.length > 0
   });
 
   const handlePreviewTemplate = (template: ModuleTemplate) => {
