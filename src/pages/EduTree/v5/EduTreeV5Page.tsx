@@ -49,9 +49,16 @@ export default function EduTreeV5Page() {
     return true;                                           // default → DB mode
   }, []);
 
-  // Log data mode for debugging
+  // Log data mode for debugging & auto-fix if in fixtures mode
   useEffect(() => {
     console.log('[EduTreeV5] Data mode:', USE_DATABASE ? 'DATABASE' : 'FIXTURES');
+    
+    // Auto-switch to DB mode if accidentally in fixtures mode
+    if (!USE_DATABASE && !window.location.search.includes('db=0')) {
+      console.warn('[EduTreeV5] Detected fixtures mode without explicit ?db=0 - switching to DB mode');
+      localStorage.setItem('v5.useDatabase', '1');
+      window.location.reload();
+    }
   }, [USE_DATABASE]);
 
   // Database mode
