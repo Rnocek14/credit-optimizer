@@ -37,13 +37,22 @@ import './styles/v5.css';
 const ENABLE_DEGREE_NODE = true;
 
 export default function EduTreeV5Page() {
-  // Feature flag: Database vs Fixtures (default to fixtures now)
+  // Feature flag: Database vs Fixtures with localStorage persistence + URL override
   const USE_DATABASE = useMemo(() => {
-    if (typeof window === 'undefined') return false;
+    if (typeof window === 'undefined') return true;        // SSR-safe default → DB
     const params = new URLSearchParams(window.location.search);
-    // Only use database if explicitly set to '1' in URL (ignore localStorage)
-    return params.get('db') === '1';
+    const urlOverride = params.get('db');                  // ?db=1 or ?db=0 wins
+    if (urlOverride !== null) return urlOverride === '1';
+    const ls = localStorage.getItem('v5.useDatabase');     // next priority
+    if (ls === '0') return false;
+    if (ls === '1') return true;
+    return true;                                           // default → DB mode
   }, []);
+
+  // Log data mode for debugging
+  useEffect(() => {
+    console.log('[EduTreeV5] Data mode:', USE_DATABASE ? 'DATABASE' : 'FIXTURES');
+  }, [USE_DATABASE]);
 
   // Database mode
   const { data: dbData, isLoading, error } = useV5DatabaseData({
@@ -678,6 +687,23 @@ export default function EduTreeV5Page() {
               </>
             )}
             <AnchorSchoolSelector />
+            
+            {/* Dev toggle for database mode */}
+            <button
+              onClick={() => {
+                const next = !USE_DATABASE;
+                localStorage.setItem('v5.useDatabase', next ? '1' : '0');
+                const params = new URLSearchParams(window.location.search);
+                params.delete('db'); // keep URL clean; URL can still override when needed
+                window.location.search = params.toString();
+              }}
+              className="text-xs px-2 py-1 rounded border border-border bg-background opacity-70 hover:opacity-100 transition-opacity"
+              aria-label="Toggle database/fixtures mode"
+              title="Toggle between database and fixtures mode"
+            >
+              {USE_DATABASE ? '🗄️ DB' : '📦 Fixtures'}
+            </button>
+            
             {USE_DATABASE && <SeedStatus />}
           </div>
         </div>
