@@ -316,6 +316,13 @@ export default function EduTreeV5Page() {
     ) {
       console.log('[V5 Page] 🔧 Hydrating missing module data from URL:', canonicalId);
       
+      // Telemetry: Track hydration attempt
+      trackTelemetryEvent({
+        task: 'v5_panel_hydration_attempted',
+        scope: 'module',
+        complexity: { nodeId: canonicalId, hadData: false }
+      }).catch(() => {});
+      
       // PART 3: Force fresh data - get live basket state before finding module
       const currentBasket = usePlanBasket.getState().items;
       const freshModules = allModules.map(m => {
@@ -347,9 +354,10 @@ export default function EduTreeV5Page() {
           scope: panelState.scope,
           complexity: { 
             nodeId: canonicalId, 
-            optionsCount: targetModule.marketplaceOptions?.length ?? 0 
+            optionsCount: targetModule.marketplaceOptions?.length ?? 0,
+            success: true 
           }
-        });
+        }).catch(() => {});
         
         openPanel('module', targetModule.id, { module: targetModule, year: moduleYear }, panelState.tab);
       } else {
@@ -358,6 +366,21 @@ export default function EduTreeV5Page() {
           availableIds: allModules.map(m => m.id)
         });
       }
+    } else if (
+      panelState.scope === 'module' && 
+      canonicalId && 
+      panelState.nodeData?.module?.marketplaceOptions
+    ) {
+      // Data already present, hydration not needed
+      trackTelemetryEvent({
+        task: 'v5_panel_hydration_skip',
+        scope: 'module',
+        complexity: { 
+          nodeId: canonicalId, 
+          hadData: true, 
+          optionsCount: panelState.nodeData.module.marketplaceOptions.length 
+        }
+      }).catch(() => {});
     }
     
     // Hydrate year data - check for missing year-specific data

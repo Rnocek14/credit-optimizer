@@ -299,7 +299,11 @@ export function YearTemplatesPanel({
   }
 
   return (
-    <section aria-label={`Year ${year} template suggestions`} tabIndex={-1}>
+    <section 
+      aria-label={`Year ${year} template suggestions`} 
+      aria-busy={showLoading}
+      tabIndex={-1}
+    >
       {/* Frozen indicator + Refresh button */}
       {isFrozen && (
         <div 
@@ -444,6 +448,7 @@ export function YearTemplatesPanel({
                       handleApplyTemplate(template);
                     }}
                     className="flex-1"
+                    aria-label={`Apply template ${template.label}`}
                   >
                     <Plus className="h-4 w-4 mr-2" />
                     {isFrozen ? 'Apply (frozen)' : 'Apply & keep list'}

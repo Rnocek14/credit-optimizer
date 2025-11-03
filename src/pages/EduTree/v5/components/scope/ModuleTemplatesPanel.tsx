@@ -56,6 +56,14 @@ export function ModuleTemplatesPanel({ module, allModules, onAddTemplate }: Modu
         creditsNeeded: (module.creditsRequired ?? 0) - (module.creditsEarned ?? 0)
       });
       
+      // Defensive: warn if marketplaceOptions is undefined (not just empty)
+      if (module.marketplaceOptions === undefined) {
+        console.warn('[ModuleTemplatesPanel] ⚠️ marketplaceOptions is undefined (should be array or null)', {
+          moduleId: module.id,
+          moduleLabel: module.label
+        });
+      }
+      
       // Generate templates dynamically from module data
       const templates = await generateModuleTemplates(module, basket, constraints);
       console.log('[ModuleTemplatesPanel] ✅ Generation result:', {
@@ -248,15 +256,16 @@ export function ModuleTemplatesPanel({ module, allModules, onAddTemplate }: Modu
         </div>
       )}
       
-      <div className="template-gallery">
+      <div className="template-gallery" role="list" aria-label="Available module templates">
         {filteredTemplates.length > 0 ? (
           filteredTemplates.map(rt => (
-            <TemplateCard 
-              key={rt.template.id} 
-              template={rt.template} 
-              validation={rt.validation} 
-              onAdd={() => handlePreviewTemplate(rt.template)} 
-            />
+            <div key={rt.template.id} role="listitem">
+              <TemplateCard 
+                template={rt.template} 
+                validation={rt.validation} 
+                onAdd={() => handlePreviewTemplate(rt.template)} 
+              />
+            </div>
           ))
         ) : (
           <div className="text-center py-8 text-muted-foreground text-sm">
