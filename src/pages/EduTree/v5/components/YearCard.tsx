@@ -136,11 +136,11 @@ export function YearCard({
             <>
               <span className="text-muted-foreground">•</span>
               <span className="whitespace-nowrap">
-                Est. {formatCost(selectedSummary.cost)}
+                {selectedSummary.cost != null ? `Est. ${formatCost(selectedSummary.cost)}` : 'Est. –'}
               </span>
               <span className="text-muted-foreground">•</span>
               <span className="whitespace-nowrap">
-                {selectedSummary.weeks} weeks
+                {selectedSummary.weeks != null ? `${selectedSummary.weeks} weeks` : '– weeks'}
               </span>
               <span className="text-muted-foreground">•</span>
               <span className="whitespace-nowrap">
@@ -215,6 +215,7 @@ export function YearCard({
                     onClick={(e) => {
                       e.stopPropagation();
                       onClick?.({ focusTab: 'templates' });
+                      // TODO: Parent should move focus to Templates panel heading after panel opens
                     }}
                     className="w-full px-4 py-3 text-sm font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 hover:shadow-md transition-all shadow-sm inline-flex items-center justify-center gap-2"
                     aria-label={`Apply a year template for Year ${year} - auto-fill courses across Fall and Spring`}
@@ -223,14 +224,14 @@ export function YearCard({
                     <span>Apply Year {year} Template</span>
                   </button>
                   <p className="text-center text-[11px] text-muted-foreground">
-                    Balanced plan across Fall and Spring.
+                    We'll balance courses across Fall and Spring.
                   </p>
                 </div>
               </>
             ) : (
               <>
-                {/* Status subtext - dynamic based on completion */}
-                <div className="text-center text-[11px] text-muted-foreground">
+                {/* Status subtext - dynamic with live region for a11y */}
+                <p className="text-center text-[11px] text-muted-foreground" aria-live="polite" aria-atomic="true">
                   {isComplete ? (
                     <span className="text-success font-medium">
                       ✅ Year planned ({fallCredits > 0 && springCredits > 0 ? `🍂 ${fallCredits} cr • 🌸 ${springCredits} cr` : `${creditsSummary.planned} cr`})
@@ -240,7 +241,7 @@ export function YearCard({
                   ) : (
                     <span>{modulesSummary.completed} of {modulesSummary.total} {moduleText} complete</span>
                   )}
-                </div>
+                </p>
               </>
             )}
           </div>
