@@ -334,6 +334,8 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
       // Ensure drawer is visible by scrolling it into view
       // This prevents the drawer from being stuck below the viewport
       setTimeout(() => {
+        if (typeof window === 'undefined') return;
+        
         // Calculate safe scroll position that keeps drawer visible
         const viewportHeight = window.innerHeight;
         const drawerHeight = typeof activeSnapPoint === 'string' 
@@ -341,28 +343,49 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
           : Math.round(viewportHeight * 0.5);
         
         // Scroll to a position that ensures the drawer is visible
-        // For year scope, scroll to bottom but leave room for drawer
+        // For year scope, only scroll if drawer would be below viewport
         if (scope === 'year') {
-          const maxScroll = document.documentElement.scrollHeight - viewportHeight;
-          const safeScroll = Math.max(0, maxScroll);
+          const currentScroll = window.scrollY;
+          const docHeight = document.documentElement.scrollHeight;
           
-          window.scrollTo({
-            top: safeScroll,
-            behavior: 'smooth'
-          });
+          // Calculate where the drawer bottom edge will be
+          const drawerBottom = docHeight - drawerHeight;
+          const viewportBottom = currentScroll + viewportHeight;
           
-          // Track auto-scroll behavior
-          trackTelemetryEvent({
-            task: 'year_drawer_auto_scroll',
-            route: '/edu-tree-v5',
-            complexity: {
-              scrollTop: safeScroll,
-              docHeight: document.documentElement.scrollHeight,
-              viewportHeight: window.innerHeight,
-              drawerHeight,
-              year: props.year
-            }
-          });
+          // Only scroll if drawer is cut off below viewport
+          if (drawerBottom > viewportBottom) {
+            const targetScroll = drawerBottom - viewportHeight + 60; // 60px buffer
+            const safeScroll = Math.max(0, targetScroll);
+            
+            window.scrollTo({
+              top: safeScroll,
+              behavior: 'smooth'
+            });
+            
+            // Track conditional auto-scroll
+            trackTelemetryEvent({
+              task: 'year_drawer_conditional_scroll',
+              route: '/edu-tree-v5',
+              complexity: {
+                scrollTop: safeScroll,
+                docHeight,
+                viewportHeight,
+                drawerHeight,
+                year: props.year,
+                wasNeeded: true
+              }
+            });
+          } else {
+            // Drawer is already visible—no scroll needed
+            trackTelemetryEvent({
+              task: 'year_drawer_conditional_scroll',
+              route: '/edu-tree-v5',
+              complexity: {
+                year: props.year,
+                wasNeeded: false
+              }
+            });
+          }
         } else {
           // For other scopes, ensure drawer is visible by checking current scroll
           const currentScroll = window.scrollY;

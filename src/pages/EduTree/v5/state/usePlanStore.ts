@@ -19,6 +19,7 @@ type Actions = {
   clearAll: () => void
   addCourseToSemester: (semesterId: string, courseId: string, credits: number) => void
   removeCourseFromSemester: (semesterId: string, courseId: string) => void
+  clearYear: (year: number) => void
 }
 
 type State = {
@@ -88,6 +89,16 @@ export const usePlanStore = create<State>()(persist(
           }
         }
       }
+      
+      set({ semesters })
+    },
+    clearYear: (year) => {
+      const semesters = structuredClone(get().semesters)
+      const keysToDelete = [`${year}-fall`, `${year}-spring`]
+      
+      keysToDelete.forEach(key => {
+        delete semesters[key]
+      })
       
       set({ semesters })
     },

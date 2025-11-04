@@ -7,6 +7,7 @@ import type { LoadHealth, CreditsSummary, ModulesSummary, YearPanelHint } from '
 import type { NodeSelectedSummary } from '../types/nodeProgress';
 import { usePlanStore } from '../state/usePlanStore';
 import { formatCost, formatDuration, formatCRI } from '../utils/formatters';
+import { toast } from 'sonner';
 
 
 interface YearCardProps {
@@ -135,13 +136,17 @@ export function YearCard({
           {selectedSummary && !selectedSummary.isEmpty && (
             <>
               <span className="text-muted-foreground">•</span>
-              <span className="whitespace-nowrap">
-                {selectedSummary.cost != null ? `Est. ${formatCost(selectedSummary.cost)}` : 'Est. –'}
-              </span>
+              {selectedSummary.cost != null ? (
+                <span className="whitespace-nowrap">Est. {formatCost(selectedSummary.cost)}</span>
+              ) : (
+                <span className="inline-block h-3.5 w-16 rounded bg-muted/30 animate-pulse align-middle" />
+              )}
               <span className="text-muted-foreground">•</span>
-              <span className="whitespace-nowrap">
-                {selectedSummary.weeks != null ? `${selectedSummary.weeks} weeks` : '– weeks'}
-              </span>
+              {selectedSummary.weeks != null ? (
+                <span className="whitespace-nowrap">{selectedSummary.weeks} weeks</span>
+              ) : (
+                <span className="inline-block h-3.5 w-14 rounded bg-muted/30 animate-pulse align-middle" />
+              )}
               <span className="text-muted-foreground">•</span>
               <span className="whitespace-nowrap">
                 <abbr title="Course Readiness Index" className="no-underline cursor-help">CRI</abbr> {formatCRI(selectedSummary.avgCri)}
@@ -190,7 +195,14 @@ export function YearCard({
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                // TODO: Wire up clear year action
+                const clearYear = usePlanStore.getState().clearYear;
+                
+                if (window.confirm(`Clear all courses from Year ${year}? This cannot be undone.`)) {
+                  clearYear(year);
+                  toast.success("Year cleared", {
+                    description: `Removed all courses from Year ${year}.`,
+                  });
+                }
               }}
               disabled={!hasCoursesPlanned}
               title={!hasCoursesPlanned ? "Nothing to clear" : "Clear all courses from this year"}
@@ -201,7 +213,7 @@ export function YearCard({
           </div>
           
           {/* Year Summary & Actions */}
-          <div className="mt-2 pt-2 border-t border-muted space-y-3">
+          <div className="mt-2 pt-2 border-t border-muted space-y-3 min-h-[88px]">
             {!hasCoursesPlanned ? (
               <>
                 {/* Empty state hint */}
@@ -223,7 +235,7 @@ export function YearCard({
                     <span className="inline-flex items-center justify-center w-5 h-5">🎯</span>
                     <span>Apply Year {year} Template</span>
                   </button>
-                  <p className="text-center text-[11px] text-muted-foreground">
+                  <p className="text-center text-[11px] text-muted-foreground min-h-[16px]">
                     We'll balance courses across Fall and Spring.
                   </p>
                 </div>
@@ -231,13 +243,23 @@ export function YearCard({
             ) : (
               <>
                 {/* Status subtext - dynamic with live region for a11y */}
-                <p className="text-center text-[11px] text-muted-foreground" aria-live="polite" aria-atomic="true">
+                <p 
+                  key={
+                    isComplete ? 'complete'
+                      : (fallCredits > 0 || springCredits > 0) ? `planned-${fallCredits}-${springCredits}`
+                      : `modules-${modulesSummary.completed}`
+                  }
+                  role="status" 
+                  aria-live="polite" 
+                  aria-atomic="true"
+                  className="text-center text-[11px] text-muted-foreground"
+                >
                   {isComplete ? (
                     <span className="text-success font-medium">
                       ✅ Year planned ({fallCredits > 0 && springCredits > 0 ? `🍂 ${fallCredits} cr • 🌸 ${springCredits} cr` : `${creditsSummary.planned} cr`})
                     </span>
                   ) : (fallCredits > 0 || springCredits > 0) ? (
-                    <span>🍂 {fallCredits} cr • 🌸 {springCredits} cr planned</span>
+                    <span>Planning: {fallCredits > 0 ? `🍂 ${fallCredits} cr` : ''}{fallCredits > 0 && springCredits > 0 ? ' • ' : ''}{springCredits > 0 ? `🌸 ${springCredits} cr` : ''}</span>
                   ) : (
                     <span>{modulesSummary.completed} of {modulesSummary.total} {moduleText} complete</span>
                   )}
