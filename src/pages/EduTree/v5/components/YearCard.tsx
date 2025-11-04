@@ -262,10 +262,7 @@ export function YearCard({
   
   // 4a. Remove course items ONLY from this year's modules (batch operation)
   // CRITICAL: Can't use removeItem(courseId) because same course may exist in other years
-  const remainingItems = basket.items.filter(item => 
-    !moduleIds.includes(item.moduleId)
-  );
-  usePlanBasket.setState({ items: remainingItems });
+  basket.removeItemsByModuleIds(moduleIds);
   
   // 4b. Clear module template states
   moduleIds.forEach(moduleId => {

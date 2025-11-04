@@ -70,6 +70,7 @@ interface PlanBasketState {
   // Actions
   addItem: (item: BasketItem) => void;
   removeItem: (courseId: string) => void;
+  removeItemsByModuleIds: (moduleIds: string[]) => void;
   setConstraints: (c: Partial<Constraints>) => void;
   
   // Module state tracking
@@ -177,6 +178,11 @@ export const usePlanBasket = create<PlanBasketState>()(
       
       removeItem: (courseId) => {
         set({ items: get().items.filter(i => i.courseId !== courseId) });
+      },
+      
+      removeItemsByModuleIds: (moduleIds) => {
+        const moduleIdSet = new Set(moduleIds);
+        set({ items: get().items.filter(i => !moduleIdSet.has(i.moduleId)) });
       },
       
       setConstraints: (c) => {
