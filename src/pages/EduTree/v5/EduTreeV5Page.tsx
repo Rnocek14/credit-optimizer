@@ -31,6 +31,8 @@ import { computeModuleSummary, computeYearSummary } from './types/nodeProgress';
 import { trackTelemetryEvent } from '@/utils/telemetry';
 import { useRequirementBlocks } from './hooks/useRequirementBlocks';
 import { getAnchorPolicyFromConstraints } from './utils/anchorPolicyAdapter';
+import { useYearNodesVM } from '@/state/selectors/degreeNodes';
+import { useCascadeDegree } from '@/lib/degree/cascade';
 import './styles/v5.css';
 
 // Feature flag for quick rollback during demos
@@ -136,18 +138,33 @@ export default function EduTreeV5Page() {
   
   const toggleYear = (year: number) => {
     console.log('[V5 Page] Toggling year:', year);
+    const willCollapse = !collapsedYears[year];
     setCollapsedYears(prev => ({ 
       ...prev, 
       [year]: !prev[year] 
     }));
+    
+    // Track year toggle telemetry
+    logEvent('year_toggled', { 
+      year, 
+      collapsed: willCollapse,
+      modules_count: getModulesForYear(year).length 
+    });
   };
 
   const toggleModule = (moduleId: string) => {
     console.log('[V5 Page] Toggling module:', moduleId);
+    const willCollapse = !collapsedModules[moduleId];
     setCollapsedModules(prev => ({
       ...prev,
       [moduleId]: !prev[moduleId]
     }));
+    
+    // Track module toggle telemetry
+    logEvent('module_toggled', { 
+      module_id: moduleId, 
+      collapsed: willCollapse 
+    });
   };
 
   const handleCourseClick = (courseId: string) => {
@@ -285,6 +302,18 @@ export default function EduTreeV5Page() {
   const allModules = useMemo(() => {
     return [1, 2, 3, 4].flatMap(year => getModulesForYear(year));
   }, [getModulesForYear]);
+  
+  // Compute year node view models for aggregated year data
+  const yearNodesVM = useYearNodesVM(allModules);
+  
+  // Cascade engine for recomputing years on plan changes
+  const { recomputeYears } = useCascadeDegree(allModules);
+  
+  // Recompute years when basket or constraints change
+  useEffect(() => {
+    const updatedYears = recomputeYears();
+    console.log('[V5 Page] Years recomputed:', updatedYears);
+  }, [basketKey, constraints, recomputeYears]);
 
   // Hydrate panel data when opening from URL (handles both module and year scopes)
   useEffect(() => {
