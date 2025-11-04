@@ -297,8 +297,10 @@ export function YearCard({
                 // Invalidate queries for all modules in this year to refresh UI
                 const clearYearModules = PROGRAM_MODULES.filter(m => m.year === year);
                 clearYearModules.forEach(mod => {
-                  void queryClient.invalidateQueries({ 
-                    queryKey: ['module-templates-ranked', mod.id] 
+                  void queryClient.invalidateQueries({
+                    predicate: q => Array.isArray(q.queryKey)
+                      && q.queryKey[0] === 'module-templates-ranked'
+                      && q.queryKey[1] === mod.id
                   });
                 });
                 

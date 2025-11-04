@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import { TemplateCard } from '../TemplateCard';
 import { Skeleton } from '@/components/ui/skeleton';
 import { usePlanBasket } from '../../state/usePlanBasket';
@@ -8,6 +9,7 @@ import { generateModuleTemplates } from '../../engine/templateGenerator';
 import type { ModuleData } from '../../types/v5';
 import type { ModuleTemplate } from '../../types/templates';
 import { trackTelemetryEvent } from '@/utils/telemetry';
+import { logEvent } from '@/lib/analytics';
 import { useUserEvidence } from '@/pages/EduTree/hooks/useUserEvidence';
 import { useApplyTemplate } from '../../hooks/useApplyTemplate';
 import { previewTemplate } from '../../engine/previewTemplate';
@@ -32,6 +34,13 @@ export function ModuleTemplatesPanel({ module, allModules, onAddTemplate }: Modu
   
   const [previewingTemplate, setPreviewingTemplate] = useState<ModuleTemplate | null>(null);
   const [preview, setPreview] = useState<TemplatePreview | null>(null);
+  
+  // Log exploration flag state on mount for telemetry correlation
+  useEffect(() => {
+    if (explorationEnabled) {
+      logEvent('exploration_mode_active', { moduleId: module.id });
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const [keepPinned, setKeepPinned] = useState(false);
   const [isApplying, setIsApplying] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -199,10 +208,15 @@ export function ModuleTemplatesPanel({ module, allModules, onAddTemplate }: Modu
       setPreview(null);
       onAddTemplate(previewingTemplate);
       
-      // Invalidate queries to refresh UI
-      void queryClient.invalidateQueries({ 
-        queryKey: ['module-templates-ranked', module.id] 
+      // Invalidate queries to refresh UI (predicate-based for robustness)
+      void queryClient.invalidateQueries({
+        predicate: q => Array.isArray(q.queryKey) 
+          && q.queryKey[0] === 'module-templates-ranked'
+          && q.queryKey[1] === module.id
       });
+    } catch (err) {
+      console.error('Failed to apply template:', err);
+      toast.error("Couldn't apply template");
     } finally {
       setIsApplying(false);
     }
