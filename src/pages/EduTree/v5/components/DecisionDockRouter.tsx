@@ -445,6 +445,26 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
 
   if (!scope) return null;
 
+  // ✅ Validate scope-nodeId consistency
+  const scopeRequiresNodeId = scope === 'year' || scope === 'module';
+  const hasNodeId = !!props.nodeId;
+
+  if (scopeRequiresNodeId && !hasNodeId) {
+    console.warn('[DecisionDockRouter] Invalid state: scope requires nodeId but none provided', {
+      scope, nodeId: props.nodeId
+    });
+    // Auto-close invalid panel
+    onClose();
+    return null;
+  }
+
+  if (!scopeRequiresNodeId && hasNodeId) {
+    console.warn('[DecisionDockRouter] Invalid state: degree scope should not have nodeId; ignoring', {
+      scope, nodeId: props.nodeId
+    });
+    // Continue rendering but log the issue (degree scope can ignore nodeId)
+  }
+
   return (
     <DrawerPrimitive.Root
       open={!!scope}

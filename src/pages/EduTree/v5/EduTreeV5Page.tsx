@@ -320,6 +320,13 @@ export default function EduTreeV5Page() {
     // URL state canonicalization: normalize node IDs to avoid casing/slug mismatches
     const canonicalId = panelState.nodeId ? String(panelState.nodeId).trim() : undefined;
     
+    // ✅ Self-heal: degree scope must not carry nodeId
+    if (panelState.scope === 'degree' && canonicalId) {
+      console.info('[V5 Page] Cleaning stale nodeId for degree scope:', canonicalId);
+      openPanel('degree'); // Re-open without nodeId → cleans URL
+      return;
+    }
+    
     // DEBUG: Always log hydration check state
     if (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('debug') === '1') {
       console.log('[V5 Page/Hydration] Check state:', {

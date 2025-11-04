@@ -44,8 +44,20 @@ export function useScopedPanel() {
       const params = new URLSearchParams(location.search);
       if (scope) {
         params.set('scope', scope);
-        if (nodeId) params.set('node', nodeId);
-        if (tab) params.set('tab', tab);
+        
+        // ✅ FIX: Always set OR delete node parameter
+        if (nodeId) {
+          params.set('node', nodeId);
+        } else {
+          params.delete('node'); // Clean up stale nodeId
+        }
+        
+        // ✅ FIX: Always set OR delete tab parameter
+        if (tab) {
+          params.set('tab', tab);
+        } else {
+          params.delete('tab'); // Clean up stale tab
+        }
       } else {
         params.delete('scope');
         params.delete('node');
