@@ -1,61 +1,11 @@
+import { useMemo } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import type { LoadHealth, CreditsSummary, ModulesSummary, YearPanelHint } from '../types/v5';
 import type { NodeSelectedSummary } from '../types/nodeProgress';
-import { DroppableSemester } from './drag/DroppableSemester';
 import { usePlanStore } from '../state/usePlanStore';
 
-function SemesterLane({ 
-  year, 
-  term,
-  onAutoFill
-}: { 
-  year: number; 
-  term: 'fall' | 'spring';
-  onAutoFill?: (opts: { year: number; term: 'fall' | 'spring' }) => void;
-}) {
-  const semesters = usePlanStore(s => s.semesters);
-  const semesterId = `${year}-${term}`;
-  const semester = semesters[semesterId] || { credits: 0, workloadHours: 0, courseIds: [] };
-  
-  const header = term === 'fall' ? `Fall • Year ${year}` : `Spring • Year ${year}`;
-  
-  return (
-    <DroppableSemester 
-      id={semesterId}
-      header={header}
-      credits={semester.credits}
-      workloadHours={semester.workloadHours}
-    >
-      {semester.courseIds.length > 0 ? (
-        <div className="space-y-1">
-          {semester.courseIds.map(courseId => (
-            <div 
-              key={courseId}
-              className="text-[10px] px-2 py-1 bg-card rounded border border-border"
-            >
-              {courseId}
-            </div>
-          ))}
-        </div>
-      ) : (
-        <div className="flex h-32 flex-col items-center justify-center text-sm text-muted-foreground">
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onAutoFill?.({ year, term });
-            }}
-            className="px-4 py-2 text-sm font-medium rounded-md bg-primary/90 text-primary-foreground hover:bg-primary transition-colors shadow-sm min-h-[32px]"
-            aria-label={`Auto-fill ${term === 'fall' ? 'Fall' : 'Spring'} Year ${year}`}
-          >
-            {term === 'fall' && year === 1 ? '🎯 Auto-fill Fall 1' : `📚 Auto-fill ${term === 'fall' ? 'Fall' : 'Spring'} ${year}`}
-          </button>
-        </div>
-      )}
-    </DroppableSemester>
-  );
-}
 
 interface YearCardProps {
   year: number;
@@ -83,6 +33,18 @@ export function YearCard({
   const progressPercentage = creditsSummary.required > 0 
     ? (creditsSummary.planned / creditsSummary.required) * 100 
     : 0;
+
+  // Calculate semester credits for post-fill summary
+  const semesters = usePlanStore(s => s.semesters);
+  const { fallCredits, springCredits, hasCoursesPlanned } = useMemo(() => {
+    const fallSemester = semesters[`${year}-fall`] || { credits: 0, courseIds: [] };
+    const springSemester = semesters[`${year}-spring`] || { credits: 0, courseIds: [] };
+    return {
+      fallCredits: fallSemester.credits,
+      springCredits: springSemester.credits,
+      hasCoursesPlanned: fallSemester.courseIds.length > 0 || springSemester.courseIds.length > 0,
+    };
+  }, [semesters, year]);
 
   const getLoadHealthBadge = () => {
     switch (loadHealth) {
@@ -212,34 +174,38 @@ export function YearCard({
             </button>
           </div>
           
-          {/* Semester Lanes */}
-          <div className="mt-2 pt-2 border-t border-muted">
-            <div className="grid grid-cols-2 gap-3">
-              <SemesterLane 
-                year={year} 
-                term="fall"
-                onAutoFill={({ year, term }) => {
-                  console.log('[YearCard] Auto-fill clicked:', { year, term, event: 'open_year_templates_from_lane' });
-                  if (!onClick) {
-                    console.warn('[YearCard] onClick missing; cannot open Year panel');
-                    return;
-                  }
-                  onClick({ focusTab: 'templates', focusTerm: term });
+          {/* Year Summary & Actions */}
+          <div className="mt-2 pt-2 border-t border-muted space-y-3">
+            {!hasCoursesPlanned ? (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onClick?.({ focusTab: 'templates' });
                 }}
-              />
-              <SemesterLane 
-                year={year} 
-                term="spring"
-                onAutoFill={({ year, term }) => {
-                  console.log('[YearCard] Auto-fill clicked:', { year, term, event: 'open_year_templates_from_lane' });
-                  if (!onClick) {
-                    console.warn('[YearCard] onClick missing; cannot open Year panel');
-                    return;
-                  }
-                  onClick({ focusTab: 'templates', focusTerm: term });
-                }}
-              />
-            </div>
+                className="w-full px-4 py-3 text-sm font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors shadow-sm"
+                aria-label={`Auto-fill Year ${year} with templates`}
+              >
+                🎯 Auto-fill Year {year}
+              </button>
+            ) : (
+              <div className="flex items-center justify-center gap-3 text-xs text-foreground/85 py-2">
+                <span className="flex items-center gap-1">
+                  <span className="text-base">🍂</span>
+                  <span className="font-medium">{fallCredits} cr Fall</span>
+                </span>
+                <span className="text-muted-foreground">•</span>
+                <span className="flex items-center gap-1">
+                  <span className="text-base">🌸</span>
+                  <span className="font-medium">{springCredits} cr Spring</span>
+                </span>
+              </div>
+            )}
+            
+            {modulesSummary.completed > 0 && (
+              <div className="text-center text-xs text-muted-foreground">
+                {modulesSummary.completed} of {modulesSummary.total} {moduleText} complete
+              </div>
+            )}
           </div>
           
           {/* Warnings */}
