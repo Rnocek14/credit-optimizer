@@ -18,6 +18,7 @@ import type { TemplatePreview } from '../../engine/previewTemplate';
 import { X } from 'lucide-react';
 import { FEATURE_FLAGS } from '../../config/featureFlags';
 import { getTemplateCourses, sanitizeTelemetryPayload } from '../../utils/templateHelpers';
+import { useExplorationAB } from '../../hooks/useExplorationAB';
 
 interface ModuleTemplatesPanelProps {
   module: ModuleData;
@@ -31,16 +32,10 @@ export function ModuleTemplatesPanel({ module, allModules, onAddTemplate }: Modu
   const evidence = useUserEvidence({ enabled: true });
   const { applyTemplate: applyTemplateFn } = useApplyTemplate();
   const queryClient = useQueryClient();
+  const { explorationEnabled, bucket } = useExplorationAB();
   
   const [previewingTemplate, setPreviewingTemplate] = useState<ModuleTemplate | null>(null);
   const [preview, setPreview] = useState<TemplatePreview | null>(null);
-  
-  // Log exploration flag state on mount for telemetry correlation
-  useEffect(() => {
-    if (explorationEnabled) {
-      logEvent('exploration_mode_active', { moduleId: module.id });
-    }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const [keepPinned, setKeepPinned] = useState(false);
   const [isApplying, setIsApplying] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -51,7 +46,13 @@ export function ModuleTemplatesPanel({ module, allModules, onAddTemplate }: Modu
   
   // Check if module is satisfied (exploration mode)
   const isSatisfied = (module.creditsEarned ?? 0) >= (module.creditsRequired ?? 0);
-  const explorationEnabled = FEATURE_FLAGS.V5_EXPLORATION_MODE;
+  
+  // Log exploration flag state on mount for telemetry correlation
+  useEffect(() => {
+    if (explorationEnabled) {
+      logEvent('exploration_mode_active', { moduleId: module.id, bucket });
+    }
+  }, [explorationEnabled, bucket, module.id]);
   
   const { data: rankedTemplates, isLoading } = useQuery({
     queryKey: ['module-templates-ranked', module.id, basketKey, constraints, evidence.raw?.completed?.length ?? 0, isSatisfied, explorationEnabled],
@@ -120,7 +121,8 @@ export function ModuleTemplatesPanel({ module, allModules, onAddTemplate }: Modu
         template_id: template.id, 
         module_id: module.id,
         template_label: template.label,
-        was_exploratory: isSatisfied
+        was_exploratory: isSatisfied,
+        bucket
       })
     });
   };
@@ -186,6 +188,7 @@ export function ModuleTemplatesPanel({ module, allModules, onAddTemplate }: Modu
           keep_pinned: keepPinned,
           cost_delta: preview.costDelta,
           weeks_delta: preview.weeksDelta,
+          bucket
         })
       });
       

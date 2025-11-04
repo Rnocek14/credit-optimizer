@@ -12,8 +12,9 @@ export const FEATURE_FLAGS = {
   // Phase 0: Simplified cards (default on)
   V5_SIMPLIFIED_CARDS: true, // Full-card click, dock-only actions, simple progress
   
-  // Week 1.5: Exploration mode for satisfied modules (enabled by default, disable via localStorage)
-  V5_EXPLORATION_MODE: typeof window !== 'undefined' ? localStorage.getItem('v5_exploration_mode') !== 'false' : true,
+  // Week 1.5: Exploration mode for satisfied modules (A/B tested, override via localStorage)
+  // NOTE: This is now gated by A/B framework - use useExplorationAB hook for per-user resolution
+  V5_EXPLORATION_MODE: true, // Feature capability flag (always on at system level)
   
   // Week 1: Year Scope Card (enabled by default, disable via localStorage)
   v5_year_scope_v1: typeof window !== 'undefined' ? localStorage.getItem('v5_year_scope_v1') !== 'false' : true,
