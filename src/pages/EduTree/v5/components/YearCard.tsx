@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useRef } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
@@ -11,6 +11,7 @@ import { usePlanBasket } from '../state/usePlanBasket';
 import { PROGRAM_MODULES } from '@/fixtures/v5/programModules';
 import { formatCost, formatDuration, formatCRI } from '../utils/formatters';
 import { toast } from 'sonner';
+import { logEvent } from '@/lib/analytics';
 
 
 interface YearCardProps {
@@ -36,20 +37,20 @@ export function YearCard({
   modulesSummary,
   warnings 
 }: YearCardProps) {
+  const yearHeadingRef = useRef<HTMLHeadingElement>(null);
+  
   const progressPercentage = creditsSummary.required > 0 
     ? (creditsSummary.planned / creditsSummary.required) * 100 
     : 0;
 
-  // Check if ANY courses exist in this year's modules (source of truth: basket)
-  const yearModuleIds = useMemo(
-    () => PROGRAM_MODULES.filter(m => m.year === year).map(m => m.id),
-    [year]
-  );
+  // Optimized: Use Set for O(1) lookup instead of O(n) array.includes()
+  const yearModuleIdSet = useMemo(() => {
+    const ids = PROGRAM_MODULES.filter(m => m.year === year).map(m => m.id);
+    return new Set(ids);
+  }, [year]);
 
   const hasCoursesPlanned = usePlanBasket(
-    useShallow(state => 
-      state.items.some(item => yearModuleIds.includes(item.moduleId))
-    )
+    useShallow(state => state.items.some(item => yearModuleIdSet.has(item.moduleId)))
   );
 
   // Legacy semester credits for metrics display
@@ -116,7 +117,13 @@ export function YearCard({
         {/* Tier 1: Title + Complete Badge + Chevron */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="text-primary font-bold text-lg">Year {year}</span>
+            <h3 
+              ref={yearHeadingRef}
+              tabIndex={-1}
+              className="text-primary font-bold text-lg outline-none focus:ring-2 focus:ring-primary/20 rounded px-1"
+            >
+              Year {year}
+            </h3>
             {isComplete && (
               <Badge variant="success" size="sm" className="text-[10px] h-5 ml-1">
                 ✓ Complete
@@ -284,6 +291,19 @@ export function YearCard({
                 toast.success("Year cleared", {
                   description: `Removed ${courseCount} course${courseCount !== 1 ? 's' : ''} from Year ${year}.`,
                 });
+                
+                // Track telemetry
+                logEvent('plan_year_cleared', {
+                  year,
+                  removedCourses: courseCount,
+                  removedModules: moduleCount,
+                  remainingItems: usePlanBasket.getState().items.length
+                });
+                
+                // Move focus to year heading for SR users
+                setTimeout(() => {
+                  yearHeadingRef.current?.focus();
+                }, 100);
               }}
               disabled={!hasCoursesPlanned}
               title={!hasCoursesPlanned ? "Nothing to clear" : "Clear all courses from this year"}
