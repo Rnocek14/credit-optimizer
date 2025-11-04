@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { TemplateCard } from '../TemplateCard';
 import { Skeleton } from '@/components/ui/skeleton';
 import { usePlanBasket } from '../../state/usePlanBasket';
@@ -28,6 +28,7 @@ export function ModuleTemplatesPanel({ module, allModules, onAddTemplate }: Modu
   const constraints = usePlanBasket(s => s.constraints);
   const evidence = useUserEvidence({ enabled: true });
   const { applyTemplate: applyTemplateFn } = useApplyTemplate();
+  const queryClient = useQueryClient();
   
   const [previewingTemplate, setPreviewingTemplate] = useState<ModuleTemplate | null>(null);
   const [preview, setPreview] = useState<TemplatePreview | null>(null);
@@ -197,6 +198,11 @@ export function ModuleTemplatesPanel({ module, allModules, onAddTemplate }: Modu
       setPreviewingTemplate(null);
       setPreview(null);
       onAddTemplate(previewingTemplate);
+      
+      // Invalidate queries to refresh UI
+      void queryClient.invalidateQueries({ 
+        queryKey: ['module-templates-ranked', module.id] 
+      });
     } finally {
       setIsApplying(false);
     }

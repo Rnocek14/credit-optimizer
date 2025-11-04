@@ -1,5 +1,6 @@
 import { useMemo, useRef } from 'react';
 import { useShallow } from 'zustand/react/shallow';
+import { useQueryClient } from '@tanstack/react-query';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
@@ -38,8 +39,9 @@ export function YearCard({
   warnings 
 }: YearCardProps) {
   const yearHeadingRef = useRef<HTMLHeadingElement>(null);
+  const queryClient = useQueryClient();
   
-  const progressPercentage = creditsSummary.required > 0 
+  const progressPercentage = creditsSummary.required > 0
     ? (creditsSummary.planned / creditsSummary.required) * 100 
     : 0;
 
@@ -290,6 +292,14 @@ export function YearCard({
                 
                 toast.success("Year cleared", {
                   description: `Removed ${courseCount} course${courseCount !== 1 ? 's' : ''} from Year ${year}.`,
+                });
+                
+                // Invalidate queries for all modules in this year to refresh UI
+                const clearYearModules = PROGRAM_MODULES.filter(m => m.year === year);
+                clearYearModules.forEach(mod => {
+                  void queryClient.invalidateQueries({ 
+                    queryKey: ['module-templates-ranked', mod.id] 
+                  });
                 });
                 
                 // Track telemetry
