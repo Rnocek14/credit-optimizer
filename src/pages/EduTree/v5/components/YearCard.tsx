@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
@@ -37,17 +38,18 @@ export function YearCard({
     ? (creditsSummary.planned / creditsSummary.required) * 100 
     : 0;
 
-  // Calculate semester credits for post-fill summary
-  const semesters = usePlanStore(s => s.semesters);
-  const { fallCredits, springCredits, hasCoursesPlanned } = useMemo(() => {
-    const fallSemester = semesters[`${year}-fall`] || { credits: 0, courseIds: [] };
-    const springSemester = semesters[`${year}-spring`] || { credits: 0, courseIds: [] };
-    return {
-      fallCredits: fallSemester.credits,
-      springCredits: springSemester.credits,
-      hasCoursesPlanned: fallSemester.courseIds.length > 0 || springSemester.courseIds.length > 0,
-    };
-  }, [semesters, year]);
+  // Calculate semester credits with shallow subscription for reactivity
+  const { fallCredits, springCredits, hasCoursesPlanned } = usePlanStore(
+    useShallow(s => {
+      const fallSemester = s.semesters[`${year}-fall`] || { credits: 0, courseIds: [] };
+      const springSemester = s.semesters[`${year}-spring`] || { credits: 0, courseIds: [] };
+      return {
+        fallCredits: fallSemester.credits,
+        springCredits: springSemester.credits,
+        hasCoursesPlanned: fallSemester.courseIds.length > 0 || springSemester.courseIds.length > 0,
+      };
+    })
+  );
 
   const getLoadHealthBadge = () => {
     switch (loadHealth) {
@@ -66,6 +68,7 @@ export function YearCard({
   
   return (
     <div
+      data-year={year}
       onClick={(e) => {
         e.stopPropagation();
         
@@ -195,13 +198,23 @@ export function YearCard({
             <button
               onClick={(e) => {
                 e.stopPropagation();
+                console.log('[YearCard] Clear button clicked, hasCoursesPlanned:', hasCoursesPlanned);
+                console.log('[YearCard] Current semesters:', usePlanStore.getState().semesters);
+                
                 const clearYear = usePlanStore.getState().clearYear;
                 
                 if (window.confirm(`Clear all courses from Year ${year}? This cannot be undone.`)) {
+                  console.log('[YearCard] User confirmed, calling clearYear');
                   clearYear(year);
+                  
+                  // Log after clear for debugging
+                  console.log('[YearCard] After clear, semesters:', usePlanStore.getState().semesters);
+                  
                   toast.success("Year cleared", {
                     description: `Removed all courses from Year ${year}.`,
                   });
+                } else {
+                  console.log('[YearCard] User cancelled');
                 }
               }}
               disabled={!hasCoursesPlanned}

@@ -342,51 +342,9 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
           ? parseInt(activeSnapPoint) 
           : Math.round(viewportHeight * 0.5);
         
-        // Scroll to a position that ensures the drawer is visible
-        // For year scope, only scroll if drawer would be below viewport
-        if (scope === 'year') {
-          const currentScroll = window.scrollY;
-          const docHeight = document.documentElement.scrollHeight;
-          
-          // Calculate where the drawer bottom edge will be
-          const drawerBottom = docHeight - drawerHeight;
-          const viewportBottom = currentScroll + viewportHeight;
-          
-          // Only scroll if drawer is cut off below viewport
-          if (drawerBottom > viewportBottom) {
-            const targetScroll = drawerBottom - viewportHeight + 60; // 60px buffer
-            const safeScroll = Math.max(0, targetScroll);
-            
-            window.scrollTo({
-              top: safeScroll,
-              behavior: 'smooth'
-            });
-            
-            // Track conditional auto-scroll
-            trackTelemetryEvent({
-              task: 'year_drawer_conditional_scroll',
-              route: '/edu-tree-v5',
-              complexity: {
-                scrollTop: safeScroll,
-                docHeight,
-                viewportHeight,
-                drawerHeight,
-                year: props.year,
-                wasNeeded: true
-              }
-            });
-          } else {
-            // Drawer is already visible—no scroll needed
-            trackTelemetryEvent({
-              task: 'year_drawer_conditional_scroll',
-              route: '/edu-tree-v5',
-              complexity: {
-                year: props.year,
-                wasNeeded: false
-              }
-            });
-          }
-        } else {
+        // Drawer is viewport-fixed at bottom; year scope needs no scroll
+        // For other scopes, ensure drawer is visible
+        if (scope !== 'year') {
           // For other scopes, ensure drawer is visible by checking current scroll
           const currentScroll = window.scrollY;
           const maxVisibleScroll = document.documentElement.scrollHeight - viewportHeight - drawerHeight;
