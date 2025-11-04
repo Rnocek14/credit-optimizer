@@ -253,26 +253,28 @@ export function YearCard({
                   return;
                 }
                 
-                // 4. Execute full clear across both stores
-                if (import.meta.env.DEV) {
-                  console.log('[YearCard] Clearing:', {
-                    courses: itemsToRemove.map(i => ({ id: i.courseId, module: i.moduleId })),
-                  });
-                }
-                
-                // 4a. Remove all course items from basket
-                itemsToRemove.forEach(item => {
-                  basket.removeItem(item.courseId);
-                });
-                
-                // 4b. Clear module template states
-                moduleIds.forEach(moduleId => {
-                  basket.clearModuleState(moduleId);
-                });
-                
-                // 4c. Clear semester metadata in legacy store
-                const clearYear = usePlanStore.getState().clearYear;
-                clearYear(year);
+  // 4. Execute full clear across both stores
+  if (import.meta.env.DEV) {
+    console.log('[YearCard] Clearing:', {
+      courses: itemsToRemove.map(i => ({ id: i.courseId, module: i.moduleId })),
+    });
+  }
+  
+  // 4a. Remove course items ONLY from this year's modules (batch operation)
+  // CRITICAL: Can't use removeItem(courseId) because same course may exist in other years
+  const remainingItems = basket.items.filter(item => 
+    !moduleIds.includes(item.moduleId)
+  );
+  usePlanBasket.setState({ items: remainingItems });
+  
+  // 4b. Clear module template states
+  moduleIds.forEach(moduleId => {
+    basket.clearModuleState(moduleId);
+  });
+  
+  // 4c. Clear semester metadata in legacy store
+  const clearYear = usePlanStore.getState().clearYear;
+  clearYear(year);
                 
                 // 5. Confirm success
                 if (import.meta.env.DEV) {

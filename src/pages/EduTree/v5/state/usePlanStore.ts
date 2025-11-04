@@ -94,7 +94,8 @@ export const usePlanStore = create<State>()(persist(
     },
     clearYear: (year) => {
       const semesters = structuredClone(get().semesters)
-      const keysToDelete = [`${year}-fall`, `${year}-spring`]
+      // Support fall, spring, and summer terms
+      const keysToDelete = [`${year}-fall`, `${year}-spring`, `${year}-summer`]
       
       keysToDelete.forEach(key => {
         delete semesters[key]
