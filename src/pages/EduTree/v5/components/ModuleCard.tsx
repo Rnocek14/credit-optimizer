@@ -377,8 +377,8 @@ export function ModuleCard({
             />
           )}
 
-          {/* Clear CTA to open dock (only show if incomplete/modified AND has options) */}
-          {(progress < 100 || viewState === 'modified') && derivedOptionsCount > 0 && (
+          {/* Clear CTA to open dock - show even for complete modules to allow changes */}
+          {derivedOptionsCount > 0 && (
             <button
               onClick={(e) => {
                 e.stopPropagation();
