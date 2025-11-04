@@ -836,7 +836,10 @@ export default function EduTreeV5Page() {
             {...degreeSummary}
             isCollapsed={degreeCollapsed}
             onToggle={toggleDegree}
-            onClick={() => openPanel('degree')}
+            onClick={() => {
+              console.log('[V5 Page] Degree node clicked, calling openPanel for degree scope');
+              openPanel('degree');
+            }}
             yearCount={4}
           />
         </div>

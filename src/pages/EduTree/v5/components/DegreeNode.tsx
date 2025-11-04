@@ -117,15 +117,26 @@ function DegreeNodeImpl({
       aria-expanded={!isCollapsed}
       aria-label={`Degree summary for ${degreeTitle}`}
       onClick={(e) => {
+        console.log('[DegreeNode] Click detected:', {
+          hasOnClick: !!onClick,
+          isCollapsed,
+          target: (e.target as HTMLElement).tagName,
+          targetClasses: (e.target as HTMLElement).className
+        });
+        
         // Check if clicking collapse button
-        if ((e.target as HTMLElement).closest('button')) {
+        const clickedButton = (e.target as HTMLElement).closest('button');
+        if (clickedButton) {
+          console.log('[DegreeNode] Click on button, ignoring:', clickedButton);
           return;
         }
         
         // If onClick is provided, open panel instead of toggling
         if (onClick) {
+          console.log('[DegreeNode] Calling onClick handler to open panel');
           onClick();
         } else {
+          console.log('[DegreeNode] No onClick, toggling collapse');
           onToggle();
         }
         

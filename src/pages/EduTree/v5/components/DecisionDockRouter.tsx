@@ -683,7 +683,20 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
 function DegreeAnalyzerContent(props: DecisionDockRouterProps) {
   const { degreeSummary, activeTab = 'overview', onTabChange, onNavigate } = props;
   
-  if (!degreeSummary) return null;
+  console.log('[DegreeAnalyzerContent] Render check:', {
+    hasDegreeSummary: !!degreeSummary,
+    degreeSummary: degreeSummary ? {
+      degreeTitle: degreeSummary.degreeTitle,
+      totalCreditsRequired: degreeSummary.totalCreditsRequired,
+      totalCreditsEarned: degreeSummary.totalCreditsEarned
+    } : null,
+    activeTab
+  });
+  
+  if (!degreeSummary) {
+    console.error('[DegreeAnalyzerContent] ❌ No degreeSummary provided, returning null!');
+    return null;
+  }
   
   const progressPercent = (degreeSummary.totalCreditsEarned / degreeSummary.totalCreditsRequired) * 100;
 
