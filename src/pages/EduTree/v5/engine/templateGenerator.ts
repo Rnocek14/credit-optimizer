@@ -32,14 +32,21 @@ export const GENERATION_PROFILES: TemplateGenerationProfile[] = [
   }
 ];
 
+export interface TemplateGeneratorOptions {
+  explorationMode?: boolean; // Allow generation for satisfied modules
+}
+
 /**
  * Generate module templates by directly ranking marketplace options
  * Uses profile weights to score and select best options for each strategy
+ * 
+ * @param explorationMode - When true, generates templates even for satisfied modules (for "what-if" comparison)
  */
 export async function generateModuleTemplates(
   module: ModuleData,
   basket: BasketItem[],
-  constraints: Constraints
+  constraints: Constraints,
+  options?: TemplateGeneratorOptions
 ): Promise<ModuleTemplate[]> {
   const templates: ModuleTemplate[] = [];
   
@@ -51,15 +58,24 @@ export async function generateModuleTemplates(
   
   // Calculate remaining credits needed
   const creditsNeeded = (module.creditsRequired ?? 0) - (module.creditsEarned ?? 0);
-  if (creditsNeeded <= 0) {
+  const isSatisfied = creditsNeeded <= 0;
+  const explorationMode = options?.explorationMode ?? false;
+  
+  if (isSatisfied && !explorationMode) {
     console.log('[TemplateGenerator] Module already satisfied:', module.id);
     return [];
+  }
+  
+  if (isSatisfied && explorationMode) {
+    console.log('[TemplateGenerator] 🔍 Exploration mode: generating alternatives for satisfied module:', module.id);
   }
   
   console.log('[TemplateGenerator] 🎯 Generating templates:', {
     moduleId: module.id,
     moduleLabel: module.label,
-    creditsNeeded,
+    creditsNeeded: isSatisfied ? 0 : creditsNeeded,
+    isSatisfied,
+    explorationMode,
     optionsCount: module.marketplaceOptions.length
   });
   
@@ -82,12 +98,13 @@ export async function generateModuleTemplates(
       };
     }).sort((a, b) => b.totalScore - a.totalScore);
     
-    // Pick best option(s) to satisfy credits
+    // Pick best option(s) to satisfy credits (or match existing if exploration)
     const selected: any[] = [];
     let totalCredits = 0;
+    const targetCredits = isSatisfied ? (module.creditsRequired ?? 0) : creditsNeeded;
     
     for (const opt of scored) {
-      if (totalCredits >= creditsNeeded) break;
+      if (totalCredits >= targetCredits) break;
       selected.push(opt);
       totalCredits += opt.credits;
     }
@@ -119,7 +136,12 @@ export async function generateModuleTemplates(
       semesterPlacement: 'any',
       est,
       generatedFrom: 'auto-fill',
-      weightProfile: profile.weights
+      weightProfile: profile.weights,
+      explorationMeta: isSatisfied ? {
+        isExploratory: true,
+        satisfiedAtGeneration: true,
+        conflicts: [] // TODO: detect residency/cap violations in future
+      } : undefined
     });
     
     console.log('[TemplateGenerator] ✅ Generated template:', {

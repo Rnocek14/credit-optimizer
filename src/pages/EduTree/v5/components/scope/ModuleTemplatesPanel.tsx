@@ -39,8 +39,11 @@ export function ModuleTemplatesPanel({ module, allModules, onAddTemplate }: Modu
   const allOptions = useMemo(() => allModules.flatMap(m => m.marketplaceOptions ?? []), [allModules]);
   const basketKey = useMemo(() => basket.map(b => b.courseId).sort().join('|'), [basket]);
   
+  // Check if module is satisfied (exploration mode)
+  const isSatisfied = (module.creditsEarned ?? 0) >= (module.creditsRequired ?? 0);
+  
   const { data: rankedTemplates, isLoading } = useQuery({
-    queryKey: ['module-templates-ranked', module.id, basketKey, constraints, evidence.raw?.completed?.length ?? 0],
+    queryKey: ['module-templates-ranked', module.id, basketKey, constraints, evidence.raw?.completed?.length ?? 0, isSatisfied],
     queryFn: async () => {
       console.log('[ModuleTemplatesPanel] 🔍 Pre-generation check:', {
         moduleId: module.id,
@@ -65,15 +68,21 @@ export function ModuleTemplatesPanel({ module, allModules, onAddTemplate }: Modu
       }
       
       // Generate templates dynamically from module data
-      const templates = await generateModuleTemplates(module, basket, constraints);
+      // Enable exploration mode for satisfied modules to show alternatives
+      const templates = await generateModuleTemplates(module, basket, constraints, {
+        explorationMode: isSatisfied
+      });
       console.log('[ModuleTemplatesPanel] ✅ Generation result:', {
         moduleId: module.id,
+        isSatisfied,
+        explorationMode: isSatisfied,
         templatesGenerated: templates.length,
         templateBadges: templates.map(t => t.badge)
       });
       return await rankTemplates(templates, basket, constraints, allOptions, evidence.raw);
     },
     staleTime: 5000,
+    // Always try to generate if module has options (exploration mode handles satisfied modules)
     enabled: !!module.id && !!module.marketplaceOptions && module.marketplaceOptions.length > 0
   });
 
@@ -92,13 +101,14 @@ export function ModuleTemplatesPanel({ module, allModules, onAddTemplate }: Modu
     setKeepPinned(false); // Reset toggle when previewing new template
     
     void trackTelemetryEvent({ 
-      task: 'template_preview_shown', 
+      task: isSatisfied ? 'module_template_explored' : 'template_preview_shown',
       scope: 'module', 
       complexity: sanitizeTelemetryPayload({ 
         schema_version: 1,
         template_id: template.id, 
         module_id: module.id,
-        template_label: template.label
+        template_label: template.label,
+        was_exploratory: isSatisfied
       })
     });
   };
@@ -154,12 +164,13 @@ export function ModuleTemplatesPanel({ module, allModules, onAddTemplate }: Modu
       const templateCourses = getTemplateCourses(previewingTemplate);
       
       void trackTelemetryEvent({ 
-        task: 'template_preview_confirmed', 
+        task: isSatisfied ? 'module_replaced_with_template' : 'template_preview_confirmed',
         scope: 'module', 
         complexity: sanitizeTelemetryPayload({ 
           schema_version: 1,
           template_id: previewingTemplate.id,
           module_id: module.id,
+          was_exploratory: isSatisfied,
           keep_pinned: keepPinned,
           cost_delta: preview.costDelta,
           weeks_delta: preview.weeksDelta,
@@ -222,6 +233,27 @@ export function ModuleTemplatesPanel({ module, allModules, onAddTemplate }: Modu
 
   return (
     <div className="space-y-4">
+      {/* Exploration Mode Banner - Show when module is satisfied */}
+      {isSatisfied && rankedTemplates && rankedTemplates.length > 0 && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="px-3 py-2.5 bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800/30 rounded-lg"
+        >
+          <div className="flex items-start gap-2">
+            <span className="text-green-600 dark:text-green-400 text-lg shrink-0">✅</span>
+            <div className="flex-1 text-sm space-y-0.5">
+              <p className="font-medium text-green-900 dark:text-green-100">
+                Module Satisfied • Explore Alternatives
+              </p>
+              <p className="text-xs text-green-700 dark:text-green-300">
+                Your plan won't change until you apply a template. Use this to compare different approaches.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+      
       {preview && previewingTemplate && FEATURE_FLAGS.V5_SIMPLIFIED_CARDS && (
         <TemplateDiffStrip 
           preview={preview} 

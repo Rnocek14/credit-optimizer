@@ -79,6 +79,13 @@ export interface ModuleTemplate {
   // Generation metadata
   generatedFrom?: 'manual' | 'auto-fill';
   weightProfile?: { cost: number; time: number; cri: number };
+  
+  // Exploration mode metadata
+  explorationMeta?: {
+    isExploratory: boolean; // true when module already satisfied
+    satisfiedAtGeneration: boolean;
+    conflicts?: string[]; // warnings about caps, residency, duplicates
+  };
 }
 
 /**
