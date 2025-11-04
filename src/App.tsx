@@ -41,6 +41,7 @@ import MentorInbox from "./pages/MentorInbox";
 import ResumeEmbed from "./pages/ResumeEmbed";
 import EmbedGenerator from "./pages/EmbedGenerator";
 import Analytics from "./pages/Analytics";
+import ExplorationDashboard from "./pages/Analytics/ExplorationDashboard";
 import MentorChat from "./pages/MentorChat";
 import AdminBadges from "./pages/AdminBadges";
 import EmbedExplorer from "./pages/EmbedExplorer";
@@ -799,6 +800,10 @@ const App = () => {
               <Analytics />
             </ProtectedRoute>
           } 
+        />
+        <Route 
+          path="/analytics/exploration" 
+          element={<ExplorationDashboard />} 
         />
         <Route 
           path="/admin/badges" 
