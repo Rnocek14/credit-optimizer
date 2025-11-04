@@ -99,12 +99,14 @@ export async function generateModuleTemplates(
     }).sort((a, b) => b.totalScore - a.totalScore);
     
     // Pick best option(s) to satisfy credits (or match existing if exploration)
+    // Cap at 10 candidates for performance on low-end devices
     const selected: any[] = [];
     let totalCredits = 0;
     const targetCredits = isSatisfied ? (module.creditsRequired ?? 0) : creditsNeeded;
+    const MAX_CANDIDATES = 10;
     
     for (const opt of scored) {
-      if (totalCredits >= targetCredits) break;
+      if (totalCredits >= targetCredits || selected.length >= MAX_CANDIDATES) break;
       selected.push(opt);
       totalCredits += opt.credits;
     }

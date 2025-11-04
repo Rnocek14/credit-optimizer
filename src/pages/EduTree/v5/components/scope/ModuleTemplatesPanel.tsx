@@ -41,9 +41,10 @@ export function ModuleTemplatesPanel({ module, allModules, onAddTemplate }: Modu
   
   // Check if module is satisfied (exploration mode)
   const isSatisfied = (module.creditsEarned ?? 0) >= (module.creditsRequired ?? 0);
+  const explorationEnabled = FEATURE_FLAGS.V5_EXPLORATION_MODE;
   
   const { data: rankedTemplates, isLoading } = useQuery({
-    queryKey: ['module-templates-ranked', module.id, basketKey, constraints, evidence.raw?.completed?.length ?? 0, isSatisfied],
+    queryKey: ['module-templates-ranked', module.id, basketKey, constraints, evidence.raw?.completed?.length ?? 0, isSatisfied, explorationEnabled],
     queryFn: async () => {
       console.log('[ModuleTemplatesPanel] 🔍 Pre-generation check:', {
         moduleId: module.id,
@@ -68,14 +69,15 @@ export function ModuleTemplatesPanel({ module, allModules, onAddTemplate }: Modu
       }
       
       // Generate templates dynamically from module data
-      // Enable exploration mode for satisfied modules to show alternatives
+      // Enable exploration mode for satisfied modules to show alternatives (if feature enabled)
       const templates = await generateModuleTemplates(module, basket, constraints, {
-        explorationMode: isSatisfied
+        explorationMode: explorationEnabled && isSatisfied
       });
       console.log('[ModuleTemplatesPanel] ✅ Generation result:', {
         moduleId: module.id,
         isSatisfied,
-        explorationMode: isSatisfied,
+        explorationEnabled,
+        explorationMode: explorationEnabled && isSatisfied,
         templatesGenerated: templates.length,
         templateBadges: templates.map(t => t.badge)
       });
@@ -233,8 +235,8 @@ export function ModuleTemplatesPanel({ module, allModules, onAddTemplate }: Modu
 
   return (
     <div className="space-y-4">
-      {/* Exploration Mode Banner - Show when module is satisfied */}
-      {isSatisfied && rankedTemplates && rankedTemplates.length > 0 && (
+      {/* Exploration Mode Banner - Show when module is satisfied and feature enabled */}
+      {FEATURE_FLAGS.V5_EXPLORATION_MODE && isSatisfied && rankedTemplates && rankedTemplates.length > 0 && (
         <div
           role="status"
           aria-live="polite"

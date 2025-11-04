@@ -247,7 +247,10 @@ export async function rankTemplates(
         
         score += (validation.impact.criDelta / 100) * 50;
         
-        return { template: t, validation, score };
+        // Stable tie-breaker: use template ID to ensure consistent order
+        const tieBreaker = t.id.charCodeAt(0) * 0.001;
+        
+        return { template: t, validation, score: score + tieBreaker };
       })
     );
     return scored.sort((a, b) => b.score - a.score);
@@ -304,7 +307,10 @@ export async function rankTemplates(
       
       score += (validation.impact.criDelta / 100) * 50;
       
-      return { template: t, validation, score };
+      // Stable tie-breaker: use template ID to ensure consistent order
+      const tieBreaker = t.id.charCodeAt(0) * 0.001;
+      
+      return { template: t, validation, score: score + tieBreaker };
     })
   );
   
