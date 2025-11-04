@@ -1,0 +1,28 @@
+{
+  "satisfied_module_templates": [
+    {
+      "id": "template-1",
+      "name": "Alternative CS Course Bundle",
+      "cost": 1200,
+      "weeks": 12,
+      "provider": "mooc",
+      "cri_delta": 2
+    },
+    {
+      "id": "template-2",
+      "name": "Accelerated CS Track",
+      "cost": 800,
+      "weeks": 8,
+      "provider": "testing_center",
+      "cri_delta": 1
+    },
+    {
+      "id": "template-3",
+      "name": "Standard CS Pathway",
+      "cost": 1500,
+      "weeks": 16,
+      "provider": "university",
+      "cri_delta": 3
+    }
+  ]
+}

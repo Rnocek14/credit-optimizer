@@ -1,6 +1,8 @@
 describe('Exploration Mode — A/B + Exploration Flow', () => {
   beforeEach(() => {
     cy.viewport(1440, 900);
+    cy.clearPlanStore();
+    cy.seedSatisfiedModule();
     cy.restoreLocalStorage();
   });
   
@@ -9,12 +11,11 @@ describe('Exploration Mode — A/B + Exploration Flow', () => {
   });
 
   it('forces Bucket A (OFF) via localStorage and hides exploration banner', () => {
-    cy.visit('/');
-    cy.window().then(w => w.localStorage.setItem('v5_exploration_mode', 'false'));
-    cy.reload();
+    cy.forceABBucket('A');
+    cy.visit('/edu-tree-v5');
+    cy.wait(1000); // Allow initial load
 
     // Open a satisfied module's templates
-    cy.visit('/edu-tree-v5');
     cy.get('[data-testid="module-node"]').first().click();
     cy.get('[role="tab"]').contains(/templates/i).click();
 
@@ -23,11 +24,10 @@ describe('Exploration Mode — A/B + Exploration Flow', () => {
   });
 
   it('forces Bucket B (ON) and shows exploration banner on satisfied modules', () => {
-    cy.visit('/');
-    cy.window().then(w => w.localStorage.setItem('v5_exploration_mode', 'true'));
-    cy.reload();
-
+    cy.forceABBucket('B');
     cy.visit('/edu-tree-v5');
+    cy.wait(1000);
+
     cy.get('[data-testid="module-node"]').first().click();
     cy.get('[role="tab"]').contains(/templates/i).click();
 
@@ -39,11 +39,10 @@ describe('Exploration Mode — A/B + Exploration Flow', () => {
   });
 
   it('applies an exploratory template and only changes the target module', () => {
-    cy.visit('/');
-    cy.window().then(w => w.localStorage.setItem('v5_exploration_mode', 'true'));
-    cy.reload();
-
+    cy.forceABBucket('B');
     cy.visit('/edu-tree-v5');
+    cy.wait(1000);
+
     cy.get('[data-testid="module-node"]').first().click();
     cy.get('[role="tab"]').contains(/templates/i).click();
 
@@ -57,23 +56,22 @@ describe('Exploration Mode — A/B + Exploration Flow', () => {
     });
 
     // Expect dock to refresh candidates for this module only
-    // (network-less heuristic: banner still visible, list reloaded)
     cy.contains(/Module Satisfied.*Explore Alternatives/i).should('exist');
     cy.get('[data-testid="template-card"]').should('have.length.greaterThan', 0);
   });
 
   it('logs telemetry with bucket information', () => {
-    cy.visit('/');
-    cy.window().then(w => {
-      w.localStorage.setItem('v5_exploration_mode', 'true');
-      // Spy on console to verify bucket logging
-      cy.spy(w.console, 'log').as('consoleLog');
-    });
-    cy.reload();
-
+    cy.stubTelemetry();
+    cy.forceABBucket('B');
     cy.visit('/edu-tree-v5');
     
-    // Verify ab_assignment event was logged
-    cy.get('@consoleLog').should('be.called');
+    // Verify ab_assignment event was logged with bucket
+    cy.window().then((win) => {
+      // @ts-ignore
+      const events = win.__telemetryEvents || [];
+      const assignmentEvent = events.find((e: any) => e.eventName === 'ab_assignment');
+      expect(assignmentEvent).to.exist;
+      expect(assignmentEvent.payload.bucket).to.be.oneOf(['A', 'B']);
+    });
   });
 });

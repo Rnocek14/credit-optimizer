@@ -1,10 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, LineChart, Line, CartesianGrid } from 'recharts';
-import { Loader2, AlertCircle } from 'lucide-react';
+import { Loader2, AlertCircle, CheckCircle2, TrendingUp } from 'lucide-react';
+import { twoProportionZTest } from '@/utils/statisticalSignificance';
 
 type Row = Record<string, any>;
 
@@ -52,9 +54,25 @@ export default function ExplorationDashboard() {
 
   // Simple deriveds
   const totalUsers = split.reduce((n, r) => n + Number(r.users ?? 0), 0);
-  const rateA = funnel.find(r => r.bucket === 'A')?.apply_rate_pct ?? 0;
-  const rateB = funnel.find(r => r.bucket === 'B')?.apply_rate_pct ?? 0;
+  const bucketAData = funnel.find(r => r.bucket === 'A');
+  const bucketBData = funnel.find(r => r.bucket === 'B');
+  
+  const exploredA = bucketAData?.explored ?? 0;
+  const appliedA = bucketAData?.applied ?? 0;
+  const exploredB = bucketBData?.explored ?? 0;
+  const appliedB = bucketBData?.applied ?? 0;
+  
+  const rateA = bucketAData?.apply_rate_pct ?? 0;
+  const rateB = bucketBData?.apply_rate_pct ?? 0;
   const lift = (Number(rateB) - Number(rateA)).toFixed(1);
+
+  // Statistical significance test
+  const stats = useMemo(() => {
+    if (exploredA === 0 || exploredB === 0) {
+      return null;
+    }
+    return twoProportionZTest(appliedA, exploredA, appliedB, exploredB);
+  }, [exploredA, appliedA, exploredB, appliedB]);
 
   useEffect(() => { 
     document.title = 'Exploration Analytics'; 
@@ -120,18 +138,57 @@ export default function ExplorationDashboard() {
           <CardContent className="p-4">
             <div className="text-sm text-muted-foreground">Apply Rate — A</div>
             <div className="text-2xl font-semibold">{rateA}%</div>
+            <div className="text-xs text-muted-foreground mt-1">
+              {appliedA}/{exploredA} conversions
+            </div>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4">
             <div className="text-sm text-muted-foreground">Apply Rate — B</div>
             <div className="text-2xl font-semibold">{rateB}%</div>
+            <div className="text-xs text-muted-foreground mt-1">
+              {appliedB}/{exploredB} conversions
+            </div>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4">
-            <div className="text-sm text-muted-foreground">Lift (B − A)</div>
-            <div className="text-2xl font-semibold">{lift}%</div>
+            <div className="flex items-start justify-between">
+              <div className="flex-1">
+                <div className="text-sm text-muted-foreground">Lift (B − A)</div>
+                <div className="text-2xl font-semibold">{lift}%</div>
+                {stats && (
+                  <div className="flex items-center gap-2 mt-2">
+                    {stats.isSignificant ? (
+                      <>
+                        <CheckCircle2 className="h-4 w-4 text-green-500" />
+                        <Badge variant="default" className="text-xs">Significant</Badge>
+                      </>
+                    ) : (
+                      <>
+                        <AlertCircle className="h-4 w-4 text-yellow-500" />
+                        <Badge variant="secondary" className="text-xs">
+                          {stats.sampleSizeAdequate ? 'Not Significant' : 'Need More Data'}
+                        </Badge>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+              {stats?.isSignificant && <TrendingUp className="h-8 w-8 text-green-500" />}
+            </div>
+            {stats && (
+              <div className="text-xs text-muted-foreground mt-2 space-y-1">
+                <div>p-value: {stats.pValue.toFixed(4)}</div>
+                <div>95% CI: [{(stats.confidenceInterval.lower * 100).toFixed(1)}%, {(stats.confidenceInterval.upper * 100).toFixed(1)}%]</div>
+                {!stats.sampleSizeAdequate && (
+                  <div className="text-amber-600">
+                    Min sample: {stats.minSampleSize} per bucket
+                  </div>
+                )}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
