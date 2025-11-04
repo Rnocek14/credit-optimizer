@@ -2,9 +2,11 @@ import { useMemo } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import type { LoadHealth, CreditsSummary, ModulesSummary, YearPanelHint } from '../types/v5';
 import type { NodeSelectedSummary } from '../types/nodeProgress';
 import { usePlanStore } from '../state/usePlanStore';
+import { formatCost, formatDuration, formatCRI } from '../utils/formatters';
 
 
 interface YearCardProps {
@@ -116,27 +118,49 @@ export function YearCard({
           </button>
         </div>
         
-        {/* Tier 2: Progress + Stats + Load Badge (single row) */}
+        {/* Tier 2: Progress bar */}
         <div className="flex items-center gap-2">
           <Progress value={progressPercentage} className="h-1.5 flex-1 bg-white/12" />
-          <span className="text-[11px] text-foreground/90 font-medium whitespace-nowrap">
-            {creditsSummary.planned}/{creditsSummary.required} cr
-          </span>
-          <span className="text-[11px] text-muted-foreground">•</span>
-          <span className="text-[11px] text-foreground/80 whitespace-nowrap">
-            {modulesSummary.completed}/{modulesSummary.total} {moduleText}
-          </span>
-          <Badge variant={loadBadge.variant} size="sm" className="text-[10px] h-5 px-2">
-            {loadBadge.emoji} {loadBadge.label}
-          </Badge>
         </div>
         
-        {/* Tier 3: Meta (Cost/Time/CRI) - improved contrast */}
-        {selectedSummary && !selectedSummary.isEmpty && (
-          <div className="text-center text-[11px] text-foreground/85 font-medium">
-            ${selectedSummary.cost} • {selectedSummary.weeks}w • CRI {Math.round(selectedSummary.avgCri)}
-          </div>
-        )}
+        {/* Tier 3: Consolidated metrics line */}
+        <div className="flex items-center justify-center gap-1.5 text-[11px] text-foreground/85 font-medium flex-wrap">
+          <span className="whitespace-nowrap">
+            {creditsSummary.planned}/{creditsSummary.required} credits
+          </span>
+          <span className="text-muted-foreground">•</span>
+          <span className="whitespace-nowrap">
+            {modulesSummary.completed}/{modulesSummary.total} {moduleText}
+          </span>
+          {selectedSummary && !selectedSummary.isEmpty && (
+            <>
+              <span className="text-muted-foreground">•</span>
+              <span className="whitespace-nowrap">
+                Est. {formatCost(selectedSummary.cost)}
+              </span>
+              <span className="text-muted-foreground">•</span>
+              <span className="whitespace-nowrap">
+                {selectedSummary.weeks} weeks
+              </span>
+              <span className="text-muted-foreground">•</span>
+              <span className="whitespace-nowrap">
+                CRI {formatCRI(selectedSummary.avgCri)}
+              </span>
+            </>
+          )}
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Badge variant={loadBadge.variant} size="sm" className="text-[10px] h-5 px-2 ml-1 cursor-help">
+                  {loadBadge.emoji} Load: {loadBadge.label}
+                </Badge>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p className="text-xs">Based on planned credits and weekly hours</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
       </div>
       
       {isCollapsed ? (
@@ -152,59 +176,85 @@ export function YearCard({
       ) : (
         /* Expanded State: Full Details */
         <>
-          {/* Quick Actions Toolbar */}
-          <div className="flex gap-2 justify-center pt-1 pb-2 border-t border-muted/30">
+          {/* Quick Actions Toolbar - Demoted to tertiary */}
+          <div className="flex gap-3 justify-center pt-1 pb-2 border-t border-muted/30">
             <button
               onClick={(e) => {
                 e.stopPropagation();
                 onClick?.(); // Opens year panel with templates
               }}
-              className="text-[11px] text-primary hover:text-primary/80 hover:underline font-medium flex items-center gap-1.5 px-3 py-1.5 rounded-md hover:bg-primary/10 transition-colors"
+              className="text-[10px] text-muted-foreground hover:text-primary hover:underline flex items-center gap-1 transition-colors"
             >
-              📋 Browse Templates
+              📋 Browse templates
             </button>
             <button
               onClick={(e) => {
                 e.stopPropagation();
                 // TODO: Wire up clear year action
               }}
-              className="text-[11px] text-muted-foreground hover:text-foreground flex items-center gap-1.5 px-3 py-1.5 rounded-md hover:bg-muted/50 transition-colors"
+              disabled={!hasCoursesPlanned}
+              className="text-[10px] text-muted-foreground hover:text-foreground hover:underline flex items-center gap-1 transition-colors disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:no-underline"
             >
-              🗑️ Clear Year
+              🗑️ Clear year
             </button>
           </div>
           
           {/* Year Summary & Actions */}
           <div className="mt-2 pt-2 border-t border-muted space-y-3">
             {!hasCoursesPlanned ? (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onClick?.({ focusTab: 'templates' });
-                }}
-                className="w-full px-4 py-3 text-sm font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors shadow-sm"
-                aria-label={`Auto-fill Year ${year} with templates`}
-              >
-                🎯 Auto-fill Year {year}
-              </button>
+              <>
+                {/* Empty state hint */}
+                <div className="text-center text-[11px] text-muted-foreground">
+                  {modulesSummary.total} {moduleText} to plan • {creditsSummary.required} credits required
+                </div>
+                
+                {/* Primary CTA */}
+                <div className="space-y-1.5">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onClick?.({ focusTab: 'templates' });
+                    }}
+                    className="w-full px-4 py-3 text-sm font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors shadow-sm"
+                    aria-label={`Apply a year template for Year ${year} - auto-fill courses across Fall and Spring`}
+                  >
+                    🎯 Apply Year Template
+                  </button>
+                  <p className="text-center text-[10px] text-muted-foreground">
+                    Balanced plan across Fall and Spring
+                  </p>
+                </div>
+              </>
             ) : (
-              <div className="flex items-center justify-center gap-3 text-xs text-foreground/85 py-2">
-                <span className="flex items-center gap-1">
-                  <span className="text-base">🍂</span>
-                  <span className="font-medium">{fallCredits} cr Fall</span>
-                </span>
-                <span className="text-muted-foreground">•</span>
-                <span className="flex items-center gap-1">
-                  <span className="text-base">🌸</span>
-                  <span className="font-medium">{springCredits} cr Spring</span>
-                </span>
-              </div>
-            )}
-            
-            {modulesSummary.completed > 0 && (
-              <div className="text-center text-xs text-muted-foreground">
-                {modulesSummary.completed} of {modulesSummary.total} {moduleText} complete
-              </div>
+              <>
+                {/* Semester breakdown after fill */}
+                <div 
+                  className="flex items-center justify-center gap-3 text-xs text-foreground/85 py-2 cursor-pointer hover:text-primary transition-colors"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    // TODO: Open dock at that term
+                  }}
+                  role="button"
+                  tabIndex={0}
+                  aria-label="View semester details"
+                >
+                  <span className="flex items-center gap-1">
+                    <span className="text-base">🍂</span>
+                    <span className="font-medium">{fallCredits} cr</span>
+                  </span>
+                  <span className="text-muted-foreground">•</span>
+                  <span className="flex items-center gap-1">
+                    <span className="text-base">🌸</span>
+                    <span className="font-medium">{springCredits} cr</span>
+                  </span>
+                </div>
+                
+                {modulesSummary.completed > 0 && (
+                  <div className="text-center text-xs text-muted-foreground">
+                    {modulesSummary.completed} of {modulesSummary.total} {moduleText} complete
+                  </div>
+                )}
+              </>
             )}
           </div>
           
