@@ -881,11 +881,18 @@ export default function EduTreeV5Page() {
                 year={year}
                 isCollapsed={collapsedYears[year] || false}
                 onToggle={() => toggleYear(year)}
-                onClick={(ui) => openPanel('year', String(year), { 
-                  year, 
-                  modules: yearModules,
-                  ui // Pass UI hints (focusTab, focusTerm) through
-                })}
+                onClick={(ui) => {
+                  console.log('[V5 Page] Year card clicked, calling openPanel:', {
+                    year,
+                    modulesCount: yearModules.length,
+                    uiHint: ui
+                  });
+                  openPanel('year', String(year), { 
+                    year, 
+                    modules: yearModules,
+                    ui // Pass UI hints (focusTab, focusTerm) through
+                  });
+                }}
                 creditsSummary={yearData.creditsSummary}
                 selectedSummary={yearSelectedSummary}
                 loadHealth={yearData.loadHealth}

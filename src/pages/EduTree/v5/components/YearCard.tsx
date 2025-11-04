@@ -87,17 +87,21 @@ export function YearCard({
       data-year={year}
       onClick={(e) => {
         e.stopPropagation();
+        console.log('[YearCard] Click detected:', { year, hasOnClick: !!onClick });
         
         // Check if clicking a button (like collapse chevron)
         const target = e.target as HTMLElement;
         if (target.closest('button')) {
+          console.log('[YearCard] Click on button, ignoring');
           return; // Let the button handle it
         }
         
         // Card body click: open panel if available, else toggle
         if (onClick) {
+          console.log('[YearCard] Calling onClick handler for year:', year);
           onClick();
         } else {
+          console.log('[YearCard] No onClick, toggling collapse');
           onToggle();
         }
       }}

@@ -28,8 +28,16 @@ export function useScopedPanel() {
     setPanelState(prev => {
       // Guard: only update if values actually changed
       if (prev.scope === scope && prev.nodeId === nodeId && prev.tab === tab) {
+        console.log('[useScopedPanel] URL sync - no change, keeping state');
         return prev;
       }
+      
+      console.log('[useScopedPanel] URL sync triggered:', {
+        from: { scope: prev.scope, nodeId: prev.nodeId, tab: prev.tab },
+        to: { scope, nodeId, tab },
+        willClearNodeData: scope !== prev.scope || nodeId !== prev.nodeId
+      });
+      
       // CRITICAL: Set nodeData to undefined when loading from URL
       // This triggers hydration logic in EduTreeV5Page
       return scope ? { scope, nodeId, tab, nodeData: undefined } : { scope: null };
@@ -37,6 +45,14 @@ export function useScopedPanel() {
   }, [location.search]);
 
   const openPanel = useCallback((scope: PanelScope, nodeId?: string, nodeData?: any, tab?: string) => {
+    console.log('[useScopedPanel] openPanel called:', {
+      scope, 
+      nodeId, 
+      hasNodeData: !!nodeData,
+      tab,
+      currentLocation: location.search
+    });
+    
     setPanelState(prev => {
       const isSameScope = prev.scope === scope && prev.nodeId === nodeId;
       const isTabChange = isSameScope && prev.tab !== tab;
@@ -63,6 +79,18 @@ export function useScopedPanel() {
         params.delete('node');
         params.delete('tab');
       }
+      
+      // Log param changes
+      const deletedParams = [];
+      if (!nodeId && prev.nodeId) deletedParams.push('node');
+      if (!tab && prev.tab) deletedParams.push('tab');
+      
+      console.log('[useScopedPanel] State update:', {
+        from: prev,
+        to: { scope, nodeId, hasNodeData: !!nodeData, tab },
+        deletedParams,
+        newURL: `${location.pathname}?${params.toString()}`
+      });
       
       navigate(`${location.pathname}?${params.toString()}`, { 
         replace: isTabChange // Only replace for tab changes within same scope

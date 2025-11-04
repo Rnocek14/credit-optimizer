@@ -445,21 +445,36 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
 
   if (!scope) return null;
 
-  // ✅ Validate scope-nodeId consistency
+  // ✅ Validate scope-nodeId consistency with grace period for hydration
   const scopeRequiresNodeId = scope === 'year' || scope === 'module';
   const hasNodeId = !!props.nodeId;
 
+  // Allow rendering during hydration (when year/yearModules are being loaded)
+  const isHydrating = scope === 'year' && hasNodeId && (!props.year || !props.yearModules);
+
   if (scopeRequiresNodeId && !hasNodeId) {
-    console.warn('[DecisionDockRouter] Invalid state: scope requires nodeId but none provided', {
-      scope, nodeId: props.nodeId
+    console.error('[DecisionDockRouter] ❌ VALIDATION FAILED: scope requires nodeId but none provided', {
+      scope, 
+      nodeId: props.nodeId,
+      propsReceived: Object.keys(props).filter(k => props[k as keyof typeof props] !== undefined)
     });
     // Auto-close invalid panel
     onClose();
     return null;
   }
 
+  if (isHydrating) {
+    console.warn('[DecisionDockRouter] ⏳ Hydrating year data, rendering loading state...', {
+      scope,
+      nodeId: props.nodeId,
+      hasYear: !!props.year,
+      hasYearModules: !!props.yearModules
+    });
+    // Render loading state instead of empty content (handled in YearMarketplaceContent)
+  }
+
   if (!scopeRequiresNodeId && hasNodeId) {
-    console.warn('[DecisionDockRouter] Invalid state: degree scope should not have nodeId; ignoring', {
+    console.warn('[DecisionDockRouter] ⚠️ degree scope should not have nodeId; ignoring', {
       scope, nodeId: props.nodeId
     });
     // Continue rendering but log the issue (degree scope can ignore nodeId)
@@ -640,9 +655,23 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
               });
               return null;
             })()}
-            {scope === 'degree' && <DegreeAnalyzerContent {...props} activeTab={activeTabInternal} onTabChange={handleTabChange} />}
-            {scope === 'year' && <YearMarketplaceContent {...props} />}
-            {scope === 'module' && <MarketplaceContent {...props} activeTab={activeTabInternal} onTabChange={handleTabChange} />}
+            {(() => {
+              try {
+                if (scope === 'degree') return <DegreeAnalyzerContent {...props} activeTab={activeTabInternal} onTabChange={handleTabChange} />;
+                if (scope === 'year') return <YearMarketplaceContent {...props} />;
+                if (scope === 'module') return <MarketplaceContent {...props} activeTab={activeTabInternal} onTabChange={handleTabChange} />;
+                return null;
+              } catch (error) {
+                console.error('[DecisionDockRouter] Content render error:', error);
+                return (
+                  <div className="text-center py-12 space-y-4">
+                    <p className="text-destructive font-medium">Error loading {scope} panel</p>
+                    <p className="text-sm text-muted-foreground">{error instanceof Error ? error.message : 'Unknown error'}</p>
+                    <button onClick={onClose} className="underline hover:no-underline">Close and try again</button>
+                  </div>
+                );
+              }
+            })()}
           </div>
         </DrawerPrimitive.Content>
       </DrawerPrimitive.Portal>
@@ -806,6 +835,24 @@ function DegreeAnalyzerContent(props: DecisionDockRouterProps) {
 // Extract Year Marketplace content
 function YearMarketplaceContent(props: DecisionDockRouterProps) {
   const { year, yearModules = [], degreeSummary, onNavigate, onOpenModulePanel, onClose, nodeData } = props;
+  
+  // Show loading state if year data is still hydrating
+  if (!year || !yearModules || yearModules.length === 0) {
+    console.warn('[YearMarketplaceContent] Missing data, showing loading state:', {
+      hasYear: !!year,
+      yearModulesCount: yearModules?.length || 0
+    });
+    
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="text-center space-y-3">
+          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-primary border-r-transparent"></div>
+          <p className="text-sm text-muted-foreground">Loading year {year || '?'} data...</p>
+        </div>
+      </div>
+    );
+  }
+  
   const basketItems = usePlanBasket(s => s.items);
   const constraints = usePlanBasket(s => s.constraints);
   const addItem = usePlanBasket(s => s.addItem);
