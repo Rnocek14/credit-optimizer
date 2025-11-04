@@ -19,9 +19,10 @@ import { X } from 'lucide-react';
 import { FEATURE_FLAGS } from '../../config/featureFlags';
 import { getTemplateCourses, sanitizeTelemetryPayload } from '../../utils/templateHelpers';
 import { useExplorationAB } from '../../hooks/useExplorationAB';
-import { loadActiveWeights } from '@/lib/analytics/explorationApi';
 import { reRankTemplates } from '@/lib/analytics/reRankTemplates';
-import { supabase } from '@/integrations/supabase/client';
+import { getCurrentBucket } from '@/utils/abTesting';
+import { useSmartWeights } from '@/lib/analytics/useSmartWeights';
+import { logSmartShown, logSmartDistribution } from '@/lib/analytics/smartRecsTelemetry';
 
 interface ModuleTemplatesPanelProps {
   module: ModuleData;
@@ -35,7 +36,8 @@ export function ModuleTemplatesPanel({ module, allModules, onAddTemplate }: Modu
   const evidence = useUserEvidence({ enabled: true });
   const { applyTemplate: applyTemplateFn } = useApplyTemplate();
   const queryClient = useQueryClient();
-  const { explorationEnabled, bucket } = useExplorationAB();
+  const { explorationEnabled, bucket, userIdOrAnon } = useExplorationAB();
+  const { data: activeWeights } = useSmartWeights();
   
   const [previewingTemplate, setPreviewingTemplate] = useState<ModuleTemplate | null>(null);
   const [preview, setPreview] = useState<TemplatePreview | null>(null);
@@ -57,7 +59,7 @@ export function ModuleTemplatesPanel({ module, allModules, onAddTemplate }: Modu
     }
   }, [explorationEnabled, bucket, module.id]);
   
-  const { data: rankedTemplates, isLoading } = useQuery({
+  const { data: baseTemplates, isLoading } = useQuery({
     queryKey: ['module-templates-ranked', module.id, basketKey, constraints, evidence.raw?.completed?.length ?? 0, isSatisfied, explorationEnabled],
     queryFn: async () => {
       console.log('[ModuleTemplatesPanel] 🔍 Pre-generation check:', {
@@ -98,34 +100,51 @@ export function ModuleTemplatesPanel({ module, allModules, onAddTemplate }: Modu
       
       let rankedTemplates = await rankTemplates(templates, basket, constraints, allOptions, evidence.raw);
       
-      // Apply smart re-ranker for Bucket B (behind feature flag)
-      const smartEnabled = localStorage.getItem('V5_SMART_RECS') === 'true';
-      if (smartEnabled && bucket === 'B') {
-        try {
-          const weights = await loadActiveWeights(supabase);
-          rankedTemplates = reRankTemplates(rankedTemplates, weights) as any;
-          logEvent('smart_recs_applied', {
-            bucket,
-            moduleId: module.id,
-            templatesCount: rankedTemplates.length,
-            topTemplateScore: (rankedTemplates[0] as any)?.smartScore ?? null
-          });
-          console.log('[SmartRecs] ✅ Re-ranked templates:', {
-            moduleId: module.id,
-            count: rankedTemplates.length,
-            topScore: (rankedTemplates[0] as any)?.smartScore
-          });
-        } catch (e) {
-          console.warn('[SmartRecs] Fallback to base ordering due to weights error:', e);
-        }
-      }
-      
       return rankedTemplates;
     },
     staleTime: 5000,
     // Always try to generate if module has options (exploration mode handles satisfied modules)
     enabled: !!module.id && !!module.marketplaceOptions && module.marketplaceOptions.length > 0
   });
+
+  // Apply smart re-ranker (outside async queryFn for better hook usage)
+  const rankedTemplates = useMemo(() => {
+    if (!baseTemplates) return baseTemplates;
+    
+    const smartEnabled = localStorage.getItem('V5_SMART_RECS') === 'true';
+    if (!smartEnabled || bucket !== 'B' || !activeWeights) {
+      return baseTemplates;
+    }
+
+    try {
+      const ranked = reRankTemplates(baseTemplates, activeWeights) as any;
+      const scores = ranked.map((t: any) => t.smartScore ?? 0);
+      
+      logSmartShown({
+        bucket,
+        moduleId: module.id,
+        weightsVersion: activeWeights.version,
+        count: ranked.length,
+        topScore: scores[0] ?? null,
+        avgScore: scores.length ? Number((scores.reduce((a: number, b: number) => a + b, 0) / scores.length).toFixed(2)) : null,
+      });
+      
+      logSmartDistribution(module.id, bucket, scores, activeWeights.version);
+      
+      logEvent('smart_recs_applied', {
+        bucket,
+        moduleId: module.id,
+        templatesCount: ranked.length,
+        topTemplateScore: ranked[0]?.smartScore,
+        weightsVersion: activeWeights.version,
+      });
+      
+      return ranked;
+    } catch (e) {
+      console.warn('[SmartRecs] Fallback ordering due to weights error', e);
+      return baseTemplates;
+    }
+  }, [baseTemplates, bucket, activeWeights, module.id]);
 
   const handlePreviewTemplate = (template: ModuleTemplate) => {
     const previewResult = previewTemplate({ 
@@ -350,7 +369,7 @@ export function ModuleTemplatesPanel({ module, allModules, onAddTemplate }: Modu
           filteredTemplates.map(rt => (
             <div key={rt.template.id} role="listitem">
               <TemplateCard 
-                template={rt.template} 
+                template={{ ...rt.template, smartScore: (rt as any).smartScore }} 
                 validation={rt.validation} 
                 onAdd={() => handlePreviewTemplate(rt.template)} 
               />

@@ -7,6 +7,7 @@ import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, LineChart, L
 import { Loader2, AlertCircle, CheckCircle2, TrendingUp, Download } from 'lucide-react';
 import { twoProportionZTest } from '@/utils/statisticalSignificance';
 import { useExplorationAnalytics } from '@/lib/analytics/useExplorationAnalytics';
+import { evaluateSmartRecsGuardrail, applyGuardrailIfNeeded } from '@/lib/analytics/guardrails';
 
 // CSV Export Utilities
 function toCSV(rows: Record<string, any>[]) {
@@ -40,6 +41,18 @@ export default function ExplorationDashboard() {
   const split = data?.split ?? [];
   const funnel = data?.funnel ?? [];
   const daily = data?.daily ?? [];
+
+  // Auto-disable guardrail
+  useEffect(() => {
+    const a = funnel.find(r => r.bucket === 'A');
+    const b = funnel.find(r => r.bucket === 'B');
+    if (!a || !b) return;
+    const res = evaluateSmartRecsGuardrail({
+      exploredA: Number(a.explored), appliedA: Number(a.applied),
+      exploredB: Number(b.explored), appliedB: Number(b.applied),
+    });
+    applyGuardrailIfNeeded(res);
+  }, [funnel]);
   // Transform daily data for trend chart
   const dailySeries = useMemo(() => {
     const byDay: Record<string, { day: string; a?: number; b?: number }> = {};

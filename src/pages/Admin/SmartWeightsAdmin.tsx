@@ -7,29 +7,13 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Loader2, CheckCircle2, Copy, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
-
-interface WeightsRow {
-  id: number;
-  version: number;
-  active: boolean;
-  notes: string | null;
-  bias: number;
-  w_cost: number;
-  w_weeks: number;
-  w_cri: number;
-  w_transfer_ok: number;
-  w_provider_ace: number;
-  w_provider_clep: number;
-  w_provider_nccrs: number;
-  w_provider_other: number;
-  w_exploratory_bonus: number;
-  created_at: string;
-  activated_at: string | null;
-}
+import PreviewWeightsModal from './PreviewWeightsModal';
+import type { WeightsRow } from '@/lib/analytics/useSmartWeights';
 
 export default function SmartWeightsAdmin() {
   const queryClient = useQueryClient();
   const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [preview, setPreview] = useState<WeightsRow | null>(null);
 
   const { data: weights = [], isLoading, error } = useQuery({
     queryKey: ['smart-weights'],
@@ -257,6 +241,13 @@ export default function SmartWeightsAdmin() {
                       <Copy className="h-3 w-3 mr-1" />
                       Clone
                     </Button>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={() => setPreview(w)}
+                    >
+                      Preview
+                    </Button>
                     {!w.active && (
                       <Button
                         size="sm"
@@ -291,6 +282,12 @@ export default function SmartWeightsAdmin() {
           </Table>
         </CardContent>
       </Card>
+      
+      <PreviewWeightsModal
+        weights={preview!}
+        open={!!preview}
+        onClose={() => setPreview(null)}
+      />
     </div>
   );
 }
