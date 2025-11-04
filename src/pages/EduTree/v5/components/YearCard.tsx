@@ -7,6 +7,8 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import type { LoadHealth, CreditsSummary, ModulesSummary, YearPanelHint } from '../types/v5';
 import type { NodeSelectedSummary } from '../types/nodeProgress';
 import { usePlanStore } from '../state/usePlanStore';
+import { usePlanBasket } from '../state/usePlanBasket';
+import { PROGRAM_MODULES } from '@/fixtures/v5/programModules';
 import { formatCost, formatDuration, formatCRI } from '../utils/formatters';
 import { toast } from 'sonner';
 
@@ -38,15 +40,26 @@ export function YearCard({
     ? (creditsSummary.planned / creditsSummary.required) * 100 
     : 0;
 
-  // Calculate semester credits with shallow subscription for reactivity
-  const { fallCredits, springCredits, hasCoursesPlanned } = usePlanStore(
+  // Check if ANY courses exist in this year's modules (source of truth: basket)
+  const yearModuleIds = useMemo(
+    () => PROGRAM_MODULES.filter(m => m.year === year).map(m => m.id),
+    [year]
+  );
+
+  const hasCoursesPlanned = usePlanBasket(
+    useShallow(state => 
+      state.items.some(item => yearModuleIds.includes(item.moduleId))
+    )
+  );
+
+  // Legacy semester credits for metrics display
+  const { fallCredits, springCredits } = usePlanStore(
     useShallow(s => {
       const fallSemester = s.semesters[`${year}-fall`] || { credits: 0, courseIds: [] };
       const springSemester = s.semesters[`${year}-spring`] || { credits: 0, courseIds: [] };
       return {
         fallCredits: fallSemester.credits,
         springCredits: springSemester.credits,
-        hasCoursesPlanned: fallSemester.courseIds.length > 0 || springSemester.courseIds.length > 0,
       };
     })
   );
@@ -199,32 +212,79 @@ export function YearCard({
               onClick={(e) => {
                 e.stopPropagation();
                 
+                // 1. Identify all modules for this year
+                const yearModules = PROGRAM_MODULES.filter(m => m.year === year);
+                const moduleIds = yearModules.map(m => m.id);
+                
                 if (import.meta.env.DEV) {
-                  console.log('[YearCard] Clear button clicked, hasCoursesPlanned:', hasCoursesPlanned);
-                  console.log('[YearCard] Current semesters:', usePlanStore.getState().semesters);
-                }
-                
-                const clearYear = usePlanStore.getState().clearYear;
-                
-                if (window.confirm(`Clear all courses from Year ${year}? This cannot be undone.`)) {
-                  if (import.meta.env.DEV) {
-                    console.log('[YearCard] User confirmed, calling clearYear');
-                  }
-                  
-                  clearYear(year);
-                  
-                  if (import.meta.env.DEV) {
-                    console.log('[YearCard] After clear, semesters:', usePlanStore.getState().semesters);
-                  }
-                  
-                  toast.success("Year cleared", {
-                    description: `Removed all courses from Year ${year}.`,
+                  console.log('[YearCard] Clear Year clicked:', {
+                    year,
+                    moduleCount: moduleIds.length,
+                    moduleIds,
                   });
-                } else {
-                  if (import.meta.env.DEV) {
-                    console.log('[YearCard] User cancelled');
-                  }
                 }
+                
+                // 2. Preview what will be removed
+                const basket = usePlanBasket.getState();
+                const itemsToRemove = basket.items.filter(item => 
+                  moduleIds.includes(item.moduleId)
+                );
+                
+                if (itemsToRemove.length === 0) {
+                  toast.message("Nothing to clear", {
+                    description: `Year ${year} has no courses.`,
+                  });
+                  return;
+                }
+                
+                // 3. Confirm with user
+                const courseCount = itemsToRemove.length;
+                const moduleCount = new Set(itemsToRemove.map(i => i.moduleId)).size;
+                
+                if (!window.confirm(
+                  `Clear all courses from Year ${year}?\n\n` +
+                  `This will remove ${courseCount} course${courseCount !== 1 ? 's' : ''} ` +
+                  `across ${moduleCount} module${moduleCount !== 1 ? 's' : ''}.\n\n` +
+                  `This cannot be undone.`
+                )) {
+                  if (import.meta.env.DEV) {
+                    console.log('[YearCard] User cancelled clear');
+                  }
+                  return;
+                }
+                
+                // 4. Execute full clear across both stores
+                if (import.meta.env.DEV) {
+                  console.log('[YearCard] Clearing:', {
+                    courses: itemsToRemove.map(i => ({ id: i.courseId, module: i.moduleId })),
+                  });
+                }
+                
+                // 4a. Remove all course items from basket
+                itemsToRemove.forEach(item => {
+                  basket.removeItem(item.courseId);
+                });
+                
+                // 4b. Clear module template states
+                moduleIds.forEach(moduleId => {
+                  basket.clearModuleState(moduleId);
+                });
+                
+                // 4c. Clear semester metadata in legacy store
+                const clearYear = usePlanStore.getState().clearYear;
+                clearYear(year);
+                
+                // 5. Confirm success
+                if (import.meta.env.DEV) {
+                  console.log('[YearCard] Clear complete:', {
+                    remainingItems: usePlanBasket.getState().items.length,
+                    remainingSemesters: Object.keys(usePlanStore.getState().semesters),
+                  });
+                }
+                
+                toast.success("Year cleared", {
+                  description: `Removed ${courseCount} course${courseCount !== 1 ? 's' : ''} from Year ${year}.`,
+                });
               }}
               disabled={!hasCoursesPlanned}
               title={!hasCoursesPlanned ? "Nothing to clear" : "Clear all courses from this year"}
