@@ -198,23 +198,32 @@ export function YearCard({
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                console.log('[YearCard] Clear button clicked, hasCoursesPlanned:', hasCoursesPlanned);
-                console.log('[YearCard] Current semesters:', usePlanStore.getState().semesters);
+                
+                if (import.meta.env.DEV) {
+                  console.log('[YearCard] Clear button clicked, hasCoursesPlanned:', hasCoursesPlanned);
+                  console.log('[YearCard] Current semesters:', usePlanStore.getState().semesters);
+                }
                 
                 const clearYear = usePlanStore.getState().clearYear;
                 
                 if (window.confirm(`Clear all courses from Year ${year}? This cannot be undone.`)) {
-                  console.log('[YearCard] User confirmed, calling clearYear');
+                  if (import.meta.env.DEV) {
+                    console.log('[YearCard] User confirmed, calling clearYear');
+                  }
+                  
                   clearYear(year);
                   
-                  // Log after clear for debugging
-                  console.log('[YearCard] After clear, semesters:', usePlanStore.getState().semesters);
+                  if (import.meta.env.DEV) {
+                    console.log('[YearCard] After clear, semesters:', usePlanStore.getState().semesters);
+                  }
                   
                   toast.success("Year cleared", {
                     description: `Removed all courses from Year ${year}.`,
                   });
                 } else {
-                  console.log('[YearCard] User cancelled');
+                  if (import.meta.env.DEV) {
+                    console.log('[YearCard] User cancelled');
+                  }
                 }
               }}
               disabled={!hasCoursesPlanned}
