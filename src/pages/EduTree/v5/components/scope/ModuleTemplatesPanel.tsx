@@ -19,6 +19,9 @@ import { X } from 'lucide-react';
 import { FEATURE_FLAGS } from '../../config/featureFlags';
 import { getTemplateCourses, sanitizeTelemetryPayload } from '../../utils/templateHelpers';
 import { useExplorationAB } from '../../hooks/useExplorationAB';
+import { loadActiveWeights } from '@/lib/analytics/explorationApi';
+import { reRankTemplates } from '@/lib/analytics/reRankTemplates';
+import { supabase } from '@/integrations/supabase/client';
 
 interface ModuleTemplatesPanelProps {
   module: ModuleData;
@@ -92,7 +95,32 @@ export function ModuleTemplatesPanel({ module, allModules, onAddTemplate }: Modu
         templatesGenerated: templates.length,
         templateBadges: templates.map(t => t.badge)
       });
-      return await rankTemplates(templates, basket, constraints, allOptions, evidence.raw);
+      
+      let rankedTemplates = await rankTemplates(templates, basket, constraints, allOptions, evidence.raw);
+      
+      // Apply smart re-ranker for Bucket B (behind feature flag)
+      const smartEnabled = localStorage.getItem('V5_SMART_RECS') === 'true';
+      if (smartEnabled && bucket === 'B') {
+        try {
+          const weights = await loadActiveWeights(supabase);
+          rankedTemplates = reRankTemplates(rankedTemplates, weights) as any;
+          logEvent('smart_recs_applied', {
+            bucket,
+            moduleId: module.id,
+            templatesCount: rankedTemplates.length,
+            topTemplateScore: (rankedTemplates[0] as any)?.smartScore ?? null
+          });
+          console.log('[SmartRecs] ✅ Re-ranked templates:', {
+            moduleId: module.id,
+            count: rankedTemplates.length,
+            topScore: (rankedTemplates[0] as any)?.smartScore
+          });
+        } catch (e) {
+          console.warn('[SmartRecs] Fallback to base ordering due to weights error:', e);
+        }
+      }
+      
+      return rankedTemplates;
     },
     staleTime: 5000,
     // Always try to generate if module has options (exploration mode handles satisfied modules)

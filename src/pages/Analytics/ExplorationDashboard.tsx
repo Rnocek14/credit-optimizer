@@ -1,58 +1,41 @@
 import { useEffect, useState, useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, LineChart, Line, CartesianGrid } from 'recharts';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, LineChart, Line, CartesianGrid, Legend } from 'recharts';
 import { Loader2, AlertCircle, CheckCircle2, TrendingUp } from 'lucide-react';
 import { twoProportionZTest } from '@/utils/statisticalSignificance';
-
-type Row = Record<string, any>;
-
-async function fetchView(view: string): Promise<Row[]> {
-  try {
-    // @ts-ignore - Views are created manually, not in generated types yet
-    const { data, error } = await supabase.from(view).select('*');
-    if (error) throw error;
-    return (data as Row[]) || [];
-  } catch (error) {
-    console.error(`Error fetching ${view}:`, error);
-    throw error; // Re-throw to trigger error state
-  }
-}
+import { useExplorationAnalytics } from '@/lib/analytics/useExplorationAnalytics';
 
 export default function ExplorationDashboard() {
-  const [viewsReady, setViewsReady] = useState(true);
+  const [moduleCategory, setModuleCategory] = useState<string | null>(null);
+  const [planYear, setPlanYear] = useState<number | null>(null);
+  const [providerType, setProviderType] = useState<string | null>(null);
+  const [since, setSince] = useState<'7 days' | '21 days' | '30 days'>('21 days');
   
-  const { data: split = [], isLoading: splitLoading, error: splitError } = useQuery({ 
-    queryKey: ['ab_split'], 
-    queryFn: () => fetchView('analytics_ab_assignments_21d'),
-    retry: false
-  });
-  
-  const { data: funnel = [], isLoading: funnelLoading, error: funnelError } = useQuery({ 
-    queryKey: ['exploration_funnel'], 
-    queryFn: () => fetchView('analytics_exploration_funnel_21d'),
-    retry: false
-  });
-  
-  const { data: satisfied = [], isLoading: satisfiedLoading, error: satisfiedError } = useQuery({ 
-    queryKey: ['exploration_satisfied'], 
-    queryFn: () => fetchView('analytics_exploration_satisfied_21d'),
-    retry: false
+  const { data, isLoading, isError } = useExplorationAnalytics({
+    since,
+    moduleCategory,
+    planYear,
+    providerType,
   });
 
-  const isLoading = splitLoading || funnelLoading || satisfiedLoading;
-  const hasError = splitError || funnelError || satisfiedError;
-  
-  useEffect(() => {
-    if (hasError) {
-      setViewsReady(false);
+  const split = data?.split ?? [];
+  const funnel = data?.funnel ?? [];
+  const daily = data?.daily ?? [];
+  // Transform daily data for trend chart
+  const dailySeries = useMemo(() => {
+    const byDay: Record<string, { day: string; a?: number; b?: number }> = {};
+    for (const r of daily) {
+      const d = byDay[r.day] ?? { day: r.day };
+      if (r.bucket === 'A') d.a = Number(r.apply_rate_pct);
+      if (r.bucket === 'B') d.b = Number(r.apply_rate_pct);
+      byDay[r.day] = d;
     }
-  }, [hasError]);
+    return Object.values(byDay).sort((x, y) => x.day.localeCompare(y.day));
+  }, [daily]);
 
-  // Simple deriveds
   const totalUsers = split.reduce((n, r) => n + Number(r.users ?? 0), 0);
   const bucketAData = funnel.find(r => r.bucket === 'A');
   const bucketBData = funnel.find(r => r.bucket === 'B');
@@ -89,20 +72,20 @@ export default function ExplorationDashboard() {
     );
   }
 
-  if (!viewsReady || hasError) {
+  if (isError) {
     return (
       <div className="p-6">
         <Card className="p-8">
           <div className="flex flex-col items-center gap-4 text-center">
             <AlertCircle className="h-12 w-12 text-amber-500" />
             <div>
-              <h2 className="text-lg font-semibold mb-2">Analytics Views Not Set Up</h2>
+              <h2 className="text-lg font-semibold mb-2">Analytics RPCs Not Set Up</h2>
               <p className="text-sm text-muted-foreground mb-4 max-w-md">
-                The analytics database views haven't been created yet. Please run the SQL setup script to enable analytics.
+                The analytics database functions haven't been created yet. Please run the SQL setup script to enable analytics.
               </p>
               <div className="bg-muted p-3 rounded-md text-left text-xs font-mono mb-4">
                 <p className="text-muted-foreground">Run in Supabase SQL Editor:</p>
-                <p className="mt-1">docs/exploration-analytics-setup.sql</p>
+                <p className="mt-1">docs/exploration-analytics-slices.sql</p>
               </div>
               <p className="text-xs text-muted-foreground">
                 After running the SQL, regenerate types in Lovable Cloud tab.
@@ -116,13 +99,65 @@ export default function ExplorationDashboard() {
 
   return (
     <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-semibold">Exploration Mode — Analytics</h1>
-          <p className="text-sm text-muted-foreground mt-1">A/B test performance for satisfied module exploration (last 21 days)</p>
-        </div>
-        <div className="flex gap-2">
+      <div className="flex flex-col gap-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-xl font-semibold">Exploration Mode — Analytics</h1>
+            <p className="text-sm text-muted-foreground mt-1">A/B test performance with slice filters</p>
+          </div>
           <Button variant="secondary" onClick={() => location.reload()}>Refresh</Button>
+        </div>
+        
+        {/* Filter Controls */}
+        <div className="flex flex-wrap gap-3">
+          <Select value={since} onValueChange={(v) => setSince(v as any)}>
+            <SelectTrigger className="w-[140px]">
+              <SelectValue placeholder="Time range" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="7 days">Last 7 days</SelectItem>
+              <SelectItem value="21 days">Last 21 days</SelectItem>
+              <SelectItem value="30 days">Last 30 days</SelectItem>
+            </SelectContent>
+          </Select>
+          
+          <Select value={moduleCategory ?? 'all'} onValueChange={(v) => setModuleCategory(v === 'all' ? null : v)}>
+            <SelectTrigger className="w-[160px]">
+              <SelectValue placeholder="Category" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Categories</SelectItem>
+              <SelectItem value="gen_ed">Gen Ed</SelectItem>
+              <SelectItem value="core">Core</SelectItem>
+              <SelectItem value="elective">Elective</SelectItem>
+            </SelectContent>
+          </Select>
+          
+          <Select value={planYear?.toString() ?? 'all'} onValueChange={(v) => setPlanYear(v === 'all' ? null : Number(v))}>
+            <SelectTrigger className="w-[130px]">
+              <SelectValue placeholder="Year" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Years</SelectItem>
+              <SelectItem value="1">Year 1</SelectItem>
+              <SelectItem value="2">Year 2</SelectItem>
+              <SelectItem value="3">Year 3</SelectItem>
+              <SelectItem value="4">Year 4</SelectItem>
+            </SelectContent>
+          </Select>
+          
+          <Select value={providerType ?? 'all'} onValueChange={(v) => setProviderType(v === 'all' ? null : v)}>
+            <SelectTrigger className="w-[140px]">
+              <SelectValue placeholder="Provider" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Providers</SelectItem>
+              <SelectItem value="ACE">ACE</SelectItem>
+              <SelectItem value="CLEP">CLEP</SelectItem>
+              <SelectItem value="NCCRS">NCCRS</SelectItem>
+              <SelectItem value="other">Other</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
@@ -227,22 +262,40 @@ export default function ExplorationDashboard() {
         </CardContent>
       </Card>
 
-      {/* Satisfied-module exploration success */}
+      {/* Daily trend chart */}
       <Card>
         <CardContent className="p-4">
-          <div className="mb-2 text-sm font-medium">Satisfied Modules — Exploration Apply Rate</div>
-          <ResponsiveContainer width="100%" height={260}>
-            <LineChart data={satisfied}>
+          <div className="mb-2 text-sm font-medium">Apply Rate Trend (Daily)</div>
+          <ResponsiveContainer width="100%" height={280}>
+            <LineChart data={dailySeries}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} />
-              <XAxis dataKey="bucket" />
-              <YAxis />
-              <Tooltip />
+              <XAxis 
+                dataKey="day" 
+                fontSize={12}
+                tickFormatter={(val) => new Date(val).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+              />
+              <YAxis 
+                label={{ value: 'Apply Rate %', angle: -90, position: 'insideLeft' }}
+                fontSize={12}
+              />
+              <Tooltip 
+                labelFormatter={(val) => new Date(val).toLocaleDateString()}
+                formatter={(val: number) => [`${val.toFixed(1)}%`, '']}
+              />
+              <Legend />
               <Line 
-                dataKey="exploration_apply_rate_pct" 
-                name="Apply Rate %" 
-                stroke="hsl(var(--primary))" 
+                dataKey="a" 
+                name="Bucket A" 
+                stroke="hsl(var(--chart-1))" 
                 strokeWidth={2}
-                dot={{ r: 4 }}
+                dot={{ r: 3 }}
+              />
+              <Line 
+                dataKey="b" 
+                name="Bucket B" 
+                stroke="hsl(var(--chart-2))" 
+                strokeWidth={2}
+                dot={{ r: 3 }}
               />
             </LineChart>
           </ResponsiveContainer>
@@ -252,14 +305,11 @@ export default function ExplorationDashboard() {
   );
 }
 
-function aggregateSplit(rows: Row[]) {
-  // Rows have multiple lines per bucket (overridden true/false). Collapse for users + overrides.
-  const map: Record<string, { bucket: string; users: number; overrides: number }> = {};
-  for (const r of rows) {
-    const b = r.bucket ?? 'UNK';
-    if (!map[b]) map[b] = { bucket: b, users: 0, overrides: 0 };
-    map[b].users += Number(r.users ?? 0);
-    if (r.overridden) map[b].overrides += Number(r.users ?? 0);
-  }
-  return Object.values(map);
+function aggregateSplit(rows: Array<{ bucket?: string; users?: number; assignment_events?: number }>) {
+  // Map RPC result to chart format
+  return rows.map(r => ({
+    bucket: r.bucket ?? 'UNK',
+    users: r.users ?? 0,
+    overrides: Math.max(0, (r.assignment_events ?? 0) - (r.users ?? 0)) // Estimate overrides from delta
+  }));
 }
