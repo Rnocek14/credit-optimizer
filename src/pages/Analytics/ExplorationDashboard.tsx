@@ -4,9 +4,25 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, LineChart, Line, CartesianGrid, Legend } from 'recharts';
-import { Loader2, AlertCircle, CheckCircle2, TrendingUp } from 'lucide-react';
+import { Loader2, AlertCircle, CheckCircle2, TrendingUp, Download } from 'lucide-react';
 import { twoProportionZTest } from '@/utils/statisticalSignificance';
 import { useExplorationAnalytics } from '@/lib/analytics/useExplorationAnalytics';
+
+// CSV Export Utilities
+function toCSV(rows: Record<string, any>[]) {
+  if (!rows.length) return '';
+  const cols = Object.keys(rows[0]);
+  const esc = (v: any) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+  return [cols.join(','), ...rows.map(r => cols.map(c => esc(r[c])).join(','))].join('\n');
+}
+
+function downloadCSV(name: string, rows: any[]) {
+  const blob = new Blob([toCSV(rows)], { type: 'text/csv;charset=utf-8;' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `${name}.csv`;
+  a.click();
+}
 
 export default function ExplorationDashboard() {
   const [moduleCategory, setModuleCategory] = useState<string | null>(null);
@@ -105,7 +121,21 @@ export default function ExplorationDashboard() {
             <h1 className="text-xl font-semibold">Exploration Mode — Analytics</h1>
             <p className="text-sm text-muted-foreground mt-1">A/B test performance with slice filters</p>
           </div>
-          <Button variant="secondary" onClick={() => location.reload()}>Refresh</Button>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={() => downloadCSV('exploration_split', split)}>
+              <Download className="h-4 w-4 mr-2" />
+              Split CSV
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => downloadCSV('exploration_funnel', funnel)}>
+              <Download className="h-4 w-4 mr-2" />
+              Funnel CSV
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => downloadCSV('exploration_daily', daily)}>
+              <Download className="h-4 w-4 mr-2" />
+              Daily CSV
+            </Button>
+            <Button variant="secondary" onClick={() => location.reload()}>Refresh</Button>
+          </div>
         </div>
         
         {/* Filter Controls */}
@@ -195,16 +225,25 @@ export default function ExplorationDashboard() {
                 <div className="text-2xl font-semibold">{lift}%</div>
                 {stats && (
                   <div className="flex items-center gap-2 mt-2">
-                    {stats.isSignificant ? (
+                    {stats.isSignificant && stats.sampleSizeAdequate ? (
                       <>
                         <CheckCircle2 className="h-4 w-4 text-green-500" />
-                        <Badge variant="default" className="text-xs">Significant</Badge>
+                        <Badge className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs">
+                          Significant
+                        </Badge>
+                      </>
+                    ) : stats.sampleSizeAdequate ? (
+                      <>
+                        <AlertCircle className="h-4 w-4 text-amber-500" />
+                        <Badge className="bg-amber-600 hover:bg-amber-700 text-white text-xs">
+                          Not Significant
+                        </Badge>
                       </>
                     ) : (
                       <>
                         <AlertCircle className="h-4 w-4 text-yellow-500" />
                         <Badge variant="secondary" className="text-xs">
-                          {stats.sampleSizeAdequate ? 'Not Significant' : 'Need More Data'}
+                          Need More Data
                         </Badge>
                       </>
                     )}

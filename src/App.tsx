@@ -42,6 +42,7 @@ import ResumeEmbed from "./pages/ResumeEmbed";
 import EmbedGenerator from "./pages/EmbedGenerator";
 import Analytics from "./pages/Analytics";
 import ExplorationDashboard from "./pages/Analytics/ExplorationDashboard";
+import SmartWeightsAdmin from "./pages/Admin/SmartWeightsAdmin";
 import MentorChat from "./pages/MentorChat";
 import AdminBadges from "./pages/AdminBadges";
 import EmbedExplorer from "./pages/EmbedExplorer";
@@ -804,6 +805,14 @@ const App = () => {
         <Route 
           path="/analytics/exploration" 
           element={<ExplorationDashboard />} 
+        />
+        <Route 
+          path="/admin/smart-weights" 
+          element={
+            <StakeholderProtectedRoute requiredRole="admin">
+              <SmartWeightsAdmin />
+            </StakeholderProtectedRoute>
+          } 
         />
         <Route 
           path="/admin/badges" 

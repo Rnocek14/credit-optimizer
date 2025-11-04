@@ -8,7 +8,7 @@ import type { ModuleTemplate, TemplateValidation } from '../types/templates';
 import { getTemplateCourses } from '../utils/templateHelpers';
 
 interface TemplateCardProps {
-  template: ModuleTemplate;
+  template: ModuleTemplate & { smartScore?: number };
   validation: TemplateValidation;
   onAdd: () => void;
   isDraggable?: boolean;
@@ -66,6 +66,17 @@ export function TemplateCard({ template, validation, onAdd, isDraggable = true }
               <Badge className={`${badgeColor} text-white text-xs`}>
                 {template.badge}
               </Badge>
+            )}
+            
+            {/* Smart Score Badge (when re-ranked) */}
+            {typeof template.smartScore === 'number' && (
+              <div 
+                className="ml-auto flex items-center gap-1 text-xs font-mono bg-muted px-2 py-0.5 rounded" 
+                title={`Smart score: ${template.smartScore.toFixed(2)}`}
+              >
+                <span className="opacity-60">Smart</span>
+                <span className="font-semibold tabular-nums">{template.smartScore.toFixed(2)}</span>
+              </div>
             )}
             
             {/* Validity Icon */}
