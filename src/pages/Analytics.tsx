@@ -457,6 +457,10 @@ export default function Analytics() {
               </Select>
               <TutorialTip id="analyticsTimeRange" label="Time range selection" />
             </div>
+            <Button variant="outline" onClick={() => navigate('/analytics/exploration')}>
+              <BarChart3 className="h-4 w-4 mr-2" />
+              Exploration A/B
+            </Button>
             <Button variant="outline" onClick={() => navigate(`/resume/${user?.id}`)}>
               <ExternalLink className="h-4 w-4 mr-2" />
               View Resume
