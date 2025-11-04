@@ -124,9 +124,9 @@ export function YearCard({
         </div>
         
         {/* Tier 3: Consolidated metrics line */}
-        <div className="flex items-center justify-center gap-2 text-[13px] leading-[1.4] text-foreground/85 font-medium flex-wrap mt-1">
+        <div className="flex items-center justify-center gap-x-2 gap-y-1 text-[13px] leading-[1.4] text-foreground/85 font-medium flex-wrap mt-1">
           <span className="whitespace-nowrap">
-            {creditsSummary.planned}/{creditsSummary.required} credits
+            {creditsSummary.planned}/{creditsSummary.required > 0 ? creditsSummary.required : '?'} credits
           </span>
           <span className="text-muted-foreground">•</span>
           <span className="whitespace-nowrap">
@@ -144,7 +144,7 @@ export function YearCard({
               </span>
               <span className="text-muted-foreground">•</span>
               <span className="whitespace-nowrap">
-                CRI {formatCRI(selectedSummary.avgCri)}
+                <abbr title="Course Readiness Index" className="no-underline cursor-help">CRI</abbr> {formatCRI(selectedSummary.avgCri)}
               </span>
             </>
           )}
@@ -152,7 +152,7 @@ export function YearCard({
             <Tooltip>
               <TooltipTrigger asChild>
                 <Badge variant={loadBadge.variant} size="sm" className="text-[13px] font-medium h-5 px-2 ml-1 cursor-help">
-                  Load ▾ {loadBadge.label}
+                  Load: {loadBadge.label}
                 </Badge>
               </TooltipTrigger>
               <TooltipContent>
@@ -183,7 +183,7 @@ export function YearCard({
                 e.stopPropagation();
                 onClick?.(); // Opens year panel with templates
               }}
-              className="text-[10px] text-muted-foreground hover:text-primary hover:underline flex items-center gap-1 transition-colors"
+              className="text-[10px] text-muted-foreground hover:text-primary hover:underline flex items-center gap-1 transition-colors py-2 min-h-[36px]"
             >
               📋 Browse templates
             </button>
@@ -193,7 +193,8 @@ export function YearCard({
                 // TODO: Wire up clear year action
               }}
               disabled={!hasCoursesPlanned}
-              className="text-[10px] text-muted-foreground hover:text-foreground hover:underline flex items-center gap-1 transition-colors disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:no-underline"
+              title={!hasCoursesPlanned ? "Nothing to clear" : "Clear all courses from this year"}
+              className="text-[10px] text-muted-foreground hover:text-foreground hover:underline flex items-center gap-1 transition-colors disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:no-underline py-2 min-h-[36px]"
             >
               🗑️ Clear year
             </button>
@@ -215,10 +216,11 @@ export function YearCard({
                       e.stopPropagation();
                       onClick?.({ focusTab: 'templates' });
                     }}
-                    className="w-full px-4 py-3 text-sm font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors shadow-sm"
+                    className="w-full px-4 py-3 text-sm font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 hover:shadow-md transition-all shadow-sm inline-flex items-center justify-center gap-2"
                     aria-label={`Apply a year template for Year ${year} - auto-fill courses across Fall and Spring`}
                   >
-                    🎯 Apply Year Template
+                    <span className="inline-flex items-center justify-center w-5 h-5">🎯</span>
+                    <span>Apply Year {year} Template</span>
                   </button>
                   <p className="text-center text-[11px] text-muted-foreground">
                     Balanced plan across Fall and Spring.
@@ -227,33 +229,17 @@ export function YearCard({
               </>
             ) : (
               <>
-                {/* Semester breakdown after fill */}
-                <div 
-                  className="flex items-center justify-center gap-3 text-xs text-foreground/85 py-2 cursor-pointer hover:text-primary transition-colors"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    // TODO: Open dock at that term
-                  }}
-                  role="button"
-                  tabIndex={0}
-                  aria-label="View semester details"
-                >
-                  <span className="flex items-center gap-1">
-                    <span className="text-base">🍂</span>
-                    <span className="font-medium">{fallCredits} cr</span>
-                  </span>
-                  <span className="text-muted-foreground">•</span>
-                  <span className="flex items-center gap-1">
-                    <span className="text-base">🌸</span>
-                    <span className="font-medium">{springCredits} cr</span>
-                  </span>
-                </div>
-                
-                {/* Status subtext */}
+                {/* Status subtext - dynamic based on completion */}
                 <div className="text-center text-[11px] text-muted-foreground">
-                  {modulesSummary.completed > 0 
-                    ? `${modulesSummary.completed} of ${modulesSummary.total} ${moduleText} complete`
-                    : `🍂 ${fallCredits} cr • 🌸 ${springCredits} cr planned`}
+                  {isComplete ? (
+                    <span className="text-success font-medium">
+                      ✅ Year planned ({fallCredits > 0 && springCredits > 0 ? `🍂 ${fallCredits} cr • 🌸 ${springCredits} cr` : `${creditsSummary.planned} cr`})
+                    </span>
+                  ) : (fallCredits > 0 || springCredits > 0) ? (
+                    <span>🍂 {fallCredits} cr • 🌸 {springCredits} cr planned</span>
+                  ) : (
+                    <span>{modulesSummary.completed} of {modulesSummary.total} {moduleText} complete</span>
+                  )}
                 </div>
               </>
             )}
