@@ -124,7 +124,7 @@ export function YearCard({
         </div>
         
         {/* Tier 3: Consolidated metrics line */}
-        <div className="flex items-center justify-center gap-1.5 text-[11px] text-foreground/85 font-medium flex-wrap">
+        <div className="flex items-center justify-center gap-2 text-[13px] leading-[1.4] text-foreground/85 font-medium flex-wrap mt-1">
           <span className="whitespace-nowrap">
             {creditsSummary.planned}/{creditsSummary.required} credits
           </span>
@@ -151,8 +151,8 @@ export function YearCard({
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Badge variant={loadBadge.variant} size="sm" className="text-[10px] h-5 px-2 ml-1 cursor-help">
-                  {loadBadge.emoji} Load: {loadBadge.label}
+                <Badge variant={loadBadge.variant} size="sm" className="text-[13px] font-medium h-5 px-2 ml-1 cursor-help">
+                  Load ▾ {loadBadge.label}
                 </Badge>
               </TooltipTrigger>
               <TooltipContent>
@@ -220,8 +220,8 @@ export function YearCard({
                   >
                     🎯 Apply Year Template
                   </button>
-                  <p className="text-center text-[10px] text-muted-foreground">
-                    Balanced plan across Fall and Spring
+                  <p className="text-center text-[11px] text-muted-foreground">
+                    Balanced plan across Fall and Spring.
                   </p>
                 </div>
               </>
@@ -249,11 +249,12 @@ export function YearCard({
                   </span>
                 </div>
                 
-                {modulesSummary.completed > 0 && (
-                  <div className="text-center text-xs text-muted-foreground">
-                    {modulesSummary.completed} of {modulesSummary.total} {moduleText} complete
-                  </div>
-                )}
+                {/* Status subtext */}
+                <div className="text-center text-[11px] text-muted-foreground">
+                  {modulesSummary.completed > 0 
+                    ? `${modulesSummary.completed} of ${modulesSummary.total} ${moduleText} complete`
+                    : `🍂 ${fallCredits} cr • 🌸 ${springCredits} cr planned`}
+                </div>
               </>
             )}
           </div>
