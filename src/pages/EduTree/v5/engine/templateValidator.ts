@@ -247,8 +247,8 @@ export async function rankTemplates(
         
         score += (validation.impact.criDelta / 100) * 50;
         
-        // Stable tie-breaker: use template ID to ensure consistent order
-        const tieBreaker = t.id.charCodeAt(0) * 0.001;
+        // Stable tie-breaker: deterministic hash to ensure consistent order
+        const tieBreaker = [...t.id].reduce((h, c) => (h * 31 + c.charCodeAt(0)) | 0, 0) * 1e-6;
         
         return { template: t, validation, score: score + tieBreaker };
       })
@@ -307,8 +307,8 @@ export async function rankTemplates(
       
       score += (validation.impact.criDelta / 100) * 50;
       
-      // Stable tie-breaker: use template ID to ensure consistent order
-      const tieBreaker = t.id.charCodeAt(0) * 0.001;
+      // Stable tie-breaker: deterministic hash to ensure consistent order
+      const tieBreaker = [...t.id].reduce((h, c) => (h * 31 + c.charCodeAt(0)) | 0, 0) * 1e-6;
       
       return { template: t, validation, score: score + tieBreaker };
     })

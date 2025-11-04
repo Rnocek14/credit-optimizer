@@ -61,8 +61,9 @@ export async function generateModuleTemplates(
   const isSatisfied = creditsNeeded <= 0;
   const explorationMode = options?.explorationMode ?? false;
   
+  // Guard: satisfied without exploration = no templates
   if (isSatisfied && !explorationMode) {
-    console.log('[TemplateGenerator] Module already satisfied:', module.id);
+    console.log('[TemplateGenerator] Module already satisfied (exploration disabled):', module.id);
     return [];
   }
   

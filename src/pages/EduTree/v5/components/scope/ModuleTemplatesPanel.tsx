@@ -219,15 +219,19 @@ export function ModuleTemplatesPanel({ module, allModules, onAddTemplate }: Modu
   };
 
   if (isLoading) return <Skeleton className="h-32" />;
+  
+  // Empty state: no templates available (respects exploration mode)
   if (!rankedTemplates?.length) {
+    const message = explorationEnabled && isSatisfied 
+      ? "No alternative templates available for this module"
+      : "No templates available for this module";
+    
     return (
       <div className="text-center py-8 space-y-2">
         <div className="text-4xl">📝</div>
-        <div className="text-muted-foreground text-sm">
-          No templates available for this module
-        </div>
+        <div className="text-muted-foreground text-sm">{message}</div>
         <div className="text-xs text-muted-foreground">
-          Add courses manually or check back later
+          {isSatisfied ? "Your current plan already satisfies this module" : "Add courses manually or check back later"}
         </div>
       </div>
     );
@@ -235,8 +239,8 @@ export function ModuleTemplatesPanel({ module, allModules, onAddTemplate }: Modu
 
   return (
     <div className="space-y-4">
-      {/* Exploration Mode Banner - Show when module is satisfied and feature enabled */}
-      {FEATURE_FLAGS.V5_EXPLORATION_MODE && isSatisfied && rankedTemplates && rankedTemplates.length > 0 && (
+      {/* Exploration Mode Banner - Show when feature enabled + module satisfied + has templates */}
+      {explorationEnabled && isSatisfied && rankedTemplates && rankedTemplates.length > 0 && (
         <div
           role="status"
           aria-live="polite"
