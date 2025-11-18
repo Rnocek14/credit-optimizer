@@ -838,7 +838,12 @@ export default function EduTreeV5Page() {
             isCollapsed={degreeCollapsed}
             onToggle={toggleDegree}
             onClick={() => {
-              console.log('[V5 Page] Degree node clicked, calling openPanel for degree scope');
+              console.log('[V5 Page] Degree node clicked', {
+                currentScope: panelState.scope,
+                currentNodeId: panelState.nodeId,
+                isReOpen: panelState.scope === 'degree',
+                willForceRefresh: panelState.scope === 'degree'
+              });
               openPanel('degree');
             }}
             yearCount={4}
@@ -989,7 +994,7 @@ export default function EduTreeV5Page() {
             const currentNodeData = panelState.nodeData;
             closePanel();
             setTimeout(() => {
-              if (currentScope && currentNodeId) {
+              if (currentScope) {  // ✅ PHASE 1: Remove nodeId requirement for degree drawer
                 openPanel(currentScope, currentNodeId, currentNodeData);
               }
             }, 50);

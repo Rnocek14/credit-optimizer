@@ -50,12 +50,30 @@ export function useScopedPanel() {
       nodeId, 
       hasNodeData: !!nodeData,
       tab,
+      isSameAsCurrentScope: panelState.scope === scope && panelState.nodeId === nodeId,
       currentLocation: location.search
     });
     
     setPanelState(prev => {
+      // ✅ PHASE 2: Detect re-opening same scope and force refresh to restore drawer
       const isSameScope = prev.scope === scope && prev.nodeId === nodeId;
       const isTabChange = isSameScope && prev.tab !== tab;
+      
+      if (isSameScope && scope && !isTabChange) {
+        console.log('[useScopedPanel] 🔄 Re-opening same scope, forcing refresh for drawer restore');
+        // Force state update by adding timestamp to URL params
+        const params = new URLSearchParams(location.search);
+        params.set('scope', scope);
+        if (nodeId) params.set('node', nodeId);
+        if (tab) params.set('tab', tab);
+        params.set('_refresh', Date.now().toString()); // Force update
+        
+        navigate(`${location.pathname}?${params.toString()}`, { replace: true });
+        
+        // Return updated state with refresh marker
+        return { scope, nodeId, nodeData, tab };
+      }
+      
       
       const params = new URLSearchParams(location.search);
       if (scope) {

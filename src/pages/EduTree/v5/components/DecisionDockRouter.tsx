@@ -249,6 +249,35 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
     });
   }, [scope, snapPoints]); // ✅ Removed activeSnapPoint from dependencies to allow manual resizing
 
+  // PHASE 3: Reset to default snap point when scope is re-opened (e.g., user re-clicks node)
+  const lastOpenStateRef = useRef<boolean>(false);
+  useEffect(() => {
+    const isNowOpen = !!scope;
+    const wasOpen = lastOpenStateRef.current;
+    
+    // Detect re-opening: was open, became closed, then opened again OR same scope clicked
+    if (isNowOpen && !wasOpen) {
+      const defaultIndex = scope === 'degree' ? 2 : 1;
+      const targetSnap = snapPoints[defaultIndex];
+      
+      console.log('[DecisionDock] 🔄 Drawer re-opened, restoring to default snap:', {
+        scope,
+        targetSnap,
+        index: defaultIndex,
+        currentSnap: activeSnapPoint
+      });
+      
+      // Only restore if currently at minimum (stuck state)
+      if (activeSnapPoint === snapPoints[0]) {
+        startTransition(() => {
+          setActiveSnapPoint(targetSnap);
+        });
+      }
+    }
+    
+    lastOpenStateRef.current = isNowOpen;
+  }, [scope, snapPoints, activeSnapPoint]);
+
   // Phase 2: Removed redundant correction useEffect (validation now in setActiveSnapPoint callback)
 
 
@@ -715,6 +744,15 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
                 );
               })}
             </div>
+            
+            {/* PHASE 4: Visual feedback when drawer is stuck at minimum */}
+            {activeSnapPoint === snapPoints[0] && (
+              <div className="absolute top-12 left-1/2 -translate-x-1/2 z-[120] pointer-events-none">
+                <div className="px-4 py-2 bg-blue-500/90 text-white rounded-lg text-sm font-medium shadow-lg animate-bounce">
+                  ⬆️ Click node again to restore
+                </div>
+              </div>
+            )}
             
             <button
               onClick={onClose}
