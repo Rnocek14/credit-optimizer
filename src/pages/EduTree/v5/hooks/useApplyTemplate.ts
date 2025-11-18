@@ -5,6 +5,7 @@ import { usePlanBasket } from '../state/usePlanBasket';
 import { toast } from 'sonner';
 import { trackTelemetryEvent } from '@/utils/telemetry';
 import { logEvent } from '@/lib/analytics';
+import { checkTransferRule } from '../engine/transferEngine';
 
 /**
  * Hook for applying templates with toast notifications, undo, and telemetry
@@ -17,7 +18,7 @@ export function useApplyTemplate() {
   const removeItem = usePlanBasket(s => s.removeItem);
 
   const apply = useCallback(
-    (template: ModuleTemplate, allOptions: any[], opts?: { keepPinned?: boolean }) => {
+    async (template: ModuleTemplate, allOptions: any[], opts?: { keepPinned?: boolean }) => {
       // Validate template has valid moduleId
       if (!template.moduleId || template.moduleId.length < 10) {
         console.error('[Apply] ❌ Template missing valid moduleId:', {
@@ -38,6 +39,66 @@ export function useApplyTemplate() {
         coursesCount: template.options.length,
         basketSize: basket.length,
       });
+
+      // ============ Phase 4: Transfer Safety Pre-Flight Validation ============
+      const targetSchool = constraints.target_school;
+      
+      if (targetSchool && typeof targetSchool === 'string') {
+        const issues: Array<{ courseId: string; title: string; reason: string }> = [];
+        
+        for (const opt of template.options) {
+          const providerCode = opt.providerCode || opt.provider || '';
+          const courseId = opt.courseId;
+          
+          if (!courseId) {
+            issues.push({
+              courseId: '(missing)',
+              title: opt.title || '(missing title)',
+              reason: 'Missing course code; cannot validate transfer',
+            });
+            continue;
+          }
+          
+          // Institutional courses are always safe
+          if (providerCode.toUpperCase() === targetSchool.toUpperCase()) {
+            continue;
+          }
+          
+          // Use requirement type from option metadata if available
+          const requirementType = (opt as any).requirementType || 
+                                 (opt as any).requirementKind || 
+                                 'major';
+          
+          const rule = await checkTransferRule(
+            providerCode,
+            courseId,
+            targetSchool,
+            { requirementType }
+          );
+          
+          if (!rule.accepted) {
+            issues.push({
+              courseId,
+              title: opt.title || courseId,
+              reason: rule.confidence === 0
+                ? 'No transfer rule found for this anchor school'
+                : `Low transfer confidence (${Math.round(rule.confidence * 100)}%)`,
+            });
+          }
+        }
+        
+        if (issues.length > 0) {
+          toast.error('Template cannot be applied', {
+            description: `${issues.length} course${issues.length > 1 ? 's' : ''} in this template do not appear to transfer safely to ${targetSchool}.`,
+            duration: 9000,
+          });
+          
+          console.error('[ApplyTemplate] 🚫 Blocked non-transferable courses:', issues);
+          return;
+        }
+        
+        console.log('[ApplyTemplate] ✅ All courses passed transfer validation');
+      }
 
       // Map template to apply params
       const params: Omit<ApplyTemplateParams, 'currentBasket' | 'constraints'> = {

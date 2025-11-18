@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import '../styles/decisionDock.css';
 import { Button } from "@/components/ui/button";
 import { X } from 'lucide-react';
+import { Switch } from "@/components/ui/switch";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { ScopeBreadcrumbs } from './ScopeBreadcrumbs';
@@ -1504,6 +1505,9 @@ function MarketplaceContent(props: DecisionDockRouterProps) {
   const { weights, setWeights, resetWeights } = useScoringPrefs();
   const [showWeights, setShowWeights] = useState(false);
   
+  // Phase 5: Transfer safety toggle
+  const [showNonTransferable, setShowNonTransferable] = useState(false);
+  
   const totals = usePlanBasket(s => s.getTotals());
   const constraints = usePlanBasket(s => s.constraints);
   const addItem = usePlanBasket(s => s.addItem);
@@ -1540,7 +1544,35 @@ function MarketplaceContent(props: DecisionDockRouterProps) {
     return opts.sort((a, b) => (b.credits ?? 0) - (a.credits ?? 0));
   }, [enriched, sortBy]);
   
-  const violations = useMemo(() => 
+  // Phase 5: Filter by transfer safety
+  const displayedOptions = useMemo(() => {
+    const targetSchool = constraints.target_school;
+    
+    // No anchor or showing all → return all options
+    if (!targetSchool || typeof targetSchool !== 'string' || showNonTransferable) {
+      return sortedOptions;
+    }
+    
+    // Default: only show transfer-safe options
+    return sortedOptions.filter(opt => {
+      const providerCode = opt.providerCode || opt.provider || '';
+      const transferStatus = (opt as any).transferStatus;
+      
+      // Anchor's own courses are always safe
+      if (providerCode.toUpperCase() === targetSchool.toUpperCase()) {
+        return true;
+      }
+      
+      // Keep accepted + elective; hide rejected/unknown
+      if (transferStatus === 'accepted' || transferStatus === 'elective') {
+        return true;
+      }
+      
+      return false;
+    });
+  }, [sortedOptions, showNonTransferable, constraints.target_school]);
+  
+  const violations = useMemo(() =>
     validatePlan(basket, sortedOptions, constraints),
     [basket, sortedOptions, constraints]
   );
@@ -1755,9 +1787,14 @@ function MarketplaceContent(props: DecisionDockRouterProps) {
           <div className="flex flex-col gap-1">
             <span className="font-medium">{effectiveModuleLabel}</span>
             <span className="text-xs text-muted-foreground">
-              {sortedOptions.length} option{sortedOptions.length !== 1 ? 's' : ''} • {
-                sortedOptions.filter(o => o.cost_usd === 0).length
+              {displayedOptions.length} option{displayedOptions.length !== 1 ? 's' : ''} • {
+                displayedOptions.filter(o => o.cost_usd === 0).length
               } free
+              {sortedOptions.length !== displayedOptions.length && (
+                <span className="text-amber-600 ml-1">
+                  ({sortedOptions.length - displayedOptions.length} hidden)
+                </span>
+              )}
             </span>
           </div>
           <span className="text-sm text-muted-foreground">
@@ -1804,8 +1841,33 @@ function MarketplaceContent(props: DecisionDockRouterProps) {
           </TabsContent>
           
           <TabsContent value="courses" className="mt-4">
+            {/* Phase 5: Transfer safety toggle */}
+            {constraints.target_school && (
+              <div className="mb-3 p-3 border rounded-lg bg-muted/30">
+                <div className="flex items-center justify-between gap-3">
+                  <label
+                    htmlFor="show-non-transferable"
+                    className="text-xs text-muted-foreground flex-1 cursor-pointer"
+                  >
+                    Show non-transferable courses (advanced)
+                  </label>
+                  <Switch
+                    id="show-non-transferable"
+                    checked={showNonTransferable}
+                    onCheckedChange={setShowNonTransferable}
+                  />
+                </div>
+                {showNonTransferable && (
+                  <div className="mt-2 text-[11px] text-amber-700 bg-amber-500/10 border border-amber-500/20 rounded px-2 py-1">
+                    ⚠️ You're viewing courses that may not transfer to {constraints.target_school}. 
+                    Verify transfer status with an advisor before selecting.
+                  </div>
+                )}
+              </div>
+            )}
+            
             <CoursesList 
-              sortedOptions={sortedOptions}
+              sortedOptions={displayedOptions}
               selected={selected}
               basket={basket}
               moduleId={moduleId}
@@ -1820,19 +1882,46 @@ function MarketplaceContent(props: DecisionDockRouterProps) {
           </TabsContent>
         </Tabs>
       ) : (
-        <CoursesList 
-          sortedOptions={sortedOptions}
-          selected={selected}
-          basket={basket}
-          moduleId={moduleId}
-          creditsRequired={effectiveCreditsRequired}
-          yearEarned={yearEarned}
-          yearCap={yearCap}
-          isAtMax={isAtMax}
-          toggleCourse={toggleCourse}
-          formatRelativeDate={formatRelativeDate}
-          isWithin30Days={isWithin30Days}
-        />
+        <>
+          {/* Phase 5: Transfer safety toggle for non-template view */}
+          {constraints.target_school && (
+            <div className="mb-3 p-3 border rounded-lg bg-muted/30">
+              <div className="flex items-center justify-between gap-3">
+                <label
+                  htmlFor="show-non-transferable-2"
+                  className="text-xs text-muted-foreground flex-1 cursor-pointer"
+                >
+                  Show non-transferable courses (advanced)
+                </label>
+                <Switch
+                  id="show-non-transferable-2"
+                  checked={showNonTransferable}
+                  onCheckedChange={setShowNonTransferable}
+                />
+              </div>
+              {showNonTransferable && (
+                <div className="mt-2 text-[11px] text-amber-700 bg-amber-500/10 border border-amber-500/20 rounded px-2 py-1">
+                  ⚠️ You're viewing courses that may not transfer to {constraints.target_school}. 
+                  Verify transfer status with an advisor before selecting.
+                </div>
+              )}
+            </div>
+          )}
+          
+          <CoursesList 
+            sortedOptions={displayedOptions}
+            selected={selected}
+            basket={basket}
+            moduleId={moduleId}
+            creditsRequired={effectiveCreditsRequired}
+            yearEarned={yearEarned}
+            yearCap={yearCap}
+            isAtMax={isAtMax}
+            toggleCourse={toggleCourse}
+            formatRelativeDate={formatRelativeDate}
+            isWithin30Days={isWithin30Days}
+          />
+        </>
       )}
       
       <ConstraintsPanel />
