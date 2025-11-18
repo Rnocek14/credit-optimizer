@@ -18,6 +18,7 @@ import { useRequirementBlocks } from '../../hooks/useRequirementBlocks';
 import { safeTrack } from '../../utils/safeTelemetry';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import { useToast } from '@/hooks/use-toast';
+import { TransferBadge } from '../TransferBadge';
 import type { YearTemplate } from '../../types/templates';
 import type { ModuleData, MarketplaceOption } from '../../types/v5';
 import type { PartnerPolicy } from '../../engine/yearPlanner';
@@ -501,7 +502,14 @@ export function YearTemplatesPanel({
                     >
                       <div className="flex-1">
                         <div className="font-medium">{item.title}</div>
-                        <div className="text-xs text-muted-foreground">{item.provider}</div>
+                        <div className="text-xs text-muted-foreground flex items-center gap-2 flex-wrap mt-1">
+                          <span>{item.provider}</span>
+                          <TransferBadge
+                            courseCode={item.courseId}
+                            providerCode={item.providerCode || item.provider}
+                            providerType={item.providerType}
+                          />
+                        </div>
                       </div>
                       <div className="text-right text-sm">
                         <div className="font-medium">${item.cost_usd}</div>
@@ -535,7 +543,14 @@ export function YearTemplatesPanel({
                     >
                       <div className="flex-1">
                         <div className="font-medium">{item.title}</div>
-                        <div className="text-xs text-muted-foreground">{item.provider}</div>
+                        <div className="text-xs text-muted-foreground flex items-center gap-2 flex-wrap mt-1">
+                          <span>{item.provider}</span>
+                          <TransferBadge
+                            courseCode={item.courseId}
+                            providerCode={item.providerCode || item.provider}
+                            providerType={item.providerType}
+                          />
+                        </div>
                       </div>
                       <div className="text-right text-sm">
                         <div className="font-medium">${item.cost_usd}</div>
