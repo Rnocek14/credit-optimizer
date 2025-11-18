@@ -231,7 +231,7 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
         setActiveSnapPoint(targetSnap);
       });
     }
-  }, [scope, snapPoints]); // React when scope or snapPoints change
+  }, [scope, snapPoints, activeSnapPoint]); // ✅ Phase 1: Added activeSnapPoint to fix stale closure
 
   // Phase 2: Removed redundant correction useEffect (validation now in setActiveSnapPoint callback)
 
@@ -355,32 +355,27 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
     if (scope) {
       document.body.classList.add('decision-dock-open');
       
-      // Ensure drawer is visible by scrolling it into view
-      // This prevents the drawer from being stuck below the viewport
+      // ✅ Phase 2: Apply scroll behavior to ALL scopes (removed year exemption)
       setTimeout(() => {
         if (typeof window === 'undefined') return;
         
-        // Calculate safe scroll position that keeps drawer visible
         const viewportHeight = window.innerHeight;
         const drawerHeight = typeof activeSnapPoint === 'string' 
           ? parseInt(activeSnapPoint) 
           : Math.round(viewportHeight * 0.5);
         
-        // Drawer is viewport-fixed at bottom; year scope needs no scroll
-        // For other scopes, ensure drawer is visible
-        if (scope !== 'year') {
-          // For other scopes, ensure drawer is visible by checking current scroll
-          const currentScroll = window.scrollY;
-          const maxVisibleScroll = document.documentElement.scrollHeight - viewportHeight - drawerHeight;
-          
-          if (currentScroll > maxVisibleScroll) {
-            window.scrollTo({
-              top: maxVisibleScroll,
-              behavior: 'smooth'
-            });
-          }
+        // Ensure drawer stays visible for all scopes
+        const currentScroll = window.scrollY;
+        const maxVisibleScroll = document.documentElement.scrollHeight - viewportHeight - drawerHeight;
+        
+        // Only scroll if needed and maxVisibleScroll is valid
+        if (currentScroll > maxVisibleScroll && maxVisibleScroll >= 0) {
+          window.scrollTo({
+            top: Math.max(0, maxVisibleScroll),
+            behavior: 'smooth'
+          });
         }
-      }, 150); // Delay for drawer mount animation
+      }, 150);
     }
     return () => {
       document.body.classList.remove('decision-dock-open');
@@ -460,12 +455,20 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
     yearModulesCount: props.yearModules?.length ?? 0,
     snapPoints,
     activeSnapPoint,
-    // Degree-specific debug
+    // ✅ Phase 4: Enhanced degree-specific debug with snap validation
     degreeProps: scope === 'degree' ? {
       hasDegreeSummary: !!props.degreeSummary,
       degreeTitle: props.degreeSummary?.degreeTitle,
       totalCreditsRequired: props.degreeSummary?.totalCreditsRequired,
-      totalCreditsEarned: props.degreeSummary?.totalCreditsEarned
+      totalCreditsEarned: props.degreeSummary?.totalCreditsEarned,
+      // Snap point validation
+      expectedSnapIndex: 2,
+      expectedSnapPoint: snapPoints[2],
+      isAtCorrectSnap: activeSnapPoint === snapPoints[2],
+      snapMismatch: activeSnapPoint !== snapPoints[2] ? {
+        current: activeSnapPoint,
+        expected: snapPoints[2]
+      } : null
     } : undefined,
     // Module-specific debug
     moduleProps: scope === 'module' ? {
@@ -732,6 +735,7 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
 function DegreeAnalyzerContent(props: DecisionDockRouterProps) {
   const { degreeSummary, activeTab = 'overview', onTabChange, onNavigate } = props;
   
+  // ✅ Phase 5: Enhanced logging to track data flow
   console.log('[DegreeAnalyzerContent] Render check:', {
     hasDegreeSummary: !!degreeSummary,
     degreeSummary: degreeSummary ? {
@@ -739,7 +743,12 @@ function DegreeAnalyzerContent(props: DecisionDockRouterProps) {
       totalCreditsRequired: degreeSummary.totalCreditsRequired,
       totalCreditsEarned: degreeSummary.totalCreditsEarned
     } : null,
-    activeTab
+    activeTab,
+    // Track prop availability
+    propsKeys: Object.keys(props),
+    degreeSummaryInProps: 'degreeSummary' in props,
+    isDegreeSummaryNull: degreeSummary === null,
+    isDegreeSummaryUndefined: degreeSummary === undefined
   });
   
   if (!degreeSummary) {
