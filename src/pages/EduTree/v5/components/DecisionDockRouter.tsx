@@ -1505,8 +1505,26 @@ function MarketplaceContent(props: DecisionDockRouterProps) {
   const { weights, setWeights, resetWeights } = useScoringPrefs();
   const [showWeights, setShowWeights] = useState(false);
   
-  // Phase 5: Transfer safety toggle
-  const [showNonTransferable, setShowNonTransferable] = useState(false);
+  // Phase 5: Transfer safety toggle with localStorage persistence
+  const [showNonTransferable, setShowNonTransferable] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    try {
+      const saved = localStorage.getItem('edutree-show-non-transferable');
+      return saved === 'true';
+    } catch {
+      return false;
+    }
+  });
+  
+  // Persist toggle state to localStorage
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      localStorage.setItem('edutree-show-non-transferable', String(showNonTransferable));
+    } catch (e) {
+      console.debug('[Persist] localStorage write failed:', e);
+    }
+  }, [showNonTransferable]);
   
   const totals = usePlanBasket(s => s.getTotals());
   const constraints = usePlanBasket(s => s.constraints);
