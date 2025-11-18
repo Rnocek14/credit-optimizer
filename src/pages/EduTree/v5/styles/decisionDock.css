@@ -99,10 +99,18 @@
   max-height: 90dvh !important;
 }
 
-/* The single scroll area inside the drawer */
-.dd-year-scroll {
+/* Universal scroll area for all decision drawer content */
+.dd-decision-scroll {
   flex: 1 1 auto !important;
   min-height: 0 !important;  /* CRUCIAL for flex shrinking */
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch !important;
+}
+
+/* Legacy year-specific class (kept for backwards compatibility) */
+.dd-year-scroll {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
   overflow-y: auto !important;
   -webkit-overflow-scrolling: touch !important;
 }
@@ -117,4 +125,9 @@
 .dd-year-scroll [role="tabpanel"] {
   overflow: visible !important;
   height: auto !important;
+}
+
+/* Ensure degree drawer has minimum visible height to prevent collapse */
+[data-vaul-drawer][data-scope="degree"] [data-testid="decision-dock-content"] {
+  min-height: 200px !important;
 }
