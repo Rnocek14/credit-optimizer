@@ -181,7 +181,6 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
     return defaultSnap;
   });
 
-
   const snapPoints = useMemo(() => {
     const { width, height } = viewportDimensions;
     const isMobile = width < 640;
@@ -210,6 +209,29 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
       `${height - 120}px`                 // Large: nearly full screen
     ];
   }, [viewportDimensions, scope]);
+
+  // Reset snap point to scope-specific default when scope changes
+  useEffect(() => {
+    if (!scope) return; // Don't reset when closing
+    
+    // Determine scope-specific snap index
+    const defaultIndex = scope === 'degree' ? 2 : 1; // Large for degree, Medium for others
+    const targetSnap = snapPoints[defaultIndex];
+    
+    // Only update if we're switching to a different snap point
+    if (activeSnapPoint !== targetSnap) {
+      console.log('[DecisionDock] 🔄 Scope changed, resetting snap point:', {
+        scope,
+        from: activeSnapPoint,
+        to: targetSnap,
+        index: defaultIndex
+      });
+      
+      startTransition(() => {
+        setActiveSnapPoint(targetSnap);
+      });
+    }
+  }, [scope, snapPoints]); // React when scope or snapPoints change
 
   // Phase 2: Removed redundant correction useEffect (validation now in setActiveSnapPoint callback)
 
