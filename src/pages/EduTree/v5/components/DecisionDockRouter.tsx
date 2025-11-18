@@ -363,14 +363,17 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
     const isValid = typeof activeSnapPoint === 'string' && snapPoints.includes(activeSnapPoint);
     
     if (!isValid) {
+      // Use scope-specific default index (same logic as scope change effect)
+      const defaultIndex = scope === 'degree' ? 2 : 1;
+      const newSnap = snapPoints[defaultIndex];
+      
       console.warn('[DecisionDock] ⚠️ Snap point invalidated by viewport change:', {
         oldSnapPoint: activeSnapPoint,
         newSnapPoints: snapPoints,
-        resettingTo: snapPoints[1]
+        scope,
+        defaultIndex,
+        resettingTo: newSnap
       });
-      
-      // Reset to middle snap point with low-priority update
-      const newSnap = snapPoints[1];
       
       // Use startTransition for smoother updates
       startTransition(() => {
@@ -378,7 +381,7 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
       });
       
       if (typeof window !== 'undefined') {
-        localStorage.setItem('v5_dock_snap', newSnap);
+        localStorage.setItem('v5_dock_snap', String(newSnap));
       }
     }
   }, [snapPoints]); // Only depend on snapPoints, not activeSnapPoint (avoid loops)
