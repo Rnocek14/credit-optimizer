@@ -800,8 +800,10 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
                 );
               }
             })()}
-      </div>
-    </PersistentDrawer>
+          </div>
+        </DrawerPrimitive.Content>
+      </DrawerPrimitive.Portal>
+    </DrawerPrimitive.Root>
   );
 }
 
