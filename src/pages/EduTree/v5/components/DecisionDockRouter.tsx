@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState, useMemo, Component, ReactNode } from 'react';
+import React, { useRef, useEffect, useState, useMemo, Component, ReactNode, startTransition } from 'react';
 import { Drawer as DrawerPrimitive } from "vaul";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
@@ -159,19 +159,26 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
     return initial.viewport;
   });
 
-  // Initialize activeSnapPoint - always start at medium snap, ignore localStorage to fix stuck-at-148px bug
+  // Initialize activeSnapPoint - scope-specific defaults for better UX
   const [activeSnapPoint, setActiveSnapPoint] = useState<string | number | null>(() => {
     const initial = getInitialViewportAndSnaps();
     
-    // ALWAYS start at medium snap (index 1) to ensure content is visible
-    // User reported drawer stuck at 148px (small snap) due to localStorage restoration
-    // Clear stale localStorage value
+    // Clear stale localStorage value to prevent invalid snap points
     if (typeof window !== 'undefined') {
       localStorage.removeItem('v5_dock_snap');
     }
     
-    console.log('[DecisionDock] 🎯 Initializing with MEDIUM snap (localStorage cleared):', initial.snapPoints[1]);
-    return initial.snapPoints[1];
+    // Degree scope starts at larger snap for better visibility (more content)
+    const defaultIndex = scope === 'degree' ? 2 : 1; // Large for degree, Medium for others
+    const defaultSnap = initial.snapPoints[defaultIndex];
+    
+    console.log('[DecisionDock] 🎯 Initializing snap for scope:', {
+      scope,
+      defaultSnap,
+      defaultIndex
+    });
+    
+    return defaultSnap;
   });
 
 
@@ -204,19 +211,10 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
     ];
   }, [viewportDimensions, scope]);
 
-  // Safely correct invalid snap points after render
-  useEffect(() => {
-    if (activeSnapPoint === null || !snapPoints.includes(String(activeSnapPoint))) {
-      console.warn('[DecisionDock] ⚠️ Correcting invalid snap point in useEffect:', {
-        current: activeSnapPoint,
-        correcting: snapPoints[1]
-      });
-      setActiveSnapPoint(snapPoints[1]);
-    }
-  }, [activeSnapPoint, snapPoints]);
+  // Phase 2: Removed redundant correction useEffect (validation now in setActiveSnapPoint callback)
 
 
-  // Debug: Log snap configuration
+  // Debug: Log snap configuration (Phase 2: Removed correction logic)
   useEffect(() => {
     const isValid = typeof activeSnapPoint === 'string' && snapPoints.includes(activeSnapPoint);
     
@@ -228,16 +226,6 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
       scope,
       isOpen: !!scope
     });
-    
-    // Critical: If somehow still invalid, force correction immediately
-    if (!isValid && activeSnapPoint !== null) {
-      console.error('[DecisionDock] 🚨 CRITICAL: Invalid snap point on render!', {
-        activeSnapPoint,
-        snapPoints,
-        forcingTo: snapPoints[1]
-      });
-      setActiveSnapPoint(snapPoints[1]);
-    }
   }, [snapPoints, activeSnapPoint, viewportDimensions, scope]);
 
   // Update viewport dimensions on window resize
@@ -269,7 +257,7 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
     };
   }, []);
 
-  // Auto-correct snap point when snapPoints array changes (viewport resize)
+  // Phase 3: Auto-correct snap point when snapPoints array changes (viewport resize only)
   useEffect(() => {
     if (activeSnapPoint === null) return;
     
@@ -282,17 +270,31 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
         resettingTo: snapPoints[1]
       });
       
-      // Reset to middle snap point
+      // Reset to middle snap point with low-priority update
       const newSnap = snapPoints[1];
       
-      // ✅ Use React.startTransition for synchronous-like state update
-      setActiveSnapPoint(newSnap);
+      // Use startTransition for smoother updates
+      startTransition(() => {
+        setActiveSnapPoint(newSnap);
+      });
       
       if (typeof window !== 'undefined') {
         localStorage.setItem('v5_dock_snap', newSnap);
       }
     }
   }, [snapPoints]); // Only depend on snapPoints, not activeSnapPoint (avoid loops)
+  
+  // Phase 4: Clear stale localStorage on every mount
+  useEffect(() => {
+    // Clear any stale localStorage snap points when scope changes
+    if (scope && typeof window !== 'undefined') {
+      const storedSnap = localStorage.getItem('v5_dock_snap');
+      if (storedSnap && !snapPoints.includes(storedSnap)) {
+        console.log('[DecisionDock] 🧹 Clearing stale localStorage snap:', storedSnap);
+        localStorage.removeItem('v5_dock_snap');
+      }
+    }
+  }, [scope, snapPoints]);
   
   // SSR-safe tab persistence
   const [activeTabInternal, setActiveTabInternal] = useState(props.activeTab || 'templates');
@@ -504,6 +506,20 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
       activeSnapPoint={activeSnapPoint || snapPoints[1]}
       setActiveSnapPoint={(point) => {
         if (!point) return;
+        
+        // Phase 1: CRITICAL FIX - Validate snap point before accepting it
+        const pointStr = String(point);
+        if (!snapPoints.includes(pointStr)) {
+          console.warn('[DecisionDock] 🚫 Rejecting invalid snap point from Vaul:', {
+            rejected: pointStr,
+            validPoints: snapPoints,
+            fallbackTo: snapPoints[1]
+          });
+          // Use middle snap as safe fallback
+          setActiveSnapPoint(snapPoints[1]);
+          return; // Don't save invalid point
+        }
+        
         setActiveSnapPoint(point);
         
         // Ensure drawer stays visible after resize
