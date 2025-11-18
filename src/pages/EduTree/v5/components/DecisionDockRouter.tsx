@@ -629,11 +629,11 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
             previousFocusRef.current?.focus();
           }}
         >
-          {/* Visual resize handle */}
-          <div 
+          {/* Functional drag handle - Vaul primitive enables snap point dragging */}
+          <DrawerPrimitive.Handle 
             data-testid="decision-dock-resize-handle"
-            className="mx-auto mt-4 h-1 w-[120px] rounded-full bg-muted hover:bg-muted-foreground/40 transition-colors cursor-ns-resize select-none touch-none"
-            aria-label="Drag to resize"
+            className="mx-auto mt-4 h-1.5 w-[120px] rounded-full bg-muted hover:bg-muted-foreground/60 active:bg-primary transition-colors cursor-ns-resize select-none touch-none"
+            aria-label="Drag to resize drawer"
           />
 
           {/* Scroll hint - auto-dismisses after 3s */}
