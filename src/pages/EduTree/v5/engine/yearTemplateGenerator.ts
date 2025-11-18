@@ -51,7 +51,7 @@ const YEAR_TEMPLATE_PROFILES: YearTemplateProfile[] = [
  * Generate year templates by calling buildYearPlan with different presets
  * Returns 3-4 templates (filtered to only those with courses)
  */
-export function generateYearTemplates(
+export async function generateYearTemplates(
   year: number,
   modules: ModuleData[],
   blocks: RequirementBlock[],
@@ -59,7 +59,7 @@ export function generateYearTemplates(
   basket: BasketItem[],
   constraints: Constraints,
   anchorPolicy?: PartnerPolicy
-): YearTemplate[] {
+): Promise<(YearTemplate & { semesterDistribution: any; warnings: any })[]> {
   const startTime = Date.now();
   console.log('[YearTemplateGenerator] Starting generation:', {
     year,
@@ -80,7 +80,7 @@ export function generateYearTemplates(
     basketSize: basket.length
   });
 
-  const templates: YearTemplate[] = [];
+  const templates: (YearTemplate & { semesterDistribution: any; warnings: any })[] = [];
 
   for (const profile of YEAR_TEMPLATE_PROFILES) {
     const preset = YEAR_PRESETS.find(p => p.id === profile.presetId);
@@ -93,7 +93,7 @@ export function generateYearTemplates(
 
     try {
       // Call year planner with this preset
-      const plan = buildYearPlan(
+      const plan = await buildYearPlan(
         preset,
         year,
         modules,
@@ -179,7 +179,7 @@ export function generateYearTemplates(
         });
       }
 
-      const template: YearTemplate = {
+      const template: YearTemplate & { semesterDistribution: any; warnings: any } = {
         id: `year-${year}-${profile.badge.toLowerCase()}`,
         kind: 'year',
         year,
@@ -194,7 +194,7 @@ export function generateYearTemplates(
           spring: plan.spring,
         },
         warnings: plan.warnings,
-      } as YearTemplate & { semesterDistribution: any; warnings: any };
+      };
 
       templates.push(template);
 

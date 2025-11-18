@@ -136,7 +136,7 @@ export function YearTemplatesPanel({
         [], // Empty basket keeps results stable and comparable
         constraints,
         anchorPolicy
-      ) as (YearTemplate & { semesterDistribution: any; warnings: any })[];
+      );
     },
     enabled: !isFrozen, // Freeze stops re-fetching
     staleTime: 30_000,

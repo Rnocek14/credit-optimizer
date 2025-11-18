@@ -1236,7 +1236,7 @@ function YearMarketplaceContent(props: DecisionDockRouterProps) {
   }, [yearModules]);
 
   // Legacy auto-fill handler (kept for fallback)
-  const handleAutoFillYear = () => {
+  const handleAutoFillYear = async () => {
     if (!FEATURE_FLAGS.v5_year_scope_v1) {
       toast.info('Year Scope V1 feature is not enabled', {
         description: 'Set localStorage.v5_year_scope_v1=true to enable',
@@ -1257,7 +1257,7 @@ function YearMarketplaceContent(props: DecisionDockRouterProps) {
     }
 
     try {
-      const plan = buildYearPlan(
+      const plan = await buildYearPlan(
         preset,
         year,
         yearModules,
