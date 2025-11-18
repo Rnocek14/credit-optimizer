@@ -183,6 +183,9 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
 
   // Track previous scope to detect actual scope changes (not just snap point changes)
   const previousScopeRef = useRef<PanelScope>(scope);
+  
+  // PHASE 4: Track last drag position for debugging
+  const lastDragPositionRef = useRef<string | null>(null);
 
   const snapPoints = useMemo(() => {
     const { width, height } = viewportDimensions;
@@ -535,36 +538,24 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
     <DrawerPrimitive.Root
       open={!!scope}
       onOpenChange={(open) => { 
-        const dismissalContext = {
+        console.log('[DecisionDockRouter] onOpenChange:', {
           open,
           scope,
           activeSnapPoint,
           snapPoints,
-          minSnapPoint: snapPoints[0],
-          belowMinimum: activeSnapPoint && parseInt(String(activeSnapPoint)) < parseInt(snapPoints[0]),
-          timestamp: new Date().toISOString()
-        };
+          shouldStayOpen: !!scope
+        });
         
-        console.log('[DecisionDockRouter] onOpenChange:', dismissalContext);
+        // ✅ PHASE 3: CRITICAL FIX - Drawer should ONLY close if scope is cleared
+        // Don't let Vaul close it due to drag threshold
+        if (!open && scope) {
+          console.warn('[DecisionDockRouter] 🚫 Preventing Vaul from closing drawer - scope still active');
+          return; // Block close event - scope is still active so drawer MUST stay open
+        }
         
-        // ✅ FIX: Only close if drawer is already at minimum snap AND user explicitly closes
-        // Don't close if drawer was just dragged below minimum
-        if (!open) {
-          // Check if we're being closed due to drag vs explicit close action
-          const isDraggedBelowMin = activeSnapPoint && 
-            typeof activeSnapPoint === 'string' && 
-            parseInt(activeSnapPoint) < parseInt(snapPoints[0]);
-          
-          if (isDraggedBelowMin) {
-            // Dragged too far down - snap back to minimum instead of closing
-            console.log('[DecisionDockRouter] ⚠️ Preventing accidental close, snapping to minimum');
-            setTimeout(() => {
-              setActiveSnapPoint(snapPoints[0]);
-            }, 0);
-            return; // Don't close
-          }
-          
-          // Legitimate close action (e.g., X button clicked)
+        // Only close if scope was explicitly cleared (user clicked X or close action)
+        if (!open && !scope) {
+          console.log('[DecisionDockRouter] ✅ Allowing close - scope cleared');
           onClose();
         }
       }}
@@ -578,49 +569,32 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
         const pointStr = String(point);
         const minSnap = snapPoints[0];
         
-        // ✅ PHASE 4: Enforce minimum threshold (80% of minimum snap point)
-        if (parseInt(pointStr) < parseInt(minSnap) * 0.8) {
-          console.warn('[DecisionDock] 🚫 Rejecting point below 80% of minimum:', {
-            rejected: pointStr,
+        // PHASE 4: Track drag position
+        lastDragPositionRef.current = pointStr;
+        
+        // PHASE 1: Log but DON'T try to fix - let Vaul handle snapping
+        if (parseInt(pointStr) < parseInt(minSnap)) {
+          console.log('[DecisionDock] ⚠️ Drag below minimum detected:', {
+            dragPosition: pointStr,
             minimum: minSnap,
-            snappingTo: minSnap
+            willSnapBackToMin: true
           });
-          setActiveSnapPoint(minSnap);
+          // Don't update state here - let Vaul snap naturally
           return;
         }
         
-        // Phase 1: CRITICAL FIX - Validate snap point before accepting it
+        // Validate against valid snap points
         if (!snapPoints.includes(pointStr)) {
-          console.warn('[DecisionDock] 🚫 Rejecting invalid snap point from Vaul:', {
+          console.warn('[DecisionDock] 🚫 Invalid snap point:', {
             rejected: pointStr,
-            validPoints: snapPoints,
-            fallbackTo: snapPoints[1]
+            validPoints: snapPoints
           });
-          // Use middle snap as safe fallback
-          setActiveSnapPoint(snapPoints[1]);
-          return; // Don't save invalid point
+          // Don't update state - let Vaul handle it
+          return;
         }
         
+        // ✅ Only update state for VALID points
         setActiveSnapPoint(point);
-        
-        // Ensure drawer stays visible after resize
-        setTimeout(() => {
-          const viewportHeight = window.innerHeight;
-          const drawerHeight = typeof point === 'string' 
-            ? parseInt(point) 
-            : Math.round(viewportHeight * 0.5);
-          
-          const currentScroll = window.scrollY;
-          const maxVisibleScroll = document.documentElement.scrollHeight - viewportHeight - drawerHeight;
-          
-          // If drawer would be below viewport, scroll it into view
-          if (currentScroll > maxVisibleScroll && maxVisibleScroll >= 0) {
-            window.scrollTo({
-              top: maxVisibleScroll,
-              behavior: 'smooth'
-            });
-          }
-        }, 100);
         
         // Persist to localStorage (convert to string for type safety)
         if (typeof window !== 'undefined') {
@@ -692,8 +666,9 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
             aria-label="Drag to resize drawer"
           />
 
-          {/* PHASE 2: Minimum size indicator */}
-          {activeSnapPoint === snapPoints[0] && (
+          {/* PHASE 6: Minimum size indicator - show when at or below minimum */}
+          {(activeSnapPoint === snapPoints[0] || 
+            (lastDragPositionRef.current && parseInt(lastDragPositionRef.current) < parseInt(snapPoints[0]))) && (
             <div className="absolute top-16 left-1/2 -translate-x-1/2 z-[120] px-3 py-1.5 bg-amber-500/90 text-white rounded-full text-xs font-medium shadow-lg pointer-events-none animate-in fade-in slide-in-from-top-2 duration-300">
               ⚠️ Minimum size reached
             </div>
