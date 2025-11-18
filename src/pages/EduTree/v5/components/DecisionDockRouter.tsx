@@ -406,7 +406,11 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
     trackTelemetryEvent({
       task: 'dock_opened',
       route: '/edu-tree-v5',
-      complexity: { schema_version: 1, scope }
+      complexity: { 
+        schema_version: 1, 
+        scope,
+        has_degree_summary: scope === 'degree' ? !!props.degreeSummary : undefined
+      }
     });
     } else if (!scope && openAtRef.current) {
       const durationMs = Date.now() - openAtRef.current;
@@ -432,6 +436,13 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
     yearModulesCount: props.yearModules?.length ?? 0,
     snapPoints,
     activeSnapPoint,
+    // Degree-specific debug
+    degreeProps: scope === 'degree' ? {
+      hasDegreeSummary: !!props.degreeSummary,
+      degreeTitle: props.degreeSummary?.degreeTitle,
+      totalCreditsRequired: props.degreeSummary?.totalCreditsRequired,
+      totalCreditsEarned: props.degreeSummary?.totalCreditsEarned
+    } : undefined,
     // Module-specific debug
     moduleProps: scope === 'module' ? {
       moduleId: props.moduleId,
@@ -638,7 +649,7 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
           
           <div className={cn(
             "flex-1 min-h-0 w-full overflow-y-auto px-4 pb-4",
-            scope === 'year' && "dd-year-scroll"
+            "dd-decision-scroll"  // Apply to all scopes for proper flex layout
           )}>
             {/* DEBUG: Log conditional rendering */}
             {(() => {
@@ -694,8 +705,15 @@ function DegreeAnalyzerContent(props: DecisionDockRouterProps) {
   });
   
   if (!degreeSummary) {
-    console.error('[DegreeAnalyzerContent] ❌ No degreeSummary provided, returning null!');
-    return null;
+    console.error('[DegreeAnalyzerContent] ❌ No degreeSummary provided!');
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="text-center space-y-3">
+          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-primary border-r-transparent"></div>
+          <p className="text-sm text-muted-foreground">Loading degree data...</p>
+        </div>
+      </div>
+    );
   }
   
   const progressPercent = (degreeSummary.totalCreditsEarned / degreeSummary.totalCreditsRequired) * 100;
