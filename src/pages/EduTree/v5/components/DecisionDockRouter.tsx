@@ -190,6 +190,12 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
   // PHASE 1: Track if drawer is visually hidden (dragged below viewport)
   const [isVisuallyHidden, setIsVisuallyHidden] = useState(false);
 
+  // Helper to get scope-specific default snap point
+  const getScopedDefaultSnap = () => {
+    const defaultIndex = scope === 'degree' ? 2 : 1; // Large for degree, medium for others
+    return snapPoints[defaultIndex];
+  };
+
   // Monitor drawer element visibility
   useEffect(() => {
     if (!scope) {
@@ -313,17 +319,23 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
   // Phase 2: Removed redundant correction useEffect (validation now in setActiveSnapPoint callback)
 
 
-  // Debug: Log snap configuration (Phase 2: Removed correction logic)
+  // Debug: Log snap configuration with enhanced details
   useEffect(() => {
     const isValid = typeof activeSnapPoint === 'string' && snapPoints.includes(activeSnapPoint);
+    const expectedIndex = scope === 'degree' ? 2 : 1;
+    const expectedSnap = snapPoints[expectedIndex];
     
-    console.log('[DecisionDock] Snap configuration:', {
+    console.log('[DecisionDock] 📊 Snap configuration:', {
+      scope,
+      isOpen: !!scope,
       snapPoints,
       activeSnapPoint,
-      viewportDimensions,
       isValidSnap: isValid,
-      scope,
-      isOpen: !!scope
+      expectedIndex,
+      expectedSnap,
+      isAtExpected: activeSnapPoint === expectedSnap,
+      viewportDimensions,
+      warning: !isValid ? '⚠️ Active snap not in valid points!' : null
     });
   }, [snapPoints, activeSnapPoint, viewportDimensions, scope]);
 
@@ -629,70 +641,74 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
       modal={false}
       direction="bottom"
       snapPoints={snapPoints}
-      activeSnapPoint={activeSnapPoint || snapPoints[1]}
+      activeSnapPoint={activeSnapPoint || getScopedDefaultSnap()}
       setActiveSnapPoint={(point) => {
         if (!point) return;
         
         const pointStr = String(point);
-        const minSnap = snapPoints[0];
+        const pointValue = parseInt(pointStr);
         
         // Track drag position
         lastDragPositionRef.current = pointStr;
         
-        // ✅ PHASE 2: If below minimum, FORCE snap to minimum (don't just log and return)
-        if (parseInt(pointStr) < parseInt(minSnap)) {
-          console.log('[DecisionDock] ⚠️ Drag below minimum, forcing snap to minimum:', {
-            dragPosition: pointStr,
-            minimum: minSnap,
-            forcingSnap: true
-          });
-          
-          // Force update to minimum immediately
-          setTimeout(() => {
-            setActiveSnapPoint(minSnap);
-          }, 0);
-          return;
-        }
-        
-        // Validate against valid snap points
-        if (!snapPoints.includes(pointStr)) {
-          console.warn('[DecisionDock] 🚫 Invalid snap point, defaulting to minimum:', {
-            rejected: pointStr,
-            validPoints: snapPoints,
-            fallbackTo: minSnap
-          });
-          
-          // Force to minimum for safety
-          setTimeout(() => {
-            setActiveSnapPoint(minSnap);
-          }, 0);
-          return;
-        }
-        
-        // ✅ Valid point - update state
-        setActiveSnapPoint(point);
-        
-        // Clear hidden state when successfully snapping to valid point
-        if (isVisuallyHidden) {
-          setIsVisuallyHidden(false);
-        }
-        
-        // Persist to localStorage (convert to string for type safety)
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('v5_dock_snap', String(point));
-        }
-        
-        // Track telemetry
-        trackTelemetryEvent({
-          task: 'dock_resized',
-          route: '/edu-tree-v5',
-          complexity: {
-            schema_version: 1,
-            snap_point: String(point),
-            snap_point_px: String(point),
-            scope
-          }
+        console.log('[DecisionDock] 🎯 Snap point received:', {
+          input: pointStr,
+          scope,
+          validPoints: snapPoints
         });
+        
+        // Check if exact match to valid snap point
+        if (snapPoints.includes(pointStr)) {
+          console.log('[DecisionDock] ✅ Exact match, accepting:', pointStr);
+          
+          setActiveSnapPoint(point);
+          
+          if (isVisuallyHidden) {
+            setIsVisuallyHidden(false);
+          }
+          
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('v5_dock_snap', String(point));
+          }
+          
+          trackTelemetryEvent({
+            task: 'dock_resized',
+            route: '/edu-tree-v5',
+            complexity: {
+              schema_version: 1,
+              snap_point: String(point),
+              snap_point_px: String(point),
+              scope
+            }
+          });
+          return;
+        }
+        
+        // ✅ NEW: Find nearest valid snap point (don't force to minimum!)
+        const snapValues = snapPoints.map(s => parseInt(s));
+        const nearest = snapValues.reduce((prev, curr) => {
+          return Math.abs(curr - pointValue) < Math.abs(prev - pointValue) ? curr : prev;
+        });
+        const nearestSnap = `${nearest}px`;
+        
+        console.log('[DecisionDock] 📍 Intermediate value, snapping to nearest:', {
+          dragValue: pointStr,
+          validPoints: snapPoints,
+          nearestSnap,
+          calculation: snapValues.map(v => ({
+            snap: `${v}px`,
+            distance: Math.abs(v - pointValue)
+          }))
+        });
+        
+        // Snap to nearest valid point with small delay
+        setTimeout(() => {
+          setActiveSnapPoint(nearestSnap);
+          
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('v5_dock_snap', nearestSnap);
+          }
+        }, 0);
       }}
       dismissible={false}
     >
@@ -717,10 +733,10 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
             backgroundColor: 'hsl(var(--background) / 0.95)',
             maxHeight: (activeSnapPoint && snapPoints.includes(String(activeSnapPoint)))
               ? activeSnapPoint 
-              : snapPoints[1],
+              : getScopedDefaultSnap(),
             height: (activeSnapPoint && snapPoints.includes(String(activeSnapPoint)))
               ? activeSnapPoint 
-              : snapPoints[1],
+              : getScopedDefaultSnap(),
             display: 'flex',
             flexDirection: 'column',
             visibility: 'visible',
@@ -746,6 +762,27 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
             className="mx-auto mt-4 h-1.5 w-[120px] rounded-full bg-muted hover:bg-muted-foreground/60 active:bg-primary transition-colors cursor-ns-resize select-none touch-none"
             aria-label="Drag to resize drawer"
           />
+
+          {/* Snap position indicator - shows which of 3 positions is active */}
+          <div className="absolute top-20 right-4 z-[120] flex flex-col gap-1 pointer-events-none">
+            {snapPoints.map((snap, idx) => {
+              const isActive = activeSnapPoint === snap;
+              const label = idx === 0 ? 'Min' : idx === 1 ? 'Mid' : 'Max';
+              return (
+                <div
+                  key={snap}
+                  className={cn(
+                    "px-2 py-1 rounded text-xs font-medium transition-all duration-200",
+                    isActive 
+                      ? "bg-blue-500 text-white scale-110 shadow-lg" 
+                      : "bg-gray-200 text-gray-600 opacity-50"
+                  )}
+                >
+                  {label}: {snap}
+                </div>
+              );
+            })}
+          </div>
 
           {/* PHASE 5: Enhanced minimum size indicator with restore hint */}
           {activeSnapPoint === snapPoints[0] && (
