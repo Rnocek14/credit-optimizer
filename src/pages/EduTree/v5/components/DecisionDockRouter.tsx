@@ -187,6 +187,36 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
   // PHASE 4: Track last drag position for debugging
   const lastDragPositionRef = useRef<string | null>(null);
 
+  // PHASE 1: Track if drawer is visually hidden (dragged below viewport)
+  const [isVisuallyHidden, setIsVisuallyHidden] = useState(false);
+
+  // Monitor drawer element visibility
+  useEffect(() => {
+    if (!scope) {
+      setIsVisuallyHidden(false);
+      return;
+    }
+    
+    const checkVisibility = () => {
+      const drawer = document.querySelector('[data-testid="decision-dock-content"]');
+      if (!drawer) return;
+      
+      const rect = drawer.getBoundingClientRect();
+      const isHidden = rect.top >= window.innerHeight || rect.bottom <= 0;
+      
+      if (isHidden !== isVisuallyHidden) {
+        console.log('[DecisionDock] 👁️ Visibility changed:', { isHidden, rect });
+        setIsVisuallyHidden(isHidden);
+      }
+    };
+    
+    // Check on mount and periodically during drags
+    checkVisibility();
+    const interval = setInterval(checkVisibility, 100);
+    
+    return () => clearInterval(interval);
+  }, [scope, isVisuallyHidden]);
+
   const snapPoints = useMemo(() => {
     const { width, height } = viewportDimensions;
     const isMobile = width < 640;
@@ -255,28 +285,30 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
     const isNowOpen = !!scope;
     const wasOpen = lastOpenStateRef.current;
     
-    // Detect re-opening: was open, became closed, then opened again OR same scope clicked
-    if (isNowOpen && !wasOpen) {
+    // ✅ NEW: Detect re-opening OR visibility issue
+    const needsRestore = (isNowOpen && !wasOpen) || (isNowOpen && isVisuallyHidden);
+    
+    if (needsRestore) {
       const defaultIndex = scope === 'degree' ? 2 : 1;
       const targetSnap = snapPoints[defaultIndex];
       
-      console.log('[DecisionDock] 🔄 Drawer re-opened, restoring to default snap:', {
+      console.log('[DecisionDock] 🔄 Restoring drawer:', {
         scope,
         targetSnap,
         index: defaultIndex,
-        currentSnap: activeSnapPoint
+        currentSnap: activeSnapPoint,
+        reason: !wasOpen ? 'reopened' : 'visually_hidden'
       });
       
-      // Only restore if currently at minimum (stuck state)
-      if (activeSnapPoint === snapPoints[0]) {
-        startTransition(() => {
-          setActiveSnapPoint(targetSnap);
-        });
-      }
+      // Force restore to default size
+      startTransition(() => {
+        setActiveSnapPoint(targetSnap);
+        setIsVisuallyHidden(false);
+      });
     }
     
     lastOpenStateRef.current = isNowOpen;
-  }, [scope, snapPoints, activeSnapPoint]);
+  }, [scope, snapPoints, activeSnapPoint, isVisuallyHidden]);
 
   // Phase 2: Removed redundant correction useEffect (validation now in setActiveSnapPoint callback)
 
@@ -567,12 +599,15 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
     <DrawerPrimitive.Root
       open={!!scope}
       onOpenChange={(open) => { 
+        const drawerElement = document.querySelector('[data-testid="decision-dock-content"]');
         console.log('[DecisionDockRouter] onOpenChange:', {
           open,
           scope,
           activeSnapPoint,
           snapPoints,
-          shouldStayOpen: !!scope
+          shouldStayOpen: !!scope,
+          isVisuallyHidden,
+          drawerBounds: drawerElement?.getBoundingClientRect()
         });
         
         // ✅ PHASE 3: CRITICAL FIX - Drawer should ONLY close if scope is cleared
@@ -598,32 +633,46 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
         const pointStr = String(point);
         const minSnap = snapPoints[0];
         
-        // PHASE 4: Track drag position
+        // Track drag position
         lastDragPositionRef.current = pointStr;
         
-        // PHASE 1: Log but DON'T try to fix - let Vaul handle snapping
+        // ✅ PHASE 2: If below minimum, FORCE snap to minimum (don't just log and return)
         if (parseInt(pointStr) < parseInt(minSnap)) {
-          console.log('[DecisionDock] ⚠️ Drag below minimum detected:', {
+          console.log('[DecisionDock] ⚠️ Drag below minimum, forcing snap to minimum:', {
             dragPosition: pointStr,
             minimum: minSnap,
-            willSnapBackToMin: true
+            forcingSnap: true
           });
-          // Don't update state here - let Vaul snap naturally
+          
+          // Force update to minimum immediately
+          setTimeout(() => {
+            setActiveSnapPoint(minSnap);
+          }, 0);
           return;
         }
         
         // Validate against valid snap points
         if (!snapPoints.includes(pointStr)) {
-          console.warn('[DecisionDock] 🚫 Invalid snap point:', {
+          console.warn('[DecisionDock] 🚫 Invalid snap point, defaulting to minimum:', {
             rejected: pointStr,
-            validPoints: snapPoints
+            validPoints: snapPoints,
+            fallbackTo: minSnap
           });
-          // Don't update state - let Vaul handle it
+          
+          // Force to minimum for safety
+          setTimeout(() => {
+            setActiveSnapPoint(minSnap);
+          }, 0);
           return;
         }
         
-        // ✅ Only update state for VALID points
+        // ✅ Valid point - update state
         setActiveSnapPoint(point);
+        
+        // Clear hidden state when successfully snapping to valid point
+        if (isVisuallyHidden) {
+          setIsVisuallyHidden(false);
+        }
         
         // Persist to localStorage (convert to string for type safety)
         if (typeof window !== 'undefined') {
@@ -695,11 +744,22 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
             aria-label="Drag to resize drawer"
           />
 
-          {/* PHASE 6: Minimum size indicator - show when at or below minimum */}
-          {(activeSnapPoint === snapPoints[0] || 
-            (lastDragPositionRef.current && parseInt(lastDragPositionRef.current) < parseInt(snapPoints[0]))) && (
-            <div className="absolute top-16 left-1/2 -translate-x-1/2 z-[120] px-3 py-1.5 bg-amber-500/90 text-white rounded-full text-xs font-medium shadow-lg pointer-events-none animate-in fade-in slide-in-from-top-2 duration-300">
-              ⚠️ Minimum size reached
+          {/* PHASE 5: Enhanced minimum size indicator with restore hint */}
+          {activeSnapPoint === snapPoints[0] && (
+            <div className="absolute top-16 left-1/2 -translate-x-1/2 z-[120] flex flex-col items-center gap-2 pointer-events-none">
+              <div className="px-4 py-2 bg-amber-500/90 text-white rounded-lg text-sm font-medium shadow-lg animate-in fade-in slide-in-from-top-2 duration-300">
+                ⚠️ Drawer minimized
+              </div>
+              <div className="px-3 py-1.5 bg-blue-500/90 text-white rounded-lg text-xs font-medium shadow-lg animate-bounce">
+                ⬆️ Click {scope === 'degree' ? 'degree node' : scope === 'year' ? 'year card' : 'module'} again to restore
+              </div>
+            </div>
+          )}
+
+          {/* PHASE 5: Visually hidden warning */}
+          {isVisuallyHidden && (
+            <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[120] px-6 py-4 bg-red-500/90 text-white rounded-lg text-base font-medium shadow-xl pointer-events-none animate-pulse">
+              🚨 Drawer stuck below screen - click restore button
             </div>
           )}
 
