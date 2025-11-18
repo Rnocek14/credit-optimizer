@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Switch } from '@/components/ui/switch';
 import { Eye, Plus, AlertTriangle, Calendar, RefreshCw } from 'lucide-react';
 import { generateYearTemplates } from '../../engine/yearTemplateGenerator';
 import { usePlanBasket } from '../../state/usePlanBasket';
@@ -54,6 +55,27 @@ export function YearTemplatesPanel({
   const firstCardRef = useRef<HTMLDivElement>(null);
   const uiHintAppliedRef = useRef(false);
   const lastTemplatesRef = useRef<(YearTemplate & { semesterDistribution: any; warnings: any })[] | null>(null);
+  
+  // Transfer safety toggle with localStorage persistence
+  const [showNonTransferable, setShowNonTransferable] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    try {
+      const saved = localStorage.getItem('edutree-show-non-transferable');
+      return saved === 'true';
+    } catch {
+      return false;
+    }
+  });
+  
+  // Persist toggle state to localStorage
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      localStorage.setItem('edutree-show-non-transferable', String(showNonTransferable));
+    } catch (e) {
+      console.debug('[Persist] localStorage write failed:', e);
+    }
+  }, [showNonTransferable]);
 
   // Debounce focus term to prevent double-runs when toggling Fall↔Spring
   const debouncedFocusTerm = useDebouncedValue(localFocusTerm, 80);
@@ -338,6 +360,31 @@ export function YearTemplatesPanel({
             <RefreshCw className="h-4 w-4 mr-2" />
             Refresh
           </Button>
+        </div>
+      )}
+
+      {/* Transfer safety toggle */}
+      {constraints.target_school && (
+        <div className="mb-4 p-3 border rounded-lg bg-muted/30">
+          <div className="flex items-center justify-between gap-3">
+            <label
+              htmlFor="year-show-non-transferable"
+              className="text-xs text-muted-foreground flex-1 cursor-pointer"
+            >
+              Show non-transferable courses (advanced)
+            </label>
+            <Switch
+              id="year-show-non-transferable"
+              checked={showNonTransferable}
+              onCheckedChange={setShowNonTransferable}
+            />
+          </div>
+          {showNonTransferable && (
+            <div className="mt-2 text-[11px] text-amber-700 bg-amber-500/10 border border-amber-500/20 rounded px-2 py-1">
+              ⚠️ You're viewing courses that may not transfer to {constraints.target_school}. 
+              Verify transfer status with an advisor before selecting.
+            </div>
+          )}
         </div>
       )}
 
