@@ -535,8 +535,38 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
     <DrawerPrimitive.Root
       open={!!scope}
       onOpenChange={(open) => { 
-        console.log('[DecisionDockRouter] onOpenChange:', { open, scope });
-        if (!open) onClose(); 
+        const dismissalContext = {
+          open,
+          scope,
+          activeSnapPoint,
+          snapPoints,
+          minSnapPoint: snapPoints[0],
+          belowMinimum: activeSnapPoint && parseInt(String(activeSnapPoint)) < parseInt(snapPoints[0]),
+          timestamp: new Date().toISOString()
+        };
+        
+        console.log('[DecisionDockRouter] onOpenChange:', dismissalContext);
+        
+        // ✅ FIX: Only close if drawer is already at minimum snap AND user explicitly closes
+        // Don't close if drawer was just dragged below minimum
+        if (!open) {
+          // Check if we're being closed due to drag vs explicit close action
+          const isDraggedBelowMin = activeSnapPoint && 
+            typeof activeSnapPoint === 'string' && 
+            parseInt(activeSnapPoint) < parseInt(snapPoints[0]);
+          
+          if (isDraggedBelowMin) {
+            // Dragged too far down - snap back to minimum instead of closing
+            console.log('[DecisionDockRouter] ⚠️ Preventing accidental close, snapping to minimum');
+            setTimeout(() => {
+              setActiveSnapPoint(snapPoints[0]);
+            }, 0);
+            return; // Don't close
+          }
+          
+          // Legitimate close action (e.g., X button clicked)
+          onClose();
+        }
       }}
       modal={false}
       direction="bottom"
@@ -545,8 +575,21 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
       setActiveSnapPoint={(point) => {
         if (!point) return;
         
-        // Phase 1: CRITICAL FIX - Validate snap point before accepting it
         const pointStr = String(point);
+        const minSnap = snapPoints[0];
+        
+        // ✅ PHASE 4: Enforce minimum threshold (80% of minimum snap point)
+        if (parseInt(pointStr) < parseInt(minSnap) * 0.8) {
+          console.warn('[DecisionDock] 🚫 Rejecting point below 80% of minimum:', {
+            rejected: pointStr,
+            minimum: minSnap,
+            snappingTo: minSnap
+          });
+          setActiveSnapPoint(minSnap);
+          return;
+        }
+        
+        // Phase 1: CRITICAL FIX - Validate snap point before accepting it
         if (!snapPoints.includes(pointStr)) {
           console.warn('[DecisionDock] 🚫 Rejecting invalid snap point from Vaul:', {
             rejected: pointStr,
@@ -648,6 +691,13 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
             className="mx-auto mt-4 h-1.5 w-[120px] rounded-full bg-muted hover:bg-muted-foreground/60 active:bg-primary transition-colors cursor-ns-resize select-none touch-none"
             aria-label="Drag to resize drawer"
           />
+
+          {/* PHASE 2: Minimum size indicator */}
+          {activeSnapPoint === snapPoints[0] && (
+            <div className="absolute top-16 left-1/2 -translate-x-1/2 z-[120] px-3 py-1.5 bg-amber-500/90 text-white rounded-full text-xs font-medium shadow-lg pointer-events-none animate-in fade-in slide-in-from-top-2 duration-300">
+              ⚠️ Minimum size reached
+            </div>
+          )}
 
           {/* Scroll hint - auto-dismisses after 3s */}
           {scope && (

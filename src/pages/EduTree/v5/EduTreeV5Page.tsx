@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import { ChevronUp } from 'lucide-react';
 import { YearCard } from './components/YearCard';
 import { ModuleCard } from './components/ModuleCard';
 import { DegreeNode } from './components/DegreeNode';
@@ -977,6 +978,29 @@ export default function EduTreeV5Page() {
         yearCap={YEAR_CREDIT_CAP}
         allModules={allModules}
       />
+
+      {/* PHASE 3: Drawer restore button - appears if drawer gets hidden */}
+      {panelState.scope && (
+        <button
+          onClick={() => {
+            // Re-trigger drawer opening by refreshing scope
+            const currentScope = panelState.scope;
+            const currentNodeId = panelState.nodeId;
+            const currentNodeData = panelState.nodeData;
+            closePanel();
+            setTimeout(() => {
+              if (currentScope && currentNodeId) {
+                openPanel(currentScope, currentNodeId, currentNodeData);
+              }
+            }, 50);
+          }}
+          className="fixed bottom-4 right-4 z-[100] p-3 bg-primary text-primary-foreground rounded-full shadow-lg hover:scale-110 transition-transform"
+          aria-label="Restore drawer"
+          title="Restore drawer"
+        >
+          <ChevronUp className="w-5 h-5" />
+        </button>
+      )}
       </div>
     </DragProvider>
   );
