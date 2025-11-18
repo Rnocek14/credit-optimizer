@@ -2,6 +2,7 @@ import { autoCompletePlan } from './autoCompletePlan';
 import type { ModuleTemplate } from '../types/templates';
 import type { ModuleData, ScoringWeights } from '../types/v5';
 import type { BasketItem, Constraints } from '../state/usePlanBasket';
+import { checkTransferRule, deriveRequirementType } from './transferEngine';
 
 export interface TemplateGenerationProfile {
   name: string;
@@ -80,9 +81,56 @@ export async function generateModuleTemplates(
     optionsCount: module.marketplaceOptions.length
   });
   
+  // ============ Transfer Filtering (Phase 3) ============
+  // Filter marketplace options to transfer-safe courses only
+  const targetSchool = constraints.target_school;
+  let safeOptionsForModule = module.marketplaceOptions;
+  
+  if (targetSchool && typeof targetSchool === 'string') {
+    const requirementType = deriveRequirementType(module);
+    const safeOptions: typeof safeOptionsForModule = [];
+    
+    for (const opt of safeOptionsForModule) {
+      const providerCode = opt.providerCode || opt.provider || '';
+      
+      // Institutional courses are always safe for this anchor
+      if (providerCode.toUpperCase() === targetSchool.toUpperCase()) {
+        safeOptions.push(opt);
+        continue;
+      }
+      
+      const rule = await checkTransferRule(
+        providerCode,
+        opt.courseId,
+        targetSchool,
+        { requirementType }
+      );
+      
+      if (rule.accepted) {
+        // Annotate for future UI use
+        (opt as any).transferStatus = rule.electiveOnly ? 'elective' : 'accepted';
+        (opt as any).transferConfidence = rule.confidence;
+        (opt as any).targetEquivCode = rule.targetEquivCode;
+        safeOptions.push(opt);
+      }
+    }
+    
+    if (safeOptions.length === 0) {
+      console.warn(
+        `[TemplateGenerator] No transfer-safe options for module ${module.id} at ${targetSchool}`
+      );
+      return []; // No safe options = no templates for this module
+    }
+    
+    console.log(
+      `[TemplateGenerator] 🔒 Filtered ${safeOptionsForModule.length} → ${safeOptions.length} safe options for module ${module.id}`
+    );
+    safeOptionsForModule = safeOptions;
+  }
+  
   for (const profile of GENERATION_PROFILES) {
     // Score options by profile weights (normalize to 0-100)
-    const scored = module.marketplaceOptions.map(opt => {
+    const scored = safeOptionsForModule.map(opt => {
       const costScore = profile.weights.cost > 0 
         ? profile.weights.cost * (1 / ((opt.cost_usd ?? 1) + 1)) * 100
         : 0;
