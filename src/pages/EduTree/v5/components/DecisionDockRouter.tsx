@@ -189,6 +189,8 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
 
   // PHASE 1: Track if drawer is visually hidden (dragged below viewport)
   const [isVisuallyHidden, setIsVisuallyHidden] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const [pendingVisibilityChange, setPendingVisibilityChange] = useState<boolean | null>(null);
 
   // Helper to get scope-specific default snap point
   const getScopedDefaultSnap = () => {
@@ -196,32 +198,49 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
     return snapPoints[defaultIndex];
   };
 
-  // Monitor drawer element visibility
+  // Monitor drawer element visibility with debouncing
   useEffect(() => {
     if (!scope) {
       setIsVisuallyHidden(false);
+      setPendingVisibilityChange(null);
       return;
     }
     
     const checkVisibility = () => {
+      // Don't check visibility during active drags - prevents false positives
+      if (isDragging) {
+        return;
+      }
+      
       const drawer = document.querySelector('[data-testid="decision-dock-content"]');
       if (!drawer) return;
       
       const rect = drawer.getBoundingClientRect();
       const isHidden = rect.top >= window.innerHeight || rect.bottom <= 0;
       
+      // Debounce: Only update if state persists for 2 checks (600ms total)
       if (isHidden !== isVisuallyHidden) {
-        console.log('[DecisionDock] 👁️ Visibility changed:', { isHidden, rect });
-        setIsVisuallyHidden(isHidden);
+        if (pendingVisibilityChange === isHidden) {
+          // Second consecutive check with same state - commit change
+          console.log('[DecisionDock] 👁️ Visibility changed (confirmed):', { isHidden, rect });
+          setIsVisuallyHidden(isHidden);
+          setPendingVisibilityChange(null);
+        } else {
+          // First check with new state - mark as pending
+          setPendingVisibilityChange(isHidden);
+        }
+      } else {
+        // State matches current - clear pending
+        setPendingVisibilityChange(null);
       }
     };
     
-    // Check on mount and periodically during drags
+    // Check on mount and periodically (slower to reduce false positives)
     checkVisibility();
-    const interval = setInterval(checkVisibility, 100);
+    const interval = setInterval(checkVisibility, 300);
     
     return () => clearInterval(interval);
-  }, [scope, isVisuallyHidden]);
+  }, [scope, isVisuallyHidden, pendingVisibilityChange, isDragging]);
 
   const snapPoints = useMemo(() => {
     const { width, height } = viewportDimensions;
@@ -291,8 +310,11 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
     const isNowOpen = !!scope;
     const wasOpen = lastOpenStateRef.current;
     
-    // ✅ NEW: Detect re-opening OR visibility issue
-    const needsRestore = (isNowOpen && !wasOpen) || (isNowOpen && isVisuallyHidden);
+    // Only restore on actual reopen, NOT during normal visibility changes from dragging
+    const justOpened = isNowOpen && !wasOpen;
+    const draggedBelowViewport = isNowOpen && isVisuallyHidden && wasOpen;
+    
+    const needsRestore = justOpened || draggedBelowViewport;
     
     if (needsRestore) {
       const defaultIndex = scope === 'degree' ? 2 : 1;
@@ -303,7 +325,10 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
         targetSnap,
         index: defaultIndex,
         currentSnap: activeSnapPoint,
-        reason: !wasOpen ? 'reopened' : 'visually_hidden'
+        reason: justOpened ? 'just_opened' : 'dragged_below_viewport',
+        wasOpen,
+        isNowOpen,
+        isVisuallyHidden
       });
       
       // Force restore to default size
@@ -314,7 +339,7 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
     }
     
     lastOpenStateRef.current = isNowOpen;
-  }, [scope, snapPoints, activeSnapPoint, isVisuallyHidden]);
+  }, [scope, snapPoints, isVisuallyHidden]);
 
   // Phase 2: Removed redundant correction useEffect (validation now in setActiveSnapPoint callback)
 
@@ -335,9 +360,13 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
       expectedSnap,
       isAtExpected: activeSnapPoint === expectedSnap,
       viewportDimensions,
+      isDragging,
+      isVisuallyHidden,
+      pendingVisibilityChange,
+      restorationWillTrigger: (!!scope && isVisuallyHidden),
       warning: !isValid ? '⚠️ Active snap not in valid points!' : null
     });
-  }, [snapPoints, activeSnapPoint, viewportDimensions, scope]);
+  }, [snapPoints, activeSnapPoint, viewportDimensions, scope, isDragging, isVisuallyHidden, pendingVisibilityChange]);
 
   // Update viewport dimensions on window resize
   useEffect(() => {
@@ -645,6 +674,9 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
       setActiveSnapPoint={(point) => {
         if (!point) return;
         
+        // Mark as actively dragging to prevent visibility checks
+        setIsDragging(true);
+        
         const pointStr = String(point);
         const pointValue = parseInt(pointStr);
         
@@ -681,6 +713,11 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
               scope
             }
           });
+          
+          // Clear drag state after snap completes
+          setTimeout(() => {
+            setIsDragging(false);
+          }, 100);
           return;
         }
         
@@ -708,6 +745,11 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
           if (typeof window !== 'undefined') {
             localStorage.setItem('v5_dock_snap', nearestSnap);
           }
+          
+          // Clear drag state after snap completes
+          setTimeout(() => {
+            setIsDragging(false);
+          }, 100);
         }, 0);
       }}
       dismissible={false}
