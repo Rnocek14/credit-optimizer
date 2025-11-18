@@ -9,14 +9,16 @@ import { toast } from 'sonner';
 import { safeTrack } from '../utils/safeTelemetry';
 import type { YearTemplate } from '../types/templates';
 import type { BasketItem } from '../state/usePlanBasket';
+import { checkTransferRule } from '../engine/transferEngine';
 
 export function useApplyYearTemplate() {
   const basket = usePlanBasket(s => s.items);
+  const constraints = usePlanBasket(s => s.constraints);
   const addItem = usePlanBasket(s => s.addItem);
   const removeItem = usePlanBasket(s => s.removeItem);
 
   const apply = useCallback(
-    (template: YearTemplate & { semesterDistribution: { fall: BasketItem[]; spring: BasketItem[] }; warnings?: any[] }) => {
+    async (template: YearTemplate & { semesterDistribution: { fall: BasketItem[]; spring: BasketItem[] }; warnings?: any[] }) => {
       try {
         console.log('[ApplyYearTemplate] Starting', {
           templateId: template.id,
@@ -24,6 +26,70 @@ export function useApplyYearTemplate() {
           fallCourses: template.semesterDistribution.fall.length,
           springCourses: template.semesterDistribution.spring.length,
         });
+
+      // ============ Phase 4: Transfer Safety Pre-Flight Validation ============
+      const targetSchool = constraints.target_school;
+      
+      if (targetSchool && typeof targetSchool === 'string') {
+        const issues: Array<{ courseId: string; title: string; reason: string }> = [];
+        const allCourses = [
+          ...template.semesterDistribution.fall,
+          ...template.semesterDistribution.spring
+        ];
+        
+        for (const course of allCourses) {
+          const providerCode = course.providerCode || '';
+          const courseId = course.courseId;
+          
+          if (!courseId) {
+            issues.push({
+              courseId: '(missing)',
+              title: course.title || '(missing title)',
+              reason: 'Missing course code; cannot validate transfer',
+            });
+            continue;
+          }
+          
+          // Institutional courses are always safe
+          if (providerCode.toUpperCase() === targetSchool.toUpperCase()) {
+            continue;
+          }
+          
+          // Use requirement type from course metadata if available
+          const requirementType = (course as any).requirementType || 
+                                 (course as any).requirementKind || 
+                                 'major';
+          
+          const rule = await checkTransferRule(
+            providerCode,
+            courseId,
+            targetSchool,
+            { requirementType }
+          );
+          
+          if (!rule.accepted) {
+            issues.push({
+              courseId,
+              title: course.title || courseId,
+              reason: rule.confidence === 0
+                ? 'No transfer rule found for this anchor school'
+                : `Low transfer confidence (${Math.round(rule.confidence * 100)}%)`,
+            });
+          }
+        }
+        
+        if (issues.length > 0) {
+          toast.error('Year template cannot be applied', {
+            description: `${issues.length} course${issues.length > 1 ? 's' : ''} may not transfer safely to ${targetSchool}.`,
+            duration: 9000,
+          });
+          
+          console.error('[ApplyYearTemplate] 🚫 Blocked non-transferable courses:', issues);
+          return;
+        }
+        
+        console.log('[ApplyYearTemplate] ✅ All courses passed transfer validation');
+      }
 
       // Capture undo snapshot (all courses in this year's modules)
       const yearModuleIds = new Set(template.moduleTemplates.map(mt => mt.moduleId));
@@ -172,7 +238,7 @@ export function useApplyYearTemplate() {
         toast.error('Could not apply template. Your plan was not changed.');
       }
     },
-    [basket, addItem, removeItem]
+    [basket, constraints, addItem, removeItem]
   );
 
   return { applyYearTemplate: apply };
