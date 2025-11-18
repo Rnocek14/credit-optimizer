@@ -13,6 +13,7 @@ import type { RequirementBlock, RuleType } from '@/lib/types/eduTree';
 import type { ScoringWeights as EngineScoringWeights } from '../types/v5';
 import { scoreOptions, compareByScore, type ScoredOption } from './optionFilters';
 import { calculateAnchorTotals } from '../utils/anchorPolicyAdapter';
+import { checkTransferRule, deriveRequirementType } from './transferEngine';
 
 // Map engine weights (cri) to scoring weights (quality)
 function mapWeights(engineWeights: EngineScoringWeights): { cost: number; time: number; quality: number } {
@@ -169,7 +170,7 @@ function toBasketItem(option: ScoredOption, semester: 'fall' | 'spring', moduleI
  * Week 1.5: Build a semester plan for a given year
  * Implements strategy-based scoring and assignment
  */
-export function buildYearPlan(
+export async function buildYearPlan(
   preset: YearPreset,
   year: number,
   modules: ModuleData[],
@@ -178,7 +179,7 @@ export function buildYearPlan(
   basket: BasketItem[],
   constraints: Constraints,
   anchorPolicy?: PartnerPolicy
-): SemesterPlan {
+): Promise<SemesterPlan> {
   console.log('[yearPlanner] buildYearPlan called', {
     preset: preset.id,
     year,
@@ -232,7 +233,7 @@ export function buildYearPlan(
 
   // 3. Score and assign options to semesters
   for (const module of unmetModules) {
-    const options = module.marketplaceOptions || [];
+    let options = module.marketplaceOptions || [];
 
     // Diagnostic: log option data quality before scoring
     console.log('[yearPlanner] Module options', {
@@ -250,6 +251,49 @@ export function buildYearPlan(
         provider: options[0].providerType,
       } : null,
     });
+
+    // Phase 2: Filter for transfer-safe options only
+    const targetSchool = constraints.target_school;
+    if (targetSchool && typeof targetSchool === 'string') {
+      const requirementType = deriveRequirementType(module);
+      const safeOptions: typeof options = [];
+
+      for (const opt of options) {
+        const providerCode = opt.providerCode || opt.provider || '';
+
+        // Institutional courses are always safe for this anchor
+        if (providerCode.toUpperCase() === targetSchool.toUpperCase()) {
+          safeOptions.push(opt);
+          continue;
+        }
+
+        const rule = await checkTransferRule(
+          providerCode,
+          opt.courseId,
+          targetSchool,
+          { requirementType }
+        );
+
+        if (rule.accepted) {
+          // Annotate for future UI use
+          (opt as any).transferStatus = rule.electiveOnly ? 'elective' : 'accepted';
+          (opt as any).transferConfidence = rule.confidence;
+          (opt as any).targetEquivCode = rule.targetEquivCode;
+          safeOptions.push(opt);
+        }
+      }
+
+      if (safeOptions.length === 0) {
+        console.warn(
+          `[YearPlanner] No transfer-safe options for module ${module.id} at ${targetSchool}`
+        );
+        // Let this module remain unfilled - scoring will run on empty list
+        options = [];
+      } else {
+        console.log(`[YearPlanner] Filtered ${options.length} → ${safeOptions.length} safe options for module ${module.id}`);
+        options = safeOptions;
+      }
+    }
 
     const scoringWeights = mapWeights(preset.weights);
     const scored = scoreOptions(options, scoringWeights).sort(compareByScore);
