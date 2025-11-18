@@ -35,33 +35,202 @@ function validateCanonicalFit(
 
 // ============ Transfer Validation (When Anchor School Set) ============
 
-interface TransferRuleCache {
-  [key: string]: { acceptance_status: string; target_equiv_code?: string } | null;
+type TransferRuleCacheEntry =
+  | {
+      acceptance_status: 'accepted' | 'elective' | 'rejected';
+      target_equiv_code?: string | null;
+      confidence?: number | null;
+    }
+  | null;
+
+const transferRuleCache: Record<string, TransferRuleCacheEntry> = {};
+
+export interface TransferRuleCheckResult {
+  accepted: boolean;          // safe to auto-use in templates / planners
+  electiveOnly: boolean;      // transfers, but as elective only
+  targetEquivCode?: string;   // mapped target course code, if any
+  confidence: number;         // 0–1; always present
 }
 
-const transferRuleCache: TransferRuleCache = {};
-
+/**
+ * Core transfer rule checker used by planners and validators.
+ * 
+ * Default behavior:
+ *  - Institutional courses (provider === target) are always accepted at 1.0 confidence.
+ *  - If no rule is found, course is NOT accepted (strict mode).
+ *  - Only rules with confidence >= minConfidence are auto-accepted.
+ */
 async function checkTransferRule(
-  providerCode: string,
+  providerCode: string | null | undefined,
   courseCode: string,
-  targetSchool: string
-): Promise<{ accepted: boolean; electiveOnly: boolean; targetEquivCode?: string }> {
-  const cacheKey = `${providerCode}|${courseCode}|${targetSchool}`.toUpperCase();
-  
-  if (transferRuleCache[cacheKey] !== undefined) {
-    const cached = transferRuleCache[cacheKey];
-    if (!cached) return { accepted: false, electiveOnly: false };
-    
+  targetSchool: string | null | undefined,
+  opts?: {
+    requirementType?: 'major' | 'elective' | 'genED';
+    minConfidence?: number;  // default 0.7
+  }
+): Promise<TransferRuleCheckResult> {
+  const minConfidence = opts?.minConfidence ?? 0.7;
+  const requirementType = opts?.requirementType ?? 'major';
+
+  const provider = (providerCode || '').trim().toUpperCase();
+  const target = (targetSchool || '').trim().toUpperCase();
+  const code = (courseCode || '').trim().toUpperCase();
+
+  // If we don't know the target school, we can't do transfer validation
+  if (!target || !code) {
     return {
-      accepted: cached.acceptance_status === 'accepted',
-      electiveOnly: cached.acceptance_status === 'elective',
-      targetEquivCode: cached.target_equiv_code
+      accepted: false,
+      electiveOnly: false,
+      targetEquivCode: undefined,
+      confidence: 0,
     };
   }
-  
-  // Phase 1 Stub: Always accept transfers (wire up real rules in Phase 2)
-  transferRuleCache[cacheKey] = { acceptance_status: 'accepted' };
-  return { accepted: true, electiveOnly: false };
+
+  const cacheKey = `${provider}|${code}|${target}`;
+
+  // 1) Cache hit
+  const cached = transferRuleCache[cacheKey];
+  if (cached !== undefined) {
+    if (cached === null) {
+      // Cached as "no safe rule"
+      return {
+        accepted: false,
+        electiveOnly: false,
+        targetEquivCode: undefined,
+        confidence: 0,
+      };
+    }
+
+    const rawConfidence = cached.confidence ?? 0.5;
+    const normalizedConfidence = Math.max(0, Math.min(1, rawConfidence));
+
+    const acceptedByStatus =
+      cached.acceptance_status === 'accepted' ||
+      cached.acceptance_status === 'elective';
+
+    // For major requirements, only accept 'accepted' status
+    // For elective/genED requirements, accept both 'accepted' and 'elective'
+    const accepted =
+      acceptedByStatus && 
+      normalizedConfidence >= minConfidence &&
+      (requirementType !== 'major' || cached.acceptance_status === 'accepted');
+
+    return {
+      accepted,
+      electiveOnly: cached.acceptance_status === 'elective',
+      targetEquivCode: cached.target_equiv_code || undefined,
+      confidence: normalizedConfidence,
+    };
+  }
+
+  // 2) Institutional courses are always safe
+  if (provider && provider === target) {
+    transferRuleCache[cacheKey] = {
+      acceptance_status: 'accepted',
+      confidence: 1.0,
+      target_equiv_code: code,
+    };
+
+    return {
+      accepted: true,
+      electiveOnly: false,
+      targetEquivCode: code,
+      confidence: 1.0,
+    };
+  }
+
+  // 3) Query transfer rules table
+  try {
+    const { data, error } = await supabase
+      .from('credit_transfer_rules')
+      .select('*')
+      .eq('source_institution', provider)
+      .eq('source_course_code', code)
+      .eq('target_institution', target)
+      .maybeSingle();
+
+    // PGRST116 = no rows; treat as "no rule"
+    if (error && error.code !== 'PGRST116') {
+      console.error('[Transfer] Query error:', error);
+      // On hard errors, default to "not accepted" (fail safe)
+      transferRuleCache[cacheKey] = null;
+      return {
+        accepted: false,
+        electiveOnly: false,
+        targetEquivCode: undefined,
+        confidence: 0,
+      };
+    }
+
+    if (!data) {
+      // No rule found - strict mode
+      transferRuleCache[cacheKey] = null;
+      console.warn(`[Transfer] No rule found for ${provider} ${code} -> ${target}`);
+      return {
+        accepted: false,
+        electiveOnly: false,
+        targetEquivCode: undefined,
+        confidence: 0,
+      };
+    }
+
+    // Validate acceptance_status before caching
+    const acceptanceStatus = data.acceptance_status as 'accepted' | 'elective' | 'rejected';
+    if (!['accepted', 'elective', 'rejected'].includes(acceptanceStatus)) {
+      console.warn(`[Transfer] Invalid acceptance_status: ${data.acceptance_status}`);
+      transferRuleCache[cacheKey] = null;
+      return {
+        accepted: false,
+        electiveOnly: false,
+        targetEquivCode: undefined,
+        confidence: 0,
+      };
+    }
+
+    const entry: TransferRuleCacheEntry = {
+      acceptance_status: acceptanceStatus,
+      target_equiv_code: data.target_course_code,
+      confidence: data.confidence,
+    };
+
+    transferRuleCache[cacheKey] = entry;
+
+    const rawConfidence = data.confidence ?? 0.5;
+    const normalizedConfidence = Math.max(0, Math.min(1, rawConfidence));
+
+    const acceptedByStatus =
+      acceptanceStatus === 'accepted' ||
+      acceptanceStatus === 'elective';
+
+    // For major requirements, only accept 'accepted' status
+    // For elective/genED requirements, accept both 'accepted' and 'elective'
+    const accepted =
+      acceptedByStatus && 
+      normalizedConfidence >= minConfidence &&
+      (requirementType !== 'major' || acceptanceStatus === 'accepted');
+
+    if (acceptanceStatus === 'rejected') {
+      console.warn(`[Transfer] Rejected: ${provider} ${code} -> ${target}`);
+    } else if (normalizedConfidence < minConfidence) {
+      console.warn(`[Transfer] Low confidence (${normalizedConfidence}): ${provider} ${code} -> ${target}`);
+    }
+
+    return {
+      accepted,
+      electiveOnly: acceptanceStatus === 'elective',
+      targetEquivCode: data.target_course_code || undefined,
+      confidence: normalizedConfidence,
+    };
+  } catch (err) {
+    console.error('[Transfer] Unexpected error:', err);
+    transferRuleCache[cacheKey] = null;
+    return {
+      accepted: false,
+      electiveOnly: false,
+      targetEquivCode: undefined,
+      confidence: 0,
+    };
+  }
 }
 
 async function validateTransferStatus(
