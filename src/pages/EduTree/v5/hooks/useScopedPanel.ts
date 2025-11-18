@@ -60,17 +60,17 @@ export function useScopedPanel() {
       const isTabChange = isSameScope && prev.tab !== tab;
       
       if (isSameScope && scope && !isTabChange) {
-        console.log('[useScopedPanel] 🔄 Re-opening same scope, forcing refresh for drawer restore');
-        // Force state update by adding timestamp to URL params
+        console.log('[useScopedPanel] 🔄 Re-opening same scope, signaling drawer to expand');
+        // Signal drawer to expand to default size
         const params = new URLSearchParams(location.search);
         params.set('scope', scope);
         if (nodeId) params.set('node', nodeId);
         if (tab) params.set('tab', tab);
-        params.set('_refresh', Date.now().toString()); // Force update
+        params.set('expand', 'true'); // Signal to expand drawer
         
         navigate(`${location.pathname}?${params.toString()}`, { replace: true });
         
-        // Return updated state with refresh marker
+        // Return updated state
         return { scope, nodeId, nodeData, tab };
       }
       
