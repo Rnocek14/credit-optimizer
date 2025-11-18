@@ -181,6 +181,9 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
     return defaultSnap;
   });
 
+  // Track previous scope to detect actual scope changes (not just snap point changes)
+  const previousScopeRef = useRef<PanelScope>(scope);
+
   const snapPoints = useMemo(() => {
     const { width, height } = viewportDimensions;
     const isMobile = width < 640;
@@ -210,28 +213,38 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
     ];
   }, [viewportDimensions, scope]);
 
-  // Reset snap point to scope-specific default when scope changes
+  // Reset snap point ONLY when scope changes, not on manual resize
   useEffect(() => {
+    // Check if scope actually changed (not just activeSnapPoint)
+    const scopeChanged = previousScopeRef.current !== scope;
+    
+    if (!scopeChanged) {
+      // Same scope - don't reset (allow user manual resizing)
+      return;
+    }
+    
+    // Update ref for next comparison
+    previousScopeRef.current = scope;
+    
     if (!scope) return; // Don't reset when closing
     
     // Determine scope-specific snap index
     const defaultIndex = scope === 'degree' ? 2 : 1; // Large for degree, Medium for others
     const targetSnap = snapPoints[defaultIndex];
     
-    // Only update if we're switching to a different snap point
-    if (activeSnapPoint !== targetSnap) {
-      console.log('[DecisionDock] 🔄 Scope changed, resetting snap point:', {
-        scope,
-        from: activeSnapPoint,
-        to: targetSnap,
-        index: defaultIndex
-      });
-      
-      startTransition(() => {
-        setActiveSnapPoint(targetSnap);
-      });
-    }
-  }, [scope, snapPoints, activeSnapPoint]); // ✅ Phase 1: Added activeSnapPoint to fix stale closure
+    console.log('[DecisionDock] 🔄 Scope changed, resetting snap point:', {
+      previousScope: previousScopeRef.current,
+      newScope: scope,
+      from: activeSnapPoint,
+      to: targetSnap,
+      index: defaultIndex,
+      scopeActuallyChanged: true
+    });
+    
+    startTransition(() => {
+      setActiveSnapPoint(targetSnap);
+    });
+  }, [scope, snapPoints]); // ✅ Removed activeSnapPoint from dependencies to allow manual resizing
 
   // Phase 2: Removed redundant correction useEffect (validation now in setActiveSnapPoint callback)
 
