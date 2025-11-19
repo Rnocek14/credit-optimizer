@@ -26,6 +26,13 @@ export interface DegreeOptionWithRoi {
   roi: DegreeRoiEstimate;
   programId: string;
   anchorSchool: string;
+  planSource: 'real' | 'mock';
+  diagnostics?: {
+    totalCredits: number;
+    hasBlocks: boolean;
+    coverage: number;
+    passedGating: boolean;
+  };
 }
 
 interface UseCareerDegreeOptionsResult {
@@ -150,10 +157,12 @@ export function useCareerDegreeOptions(
 
       for (const mapping of effectiveMappings) {
         let templatesByMode: DegreeTemplatesByMode = {};
+        let planSource: 'real' | 'mock' = 'mock';
+        let diagnostics: DegreeOptionWithRoi['diagnostics'];
 
         if (USE_REAL_TEMPLATES) {
           try {
-            console.log('[CareerDegreeOptions] Attempting real template generation for:', mapping);
+            console.log('[CareerDegreeOptions] 🔍 Checking data quality for:', mapping);
 
             // Fetch V5 data using non-hook helper
             const v5Data = await fetchCareerV5DataFor(
@@ -161,23 +170,70 @@ export function useCareerDegreeOptions(
               mapping.anchor_school
             );
 
-            // Build context for the engine
-            const ctx = buildDegreeTemplateContextForMapping(v5Data, { years: 4 });
+            // Run diagnostic checks (Phase 2 gating)
+            const totalCredits = v5Data.modules.reduce(
+              (sum, m) => sum + (m.credits_required ?? 0),
+              0
+            );
+            const hasBlocks = v5Data.blocks.length > 0;
+            const coveredRequirements = new Set(
+              v5Data.allOptions.map((opt: any) => opt.requirement_id)
+            ).size;
+            const totalRequirements = v5Data.modules.length;
+            const coverage = totalRequirements > 0 
+              ? (coveredRequirements / totalRequirements) * 100 
+              : 0;
 
-            // Generate real templates for each mode
-            for (const mode of modes) {
-              const template = await generateDegreeTemplate(
-                mapping.program_id,
-                mapping.anchor_school,
-                mode,
-                ctx
+            diagnostics = {
+              totalCredits,
+              hasBlocks,
+              coverage,
+              passedGating: totalCredits >= 110 && hasBlocks && coverage >= 80,
+            };
+
+            console.log('[CareerDegreeOptions] 📊 Diagnostic results:', {
+              ...diagnostics,
+              mapping,
+            });
+
+            // Gate real generation by diagnostic thresholds
+            if (diagnostics.passedGating) {
+              console.log('[CareerDegreeOptions] ✅ Diagnostics passed, generating real templates');
+
+              // Build context for the engine
+              const ctx = buildDegreeTemplateContextForMapping(v5Data, { years: 4 });
+
+              // Generate real templates for each mode
+              for (const mode of modes) {
+                const template = await generateDegreeTemplate(
+                  mapping.program_id,
+                  mapping.anchor_school,
+                  mode,
+                  ctx
+                );
+                templatesByMode[mode] = template;
+              }
+
+              planSource = 'real';
+              console.log('[CareerDegreeOptions] ✅ Real template generation successful');
+            } else {
+              const reasons = [];
+              if (totalCredits < 110) reasons.push(`insufficient credits (${totalCredits}/110)`);
+              if (!hasBlocks) reasons.push('missing requirement blocks');
+              if (coverage < 80) reasons.push(`low coverage (${coverage.toFixed(0)}%/80%)`);
+
+              console.warn(
+                `[CareerDegreeOptions] ⚠️ Diagnostics failed: ${reasons.join(', ')} – using mocks`
               );
-              templatesByMode[mode] = template;
+              templatesByMode = generateMockTemplatesForMapping(mapping);
             }
-
-            console.log('[CareerDegreeOptions] ✅ Real template generation successful');
           } catch (err) {
-            console.warn('[CareerDegreeOptions] Real template generation failed, using mocks:', err);
+            const errorType = err instanceof Error ? err.constructor.name : 'Unknown';
+            const errorMsg = err instanceof Error ? err.message : String(err);
+            
+            console.warn(
+              `[CareerDegreeOptions] ❌ Real template generation failed (${errorType}: ${errorMsg}) – using mocks`
+            );
             templatesByMode = generateMockTemplatesForMapping(mapping);
           }
         } else {
@@ -203,6 +259,8 @@ export function useCareerDegreeOptions(
           roi,
           programId: mapping.program_id,
           anchorSchool: mapping.anchor_school,
+          planSource,
+          diagnostics,
         });
       }
 
