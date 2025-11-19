@@ -4,17 +4,22 @@
  */
 
 export const goldenBsCsRequirements = [
-  // Year 1 - General Education (24 credits)
+  // Year 1 - General Education (30 credits)
   { program_id: 'bs_cs', name: 'English Composition I', credits_required: 3, year: 1, category: 'general_education' },
   { program_id: 'bs_cs', name: 'English Composition II', credits_required: 3, year: 1, category: 'general_education' },
   { program_id: 'bs_cs', name: 'Public Speaking', credits_required: 3, year: 1, category: 'general_education' },
   { program_id: 'bs_cs', name: 'US History I', credits_required: 3, year: 1, category: 'general_education' },
+  { program_id: 'bs_cs', name: 'US History II', credits_required: 3, year: 1, category: 'general_education' },
   { program_id: 'bs_cs', name: 'Introduction to Psychology', credits_required: 3, year: 1, category: 'general_education' },
+  { program_id: 'bs_cs', name: 'Introduction to Sociology', credits_required: 3, year: 1, category: 'general_education' },
   { program_id: 'bs_cs', name: 'Introduction to Philosophy', credits_required: 3, year: 1, category: 'general_education' },
+  { program_id: 'bs_cs', name: 'Biology I', credits_required: 3, year: 1, category: 'general_education' },
+  { program_id: 'bs_cs', name: 'Physics I', credits_required: 3, year: 1, category: 'general_education' },
   
-  // Year 1 - Mathematics (6 credits)
+  // Year 1 - Mathematics (9 credits)
   { program_id: 'bs_cs', name: 'College Algebra', credits_required: 3, year: 1, category: 'mathematics' },
   { program_id: 'bs_cs', name: 'Calculus I', credits_required: 3, year: 1, category: 'mathematics' },
+  { program_id: 'bs_cs', name: 'Statistics', credits_required: 3, year: 1, category: 'mathematics' },
   
   // Year 2 - Core CS (24 credits)
   { program_id: 'bs_cs', name: 'Introduction to Programming', credits_required: 3, year: 2, category: 'core' },
@@ -36,11 +41,14 @@ export const goldenBsCsRequirements = [
   { program_id: 'bs_cs', name: 'Cybersecurity Fundamentals', credits_required: 3, year: 3, category: 'electives' },
   { program_id: 'bs_cs', name: 'Linear Algebra', credits_required: 3, year: 3, category: 'mathematics' },
   
-  // Year 4 - Specialization + Capstone (24 credits)
+  // Year 4 - Specialization + Capstone (33 credits)
   { program_id: 'bs_cs', name: 'Software Architecture', credits_required: 3, year: 4, category: 'core' },
   { program_id: 'bs_cs', name: 'Cloud Computing', credits_required: 3, year: 4, category: 'electives' },
   { program_id: 'bs_cs', name: 'DevOps Practices', credits_required: 3, year: 4, category: 'electives' },
   { program_id: 'bs_cs', name: 'AI & Ethics', credits_required: 3, year: 4, category: 'electives' },
+  { program_id: 'bs_cs', name: 'Data Science Fundamentals', credits_required: 3, year: 4, category: 'electives' },
+  { program_id: 'bs_cs', name: 'Technical Writing', credits_required: 3, year: 4, category: 'general_education' },
+  { program_id: 'bs_cs', name: 'Business Analytics', credits_required: 3, year: 4, category: 'electives' },
   { program_id: 'bs_cs', name: 'Capstone Project', credits_required: 6, year: 4, category: 'capstone' },
   { program_id: 'bs_cs', name: 'Free Elective I', credits_required: 3, year: 4, category: 'electives' },
   { program_id: 'bs_cs', name: 'Free Elective II', credits_required: 3, year: 4, category: 'electives' },
