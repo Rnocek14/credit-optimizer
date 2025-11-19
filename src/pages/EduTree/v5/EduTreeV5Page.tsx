@@ -1,6 +1,7 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { ChevronUp } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { YearCard } from './components/YearCard';
 import { ModuleCard } from './components/ModuleCard';
 import { DegreeNode } from './components/DegreeNode';
@@ -42,6 +43,15 @@ const ENABLE_DEGREE_NODE = true;
 
 export default function EduTreeV5Page() {
   const [searchParams] = useSearchParams();
+  
+  // Career context from handoff
+  const [careerContext, setCareerContext] = useState<{
+    careerId?: string;
+    programId?: string;
+    anchorSchool?: string;
+    mode?: string;
+    planSource?: string;
+  } | null>(null);
   
   // Feature flag: Database vs Fixtures (default to fixtures now)
   const USE_DATABASE = useMemo(() => {
@@ -99,6 +109,15 @@ export default function EduTreeV5Page() {
         anchorSchool,
         mode,
         careerId,
+        planSource,
+      });
+
+      // Set context for banner
+      setCareerContext({
+        careerId,
+        programId,
+        anchorSchool,
+        mode,
         planSource,
       });
 
@@ -838,6 +857,35 @@ export default function EduTreeV5Page() {
           </div>
         </div>
       </div>
+      
+      {/* Career Context Banner */}
+      {careerContext && (
+        <div className="mb-6 rounded-lg bg-primary/10 border border-primary/20 p-4 flex items-center justify-between">
+          <div>
+            <div className="font-semibold flex items-center gap-2">
+              🎯 Planning from Career Explorer
+            </div>
+            <div className="text-sm text-muted-foreground mt-1">
+              {careerContext.anchorSchool?.toUpperCase()} • {careerContext.programId?.toUpperCase()} • {careerContext.mode}
+              {careerContext.planSource === 'real' && ' • ✓ Real'}
+            </div>
+          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => {
+              setCareerContext(null);
+              trackTelemetryEvent({
+                task: 'career_banner_dismissed',
+                route: '/edu-tree-v5',
+                complexity: { schema_version: 1 }
+              });
+            }}
+          >
+            Dismiss
+          </Button>
+        </div>
+      )}
       
       {/* Transfer Warning Banner */}
       {constraints.target_school && (
