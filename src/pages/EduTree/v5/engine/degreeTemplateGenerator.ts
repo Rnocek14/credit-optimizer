@@ -23,7 +23,7 @@ export interface DegreeTemplate {
   totals: DegreeTemplateTotals;
 }
 
-interface GenerateDegreeTemplateOptions {
+export interface GenerateDegreeTemplateOptions {
   modules: ModuleData[];
   blocks: RequirementBlock[];
   allOptions: MarketplaceOption[];

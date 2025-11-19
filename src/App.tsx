@@ -84,6 +84,7 @@ import CalmTest from "./pages/CalmTest";
 import CareerCopilot from "./pages/CareerCopilot";
 import { CareerDetailPage } from "./pages/CareerDetailPage";
 import { CareerListPage } from "./pages/CareerListPage";
+import DiagnosticCareerData from "./pages/DiagnosticCareerData";
 import SprintBoard from "./pages/SprintBoard";
 import TeachAnalytics from "./pages/TeachAnalytics";
 import TeachCourses from "./pages/TeachCourses";
@@ -259,6 +260,7 @@ const App = () => {
           <Route path="/explore" element={<Navigate to="/discover?tab=career" replace />} />
           <Route path="/explore/careers" element={<CareerListPage />} />
           <Route path="/explore/careers/:careerPathId" element={<CareerDetailPage />} />
+          <Route path="/diagnostic/career-data" element={<DiagnosticCareerData />} />
           <Route path="/explore-hub" element={<Navigate to="/discover" replace />} />
           <Route path="/explore-courses" element={<Navigate to="/discover?tab=courses" replace />} />
           <Route path="/market-intelligence" element={<Navigate to="/discover?tab=intel" replace />} />
