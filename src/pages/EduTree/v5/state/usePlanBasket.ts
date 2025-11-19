@@ -88,6 +88,9 @@ interface PlanBasketState {
   deleteScenario: (id: string) => void;
   clearAll: () => void;
   
+  // Template hydration
+  applyTemplateToPlan: (template: any) => void;
+  
   // Computed
   getTotals: () => {
     totalCost: number;
@@ -325,6 +328,75 @@ export const usePlanBasket = create<PlanBasketState>()(
       
       clearAll: () => {
         set({ items: [] });
+      },
+      
+      applyTemplateToPlan: (template: any) => {
+        console.log('[usePlanBasket] Applying degree template to plan:', template?.id || template?.programId);
+        
+        if (!template?.yearTemplates) {
+          console.warn('[usePlanBasket] Template missing yearTemplates, skipping');
+          return;
+        }
+        
+        const items: BasketItem[] = [];
+        
+        // Hydrate basket from template structure
+        for (const yearTemplate of template.yearTemplates) {
+          if (!yearTemplate.moduleTemplates) continue;
+          
+          for (const moduleTemplate of yearTemplate.moduleTemplates) {
+            const { moduleId, options, recommendedCourseId } = moduleTemplate;
+            
+            // Pick the recommended course or first option
+            const selectedOption = recommendedCourseId
+              ? options.find(opt => opt.courseId === recommendedCourseId)
+              : options[0];
+            
+            if (!selectedOption) continue;
+            
+            // Create basket item from template option
+            items.push({
+              moduleId,
+              courseId: selectedOption.courseId,
+              title: selectedOption.title,
+              credits: selectedOption.credits,
+              cost_usd: selectedOption.cost_usd ?? null,
+              duration_weeks: selectedOption.duration_weeks ?? null,
+              workload_weekly_hours: selectedOption.workload_weekly_hours ?? (selectedOption.credits * 3),
+              cri_score: selectedOption.cri_score ?? 0,
+              status: 'auto-filled',
+              providerType: selectedOption.providerType,
+              providerCode: selectedOption.providerCode,
+              level: selectedOption.level,
+              source: {
+                type: 'template',
+                templateId: template.id,
+                templateVersion: 1,
+                templateLabel: template.label || template.optimization,
+              },
+            });
+          }
+        }
+        
+        console.log('[usePlanBasket] Template hydrated:', {
+          templateId: template.id,
+          itemsCreated: items.length,
+          totalCredits: items.reduce((sum, i) => sum + i.credits, 0),
+        });
+        
+        // Replace basket with template items
+        set({ items });
+        
+        void trackTelemetryEvent({
+          task: 'template_applied_to_plan',
+          scope: 'degree',
+          complexity: {
+            templateId: template.id,
+            itemsCount: items.length,
+            programId: template.programId,
+            optimization: template.optimization,
+          },
+        });
       },
       
       getTotals: () => {

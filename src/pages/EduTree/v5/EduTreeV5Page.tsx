@@ -96,6 +96,7 @@ export default function EduTreeV5Page() {
   
   // Handle career handoff from degree template modal
   const setConstraints = usePlanBasket(s => s.setConstraints);
+  const applyTemplateToPlan = usePlanBasket(s => s.applyTemplateToPlan);
   useEffect(() => {
     const programId = searchParams.get('programId');
     const anchorSchool = searchParams.get('anchorSchool');
@@ -124,6 +125,24 @@ export default function EduTreeV5Page() {
       setConstraints({
         target_school: anchorSchool,
       });
+
+      // Hydrate plan from template if available
+      try {
+        const raw = localStorage.getItem('eduTree:seedTemplate');
+        if (raw) {
+          const { template } = JSON.parse(raw);
+          if (template?.programId === programId && template?.anchorSchool === anchorSchool) {
+            console.log('[EduTreeV5] 🧩 Applying seed template to plan');
+            applyTemplateToPlan(template);
+            // Clear after use
+            localStorage.removeItem('eduTree:seedTemplate');
+          } else {
+            console.log('[EduTreeV5] Seed template mismatch, skipping hydration');
+          }
+        }
+      } catch (e) {
+        console.warn('[EduTreeV5] Failed to read seed template:', e);
+      }
 
       // Track the handoff
       trackTelemetryEvent({
