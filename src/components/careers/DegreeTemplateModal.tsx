@@ -97,9 +97,9 @@ export function DegreeTemplateModal({
 function TemplateView({ template }: { template: DegreeTemplate }) {
   if (!template.yearTemplates || template.yearTemplates.length === 0) {
     return (
-      <div className="text-sm text-muted-foreground p-4 text-center border rounded-xl">
-        No detailed year plan available yet. This will be populated with real course data once connected to the full system.
-      </div>
+      <p className="text-sm text-muted-foreground">
+        No detailed year plan available yet.
+      </p>
     );
   }
 

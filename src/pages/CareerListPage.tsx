@@ -1,116 +1,115 @@
+import { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useCareerPaths } from '@/hooks/useCareerPaths';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
+import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { useState, useMemo } from 'react';
-import { CareerDebugPanel } from '@/components/careers/CareerDebugPanel';
 
 export function CareerListPage() {
   const { data: careers, isLoading, error } = useCareerPaths();
   const [search, setSearch] = useState('');
 
-  console.log('[CareerListPage] Render state:', { 
-    isLoading, 
-    hasError: !!error, 
-    careerCount: careers?.length,
-    error: error?.message 
-  });
-
   const filtered = useMemo(() => {
     if (!careers) return [];
     if (!search.trim()) return careers;
+
     const q = search.toLowerCase();
-    return careers.filter(
-      (c) =>
-        c.title.toLowerCase().includes(q) ||
-        (c.industry ?? '').toLowerCase().includes(q) ||
-        (c.summary ?? '').toLowerCase().includes(q)
-    );
+    return careers.filter((c) => {
+      const title = c.title?.toLowerCase() ?? '';
+      const industry = c.industry?.toLowerCase() ?? '';
+      const summary = c.summary?.toLowerCase() ?? '';
+      return (
+        title.includes(q) ||
+        industry.includes(q) ||
+        summary.includes(q)
+      );
+    });
   }, [careers, search]);
 
   if (isLoading) {
     return (
-      <div className="p-6 space-y-4">
-        <div className="h-7 w-40 bg-muted animate-pulse rounded-md" />
-        <div className="h-10 w-full bg-muted animate-pulse rounded-md" />
-        <div className="h-40 w-full bg-muted animate-pulse rounded-xl" />
+      <div className="p-6">
+        <p className="text-sm text-muted-foreground">Loading careers…</p>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="p-6 space-y-3">
-        <div className="font-semibold text-destructive">
-          Unable to load careers.
-        </div>
-        <div className="text-sm text-muted-foreground">{error.message}</div>
+      <div className="p-6 space-y-2">
+        <h1 className="text-lg font-semibold">Explore Careers</h1>
+        <p className="text-sm text-destructive">
+          Unable to load careers: {(error as any).message}
+        </p>
       </div>
     );
   }
 
   return (
-    <div className="p-6 max-w-6xl mx-auto space-y-6">
-      <CareerDebugPanel />
-      
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Explore Careers</h1>
-          <p className="text-sm text-muted-foreground mt-1 max-w-xl">
-            Browse high-impact career paths and see which degree programs best
-            support each journey.
-          </p>
+    <div className="p-6 space-y-6">
+      {/* Header */}
+      <div className="flex flex-col gap-2">
+        <h1 className="text-xl font-semibold">Explore Careers</h1>
+        <p className="text-sm text-muted-foreground">
+          Browse high-impact career paths and see which degrees support each journey.
+        </p>
+        <div className="max-w-md">
+          <Input
+            placeholder="Search careers (e.g. software, data, security)…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
         </div>
-        <Input
-          placeholder="Search careers by title, industry..."
-          className="w-full sm:w-80"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
       </div>
 
+      {/* List */}
       {filtered.length === 0 ? (
-        <Card>
-          <CardContent className="py-6 text-sm text-muted-foreground">
-            No careers match your search yet. Try another keyword.
-          </CardContent>
-        </Card>
+        <p className="text-sm text-muted-foreground">
+          No careers match your search yet. Try another keyword.
+        </p>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {filtered.map((career) => (
-            <Card key={career.id} className="flex flex-col justify-between">
-              <CardHeader className="pb-3 space-y-1">
-                <CardTitle className="flex items-center gap-2 text-base">
-                  {career.title}
-                  {career.industry && (
-                    <Badge variant="outline" className="text-xs ml-1">
-                      {career.industry}
-                    </Badge>
-                  )}
-                </CardTitle>
+            <Card
+              key={career.id}
+              className="flex flex-col justify-between p-4 space-y-3"
+            >
+              <div className="space-y-2">
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <h2 className="text-sm font-semibold leading-snug">
+                      {career.title}
+                    </h2>
+                    {career.industry && (
+                      <p className="text-xs text-muted-foreground">
+                        {career.industry}
+                      </p>
+                    )}
+                  </div>
+                </div>
                 {career.summary && (
-                  <p className="text-xs text-muted-foreground line-clamp-2">
+                  <p className="text-xs text-muted-foreground line-clamp-3">
                     {career.summary}
                   </p>
                 )}
-              </CardHeader>
-              <CardContent className="flex items-center justify-between pt-0 pb-4 px-6">
+              </div>
+
+              <div className="flex items-center justify-between pt-2">
                 <div className="text-xs text-muted-foreground">
                   Avg salary:{' '}
-                  <span className="font-medium text-foreground">
+                  <span className="font-medium">
                     {career.average_salary
                       ? `$${career.average_salary.toLocaleString()}`
                       : '—'}
                   </span>
                 </div>
-                <Button asChild size="sm">
-                  <Link to={`/explore/careers/${career.id}`}>
+
+                <Link to={`/explore/careers/${career.id}`}>
+                  <Button size="sm" variant="outline">
                     View details
-                  </Link>
-                </Button>
-              </CardContent>
+                  </Button>
+                </Link>
+              </div>
             </Card>
           ))}
         </div>
