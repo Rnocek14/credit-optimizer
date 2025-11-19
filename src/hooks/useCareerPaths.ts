@@ -4,10 +4,10 @@ import { supabase } from '@/integrations/supabase/client';
 export interface CareerPathListItem {
   id: string;
   title: string;
-  slug: string | null;
-  summary: string | null;
-  average_salary: number | null;
-  industry: string | null;
+  slug?: string | null;
+  summary?: string | null;
+  average_salary?: number | null;
+  industry?: string | null;
 }
 
 export function useCareerPaths() {
@@ -20,7 +20,7 @@ export function useCareerPaths() {
         // @ts-ignore - Table exists after migration
         const { data, error } = await supabase
           .from('career_paths' as any)
-          .select('id, title, slug, summary, average_salary, industry')
+          .select('*')
           .order('title', { ascending: true });
 
         console.log('[useCareerPaths] Query result:', { data, error });
