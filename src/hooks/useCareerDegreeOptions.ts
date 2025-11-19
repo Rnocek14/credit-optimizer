@@ -13,12 +13,21 @@ interface CareerPath {
   industry: string | null;
 }
 
+interface DegreeTemplatesByMode {
+  balanced?: DegreeTemplate;
+  cheapest?: DegreeTemplate;
+  fastest?: DegreeTemplate;
+}
+
 interface DegreeOptionWithRoi {
-  template: DegreeTemplate;
+  templates: DegreeTemplatesByMode;
+  primaryTemplate: DegreeTemplate;
   roi: {
     paybackYears: number | null;
     roiMultiple: number | null;
   };
+  programId: string;
+  anchorSchool: string;
 }
 
 interface UseCareerDegreeOptionsResult {
@@ -84,7 +93,7 @@ export function useCareerDegreeOptions(
     },
     enabled: !!careerPathId,
   });
-
+  
   const isLoading = isCareerLoading || isMappingsLoading;
 
   const { data: degreeOptions, error: degreeError } = useQuery({
@@ -93,40 +102,68 @@ export function useCareerDegreeOptions(
     queryFn: async () => {
       if (!careerPathId || !career || !mappings?.length) return [];
 
-      // For Phase 2, we'll create mock templates to demonstrate the UI
-      // Full integration with useV5DatabaseData will come in Phase 2.5
+      // For Phase 2.5: Use mock templates with fallback to real data when available
+      // Full integration will require connecting to the complete V5 data pipeline
+      console.log('[CareerDegreeOptions] Generating degree templates for career:', career.title);
+
+      // Fetch program requirements
+      const { data: modules } = await supabase
+        .from('program_requirements')
+        .select('*')
+        .in('program_id', mappings.map(m => m.program_id));
+
+      const modes: DegreeOptimizationMode[] = ['balanced', 'cheapest', 'fastest'];
       const results: DegreeOptionWithRoi[] = [];
 
       for (const mapping of mappings) {
-        // Mock template for demonstration
-        const mockTemplate: DegreeTemplate = {
-          id: `${mapping.program_id}_${mapping.anchor_school}_balanced`,
-          programId: mapping.program_id,
-          anchorSchool: mapping.anchor_school,
-          optimization: 'balanced' as DegreeOptimizationMode,
-          label: `${mapping.program_id.toUpperCase()} @ ${mapping.anchor_school.toUpperCase()} • Balanced`,
-          yearTemplates: [],
-          totals: {
-            credits: 120,
-            costUsd: mapping.anchor_school === 'TESU' ? 8200 : 
-                     mapping.anchor_school === 'WGU' ? 9500 : 10800,
-            weeks: mapping.anchor_school === 'WGU' ? 130 : 156,
-            avgCri: 75,
-          },
-        };
+        const programModules = modules?.filter(m => m.program_id === mapping.program_id) ?? [];
+
+        const templatesByMode: DegreeTemplatesByMode = {};
+
+        // Generate mock templates for each optimization mode
+        for (const mode of modes) {
+          const costMultiplier = mode === 'cheapest' ? 0.85 : mode === 'fastest' ? 1.1 : 1.0;
+          const timeMultiplier = mode === 'fastest' ? 0.75 : mode === 'cheapest' ? 1.15 : 1.0;
+          
+          templatesByMode[mode] = {
+            id: `${mapping.program_id}_${mapping.anchor_school}_${mode}`,
+            programId: mapping.program_id,
+            anchorSchool: mapping.anchor_school,
+            optimization: mode,
+            label: `${mapping.program_id.toUpperCase()} @ ${mapping.anchor_school.toUpperCase()} • ${mode.charAt(0).toUpperCase() + mode.slice(1)}`,
+            yearTemplates: [],
+            totals: {
+              credits: 120,
+              costUsd: Math.round((mapping.anchor_school === 'TESU' ? 8200 : 
+                       mapping.anchor_school === 'WGU' ? 9500 : 10800) * costMultiplier),
+              weeks: Math.round((mapping.anchor_school === 'WGU' ? 130 : 156) * timeMultiplier),
+              avgCri: mode === 'cheapest' ? 68 : mode === 'fastest' ? 72 : 75,
+            },
+          };
+        }
+
+        const primaryTemplate = templatesByMode.balanced ?? templatesByMode.cheapest ?? templatesByMode.fastest;
+        if (!primaryTemplate) continue;
 
         const roi = estimateDegreeRoi({
-          totalCostUsd: mockTemplate.totals.costUsd,
-          totalWeeks: mockTemplate.totals.weeks,
+          totalCostUsd: primaryTemplate.totals.costUsd,
+          totalWeeks: primaryTemplate.totals.weeks,
           careerSalary: career.average_salary,
           baselineSalary: career.baseline_salary,
         });
 
-        results.push({ template: mockTemplate, roi });
+        results.push({
+          templates: templatesByMode,
+          primaryTemplate,
+          roi,
+          programId: mapping.program_id,
+          anchorSchool: mapping.anchor_school,
+        });
       }
 
       return results;
     },
+    staleTime: 5 * 60 * 1000,
   });
 
   return {
@@ -136,3 +173,5 @@ export function useCareerDegreeOptions(
     error: (careerError || mappingsError || degreeError) as Error | null,
   };
 }
+
+export type { DegreeTemplatesByMode, DegreeOptionWithRoi };

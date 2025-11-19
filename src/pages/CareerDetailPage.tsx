@@ -1,19 +1,21 @@
 import { useParams, Link } from 'react-router-dom';
-import { useCareerDegreeOptions } from '@/hooks/useCareerDegreeOptions';
+import { useCareerDegreeOptions, type DegreeTemplatesByMode } from '@/hooks/useCareerDegreeOptions';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { DegreeTemplate } from '@/pages/EduTree/v5/engine/degreeTemplateGenerator';
 import { DegreeTemplateModal } from '@/components/careers/DegreeTemplateModal';
+import type { DegreeOptimizationMode } from '@/pages/EduTree/v5/engine/degreeTemplateGenerator';
 
 export function CareerDetailPage() {
   const { careerPathId } = useParams<{ careerPathId: string }>();
   const { career, degreeOptions, isLoading, error } =
     useCareerDegreeOptions(careerPathId);
 
-  const [selectedTemplate, setSelectedTemplate] =
-    useState<DegreeTemplate | null>(null);
+  const [selectedTemplates, setSelectedTemplates] = useState<{
+    templates: DegreeTemplatesByMode;
+    defaultMode: DegreeOptimizationMode;
+  } | null>(null);
 
   if (isLoading) {
     return (
@@ -118,30 +120,26 @@ export function CareerDetailPage() {
 
         {hasDegreeOptions ? (
           <div className="grid gap-4 md:grid-cols-2">
-            {degreeOptions.map(({ template, roi }) => (
+            {degreeOptions.map(({ templates, primaryTemplate, roi, programId, anchorSchool }) => (
               <Card
-                key={template.id}
+                key={`${programId}_${anchorSchool}`}
                 className="flex flex-col justify-between"
               >
                 <CardHeader className="space-y-2 pb-3">
                   <CardTitle className="text-base flex items-center gap-2">
                     <span className="font-semibold">
-                      {template.programId.toUpperCase()}
+                      {programId.toUpperCase()}
                     </span>
                     <span className="text-xs text-muted-foreground">
-                      @ {template.anchorSchool.toUpperCase()}
+                      @ {anchorSchool.toUpperCase()}
                     </span>
                     <Badge variant="secondary" className="ml-auto">
-                      {template.optimization === 'balanced'
-                        ? 'Balanced'
-                        : template.optimization === 'cheapest'
-                        ? 'Cheapest'
-                        : 'Fastest'}
+                      Balanced
                     </Badge>
                   </CardTitle>
                   <div className="text-xs text-muted-foreground">
-                    {template.yearTemplates.length} year plan •{' '}
-                    {template.totals.credits} credits
+                    {primaryTemplate.yearTemplates.length || 4} year plan •{' '}
+                    {primaryTemplate.totals.credits} credits
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-3">
@@ -151,8 +149,8 @@ export function CareerDetailPage() {
                         Est. Total Cost
                       </div>
                       <div className="font-medium">
-                        {template.totals.costUsd
-                          ? `$${template.totals.costUsd.toLocaleString()}`
+                        {primaryTemplate.totals.costUsd
+                          ? `$${primaryTemplate.totals.costUsd.toLocaleString()}`
                           : '—'}
                       </div>
                     </div>
@@ -161,9 +159,9 @@ export function CareerDetailPage() {
                         Duration
                       </div>
                       <div className="font-medium">
-                        {template.totals.weeks
+                        {primaryTemplate.totals.weeks
                           ? `${Math.round(
-                              template.totals.weeks / 52
+                              primaryTemplate.totals.weeks / 52
                             )} years`
                           : '—'}
                       </div>
@@ -188,7 +186,10 @@ export function CareerDetailPage() {
                     </div>
                     <Button
                       size="sm"
-                      onClick={() => setSelectedTemplate(template)}
+                      onClick={() => setSelectedTemplates({
+                        templates,
+                        defaultMode: 'balanced'
+                      })}
                     >
                       View plan
                     </Button>
@@ -208,10 +209,11 @@ export function CareerDetailPage() {
       </section>
 
       {/* Modal */}
-      {selectedTemplate && (
+      {selectedTemplates && (
         <DegreeTemplateModal
-          template={selectedTemplate}
-          onClose={() => setSelectedTemplate(null)}
+          templates={selectedTemplates.templates}
+          defaultMode={selectedTemplates.defaultMode}
+          onClose={() => setSelectedTemplates(null)}
         />
       )}
     </div>
