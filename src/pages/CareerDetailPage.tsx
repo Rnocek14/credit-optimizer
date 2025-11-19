@@ -17,6 +17,12 @@ export function CareerDetailPage() {
     defaultMode: DegreeOptimizationMode;
   } | null>(null);
 
+  console.log('[CareerDetailPage] Career ID:', careerPathId);
+  console.log('[CareerDetailPage] Career data:', career);
+  console.log('[CareerDetailPage] Degree options:', degreeOptions);
+  console.log('[CareerDetailPage] Is loading:', isLoading);
+  console.log('[CareerDetailPage] Error:', error);
+
   if (isLoading) {
     return (
       <div className="p-6 space-y-4">
