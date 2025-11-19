@@ -11,11 +11,22 @@ export async function seedGoldenBsCs() {
     errors: [] as string[],
   };
 
-  // 1. Insert program requirements
+  // 1. Delete existing program requirements for bs_cs
+  console.log('[Seed] Clearing existing BS CS requirements...');
+  const { error: deleteError } = await supabase
+    .from('program_requirements')
+    .delete()
+    .eq('program_id', 'bs_cs');
+
+  if (deleteError) {
+    results.errors.push(`Delete error: ${deleteError.message}`);
+  }
+
+  // 2. Insert fresh program requirements
   console.log('[Seed] Inserting program requirements...');
   const { data: reqData, error: reqError } = await supabase
     .from('program_requirements')
-    .upsert(goldenBsCsRequirements, { onConflict: 'program_id,name' })
+    .insert(goldenBsCsRequirements)
     .select();
   
   if (reqError) {
