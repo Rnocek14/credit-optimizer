@@ -15,6 +15,7 @@ export function CareerDetailPage() {
   const [selectedTemplates, setSelectedTemplates] = useState<{
     templates: DegreeTemplatesByMode;
     defaultMode: DegreeOptimizationMode;
+    planSource: 'real' | 'mock';
   } | null>(null);
 
   console.log('[CareerDetailPage] Career ID:', careerPathId);
@@ -126,7 +127,7 @@ export function CareerDetailPage() {
 
         {hasDegreeOptions ? (
           <div className="grid gap-4 md:grid-cols-2">
-            {degreeOptions.map(({ templates, primaryTemplate, roi, programId, anchorSchool }) => (
+            {degreeOptions.map(({ templates, primaryTemplate, roi, programId, anchorSchool, planSource }) => (
               <Card
                 key={`${programId}_${anchorSchool}`}
                 className="flex flex-col justify-between"
@@ -194,7 +195,8 @@ export function CareerDetailPage() {
                       size="sm"
                       onClick={() => setSelectedTemplates({
                         templates,
-                        defaultMode: 'balanced'
+                        defaultMode: 'balanced',
+                        planSource
                       })}
                     >
                       View plan
@@ -219,6 +221,7 @@ export function CareerDetailPage() {
         <DegreeTemplateModal
           templates={selectedTemplates.templates}
           defaultMode={selectedTemplates.defaultMode}
+          planSource={selectedTemplates.planSource}
           onClose={() => setSelectedTemplates(null)}
         />
       )}

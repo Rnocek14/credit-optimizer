@@ -9,12 +9,14 @@ import { useState } from 'react';
 interface DegreeTemplateModalProps {
   templates: DegreeTemplatesByMode;
   defaultMode?: DegreeOptimizationMode;
+  planSource?: 'real' | 'mock';
   onClose: () => void;
 }
 
 export function DegreeTemplateModal({
   templates,
   defaultMode = 'balanced',
+  planSource = 'mock',
   onClose,
 }: DegreeTemplateModalProps) {
   const availableModes = (['balanced', 'cheapest', 'fastest'] as DegreeOptimizationMode[])
@@ -44,9 +46,17 @@ export function DegreeTemplateModal({
       <DialogContent className="max-w-5xl max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader className="space-y-1">
           <DialogTitle className="flex items-center justify-between gap-2">
-            <span>
+            <span className="flex items-center gap-2">
               {activeTemplate.programId.toUpperCase()} @{' '}
               {activeTemplate.anchorSchool.toUpperCase()}
+              {import.meta.env.DEV && (
+                <Badge 
+                  variant={planSource === 'real' ? 'default' : 'outline'}
+                  className="text-[10px] px-1.5 py-0"
+                >
+                  {planSource === 'real' ? '✓ Real' : 'Mock'}
+                </Badge>
+              )}
             </span>
             <Button size="sm" variant="outline" onClick={onClose}>
               Close
