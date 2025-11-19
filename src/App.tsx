@@ -857,9 +857,13 @@ const App = () => {
         <Route 
           path="/admin/seed-golden" 
           element={
-            <StakeholderProtectedRoute requiredRole="admin">
+            import.meta.env.DEV ? (
               <SeedGoldenProgram />
-            </StakeholderProtectedRoute>
+            ) : (
+              <StakeholderProtectedRoute requiredRole="admin">
+                <SeedGoldenProgram />
+              </StakeholderProtectedRoute>
+            )
           } 
         />
         <Route path="/admin/locations" element={<LocationManagerPanel />} />
