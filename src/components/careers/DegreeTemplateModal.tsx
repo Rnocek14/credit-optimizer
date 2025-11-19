@@ -5,11 +5,13 @@ import { Badge } from '@/components/ui/badge';
 import type { DegreeTemplate, DegreeOptimizationMode } from '@/pages/EduTree/v5/engine/degreeTemplateGenerator';
 import type { DegreeTemplatesByMode } from '@/hooks/useCareerDegreeOptions';
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 interface DegreeTemplateModalProps {
   templates: DegreeTemplatesByMode;
   defaultMode?: DegreeOptimizationMode;
   planSource?: 'real' | 'mock';
+  careerId?: string;
   onClose: () => void;
 }
 
@@ -17,8 +19,10 @@ export function DegreeTemplateModal({
   templates,
   defaultMode = 'balanced',
   planSource = 'mock',
+  careerId,
   onClose,
 }: DegreeTemplateModalProps) {
+  const navigate = useNavigate();
   const availableModes = (['balanced', 'cheapest', 'fastest'] as DegreeOptimizationMode[])
     .filter((mode) => !!templates[mode]);
 
@@ -39,6 +43,21 @@ export function DegreeTemplateModal({
       case 'balanced': return '⚖️ Balanced';
       default: return mode;
     }
+  };
+
+  const handleApplyToPlanner = () => {
+    if (!activeTemplate) return;
+
+    const params = new URLSearchParams({
+      programId: activeTemplate.programId,
+      anchorSchool: activeTemplate.anchorSchool,
+      mode: activeMode,
+    });
+
+    if (careerId) params.set('careerId', careerId);
+    if (planSource) params.set('planSource', planSource);
+
+    navigate(`/edu-tree-v5?${params.toString()}`);
   };
 
   return (
@@ -97,6 +116,9 @@ export function DegreeTemplateModal({
         <div className="pt-3 flex justify-end gap-2 border-t mt-4">
           <Button variant="outline" onClick={onClose}>
             Close
+          </Button>
+          <Button onClick={handleApplyToPlanner}>
+            Apply to Planner
           </Button>
         </div>
       </DialogContent>

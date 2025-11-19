@@ -16,6 +16,7 @@ export function CareerDetailPage() {
     templates: DegreeTemplatesByMode;
     defaultMode: DegreeOptimizationMode;
     planSource: 'real' | 'mock';
+    careerId?: string;
   } | null>(null);
 
   console.log('[CareerDetailPage] Career ID:', careerPathId);
@@ -196,7 +197,8 @@ export function CareerDetailPage() {
                       onClick={() => setSelectedTemplates({
                         templates,
                         defaultMode: 'balanced',
-                        planSource
+                        planSource,
+                        careerId: career.id
                       })}
                     >
                       View plan
@@ -222,6 +224,7 @@ export function CareerDetailPage() {
           templates={selectedTemplates.templates}
           defaultMode={selectedTemplates.defaultMode}
           planSource={selectedTemplates.planSource}
+          careerId={selectedTemplates.careerId}
           onClose={() => setSelectedTemplates(null)}
         />
       )}
