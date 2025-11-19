@@ -14,15 +14,35 @@ export function useCareerPaths() {
   return useQuery({
     queryKey: ['career-paths'],
     queryFn: async () => {
-      // @ts-ignore - Table exists after migration
-      const { data, error } = await supabase
-        .from('career_paths' as any)
-        .select('id, title, slug, summary, average_salary, industry')
-        .order('title', { ascending: true });
+      console.log('[useCareerPaths] Starting query...');
+      
+      try {
+        // @ts-ignore - Table exists after migration
+        const { data, error } = await supabase
+          .from('career_paths' as any)
+          .select('id, title, slug, summary, average_salary, industry')
+          .order('title', { ascending: true });
 
-      if (error) throw error;
-      return (data ?? []) as unknown as CareerPathListItem[];
+        console.log('[useCareerPaths] Query result:', { data, error });
+
+        if (error) {
+          console.error('[useCareerPaths] Database error:', error);
+          throw new Error(`Database error: ${error.message} (Code: ${error.code})`);
+        }
+        
+        if (!data) {
+          console.warn('[useCareerPaths] No data returned');
+          return [];
+        }
+
+        console.log('[useCareerPaths] Success! Found', data.length, 'careers');
+        return data as unknown as CareerPathListItem[];
+      } catch (err) {
+        console.error('[useCareerPaths] Unexpected error:', err);
+        throw err;
+      }
     },
     staleTime: 5 * 60 * 1000,
+    retry: 1,
   });
 }
