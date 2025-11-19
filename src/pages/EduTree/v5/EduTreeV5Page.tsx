@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { ChevronUp } from 'lucide-react';
 import { YearCard } from './components/YearCard';
 import { ModuleCard } from './components/ModuleCard';
@@ -40,6 +41,8 @@ import './styles/v5.css';
 const ENABLE_DEGREE_NODE = true;
 
 export default function EduTreeV5Page() {
+  const [searchParams] = useSearchParams();
+  
   // Feature flag: Database vs Fixtures (default to fixtures now)
   const USE_DATABASE = useMemo(() => {
     if (typeof window === 'undefined') return false;
@@ -80,6 +83,45 @@ export default function EduTreeV5Page() {
       }
     });
   }, []); // Only run once on mount
+  
+  // Handle career handoff from degree template modal
+  const setConstraints = usePlanBasket(s => s.setConstraints);
+  useEffect(() => {
+    const programId = searchParams.get('programId');
+    const anchorSchool = searchParams.get('anchorSchool');
+    const mode = searchParams.get('mode');
+    const careerId = searchParams.get('careerId');
+    const planSource = searchParams.get('planSource');
+
+    if (programId && anchorSchool) {
+      console.log('[EduTreeV5] 🎯 Career handoff detected:', {
+        programId,
+        anchorSchool,
+        mode,
+        careerId,
+        planSource,
+      });
+
+      setConstraints({
+        target_school: anchorSchool,
+      });
+
+      // Track the handoff
+      trackTelemetryEvent({
+        task: 'career_handoff',
+        route: '/edu-tree-v5',
+        complexity: {
+          schema_version: 1,
+          program_id: programId,
+          anchor_school: anchorSchool,
+          mode,
+          career_id: careerId,
+          plan_source: planSource,
+        }
+      });
+    }
+  }, [searchParams, setConstraints]);
+  
   const [collapsedYears, setCollapsedYears] = useState<Record<number, boolean>>({});
   const [collapsedModules, setCollapsedModules] = useState<Record<string, boolean>>({});
   
