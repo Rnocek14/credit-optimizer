@@ -48,6 +48,19 @@ export function DegreeTemplateModal({
   const handleApplyToPlanner = () => {
     if (!activeTemplate) return;
 
+    // 1) Persist the active template for EduTree to read
+    try {
+      const payload = {
+        template: activeTemplate,
+        appliedAt: new Date().toISOString(),
+      };
+      localStorage.setItem('eduTree:seedTemplate', JSON.stringify(payload));
+      console.log('[DegreeTemplateModal] Template persisted for hydration:', activeTemplate.id);
+    } catch (e) {
+      console.warn('[DegreeTemplateModal] Failed to persist template:', e);
+    }
+
+    // 2) Navigate with query params
     const params = new URLSearchParams({
       programId: activeTemplate.programId,
       anchorSchool: activeTemplate.anchorSchool,
