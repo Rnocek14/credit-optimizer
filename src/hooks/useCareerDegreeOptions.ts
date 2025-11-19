@@ -105,6 +105,7 @@ export function useCareerDegreeOptions(
       // For Phase 2.5: Use mock templates with fallback to real data when available
       // Full integration will require connecting to the complete V5 data pipeline
       console.log('[CareerDegreeOptions] Generating degree templates for career:', career.title);
+      console.log('[CareerDegreeOptions] Mappings found:', mappings.length);
 
       // Fetch program requirements
       const { data: modules } = await supabase
@@ -198,6 +199,8 @@ export function useCareerDegreeOptions(
         });
       }
 
+      console.log('[CareerDegreeOptions] Generated templates:', results.length);
+      console.log('[CareerDegreeOptions] First template sample:', results[0]);
       return results;
     },
     staleTime: 5 * 60 * 1000,
