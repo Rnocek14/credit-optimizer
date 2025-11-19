@@ -20,10 +20,13 @@ export interface CareerPathProgram {
 export interface CareerPath {
   id: string;
   title: string;
-  slug: string;
+  slug: string | null;
   description?: string;
+  summary?: string;
   industry?: string;
   level?: string;
+  average_salary?: number | null;
+  baseline_salary?: number | null;
   created_at: string;
   updated_at: string;
 }
