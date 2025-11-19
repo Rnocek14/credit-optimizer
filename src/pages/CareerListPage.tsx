@@ -5,10 +5,18 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { useState, useMemo } from 'react';
+import { CareerDebugPanel } from '@/components/careers/CareerDebugPanel';
 
 export function CareerListPage() {
   const { data: careers, isLoading, error } = useCareerPaths();
   const [search, setSearch] = useState('');
+
+  console.log('[CareerListPage] Render state:', { 
+    isLoading, 
+    hasError: !!error, 
+    careerCount: careers?.length,
+    error: error?.message 
+  });
 
   const filtered = useMemo(() => {
     if (!careers) return [];
@@ -45,6 +53,8 @@ export function CareerListPage() {
 
   return (
     <div className="p-6 max-w-6xl mx-auto space-y-6">
+      <CareerDebugPanel />
+      
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Explore Careers</h1>
