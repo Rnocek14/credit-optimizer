@@ -1,6 +1,17 @@
 # Database Migrations
 
-## Running the Career Path Programs Migration
+## Running Migrations
+
+### 1. Add Slug Column to Career Paths
+Run this first if your `career_paths` table is missing the `slug` column:
+
+**File:** `add_slug_to_career_paths.sql`
+
+1. Open Supabase SQL Editor
+2. Copy and paste the contents of `add_slug_to_career_paths.sql`
+3. Run the query
+
+### 2. Running the Career Path Programs Migration
 
 ### Option 1: Supabase Dashboard (Recommended)
 1. Open your Supabase project dashboard
