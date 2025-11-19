@@ -22,7 +22,14 @@ export function useCareerPathPrograms(careerPathId?: string) {
         .or('valid_until.is.null,valid_until.gt.now()')
         .order('strength', { ascending: false });
       
-      if (error) throw error;
+      // Gracefully handle missing table (code 42P01)
+      if (error) {
+        if ((error as any)?.code === '42P01') {
+          console.warn('[useCareerPathPrograms] Table does not exist yet, returning empty array');
+          return [];
+        }
+        throw error;
+      }
       return (data ?? []) as unknown as CareerPathProgram[];
     },
     enabled: !!careerPathId,
@@ -44,7 +51,14 @@ export function useAllCareerPathPrograms() {
         .or('valid_until.is.null,valid_until.gt.now()')
         .order('strength', { ascending: false });
       
-      if (error) throw error;
+      // Gracefully handle missing table (code 42P01)
+      if (error) {
+        if ((error as any)?.code === '42P01') {
+          console.warn('[useAllCareerPathPrograms] Table does not exist yet, returning empty array');
+          return [];
+        }
+        throw error;
+      }
       return (data ?? []) as unknown as CareerPathProgram[];
     },
     staleTime: 5 * 60 * 1000,

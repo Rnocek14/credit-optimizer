@@ -264,10 +264,15 @@ export function useCareerDegreeOptions(
     staleTime: 5 * 60 * 1000,
   });
 
+  // Don't propagate mappingsError if it's just a missing table (code 42P01)
+  // That's expected before migration and we have fallback logic
+  const isMissingTableError = (mappingsError as any)?.code === '42P01';
+  const criticalError = careerError || degreeError || (mappingsError && !isMissingTableError);
+
   return {
     career: career ?? null,
     degreeOptions: degreeOptions ?? [],
     isLoading,
-    error: (careerError || mappingsError || degreeError) as Error | null,
+    error: criticalError as Error | null,
   };
 }

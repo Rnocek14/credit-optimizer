@@ -1,33 +1,35 @@
 # Database Migrations
 
-## Running Migrations
+## ⚡ Quick Start (Run This First!)
 
-### 1. Add Slug Column to Career Paths
-Run this first if your `career_paths` table is missing the `slug` column:
+### Final Career Foundation Migration
+This is the **one migration you need** to get `/explore/careers` working.
 
-**File:** `add_slug_to_career_paths.sql`
+**File:** `final_career_foundation.sql`
 
-1. Open Supabase SQL Editor
-2. Copy and paste the contents of `add_slug_to_career_paths.sql`
-3. Run the query
+**What it does:**
+- Creates `career_paths` table (with slug column)
+- Creates `career_path_programs` table (with proper indexes & RLS)
+- Seeds 3 demo careers (Software Engineer, Data Analyst, Cybersecurity Analyst)
+- Seeds 11 program mappings (TESU, WGU, UMGC, EXCU)
+- **Safe to run multiple times** (idempotent)
 
-### 2. Running the Career Path Programs Migration
-
-### Option 1: Supabase Dashboard (Recommended)
+**How to run:**
 1. Open your Supabase project dashboard
 2. Go to **SQL Editor**
-3. Copy the contents of `create_career_path_programs.sql`
-4. Paste and run
+3. Copy the entire contents of `final_career_foundation.sql`
+4. Paste and click **Run**
+5. You should see: "✅ Migration complete: career_paths: 3 rows, career_path_programs: 11 mappings"
 
-### Option 2: Supabase CLI
-```bash
-supabase db push
-```
+---
 
-### Option 3: Via MigrationTrigger Component
-If you want to integrate this into the app's migration system:
-1. Add the SQL to `supabase/functions/run-migrations/index.ts`
-2. Use the `<MigrationTrigger />` component in the app
+## Legacy Migrations (For Reference Only)
+
+These files were used during development. You don't need them if you run `final_career_foundation.sql`:
+
+- `add_slug_to_career_paths.sql` - Now included in final migration
+- `create_career_path_programs.sql` - Now included in final migration  
+- `seed_career_data.sql` - Now included in final migration
 
 ## Verification
 
