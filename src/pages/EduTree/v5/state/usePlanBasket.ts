@@ -92,6 +92,9 @@ interface PlanBasketState {
   // Template hydration
   applyTemplateToPlan: (template: any) => void;
   
+  // Dev/Testing utilities
+  loadTestData: (items: BasketItem[]) => void;
+  
   // Computed
   getTotals: () => {
     totalCost: number;
@@ -333,6 +336,11 @@ export const usePlanBasket = create<PlanBasketState>()(
       
       clearAll: () => {
         set({ items: [] });
+      },
+      
+      loadTestData: (items: BasketItem[]) => {
+        console.log('[usePlanBasket] Loading test data:', items.length, 'items');
+        set({ items });
       },
       
       applyTemplateToPlan: (template: any) => {
