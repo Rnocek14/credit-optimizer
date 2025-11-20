@@ -1,0 +1,470 @@
+[
+  {
+    "id": "cs-tesu-cheapest-2025",
+    "kind": "degree",
+    "programId": "cs-bachelor",
+    "anchorSchool": "TESU",
+    "optimization": "cheapest",
+    "label": "BS CS @ TESU • Cheapest",
+    "summary": "Complete your CS degree for under $7,000 using ACE credits and TESU's flexible policy",
+    "badge": "Cheapest",
+    "catalogYear": "2025",
+    "policyVersion": "TESU-2025-v1",
+    "generatedAt": "2025-01-01T00:00:00Z",
+    "lastVerified": "2025-01-15T00:00:00Z",
+    "marketplace": {
+      "title": "Budget CS Degree",
+      "tagline": "Complete for under $7K using ACE credits",
+      "badge": "Cheapest",
+      "isPremium": false
+    },
+    "lifestyle": {
+      "avgWeeklyHours": 12,
+      "paceType": "flexible",
+      "workCompatible": true
+    },
+    "primaryCareerIds": ["software-engineer", "web-developer", "full-stack-developer"],
+    "deliveryMode": "fully_online",
+    "inPersonWeeks": 0,
+    "socialProof": {
+      "popularityScore": 4.2,
+      "dataSource": "simulated"
+    },
+    "yearTemplates": [],
+    "totals": {
+      "credits": 120,
+      "costUsd": 6850,
+      "weeks": 156,
+      "avgCri": 3.8
+    }
+  },
+  {
+    "id": "cs-wgu-fastest-2025",
+    "kind": "degree",
+    "programId": "cs-bachelor",
+    "anchorSchool": "WGU",
+    "optimization": "fastest",
+    "label": "BS CS @ WGU • Fastest",
+    "summary": "Accelerate through competency-based CS degree in 18-24 months",
+    "badge": "Fastest",
+    "catalogYear": "2025",
+    "policyVersion": "WGU-2025-v1",
+    "generatedAt": "2025-01-01T00:00:00Z",
+    "lastVerified": "2025-01-15T00:00:00Z",
+    "marketplace": {
+      "title": "Accelerated CS Degree",
+      "tagline": "Finish in 18 months with competency-based learning",
+      "badge": "Fastest",
+      "isPremium": false
+    },
+    "lifestyle": {
+      "avgWeeklyHours": 25,
+      "paceType": "accelerated",
+      "workCompatible": true
+    },
+    "primaryCareerIds": ["software-engineer", "web-developer", "full-stack-developer"],
+    "deliveryMode": "fully_online",
+    "inPersonWeeks": 0,
+    "socialProof": {
+      "popularityScore": 4.7,
+      "dataSource": "simulated"
+    },
+    "yearTemplates": [],
+    "totals": {
+      "credits": 120,
+      "costUsd": 10500,
+      "weeks": 78,
+      "avgCri": 4.1
+    }
+  },
+  {
+    "id": "cs-umgc-balanced-2025",
+    "kind": "degree",
+    "programId": "cs-bachelor",
+    "anchorSchool": "UMGC",
+    "optimization": "balanced",
+    "label": "BS CS @ UMGC • Balanced",
+    "summary": "Quality CS education with reasonable cost and timeline",
+    "badge": "Balanced",
+    "catalogYear": "2025",
+    "policyVersion": "UMGC-2025-v1",
+    "generatedAt": "2025-01-01T00:00:00Z",
+    "lastVerified": "2025-01-15T00:00:00Z",
+    "marketplace": {
+      "title": "Balanced CS Degree",
+      "tagline": "Quality education at $312/credit with flexible pacing",
+      "badge": "Balanced",
+      "isPremium": false
+    },
+    "lifestyle": {
+      "avgWeeklyHours": 15,
+      "paceType": "standard",
+      "workCompatible": true
+    },
+    "primaryCareerIds": ["software-engineer", "web-developer", "full-stack-developer"],
+    "deliveryMode": "fully_online",
+    "inPersonWeeks": 0,
+    "socialProof": {
+      "popularityScore": 4.5,
+      "dataSource": "simulated"
+    },
+    "yearTemplates": [],
+    "totals": {
+      "credits": 120,
+      "costUsd": 18720,
+      "weeks": 104,
+      "avgCri": 4.3
+    }
+  },
+  {
+    "id": "cs-tesu-popular-2025",
+    "kind": "degree",
+    "programId": "cs-bachelor",
+    "anchorSchool": "TESU",
+    "optimization": "balanced",
+    "label": "BS CS @ TESU • Most Popular",
+    "summary": "The most chosen path by students - proven flexibility and value",
+    "badge": "Most Popular",
+    "catalogYear": "2025",
+    "policyVersion": "TESU-2025-v1",
+    "generatedAt": "2025-01-01T00:00:00Z",
+    "lastVerified": "2025-01-15T00:00:00Z",
+    "marketplace": {
+      "title": "Most Popular CS Path",
+      "tagline": "Trusted by thousands - great value and flexibility",
+      "badge": "Most Popular",
+      "isPremium": false
+    },
+    "lifestyle": {
+      "avgWeeklyHours": 14,
+      "paceType": "flexible",
+      "workCompatible": true
+    },
+    "primaryCareerIds": ["software-engineer", "web-developer", "full-stack-developer"],
+    "deliveryMode": "fully_online",
+    "inPersonWeeks": 0,
+    "socialProof": {
+      "popularityScore": 5.0,
+      "dataSource": "simulated"
+    },
+    "yearTemplates": [],
+    "totals": {
+      "credits": 120,
+      "costUsd": 9200,
+      "weeks": 120,
+      "avgCri": 4.0
+    }
+  },
+  {
+    "id": "data-tesu-cheapest-2025",
+    "kind": "degree",
+    "programId": "data-science-bachelor",
+    "anchorSchool": "TESU",
+    "optimization": "cheapest",
+    "label": "BS Data Science @ TESU • Cheapest",
+    "summary": "Affordable data science degree with ACE-approved math and stats courses",
+    "badge": "Cheapest",
+    "catalogYear": "2025",
+    "policyVersion": "TESU-2025-v1",
+    "generatedAt": "2025-01-01T00:00:00Z",
+    "lastVerified": "2025-01-15T00:00:00Z",
+    "marketplace": {
+      "title": "Budget Data Science Degree",
+      "tagline": "Learn analytics and ML for under $7,500",
+      "badge": "Cheapest",
+      "isPremium": false
+    },
+    "lifestyle": {
+      "avgWeeklyHours": 13,
+      "paceType": "flexible",
+      "workCompatible": true
+    },
+    "primaryCareerIds": ["data-analyst", "data-scientist", "business-analyst"],
+    "deliveryMode": "fully_online",
+    "inPersonWeeks": 0,
+    "socialProof": {
+      "popularityScore": 4.0,
+      "dataSource": "simulated"
+    },
+    "yearTemplates": [],
+    "totals": {
+      "credits": 120,
+      "costUsd": 7200,
+      "weeks": 160,
+      "avgCri": 3.9
+    }
+  },
+  {
+    "id": "data-wgu-fastest-2025",
+    "kind": "degree",
+    "programId": "data-science-bachelor",
+    "anchorSchool": "WGU",
+    "optimization": "fastest",
+    "label": "BS Data Analytics @ WGU • Fastest",
+    "summary": "Competency-based data analytics degree in under 2 years",
+    "badge": "Fastest",
+    "catalogYear": "2025",
+    "policyVersion": "WGU-2025-v1",
+    "generatedAt": "2025-01-01T00:00:00Z",
+    "lastVerified": "2025-01-15T00:00:00Z",
+    "marketplace": {
+      "title": "Fast-Track Data Analytics",
+      "tagline": "Master SQL, Python, and Tableau in 20 months",
+      "badge": "Fastest",
+      "isPremium": false
+    },
+    "lifestyle": {
+      "avgWeeklyHours": 22,
+      "paceType": "accelerated",
+      "workCompatible": true
+    },
+    "primaryCareerIds": ["data-analyst", "business-analyst", "analytics-engineer"],
+    "deliveryMode": "fully_online",
+    "inPersonWeeks": 0,
+    "socialProof": {
+      "popularityScore": 4.6,
+      "dataSource": "simulated"
+    },
+    "yearTemplates": [],
+    "totals": {
+      "credits": 120,
+      "costUsd": 11200,
+      "weeks": 86,
+      "avgCri": 4.2
+    }
+  },
+  {
+    "id": "data-umgc-balanced-2025",
+    "kind": "degree",
+    "programId": "data-science-bachelor",
+    "anchorSchool": "UMGC",
+    "optimization": "balanced",
+    "label": "BS Data Science @ UMGC • Balanced",
+    "summary": "Comprehensive data science program with solid industry connections",
+    "badge": "Balanced",
+    "catalogYear": "2025",
+    "policyVersion": "UMGC-2025-v1",
+    "generatedAt": "2025-01-01T00:00:00Z",
+    "lastVerified": "2025-01-15T00:00:00Z",
+    "marketplace": {
+      "title": "Balanced Data Science Path",
+      "tagline": "Quality curriculum with capstone project",
+      "badge": "Balanced",
+      "isPremium": false
+    },
+    "lifestyle": {
+      "avgWeeklyHours": 16,
+      "paceType": "standard",
+      "workCompatible": true
+    },
+    "primaryCareerIds": ["data-analyst", "data-scientist", "ml-engineer"],
+    "deliveryMode": "fully_online",
+    "inPersonWeeks": 0,
+    "socialProof": {
+      "popularityScore": 4.4,
+      "dataSource": "simulated"
+    },
+    "yearTemplates": [],
+    "totals": {
+      "credits": 120,
+      "costUsd": 19200,
+      "weeks": 110,
+      "avgCri": 4.4
+    }
+  },
+  {
+    "id": "cyber-tesu-cheapest-2025",
+    "kind": "degree",
+    "programId": "cybersecurity-bachelor",
+    "anchorSchool": "TESU",
+    "optimization": "cheapest",
+    "label": "BS Cybersecurity @ TESU • Cheapest",
+    "summary": "Security-focused degree with industry certs for under $8K",
+    "badge": "Cheapest",
+    "catalogYear": "2025",
+    "policyVersion": "TESU-2025-v1",
+    "generatedAt": "2025-01-01T00:00:00Z",
+    "lastVerified": "2025-01-15T00:00:00Z",
+    "marketplace": {
+      "title": "Budget Cybersecurity Degree",
+      "tagline": "Includes CompTIA Security+ and CEH prep",
+      "badge": "Cheapest",
+      "isPremium": false
+    },
+    "lifestyle": {
+      "avgWeeklyHours": 14,
+      "paceType": "flexible",
+      "workCompatible": true
+    },
+    "primaryCareerIds": ["cybersecurity-analyst", "security-engineer", "penetration-tester"],
+    "deliveryMode": "fully_online",
+    "inPersonWeeks": 0,
+    "socialProof": {
+      "popularityScore": 4.3,
+      "dataSource": "simulated"
+    },
+    "yearTemplates": [],
+    "totals": {
+      "credits": 120,
+      "costUsd": 7800,
+      "weeks": 145,
+      "avgCri": 4.1
+    }
+  },
+  {
+    "id": "cyber-wgu-fastest-2025",
+    "kind": "degree",
+    "programId": "cybersecurity-bachelor",
+    "anchorSchool": "WGU",
+    "optimization": "fastest",
+    "label": "BS Cybersecurity @ WGU • Fastest",
+    "summary": "Fast-paced security program with 7+ certs included",
+    "badge": "Fastest",
+    "catalogYear": "2025",
+    "policyVersion": "WGU-2025-v1",
+    "generatedAt": "2025-01-01T00:00:00Z",
+    "lastVerified": "2025-01-15T00:00:00Z",
+    "marketplace": {
+      "title": "Accelerated Security Path",
+      "tagline": "Earn degree + Security+, CySA+, PenTest+ in 22 months",
+      "badge": "Fastest",
+      "isPremium": false
+    },
+    "lifestyle": {
+      "avgWeeklyHours": 24,
+      "paceType": "accelerated",
+      "workCompatible": true
+    },
+    "primaryCareerIds": ["cybersecurity-analyst", "security-engineer", "soc-analyst"],
+    "deliveryMode": "fully_online",
+    "inPersonWeeks": 0,
+    "socialProof": {
+      "popularityScore": 4.8,
+      "dataSource": "simulated"
+    },
+    "yearTemplates": [],
+    "totals": {
+      "credits": 120,
+      "costUsd": 12400,
+      "weeks": 96,
+      "avgCri": 4.5
+    }
+  },
+  {
+    "id": "cyber-umgc-balanced-2025",
+    "kind": "degree",
+    "programId": "cybersecurity-bachelor",
+    "anchorSchool": "UMGC",
+    "optimization": "balanced",
+    "label": "BS Cybersecurity @ UMGC • Balanced",
+    "summary": "NSA-designated program with hands-on labs",
+    "badge": "Balanced",
+    "catalogYear": "2025",
+    "policyVersion": "UMGC-2025-v1",
+    "generatedAt": "2025-01-01T00:00:00Z",
+    "lastVerified": "2025-01-15T00:00:00Z",
+    "marketplace": {
+      "title": "NSA-Designated Security Degree",
+      "tagline": "Premium curriculum with virtual labs",
+      "badge": "Balanced",
+      "isPremium": false
+    },
+    "lifestyle": {
+      "avgWeeklyHours": 17,
+      "paceType": "standard",
+      "workCompatible": true
+    },
+    "primaryCareerIds": ["cybersecurity-analyst", "security-engineer", "infosec-specialist"],
+    "deliveryMode": "fully_online",
+    "inPersonWeeks": 0,
+    "socialProof": {
+      "popularityScore": 4.6,
+      "dataSource": "simulated"
+    },
+    "yearTemplates": [],
+    "totals": {
+      "credits": 120,
+      "costUsd": 20100,
+      "weeks": 115,
+      "avgCri": 4.6
+    }
+  },
+  {
+    "id": "nursing-adn-cheapest-2025",
+    "kind": "degree",
+    "programId": "nursing-associate",
+    "anchorSchool": "Community College",
+    "optimization": "cheapest",
+    "label": "ADN Nursing • Cheapest",
+    "summary": "Affordable nursing path with clinical hours at local facilities",
+    "badge": "Cheapest",
+    "catalogYear": "2025",
+    "policyVersion": "CC-2025-v1",
+    "generatedAt": "2025-01-01T00:00:00Z",
+    "lastVerified": "2025-01-15T00:00:00Z",
+    "marketplace": {
+      "title": "Budget ADN Program",
+      "tagline": "Become an RN for under $12K",
+      "badge": "Cheapest",
+      "isPremium": false
+    },
+    "lifestyle": {
+      "avgWeeklyHours": 20,
+      "paceType": "standard",
+      "workCompatible": false
+    },
+    "primaryCareerIds": ["registered-nurse", "clinical-nurse", "hospital-nurse"],
+    "deliveryMode": "hybrid",
+    "inPersonWeeks": 32,
+    "socialProof": {
+      "popularityScore": 4.1,
+      "dataSource": "simulated"
+    },
+    "yearTemplates": [],
+    "totals": {
+      "credits": 72,
+      "costUsd": 11500,
+      "weeks": 104,
+      "avgCri": 4.0
+    }
+  },
+  {
+    "id": "nursing-adn-fastest-2025",
+    "kind": "degree",
+    "programId": "nursing-associate",
+    "anchorSchool": "Community College",
+    "optimization": "fastest",
+    "label": "ADN Nursing • Fastest",
+    "summary": "Accelerated 15-month ADN with intensive clinical rotations",
+    "badge": "Fastest",
+    "catalogYear": "2025",
+    "policyVersion": "CC-ACCEL-2025-v1",
+    "generatedAt": "2025-01-01T00:00:00Z",
+    "lastVerified": "2025-01-15T00:00:00Z",
+    "marketplace": {
+      "title": "Accelerated ADN",
+      "tagline": "Full-time intensive program - RN in 15 months",
+      "badge": "Fastest",
+      "isPremium": false
+    },
+    "lifestyle": {
+      "avgWeeklyHours": 35,
+      "paceType": "accelerated",
+      "workCompatible": false
+    },
+    "primaryCareerIds": ["registered-nurse", "clinical-nurse", "er-nurse"],
+    "deliveryMode": "hybrid",
+    "inPersonWeeks": 24,
+    "socialProof": {
+      "popularityScore": 4.4,
+      "dataSource": "simulated"
+    },
+    "yearTemplates": [],
+    "totals": {
+      "credits": 72,
+      "costUsd": 14200,
+      "weeks": 65,
+      "avgCri": 4.3
+    }
+  }
+]

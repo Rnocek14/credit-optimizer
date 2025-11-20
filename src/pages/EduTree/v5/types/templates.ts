@@ -144,3 +144,70 @@ export interface DegreeTemplate {
     workloadHours: number;
   };
 }
+
+/**
+ * Marketplace-enhanced degree template (V1)
+ * Adds provenance, lifestyle fit, and career outcome metadata
+ */
+export interface MarketplaceDegreeTemplate extends DegreeTemplate {
+  // Core identification (override from base)
+  programId: string;
+  anchorSchool: string;
+  optimization: string;
+  
+  // Provenance (critical for safety)
+  catalogYear: string; // "2025"
+  policyVersion: string; // "TESU-2025-v1"
+  generatedAt: string; // ISO timestamp
+  lastVerified: string; // ISO timestamp
+  
+  // Marketplace metadata
+  marketplace: {
+    title: string; // "Fastest Online CS Degree"
+    tagline: string; // "Complete in 18 months while working full-time"
+    badge?: 'Fastest' | 'Cheapest' | 'Most Popular' | 'Balanced';
+    isPremium: boolean; // false for V1 (all free)
+  };
+  
+  // Lifestyle fit
+  lifestyle: {
+    avgWeeklyHours: number; // 12-15
+    paceType: 'accelerated' | 'standard' | 'flexible';
+    workCompatible: boolean;
+  };
+  
+  // Career outcomes (link to existing career_paths)
+  primaryCareerIds: string[]; // ["software-engineer", "web-developer"]
+  
+  // Location requirements
+  deliveryMode: 'fully_online' | 'hybrid' | 'in_person_required';
+  inPersonWeeks?: number; // 0 for fully online
+  
+  // Social proof (explicit source marking)
+  socialProof: {
+    popularityScore: number; // 1-5
+    dataSource: 'simulated' | 'inferred' | 'actual';
+    completionRate?: number; // only if dataSource = 'actual'
+  };
+  
+  // Totals (aggregated from yearTemplates)
+  totals: {
+    credits: number;
+    costUsd: number;
+    weeks: number;
+    avgCri?: number | null;
+  };
+}
+
+/**
+ * Marketplace filter state
+ */
+export interface MarketplaceFilters {
+  careerIds: string[];
+  budgetRange: [number, number]; // [min, max] in USD
+  timeRange: [number, number]; // [min, max] in months
+  weeklyHoursRange: [number, number]; // [min, max] hours
+  deliveryMode: 'all' | 'fully_online' | 'hybrid' | 'in_person_ok';
+  anchorSchools: string[]; // ['TESU', 'WGU', 'UMGC']
+  sortBy: 'popularity' | 'cost' | 'time' | 'roi';
+}

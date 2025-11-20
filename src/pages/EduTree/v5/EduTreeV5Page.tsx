@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import { ChevronUp } from 'lucide-react';
+import { useSearchParams, Link } from 'react-router-dom';
+import { ChevronUp, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { YearCard } from './components/YearCard';
 import { ModuleCard } from './components/ModuleCard';
@@ -16,6 +16,8 @@ import { SmartReplaceModal } from './components/SmartReplaceModal';
 import { CreditOptimizerSuggestionBanner } from './components/CreditOptimizerSuggestionBanner';
 import { CreditOptimizerModal } from './components/CreditOptimizerModal';
 import { CreditOptimizerDevTools } from './components/CreditOptimizerDevTools';
+import { ProvenanceWarning } from './components/ProvenanceWarning';
+import { useMarketplaceTemplate } from '@/hooks/useMarketplaceTemplates';
 import SeedStatus from '@/components/SeedStatus';
 import { DragProvider } from './components/drag/DragProvider';
 import canonicalCourses from '@/fixtures/prereqs/canonical-courses.json';
@@ -47,7 +49,12 @@ const ENABLE_DEGREE_NODE = true;
 const ENABLE_CREDIT_OPTIMIZER = true; // Feature flag for credit optimizer
 
 export default function EduTreeV5Page() {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const templateId = searchParams.get('templateId');
+  const [provenanceWarningDismissed, setProvenanceWarningDismissed] = useState(false);
+  
+  // Load marketplace template if templateId present
+  const { data: selectedTemplate } = useMarketplaceTemplate(templateId || '');
   
   // Career context from handoff
   const [careerContext, setCareerContext] = useState<{
@@ -940,7 +947,38 @@ export default function EduTreeV5Page() {
         </div>
       )}
       
-      {/* Transfer Warning Banner */}
+      {/* Marketplace Template Banner */}
+      {selectedTemplate && (
+        <div className="mb-4">
+          <div className="flex items-center justify-between bg-primary/10 border border-primary/20 rounded-lg px-4 py-3">
+            <div className="flex items-center gap-3">
+              <div>
+                <div className="font-semibold">
+                  Editing: {selectedTemplate.marketplace.title}
+                </div>
+                <div className="text-sm text-muted-foreground">
+                  {selectedTemplate.anchorSchool} • {selectedTemplate.catalogYear} Catalog
+                </div>
+              </div>
+            </div>
+            <Link to="/edu-tree-v5/marketplace">
+              <Button variant="outline" size="sm">
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back to Marketplace
+              </Button>
+            </Link>
+          </div>
+          {!provenanceWarningDismissed && (
+            <div className="mt-2">
+              <ProvenanceWarning 
+                template={selectedTemplate} 
+                onDismiss={() => setProvenanceWarningDismissed(true)} 
+              />
+            </div>
+          )}
+        </div>
+      )}
+
       {constraints.target_school && (
         <div className="mb-6">
           <TransferWarningBanner
