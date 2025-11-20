@@ -95,12 +95,16 @@ export function useOptimizationSuggestion(
         const module = modules.find(m => m.id === item.moduleId);
         if (!module) return;
 
-        // Find marketplace options for this module
+        // Find all available options for this module's requirement block
+        const moduleBlockId = module.requirement_block_id;
         const moduleOptions = allOptions.filter(opt => 
-          module.requiredCanonicalIds?.some((reqId: string) => 
-            opt.satisfies_requirements?.includes(reqId)
-          )
+          moduleBlockId && opt.blockId === moduleBlockId
         );
+        
+        // Debug: Log matching results
+        if (moduleOptions.length > 0) {
+          console.log(`[Credit Optimizer] Module ${module.id} (block: ${moduleBlockId}): found ${moduleOptions.length} options`);
+        }
 
         // Find cheaper alternative
         const cheaperOptions = moduleOptions.filter(opt => 

@@ -53,6 +53,7 @@ export interface MarketplaceOption {
   // Phase 1c: Provider code for transfer rules
   providerCode?: string;
   level?: number; // Course level (100/200/300/400) for upper-division tracking
+  blockId?: string; // Requirement block this course fulfills (for Credit Optimizer matching)
 }
 
 export interface ScoringWeights {
