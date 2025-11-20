@@ -43,6 +43,7 @@ import './styles/v5.css';
 
 // Feature flag for quick rollback during demos
 const ENABLE_DEGREE_NODE = true;
+const ENABLE_CREDIT_OPTIMIZER = true; // Feature flag for credit optimizer
 
 export default function EduTreeV5Page() {
   const [searchParams] = useSearchParams();
@@ -424,7 +425,7 @@ export default function EduTreeV5Page() {
     anchorLabel: anchorSchoolLabel,
     minCostSaved: 1000,
     minMonthsSaved: 3,
-    enabled: allModules.length > 0 && basket.length > 0,
+    enabled: ENABLE_CREDIT_OPTIMIZER && allModules.length > 0 && basket.length > 0,
   });
   
   // Recompute years when basket or constraints change
@@ -956,7 +957,7 @@ export default function EduTreeV5Page() {
       )}
       
       {/* Credit Optimizer Banner */}
-      {showOptimizerBanner && optimizationSuggestion?.summary && (
+      {ENABLE_CREDIT_OPTIMIZER && showOptimizerBanner && optimizationSuggestion?.summary && (
         <div className="mb-6">
           <CreditOptimizerSuggestionBanner
             summary={optimizationSuggestion.summary}
@@ -1178,7 +1179,7 @@ export default function EduTreeV5Page() {
       })()}
       
       {/* Credit Optimizer Modal */}
-      {showOptimizerModal && optimizationSuggestion?.summary && (
+      {ENABLE_CREDIT_OPTIMIZER && showOptimizerModal && optimizationSuggestion?.summary && (
         <CreditOptimizerModal
           open={showOptimizerModal}
           summary={optimizationSuggestion.summary}
