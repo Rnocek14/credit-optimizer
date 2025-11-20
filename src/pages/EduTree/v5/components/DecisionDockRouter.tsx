@@ -1177,12 +1177,10 @@ function YearMarketplaceContent(props: DecisionDockRouterProps) {
   const { data: requirementBlocks = [] } = useRequirementBlocks(programId, true);
   const { applyYearTemplate } = useApplyYearTemplate();
 
-  // Extract all options from modules
+  // Extract all options from yearModules (not dbData which may be empty in fixture mode)
   const allOptions = useMemo(() => {
-    return Object.values(dbData?.modulesByYear || {})
-      .flat()
-      .flatMap((m: any) => m.marketplaceOptions || []);
-  }, [dbData]);
+    return yearModules.flatMap(m => m.marketplaceOptions || []);
+  }, [yearModules]);
 
   // Ensure modules have marketplaceOptions
   const enrichedModules = useMemo(() => {
