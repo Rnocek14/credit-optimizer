@@ -4,7 +4,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import '../styles/decisionDock.css';
 import { Button } from "@/components/ui/button";
-import { X } from 'lucide-react';
+import { X, ArrowRight } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { Switch } from "@/components/ui/switch";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
@@ -954,6 +955,9 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
 // Extract Degree Analyzer content (without Sheet wrapper)
 function DegreeAnalyzerContent(props: DecisionDockRouterProps) {
   const { degreeSummary, activeTab = 'overview', onTabChange, onNavigate } = props;
+  const constraints = usePlanBasket(s => s.constraints);
+  const anchorSchool = constraints.target_school || '';
+  
   
   // ✅ Phase 5: Enhanced logging to track data flow
   console.log('[DegreeAnalyzerContent] Render check:', {
@@ -1106,6 +1110,29 @@ function DegreeAnalyzerContent(props: DecisionDockRouterProps) {
           <p className="text-sm text-muted-foreground">
             Auto-fill entire degree with optimized course selections.
           </p>
+          
+          {/* Marketplace Entry Point */}
+          <div className="mb-6 p-4 bg-primary/5 border border-primary/20 rounded-lg">
+            <div className="flex items-start gap-3">
+              <div className="text-2xl">🎯</div>
+              <div className="flex-1">
+                <h4 className="font-semibold text-sm mb-1">
+                  Want to start from a proven 4-year path?
+                </h4>
+                <p className="text-xs text-muted-foreground mb-3">
+                  Browse pre-built degree templates optimized for cost, time, and career outcomes.
+                </p>
+                <Link
+                  to={`/edu-tree-v5/marketplace?anchor=${anchorSchool}`}
+                  className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline"
+                >
+                  Browse Degree Templates
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+              </div>
+            </div>
+          </div>
+          
           <div className="grid grid-cols-2 gap-3">
             <Button variant="outline" className="h-auto flex-col items-start p-4">
               <div className="text-sm font-medium mb-1">⚡ Fastest Path</div>
