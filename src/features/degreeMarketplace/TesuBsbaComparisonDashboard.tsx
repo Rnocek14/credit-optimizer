@@ -2,6 +2,8 @@ import * as React from 'react';
 import { useOptimizedTemplatesForProgram } from '@/hooks/useOptimizedTemplates';
 import type { InstitutionCode } from '@/types/degreeTemplates';
 import { formatCost, formatCredits } from '@/pages/EduTree/v5/utils/formatters';
+import { PolicyStatusPill } from './PolicyStatusPill';
+import type { OptimizedPlanWarnings } from '@/types/optimizer';
 
 const TESU: InstitutionCode = 'TESU';
 
@@ -84,6 +86,7 @@ export function TesuBsbaComparisonDashboard() {
           metrics={s}
           altPercent={altPctStandard}
           mode={standard.optimized.mode}
+          warnings={standard.optimized.warnings}
         />
 
         {/* Alt-Credit Max */}
@@ -93,6 +96,7 @@ export function TesuBsbaComparisonDashboard() {
           metrics={a}
           altPercent={altPctAlt}
           mode={altMax.optimized.mode}
+          warnings={altMax.optimized.warnings}
           highlight
         />
       </div>
@@ -116,6 +120,7 @@ interface ComparisonCardProps {
   };
   altPercent: number;
   mode: string;
+  warnings: OptimizedPlanWarnings;
   highlight?: boolean;
 }
 
@@ -125,6 +130,7 @@ function ComparisonCard({
   metrics,
   altPercent,
   mode,
+  warnings,
   highlight,
 }: ComparisonCardProps) {
   return (
@@ -157,6 +163,10 @@ function ComparisonCard({
           label="TESU Residency"
           value={formatCredits(metrics.totalInstitutionalCredits)}
         />
+      </div>
+      
+      <div className="mt-3 pt-3 border-t border-border">
+        <PolicyStatusPill warnings={warnings} size="sm" showLabel />
       </div>
     </div>
   );
