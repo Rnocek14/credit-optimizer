@@ -229,19 +229,13 @@ export function useOptimizationSuggestion(
         }
       }).catch(() => {});
 
+      // Get the module-specific removal function from store
+      const { removeItemByModuleAndCourse } = usePlanBasket.getState();
+
       // Apply all swaps (module-specific removal to avoid cross-module conflicts)
       for (const swap of suggestion.swaps) {
         // Remove old course from THIS specific module only
-        // Since removeItem removes all instances, we need to be careful
-        // Get current basket state
-        const currentItems = usePlanBasket.getState().items;
-        const itemToRemove = currentItems.find(
-          item => item.moduleId === swap.moduleId && item.courseId === swap.fromCourseId
-        );
-        
-        if (itemToRemove) {
-          removeItem(swap.fromCourseId);
-        }
+        removeItemByModuleAndCourse(swap.moduleId, swap.fromCourseId);
 
         // Find the full marketplace option data
         const newOption = allOptions.find(opt => opt.courseId === swap.toCourseId);
