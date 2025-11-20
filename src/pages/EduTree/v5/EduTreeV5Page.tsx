@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
-import { useSearchParams, Link } from 'react-router-dom';
+import { useSearchParams, Link, useLocation } from 'react-router-dom';
 import { ChevronUp, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { YearCard } from './components/YearCard';
@@ -49,6 +49,7 @@ const ENABLE_DEGREE_NODE = true;
 const ENABLE_CREDIT_OPTIMIZER = true; // Feature flag for credit optimizer
 
 export default function EduTreeV5Page() {
+  const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const templateId = searchParams.get('templateId');
   const [provenanceWarningDismissed, setProvenanceWarningDismissed] = useState(false);
@@ -109,6 +110,17 @@ export default function EduTreeV5Page() {
   // Handle career handoff from degree template modal
   const setConstraints = usePlanBasket(s => s.setConstraints);
   const applyTemplateToPlan = usePlanBasket(s => s.applyTemplateToPlan);
+  const constraints = usePlanBasket(s => s.constraints);
+  
+  // Auto-set anchor from marketplace navigation
+  useEffect(() => {
+    const optimizedPlan = (location.state as any)?.optimizedPlan;
+    if (optimizedPlan?.institutionCode && !constraints.target_school) {
+      console.log('[EduTreeV5] 🎓 Auto-setting anchor from marketplace:', optimizedPlan.institutionCode);
+      setConstraints({ target_school: optimizedPlan.institutionCode });
+    }
+  }, [location.state, constraints.target_school, setConstraints]);
+  
   useEffect(() => {
     const programId = searchParams.get('programId');
     const anchorSchool = searchParams.get('anchorSchool');
@@ -184,7 +196,6 @@ export default function EduTreeV5Page() {
   // Graph view dialog state
   const [graphDialogOpen, setGraphDialogOpen] = useState(false);
   const basket = usePlanBasket(s => s.items);
-  const constraints = usePlanBasket(s => s.constraints);
   
   // Week 2: Extract anchor policy from constraints for year summaries
   const anchorPolicy = useMemo(() => 

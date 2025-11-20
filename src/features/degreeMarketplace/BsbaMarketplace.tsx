@@ -3,6 +3,10 @@ import { useOptimizedTemplatesForProgram } from '@/hooks/useOptimizedTemplates';
 import { formatCost } from '@/pages/EduTree/v5/utils/formatters';
 import { PolicyStatusPill } from './PolicyStatusPill';
 import { TemplateComparisonPopover } from './TemplateComparisonPopover';
+import { usePlanBasket } from '@/pages/EduTree/v5/state/usePlanBasket';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { GraduationCap } from 'lucide-react';
 import type { InstitutionCode } from '@/types/degreeTemplates';
 
 interface BsbaMarketplaceProps {
@@ -12,10 +16,13 @@ interface BsbaMarketplaceProps {
 
 export function BsbaMarketplace({ institutionCode, institutionName }: BsbaMarketplaceProps) {
   const navigate = useNavigate();
+  const { constraints, setConstraints } = usePlanBasket();
   const { optimizedTemplates, isLoading } = useOptimizedTemplatesForProgram(
     institutionCode,
     'BSBA'
   );
+  
+  const isAnchorSchool = constraints.target_school === institutionCode;
 
   if (isLoading) {
     return (
@@ -42,11 +49,30 @@ export function BsbaMarketplace({ institutionCode, institutionName }: BsbaMarket
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-semibold">{institutionName} BSBA Templates</h2>
-          <p className="text-sm text-muted-foreground">
-            Compare standard vs alt-credit-maximized paths.
-          </p>
+        <div className="flex items-center gap-3">
+          <div>
+            <div className="flex items-center gap-2">
+              <h2 className="text-xl font-semibold">{institutionName} BSBA Templates</h2>
+              {isAnchorSchool ? (
+                <Badge variant="default" className="gap-1">
+                  <GraduationCap className="h-3 w-3" />
+                  Graduation School
+                </Badge>
+              ) : (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setConstraints({ target_school: institutionCode })}
+                  className="h-7 text-xs"
+                >
+                  Set as graduation school
+                </Button>
+              )}
+            </div>
+            <p className="text-sm text-muted-foreground mt-1">
+              Compare standard vs alt-credit-maximized paths.
+            </p>
+          </div>
         </div>
         {standardTemplate && altMaxTemplate && (
           <TemplateComparisonPopover
