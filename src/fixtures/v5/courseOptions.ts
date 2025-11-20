@@ -101,6 +101,7 @@ export const COURSE_OPTIONS: MarketplaceOption[] = COURSE_DEFINITIONS.map((def, 
   cri_score: def.cri_score ?? 70,
   workload_weekly_hours: def.workload_weekly_hours ?? def.credits * 2.5,
   level: def.level,
+  blockId: def.blockId, // Required for Credit Optimizer matching
 }));
 
 /**
