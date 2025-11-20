@@ -13,6 +13,8 @@ import { AnchorSchoolSelector } from './components/AnchorSchoolSelector';
 import { PolicyCard } from './components/PolicyCard';
 import { TransferWarningBanner } from './components/TransferWarningBanner';
 import { SmartReplaceModal } from './components/SmartReplaceModal';
+import { CreditOptimizerSuggestionBanner } from './components/CreditOptimizerSuggestionBanner';
+import { CreditOptimizerModal } from './components/CreditOptimizerModal';
 import SeedStatus from '@/components/SeedStatus';
 import { DragProvider } from './components/drag/DragProvider';
 import canonicalCourses from '@/fixtures/prereqs/canonical-courses.json';
@@ -36,6 +38,7 @@ import { useRequirementBlocks } from './hooks/useRequirementBlocks';
 import { getAnchorPolicyFromConstraints } from './utils/anchorPolicyAdapter';
 import { useYearNodesVM } from '@/state/selectors/degreeNodes';
 import { useCascadeDegree } from '@/lib/degree/cascade';
+import { useOptimizationSuggestion } from './hooks/useOptimizationSuggestion';
 import './styles/v5.css';
 
 // Feature flag for quick rollback during demos
@@ -389,6 +392,40 @@ export default function EduTreeV5Page() {
   
   // Cascade engine for recomputing years on plan changes
   const { recomputeYears } = useCascadeDegree(allModules);
+  
+  // Credit Optimizer: Analyze plan for savings opportunities
+  const allOptions = useMemo(() => {
+    if (USE_DATABASE && dbData?.modulesByYear) {
+      // Extract all marketplace options from database modules
+      return Object.values(dbData.modulesByYear)
+        .flatMap(modules => modules)
+        .flatMap(mod => mod.marketplaceOptions || []);
+    }
+    return COURSE_OPTIONS;
+  }, [USE_DATABASE, dbData?.modulesByYear]);
+
+  const anchorSchoolLabel = useMemo(() => {
+    if (!constraints.target_school) return 'your degree program';
+    const school = constraints.target_school.toUpperCase();
+    return `${school}`;
+  }, [constraints.target_school]);
+
+  const {
+    suggestion: optimizationSuggestion,
+    showBanner: showOptimizerBanner,
+    showModal: showOptimizerModal,
+    openModal: openOptimizerModal,
+    closeModal: closeOptimizerModal,
+    dismissBanner: dismissOptimizerBanner,
+    applyOptimization,
+  } = useOptimizationSuggestion({
+    modules: allModules,
+    allOptions,
+    anchorLabel: anchorSchoolLabel,
+    minCostSaved: 1000,
+    minMonthsSaved: 3,
+    enabled: allModules.length > 0 && basket.length > 0,
+  });
   
   // Recompute years when basket or constraints change
   useEffect(() => {
@@ -918,6 +955,17 @@ export default function EduTreeV5Page() {
         </div>
       )}
       
+      {/* Credit Optimizer Banner */}
+      {showOptimizerBanner && optimizationSuggestion?.summary && (
+        <div className="mb-6">
+          <CreditOptimizerSuggestionBanner
+            summary={optimizationSuggestion.summary}
+            onShow={openOptimizerModal}
+            onDismiss={dismissOptimizerBanner}
+          />
+        </div>
+      )}
+      
       {/* Transfer Policy Tracking */}
       {constraints.target_school && (
         <div className="mb-6 max-w-md">
@@ -1128,6 +1176,20 @@ export default function EduTreeV5Page() {
           </button>
         );
       })()}
+      
+      {/* Credit Optimizer Modal */}
+      {showOptimizerModal && optimizationSuggestion?.summary && (
+        <CreditOptimizerModal
+          open={showOptimizerModal}
+          summary={optimizationSuggestion.summary}
+          swaps={optimizationSuggestion.swaps}
+          onClose={closeOptimizerModal}
+          onApply={async () => {
+            await applyOptimization();
+            await recomputeYears();
+          }}
+        />
+      )}
       </div>
     </DragProvider>
   );
