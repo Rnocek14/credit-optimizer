@@ -12,6 +12,8 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { ProviderBadge, type ProviderCode } from './ProviderBadge';
+import { useMemo } from 'react';
 
 interface TemplateCardProps {
   template: MarketplaceDegreeTemplate;
@@ -39,6 +41,29 @@ export function TemplateCard({ template, isSelected, onToggleSelect }: TemplateC
   };
 
   const deliveryBadge = deliveryBadgeConfig[template.deliveryMode];
+
+  // Calculate provider mix from yearTemplates
+  const providerMix = useMemo(() => {
+    const providers = new Map<string, { credits: number; count: number }>();
+    
+    template.yearTemplates?.forEach(year => {
+      year.moduleTemplates?.forEach(module => {
+        const option = module.options?.find(o => o.courseId === module.recommendedCourseId) || module.options?.[0];
+        if (option?.providerCode) {
+          const existing = providers.get(option.providerCode) || { credits: 0, count: 0 };
+          providers.set(option.providerCode, {
+            credits: existing.credits + (option.credits || 0),
+            count: existing.count + 1,
+          });
+        }
+      });
+    });
+
+    return Array.from(providers.entries())
+      .map(([code, data]) => ({ code: code as ProviderCode, ...data }))
+      .sort((a, b) => b.credits - a.credits)
+      .slice(0, 4); // Show top 4 providers
+  }, [template.yearTemplates]);
 
   return (
     <Card className="relative hover:shadow-lg transition-shadow">
@@ -154,6 +179,29 @@ export function TemplateCard({ template, isSelected, onToggleSelect }: TemplateC
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
+
+        {/* Provider Mix */}
+        {providerMix.length > 0 && (
+          <div className="space-y-2">
+            <p className="text-xs font-medium text-muted-foreground">Multi-Provider Path:</p>
+            <div className="flex flex-wrap gap-1.5">
+              {providerMix.map(({ code, credits }) => (
+                <TooltipProvider key={code}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div>
+                        <ProviderBadge providerCode={code} className="text-[10px] px-1.5 py-0.5" />
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p className="text-xs">{credits} credits via {code}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Actions */}
         <div className="flex gap-2 pt-2">
