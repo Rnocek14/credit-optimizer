@@ -466,5 +466,1162 @@
       "weeks": 65,
       "avgCri": 4.3
     }
+  },
+  {
+    "id": "bsba-tesu-cheapest-2025",
+    "kind": "degree",
+    "programId": "bsba",
+    "anchorSchool": "TESU",
+    "optimization": "cheapest",
+    "label": "BSBA @ TESU • Cheapest",
+    "summary": "Complete your business degree for under $8K using Sophia, Study.com, and minimal TESU residency",
+    "badge": "Cheapest",
+    "catalogYear": "2025",
+    "policyVersion": "TESU-2025-v1",
+    "generatedAt": "2025-01-15T00:00:00Z",
+    "lastVerified": "2025-01-15T00:00:00Z",
+    "marketplace": {
+      "title": "Budget Business Degree",
+      "tagline": "Graduate for under $8K with ACE credits + TESU residency",
+      "badge": "Cheapest",
+      "isPremium": false
+    },
+    "lifestyle": {
+      "avgWeeklyHours": 12,
+      "paceType": "flexible",
+      "workCompatible": true
+    },
+    "primaryCareerIds": ["business-analyst", "operations-manager", "marketing-manager"],
+    "deliveryMode": "fully_online",
+    "inPersonWeeks": 0,
+    "socialProof": {
+      "popularityScore": 4.3,
+      "dataSource": "simulated"
+    },
+    "yearTemplates": [
+      {
+        "year": 1,
+        "label": "Year 1 – Gen Ed via Sophia",
+        "recommendedPace": "part_time",
+        "moduleTemplates": [
+          {
+            "moduleId": "WRITTEN_COMM",
+            "label": "Written Communication (6cr)",
+            "requirementArea": "WRITTEN_COMM",
+            "options": [
+              {
+                "id": "sophia-eng-comp-bundle",
+                "courseId": "SOPHIA-ENG-COMP-I-II",
+                "title": "English Composition I & II",
+                "credits": 6,
+                "cost_usd": 99,
+                "duration_weeks": 4,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 100,
+                "cri_score": 72,
+                "workload_weekly_hours": 15,
+                "subject": "English"
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-ENG-COMP-I-II"
+          },
+          {
+            "moduleId": "QUANTITATIVE",
+            "label": "Quantitative Literacy (3cr)",
+            "requirementArea": "QUANTITATIVE",
+            "options": [
+              {
+                "id": "sophia-college-algebra",
+                "courseId": "SOPHIA-COLLEGE-ALG",
+                "title": "College Algebra",
+                "credits": 3,
+                "cost_usd": 99,
+                "duration_weeks": 4,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 100,
+                "cri_score": 78,
+                "workload_weekly_hours": 7.5,
+                "subject": "Mathematics"
+              },
+              {
+                "id": "clep-college-algebra",
+                "courseId": "CLEP-COLLEGE-ALG",
+                "title": "CLEP College Algebra",
+                "credits": 3,
+                "cost_usd": 95,
+                "duration_weeks": 2,
+                "provider": "CLEP",
+                "providerType": "testing_center",
+                "providerCode": "CLEP",
+                "level": 100,
+                "cri_score": 68,
+                "workload_weekly_hours": 10,
+                "subject": "Mathematics"
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-COLLEGE-ALG"
+          },
+          {
+            "moduleId": "HUMANITIES",
+            "label": "Humanities (6cr)",
+            "requirementArea": "HUMANITIES",
+            "options": [
+              {
+                "id": "sophia-intro-ethics",
+                "courseId": "SOPHIA-INTRO-ETHICS",
+                "title": "Introduction to Ethics",
+                "credits": 3,
+                "cost_usd": 99,
+                "duration_weeks": 4,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 100,
+                "cri_score": 70,
+                "workload_weekly_hours": 7.5,
+                "subject": "Philosophy"
+              },
+              {
+                "id": "sophia-art-history",
+                "courseId": "SOPHIA-ART-HIST-I",
+                "title": "Art History I",
+                "credits": 3,
+                "cost_usd": 99,
+                "duration_weeks": 4,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 100,
+                "cri_score": 69,
+                "workload_weekly_hours": 7.5,
+                "subject": "Art History"
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-INTRO-ETHICS"
+          },
+          {
+            "moduleId": "SOCIAL_SCIENCE",
+            "label": "Social Science (6cr)",
+            "requirementArea": "SOCIAL_SCIENCE",
+            "options": [
+              {
+                "id": "sophia-intro-psychology",
+                "courseId": "SOPHIA-INTRO-PSYCH",
+                "title": "Introduction to Psychology",
+                "credits": 3,
+                "cost_usd": 99,
+                "duration_weeks": 4,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 100,
+                "cri_score": 73,
+                "workload_weekly_hours": 7.5,
+                "subject": "Psychology"
+              },
+              {
+                "id": "sophia-intro-sociology",
+                "courseId": "SOPHIA-INTRO-SOC",
+                "title": "Introduction to Sociology",
+                "credits": 3,
+                "cost_usd": 99,
+                "duration_weeks": 4,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 100,
+                "cri_score": 71,
+                "workload_weekly_hours": 7.5,
+                "subject": "Sociology"
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-INTRO-PSYCH"
+          },
+          {
+            "moduleId": "NATURAL_SCIENCE",
+            "label": "Natural Science (6cr)",
+            "requirementArea": "NATURAL_SCIENCE",
+            "options": [
+              {
+                "id": "sophia-human-biology",
+                "courseId": "SOPHIA-HUMAN-BIO",
+                "title": "Human Biology",
+                "credits": 3,
+                "cost_usd": 99,
+                "duration_weeks": 4,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 100,
+                "cri_score": 68,
+                "workload_weekly_hours": 7.5,
+                "subject": "Biology"
+              },
+              {
+                "id": "sophia-env-science",
+                "courseId": "SOPHIA-ENV-SCI",
+                "title": "Environmental Science",
+                "credits": 3,
+                "cost_usd": 99,
+                "duration_weeks": 4,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 100,
+                "cri_score": 70,
+                "workload_weekly_hours": 7.5,
+                "subject": "Science"
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-HUMAN-BIO"
+          }
+        ]
+      },
+      {
+        "year": 2,
+        "label": "Year 2 – Business Core via Study.com",
+        "recommendedPace": "part_time",
+        "moduleTemplates": [
+          {
+            "moduleId": "ORAL_COMM",
+            "label": "Oral Communication (3cr)",
+            "requirementArea": "ORAL_COMM",
+            "options": [
+              {
+                "id": "sophia-public-speaking",
+                "courseId": "SOPHIA-PUBLIC-SPEAK",
+                "title": "Public Speaking",
+                "credits": 3,
+                "cost_usd": 99,
+                "duration_weeks": 4,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 100,
+                "cri_score": 75,
+                "workload_weekly_hours": 7.5,
+                "subject": "Communication"
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-PUBLIC-SPEAK"
+          },
+          {
+            "moduleId": "BUS_PRINCIPLES",
+            "label": "Business Principles (6cr)",
+            "requirementArea": "BUS_CORE",
+            "options": [
+              {
+                "id": "sdc-principles-management",
+                "courseId": "SDC-PRIN-MGMT",
+                "title": "Principles of Management",
+                "credits": 3,
+                "cost_usd": 79,
+                "duration_weeks": 4,
+                "provider": "Study.com",
+                "providerType": "mooc",
+                "providerCode": "STUDYCOM",
+                "level": 200,
+                "cri_score": 80,
+                "workload_weekly_hours": 7.5,
+                "subject": "Business"
+              },
+              {
+                "id": "sdc-principles-marketing",
+                "courseId": "SDC-PRIN-MKT",
+                "title": "Principles of Marketing",
+                "credits": 3,
+                "cost_usd": 79,
+                "duration_weeks": 4,
+                "provider": "Study.com",
+                "providerType": "mooc",
+                "providerCode": "STUDYCOM",
+                "level": 200,
+                "cri_score": 79,
+                "workload_weekly_hours": 7.5,
+                "subject": "Business"
+              }
+            ],
+            "recommendedCourseId": "SDC-PRIN-MGMT"
+          },
+          {
+            "moduleId": "ACCOUNTING",
+            "label": "Accounting (6cr)",
+            "requirementArea": "BUS_CORE",
+            "options": [
+              {
+                "id": "sdc-financial-acct",
+                "courseId": "SDC-FIN-ACCT",
+                "title": "Financial Accounting",
+                "credits": 3,
+                "cost_usd": 79,
+                "duration_weeks": 4,
+                "provider": "Study.com",
+                "providerType": "mooc",
+                "providerCode": "STUDYCOM",
+                "level": 200,
+                "cri_score": 82,
+                "workload_weekly_hours": 8,
+                "subject": "Accounting"
+              },
+              {
+                "id": "sdc-managerial-acct",
+                "courseId": "SDC-MGT-ACCT",
+                "title": "Managerial Accounting",
+                "credits": 3,
+                "cost_usd": 79,
+                "duration_weeks": 4,
+                "provider": "Study.com",
+                "providerType": "mooc",
+                "providerCode": "STUDYCOM",
+                "level": 200,
+                "cri_score": 81,
+                "workload_weekly_hours": 8,
+                "subject": "Accounting"
+              }
+            ],
+            "recommendedCourseId": "SDC-FIN-ACCT"
+          },
+          {
+            "moduleId": "ECONOMICS",
+            "label": "Economics (6cr)",
+            "requirementArea": "BUS_CORE",
+            "options": [
+              {
+                "id": "sdc-microeconomics",
+                "courseId": "SDC-MICRO-ECON",
+                "title": "Microeconomics",
+                "credits": 3,
+                "cost_usd": 79,
+                "duration_weeks": 4,
+                "provider": "Study.com",
+                "providerType": "mooc",
+                "providerCode": "STUDYCOM",
+                "level": 200,
+                "cri_score": 76,
+                "workload_weekly_hours": 7.5,
+                "subject": "Economics"
+              },
+              {
+                "id": "sdc-macroeconomics",
+                "courseId": "SDC-MACRO-ECON",
+                "title": "Macroeconomics",
+                "credits": 3,
+                "cost_usd": 79,
+                "duration_weeks": 4,
+                "provider": "Study.com",
+                "providerType": "mooc",
+                "providerCode": "STUDYCOM",
+                "level": 200,
+                "cri_score": 77,
+                "workload_weekly_hours": 7.5,
+                "subject": "Economics"
+              }
+            ],
+            "recommendedCourseId": "SDC-MICRO-ECON"
+          }
+        ]
+      },
+      {
+        "year": 3,
+        "label": "Year 3 – Upper Business + TESU Start",
+        "recommendedPace": "mixed",
+        "moduleTemplates": [
+          {
+            "moduleId": "UPPER_BUS_CORE",
+            "label": "Upper Business Core (6cr)",
+            "requirementArea": "UPPER_BUSINESS",
+            "options": [
+              {
+                "id": "sdc-corporate-finance",
+                "courseId": "SDC-CORP-FIN",
+                "title": "Corporate Finance",
+                "credits": 3,
+                "cost_usd": 79,
+                "duration_weeks": 4,
+                "provider": "Study.com",
+                "providerType": "mooc",
+                "providerCode": "STUDYCOM",
+                "level": 300,
+                "cri_score": 82,
+                "workload_weekly_hours": 8,
+                "subject": "Finance"
+              },
+              {
+                "id": "sdc-business-law",
+                "courseId": "SDC-BUS-LAW",
+                "title": "Business Law",
+                "credits": 3,
+                "cost_usd": 79,
+                "duration_weeks": 4,
+                "provider": "Study.com",
+                "providerType": "mooc",
+                "providerCode": "STUDYCOM",
+                "level": 300,
+                "cri_score": 79,
+                "workload_weekly_hours": 7.5,
+                "subject": "Law"
+              }
+            ],
+            "recommendedCourseId": "SDC-CORP-FIN"
+          },
+          {
+            "moduleId": "TESU_RESIDENCY_Y3",
+            "label": "TESU Business Courses (9cr)",
+            "requirementArea": "BUS_CORE",
+            "options": [
+              {
+                "id": "tesu-bus-stats",
+                "courseId": "TESU-BUS-STAT-201",
+                "title": "Business Statistics",
+                "credits": 3,
+                "cost_usd": 1197,
+                "duration_weeks": 8,
+                "provider": "Thomas Edison State University",
+                "providerType": "university",
+                "providerCode": "TESU",
+                "level": 200,
+                "cri_score": 82,
+                "workload_weekly_hours": 7.5,
+                "subject": "Statistics"
+              },
+              {
+                "id": "tesu-org-behavior",
+                "courseId": "TESU-ORG-BEH-301",
+                "title": "Organizational Behavior",
+                "credits": 3,
+                "cost_usd": 1197,
+                "duration_weeks": 8,
+                "provider": "Thomas Edison State University",
+                "providerType": "university",
+                "providerCode": "TESU",
+                "level": 300,
+                "cri_score": 83,
+                "workload_weekly_hours": 7.5,
+                "subject": "Business"
+              },
+              {
+                "id": "tesu-operations-mgmt",
+                "courseId": "TESU-OPS-MGT-302",
+                "title": "Operations Management",
+                "credits": 3,
+                "cost_usd": 1197,
+                "duration_weeks": 8,
+                "provider": "Thomas Edison State University",
+                "providerType": "university",
+                "providerCode": "TESU",
+                "level": 300,
+                "cri_score": 81,
+                "workload_weekly_hours": 7.5,
+                "subject": "Business"
+              }
+            ],
+            "recommendedCourseId": "TESU-BUS-STAT-201"
+          }
+        ]
+      },
+      {
+        "year": 4,
+        "label": "Year 4 – TESU Residency & Capstone",
+        "recommendedPace": "full_time",
+        "moduleTemplates": [
+          {
+            "moduleId": "TESU_UPPER_BUS",
+            "label": "TESU Upper Business (9cr)",
+            "requirementArea": "UPPER_BUSINESS",
+            "options": [
+              {
+                "id": "tesu-intl-business",
+                "courseId": "TESU-INTL-BUS-320",
+                "title": "International Business",
+                "credits": 3,
+                "cost_usd": 1197,
+                "duration_weeks": 8,
+                "provider": "Thomas Edison State University",
+                "providerType": "university",
+                "providerCode": "TESU",
+                "level": 300,
+                "cri_score": 84,
+                "workload_weekly_hours": 7.5,
+                "subject": "Business"
+              },
+              {
+                "id": "tesu-strategic-mgmt",
+                "courseId": "TESU-STRAT-MGT-401",
+                "title": "Strategic Management",
+                "credits": 3,
+                "cost_usd": 1197,
+                "duration_weeks": 8,
+                "provider": "Thomas Edison State University",
+                "providerType": "university",
+                "providerCode": "TESU",
+                "level": 400,
+                "cri_score": 85,
+                "workload_weekly_hours": 8,
+                "subject": "Business"
+              },
+              {
+                "id": "tesu-bus-strategy",
+                "courseId": "TESU-BUS-STRAT-402",
+                "title": "Business Strategy & Policy",
+                "credits": 3,
+                "cost_usd": 1197,
+                "duration_weeks": 8,
+                "provider": "Thomas Edison State University",
+                "providerType": "university",
+                "providerCode": "TESU",
+                "level": 400,
+                "cri_score": 86,
+                "workload_weekly_hours": 8,
+                "subject": "Business"
+              }
+            ],
+            "recommendedCourseId": "TESU-INTL-BUS-320"
+          },
+          {
+            "moduleId": "CAPSTONE",
+            "label": "BSBA Capstone (3cr)",
+            "requirementArea": "CAPSTONE",
+            "options": [
+              {
+                "id": "tesu-bsba-capstone",
+                "courseId": "TESU-BSBA-CAP-499",
+                "title": "BSBA Capstone Project",
+                "credits": 3,
+                "cost_usd": 1197,
+                "duration_weeks": 12,
+                "provider": "Thomas Edison State University",
+                "providerType": "university",
+                "providerCode": "TESU",
+                "level": 400,
+                "cri_score": 90,
+                "workload_weekly_hours": 10,
+                "subject": "Business"
+              }
+            ],
+            "recommendedCourseId": "TESU-BSBA-CAP-499"
+          },
+          {
+            "moduleId": "FREE_ELECTIVES",
+            "label": "Free Electives (9cr)",
+            "requirementArea": "FREE_ELECTIVE",
+            "options": [
+              {
+                "id": "tesu-elective-1",
+                "courseId": "TESU-ELECT-301",
+                "title": "Business Elective I",
+                "credits": 3,
+                "cost_usd": 1197,
+                "duration_weeks": 8,
+                "provider": "Thomas Edison State University",
+                "providerType": "university",
+                "providerCode": "TESU",
+                "level": 300,
+                "cri_score": 75,
+                "workload_weekly_hours": 7.5,
+                "subject": "Business"
+              },
+              {
+                "id": "tesu-elective-2",
+                "courseId": "TESU-ELECT-302",
+                "title": "Business Elective II",
+                "credits": 3,
+                "cost_usd": 1197,
+                "duration_weeks": 8,
+                "provider": "Thomas Edison State University",
+                "providerType": "university",
+                "providerCode": "TESU",
+                "level": 300,
+                "cri_score": 75,
+                "workload_weekly_hours": 7.5,
+                "subject": "Business"
+              },
+              {
+                "id": "sdc-business-elective",
+                "courseId": "SDC-BUS-ELECT",
+                "title": "Business Communications",
+                "credits": 3,
+                "cost_usd": 79,
+                "duration_weeks": 4,
+                "provider": "Study.com",
+                "providerType": "mooc",
+                "providerCode": "STUDYCOM",
+                "level": 200,
+                "cri_score": 77,
+                "workload_weekly_hours": 7.5,
+                "subject": "Business"
+              }
+            ],
+            "recommendedCourseId": "TESU-ELECT-301"
+          }
+        ]
+      }
+    ],
+    "totals": {
+      "credits": 120,
+      "costUsd": 7956,
+      "weeks": 156,
+      "avgCri": 77.5
+    }
+  },
+  {
+    "id": "bsba-tesu-balanced-2025",
+    "kind": "degree",
+    "programId": "bsba",
+    "anchorSchool": "TESU",
+    "optimization": "balanced",
+    "label": "BSBA @ TESU • Balanced",
+    "summary": "Quality business education with more TESU courses and less dependence on ACE credits",
+    "badge": "Balanced",
+    "catalogYear": "2025",
+    "policyVersion": "TESU-2025-v1",
+    "generatedAt": "2025-01-15T00:00:00Z",
+    "lastVerified": "2025-01-15T00:00:00Z",
+    "marketplace": {
+      "title": "Balanced BSBA Path",
+      "tagline": "50% TESU courses with flexible ACE credit options",
+      "badge": "Balanced",
+      "isPremium": false
+    },
+    "lifestyle": {
+      "avgWeeklyHours": 14,
+      "paceType": "standard",
+      "workCompatible": true
+    },
+    "primaryCareerIds": ["business-analyst", "operations-manager", "finance-manager"],
+    "deliveryMode": "fully_online",
+    "inPersonWeeks": 0,
+    "socialProof": {
+      "popularityScore": 4.5,
+      "dataSource": "simulated"
+    },
+    "yearTemplates": [
+      {
+        "year": 1,
+        "label": "Year 1 – Mix of TESU & Sophia",
+        "recommendedPace": "part_time",
+        "moduleTemplates": [
+          {
+            "moduleId": "WRITTEN_COMM",
+            "label": "Written Communication (6cr)",
+            "requirementArea": "WRITTEN_COMM",
+            "options": [
+              {
+                "id": "tesu-eng-comp-bundle",
+                "courseId": "TESU-ENG-101-102",
+                "title": "English Composition I & II",
+                "credits": 6,
+                "cost_usd": 2394,
+                "duration_weeks": 16,
+                "provider": "Thomas Edison State University",
+                "providerType": "university",
+                "providerCode": "TESU",
+                "level": 100,
+                "cri_score": 85,
+                "workload_weekly_hours": 15,
+                "subject": "English"
+              },
+              {
+                "id": "sophia-eng-comp-bundle",
+                "courseId": "SOPHIA-ENG-COMP-I-II",
+                "title": "English Composition I & II (Sophia)",
+                "credits": 6,
+                "cost_usd": 99,
+                "duration_weeks": 4,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 100,
+                "cri_score": 72,
+                "workload_weekly_hours": 15,
+                "subject": "English"
+              }
+            ],
+            "recommendedCourseId": "TESU-ENG-101-102"
+          },
+          {
+            "moduleId": "QUANTITATIVE",
+            "label": "Quantitative Literacy (3cr)",
+            "requirementArea": "QUANTITATIVE",
+            "options": [
+              {
+                "id": "tesu-college-algebra",
+                "courseId": "TESU-MAT-121",
+                "title": "College Algebra",
+                "credits": 3,
+                "cost_usd": 1197,
+                "duration_weeks": 8,
+                "provider": "Thomas Edison State University",
+                "providerType": "university",
+                "providerCode": "TESU",
+                "level": 100,
+                "cri_score": 82,
+                "workload_weekly_hours": 7.5,
+                "subject": "Mathematics"
+              }
+            ],
+            "recommendedCourseId": "TESU-MAT-121"
+          },
+          {
+            "moduleId": "HUMANITIES",
+            "label": "Humanities (6cr)",
+            "requirementArea": "HUMANITIES",
+            "options": [
+              {
+                "id": "tesu-humanities-bundle",
+                "courseId": "TESU-HUM-101-102",
+                "title": "Humanities I & II",
+                "credits": 6,
+                "cost_usd": 2394,
+                "duration_weeks": 16,
+                "provider": "Thomas Edison State University",
+                "providerType": "university",
+                "providerCode": "TESU",
+                "level": 100,
+                "cri_score": 80,
+                "workload_weekly_hours": 15,
+                "subject": "Humanities"
+              }
+            ],
+            "recommendedCourseId": "TESU-HUM-101-102"
+          }
+        ]
+      },
+      {
+        "year": 2,
+        "label": "Year 2 – TESU Business Core",
+        "recommendedPace": "part_time",
+        "moduleTemplates": [
+          {
+            "moduleId": "ACCOUNTING",
+            "label": "Accounting (6cr)",
+            "requirementArea": "BUS_CORE",
+            "options": [
+              {
+                "id": "tesu-acct-bundle",
+                "courseId": "TESU-ACC-101-102",
+                "title": "Financial & Managerial Accounting",
+                "credits": 6,
+                "cost_usd": 2394,
+                "duration_weeks": 16,
+                "provider": "Thomas Edison State University",
+                "providerType": "university",
+                "providerCode": "TESU",
+                "level": 200,
+                "cri_score": 85,
+                "workload_weekly_hours": 15,
+                "subject": "Accounting"
+              }
+            ],
+            "recommendedCourseId": "TESU-ACC-101-102"
+          },
+          {
+            "moduleId": "BUS_PRINCIPLES",
+            "label": "Business Principles (6cr)",
+            "requirementArea": "BUS_CORE",
+            "options": [
+              {
+                "id": "tesu-mkt-mgmt-bundle",
+                "courseId": "TESU-MKT-MGT-201",
+                "title": "Marketing & Management Principles",
+                "credits": 6,
+                "cost_usd": 2394,
+                "duration_weeks": 16,
+                "provider": "Thomas Edison State University",
+                "providerType": "university",
+                "providerCode": "TESU",
+                "level": 200,
+                "cri_score": 83,
+                "workload_weekly_hours": 15,
+                "subject": "Business"
+              }
+            ],
+            "recommendedCourseId": "TESU-MKT-MGT-201"
+          }
+        ]
+      },
+      {
+        "year": 3,
+        "label": "Year 3 – Upper Business at TESU",
+        "recommendedPace": "mixed",
+        "moduleTemplates": [
+          {
+            "moduleId": "UPPER_BUS_CORE",
+            "label": "Upper Business Core (9cr)",
+            "requirementArea": "UPPER_BUSINESS",
+            "options": [
+              {
+                "id": "tesu-upper-bus-bundle",
+                "courseId": "TESU-UPPER-BUS-301",
+                "title": "Upper Business Block I",
+                "credits": 9,
+                "cost_usd": 3591,
+                "duration_weeks": 16,
+                "provider": "Thomas Edison State University",
+                "providerType": "university",
+                "providerCode": "TESU",
+                "level": 300,
+                "cri_score": 86,
+                "workload_weekly_hours": 22.5,
+                "subject": "Business"
+              }
+            ],
+            "recommendedCourseId": "TESU-UPPER-BUS-301"
+          },
+          {
+            "moduleId": "TESU_BUS_STATS",
+            "label": "Business Statistics (3cr)",
+            "requirementArea": "BUS_CORE",
+            "options": [
+              {
+                "id": "tesu-bus-stats",
+                "courseId": "TESU-BUS-STAT-201",
+                "title": "Business Statistics",
+                "credits": 3,
+                "cost_usd": 1197,
+                "duration_weeks": 8,
+                "provider": "Thomas Edison State University",
+                "providerType": "university",
+                "providerCode": "TESU",
+                "level": 200,
+                "cri_score": 82,
+                "workload_weekly_hours": 7.5,
+                "subject": "Statistics"
+              }
+            ],
+            "recommendedCourseId": "TESU-BUS-STAT-201"
+          }
+        ]
+      },
+      {
+        "year": 4,
+        "label": "Year 4 – TESU Capstone & Final Courses",
+        "recommendedPace": "full_time",
+        "moduleTemplates": [
+          {
+            "moduleId": "CAPSTONE",
+            "label": "BSBA Capstone (3cr)",
+            "requirementArea": "CAPSTONE",
+            "options": [
+              {
+                "id": "tesu-bsba-capstone",
+                "courseId": "TESU-BSBA-CAP-499",
+                "title": "BSBA Capstone Project",
+                "credits": 3,
+                "cost_usd": 1197,
+                "duration_weeks": 12,
+                "provider": "Thomas Edison State University",
+                "providerType": "university",
+                "providerCode": "TESU",
+                "level": 400,
+                "cri_score": 90,
+                "workload_weekly_hours": 10,
+                "subject": "Business"
+              }
+            ],
+            "recommendedCourseId": "TESU-BSBA-CAP-499"
+          },
+          {
+            "moduleId": "FREE_ELECTIVES",
+            "label": "Free Electives (12cr)",
+            "requirementArea": "FREE_ELECTIVE",
+            "options": [
+              {
+                "id": "tesu-electives-bundle",
+                "courseId": "TESU-ELECTIVES-BUNDLE",
+                "title": "TESU Electives Block",
+                "credits": 12,
+                "cost_usd": 4788,
+                "duration_weeks": 16,
+                "provider": "Thomas Edison State University",
+                "providerType": "university",
+                "providerCode": "TESU",
+                "level": 300,
+                "cri_score": 78,
+                "workload_weekly_hours": 30,
+                "subject": "Business"
+              }
+            ],
+            "recommendedCourseId": "TESU-ELECTIVES-BUNDLE"
+          }
+        ]
+      }
+    ],
+    "totals": {
+      "credits": 120,
+      "costUsd": 21546,
+      "weeks": 156,
+      "avgCri": 83.2
+    }
+  },
+  {
+    "id": "bsba-cosc-cheapest-2025",
+    "kind": "degree",
+    "programId": "bsba",
+    "anchorSchool": "COSC",
+    "optimization": "cheapest",
+    "label": "BSBA @ COSC • Cheapest",
+    "summary": "Maximize Sophia/Study.com credits while meeting COSC's 90-credit alt-credit cap and residency requirements",
+    "badge": "Cheapest",
+    "catalogYear": "2025",
+    "policyVersion": "COSC-2025-v1",
+    "generatedAt": "2025-01-15T00:00:00Z",
+    "lastVerified": "2025-01-15T00:00:00Z",
+    "marketplace": {
+      "title": "Budget BSBA at COSC",
+      "tagline": "Connecticut state college with flexible transfer policies",
+      "badge": "Cheapest",
+      "isPremium": false
+    },
+    "lifestyle": {
+      "avgWeeklyHours": 13,
+      "paceType": "flexible",
+      "workCompatible": true
+    },
+    "primaryCareerIds": ["business-analyst", "operations-manager", "marketing-manager"],
+    "deliveryMode": "fully_online",
+    "inPersonWeeks": 0,
+    "socialProof": {
+      "popularityScore": 3.9,
+      "dataSource": "simulated"
+    },
+    "yearTemplates": [
+      {
+        "year": 1,
+        "label": "Year 1 – Gen Ed via Sophia",
+        "recommendedPace": "part_time",
+        "moduleTemplates": [
+          {
+            "moduleId": "WRITTEN_COMM",
+            "label": "Written Communication (6cr)",
+            "requirementArea": "WRITTEN_COMM",
+            "options": [
+              {
+                "id": "sophia-eng-comp-bundle",
+                "courseId": "SOPHIA-ENG-COMP-I-II",
+                "title": "English Composition I & II",
+                "credits": 6,
+                "cost_usd": 99,
+                "duration_weeks": 4,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 100,
+                "cri_score": 72,
+                "workload_weekly_hours": 15,
+                "subject": "English"
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-ENG-COMP-I-II"
+          },
+          {
+            "moduleId": "LAB_SCIENCE",
+            "label": "Lab Science (4cr)",
+            "requirementArea": "NATURAL_SCIENCE",
+            "options": [
+              {
+                "id": "sophia-lab-science",
+                "courseId": "SOPHIA-LAB-SCI",
+                "title": "Introductory Lab Science",
+                "credits": 4,
+                "cost_usd": 99,
+                "duration_weeks": 4,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 100,
+                "cri_score": 70,
+                "workload_weekly_hours": 10,
+                "subject": "Science"
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-LAB-SCI"
+          },
+          {
+            "moduleId": "QUANTITATIVE",
+            "label": "Quantitative (3cr)",
+            "requirementArea": "QUANTITATIVE",
+            "options": [
+              {
+                "id": "sophia-college-algebra",
+                "courseId": "SOPHIA-COLLEGE-ALG",
+                "title": "College Algebra",
+                "credits": 3,
+                "cost_usd": 99,
+                "duration_weeks": 4,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 100,
+                "cri_score": 78,
+                "workload_weekly_hours": 7.5,
+                "subject": "Mathematics"
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-COLLEGE-ALG"
+          }
+        ]
+      },
+      {
+        "year": 2,
+        "label": "Year 2 – Business Core via Study.com",
+        "recommendedPace": "part_time",
+        "moduleTemplates": [
+          {
+            "moduleId": "BUS_PRINCIPLES",
+            "label": "Business Principles (6cr)",
+            "requirementArea": "BUS_CORE",
+            "options": [
+              {
+                "id": "sdc-principles-management",
+                "courseId": "SDC-PRIN-MGMT",
+                "title": "Principles of Management",
+                "credits": 3,
+                "cost_usd": 79,
+                "duration_weeks": 4,
+                "provider": "Study.com",
+                "providerType": "mooc",
+                "providerCode": "STUDYCOM",
+                "level": 200,
+                "cri_score": 80,
+                "workload_weekly_hours": 7.5,
+                "subject": "Business"
+              },
+              {
+                "id": "sdc-principles-marketing",
+                "courseId": "SDC-PRIN-MKT",
+                "title": "Principles of Marketing",
+                "credits": 3,
+                "cost_usd": 79,
+                "duration_weeks": 4,
+                "provider": "Study.com",
+                "providerType": "mooc",
+                "providerCode": "STUDYCOM",
+                "level": 200,
+                "cri_score": 79,
+                "workload_weekly_hours": 7.5,
+                "subject": "Business"
+              }
+            ],
+            "recommendedCourseId": "SDC-PRIN-MGMT"
+          }
+        ]
+      },
+      {
+        "year": 3,
+        "label": "Year 3 – Upper Business + COSC Start",
+        "recommendedPace": "mixed",
+        "moduleTemplates": [
+          {
+            "moduleId": "UPPER_BUS_CORE",
+            "label": "Upper Business (3cr)",
+            "requirementArea": "UPPER_BUSINESS",
+            "options": [
+              {
+                "id": "sdc-corporate-finance",
+                "courseId": "SDC-CORP-FIN",
+                "title": "Corporate Finance",
+                "credits": 3,
+                "cost_usd": 79,
+                "duration_weeks": 4,
+                "provider": "Study.com",
+                "providerType": "mooc",
+                "providerCode": "STUDYCOM",
+                "level": 300,
+                "cri_score": 82,
+                "workload_weekly_hours": 8,
+                "subject": "Finance"
+              }
+            ],
+            "recommendedCourseId": "SDC-CORP-FIN"
+          },
+          {
+            "moduleId": "COSC_RESIDENCY_Y3",
+            "label": "COSC Business Core (6cr)",
+            "requirementArea": "BUS_CORE",
+            "options": [
+              {
+                "id": "cosc-bus-core-bundle",
+                "courseId": "COSC-BUS-CORE-201",
+                "title": "COSC Business Core Block",
+                "credits": 6,
+                "cost_usd": 2100,
+                "duration_weeks": 12,
+                "provider": "Charter Oak State College",
+                "providerType": "university",
+                "providerCode": "COSC",
+                "level": 300,
+                "cri_score": 80,
+                "workload_weekly_hours": 15,
+                "subject": "Business"
+              }
+            ],
+            "recommendedCourseId": "COSC-BUS-CORE-201"
+          }
+        ]
+      },
+      {
+        "year": 4,
+        "label": "Year 4 – COSC Residency & Capstone",
+        "recommendedPace": "full_time",
+        "moduleTemplates": [
+          {
+            "moduleId": "COSC_UPPER_BUS",
+            "label": "COSC Upper Business (9cr)",
+            "requirementArea": "UPPER_BUSINESS",
+            "options": [
+              {
+                "id": "cosc-upper-bus-bundle",
+                "courseId": "COSC-UPPER-BUS-301",
+                "title": "COSC Upper Business Block",
+                "credits": 9,
+                "cost_usd": 3150,
+                "duration_weeks": 16,
+                "provider": "Charter Oak State College",
+                "providerType": "university",
+                "providerCode": "COSC",
+                "level": 300,
+                "cri_score": 82,
+                "workload_weekly_hours": 22.5,
+                "subject": "Business"
+              }
+            ],
+            "recommendedCourseId": "COSC-UPPER-BUS-301"
+          },
+          {
+            "moduleId": "CAPSTONE",
+            "label": "BSBA Capstone (3cr)",
+            "requirementArea": "CAPSTONE",
+            "options": [
+              {
+                "id": "cosc-bsba-capstone",
+                "courseId": "COSC-BSBA-CAP-499",
+                "title": "BSBA Capstone Project",
+                "credits": 3,
+                "cost_usd": 1050,
+                "duration_weeks": 12,
+                "provider": "Charter Oak State College",
+                "providerType": "university",
+                "providerCode": "COSC",
+                "level": 400,
+                "cri_score": 88,
+                "workload_weekly_hours": 10,
+                "subject": "Business"
+              }
+            ],
+            "recommendedCourseId": "COSC-BSBA-CAP-499"
+          }
+        ]
+      }
+    ],
+    "totals": {
+      "credits": 120,
+      "costUsd": 8245,
+      "weeks": 156,
+      "avgCri": 78.8
+    }
   }
 ]
