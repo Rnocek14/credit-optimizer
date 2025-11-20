@@ -40,6 +40,7 @@ interface ScopePanelRouterProps {
   yearEarned?: number;
   yearCap?: number;
   allModules?: any[];
+  allOptions?: any[]; // Marketplace options for templates and optimizer
 }
 
 export function ScopePanelRouter(props: ScopePanelRouterProps) {
@@ -57,10 +58,11 @@ export function ScopePanelRouter(props: ScopePanelRouterProps) {
   const programId = 'bs_cs'; // TODO: Pass programId from parent when degree selection is implemented
   const { data: requirementBlocks = [] } = useRequirementBlocks(programId);
   const { data: dbData } = useV5DatabaseData({ programId, enabled: true });
-  const allOptions = Object.values(dbData?.modulesByYear || {})
+  
+  // Use allOptions from parent if provided (computed from allModules), otherwise fallback to dbData
+  const allOptionsResolved = props.allOptions ?? Object.values(dbData?.modulesByYear || {})
     .flat()
     .flatMap(m => m.marketplaceOptions || []);
-  
   const anchorPolicy = constraints.target_school 
     ? {
         partner_name: constraints.target_school,
@@ -110,7 +112,7 @@ export function ScopePanelRouter(props: ScopePanelRouterProps) {
           onNavigate={onNavigate}
           onOpenModulePanel={props.onOpenModulePanel!}
           requirementBlocks={requirementBlocks}
-          allOptions={allOptions}
+          allOptions={allOptionsResolved}
           anchorPolicy={anchorPolicy}
           programId={programId}
         />
