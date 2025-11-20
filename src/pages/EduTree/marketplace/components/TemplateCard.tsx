@@ -2,9 +2,10 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Clock, DollarSign, Laptop, MapPin, TrendingUp, Star, AlertCircle } from 'lucide-react';
+import { Clock, DollarSign, Laptop, MapPin, TrendingUp, Star, AlertCircle, GraduationCap, CheckCircle2 } from 'lucide-react';
 import type { MarketplaceDegreeTemplate } from '@/pages/EduTree/v5/types/templates';
 import { useNavigate } from 'react-router-dom';
+import { usePlanBasket } from '@/pages/EduTree/v5/state/usePlanBasket';
 import {
   Tooltip,
   TooltipContent,
@@ -20,6 +21,9 @@ interface TemplateCardProps {
 
 export function TemplateCard({ template, isSelected, onToggleSelect }: TemplateCardProps) {
   const navigate = useNavigate();
+  const { constraints } = usePlanBasket();
+  
+  const isMatchingAnchor = constraints.target_school === template.anchorSchool;
 
   const handleSelect = () => {
     navigate(`/edu-tree-v5?templateId=${template.id}`);
@@ -68,6 +72,27 @@ export function TemplateCard({ template, isSelected, onToggleSelect }: TemplateC
           />
         </div>
 
+        {/* Anchor School Badge */}
+        <div className="mt-3 flex items-center gap-2">
+          <Badge variant={isMatchingAnchor ? "default" : "outline"} className="gap-1">
+            <GraduationCap className="h-3 w-3" />
+            {template.anchorSchool}
+          </Badge>
+          {isMatchingAnchor && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger>
+                  <CheckCircle2 className="h-4 w-4 text-primary" />
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p className="text-xs">Matches your graduation school</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
+          <span className="text-xs text-muted-foreground">• {template.catalogYear} Catalog</span>
+        </div>
+
         {/* Key Metrics */}
         <div className="grid grid-cols-2 gap-3 mt-4">
           <div className="flex items-center gap-2">
@@ -112,11 +137,6 @@ export function TemplateCard({ template, isSelected, onToggleSelect }: TemplateC
             <MapPin className="h-4 w-4 text-muted-foreground" />
           )}
           <Badge variant={deliveryBadge.variant}>{deliveryBadge.label}</Badge>
-        </div>
-
-        {/* School */}
-        <div className="text-sm text-muted-foreground">
-          <strong>{template.anchorSchool}</strong> • {template.catalogYear} Catalog
         </div>
 
         {/* Social Proof */}
