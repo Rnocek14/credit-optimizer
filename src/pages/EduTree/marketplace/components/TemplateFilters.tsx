@@ -3,6 +3,10 @@ import { Slider } from '@/components/ui/slider';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { GraduationCap, BookOpen, Building2, TrendingUp } from 'lucide-react';
+import { usePlanBasket } from '@/pages/EduTree/v5/state/usePlanBasket';
+import { getAnchorPolicy } from '@/pages/EduTree/v5/data/anchorPolicies';
 import {
   Select,
   SelectContent,
@@ -29,6 +33,9 @@ const CAREER_OPTIONS = [
 const ANCHOR_SCHOOLS = ['TESU', 'WGU', 'UMGC', 'Community College'];
 
 export function TemplateFilters({ filters, onFiltersChange }: TemplateFiltersProps) {
+  const { constraints } = usePlanBasket();
+  const anchorPolicy = constraints.target_school ? getAnchorPolicy(constraints.target_school) : null;
+  
   const handleBudgetChange = (value: number[]) => {
     onFiltersChange({ ...filters, budgetRange: [value[0], value[1]] });
   };
@@ -76,6 +83,53 @@ export function TemplateFilters({ filters, onFiltersChange }: TemplateFiltersPro
 
   return (
     <div className="space-y-6">
+      {/* Anchor School Policy Card */}
+      {anchorPolicy && (
+        <div className="rounded-lg border border-primary/20 bg-primary/5 p-4 space-y-3">
+          <div className="flex items-center gap-2 pb-2 border-b border-primary/20">
+            <GraduationCap className="h-5 w-5 text-primary" />
+            <div>
+              <div className="font-semibold text-sm">{anchorPolicy.partner_name}</div>
+              <div className="text-xs text-muted-foreground">Graduation School Policies</div>
+            </div>
+          </div>
+          
+          <div className="space-y-2 text-sm">
+            <div className="flex items-start gap-2">
+              <BookOpen className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+              <div>
+                <div className="font-medium">Alt Credits Cap</div>
+                <div className="text-muted-foreground">Max {anchorPolicy.max_alt_credits} credits</div>
+              </div>
+            </div>
+            
+            <div className="flex items-start gap-2">
+              <Building2 className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+              <div>
+                <div className="font-medium">Residency Required</div>
+                <div className="text-muted-foreground">Min {anchorPolicy.min_residency_credits} credits</div>
+              </div>
+            </div>
+            
+            {anchorPolicy.upper_division_min > 0 && (
+              <div className="flex items-start gap-2">
+                <TrendingUp className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+                <div>
+                  <div className="font-medium">Upper Division</div>
+                  <div className="text-muted-foreground">Min {anchorPolicy.upper_division_min} credits</div>
+                </div>
+              </div>
+            )}
+          </div>
+          
+          {anchorPolicy.notes && (
+            <div className="pt-2 border-t border-primary/20">
+              <p className="text-xs text-muted-foreground italic">{anchorPolicy.notes}</p>
+            </div>
+          )}
+        </div>
+      )}
+      
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold">Filters</h3>
         <Button variant="ghost" size="sm" onClick={handleClearAll}>

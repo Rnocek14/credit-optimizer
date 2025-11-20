@@ -5,7 +5,7 @@
  * Later: migrate to database table for dynamic management
  */
 
-export type AnchorKey = 'TESU' | 'WGU' | 'UMGC';
+export type AnchorKey = 'TESU' | 'WGU' | 'UMGC' | 'COSC';
 
 export interface AnchorPolicy {
   partner_name: string;
@@ -22,6 +22,13 @@ export const ANCHOR_POLICIES: Record<AnchorKey, AnchorPolicy> = {
     min_residency_credits: 30,
     upper_division_min: 18,
     notes: 'Highly transfer-friendly, accepts ACE/NCCRS. Flat-rate tuition per term.',
+  },
+  COSC: {
+    partner_name: 'Charter Oak State College',
+    max_alt_credits: 90,
+    min_residency_credits: 30,
+    upper_division_min: 15,
+    notes: 'Connecticut state college with flexible transfer policies and competency-based options.',
   },
   WGU: {
     partner_name: 'Western Governors University',
