@@ -4,6 +4,7 @@ import { TemplateFilters } from './components/TemplateFilters';
 import { TemplateGrid } from './components/TemplateGrid';
 import { ComparisonModal } from './components/ComparisonModal';
 import { useMarketplaceTemplates } from '@/hooks/useMarketplaceTemplates';
+import { AnchorSchoolSelector } from '@/pages/EduTree/v5/components/AnchorSchoolSelector';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, GitCompare } from 'lucide-react';
@@ -56,6 +57,10 @@ export default function MarketplacePage() {
               <p className="text-sm text-muted-foreground">
                 Find the perfect degree path for your goals
               </p>
+            </div>
+            <div className="flex items-center gap-2 border-l border-border pl-4">
+              <span className="text-sm font-medium text-muted-foreground">Graduation school:</span>
+              <AnchorSchoolSelector />
             </div>
           </div>
         </div>
