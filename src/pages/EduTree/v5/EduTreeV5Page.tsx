@@ -15,6 +15,7 @@ import { TransferWarningBanner } from './components/TransferWarningBanner';
 import { SmartReplaceModal } from './components/SmartReplaceModal';
 import { CreditOptimizerSuggestionBanner } from './components/CreditOptimizerSuggestionBanner';
 import { CreditOptimizerModal } from './components/CreditOptimizerModal';
+import { CreditOptimizerDevTools } from './components/CreditOptimizerDevTools';
 import SeedStatus from '@/components/SeedStatus';
 import { DragProvider } from './components/drag/DragProvider';
 import canonicalCourses from '@/fixtures/prereqs/canonical-courses.json';
@@ -1190,6 +1191,11 @@ export default function EduTreeV5Page() {
             await recomputeYears();
           }}
         />
+      )}
+      
+      {/* Dev Tools for Credit Optimizer Testing */}
+      {ENABLE_CREDIT_OPTIMIZER && (
+        <CreditOptimizerDevTools />
       )}
       </div>
     </DragProvider>
