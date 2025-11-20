@@ -65,7 +65,7 @@ export function CreditOptimizerDevTools() {
         >
           <div className="flex flex-col items-start gap-0.5">
             <span className="font-medium">Load Expensive Plan</span>
-            <span className="text-[10px] text-muted-foreground">8 courses • $9K • Should show banner</span>
+            <span className="text-[10px] text-muted-foreground">24 courses • 4 years • $27K → $12K</span>
           </div>
         </Button>
 
