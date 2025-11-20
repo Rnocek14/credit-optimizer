@@ -3,10 +3,11 @@ import { TesuBsbaMarketplace } from '@/features/degreeMarketplace/TesuBsbaMarket
 import { TesuBsbaComparisonDashboard } from '@/features/degreeMarketplace/TesuBsbaComparisonDashboard';
 import { CoscBsbaMarketplace } from '@/features/degreeMarketplace/CoscBsbaMarketplace';
 import { CoscBsbaComparisonDashboard } from '@/features/degreeMarketplace/CoscBsbaComparisonDashboard';
+import { InstitutionComparisonView } from '@/features/degreeMarketplace/InstitutionComparisonView';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 export default function DegreeMarketplace() {
-  const [activeInstitution, setActiveInstitution] = useState<'TESU' | 'COSC'>('TESU');
+  const [activeTab, setActiveTab] = useState<'tesu' | 'cosc' | 'compare'>('compare');
 
   return (
     <div className="container mx-auto max-w-6xl px-4 py-8">
@@ -17,18 +18,23 @@ export default function DegreeMarketplace() {
         </p>
       </div>
 
-      <Tabs value={activeInstitution} onValueChange={(v) => setActiveInstitution(v as 'TESU' | 'COSC')}>
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'tesu' | 'cosc' | 'compare')}>
         <TabsList className="mb-6">
-          <TabsTrigger value="TESU">TESU</TabsTrigger>
-          <TabsTrigger value="COSC">COSC</TabsTrigger>
+          <TabsTrigger value="compare">Compare Institutions</TabsTrigger>
+          <TabsTrigger value="tesu">TESU</TabsTrigger>
+          <TabsTrigger value="cosc">COSC</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="TESU" className="space-y-6">
+        <TabsContent value="compare" className="space-y-6">
+          <InstitutionComparisonView />
+        </TabsContent>
+
+        <TabsContent value="tesu" className="space-y-6">
           <TesuBsbaComparisonDashboard />
           <TesuBsbaMarketplace />
         </TabsContent>
 
-        <TabsContent value="COSC" className="space-y-6">
+        <TabsContent value="cosc" className="space-y-6">
           <CoscBsbaComparisonDashboard />
           <CoscBsbaMarketplace />
         </TabsContent>
