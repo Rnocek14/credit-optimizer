@@ -26,20 +26,40 @@ export function TemplateDetailsDrawer({
   onOpenChange,
   transferStatusMap 
 }: TemplateDetailsDrawerProps) {
-  // Provider mix calculation
+  // Early validation
+  if (!template) return null;
+  
+  if (!template.yearTemplates || !Array.isArray(template.yearTemplates)) {
+    console.error('TemplateDetailsDrawer: Invalid template data - missing yearTemplates', { 
+      templateId: template.id,
+      yearTemplates: template.yearTemplates 
+    });
+    return null;
+  }
+
+  // Provider mix calculation with defensive checks
   const providerMix = useMemo(() => {
     if (!template) return [];
     
     const providerCredits = new Map<string, number>();
     
-    template.yearTemplates.forEach(year => {
-      year.moduleTemplates.forEach(module => {
-        module.options.forEach(option => {
-          const code = option.providerCode?.toUpperCase() || 'UNKNOWN';
-          providerCredits.set(code, (providerCredits.get(code) || 0) + (option.credits || 0));
+    try {
+      template.yearTemplates.forEach(year => {
+        if (!year?.moduleTemplates || !Array.isArray(year.moduleTemplates)) return;
+        
+        year.moduleTemplates.forEach(module => {
+          if (!module?.options || !Array.isArray(module.options)) return;
+          
+          module.options.forEach(option => {
+            const code = option.providerCode?.toUpperCase() || 'UNKNOWN';
+            const credits = typeof option.credits === 'number' ? option.credits : 0;
+            providerCredits.set(code, (providerCredits.get(code) || 0) + credits);
+          });
         });
       });
-    });
+    } catch (error) {
+      console.error('Error calculating provider mix:', error, { templateId: template.id });
+    }
     
     return Array.from(providerCredits.entries())
       .map(([code, credits]) => ({ code: code as ProviderCode, credits }))
@@ -51,7 +71,7 @@ export function TemplateDetailsDrawer({
     [providerMix]
   );
 
-  // Policy compliance calculations
+  // Policy compliance calculations with defensive checks
   const policyMetrics = useMemo(() => {
     if (!template) return null;
 
@@ -60,20 +80,28 @@ export function TemplateDetailsDrawer({
     let residencyCredits = 0;
     let upperDivisionCredits = 0;
 
-    template.yearTemplates.forEach(year => {
-      year.moduleTemplates.forEach(module => {
-        module.options.forEach(option => {
-          const isAltCredit = altCreditProviders.includes(option.providerCode?.toUpperCase() || '');
-          const isResidency = option.providerCode?.toUpperCase() === template.anchorSchool?.toUpperCase();
-          const isUpperDiv = (option.level || 0) >= 300;
-          const credits = option.credits || 0;
+    try {
+      template.yearTemplates.forEach(year => {
+        if (!year?.moduleTemplates || !Array.isArray(year.moduleTemplates)) return;
+        
+        year.moduleTemplates.forEach(module => {
+          if (!module?.options || !Array.isArray(module.options)) return;
+          
+          module.options.forEach(option => {
+            const credits = typeof option.credits === 'number' ? option.credits : 0;
+            const isAltCredit = altCreditProviders.includes(option.providerCode?.toUpperCase() || '');
+            const isResidency = option.providerCode?.toUpperCase() === template.anchorSchool?.toUpperCase();
+            const isUpperDiv = typeof option.level === 'number' && option.level >= 300;
 
-          if (isAltCredit) altCredits += credits;
-          if (isResidency) residencyCredits += credits;
-          if (isUpperDiv) upperDivisionCredits += credits;
+            if (isAltCredit) altCredits += credits;
+            if (isResidency) residencyCredits += credits;
+            if (isUpperDiv) upperDivisionCredits += credits;
+          });
         });
       });
-    });
+    } catch (error) {
+      console.error('Error calculating policy metrics:', error, { templateId: template.id });
+    }
 
     // Anchor-specific caps (TESU example)
     const altCreditCap = template.anchorSchool === 'TESU' ? 90 : 90;
@@ -259,6 +287,8 @@ export function TemplateDetailsDrawer({
                       module.options.map((option, optIdx) => {
                         const key = `${option.providerCode?.toUpperCase()}:${option.courseId}`;
                         const transferStatus = transferStatusMap?.get(key);
+                        const credits = typeof option.credits === 'number' ? option.credits : 0;
+                        const isUpperDiv = typeof option.level === 'number' && option.level >= 300;
                         
                         return (
                           <div 
@@ -269,7 +299,7 @@ export function TemplateDetailsDrawer({
                               <div className="font-medium truncate">{option.title}</div>
                               <div className="flex items-center gap-2 flex-wrap mt-1">
                                 <span className="text-xs text-muted-foreground">
-                                  {option.credits || 0} cr
+                                  {credits} cr
                                 </span>
                                 {option.providerCode && (
                                   <ProviderBadge 
@@ -289,7 +319,7 @@ export function TemplateDetailsDrawer({
                                     ruleSource={transferStatus.rule?.rule_source}
                                   />
                                 )}
-                                {option.level && option.level >= 300 && (
+                                {isUpperDiv && (
                                   <Badge variant="outline" className="text-[10px] px-1 py-0">
                                     Upper Div
                                   </Badge>

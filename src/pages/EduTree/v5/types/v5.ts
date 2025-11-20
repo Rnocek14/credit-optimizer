@@ -14,7 +14,7 @@ export interface MarketplaceOption {
   id: string;
   courseId: string;
   title: string;
-  credits: number;
+  credits: number; // Required but may be 0
   subject: string;
   provider: string;
   providerType?: ProviderType;
