@@ -952,6 +952,18 @@ export default function EduTreeV5Page() {
         </div>
       )}
       
+      {/* Credit Optimizer Debug Info */}
+      {ENABLE_CREDIT_OPTIMIZER && !showOptimizerBanner && basket.length > 0 && (
+        <div className="mb-4 rounded-md bg-muted/50 border border-muted px-3 py-2 text-xs text-muted-foreground">
+          <strong>Debug:</strong> Optimizer {optimizationSuggestion?.hasSuggestion ? 'has suggestions' : 'found no savings'} 
+          • Basket: {basket.length} courses 
+          • Modules: {allModules.length}
+          {optimizationSuggestion?.summary && (
+            <span> • Would save ${optimizationSuggestion.summary.costSaved.toLocaleString()}</span>
+          )}
+        </div>
+      )}
+
       {/* Credit Optimizer Banner */}
       {ENABLE_CREDIT_OPTIMIZER && showOptimizerBanner && optimizationSuggestion?.summary && (
         <div className="mb-6">
