@@ -1124,6 +1124,7 @@ export default function EduTreeV5Page() {
             openPanel('module', module.id, { module, year });
           }
         }}
+        allOptions={allOptions}
         
         // Module-specific props - PART 4: Simplified with fallbacks (component is now self-sufficient)
         moduleId={panelState.scope === 'module' ? panelState.nodeId : undefined}

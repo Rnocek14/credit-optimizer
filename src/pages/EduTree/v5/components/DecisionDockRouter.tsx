@@ -120,6 +120,7 @@ interface DecisionDockRouterProps {
   yearEarned?: number;
   yearCap?: number;
   allModules?: any[];
+  allOptions?: any[]; // Marketplace options for templates (from parent)
 }
 
 export function DecisionDockRouter(props: DecisionDockRouterProps) {
@@ -1177,10 +1178,14 @@ function YearMarketplaceContent(props: DecisionDockRouterProps) {
   const { data: requirementBlocks = [] } = useRequirementBlocks(programId, true);
   const { applyYearTemplate } = useApplyYearTemplate();
 
-  // Extract all options from yearModules (not dbData which may be empty in fixture mode)
+  // Extract all options from database (needed to enrich modules that don't have options yet)
+  // Use allOptions from parent prop if provided
   const allOptions = useMemo(() => {
-    return yearModules.flatMap(m => m.marketplaceOptions || []);
-  }, [yearModules]);
+    if (props.allOptions) return props.allOptions;
+    return Object.values(dbData?.modulesByYear || {})
+      .flat()
+      .flatMap((m: any) => m.marketplaceOptions || []);
+  }, [props.allOptions, dbData]);
 
   // Ensure modules have marketplaceOptions
   const enrichedModules = useMemo(() => {
