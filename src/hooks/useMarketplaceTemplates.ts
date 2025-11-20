@@ -1,6 +1,42 @@
 import { useQuery } from '@tanstack/react-query';
 import type { MarketplaceDegreeTemplate, MarketplaceFilters } from '@/pages/EduTree/v5/types/templates';
+import type { MarketplaceOption } from '@/pages/EduTree/v5/types/v5';
 import marketplaceTemplates from '@/fixtures/templates/marketplace-v1-templates.json';
+
+/**
+ * Normalize MarketplaceOption to ensure all required fields exist
+ * Prevents "Cannot read properties of undefined" errors
+ */
+function normalizeOption(option: any): MarketplaceOption {
+  return {
+    ...option,
+    credits: option.credits ?? 0,
+    cost_usd: option.cost_usd ?? null,
+    duration_weeks: option.duration_weeks ?? null,
+    level: option.level ?? 0,
+  };
+}
+
+/**
+ * Normalize template to ensure all nested options are valid
+ */
+function normalizeTemplate(template: any): MarketplaceDegreeTemplate {
+  try {
+    return {
+      ...template,
+      yearTemplates: (template.yearTemplates || []).map((year: any) => ({
+        ...year,
+        moduleTemplates: (year.moduleTemplates || []).map((module: any) => ({
+          ...module,
+          options: (module.options || []).map(normalizeOption),
+        })),
+      })),
+    };
+  } catch (error) {
+    console.error(`Failed to normalize template ${template.id}:`, error);
+    return template;
+  }
+}
 
 /**
  * Hook to fetch and filter marketplace templates
@@ -10,8 +46,8 @@ export function useMarketplaceTemplates(filters?: Partial<MarketplaceFilters>) {
   return useQuery({
     queryKey: ['marketplace-templates', filters],
     queryFn: async () => {
-      // Load templates from fixtures
-      let templates = marketplaceTemplates as unknown as MarketplaceDegreeTemplate[];
+      // Load and normalize templates from fixtures
+      let templates = (marketplaceTemplates as unknown as any[]).map(normalizeTemplate);
 
       // Apply filters
       if (filters) {
@@ -104,7 +140,7 @@ export function useMarketplaceTemplate(templateId: string) {
   return useQuery({
     queryKey: ['marketplace-template', templateId],
     queryFn: async () => {
-      const templates = marketplaceTemplates as unknown as MarketplaceDegreeTemplate[];
+      const templates = (marketplaceTemplates as unknown as any[]).map(normalizeTemplate);
       const template = templates.find(t => t.id === templateId);
       
       if (!template) {
