@@ -98,12 +98,12 @@ export function CreditOptimizerModal({
             {isPolicyCompliant ? (
               <p className="text-xs text-emerald-700 dark:text-emerald-400 mt-1 flex items-center gap-1">
                 <span>✅</span>
-                <span>This stays within {anchorLabel.split("•")[0]}'s published transfer rules</span>
+                <span>These should follow {anchorLabel.split("•")[0]}'s transfer rules. Always confirm with your advisor.</span>
               </p>
             ) : (
               <p className="text-xs text-amber-700 dark:text-amber-400 mt-1 flex items-center gap-1">
                 <span>⚠</span>
-                <span>Some options may need manual approval from your college</span>
+                <span>Some options may need manual approval from your college registrar</span>
               </p>
             )}
           </div>

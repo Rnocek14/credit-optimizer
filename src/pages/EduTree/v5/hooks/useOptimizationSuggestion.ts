@@ -9,6 +9,7 @@ import { calculateTotals } from '../utils/totalsCalculator';
 import type { OptimizationSuggestion, OptimizationSwap, OptimizationSummary } from '../types/optimizer';
 import type { MarketplaceOption } from '../types/v5';
 import { toast } from '@/hooks/use-toast';
+import { trackTelemetryEvent } from '@/utils/telemetry';
 
 interface UseOptimizationSuggestionOptions {
   modules: any[];
@@ -61,6 +62,7 @@ export function useOptimizationSuggestion(
     }
 
     setLoading(true);
+    console.log('[Credit Optimizer] Analyzing plan...', { itemsCount: items.length, modulesCount: modules.length });
 
     try {
       // Calculate current plan totals
@@ -70,11 +72,15 @@ export function useOptimizationSuggestion(
 
       // Find optimization opportunities
       const swaps: OptimizationSwap[] = [];
+      const seenModules = new Set<string>(); // Dedupe by module
       let optimizedCost = currentCost;
       let optimizedWeeks = currentTotals.totalWeeks;
 
       // For each basket item, find cheaper/faster alternatives
       items.forEach(item => {
+        // Dedupe: only one swap per module
+        if (seenModules.has(item.moduleId)) return;
+        
         // Find the module this item belongs to
         const module = modules.find(m => m.id === item.moduleId);
         if (!module) return;
@@ -98,6 +104,8 @@ export function useOptimizationSuggestion(
           const costSavings = (item.cost_usd || 0) - (alternative.cost_usd || 0);
 
           if (costSavings >= 100) { // Only suggest if savings > $100
+            seenModules.add(item.moduleId); // Mark as processed
+            
             swaps.push({
               id: `${item.moduleId}-${item.courseId}`,
               requirementLabel: module.label,
@@ -138,7 +146,7 @@ export function useOptimizationSuggestion(
           costSaved,
           monthsSaved,
           anchorLabel,
-          isPolicyCompliant: true, // Simplified for MVP
+          isPolicyCompliant: true, // Note: Always verify with your advisor
         };
 
         setSuggestion({
@@ -146,8 +154,21 @@ export function useOptimizationSuggestion(
           summary,
           swaps: swaps.slice(0, 10), // Limit to top 10 swaps
         });
+        
+        // Track analytics: banner shown
+        trackTelemetryEvent({
+          task: 'credit_optimizer_banner_shown',
+          complexity: {
+            cost_saved: costSaved,
+            months_saved: monthsSaved,
+            swaps_count: swaps.length,
+          }
+        }).catch(() => {});
+        
+        console.log('[Credit Optimizer] Suggestion ready:', { costSaved, monthsSaved, swapsCount: swaps.length });
       } else {
         setSuggestion({ hasSuggestion: false, summary: null, swaps: [] });
+        console.log('[Credit Optimizer] No significant savings found');
       }
 
       setError(null);
@@ -162,22 +183,72 @@ export function useOptimizationSuggestion(
 
   const showBanner = !!suggestion?.hasSuggestion && !dismissed && !loading && !error;
 
-  const openModal = useCallback(() => setShowModal(true), []);
-  const closeModal = useCallback(() => setShowModal(false), []);
-  const dismissBanner = useCallback(() => setDismissed(true), []);
+  const openModal = useCallback(() => {
+    setShowModal(true);
+    // Track analytics
+    trackTelemetryEvent({
+      task: 'credit_optimizer_modal_opened',
+      complexity: {
+        cost_saved: suggestion?.summary?.costSaved || 0,
+        months_saved: suggestion?.summary?.monthsSaved || 0,
+      }
+    }).catch(() => {});
+  }, [suggestion]);
+  
+  const closeModal = useCallback(() => {
+    setShowModal(false);
+    // Track analytics
+    trackTelemetryEvent({
+      task: 'credit_optimizer_modal_closed',
+      complexity: { action: 'keep_plan' }
+    }).catch(() => {});
+  }, []);
+  
+  const dismissBanner = useCallback(() => {
+    setDismissed(true);
+    // Track analytics
+    trackTelemetryEvent({
+      task: 'credit_optimizer_banner_dismissed',
+      complexity: {}
+    }).catch(() => {});
+  }, []);
 
   const applyOptimization = useCallback(async () => {
     if (!suggestion?.hasSuggestion) return;
 
     try {
-      // Apply all swaps
+      console.log('[Credit Optimizer] Applying', suggestion.swaps.length, 'swaps');
+      
+      // Track analytics
+      trackTelemetryEvent({
+        task: 'credit_optimizer_applied',
+        complexity: {
+          swaps_count: suggestion.swaps.length,
+          cost_saved: suggestion.summary?.costSaved || 0,
+          months_saved: suggestion.summary?.monthsSaved || 0,
+        }
+      }).catch(() => {});
+
+      // Apply all swaps (module-specific removal to avoid cross-module conflicts)
       for (const swap of suggestion.swaps) {
-        // Remove old course
-        removeItem(swap.fromCourseId);
+        // Remove old course from THIS specific module only
+        // Since removeItem removes all instances, we need to be careful
+        // Get current basket state
+        const currentItems = usePlanBasket.getState().items;
+        const itemToRemove = currentItems.find(
+          item => item.moduleId === swap.moduleId && item.courseId === swap.fromCourseId
+        );
+        
+        if (itemToRemove) {
+          removeItem(swap.fromCourseId);
+        }
 
         // Find the full marketplace option data
         const newOption = allOptions.find(opt => opt.courseId === swap.toCourseId);
-        if (!newOption) continue;
+        if (!newOption) {
+          console.warn('[Credit Optimizer] Could not find marketplace option for:', swap.toCourseId);
+          continue;
+        }
 
         // Add new course
         addItem({
@@ -210,6 +281,13 @@ export function useOptimizationSuggestion(
       setDismissed(true); // Don't show banner again after applying
     } catch (err) {
       console.error('[Credit Optimizer] Apply error:', err);
+      
+      // Track error
+      trackTelemetryEvent({
+        task: 'credit_optimizer_apply_error',
+        complexity: { error: err instanceof Error ? err.message : 'Unknown error' }
+      }).catch(() => {});
+      
       toast({
         title: "Error applying optimization",
         description: "Please try again or contact support.",
