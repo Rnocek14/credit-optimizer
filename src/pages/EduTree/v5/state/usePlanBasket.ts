@@ -66,6 +66,7 @@ interface PlanBasketState {
   constraints: Constraints;
   scenarios: PlanScenario[];
   moduleStates: Record<string, ModuleState>;
+  currentBasket: any | null; // PlanBasket from optimizer
   
   // Actions
   addItem: (item: BasketItem) => void;
@@ -91,6 +92,7 @@ interface PlanBasketState {
   
   // Template hydration
   applyTemplateToPlan: (template: any) => void;
+  loadFromBasket: (basket: any) => void; // PlanBasket integration
   
   // Dev/Testing utilities
   loadTestData: (items: BasketItem[]) => void;
@@ -167,6 +169,7 @@ export const usePlanBasket = create<PlanBasketState>()(
       },
       scenarios: [],
       moduleStates: {},
+      currentBasket: null,
       
       addItem: (item) => {
         const items = get().items;
@@ -408,6 +411,64 @@ export const usePlanBasket = create<PlanBasketState>()(
             itemsCount: items.length,
             programId: template.programId,
             optimization: template.optimization,
+          },
+        });
+      },
+      
+      loadFromBasket: (basket: any) => {
+        console.log('[usePlanBasket] Loading optimized plan basket:', basket?.id);
+        
+        if (!basket?.terms) {
+          console.warn('[usePlanBasket] Invalid basket structure, skipping');
+          return;
+        }
+        
+        // Store the full basket for reference
+        set({ currentBasket: basket });
+        
+        // Convert PlanBasket to BasketItems
+        const items: BasketItem[] = [];
+        
+        for (const term of basket.terms) {
+          for (const course of term.courses) {
+            items.push({
+              moduleId: course.requirementBlockSlug || course.requirementArea,
+              courseId: course.courseCode || course.altIdentifier || course.id,
+              title: course.title || null,
+              credits: course.credits,
+              cost_usd: null, // TODO: derive from optimizer metrics
+              duration_weeks: null,
+              workload_weekly_hours: course.credits * 3,
+              cri_score: 0,
+              status: 'auto-filled',
+              providerType: course.sourceType === 'alt_credit' ? 'mooc' : null,
+              providerCode: course.sourceCode || null,
+              source: {
+                type: 'template',
+                templateId: basket.templateId,
+                templateVersion: 1,
+                templateLabel: basket.mode,
+              },
+            });
+          }
+        }
+        
+        console.log('[usePlanBasket] Basket loaded:', {
+          basketId: basket.id,
+          itemsCreated: items.length,
+          totalCredits: items.reduce((sum, i) => sum + i.credits, 0),
+        });
+        
+        set({ items });
+        
+        void trackTelemetryEvent({
+          task: 'optimizer_basket_loaded',
+          scope: 'degree',
+          complexity: {
+            templateId: basket.templateId,
+            itemsCount: items.length,
+            mode: basket.mode,
+            institutionCode: basket.institutionCode,
           },
         });
       },

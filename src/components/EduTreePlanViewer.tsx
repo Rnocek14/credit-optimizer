@@ -1,23 +1,28 @@
 import { useLocation } from 'react-router-dom';
+import { useEffect } from 'react';
 import { transformOptimizedPlanToPlanBasket } from '@/lib/eduTree/transformOptimizedPlan';
+import { usePlanBasket } from '@/pages/EduTree/v5/state/usePlanBasket';
+import { TemplateSwitchBar } from '@/features/eduTree/TemplateSwitchBar';
 import type { OptimizedPlanResult } from '@/types/optimizer';
-import type { InstitutionCode } from '@/types/degreeTemplates';
-import type { OptimizerMode } from '@/types/optimizer';
 import { formatCost, formatCredits } from '@/pages/EduTree/v5/utils/formatters';
 
 export function EduTreePlanViewer() {
   const location = useLocation() as {
-    state?: {
-      optimizedPlan?: OptimizedPlanResult;
-      templateId?: string;
-      institutionCode?: InstitutionCode;
-      programCode?: string;
-      mode?: OptimizerMode;
-    };
+    state?: { optimizedPlan?: OptimizedPlanResult };
   };
 
-  const incoming = location.state?.optimizedPlan;
-  const planBasket = incoming ? transformOptimizedPlanToPlanBasket(incoming) : null;
+  const optimizedPlan = location.state?.optimizedPlan;
+  const loadFromBasket = usePlanBasket(s => s.loadFromBasket);
+  const currentBasket = usePlanBasket(s => s.currentBasket);
+
+  useEffect(() => {
+    if (optimizedPlan) {
+      const basket = transformOptimizedPlanToPlanBasket(optimizedPlan);
+      loadFromBasket(basket);
+    }
+  }, [optimizedPlan, loadFromBasket]);
+
+  const planBasket = currentBasket || (optimizedPlan ? transformOptimizedPlanToPlanBasket(optimizedPlan) : null);
 
   if (!planBasket) {
     return (
@@ -34,6 +39,13 @@ export function EduTreePlanViewer() {
 
   return (
     <div className="h-full space-y-6 p-6">
+      <TemplateSwitchBar
+        institutionCode={planBasket.institutionCode}
+        programCode={planBasket.programCode}
+        currentTrackType={planBasket.trackType as any}
+        currentMode={planBasket.mode as any}
+      />
+
       <div className="space-y-2">
         <h1 className="text-3xl font-bold text-foreground">
           {planBasket.institutionCode} {planBasket.programCode} — {planBasket.mode}
@@ -117,3 +129,5 @@ export function EduTreePlanViewer() {
     </div>
   );
 }
+
+export default EduTreePlanViewer;
