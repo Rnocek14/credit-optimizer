@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { useOptimizedTemplatesForProgram } from '@/hooks/useOptimizedTemplates';
 import { formatCost } from '@/pages/EduTree/v5/utils/formatters';
+import { PolicyStatusPill } from './PolicyStatusPill';
 
 export function TesuBsbaMarketplace() {
   const navigate = useNavigate();
@@ -100,15 +101,7 @@ export function TesuBsbaMarketplace() {
               </div>
 
               <div className="border-t border-border px-4 py-2">
-                {hasWarnings ? (
-                  <p className="text-xs text-amber-600 dark:text-amber-400">
-                    ⚠️ This plan may exceed TESU policy caps. Review before enrolling.
-                  </p>
-                ) : (
-                  <p className="text-xs text-emerald-600 dark:text-emerald-400">
-                    ✅ Meets TESU alt-credit and residency rules based on current data.
-                  </p>
-                )}
+                <PolicyStatusPill warnings={warnings} />
               </div>
             </button>
           );
