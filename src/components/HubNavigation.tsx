@@ -28,6 +28,7 @@ const primaryHubs = [
   { id: "discover", label: "DISCOVER", icon: Search, href: "/discover" },
   { id: "plan", label: "PLAN", icon: Target, href: "/plan" },
   { id: "progress", label: "PROGRESS", icon: BookOpen, href: "/progress" },
+  { id: "marketplace", label: "MARKETPLACE", icon: BookOpen, href: "/marketplace" },
 ];
 
 export function HubNavigation() {

@@ -50,7 +50,7 @@ export function TesuBsbaMarketplace() {
               ? 'Standard'
               : template.track_type;
 
-          const hasWarnings = Object.keys(warnings).length > 0;
+          const hasWarnings = Object.values(warnings).some(w => w === true) || (warnings.missingGenEdCredits && warnings.missingGenEdCredits.length > 0);
 
           return (
             <button
@@ -101,11 +101,11 @@ export function TesuBsbaMarketplace() {
 
               <div className="border-t border-border px-4 py-2">
                 {hasWarnings ? (
-                  <p className="text-xs text-amber-600">
+                  <p className="text-xs text-amber-600 dark:text-amber-400">
                     ⚠️ This plan may exceed TESU policy caps. Review before enrolling.
                   </p>
                 ) : (
-                  <p className="text-xs text-emerald-600">
+                  <p className="text-xs text-emerald-600 dark:text-emerald-400">
                     ✅ Meets TESU alt-credit and residency rules based on current data.
                   </p>
                 )}

@@ -1,4 +1,5 @@
 import { TesuBsbaMarketplace } from '@/features/degreeMarketplace/TesuBsbaMarketplace';
+import { TesuBsbaComparisonDashboard } from '@/features/degreeMarketplace/TesuBsbaComparisonDashboard';
 
 export default function DegreeMarketplace() {
   return (
@@ -10,7 +11,10 @@ export default function DegreeMarketplace() {
         </p>
       </div>
 
-      <TesuBsbaMarketplace />
+      <div className="space-y-6">
+        <TesuBsbaComparisonDashboard />
+        <TesuBsbaMarketplace />
+      </div>
     </div>
   );
 }
