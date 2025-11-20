@@ -77,6 +77,21 @@ export default function MarketplacePage() {
 
       {/* Main Content */}
       <div className="container mx-auto px-4 py-6">
+        {/* Planning Disclaimer */}
+        <div className="mb-6 rounded-md border border-amber-500/30 bg-amber-500/5 px-3 py-2.5 flex items-start gap-2">
+          <span className="mt-0.5 text-base leading-none">⚠️</span>
+          <div className="flex-1">
+            <div className="font-medium text-sm text-amber-800 dark:text-amber-200">
+              Planning tool only — not official advising
+            </div>
+            <p className="text-xs leading-snug mt-0.5 text-amber-700 dark:text-amber-300">
+              Costs, timelines, and transfer patterns are modeled estimates. Always confirm
+              course availability, pricing, and transfer acceptance with the graduation
+              school and course providers before enrolling.
+            </p>
+          </div>
+        </div>
+        
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           {/* Filters Sidebar */}
           <aside className="lg:col-span-1">

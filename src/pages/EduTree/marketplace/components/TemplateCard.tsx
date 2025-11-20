@@ -12,8 +12,9 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { ProviderBadge, type ProviderCode } from './ProviderBadge';
+import { ProviderBadge, type ProviderCode, PROVIDER_CONFIG } from './ProviderBadge';
 import { useMemo } from 'react';
+import { cn } from '@/lib/utils';
 
 interface TemplateCardProps {
   template: MarketplaceDegreeTemplate;
@@ -64,6 +65,11 @@ export function TemplateCard({ template, isSelected, onToggleSelect }: TemplateC
       .sort((a, b) => b.credits - a.credits)
       .slice(0, 4); // Show top 4 providers
   }, [template.yearTemplates]);
+
+  const totalProviderCredits = useMemo(() => 
+    providerMix.reduce((sum, p) => sum + p.credits, 0),
+    [providerMix]
+  );
 
   return (
     <Card className="relative hover:shadow-lg transition-shadow">
@@ -182,23 +188,47 @@ export function TemplateCard({ template, isSelected, onToggleSelect }: TemplateC
 
         {/* Provider Mix */}
         {providerMix.length > 0 && (
-          <div className="space-y-2">
-            <p className="text-xs font-medium text-muted-foreground">Multi-Provider Path:</p>
+          <div className="rounded-md bg-muted/60 px-3 py-2.5">
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <span className="text-xs font-medium text-muted-foreground">
+                Multi-Provider Path
+              </span>
+              <span className="text-[11px] text-muted-foreground">
+                {totalProviderCredits} credits
+              </span>
+            </div>
+
             <div className="flex flex-wrap gap-1.5">
-              {providerMix.map(({ code, credits }) => (
-                <TooltipProvider key={code}>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <div>
-                        <ProviderBadge providerCode={code} className="text-[10px] px-1.5 py-0.5" />
-                      </div>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p className="text-xs">{credits} credits via {code}</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              ))}
+              {providerMix.map(({ code, credits }) => {
+                const config = PROVIDER_CONFIG[code];
+                const pct = totalProviderCredits > 0
+                  ? Math.round((credits / totalProviderCredits) * 100)
+                  : 0;
+
+                return (
+                  <TooltipProvider key={code}>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div className={cn(
+                          "inline-flex items-center gap-1 rounded-full border px-2 py-1",
+                          config?.className
+                        )}>
+                          {config?.icon && <config.icon className="h-3 w-3" />}
+                          <span className="text-[11px] font-medium">
+                            {config?.label ?? code}
+                          </span>
+                          <span className="text-[10px] opacity-80">
+                            {credits}cr · {pct}%
+                          </span>
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p className="text-xs">{credits} credits ({pct}%) via {config?.label ?? code}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                );
+              })}
             </div>
           </div>
         )}
