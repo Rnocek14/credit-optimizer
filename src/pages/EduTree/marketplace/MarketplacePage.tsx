@@ -4,16 +4,18 @@ import { TemplateFilters } from './components/TemplateFilters';
 import { TemplateGrid } from './components/TemplateGrid';
 import { ComparisonModal } from './components/ComparisonModal';
 import { useMarketplaceTemplates } from '@/hooks/useMarketplaceTemplates';
+import { usePlanBasket } from '@/pages/EduTree/v5/state/usePlanBasket';
 import { AnchorSchoolSelector } from '@/pages/EduTree/v5/components/AnchorSchoolSelector';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, GitCompare } from 'lucide-react';
+import { ArrowLeft, GitCompare, Filter, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import type { MarketplaceFilters } from '@/pages/EduTree/v5/types/templates';
 
 export default function MarketplacePage() {
   const [searchParams] = useSearchParams();
   const careerId = searchParams.get('career');
+  const { constraints, setConstraints } = usePlanBasket();
 
   const [filters, setFilters] = useState<MarketplaceFilters>({
     careerIds: careerId ? [careerId] : [],
@@ -28,7 +30,14 @@ export default function MarketplacePage() {
   const [selectedTemplates, setSelectedTemplates] = useState<string[]>([]);
   const [showComparison, setShowComparison] = useState(false);
 
-  const { data: templates = [], isLoading } = useMarketplaceTemplates(filters);
+  const { data: allTemplates = [], isLoading } = useMarketplaceTemplates(filters);
+  
+  // Filter templates by selected anchor school
+  const templates = constraints.target_school 
+    ? allTemplates.filter(t => t.anchorSchool === constraints.target_school)
+    : allTemplates;
+  
+  const filteredCount = allTemplates.length - templates.length;
 
   const handleToggleSelect = (templateId: string) => {
     setSelectedTemplates(prev => 
@@ -78,6 +87,30 @@ export default function MarketplacePage() {
 
           {/* Template Grid */}
           <main className="lg:col-span-3">
+            {/* Filter Status Banner */}
+            {constraints.target_school && filteredCount > 0 && (
+              <div className="mb-4 rounded-lg border border-primary/20 bg-primary/5 p-3 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Filter className="h-4 w-4 text-primary" />
+                  <span className="text-sm">
+                    Showing only <strong>{constraints.target_school}</strong> paths 
+                    <span className="text-muted-foreground ml-1">
+                      ({filteredCount} other {filteredCount === 1 ? 'template' : 'templates'} hidden)
+                    </span>
+                  </span>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setConstraints({ target_school: undefined })}
+                  className="h-7 gap-1"
+                >
+                  <X className="h-3 w-3" />
+                  Clear filter
+                </Button>
+              </div>
+            )}
+            
             <div className="mb-4 flex items-center justify-between">
               <div className="text-sm text-muted-foreground">
                 {templates.length} degree path{templates.length !== 1 ? 's' : ''} found
