@@ -56,7 +56,17 @@ export function useOptimizationSuggestion(
   const [showModal, setShowModal] = useState(false);
 
   useEffect(() => {
+    // Diagnostic logging
+    console.log('[Credit Optimizer] Hook triggered', { 
+      enabled, 
+      itemsLength: items.length, 
+      modulesLength: modules.length,
+      allOptionsLength: allOptions.length,
+      sampleItem: items[0]
+    });
+
     if (!enabled || items.length === 0) {
+      console.log('[Credit Optimizer] Skipping analysis', { enabled, hasItems: items.length > 0 });
       setSuggestion({ hasSuggestion: false, summary: null, swaps: [] });
       return;
     }
