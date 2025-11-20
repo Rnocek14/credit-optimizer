@@ -396,15 +396,10 @@ export default function EduTreeV5Page() {
   const { recomputeYears } = useCascadeDegree(allModules);
   
   // Credit Optimizer: Analyze plan for savings opportunities
+  // Extract marketplace options from the SAME modules we're rendering (works in both DB and fixture mode)
   const allOptions = useMemo(() => {
-    if (USE_DATABASE && dbData?.modulesByYear) {
-      // Extract all marketplace options from database modules
-      return Object.values(dbData.modulesByYear)
-        .flatMap(modules => modules)
-        .flatMap(mod => mod.marketplaceOptions || []);
-    }
-    return COURSE_OPTIONS;
-  }, [USE_DATABASE, dbData?.modulesByYear]);
+    return allModules.flatMap(m => m.marketplaceOptions || []);
+  }, [allModules]);
 
   const anchorSchoolLabel = useMemo(() => {
     if (!constraints.target_school) return 'your degree program';
