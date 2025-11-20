@@ -36,7 +36,7 @@ export function TemplateDetailsDrawer({
       year.moduleTemplates.forEach(module => {
         module.options.forEach(option => {
           const code = option.providerCode?.toUpperCase() || 'UNKNOWN';
-          providerCredits.set(code, (providerCredits.get(code) || 0) + option.credits);
+          providerCredits.set(code, (providerCredits.get(code) || 0) + (option.credits || 0));
         });
       });
     });
@@ -66,10 +66,11 @@ export function TemplateDetailsDrawer({
           const isAltCredit = altCreditProviders.includes(option.providerCode?.toUpperCase() || '');
           const isResidency = option.providerCode?.toUpperCase() === template.anchorSchool?.toUpperCase();
           const isUpperDiv = (option.level || 0) >= 300;
+          const credits = option.credits || 0;
 
-          if (isAltCredit) altCredits += option.credits;
-          if (isResidency) residencyCredits += option.credits;
-          if (isUpperDiv) upperDivisionCredits += option.credits;
+          if (isAltCredit) altCredits += credits;
+          if (isResidency) residencyCredits += credits;
+          if (isUpperDiv) upperDivisionCredits += credits;
         });
       });
     });
@@ -268,7 +269,7 @@ export function TemplateDetailsDrawer({
                               <div className="font-medium truncate">{option.title}</div>
                               <div className="flex items-center gap-2 flex-wrap mt-1">
                                 <span className="text-xs text-muted-foreground">
-                                  {option.credits} cr
+                                  {option.credits || 0} cr
                                 </span>
                                 {option.providerCode && (
                                   <ProviderBadge 
