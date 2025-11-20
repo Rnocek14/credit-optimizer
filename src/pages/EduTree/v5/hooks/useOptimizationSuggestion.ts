@@ -55,18 +55,37 @@ export function useOptimizationSuggestion(
   const [dismissed, setDismissed] = useState(false);
   const [showModal, setShowModal] = useState(false);
 
+  // Reset dismissed state when basket content changes significantly
   useEffect(() => {
-    // Diagnostic logging
+    if (items.length > 0 && dismissed) {
+      setDismissed(false);
+      console.log('[Credit Optimizer] Reset dismissed state due to basket change');
+    }
+  }, [items.length, dismissed]);
+
+  useEffect(() => {
+    // Enhanced diagnostic logging - ALWAYS log
     console.log('[Credit Optimizer] Hook triggered', { 
       enabled, 
       itemsLength: items.length, 
       modulesLength: modules.length,
       allOptionsLength: allOptions.length,
-      sampleItem: items[0]
+      sampleItem: items[0],
+      dismissed,
+      flags: {
+        enabled,
+        hasModules: modules.length > 0,
+        hasItems: items.length > 0,
+        hasOptions: allOptions.length > 0
+      }
     });
 
     if (!enabled || items.length === 0) {
-      console.log('[Credit Optimizer] Skipping analysis', { enabled, hasItems: items.length > 0 });
+      console.log('[Credit Optimizer] Skipping analysis', { 
+        enabled, 
+        hasItems: items.length > 0,
+        reason: !enabled ? 'disabled by flag' : 'no items in basket'
+      });
       setSuggestion({ hasSuggestion: false, summary: null, swaps: [] });
       return;
     }

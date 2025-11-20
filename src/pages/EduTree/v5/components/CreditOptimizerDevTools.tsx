@@ -72,6 +72,22 @@ export function CreditOptimizerDevTools() {
         <Button
           size="sm"
           variant="outline"
+          onClick={() => {
+            clearAll();
+            setTimeout(() => handleLoadTest('expensive'), 100);
+            console.log('[Dev Tools] Force-reloading expensive plan with delay');
+          }}
+          className="w-full justify-start text-xs h-auto py-2"
+        >
+          <div className="flex flex-col items-start gap-0.5">
+            <span className="font-medium">🔄 Force Reload Expensive</span>
+            <span className="text-[10px] text-muted-foreground">Clear → Wait → Load (fixes race)</span>
+          </div>
+        </Button>
+
+        <Button
+          size="sm"
+          variant="outline"
           onClick={() => handleLoadTest('mixed')}
           className="w-full justify-start text-xs h-auto py-2"
         >
