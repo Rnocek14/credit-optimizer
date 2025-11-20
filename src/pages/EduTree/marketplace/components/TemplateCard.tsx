@@ -14,9 +14,8 @@ import {
 } from "@/components/ui/tooltip";
 import { ProviderBadge, type ProviderCode, PROVIDER_CONFIG } from './ProviderBadge';
 import { TransferStatusBadge } from './TransferStatusBadge';
-import { TemplateDetailsDrawer } from './TemplateDetailsDrawer';
 import { useTransferVerification } from '../hooks/useTransferVerification';
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { cn } from '@/lib/utils';
 
 interface TemplateCardProps {
@@ -103,8 +102,6 @@ export function TemplateCard({ template, isSelected, onToggleSelect }: TemplateC
     });
     return map;
   }, [transferVerifications]);
-
-  const [detailsOpen, setDetailsOpen] = useState(false);
 
   return (
     <Card className="relative hover:shadow-lg transition-shadow">
@@ -283,27 +280,12 @@ export function TemplateCard({ template, isSelected, onToggleSelect }: TemplateC
         )}
 
         {/* Actions */}
-        <div className="space-y-2">
-          <Button onClick={handleSelect} className="w-full">
-            Select This Path
-          </Button>
-          <Button 
-            onClick={() => setDetailsOpen(true)}
-            variant="outline"
-            className="w-full text-xs"
-          >
-            View Full Course Plan
+        <div className="flex gap-2 pt-2">
+          <Button onClick={handleSelect} className="flex-1">
+            Select Path
           </Button>
         </div>
       </CardContent>
-
-      {/* Details Drawer */}
-      <TemplateDetailsDrawer
-        template={template}
-        open={detailsOpen}
-        onOpenChange={setDetailsOpen}
-        transferStatusMap={transferStatusMap}
-      />
     </Card>
   );
 }
