@@ -12,7 +12,7 @@ import type { BasketItem } from '@/pages/EduTree/v5/state/usePlanBasket';
 export const EXPENSIVE_TEST_PLAN: BasketItem[] = [
   // General Education - All expensive university courses with cheap alternatives
   {
-    moduleId: 'y1-fall-gen-ed-english',
+    moduleId: 'y1-fall-gened-humanities',
     courseId: 'ENG-101',
     title: 'Composition I',
     credits: 3,
@@ -30,7 +30,7 @@ export const EXPENSIVE_TEST_PLAN: BasketItem[] = [
     },
   },
   {
-    moduleId: 'y1-fall-gen-ed-comm',
+    moduleId: 'y1-fall-gened-humanities',
     courseId: 'COMM-110',
     title: 'Public Speaking',
     credits: 3,
@@ -48,7 +48,7 @@ export const EXPENSIVE_TEST_PLAN: BasketItem[] = [
     },
   },
   {
-    moduleId: 'y1-spring-gen-ed-humanities-1',
+    moduleId: 'y1-spring-gened-social',
     courseId: 'HUM-201',
     title: 'Ethics',
     credits: 3,
@@ -66,7 +66,7 @@ export const EXPENSIVE_TEST_PLAN: BasketItem[] = [
     },
   },
   {
-    moduleId: 'y1-spring-gen-ed-social-science-1',
+    moduleId: 'y1-spring-gened-social',
     courseId: 'PSY-101',
     title: 'Introduction to Psychology',
     credits: 3,
@@ -84,7 +84,7 @@ export const EXPENSIVE_TEST_PLAN: BasketItem[] = [
     },
   },
   {
-    moduleId: 'y2-fall-gen-ed-history-1',
+    moduleId: 'y2-fall-gened-history',
     courseId: 'HIST-101',
     title: 'US History I',
     credits: 3,
@@ -102,7 +102,7 @@ export const EXPENSIVE_TEST_PLAN: BasketItem[] = [
     },
   },
   {
-    moduleId: 'y2-spring-gen-ed-arts',
+    moduleId: 'y2-spring-gened-arts',
     courseId: 'ART-105',
     title: 'Art Appreciation',
     credits: 3,
@@ -139,7 +139,7 @@ export const EXPENSIVE_TEST_PLAN: BasketItem[] = [
     },
   },
   {
-    moduleId: 'y1-spring-math-core',
+    moduleId: 'y1-spring-math-calc',
     courseId: 'MATH-151',
     title: 'Calculus I',
     credits: 4,
@@ -178,7 +178,7 @@ export const EXPENSIVE_TEST_PLAN: BasketItem[] = [
 export const MIXED_TEST_PLAN: BasketItem[] = [
   // Some expensive courses
   {
-    moduleId: 'y1-fall-gen-ed-english',
+    moduleId: 'y1-fall-gened-humanities',
     courseId: 'ENG-101',
     title: 'Composition I',
     credits: 3,
@@ -191,7 +191,7 @@ export const MIXED_TEST_PLAN: BasketItem[] = [
     level: 100,
   },
   {
-    moduleId: 'y1-fall-gen-ed-comm',
+    moduleId: 'y1-fall-gened-humanities',
     courseId: 'COMM-110',
     title: 'Public Speaking',
     credits: 3,
@@ -205,7 +205,7 @@ export const MIXED_TEST_PLAN: BasketItem[] = [
   },
   // Some already optimized courses
   {
-    moduleId: 'y1-spring-gen-ed-social-science-1',
+    moduleId: 'y1-spring-gened-social',
     courseId: 'PSY-ACE',
     title: 'Psychology (ACE)',
     credits: 3,
@@ -225,7 +225,7 @@ export const MIXED_TEST_PLAN: BasketItem[] = [
  */
 export const OPTIMIZED_TEST_PLAN: BasketItem[] = [
   {
-    moduleId: 'y1-fall-gen-ed-english',
+    moduleId: 'y1-fall-gened-humanities',
     courseId: 'ENG-ACE',
     title: 'English Composition (ACE)',
     credits: 3,
@@ -238,7 +238,7 @@ export const OPTIMIZED_TEST_PLAN: BasketItem[] = [
     level: 100,
   },
   {
-    moduleId: 'y1-fall-gen-ed-comm',
+    moduleId: 'y1-fall-gened-humanities',
     courseId: 'COMM-ACE',
     title: 'Communication (Sophia)',
     credits: 3,
@@ -251,7 +251,7 @@ export const OPTIMIZED_TEST_PLAN: BasketItem[] = [
     level: 100,
   },
   {
-    moduleId: 'y1-spring-gen-ed-social-science-1',
+    moduleId: 'y1-spring-gened-social',
     courseId: 'PSY-ACE',
     title: 'Psychology (ACE)',
     credits: 3,
