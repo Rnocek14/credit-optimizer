@@ -48,6 +48,7 @@ import SeedGoldenProgram from "./pages/Admin/SeedGoldenProgram";
 import MentorChat from "./pages/MentorChat";
 import AdminBadges from "./pages/AdminBadges";
 import EmbedExplorer from "./pages/EmbedExplorer";
+import DegreeMarketplace from "./pages/DegreeMarketplace";
 import AdminModeration from "./pages/AdminModeration";
 import AdminSettings from "./pages/AdminSettings";
 import Badges from "./pages/Badges";
@@ -350,6 +351,15 @@ const App = () => {
                   <MarketplacePage />
                 </React.Suspense>
               </EnhancedErrorBoundary>
+            }
+          />
+          {/* Standalone Marketplace - Degree Template Marketplace */}
+          <Route 
+            path="/marketplace" 
+            element={
+              <React.Suspense fallback={<PageLoader message="Loading marketplace..." />}>
+                <DegreeMarketplace />
+              </React.Suspense>
             }
           />
           {/* Sandbox route for TrackOverlayPOC (dev only) */}
