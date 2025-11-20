@@ -5,8 +5,9 @@ import { useDegreeTemplates } from '@/hooks/useDegreeTemplates';
 import { useInstitutionLimits } from '@/hooks/useInstitutionLimits';
 import { useAltCreditEquivalenciesForInstitution } from '@/hooks/useAltCreditEquivalencies';
 import { usePlanBasket } from '@/pages/EduTree/v5/state/usePlanBasket';
+import { PolicyStatusPill } from '@/features/degreeMarketplace/PolicyStatusPill';
 import type { InstitutionCode, TrackType } from '@/types/degreeTemplates';
-import type { OptimizerMode } from '@/types/optimizer';
+import type { OptimizerMode, OptimizedPlanWarnings } from '@/types/optimizer';
 import { Loader2 } from 'lucide-react';
 
 interface TemplateSwitchBarProps {
@@ -23,6 +24,10 @@ export const TemplateSwitchBar: React.FC<TemplateSwitchBarProps> = ({
   currentMode,
 }) => {
   const loadFromBasket = usePlanBasket(s => s.loadFromBasket);
+  const currentBasket = usePlanBasket(s => s.currentBasket);
+  
+  // Extract warnings from current plan basket if available
+  const currentWarnings = currentBasket?.warnings as OptimizedPlanWarnings | undefined;
 
   const { data: templates, isLoading: templatesLoading } = useDegreeTemplates({
     institutionCode,
@@ -72,7 +77,7 @@ export const TemplateSwitchBar: React.FC<TemplateSwitchBarProps> = ({
   }
 
   return (
-    <div className="mb-3 flex items-center justify-between rounded-lg border bg-card px-3 py-2 text-xs md:text-sm">
+    <div className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-card px-3 py-2 text-xs md:text-sm">
       <div className="flex flex-col">
         <span className="font-medium">
           {institutionCode} {programCode}
@@ -82,40 +87,46 @@ export const TemplateSwitchBar: React.FC<TemplateSwitchBarProps> = ({
         </span>
       </div>
 
-      <div className="inline-flex items-center gap-1 rounded-full bg-muted p-1">
-        {hasStandard && (
-          <button
-            type="button"
-            onClick={() => handleSwitch('standard')}
-            disabled={isBusy || currentTrackType === 'standard' || pendingTrack === 'standard'}
-            className={[
-              'rounded-full px-3 py-1 text-xs md:text-sm transition flex items-center gap-1.5',
-              currentTrackType === 'standard'
-                ? 'bg-background font-medium shadow'
-                : 'text-muted-foreground hover:bg-background/70',
-            ].join(' ')}
-          >
-            {pendingTrack === 'standard' && <Loader2 className="h-3 w-3 animate-spin" />}
-            Standard
-          </button>
+      <div className="flex items-center gap-3">
+        {currentWarnings && (
+          <PolicyStatusPill warnings={currentWarnings} size="sm" showLabel />
         )}
+        
+        <div className="inline-flex items-center gap-1 rounded-full bg-muted p-1">
+          {hasStandard && (
+            <button
+              type="button"
+              onClick={() => handleSwitch('standard')}
+              disabled={isBusy || currentTrackType === 'standard' || pendingTrack === 'standard'}
+              className={[
+                'rounded-full px-3 py-1 text-xs md:text-sm transition flex items-center gap-1.5',
+                currentTrackType === 'standard'
+                  ? 'bg-background font-medium shadow'
+                  : 'text-muted-foreground hover:bg-background/70',
+              ].join(' ')}
+            >
+              {pendingTrack === 'standard' && <Loader2 className="h-3 w-3 animate-spin" />}
+              Standard
+            </button>
+          )}
 
-        {hasAltMax && (
-          <button
-            type="button"
-            onClick={() => handleSwitch('alt_max')}
-            disabled={isBusy || currentTrackType === 'alt_max' || pendingTrack === 'alt_max'}
-            className={[
-              'rounded-full px-3 py-1 text-xs md:text-sm transition flex items-center gap-1.5',
-              currentTrackType === 'alt_max'
-                ? 'bg-background font-medium shadow'
-                : 'text-muted-foreground hover:bg-background/70',
-            ].join(' ')}
-          >
-            {pendingTrack === 'alt_max' && <Loader2 className="h-3 w-3 animate-spin" />}
-            Alt-Credit Max
-          </button>
-        )}
+          {hasAltMax && (
+            <button
+              type="button"
+              onClick={() => handleSwitch('alt_max')}
+              disabled={isBusy || currentTrackType === 'alt_max' || pendingTrack === 'alt_max'}
+              className={[
+                'rounded-full px-3 py-1 text-xs md:text-sm transition flex items-center gap-1.5',
+                currentTrackType === 'alt_max'
+                  ? 'bg-background font-medium shadow'
+                  : 'text-muted-foreground hover:bg-background/70',
+              ].join(' ')}
+            >
+              {pendingTrack === 'alt_max' && <Loader2 className="h-3 w-3 animate-spin" />}
+              Alt-Credit Max
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );
