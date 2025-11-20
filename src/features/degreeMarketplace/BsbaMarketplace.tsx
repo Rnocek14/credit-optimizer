@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { useOptimizedTemplatesForProgram } from '@/hooks/useOptimizedTemplates';
 import { formatCost } from '@/pages/EduTree/v5/utils/formatters';
 import { PolicyStatusPill } from './PolicyStatusPill';
+import { TemplateComparisonPopover } from './TemplateComparisonPopover';
 import type { InstitutionCode } from '@/types/degreeTemplates';
 
 interface BsbaMarketplaceProps {
@@ -34,6 +35,10 @@ export function BsbaMarketplace({ institutionCode, institutionName }: BsbaMarket
     );
   }
 
+  // Get both templates for comparison popover
+  const standardTemplate = optimizedTemplates.find(t => t.template.track_type === 'standard');
+  const altMaxTemplate = optimizedTemplates.find(t => t.template.track_type === 'alt_max');
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -43,6 +48,13 @@ export function BsbaMarketplace({ institutionCode, institutionName }: BsbaMarket
             Compare standard vs alt-credit-maximized paths.
           </p>
         </div>
+        {standardTemplate && altMaxTemplate && (
+          <TemplateComparisonPopover
+            standard={standardTemplate.optimized}
+            altMax={altMaxTemplate.optimized}
+            institutionName={institutionName}
+          />
+        )}
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
@@ -60,57 +72,76 @@ export function BsbaMarketplace({ institutionCode, institutionName }: BsbaMarket
               ? 'Standard'
               : template.track_type;
 
+          // Check if we have both templates for this card's comparison button
+          const otherTemplate = template.track_type === 'standard' ? altMaxTemplate : standardTemplate;
+          const hasComparison = standardTemplate && altMaxTemplate;
+
           return (
-            <button
+            <div 
               key={template.id}
-              type="button"
-              onClick={() =>
-                navigate('/edu-tree-v5', {
-                  state: {
-                    optimizedPlan: optimized,
-                  },
-                })
-              }
-              className="flex flex-col items-stretch rounded-xl border border-border bg-card text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+              className="group relative flex flex-col items-stretch rounded-xl border border-border bg-card shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
             >
-              <div className="flex items-center justify-between border-b border-border px-4 py-3">
-                <div>
-                  <div className="text-sm font-medium text-foreground">{trackLabel}</div>
-                  <div className="text-xs text-muted-foreground">
-                    {institutionName} • BSBA • {metrics.totalCredits} credits
+              <button
+                type="button"
+                onClick={() =>
+                  navigate('/edu-tree-v5', {
+                    state: {
+                      optimizedPlan: optimized,
+                    },
+                  })
+                }
+                className="flex flex-col items-stretch flex-1 text-left"
+              >
+                <div className="flex items-center justify-between border-b border-border px-4 py-3">
+                  <div>
+                    <div className="text-sm font-medium text-foreground">{trackLabel}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {institutionName} • BSBA • {metrics.totalCredits} credits
+                    </div>
                   </div>
+                  <span className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+                    {optimized.mode}
+                  </span>
                 </div>
-                <span className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
-                  {optimized.mode}
-                </span>
-              </div>
 
-              <div className="grid grid-cols-3 gap-3 px-4 py-3 text-sm">
-                <div>
-                  <div className="text-xs text-muted-foreground">Estimated Cost</div>
-                  <div className="font-semibold text-foreground">
-                    {formatCost(metrics.estTotalCostUsd)}
+                <div className="grid grid-cols-3 gap-3 px-4 py-3 text-sm">
+                  <div>
+                    <div className="text-xs text-muted-foreground">Estimated Cost</div>
+                    <div className="font-semibold text-foreground">
+                      {formatCost(metrics.estTotalCostUsd)}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-muted-foreground">Alt Credits</div>
+                    <div className="font-semibold text-foreground">
+                      {metrics.totalAltCredits} cr
+                      <span className="ml-1 text-xs text-muted-foreground">({altPct}%)</span>
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-muted-foreground">{institutionName} Residency</div>
+                    <div className="font-semibold text-foreground">
+                      {metrics.totalInstitutionalCredits} cr
+                    </div>
                   </div>
                 </div>
-                <div>
-                  <div className="text-xs text-muted-foreground">Alt Credits</div>
-                  <div className="font-semibold text-foreground">
-                    {metrics.totalAltCredits} cr
-                    <span className="ml-1 text-xs text-muted-foreground">({altPct}%)</span>
-                  </div>
-                </div>
-                <div>
-                  <div className="text-xs text-muted-foreground">{institutionName} Residency</div>
-                  <div className="font-semibold text-foreground">
-                    {metrics.totalInstitutionalCredits} cr
-                  </div>
-                </div>
-              </div>
 
-              <div className="border-t border-border px-4 py-2">
-                <PolicyStatusPill warnings={warnings} />
-              </div>
-            </button>
+                <div className="border-t border-border px-4 py-2">
+                  <PolicyStatusPill warnings={warnings} />
+                </div>
+              </button>
+
+              {/* Compare button overlay */}
+              {hasComparison && (
+                <div className="absolute bottom-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <TemplateComparisonPopover
+                    standard={standardTemplate.optimized}
+                    altMax={altMaxTemplate.optimized}
+                    institutionName={institutionName}
+                  />
+                </div>
+              )}
+            </div>
           );
         })}
       </div>
