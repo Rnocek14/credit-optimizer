@@ -1,7 +1,9 @@
+import { useNavigate } from 'react-router-dom';
 import { useOptimizedTemplatesForProgram } from '@/hooks/useOptimizedTemplates';
 import { formatCost } from '@/pages/EduTree/v5/utils/formatters';
 
 export function TesuBsbaMarketplace() {
+  const navigate = useNavigate();
   const { optimizedTemplates, isLoading } = useOptimizedTemplatesForProgram('TESU', 'BSBA');
 
   if (isLoading) {
@@ -54,6 +56,13 @@ export function TesuBsbaMarketplace() {
             <button
               key={template.id}
               type="button"
+              onClick={() =>
+                navigate('/edu-tree-v5', {
+                  state: {
+                    optimizedPlan: optimized,
+                  },
+                })
+              }
               className="flex flex-col items-stretch rounded-xl border border-border bg-card text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
             >
               <div className="flex items-center justify-between border-b border-border px-4 py-3">
