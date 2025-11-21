@@ -2,14 +2,16 @@ import { useState, useEffect } from 'react';
 import { usePathStore } from '@/stores/usePathStore';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Settings, Zap, CheckSquare, RotateCcw, Loader2, Bug, Shield } from 'lucide-react';
+import { Settings, Zap, CheckSquare, RotateCcw, Loader2, Bug, Shield, Database } from 'lucide-react';
 import { AdminSetup } from '@/components/AdminSetup';
+import { ComprehensiveSeeder } from '@/components/ComprehensiveSeeder';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 
 export function DevMenu() {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isLoading, setIsLoading] = useState<string | null>(null);
   const [showAdminSetup, setShowAdminSetup] = useState(false);
+  const [showSeeder, setShowSeeder] = useState(false);
   const [isDemoMode, setIsDemoMode] = useState(() => 
     (window as any).__LP_DEMO_MODE__ || false
   );
@@ -244,6 +246,25 @@ export function DevMenu() {
               <DialogTitle>Admin Role Setup</DialogTitle>
             </DialogHeader>
             <AdminSetup />
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={showSeeder} onOpenChange={setShowSeeder}>
+          <DialogTrigger asChild>
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full justify-start text-xs h-8"
+            >
+              <Database className="mr-2 h-3 w-3" />
+              Seed All Data
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Application Data Seeding</DialogTitle>
+            </DialogHeader>
+            <ComprehensiveSeeder />
           </DialogContent>
         </Dialog>
       </div>
