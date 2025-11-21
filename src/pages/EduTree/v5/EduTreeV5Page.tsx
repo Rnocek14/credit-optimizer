@@ -27,6 +27,9 @@ import { COURSE_OPTIONS, getOptionsForBlock } from '@/fixtures/v5/courseOptions'
 import { REQUIREMENT_BLOCKS } from '@/fixtures/v5/requirementBlocks';
 import { ModuleData, Course, Requirement, LoadHealth, DegreeSummary } from './types/v5';
 import { useV5DatabaseData } from './hooks/useV5DatabaseData';
+import { createTemplateModuleProvider } from './adapters/templateModuleAdapter';
+import { createProgramModulesProvider } from './adapters/programModulesAdapter';
+import type { DynamicModuleProvider } from './types/moduleProvider';
 import { usePlanStore } from './state/usePlanStore';
 import { usePlanBasket } from './state/usePlanBasket';
 import { YEAR_CREDIT_CAP } from './constants/v5';
@@ -102,6 +105,29 @@ export default function EduTreeV5Page() {
     return USE_DATABASE ? dbBlocks : REQUIREMENT_BLOCKS as any[];
   }, [USE_DATABASE, dbBlocks]);
 
+  // Phase 4: Dynamic Module Provider - Context-aware module source selection
+  const moduleProvider = useMemo<DynamicModuleProvider | null>(() => {
+    // Priority 1: Template mode (when templateId in URL and template loaded)
+    if (selectedTemplate && templateId) {
+      console.log('[EduTreeV5] 🎯 Using TEMPLATE as module source:', {
+        templateId: selectedTemplate.id,
+        yearCount: selectedTemplate.yearTemplates?.length
+      });
+      return createTemplateModuleProvider(selectedTemplate);
+    }
+    
+    // Priority 2: Database mode (when db=1 in URL)
+    if (USE_DATABASE && dbData) {
+      console.log('[EduTreeV5] 🗄️ Using DATABASE as module source');
+      // Database provider would go here (not yet implemented)
+      return null; // Fall through to fixtures
+    }
+    
+    // Priority 3: Default to CS Program Modules (fixtures)
+    console.log('[EduTreeV5] 📚 Using PROGRAM_MODULES as module source');
+    return createProgramModulesProvider(PROGRAM_MODULES);
+  }, [selectedTemplate, templateId, USE_DATABASE, dbData]);
+
   // Initialize from localStorage (SSR-safe)
   const [degreeCollapsed, setDegreeCollapsed] = useState<boolean>(() => {
     if (typeof window === 'undefined') return false;
@@ -156,6 +182,22 @@ export default function EduTreeV5Page() {
       if (selectedTemplate.anchorSchool && !constraints.target_school) {
         console.log('[EduTreeV5] 🎓 Setting anchor from template:', selectedTemplate.anchorSchool);
         setConstraints({ target_school: selectedTemplate.anchorSchool });
+      }
+      
+      // Phase 4: Auto-expand years that have content from template
+      const yearsWithContent = selectedTemplate.yearTemplates?.map(yt => yt.year) ?? [];
+      if (yearsWithContent.length > 0) {
+        setCollapsedYears(prev => {
+          const updated = { ...prev };
+          // Expand years with courses
+          yearsWithContent.forEach(y => { updated[y] = false; });
+          // Collapse empty years
+          [1, 2, 3, 4].filter(y => !yearsWithContent.includes(y)).forEach(y => {
+            updated[y] = true;
+          });
+          return updated;
+        });
+        console.log('[EduTreeV5] ✅ Auto-expanded template years:', yearsWithContent);
       }
     } else {
       console.warn('[EduTreeV5] ⚠️ Template not loaded:', {
@@ -400,7 +442,52 @@ export default function EduTreeV5Page() {
   // Get modules for a specific year (database or fixtures)
   const selections = usePlanStore(s => s.selections);
   
+  // Phase 4: Dynamic module provider integration
   const getModulesForYear = useCallback((year: number): ModuleData[] => {
+    // Use module provider if available
+    if (moduleProvider) {
+      const modules = moduleProvider.getModulesForYear(year);
+      
+      // Enhance with basket data for live updates
+      const currentBasket = usePlanBasket.getState().items;
+      
+      return modules.map(mod => {
+        // Filter basket items using DUAL matching (moduleId OR requirementArea)
+        const basketItemsForModule = currentBasket.filter(item => 
+          item.moduleId === mod.id || 
+          (mod.requirementArea && item.requirementArea === mod.requirementArea) ||
+          (mod.requirementArea && item.moduleId === mod.requirementArea)
+        );
+        
+        const liveCreditsEarned = basketItemsForModule.reduce((sum, item) => sum + item.credits, 0);
+        
+        // Re-calculate summary from current basket
+        const selectedSummary = computeModuleSummary(
+          mod.id,
+          mod.creditsRequired,
+          currentBasket.map(item => ({
+            moduleId: item.moduleId,
+            credits: item.credits,
+            cost_usd: item.cost_usd,
+            duration_weeks: item.duration_weeks,
+            cri_score: item.cri_score,
+            status: item.status,
+            autoFillReason: item.autoFillReason
+          }))
+        );
+        
+        return {
+          ...mod,
+          creditsEarned: liveCreditsEarned,
+          optionsCount: mod.marketplaceOptions?.length ?? 0,
+          selectedSummary,
+          isCollapsed: !!collapsedModules[mod.id],
+          courses: [], // Courses come from basket
+        } as ModuleData;
+      });
+    }
+    
+    // Fallback: Database mode (legacy path)
     if (USE_DATABASE && dbData?.modulesByYear) {
       const base = dbData.modulesByYear[year] || [];
       
@@ -445,7 +532,7 @@ export default function EduTreeV5Page() {
       });
     }
     return getModulesForYearFixtures(year);
-  }, [USE_DATABASE, dbData, basketKey, getModulesForYearFixtures]);
+  }, [moduleProvider, USE_DATABASE, dbData, basketKey, getModulesForYearFixtures, collapsedModules]);
 
   // Get all modules for auto-fill dialog
   const allModules = useMemo(() => {
