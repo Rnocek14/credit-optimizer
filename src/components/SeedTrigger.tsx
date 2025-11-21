@@ -48,7 +48,7 @@ export function SeedTrigger() {
     try {
       console.log('🌱 Seeding database directly...');
       
-      // Check if data already exists
+      // Check current count
       const { count, error: countError } = await supabase
         .from('credit_transfer_rules')
         .select('*', { count: 'exact', head: true });
@@ -63,9 +63,11 @@ export function SeedTrigger() {
         return;
       }
 
-      if (count && count > 0) {
-        toast.info('Seeds already in database', {
-          description: `${count} transfer rules found`
+      const expectedCount = SEED_DATA.length;
+      
+      if (count && count >= expectedCount) {
+        toast.info('Seeds already complete', {
+          description: `All ${count} transfer rules present`
         });
         setHasRun(true);
         console.log(`✅ Database already seeded with ${count} rules`);
