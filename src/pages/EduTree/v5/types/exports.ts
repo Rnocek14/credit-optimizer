@@ -7,6 +7,7 @@ import type { ProviderType } from './v5';
 
 export interface BasketItem {
   moduleId: string;
+  requirementArea?: string; // NEW: For cross-compatibility between structured and template-based IDs
   courseId: string;
   title?: string;
   credits: number;
