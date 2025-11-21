@@ -12,6 +12,7 @@ import { trackTelemetryEvent } from '@/utils/telemetry';
  */
 export interface BasketItem {
   moduleId: string;
+  requirementArea?: string; // NEW: For cross-compatibility between structured and template-based IDs
   courseId: string;
   title?: string;
   credits: number;
@@ -386,6 +387,7 @@ export const usePlanBasket = create<PlanBasketState>()(
             // Create basket item from template option
             items.push({
               moduleId,
+              requirementArea: moduleId, // Store requirement area for cross-compatibility
               courseId: selectedOption.courseId,
               title: selectedOption.title,
               credits: selectedOption.credits,
