@@ -45,36 +45,14 @@ $$;
 
 -- RLS Policies
 CREATE POLICY "Users can view their own roles"
-  ON public.user_roles
-  FOR SELECT
-  TO authenticated
+  ON public.user_roles FOR SELECT TO authenticated
   USING (auth.uid() = user_id);
 
-CREATE POLICY "Admins can view all roles"
-  ON public.user_roles
-  FOR SELECT
-  TO authenticated
-  USING (public.has_role(auth.uid(), 'admin'));
+CREATE POLICY "Users can insert their own roles"
+  ON public.user_roles FOR INSERT TO authenticated
+  WITH CHECK (auth.uid() = user_id);
 
-CREATE POLICY "Admins can insert roles"
-  ON public.user_roles
-  FOR INSERT
-  TO authenticated
-  WITH CHECK (public.has_role(auth.uid(), 'admin'));
-
-CREATE POLICY "Admins can update roles"
-  ON public.user_roles
-  FOR UPDATE
-  TO authenticated
-  USING (public.has_role(auth.uid(), 'admin'));
-
-CREATE POLICY "Admins can delete roles"
-  ON public.user_roles
-  FOR DELETE
-  TO authenticated
-  USING (public.has_role(auth.uid(), 'admin'));
-
--- Add index for performance
+-- Create index
 CREATE INDEX idx_user_roles_user_id ON public.user_roles(user_id);
 
 COMMENT ON TABLE public.user_roles IS 'Stores user roles for access control. Uses security definer functions to prevent RLS recursion.';
