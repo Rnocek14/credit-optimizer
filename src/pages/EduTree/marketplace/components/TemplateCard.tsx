@@ -13,10 +13,9 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { ProviderBadge, type ProviderCode, PROVIDER_CONFIG } from './ProviderBadge';
-import { TransferStatusBadge } from './TransferStatusBadge';
-import { useTransferVerification } from '../hooks/useTransferVerification';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { cn } from '@/lib/utils';
+import { TemplateDetailDrawer } from './TemplateDetailDrawer';
 
 interface TemplateCardProps {
   template: MarketplaceDegreeTemplate;
@@ -73,35 +72,7 @@ export function TemplateCard({ template, isSelected, onToggleSelect }: TemplateC
     [providerMix]
   );
 
-  // Collect all courses for transfer verification
-  const allCourses = useMemo(() => {
-    const courses: Array<{ code: string; providerCode: string | null }> = [];
-    template.yearTemplates.forEach(year => {
-      year.moduleTemplates.forEach(module => {
-        module.options.forEach(option => {
-          courses.push({
-            code: option.courseId,
-            providerCode: option.providerCode || null,
-          });
-        });
-      });
-    });
-    return courses;
-  }, [template.yearTemplates]);
-
-  // Batch verify transfers
-  const { data: transferVerifications } = useTransferVerification(
-    allCourses,
-    template.anchorSchool
-  );
-
-  const transferStatusMap = useMemo(() => {
-    const map = new Map<string, typeof transferVerifications[0]>();
-    transferVerifications?.forEach(v => {
-      map.set(`${v.providerCode}:${v.courseCode}`, v);
-    });
-    return map;
-  }, [transferVerifications]);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
   return (
     <Card className="relative hover:shadow-lg transition-shadow">
@@ -237,35 +208,21 @@ export function TemplateCard({ template, isSelected, onToggleSelect }: TemplateC
                   ? Math.round((credits / totalProviderCredits) * 100)
                   : 0;
 
-                // Get sample transfer status for this provider
-                const sampleVerification = transferVerifications?.find(
-                  v => v.providerCode === code
-                );
-
                 return (
                   <TooltipProvider key={code}>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <div className="inline-flex items-center gap-1.5">
-                          <div className={cn(
-                            "inline-flex items-center gap-1 rounded-full border px-2 py-1",
-                            config?.className
-                          )}>
-                            {config?.icon && <config.icon className="h-3 w-3" />}
-                            <span className="text-[11px] font-medium">
-                              {config?.label ?? code}
-                            </span>
-                            <span className="text-[10px] opacity-80">
-                              {credits}cr · {pct}%
-                            </span>
-                          </div>
-                          {sampleVerification && (
-                            <TransferStatusBadge
-                              status={sampleVerification.status}
-                              sourceProvider={code}
-                              targetSchool={template.anchorSchool}
-                            />
-                          )}
+                        <div className={cn(
+                          "inline-flex items-center gap-1 rounded-full border px-2 py-1",
+                          config?.className
+                        )}>
+                          {config?.icon && <config.icon className="h-3 w-3" />}
+                          <span className="text-[11px] font-medium">
+                            {config?.label ?? code}
+                          </span>
+                          <span className="text-[10px] opacity-80">
+                            {credits}cr · {pct}%
+                          </span>
                         </div>
                       </TooltipTrigger>
                       <TooltipContent>
@@ -284,8 +241,21 @@ export function TemplateCard({ template, isSelected, onToggleSelect }: TemplateC
           <Button onClick={handleSelect} className="flex-1">
             Select Path
           </Button>
+          <Button 
+            variant="outline" 
+            onClick={() => setIsDrawerOpen(true)}
+            className="flex-1"
+          >
+            View Details
+          </Button>
         </div>
       </CardContent>
+
+      <TemplateDetailDrawer
+        template={template}
+        open={isDrawerOpen}
+        onOpenChange={setIsDrawerOpen}
+      />
     </Card>
   );
 }

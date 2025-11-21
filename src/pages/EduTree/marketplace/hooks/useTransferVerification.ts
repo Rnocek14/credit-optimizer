@@ -30,6 +30,7 @@ export function useTransferVerification(
 ) {
   return useQuery({
     queryKey: ['transfer-verification', courses, targetSchool],
+    retry: 1,
     queryFn: async () => {
       if (!targetSchool || courses.length === 0) {
         return courses.map(c => ({
