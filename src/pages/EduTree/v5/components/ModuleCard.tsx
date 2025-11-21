@@ -82,6 +82,22 @@ export function ModuleCard({
   const basketItems = basket.filter(b => b.moduleId === id);
   const { quickPick } = useAutoFillModule();
   
+  // Debug logging for basket items per module
+  useEffect(() => {
+    if (basketItems.length > 0 || process.env.NODE_ENV === 'development') {
+      console.log(`[ModuleCard ${id}] 📦 Basket items:`, {
+        moduleId: id,
+        itemCount: basketItems.length,
+        items: basketItems.map(i => ({
+          courseId: i.courseId,
+          credits: i.credits,
+          status: i.status
+        })),
+        totalBasketSize: basket.length
+      });
+    }
+  }, [id, basketItems.length, basket.length]);
+  
   // Mismatch detection: log if optionsCount prop doesn't match actual array length
   useEffect(() => {
     const propCount = optionsCount ?? 0;

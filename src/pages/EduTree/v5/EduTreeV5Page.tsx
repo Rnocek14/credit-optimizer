@@ -55,7 +55,21 @@ export default function EduTreeV5Page() {
   const [provenanceWarningDismissed, setProvenanceWarningDismissed] = useState(false);
   
   // Load marketplace template if templateId present
-  const { data: selectedTemplate } = useMarketplaceTemplate(templateId || '');
+  const { data: selectedTemplate, isLoading: templateLoading, error: templateError } = useMarketplaceTemplate(templateId || '');
+  
+  // Debug template loading state
+  useEffect(() => {
+    console.log('[EduTreeV5] 📋 Template query state:', {
+      templateId,
+      isLoading: templateLoading,
+      hasData: !!selectedTemplate,
+      error: templateError?.message,
+      templateData: selectedTemplate ? {
+        id: selectedTemplate.id,
+        yearCount: selectedTemplate.yearTemplates?.length
+      } : null
+    });
+  }, [templateId, templateLoading, selectedTemplate, templateError]);
   
   // Career context from handoff
   const [careerContext, setCareerContext] = useState<{
@@ -110,6 +124,7 @@ export default function EduTreeV5Page() {
   // Handle career handoff from degree template modal
   const setConstraints = usePlanBasket(s => s.setConstraints);
   const applyTemplateToPlan = usePlanBasket(s => s.applyTemplateToPlan);
+  const clearBasket = usePlanBasket(s => s.clearAll);
   const constraints = usePlanBasket(s => s.constraints);
   
   // Auto-set anchor from marketplace navigation
@@ -127,8 +142,13 @@ export default function EduTreeV5Page() {
       console.log('[EduTreeV5] 🧩 Applying marketplace template:', {
         id: selectedTemplate.id,
         title: selectedTemplate.marketplace.title,
-        years: selectedTemplate.yearTemplates?.length || 0
+        years: selectedTemplate.yearTemplates?.length || 0,
+        hasData: !!selectedTemplate.yearTemplates && selectedTemplate.yearTemplates.length > 0
       });
+      
+      // CLEAR existing basket first to prevent conflicts
+      clearBasket();
+      console.log('[EduTreeV5] ✓ Basket cleared, applying template');
       
       applyTemplateToPlan(selectedTemplate);
       
@@ -137,8 +157,14 @@ export default function EduTreeV5Page() {
         console.log('[EduTreeV5] 🎓 Setting anchor from template:', selectedTemplate.anchorSchool);
         setConstraints({ target_school: selectedTemplate.anchorSchool });
       }
+    } else {
+      console.warn('[EduTreeV5] ⚠️ Template not loaded:', {
+        hasSelectedTemplate: !!selectedTemplate,
+        templateId,
+        reason: !selectedTemplate ? 'selectedTemplate is falsy' : 'templateId is falsy'
+      });
     }
-  }, [selectedTemplate?.id, templateId, applyTemplateToPlan, setConstraints, constraints.target_school]);
+  }, [selectedTemplate, templateId]); // Zustand functions are stable, removed from deps
   
   useEffect(() => {
     const programId = searchParams.get('programId');
@@ -974,6 +1000,23 @@ export default function EduTreeV5Page() {
           >
             Dismiss
           </Button>
+        </div>
+      )}
+      
+      {/* Template Loading/Error Feedback */}
+      {templateLoading && templateId && (
+        <div className="mb-4 rounded-lg bg-muted border px-4 py-3">
+          <div className="flex items-center gap-3">
+            <div className="animate-spin h-4 w-4 border-2 border-primary border-t-transparent rounded-full" />
+            <span className="text-sm text-muted-foreground">Loading template...</span>
+          </div>
+        </div>
+      )}
+
+      {templateError && templateId && (
+        <div className="mb-4 rounded-lg bg-destructive/10 border border-destructive px-4 py-3">
+          <div className="font-semibold text-destructive">Failed to load template</div>
+          <div className="text-sm text-destructive/80 mt-1">{templateError.message}</div>
         </div>
       )}
       
