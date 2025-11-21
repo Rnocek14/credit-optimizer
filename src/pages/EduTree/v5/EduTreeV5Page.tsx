@@ -800,8 +800,11 @@ export default function EduTreeV5Page() {
       totalEarned += yearCredits.earned;
     });
     
-    const totalRequired = 120;
-    const costPerCredit = 375;
+    // Use template data when available, otherwise fallback to hardcoded defaults
+    const totalRequired = selectedTemplate?.totals.credits ?? 120;
+    const costPerCredit = selectedTemplate?.totals.costUsd 
+      ? selectedTemplate.totals.costUsd / selectedTemplate.totals.credits
+      : 375;
     
     // Calculate degree-level residency metrics
     const residencyCumulative = basket
@@ -861,7 +864,7 @@ export default function EduTreeV5Page() {
     // Cost estimate based on remaining credits to complete degree
     
     return {
-      degreeTitle: "Bachelor of Science in Computer Science",
+      degreeTitle: selectedTemplate?.label ?? "Bachelor of Science in Computer Science",
       degreeLevel: "bachelor",
       totalCreditsRequired: totalRequired,
       totalCreditsPlanned: totalPlanned,
