@@ -1004,7 +1004,7 @@ export default function EduTreeV5Page() {
       {/* Dev mode toggle - always visible for testing */}
       <button
         onClick={handleToggleMode}
-        className="fixed bottom-4 right-4 px-3 py-1.5 bg-primary text-primary-foreground rounded-md text-xs font-medium shadow-lg hover:bg-primary/90 transition-colors z-50"
+        className="fixed bottom-4 right-4 px-3 py-1.5 bg-primary text-primary-foreground rounded-md text-xs font-medium shadow-lg hover:bg-primary/90 transition-colors z-[130]"
         title="Toggle between database and fixture data"
       >
         {USE_DATABASE ? '🗄️ Database' : '🧪 Fixtures'}
@@ -1017,7 +1017,7 @@ export default function EduTreeV5Page() {
             clearAll();
           }
         }}
-        className="fixed bottom-4 right-32 px-3 py-1.5 bg-destructive/10 text-destructive rounded-md text-xs font-medium shadow-lg hover:bg-destructive/20 transition-colors z-50"
+        className="fixed bottom-4 right-32 px-3 py-1.5 bg-destructive/10 text-destructive rounded-md text-xs font-medium shadow-lg hover:bg-destructive/20 transition-colors z-[130]"
         title="Clear all selections"
       >
         🗑️ Reset Plan
