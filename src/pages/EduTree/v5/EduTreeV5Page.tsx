@@ -121,6 +121,25 @@ export default function EduTreeV5Page() {
     }
   }, [location.state, constraints.target_school, setConstraints]);
   
+  // Apply marketplace template to plan basket (hydrate all years)
+  useEffect(() => {
+    if (selectedTemplate && templateId) {
+      console.log('[EduTreeV5] 🧩 Applying marketplace template:', {
+        id: selectedTemplate.id,
+        title: selectedTemplate.marketplace.title,
+        years: selectedTemplate.yearTemplates?.length || 0
+      });
+      
+      applyTemplateToPlan(selectedTemplate);
+      
+      // Also set the anchor school constraint from template
+      if (selectedTemplate.anchorSchool && !constraints.target_school) {
+        console.log('[EduTreeV5] 🎓 Setting anchor from template:', selectedTemplate.anchorSchool);
+        setConstraints({ target_school: selectedTemplate.anchorSchool });
+      }
+    }
+  }, [selectedTemplate?.id, templateId]);
+  
   useEffect(() => {
     const programId = searchParams.get('programId');
     const anchorSchool = searchParams.get('anchorSchool');
