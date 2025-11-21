@@ -11,6 +11,7 @@ import { QuickMarketplaceSeed } from '@/components/QuickMarketplaceSeed';
 import { MigrationTrigger } from '@/components/MigrationTrigger';
 import { SeedTrigger } from '@/components/SeedTrigger';
 import { AnchorSchoolSelector } from './components/AnchorSchoolSelector';
+import { AdminFAB } from './components/AdminFAB';
 import { PolicyCard } from './components/PolicyCard';
 import { TransferWarningBanner } from './components/TransferWarningBanner';
 import { SmartReplaceModal } from './components/SmartReplaceModal';
@@ -1001,33 +1002,22 @@ export default function EduTreeV5Page() {
       onDragEnd={handleDragEnd}
     >
       <div className="w-full min-h-screen bg-background p-8">
-      {/* Dev mode toggle - always visible for testing */}
-      <button
-        onClick={handleToggleMode}
-        className="fixed bottom-4 right-4 px-3 py-1.5 bg-primary text-primary-foreground rounded-md text-xs font-medium shadow-lg hover:bg-primary/90 transition-colors z-[130]"
-        title="Toggle between database and fixture data"
-      >
-        {USE_DATABASE ? '🗄️ Database' : '🧪 Fixtures'}
-      </button>
-
-      {/* Reset plan button */}
-      <button
-        onClick={() => {
+      {/* Admin FAB - Groups all admin/dev controls */}
+      <AdminFAB
+        useDatabase={USE_DATABASE}
+        onToggleDatabase={handleToggleMode}
+        onResetPlan={() => {
           if (confirm('Clear all course selections?')) {
             clearAll();
           }
         }}
-        className="fixed bottom-4 right-32 px-3 py-1.5 bg-destructive/10 text-destructive rounded-md text-xs font-medium shadow-lg hover:bg-destructive/20 transition-colors z-[130]"
-        title="Clear all selections"
-      >
-        🗑️ Reset Plan
-      </button>
+      />
 
       {/* View as Graph button - only visible when basket has items */}
       {basket.length > 0 && (
         <button
           onClick={() => setGraphDialogOpen(true)}
-          className="fixed bottom-4 right-60 px-3 py-1.5 bg-primary text-primary-foreground rounded-md text-xs font-medium shadow-lg hover:bg-primary/90 transition-colors z-50 flex items-center gap-1.5"
+          className="fixed bottom-4 right-60 px-3 py-1.5 bg-primary text-primary-foreground rounded-md text-xs font-medium shadow-lg hover:bg-primary/90 transition-colors z-[130] flex items-center gap-1.5"
           title="Visualize plan as graph"
         >
           📊 View as Graph
@@ -1061,14 +1051,8 @@ export default function EduTreeV5Page() {
             </p>
           </div>
           
-          {/* Admin Controls + Anchor Selector */}
+          {/* Anchor Selector + Status */}
           <div className="flex items-center gap-2">
-            {USE_DATABASE && (
-              <>
-                <MigrationTrigger />
-                <SeedTrigger />
-              </>
-            )}
             <AnchorSchoolSelector />
             {USE_DATABASE && <SeedStatus />}
           </div>
