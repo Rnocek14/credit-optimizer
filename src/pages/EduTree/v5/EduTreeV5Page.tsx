@@ -109,11 +109,20 @@ export default function EduTreeV5Page() {
   const moduleProvider = useMemo<DynamicModuleProvider | null>(() => {
     // Priority 1: Template mode (when templateId in URL and template loaded)
     if (selectedTemplate && templateId) {
-      console.log('[EduTreeV5] 🎯 Using TEMPLATE as module source:', {
-        templateId: selectedTemplate.id,
-        yearCount: selectedTemplate.yearTemplates?.length
-      });
-      return createTemplateModuleProvider(selectedTemplate);
+      const hasModuleData = selectedTemplate.yearTemplates?.length > 0;
+      
+      if (hasModuleData) {
+        console.log('[EduTreeV5] 🎯 Using TEMPLATE as module source:', {
+          templateId: selectedTemplate.id,
+          yearCount: selectedTemplate.yearTemplates.length
+        });
+        return createTemplateModuleProvider(selectedTemplate);
+      } else {
+        console.warn('[EduTreeV5] ⚠️ Template has no module data, falling back to PROGRAM_MODULES:', {
+          templateId: selectedTemplate.id
+        });
+        // Fall through to Priority 3 (PROGRAM_MODULES)
+      }
     }
     
     // Priority 2: Database mode (when db=1 in URL)
