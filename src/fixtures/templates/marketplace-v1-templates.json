@@ -1340,8 +1340,8 @@
         "recommendedPace": "mixed",
         "moduleTemplates": [
           {
-            "moduleId": "UPPER_BUS_CORE",
-            "label": "Upper Business Core (6cr)",
+            "moduleId": "UPPER_BUS_CORE_1",
+            "label": "Corporate Finance (3cr)",
             "requirementArea": "UPPER_BUSINESS",
             "options": [
               {
@@ -1358,7 +1358,15 @@
                 "cri_score": 82,
                 "workload_weekly_hours": 8,
                 "subject": "Finance"
-              },
+              }
+            ],
+            "recommendedCourseId": "SDC-CORP-FIN"
+          },
+          {
+            "moduleId": "UPPER_BUS_CORE_2",
+            "label": "Business Law (3cr)",
+            "requirementArea": "UPPER_BUSINESS",
+            "options": [
               {
                 "id": "sdc-business-law",
                 "courseId": "SDC-BUS-LAW",
@@ -1375,11 +1383,11 @@
                 "subject": "Law"
               }
             ],
-            "recommendedCourseId": "SDC-CORP-FIN"
+            "recommendedCourseId": "SDC-BUS-LAW"
           },
           {
-            "moduleId": "TESU_RESIDENCY_Y3",
-            "label": "TESU Business Courses (9cr)",
+            "moduleId": "TESU_BUS_STAT",
+            "label": "Business Statistics (3cr)",
             "requirementArea": "BUS_CORE",
             "options": [
               {
@@ -1396,7 +1404,15 @@
                 "cri_score": 82,
                 "workload_weekly_hours": 7.5,
                 "subject": "Statistics"
-              },
+              }
+            ],
+            "recommendedCourseId": "TESU-BUS-STAT-201"
+          },
+          {
+            "moduleId": "TESU_ORG_BEH",
+            "label": "Organizational Behavior (3cr)",
+            "requirementArea": "BUS_CORE",
+            "options": [
               {
                 "id": "tesu-org-behavior",
                 "courseId": "TESU-ORG-BEH-301",
@@ -1411,7 +1427,15 @@
                 "cri_score": 83,
                 "workload_weekly_hours": 7.5,
                 "subject": "Business"
-              },
+              }
+            ],
+            "recommendedCourseId": "TESU-ORG-BEH-301"
+          },
+          {
+            "moduleId": "TESU_OPS_MGT",
+            "label": "Operations Management (3cr)",
+            "requirementArea": "BUS_CORE",
+            "options": [
               {
                 "id": "tesu-operations-mgmt",
                 "courseId": "TESU-OPS-MGT-302",
@@ -1428,7 +1452,7 @@
                 "subject": "Business"
               }
             ],
-            "recommendedCourseId": "TESU-BUS-STAT-201"
+            "recommendedCourseId": "TESU-OPS-MGT-302"
           }
         ]
       },
@@ -1438,8 +1462,8 @@
         "recommendedPace": "full_time",
         "moduleTemplates": [
           {
-            "moduleId": "TESU_UPPER_BUS",
-            "label": "TESU Upper Business (9cr)",
+            "moduleId": "TESU_INTL_BUS",
+            "label": "International Business (3cr)",
             "requirementArea": "UPPER_BUSINESS",
             "options": [
               {
@@ -1456,7 +1480,15 @@
                 "cri_score": 84,
                 "workload_weekly_hours": 7.5,
                 "subject": "Business"
-              },
+              }
+            ],
+            "recommendedCourseId": "TESU-INTL-BUS-320"
+          },
+          {
+            "moduleId": "TESU_STRAT_MGT",
+            "label": "Strategic Management (3cr)",
+            "requirementArea": "UPPER_BUSINESS",
+            "options": [
               {
                 "id": "tesu-strategic-mgmt",
                 "courseId": "TESU-STRAT-MGT-401",
@@ -1471,7 +1503,15 @@
                 "cri_score": 85,
                 "workload_weekly_hours": 8,
                 "subject": "Business"
-              },
+              }
+            ],
+            "recommendedCourseId": "TESU-STRAT-MGT-401"
+          },
+          {
+            "moduleId": "TESU_BUS_STRAT",
+            "label": "Business Strategy & Policy (3cr)",
+            "requirementArea": "UPPER_BUSINESS",
+            "options": [
               {
                 "id": "tesu-bus-strategy",
                 "courseId": "TESU-BUS-STRAT-402",
@@ -1488,7 +1528,7 @@
                 "subject": "Business"
               }
             ],
-            "recommendedCourseId": "TESU-INTL-BUS-320"
+            "recommendedCourseId": "TESU-BUS-STRAT-402"
           },
           {
             "moduleId": "CAPSTONE",
@@ -1514,8 +1554,8 @@
             "recommendedCourseId": "TESU-BSBA-CAP-499"
           },
           {
-            "moduleId": "FREE_ELECTIVES",
-            "label": "Free Electives (9cr)",
+            "moduleId": "FREE_ELECTIVE_1",
+            "label": "Business Elective I (3cr)",
             "requirementArea": "FREE_ELECTIVE",
             "options": [
               {
@@ -1532,7 +1572,15 @@
                 "cri_score": 75,
                 "workload_weekly_hours": 7.5,
                 "subject": "Business"
-              },
+              }
+            ],
+            "recommendedCourseId": "TESU-ELECT-301"
+          },
+          {
+            "moduleId": "FREE_ELECTIVE_2",
+            "label": "Business Elective II (3cr)",
+            "requirementArea": "FREE_ELECTIVE",
+            "options": [
               {
                 "id": "tesu-elective-2",
                 "courseId": "TESU-ELECT-302",
@@ -1547,7 +1595,15 @@
                 "cri_score": 75,
                 "workload_weekly_hours": 7.5,
                 "subject": "Business"
-              },
+              }
+            ],
+            "recommendedCourseId": "TESU-ELECT-302"
+          },
+          {
+            "moduleId": "FREE_ELECTIVE_3",
+            "label": "Business Communications (3cr)",
+            "requirementArea": "FREE_ELECTIVE",
+            "options": [
               {
                 "id": "sdc-business-elective",
                 "courseId": "SDC-BUS-ELECT",
@@ -1564,7 +1620,7 @@
                 "subject": "Business"
               }
             ],
-            "recommendedCourseId": "TESU-ELECT-301"
+            "recommendedCourseId": "SDC-BUS-ELECT"
           }
         ]
       }
