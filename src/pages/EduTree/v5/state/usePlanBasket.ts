@@ -349,8 +349,21 @@ export const usePlanBasket = create<PlanBasketState>()(
       applyTemplateToPlan: (template: any) => {
         console.log('[usePlanBasket] Applying degree template to plan:', template?.id || template?.programId);
         
-        if (!template?.yearTemplates) {
-          console.warn('[usePlanBasket] Template missing yearTemplates, skipping');
+        if (!template?.yearTemplates || template.yearTemplates.length === 0) {
+          console.error('[usePlanBasket] ❌ Template has no yearTemplates:', {
+            templateId: template?.id,
+            hasYearTemplates: !!template?.yearTemplates,
+            length: template?.yearTemplates?.length
+          });
+          
+          // Import toast dynamically to avoid circular dependencies
+          import('sonner').then(({ toast }) => {
+            toast.error('Template Error', {
+              description: `This template (${template?.id || 'unknown'}) is incomplete. Try the BSBA template instead.`,
+              duration: 6000,
+            });
+          });
+          
           return;
         }
         

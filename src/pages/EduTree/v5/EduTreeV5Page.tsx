@@ -138,7 +138,7 @@ export default function EduTreeV5Page() {
         setConstraints({ target_school: selectedTemplate.anchorSchool });
       }
     }
-  }, [selectedTemplate?.id, templateId]);
+  }, [selectedTemplate?.id, templateId, applyTemplateToPlan, setConstraints, constraints.target_school]);
   
   useEffect(() => {
     const programId = searchParams.get('programId');
