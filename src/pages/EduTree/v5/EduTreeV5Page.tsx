@@ -31,6 +31,7 @@ import { ModuleData, Course, Requirement, LoadHealth, DegreeSummary } from './ty
 import { useV5DatabaseData } from './hooks/useV5DatabaseData';
 import { createTemplateModuleProvider } from './adapters/templateModuleAdapter';
 import { createProgramModulesProvider } from './adapters/programModulesAdapter';
+import { createDatabaseModulesProvider } from './adapters/databaseModulesAdapter';
 import type { DynamicModuleProvider } from './types/moduleProvider';
 import { usePlanStore } from './state/usePlanStore';
 import { usePlanBasket } from './state/usePlanBasket';
@@ -128,10 +129,12 @@ export default function EduTreeV5Page() {
     }
     
     // Priority 2: Database mode (when db=1 in URL)
-    if (USE_DATABASE && dbData) {
-      console.log('[EduTreeV5] 🗄️ Using DATABASE as module source');
-      // Database provider would go here (not yet implemented)
-      return null; // Fall through to fixtures
+    if (USE_DATABASE && dbData?.modulesByYear) {
+      console.log('[EduTreeV5] 🗄️ Using DATABASE as module source:', {
+        years: Object.keys(dbData.modulesByYear),
+        totalModules: Object.values(dbData.modulesByYear).flat().length
+      });
+      return createDatabaseModulesProvider(dbData.modulesByYear);
     }
     
     // Priority 3: Default to CS Program Modules (fixtures)
