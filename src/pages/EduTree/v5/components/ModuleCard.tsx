@@ -46,6 +46,7 @@ interface ModuleCardProps extends ModuleData {
 
 export function ModuleCard({ 
   id,
+  requirementArea,
   label, 
   icon, 
   description, 
@@ -79,7 +80,22 @@ export function ModuleCard({
   const moduleStates = usePlanBasket(s => s.moduleStates);
   const { removeItemWithToast } = usePlanBasketWithToasts();
   
-  const basketItems = basket.filter(b => b.moduleId === id);
+  // Phase 3: Dual filtering - match basket items by EITHER moduleId OR requirementArea
+  // This allows template items (with requirement-based IDs) to show in structured modules
+  const basketItems = basket.filter(item => {
+    // Direct ID match (structured: "y1-fall-gened-humanities" or template: "WRITTEN_COMM")
+    if (item.moduleId === id) return true;
+    
+    // Requirement area match (allows template items to show in structured modules)
+    // Example: item.requirementArea="WRITTEN_COMM" matches module with requirementArea="WRITTEN_COMM"
+    if (requirementArea && item.requirementArea === requirementArea) return true;
+    
+    // Reverse match: structured module can match template item's primary ID
+    // Example: module with requirementArea="WRITTEN_COMM" matches item.moduleId="WRITTEN_COMM"
+    if (requirementArea && item.moduleId === requirementArea) return true;
+    
+    return false;
+  });
   const { quickPick } = useAutoFillModule();
   
   // Debug logging for basket items per module
@@ -87,16 +103,19 @@ export function ModuleCard({
     if (basketItems.length > 0 || process.env.NODE_ENV === 'development') {
       console.log(`[ModuleCard ${id}] 📦 Basket items:`, {
         moduleId: id,
+        requirementArea,
         itemCount: basketItems.length,
         items: basketItems.map(i => ({
           courseId: i.courseId,
+          moduleId: i.moduleId,
+          requirementArea: i.requirementArea,
           credits: i.credits,
           status: i.status
         })),
         totalBasketSize: basket.length
       });
     }
-  }, [id, basketItems.length, basket.length]);
+  }, [id, requirementArea, basketItems.length, basket.length]);
   
   // Mismatch detection: log if optionsCount prop doesn't match actual array length
   useEffect(() => {
