@@ -88,6 +88,9 @@ export interface ModuleData {
   fulfills_area?: 'foundation' | 'core' | 'major' | 'capstone' | 'elective';
   upper_division?: boolean; // Counts toward upper-division minimum (300/400 level)
   year?: number; // Year this module belongs to
+  
+  // Phase 1: Dynamic module provider support
+  requirementArea?: string; // For template-based modules (e.g., "WRITTEN_COMM")
 }
 
 export interface Requirement {
