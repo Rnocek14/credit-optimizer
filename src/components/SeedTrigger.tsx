@@ -11,49 +11,54 @@ export function SeedTrigger() {
 
   const handleSeed = async () => {
     setIsRunning(true);
+    setShowSchemaHelp(false);
+    
     try {
       console.log('🌱 Running database seeds...');
       
-      const { data, error } = await supabase.functions.invoke('run-seeds', {
-        body: { confirm: true }
-      });
+      const { data, error } = await supabase.functions.invoke('run-seeds');
 
       if (error) {
-        console.error('Seed error:', error);
-        
-        // Check for network/deployment errors
-        if (error.message?.includes('Failed to fetch') || error.name === 'FunctionsFetchError') {
-          setShowSchemaHelp(true);
-          toast.error('Edge function not available', {
-            description: 'Use the manual SQL method below instead',
-            duration: 10000
-          });
-        } else if (data?.error === 'Table schema mismatch') {
-          setShowSchemaHelp(true);
-          toast.error('Schema needs to be fixed first', {
-            description: 'Click to see instructions below',
-            duration: 8000
-          });
-        } else {
-          toast.error('Seed failed. Check console for details.');
-        }
+        console.error('❌ Edge function error:', error);
+        setShowSchemaHelp(true);
+        toast.error('Edge function unavailable', {
+          description: 'Use the manual SQL method shown below',
+          duration: 10000
+        });
         return;
       }
 
-      if (data?.alreadySeeded) {
-        toast.info('Seeds already applied');
-        setHasRun(true);
+      if (!data.success) {
+        console.error('❌ Seed operation failed:', data);
+        setShowSchemaHelp(true);
+        toast.error(data.error || 'Seeding failed', {
+          description: data.hint || 'Use manual SQL method below',
+          duration: 8000
+        });
         return;
       }
 
-      console.log('✅ Seeds applied:', data);
-      toast.success(data.message || 'Database seeds applied successfully!');
+      const stats = data.stats || { inserted: 0, skipped: 0, total: 0 };
+      
+      if (data.alreadySeeded) {
+        toast.info('Seeds already in database', {
+          description: `${stats.total} transfer rules found`
+        });
+      } else {
+        toast.success('✅ Seeds applied successfully!', {
+          description: `Inserted ${stats.inserted} transfer rules`
+        });
+      }
+      
       setHasRun(true);
+      console.log('✅ Seed complete:', data);
       
     } catch (error) {
-      console.error('Seed failed:', error);
+      console.error('❌ Unexpected error:', error);
       setShowSchemaHelp(true);
-      toast.error('Failed to apply seeds. Use manual method below.');
+      toast.error('Failed to apply seeds', {
+        description: 'Use manual SQL method shown below'
+      });
     } finally {
       setIsRunning(false);
     }
@@ -99,15 +104,23 @@ CREATE TABLE credit_transfer_rules (
   source_institution TEXT NOT NULL,
   source_course_code TEXT NOT NULL,
   target_institution TEXT NOT NULL,
-  target_course_code TEXT,
-  acceptance_status TEXT DEFAULT 'accepted',
+  target_course_code TEXT NOT NULL,
+  acceptance_status TEXT NOT NULL CHECK (acceptance_status IN ('accepted', 'conditional', 'rejected', 'pending')),
   rule_source TEXT,
-  confidence NUMERIC,
-  created_at TIMESTAMPTZ DEFAULT now()
+  confidence NUMERIC(3,2) CHECK (confidence >= 0 AND confidence <= 1),
+  notes TEXT,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now(),
+  UNIQUE(source_institution, source_course_code, target_institution, target_course_code)
 );
 
 ALTER TABLE credit_transfer_rules ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Public read" ON credit_transfer_rules FOR SELECT USING (true);
+CREATE POLICY "Public read" ON credit_transfer_rules FOR SELECT TO public USING (true);
+CREATE POLICY "Auth insert" ON credit_transfer_rules FOR INSERT TO authenticated WITH CHECK (true);
+CREATE POLICY "Auth update" ON credit_transfer_rules FOR UPDATE TO authenticated USING (true) WITH CHECK (true);
+
+CREATE INDEX idx_transfer_source ON credit_transfer_rules(source_institution, source_course_code);
+CREATE INDEX idx_transfer_target ON credit_transfer_rules(target_institution, target_course_code);
 
 -- Insert 23 transfer rules
 INSERT INTO credit_transfer_rules (source_institution, source_course_code, target_institution, target_course_code, acceptance_status, rule_source, confidence) VALUES

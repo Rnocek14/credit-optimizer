@@ -20,20 +20,20 @@ Deno.serve(async (req) => {
 
     console.log('🌱 Starting seed process...');
 
-    // Check if seeds already applied
-    const { data: existing, error: checkError } = await supabaseAdmin
+    // Verify schema matches expected structure
+    const { data: schemaTest, error: checkError } = await supabaseAdmin
       .from('credit_transfer_rules')
       .select('id')
-      .limit(1);
+      .limit(0);
 
-    // If table doesn't exist or has wrong schema, provide helpful error
     if (checkError) {
-      console.error('❌ Table schema error:', checkError);
+      console.error('❌ Schema verification failed:', checkError);
       return new Response(
         JSON.stringify({
-          error: 'Table schema mismatch',
-          details: 'Please run the migration first to fix the credit_transfer_rules table schema',
-          hint: 'Go to Cloud → Database → Insert Data and run the schema fix SQL'
+          success: false,
+          error: 'Schema error detected',
+          details: checkError.message,
+          hint: 'Table may not exist or has incorrect schema. Use manual SQL method in UI.'
         }),
         {
           status: 400,
@@ -42,12 +42,20 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Check if seeds already applied
+    const { data: existing } = await supabaseAdmin
+      .from('credit_transfer_rules')
+      .select('id')
+      .limit(1);
+
     if (existing && existing.length > 0) {
       console.log('ℹ️ Seeds already applied');
       return new Response(
         JSON.stringify({
+          success: true,
           alreadySeeded: true,
-          message: 'Transfer rules already exist in database'
+          message: 'Transfer rules already exist in database',
+          stats: { inserted: 0, skipped: existing.length, total: existing.length }
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
@@ -108,7 +116,11 @@ Deno.serve(async (req) => {
       JSON.stringify({
         success: true,
         message: `Successfully seeded ${transferRules.length} transfer rules`,
-        count: transferRules.length
+        stats: {
+          inserted: transferRules.length,
+          skipped: 0,
+          total: transferRules.length
+        }
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
