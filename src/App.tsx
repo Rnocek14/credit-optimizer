@@ -37,6 +37,7 @@ import SkillTree3 from "./pages/SkillTree3";
 import EducationTree from "./pages/EducationTree";
 import ResumeBuilder from "./pages/ResumeBuilder";
 import Admin from "./pages/Admin";
+import AdminTransferRules from "./pages/AdminTransferRules";
 import MentorInbox from "./pages/MentorInbox";
 import ResumeEmbed from "./pages/ResumeEmbed";
 import EmbedGenerator from "./pages/EmbedGenerator";
@@ -403,6 +404,16 @@ const App = () => {
           <Route path="/institution-hub" element={<Navigate to="/contribute?tab=institution" replace />} />
           <Route path="/employer-hub" element={<Navigate to="/contribute?tab=employer" replace />} />
           <Route path="/admin" element={<Navigate to="/contribute?tab=admin" replace />} />
+          
+          {/* Admin Transfer Rules Management */}
+          <Route 
+            path="/admin/transfer-rules" 
+            element={
+              <ProtectedRoute requireAuth={true}>
+                <AdminTransferRules />
+              </ProtectedRoute>
+            } 
+          />
 
           {/* Teach Feature Routes */}
           <Route 
