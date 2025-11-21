@@ -402,9 +402,15 @@ export default function EduTreeV5Page() {
 
   // Toggle database mode
   const handleToggleMode = useCallback(() => {
-    const next = !USE_DATABASE;
-    localStorage.setItem('v5.useDatabase', String(next));
-    window.location.reload();
+    const url = new URL(window.location.href);
+    if (USE_DATABASE) {
+      // Turn off database mode - remove db parameter
+      url.searchParams.delete('db');
+    } else {
+      // Turn on database mode - add db=1
+      url.searchParams.set('db', '1');
+    }
+    window.location.href = url.toString();
   }, [USE_DATABASE]);
 
   // Get course details from canonical courses
