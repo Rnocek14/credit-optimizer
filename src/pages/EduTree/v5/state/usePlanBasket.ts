@@ -416,6 +416,24 @@ export const usePlanBasket = create<PlanBasketState>()(
         // Replace basket with template items
         set({ items });
         
+        // Add comprehensive logging after setting state
+        const finalBasket = get().items;
+        console.log('[usePlanBasket] ✅ Template applied successfully:', {
+          templateId: template.id,
+          itemsCreated: items.length,
+          itemsInBasket: finalBasket.length,
+          totalCredits: finalBasket.reduce((sum, i) => sum + i.credits, 0),
+          moduleBreakdown: finalBasket.reduce((acc, item) => {
+            acc[item.moduleId] = (acc[item.moduleId] || 0) + 1;
+            return acc;
+          }, {} as Record<string, number>),
+          sampleItems: finalBasket.slice(0, 3).map(i => ({
+            courseId: i.courseId,
+            moduleId: i.moduleId,
+            credits: i.credits
+          }))
+        });
+        
         void trackTelemetryEvent({
           task: 'template_applied_to_plan',
           scope: 'degree',
