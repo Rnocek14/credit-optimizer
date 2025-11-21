@@ -2,11 +2,14 @@ import { useState, useEffect } from 'react';
 import { usePathStore } from '@/stores/usePathStore';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Settings, Zap, CheckSquare, RotateCcw, Loader2, Bug } from 'lucide-react';
+import { Settings, Zap, CheckSquare, RotateCcw, Loader2, Bug, Shield } from 'lucide-react';
+import { AdminSetup } from '@/components/AdminSetup';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 
 export function DevMenu() {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isLoading, setIsLoading] = useState<string | null>(null);
+  const [showAdminSetup, setShowAdminSetup] = useState(false);
   const [isDemoMode, setIsDemoMode] = useState(() => 
     (window as any).__LP_DEMO_MODE__ || false
   );
@@ -224,6 +227,25 @@ export function DevMenu() {
           <Zap className="mr-2 h-3 w-3" />
           Toggle Growth Layer
         </Button>
+
+        <Dialog open={showAdminSetup} onOpenChange={setShowAdminSetup}>
+          <DialogTrigger asChild>
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full justify-start text-xs h-8"
+            >
+              <Shield className="mr-2 h-3 w-3" />
+              Admin Setup
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Admin Role Setup</DialogTitle>
+            </DialogHeader>
+            <AdminSetup />
+          </DialogContent>
+        </Dialog>
       </div>
 
       <div className="mt-3 pt-3 border-t border-muted-foreground/10">
