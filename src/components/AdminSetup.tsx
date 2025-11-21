@@ -1,16 +1,27 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Shield, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
+import { Shield, CheckCircle2, AlertCircle, Loader2, LogIn } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useUserRole } from '@/hooks/useUserRole';
+import { Link } from 'react-router-dom';
 
 export function AdminSetup() {
   const [isChecking, setIsChecking] = useState(false);
   const [isSettingUp, setIsSettingUp] = useState(false);
   const [tableExists, setTableExists] = useState<boolean | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const { isAdmin, role } = useUserRole();
+
+  useEffect(() => {
+    checkAuth();
+  }, []);
+
+  const checkAuth = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    setIsAuthenticated(!!user);
+  };
 
   const checkTableExists = async () => {
     setIsChecking(true);
@@ -50,7 +61,12 @@ export function AdminSetup() {
       const { data: { user } } = await supabase.auth.getUser();
       
       if (!user) {
-        throw new Error('Not authenticated');
+        toast.error('Not authenticated', {
+          description: 'Please log in first to set up admin access'
+        });
+        setIsAuthenticated(false);
+        setIsSettingUp(false);
+        return;
       }
 
       // Try to insert admin role
@@ -132,6 +148,31 @@ CREATE INDEX idx_user_roles_user_id ON public.user_roles(user_id);`;
     toast.success('SQL copied to clipboard');
   };
 
+  // Not authenticated check
+  if (isAuthenticated === false) {
+    return (
+      <Card className="border-yellow-200 bg-yellow-50 dark:bg-yellow-950/20">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-yellow-700 dark:text-yellow-400">
+            <AlertCircle className="h-5 w-5" />
+            Authentication Required
+          </CardTitle>
+          <CardDescription>
+            You need to be logged in to set up admin access
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button asChild>
+            <Link to="/auth">
+              <LogIn className="h-4 w-4 mr-2" />
+              Log In
+            </Link>
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
   if (isAdmin) {
     return (
       <Card className="border-green-200 bg-green-50 dark:bg-green-950/20">
@@ -146,10 +187,10 @@ CREATE INDEX idx_user_roles_user_id ON public.user_roles(user_id);`;
         </CardHeader>
         <CardContent>
           <Button asChild>
-            <a href="/admin/transfer-rules">
+            <Link to="/admin/transfer-rules">
               <Shield className="h-4 w-4 mr-2" />
               Go to Admin Dashboard
-            </a>
+            </Link>
           </Button>
         </CardContent>
       </Card>
