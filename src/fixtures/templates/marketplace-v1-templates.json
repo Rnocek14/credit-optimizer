@@ -1014,6 +1014,29 @@
         "recommendedPace": "part_time",
         "moduleTemplates": [
           {
+            "moduleId": "CIVIC_GLOBAL",
+            "label": "Civic & Global Engagement (3cr)",
+            "requirementArea": "CIVIC_GLOBAL",
+            "options": [
+              {
+                "id": "sophia-us-history-1",
+                "courseId": "SOPHIA-US-HIST-I",
+                "title": "U.S. History I",
+                "credits": 3,
+                "cost_usd": 99,
+                "duration_weeks": 4,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 100,
+                "cri_score": 72,
+                "workload_weekly_hours": 7.5,
+                "subject": "History"
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-US-HIST-I"
+          },
+          {
             "moduleId": "WRITTEN_COMM",
             "label": "Written Communication (6cr)",
             "requirementArea": "WRITTEN_COMM",
@@ -1075,8 +1098,8 @@
             "recommendedCourseId": "SOPHIA-COLLEGE-ALG"
           },
           {
-            "moduleId": "HUMANITIES",
-            "label": "Humanities (6cr)",
+            "moduleId": "HUMANITIES_1",
+            "label": "Humanities I - Ethics (3cr)",
             "requirementArea": "HUMANITIES",
             "options": [
               {
@@ -1093,7 +1116,15 @@
                 "cri_score": 70,
                 "workload_weekly_hours": 7.5,
                 "subject": "Philosophy"
-              },
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-INTRO-ETHICS"
+          },
+          {
+            "moduleId": "HUMANITIES_2",
+            "label": "Humanities II - Art History (3cr)",
+            "requirementArea": "HUMANITIES",
+            "options": [
               {
                 "id": "sophia-art-history",
                 "courseId": "SOPHIA-ART-HIST-I",
@@ -1110,11 +1141,11 @@
                 "subject": "Art History"
               }
             ],
-            "recommendedCourseId": "SOPHIA-INTRO-ETHICS"
+            "recommendedCourseId": "SOPHIA-ART-HIST-I"
           },
           {
-            "moduleId": "SOCIAL_SCIENCE",
-            "label": "Social Science (6cr)",
+            "moduleId": "SOCIAL_SCIENCE_1",
+            "label": "Social Science I - Psychology (3cr)",
             "requirementArea": "SOCIAL_SCIENCE",
             "options": [
               {
@@ -1131,7 +1162,15 @@
                 "cri_score": 73,
                 "workload_weekly_hours": 7.5,
                 "subject": "Psychology"
-              },
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-INTRO-PSYCH"
+          },
+          {
+            "moduleId": "SOCIAL_SCIENCE_2",
+            "label": "Social Science II - Sociology (3cr)",
+            "requirementArea": "SOCIAL_SCIENCE",
+            "options": [
               {
                 "id": "sophia-intro-sociology",
                 "courseId": "SOPHIA-INTRO-SOC",
@@ -1148,11 +1187,11 @@
                 "subject": "Sociology"
               }
             ],
-            "recommendedCourseId": "SOPHIA-INTRO-PSYCH"
+            "recommendedCourseId": "SOPHIA-INTRO-SOC"
           },
           {
-            "moduleId": "NATURAL_SCIENCE",
-            "label": "Natural Science (6cr)",
+            "moduleId": "NATURAL_SCIENCE_1",
+            "label": "Natural Science I - Biology (3cr)",
             "requirementArea": "NATURAL_SCIENCE",
             "options": [
               {
@@ -1169,7 +1208,15 @@
                 "cri_score": 68,
                 "workload_weekly_hours": 7.5,
                 "subject": "Biology"
-              },
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-HUMAN-BIO"
+          },
+          {
+            "moduleId": "NATURAL_SCIENCE_2",
+            "label": "Natural Science II - Environmental Science (3cr)",
+            "requirementArea": "NATURAL_SCIENCE",
+            "options": [
               {
                 "id": "sophia-env-science",
                 "courseId": "SOPHIA-ENV-SCI",
@@ -1186,7 +1233,7 @@
                 "subject": "Science"
               }
             ],
-            "recommendedCourseId": "SOPHIA-HUMAN-BIO"
+            "recommendedCourseId": "SOPHIA-ENV-SCI"
           }
         ]
       },
@@ -1219,8 +1266,8 @@
             "recommendedCourseId": "SOPHIA-PUBLIC-SPEAK"
           },
           {
-            "moduleId": "BUS_PRINCIPLES",
-            "label": "Business Principles (6cr)",
+            "moduleId": "BUS_PRINCIPLES_1",
+            "label": "Principles of Management (3cr)",
             "requirementArea": "BUS_CORE",
             "options": [
               {
@@ -1237,7 +1284,15 @@
                 "cri_score": 80,
                 "workload_weekly_hours": 7.5,
                 "subject": "Business"
-              },
+              }
+            ],
+            "recommendedCourseId": "SDC-PRIN-MGMT"
+          },
+          {
+            "moduleId": "BUS_PRINCIPLES_2",
+            "label": "Principles of Marketing (3cr)",
+            "requirementArea": "BUS_CORE",
+            "options": [
               {
                 "id": "sdc-principles-marketing",
                 "courseId": "SDC-PRIN-MKT",
@@ -1254,11 +1309,11 @@
                 "subject": "Business"
               }
             ],
-            "recommendedCourseId": "SDC-PRIN-MGMT"
+            "recommendedCourseId": "SDC-PRIN-MKT"
           },
           {
-            "moduleId": "ACCOUNTING",
-            "label": "Accounting (6cr)",
+            "moduleId": "ACCOUNTING_1",
+            "label": "Financial Accounting (3cr)",
             "requirementArea": "BUS_CORE",
             "options": [
               {
@@ -1275,7 +1330,15 @@
                 "cri_score": 82,
                 "workload_weekly_hours": 8,
                 "subject": "Accounting"
-              },
+              }
+            ],
+            "recommendedCourseId": "SDC-FIN-ACCT"
+          },
+          {
+            "moduleId": "ACCOUNTING_2",
+            "label": "Managerial Accounting (3cr)",
+            "requirementArea": "BUS_CORE",
+            "options": [
               {
                 "id": "sdc-managerial-acct",
                 "courseId": "SDC-MGT-ACCT",
@@ -1292,11 +1355,11 @@
                 "subject": "Accounting"
               }
             ],
-            "recommendedCourseId": "SDC-FIN-ACCT"
+            "recommendedCourseId": "SDC-MGT-ACCT"
           },
           {
-            "moduleId": "ECONOMICS",
-            "label": "Economics (6cr)",
+            "moduleId": "ECONOMICS_1",
+            "label": "Microeconomics (3cr)",
             "requirementArea": "BUS_CORE",
             "options": [
               {
@@ -1313,7 +1376,15 @@
                 "cri_score": 76,
                 "workload_weekly_hours": 7.5,
                 "subject": "Economics"
-              },
+              }
+            ],
+            "recommendedCourseId": "SDC-MICRO-ECON"
+          },
+          {
+            "moduleId": "ECONOMICS_2",
+            "label": "Macroeconomics (3cr)",
+            "requirementArea": "BUS_CORE",
+            "options": [
               {
                 "id": "sdc-macroeconomics",
                 "courseId": "SDC-MACRO-ECON",
@@ -1330,7 +1401,7 @@
                 "subject": "Economics"
               }
             ],
-            "recommendedCourseId": "SDC-MICRO-ECON"
+            "recommendedCourseId": "SDC-MACRO-ECON"
           }
         ]
       },
@@ -1339,6 +1410,52 @@
         "label": "Year 3 – Upper Business + TESU Start",
         "recommendedPace": "mixed",
         "moduleTemplates": [
+          {
+            "moduleId": "INFO_TECH",
+            "label": "Information Technology (3cr)",
+            "requirementArea": "BUS_CORE",
+            "options": [
+              {
+                "id": "sdc-info-systems",
+                "courseId": "SDC-INFO-SYS",
+                "title": "Management Information Systems",
+                "credits": 3,
+                "cost_usd": 79,
+                "duration_weeks": 4,
+                "provider": "Study.com",
+                "providerType": "mooc",
+                "providerCode": "STUDYCOM",
+                "level": 300,
+                "cri_score": 78,
+                "workload_weekly_hours": 7.5,
+                "subject": "Information Systems"
+              }
+            ],
+            "recommendedCourseId": "SDC-INFO-SYS"
+          },
+          {
+            "moduleId": "BUS_ETHICS",
+            "label": "Business Ethics (3cr)",
+            "requirementArea": "UPPER_BUSINESS",
+            "options": [
+              {
+                "id": "sdc-business-ethics",
+                "courseId": "SDC-BUS-ETH",
+                "title": "Business Ethics",
+                "credits": 3,
+                "cost_usd": 79,
+                "duration_weeks": 4,
+                "provider": "Study.com",
+                "providerType": "mooc",
+                "providerCode": "STUDYCOM",
+                "level": 300,
+                "cri_score": 76,
+                "workload_weekly_hours": 7.5,
+                "subject": "Business"
+              }
+            ],
+            "recommendedCourseId": "SDC-BUS-ETH"
+          },
           {
             "moduleId": "UPPER_BUS_CORE_1",
             "label": "Corporate Finance (3cr)",
@@ -1605,31 +1722,238 @@
             "requirementArea": "FREE_ELECTIVE",
             "options": [
               {
-                "id": "sdc-business-elective",
-                "courseId": "SDC-BUS-ELECT",
+                "id": "tesu-business-comm",
+                "courseId": "TESU-BUS-COMM-301",
                 "title": "Business Communications",
+                "credits": 3,
+                "cost_usd": 1197,
+                "duration_weeks": 8,
+                "provider": "Thomas Edison State University",
+                "providerType": "university",
+                "providerCode": "TESU",
+                "level": 300,
+                "cri_score": 80,
+                "workload_weekly_hours": 7.5,
+                "subject": "Business"
+              }
+            ],
+            "recommendedCourseId": "TESU-BUS-COMM-301"
+          },
+          {
+            "moduleId": "FREE_ELECTIVE_4",
+            "label": "Human Resource Management (3cr)",
+            "requirementArea": "FREE_ELECTIVE",
+            "options": [
+              {
+                "id": "sdc-hr-mgmt",
+                "courseId": "SDC-HR-MGMT",
+                "title": "Human Resource Management",
                 "credits": 3,
                 "cost_usd": 79,
                 "duration_weeks": 4,
                 "provider": "Study.com",
                 "providerType": "mooc",
                 "providerCode": "STUDYCOM",
-                "level": 200,
+                "level": 300,
+                "cri_score": 78,
+                "workload_weekly_hours": 7.5,
+                "subject": "Business"
+              }
+            ],
+            "recommendedCourseId": "SDC-HR-MGMT"
+          },
+          {
+            "moduleId": "FREE_ELECTIVE_5",
+            "label": "Project Management (3cr)",
+            "requirementArea": "FREE_ELECTIVE",
+            "options": [
+              {
+                "id": "sdc-project-mgmt",
+                "courseId": "SDC-PROJ-MGMT",
+                "title": "Project Management",
+                "credits": 3,
+                "cost_usd": 79,
+                "duration_weeks": 4,
+                "provider": "Study.com",
+                "providerType": "mooc",
+                "providerCode": "STUDYCOM",
+                "level": 300,
+                "cri_score": 80,
+                "workload_weekly_hours": 7.5,
+                "subject": "Business"
+              }
+            ],
+            "recommendedCourseId": "SDC-PROJ-MGMT"
+          },
+          {
+            "moduleId": "FREE_ELECTIVE_6",
+            "label": "Supply Chain Management (3cr)",
+            "requirementArea": "FREE_ELECTIVE",
+            "options": [
+              {
+                "id": "sdc-supply-chain",
+                "courseId": "SDC-SUPPLY-CHAIN",
+                "title": "Supply Chain Management",
+                "credits": 3,
+                "cost_usd": 79,
+                "duration_weeks": 4,
+                "provider": "Study.com",
+                "providerType": "mooc",
+                "providerCode": "STUDYCOM",
+                "level": 300,
+                "cri_score": 79,
+                "workload_weekly_hours": 7.5,
+                "subject": "Business"
+              }
+            ],
+            "recommendedCourseId": "SDC-SUPPLY-CHAIN"
+          },
+          {
+            "moduleId": "FREE_ELECTIVE_7",
+            "label": "Business Analytics (3cr)",
+            "requirementArea": "FREE_ELECTIVE",
+            "options": [
+              {
+                "id": "sdc-bus-analytics",
+                "courseId": "SDC-BUS-ANALYTICS",
+                "title": "Business Analytics",
+                "credits": 3,
+                "cost_usd": 79,
+                "duration_weeks": 4,
+                "provider": "Study.com",
+                "providerType": "mooc",
+                "providerCode": "STUDYCOM",
+                "level": 300,
+                "cri_score": 81,
+                "workload_weekly_hours": 8,
+                "subject": "Business"
+              }
+            ],
+            "recommendedCourseId": "SDC-BUS-ANALYTICS"
+          },
+          {
+            "moduleId": "FREE_ELECTIVE_8",
+            "label": "Entrepreneurship (3cr)",
+            "requirementArea": "FREE_ELECTIVE",
+            "options": [
+              {
+                "id": "sdc-entrepreneurship",
+                "courseId": "SDC-ENTREPRENEUR",
+                "title": "Entrepreneurship",
+                "credits": 3,
+                "cost_usd": 79,
+                "duration_weeks": 4,
+                "provider": "Study.com",
+                "providerType": "mooc",
+                "providerCode": "STUDYCOM",
+                "level": 300,
                 "cri_score": 77,
                 "workload_weekly_hours": 7.5,
                 "subject": "Business"
               }
             ],
-            "recommendedCourseId": "SDC-BUS-ELECT"
+            "recommendedCourseId": "SDC-ENTREPRENEUR"
+          },
+          {
+            "moduleId": "FREE_ELECTIVE_9",
+            "label": "Digital Marketing (3cr)",
+            "requirementArea": "FREE_ELECTIVE",
+            "options": [
+              {
+                "id": "sdc-digital-marketing",
+                "courseId": "SDC-DIGITAL-MKT",
+                "title": "Digital Marketing",
+                "credits": 3,
+                "cost_usd": 79,
+                "duration_weeks": 4,
+                "provider": "Study.com",
+                "providerType": "mooc",
+                "providerCode": "STUDYCOM",
+                "level": 300,
+                "cri_score": 78,
+                "workload_weekly_hours": 7.5,
+                "subject": "Marketing"
+              }
+            ],
+            "recommendedCourseId": "SDC-DIGITAL-MKT"
+          },
+          {
+            "moduleId": "FREE_ELECTIVE_10",
+            "label": "Consumer Behavior (3cr)",
+            "requirementArea": "FREE_ELECTIVE",
+            "options": [
+              {
+                "id": "sdc-consumer-behavior",
+                "courseId": "SDC-CONSUMER-BEH",
+                "title": "Consumer Behavior",
+                "credits": 3,
+                "cost_usd": 79,
+                "duration_weeks": 4,
+                "provider": "Study.com",
+                "providerType": "mooc",
+                "providerCode": "STUDYCOM",
+                "level": 300,
+                "cri_score": 76,
+                "workload_weekly_hours": 7.5,
+                "subject": "Marketing"
+              }
+            ],
+            "recommendedCourseId": "SDC-CONSUMER-BEH"
+          },
+          {
+            "moduleId": "FREE_ELECTIVE_11",
+            "label": "Business Research Methods (3cr)",
+            "requirementArea": "FREE_ELECTIVE",
+            "options": [
+              {
+                "id": "sdc-research-methods",
+                "courseId": "SDC-RESEARCH-METH",
+                "title": "Business Research Methods",
+                "credits": 3,
+                "cost_usd": 79,
+                "duration_weeks": 4,
+                "provider": "Study.com",
+                "providerType": "mooc",
+                "providerCode": "STUDYCOM",
+                "level": 300,
+                "cri_score": 79,
+                "workload_weekly_hours": 7.5,
+                "subject": "Business"
+              }
+            ],
+            "recommendedCourseId": "SDC-RESEARCH-METH"
+          },
+          {
+            "moduleId": "FREE_ELECTIVE_12",
+            "label": "Data-Driven Decision Making (3cr)",
+            "requirementArea": "FREE_ELECTIVE",
+            "options": [
+              {
+                "id": "sdc-data-decisions",
+                "courseId": "SDC-DATA-DECISIONS",
+                "title": "Data-Driven Decision Making",
+                "credits": 3,
+                "cost_usd": 79,
+                "duration_weeks": 4,
+                "provider": "Study.com",
+                "providerType": "mooc",
+                "providerCode": "STUDYCOM",
+                "level": 300,
+                "cri_score": 80,
+                "workload_weekly_hours": 7.5,
+                "subject": "Business"
+              }
+            ],
+            "recommendedCourseId": "SDC-DATA-DECISIONS"
           }
         ]
       }
     ],
     "totals": {
       "credits": 120,
-      "costUsd": 7956,
+      "costUsd": 10806,
       "weeks": 156,
-      "avgCri": 77.5
+      "avgCri": 77.8
     }
   },
   {
