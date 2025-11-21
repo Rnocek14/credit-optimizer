@@ -3,6 +3,8 @@ import { Settings, Database, Sprout, RotateCcw, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { MigrationTrigger } from '@/components/MigrationTrigger';
 import { SeedTrigger } from '@/components/SeedTrigger';
+import { ComprehensiveSeeder } from '@/components/ComprehensiveSeeder';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 
 interface AdminFABProps {
@@ -50,6 +52,27 @@ export function AdminFAB({ useDatabase, onToggleDatabase, onResetPlan }: AdminFA
             <SeedTrigger />
           </div>
         )}
+
+        {/* Seed All Data */}
+        <Dialog>
+          <DialogTrigger asChild>
+            <Button
+              variant="secondary"
+              size="sm"
+              className="shadow-lg hover:shadow-xl transition-all gap-2 min-w-[160px] justify-start"
+              title="Seed all application data"
+            >
+              <Database className="w-4 h-4" />
+              <span className="text-xs font-medium">Seed All Data</span>
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Seed Application Data</DialogTitle>
+            </DialogHeader>
+            <ComprehensiveSeeder />
+          </DialogContent>
+        </Dialog>
 
         {/* Reset Plan */}
         <Button
