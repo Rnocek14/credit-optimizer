@@ -4,6 +4,38 @@ import { Sprout, Loader2, CheckCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
+const SEED_DATA = [
+  { source_institution: 'SOPHIA', source_course_code: 'SOPHIA-ENG-COMP-I-II', target_institution: 'TESU', target_course_code: 'ENG-101', acceptance_status: 'accepted', rule_source: 'ACE Credit', confidence: 0.95 },
+  { source_institution: 'SOPHIA', source_course_code: 'SOPHIA-US-HIST-I', target_institution: 'TESU', target_course_code: 'HIS-113', acceptance_status: 'accepted', rule_source: 'ACE Credit', confidence: 0.95 },
+  { source_institution: 'SOPHIA', source_course_code: 'SOPHIA-COLLEGE-ALG', target_institution: 'TESU', target_course_code: 'MAT-121', acceptance_status: 'accepted', rule_source: 'ACE Credit', confidence: 0.95 },
+  { source_institution: 'SOPHIA', source_course_code: 'SOPHIA-INTRO-ETHICS', target_institution: 'TESU', target_course_code: 'PHI-384', acceptance_status: 'accepted', rule_source: 'ACE Credit', confidence: 0.95 },
+  { source_institution: 'SOPHIA', source_course_code: 'SOPHIA-ART-HIST-I', target_institution: 'TESU', target_course_code: 'ART-101', acceptance_status: 'accepted', rule_source: 'ACE Credit', confidence: 0.95 },
+  { source_institution: 'SOPHIA', source_course_code: 'SOPHIA-INTRO-PSYCH', target_institution: 'TESU', target_course_code: 'PSY-101', acceptance_status: 'accepted', rule_source: 'ACE Credit', confidence: 0.95 },
+  { source_institution: 'SOPHIA', source_course_code: 'SOPHIA-INTRO-SOC', target_institution: 'TESU', target_course_code: 'SOC-101', acceptance_status: 'accepted', rule_source: 'ACE Credit', confidence: 0.95 },
+  { source_institution: 'SOPHIA', source_course_code: 'SOPHIA-HUMAN-BIO', target_institution: 'TESU', target_course_code: 'BIO-101', acceptance_status: 'accepted', rule_source: 'ACE Credit', confidence: 0.95 },
+  { source_institution: 'SOPHIA', source_course_code: 'SOPHIA-ENV-SCI', target_institution: 'TESU', target_course_code: 'ENV-101', acceptance_status: 'accepted', rule_source: 'ACE Credit', confidence: 0.95 },
+  { source_institution: 'SOPHIA', source_course_code: 'SOPHIA-PUBLIC-SPEAK', target_institution: 'TESU', target_course_code: 'COM-209', acceptance_status: 'accepted', rule_source: 'ACE Credit', confidence: 0.95 },
+  { source_institution: 'STUDYCOM', source_course_code: 'SDC-PRIN-MGMT', target_institution: 'TESU', target_course_code: 'MAN-321', acceptance_status: 'accepted', rule_source: 'ACE Credit', confidence: 0.92 },
+  { source_institution: 'STUDYCOM', source_course_code: 'SDC-PRIN-MKT', target_institution: 'TESU', target_course_code: 'MAR-301', acceptance_status: 'accepted', rule_source: 'ACE Credit', confidence: 0.92 },
+  { source_institution: 'STUDYCOM', source_course_code: 'SDC-FIN-ACCT', target_institution: 'TESU', target_course_code: 'ACC-102', acceptance_status: 'accepted', rule_source: 'ACE Credit', confidence: 0.92 },
+  { source_institution: 'STUDYCOM', source_course_code: 'SDC-MGT-ACCT', target_institution: 'TESU', target_course_code: 'ACC-301', acceptance_status: 'accepted', rule_source: 'ACE Credit', confidence: 0.92 },
+  { source_institution: 'STUDYCOM', source_course_code: 'SDC-MICRO-ECON', target_institution: 'TESU', target_course_code: 'ECO-211', acceptance_status: 'accepted', rule_source: 'ACE Credit', confidence: 0.92 },
+  { source_institution: 'STUDYCOM', source_course_code: 'SDC-MACRO-ECON', target_institution: 'TESU', target_course_code: 'ECO-212', acceptance_status: 'accepted', rule_source: 'ACE Credit', confidence: 0.92 },
+  { source_institution: 'STUDYCOM', source_course_code: 'SDC-INFO-SYS', target_institution: 'TESU', target_course_code: 'CIS-301', acceptance_status: 'accepted', rule_source: 'ACE Credit', confidence: 0.92 },
+  { source_institution: 'STUDYCOM', source_course_code: 'SDC-BUS-ETH', target_institution: 'TESU', target_course_code: 'BUS-331', acceptance_status: 'accepted', rule_source: 'ACE Credit', confidence: 0.90 },
+  { source_institution: 'STUDYCOM', source_course_code: 'SDC-CORP-FIN', target_institution: 'TESU', target_course_code: 'FIN-321', acceptance_status: 'accepted', rule_source: 'ACE Credit', confidence: 0.90 },
+  { source_institution: 'STUDYCOM', source_course_code: 'SDC-BUS-LAW', target_institution: 'TESU', target_course_code: 'BUS-311', acceptance_status: 'accepted', rule_source: 'ACE Credit', confidence: 0.90 },
+  { source_institution: 'STUDYCOM', source_course_code: 'SDC-HR-MGMT', target_institution: 'TESU', target_course_code: 'HRM-301', acceptance_status: 'accepted', rule_source: 'ACE Credit', confidence: 0.90 },
+  { source_institution: 'STUDYCOM', source_course_code: 'SDC-PROJ-MGMT', target_institution: 'TESU', target_course_code: 'MAN-341', acceptance_status: 'accepted', rule_source: 'ACE Credit', confidence: 0.90 },
+  { source_institution: 'STUDYCOM', source_course_code: 'SDC-SUPPLY-CHAIN', target_institution: 'TESU', target_course_code: 'OPM-301', acceptance_status: 'accepted', rule_source: 'ACE Credit', confidence: 0.90 },
+  { source_institution: 'STUDYCOM', source_course_code: 'SDC-BUS-ANALYTICS', target_institution: 'TESU', target_course_code: 'BUS-351', acceptance_status: 'accepted', rule_source: 'ACE Credit', confidence: 0.90 },
+  { source_institution: 'STUDYCOM', source_course_code: 'SDC-ENTREPRENEUR', target_institution: 'TESU', target_course_code: 'ENT-301', acceptance_status: 'accepted', rule_source: 'ACE Credit', confidence: 0.88 },
+  { source_institution: 'STUDYCOM', source_course_code: 'SDC-DIGITAL-MKT', target_institution: 'TESU', target_course_code: 'MAR-331', acceptance_status: 'accepted', rule_source: 'ACE Credit', confidence: 0.88 },
+  { source_institution: 'STUDYCOM', source_course_code: 'SDC-CONSUMER-BEH', target_institution: 'TESU', target_course_code: 'MAR-321', acceptance_status: 'accepted', rule_source: 'ACE Credit', confidence: 0.88 },
+  { source_institution: 'STUDYCOM', source_course_code: 'SDC-RESEARCH-METH', target_institution: 'TESU', target_course_code: 'BUS-401', acceptance_status: 'accepted', rule_source: 'ACE Credit', confidence: 0.88 },
+  { source_institution: 'STUDYCOM', source_course_code: 'SDC-DATA-DECISIONS', target_institution: 'TESU', target_course_code: 'BUS-411', acceptance_status: 'accepted', rule_source: 'ACE Credit', confidence: 0.88 },
+];
+
 export function SeedTrigger() {
   const [isRunning, setIsRunning] = useState(false);
   const [hasRun, setHasRun] = useState(false);
@@ -14,44 +46,55 @@ export function SeedTrigger() {
     setShowSchemaHelp(false);
     
     try {
-      console.log('🌱 Running database seeds...');
+      console.log('🌱 Seeding database directly...');
       
-      const { data, error } = await supabase.functions.invoke('run-seeds');
+      // Check if data already exists
+      const { count, error: countError } = await supabase
+        .from('credit_transfer_rules')
+        .select('*', { count: 'exact', head: true });
 
-      if (error) {
-        console.error('❌ Edge function error:', error);
+      if (countError) {
+        console.error('❌ Database error:', countError);
         setShowSchemaHelp(true);
-        toast.error('Edge function unavailable', {
-          description: 'Use the manual SQL method shown below',
+        toast.error('Database table not found', {
+          description: 'Use the manual SQL method shown below to create the table',
           duration: 10000
         });
         return;
       }
 
-      if (!data.success) {
-        console.error('❌ Seed operation failed:', data);
+      if (count && count > 0) {
+        toast.info('Seeds already in database', {
+          description: `${count} transfer rules found`
+        });
+        setHasRun(true);
+        console.log(`✅ Database already seeded with ${count} rules`);
+        return;
+      }
+
+      // Insert seed data
+      const { data, error } = await supabase
+        .from('credit_transfer_rules')
+        .insert(SEED_DATA)
+        .select();
+
+      if (error) {
+        console.error('❌ Insert error:', error);
         setShowSchemaHelp(true);
-        toast.error(data.error || 'Seeding failed', {
-          description: data.hint || 'Use manual SQL method below',
+        toast.error('Failed to insert seeds', {
+          description: error.message || 'Use manual SQL method below',
           duration: 8000
         });
         return;
       }
 
-      const stats = data.stats || { inserted: 0, skipped: 0, total: 0 };
-      
-      if (data.alreadySeeded) {
-        toast.info('Seeds already in database', {
-          description: `${stats.total} transfer rules found`
-        });
-      } else {
-        toast.success('✅ Seeds applied successfully!', {
-          description: `Inserted ${stats.inserted} transfer rules`
-        });
-      }
+      const inserted = data?.length || 0;
+      toast.success('✅ Seeds applied successfully!', {
+        description: `Inserted ${inserted} transfer rules`
+      });
       
       setHasRun(true);
-      console.log('✅ Seed complete:', data);
+      console.log(`✅ Successfully seeded ${inserted} transfer rules`);
       
     } catch (error) {
       console.error('❌ Unexpected error:', error);
@@ -89,7 +132,7 @@ export function SeedTrigger() {
             Manual Seed Method (Recommended)
           </p>
           <p className="text-muted-foreground">
-            Copy and run this SQL in <strong>Cloud → Database → Insert Data</strong>
+            Copy and run this SQL in <strong>Supabase Dashboard → SQL Editor</strong>
           </p>
           <details className="text-muted-foreground">
             <summary className="cursor-pointer font-medium mb-2 hover:text-foreground">
@@ -158,7 +201,7 @@ INSERT INTO credit_transfer_rules (source_institution, source_course_code, targe
           <div className="flex items-center gap-2 pt-1">
             <span className="text-xs font-medium">📍 Location:</span>
             <code className="text-xs bg-background/70 px-2 py-0.5 rounded">
-              Cloud → Database → Insert Data
+              Supabase Dashboard → SQL Editor
             </code>
           </div>
         </div>
