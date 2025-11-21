@@ -20,15 +20,26 @@ Deno.serve(async (req) => {
 
     console.log('🌱 Starting seed process...');
 
-    // Check if seeds already applied by checking if any transfer rules exist
+    // Check if seeds already applied
     const { data: existing, error: checkError } = await supabaseAdmin
       .from('credit_transfer_rules')
       .select('id')
       .limit(1);
 
+    // If table doesn't exist or has wrong schema, provide helpful error
     if (checkError) {
-      console.error('Error checking existing seeds:', checkError);
-      throw checkError;
+      console.error('❌ Table schema error:', checkError);
+      return new Response(
+        JSON.stringify({
+          error: 'Table schema mismatch',
+          details: 'Please run the migration first to fix the credit_transfer_rules table schema',
+          hint: 'Go to Cloud → Database → Insert Data and run the schema fix SQL'
+        }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
     }
 
     if (existing && existing.length > 0) {
