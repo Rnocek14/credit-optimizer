@@ -8,3 +8,6 @@ verify_jwt = false
 
 [functions.seed-data-2025]
 verify_jwt = false
+
+[functions.seed-optimizer-data]
+verify_jwt = false
