@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { CheckCircle2, XCircle, Loader2, Copy, CheckCheck } from 'lucide-react';
+import { CheckCircle2, XCircle, Loader2, Copy, CheckCheck, Trash2, Database, Play } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
@@ -155,6 +155,56 @@ export function OptimizerDataSeeder() {
     }
   };
 
+  const getCleanupScript = () => {
+    return `-- ============================================================================
+-- OPTIMIZER CLEANUP SCRIPT  
+-- ============================================================================
+-- Run this FIRST if you're getting "policy already exists" errors
+-- This removes all optimizer tables and policies for a fresh start
+-- ============================================================================
+
+-- Drop all RLS policies (both old and new naming conventions)
+DROP POLICY IF EXISTS "Anyone can view alt_credits" ON public.alt_credits;
+DROP POLICY IF EXISTS "Public read access" ON public.alt_credits;
+DROP POLICY IF EXISTS "Allow public read access to alt credits" ON public.alt_credits;
+DROP POLICY IF EXISTS "Authenticated users can insert alt credits" ON public.alt_credits;
+DROP POLICY IF EXISTS "Service role can manage alt_credits" ON public.alt_credits;
+
+DROP POLICY IF EXISTS "Anyone can view equivalencies" ON public.cross_institution_equivalencies;
+DROP POLICY IF EXISTS "Public read access" ON public.cross_institution_equivalencies;
+DROP POLICY IF EXISTS "Allow public read access to equivalencies" ON public.cross_institution_equivalencies;
+DROP POLICY IF EXISTS "Authenticated users can insert equivalencies" ON public.cross_institution_equivalencies;
+DROP POLICY IF EXISTS "Service role can manage equivalencies" ON public.cross_institution_equivalencies;
+
+DROP POLICY IF EXISTS "Anyone can view templates" ON public.degree_templates;
+DROP POLICY IF EXISTS "Public read access" ON public.degree_templates;
+DROP POLICY IF EXISTS "Allow public read access to degree templates" ON public.degree_templates;
+DROP POLICY IF EXISTS "Authenticated users can insert degree templates" ON public.degree_templates;
+DROP POLICY IF EXISTS "Service role can manage templates" ON public.degree_templates;
+
+DROP POLICY IF EXISTS "Anyone can view frameworks" ON public.gened_frameworks;
+DROP POLICY IF EXISTS "Public read access" ON public.gened_frameworks;
+DROP POLICY IF EXISTS "Service role can manage frameworks" ON public.gened_frameworks;
+
+DROP POLICY IF EXISTS "Anyone can view categories" ON public.gened_categories;
+DROP POLICY IF EXISTS "Public read access" ON public.gened_categories;
+DROP POLICY IF EXISTS "Service role can manage categories" ON public.gened_categories;
+
+DROP POLICY IF EXISTS "Anyone can view limits" ON public.institution_credit_limits;
+DROP POLICY IF EXISTS "Public read access" ON public.institution_credit_limits;
+DROP POLICY IF EXISTS "Service role can manage limits" ON public.institution_credit_limits;
+
+-- Drop tables (in dependency order)
+DROP TABLE IF EXISTS public.gened_categories CASCADE;
+DROP TABLE IF EXISTS public.gened_frameworks CASCADE;
+DROP TABLE IF EXISTS public.cross_institution_equivalencies CASCADE;
+DROP TABLE IF EXISTS public.degree_templates CASCADE;
+DROP TABLE IF EXISTS public.institution_credit_limits CASCADE;
+DROP TABLE IF EXISTS public.alt_credits CASCADE;
+
+SELECT 'Cleanup complete! Run the setup script next.' as status;`;
+  };
+
   const copyScript = () => {
     const script = `-- Run this in Supabase SQL Editor
 -- Creates all optimizer tables and TESU institution
@@ -277,18 +327,61 @@ ON CONFLICT (code) DO NOTHING;`;
     setTimeout(() => setScriptCopied(false), 2000);
   };
 
+  const copyCleanupScript = () => {
+    navigator.clipboard.writeText(getCleanupScript());
+    toast({
+      title: "Copied!",
+      description: "Cleanup script copied to clipboard",
+    });
+  };
+
   return (
     <Card className="w-full max-w-3xl">
       <CardHeader>
-        <CardTitle>Data Seeding - Step 2</CardTitle>
+        <CardTitle>Optimizer Database Setup</CardTitle>
         <CardDescription>
-          Seed TESU BSBA optimizer data: 50 alternative credits, 50 equivalencies, 1 degree template
+          Follow these steps to set up optimizer database tables and seed initial data
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
+        {/* Step 0: Cleanup (Optional) */}
+        <div className="space-y-3 p-4 border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/20 rounded-lg">
+          <div className="flex items-start gap-3">
+            <div className="flex-shrink-0 w-8 h-8 rounded-full bg-amber-500 text-white flex items-center justify-center font-bold text-sm">
+              0
+            </div>
+            <div className="flex-1 space-y-2">
+              <h3 className="font-semibold flex items-center gap-2">
+                <Trash2 className="w-4 h-4" />
+                Cleanup Script (Optional)
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                If you're getting "policy already exists" errors, run this cleanup script FIRST to remove old tables and policies.
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={copyCleanupScript}
+                className="gap-2"
+              >
+                <Copy className="w-4 h-4" />
+                Copy Cleanup Script
+              </Button>
+              <p className="text-xs text-amber-600 dark:text-amber-400 mt-2">
+                ⚠️ Only run this if you have existing optimizer tables causing conflicts
+              </p>
+            </div>
+          </div>
+        </div>
+
         {/* Step 1: Copy SQL Script */}
         <div className="space-y-3">
-          <h3 className="text-sm font-semibold">Step 1: Run SQL Script</h3>
+          <div className="flex items-center gap-2">
+            <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold text-sm">
+              1
+            </div>
+            <h3 className="text-sm font-semibold">Run SQL Script</h3>
+          </div>
           <p className="text-sm text-muted-foreground">
             Copy the script below and run it in your Supabase SQL Editor to create all required tables.
           </p>
@@ -313,7 +406,12 @@ ON CONFLICT (code) DO NOTHING;`;
 
         {/* Step 2: Verify Setup */}
         <div className="space-y-3">
-          <h3 className="text-sm font-semibold">Step 2: Verify Setup</h3>
+          <div className="flex items-center gap-2">
+            <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold text-sm">
+              2
+            </div>
+            <h3 className="text-sm font-semibold">Verify Setup</h3>
+          </div>
           <p className="text-sm text-muted-foreground">
             After running the SQL script, click below to verify all tables were created.
           </p>
@@ -360,7 +458,12 @@ ON CONFLICT (code) DO NOTHING;`;
 
         {/* Step 3: Seed Data */}
         <div className="space-y-3">
-          <h3 className="text-sm font-semibold">Step 3: Seed Data</h3>
+          <div className="flex items-center gap-2">
+            <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold text-sm">
+              3
+            </div>
+            <h3 className="text-sm font-semibold">Seed Data</h3>
+          </div>
           <p className="text-sm text-muted-foreground">
             Once setup is verified, click below to populate the tables with TESU BSBA data.
           </p>

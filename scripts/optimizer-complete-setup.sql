@@ -1,7 +1,43 @@
 -- ============================================================================
 -- COMPLETE OPTIMIZER DATABASE SETUP
 -- Run this entire script in Supabase SQL Editor
+-- If you get "policy already exists" errors, run optimizer-cleanup.sql first!
 -- ============================================================================
+
+-- ============================================================================
+-- DROP EXISTING POLICIES (to prevent conflicts)
+-- ============================================================================
+
+-- Drop old and new policy names for all tables
+DROP POLICY IF EXISTS "Anyone can view alt_credits" ON public.alt_credits;
+DROP POLICY IF EXISTS "Public read access" ON public.alt_credits;
+DROP POLICY IF EXISTS "Allow public read access to alt credits" ON public.alt_credits;
+DROP POLICY IF EXISTS "Service role can manage alt_credits" ON public.alt_credits;
+
+DROP POLICY IF EXISTS "Anyone can view equivalencies" ON public.cross_institution_equivalencies;
+DROP POLICY IF EXISTS "Public read access" ON public.cross_institution_equivalencies;
+DROP POLICY IF EXISTS "Allow public read access to equivalencies" ON public.cross_institution_equivalencies;
+DROP POLICY IF EXISTS "Service role can manage equivalencies" ON public.cross_institution_equivalencies;
+
+DROP POLICY IF EXISTS "Anyone can view templates" ON public.degree_templates;
+DROP POLICY IF EXISTS "Public read access" ON public.degree_templates;
+DROP POLICY IF EXISTS "Allow public read access to degree templates" ON public.degree_templates;
+DROP POLICY IF EXISTS "Service role can manage templates" ON public.degree_templates;
+
+DROP POLICY IF EXISTS "Anyone can view frameworks" ON public.gened_frameworks;
+DROP POLICY IF EXISTS "Public read access" ON public.gened_frameworks;
+DROP POLICY IF EXISTS "Allow public read access to gened frameworks" ON public.gened_frameworks;
+DROP POLICY IF EXISTS "Service role can manage frameworks" ON public.gened_frameworks;
+
+DROP POLICY IF EXISTS "Anyone can view categories" ON public.gened_categories;
+DROP POLICY IF EXISTS "Public read access" ON public.gened_categories;
+DROP POLICY IF EXISTS "Allow public read access to gened categories" ON public.gened_categories;
+DROP POLICY IF EXISTS "Service role can manage categories" ON public.gened_categories;
+
+DROP POLICY IF EXISTS "Anyone can view limits" ON public.institution_credit_limits;
+DROP POLICY IF EXISTS "Public read access" ON public.institution_credit_limits;
+DROP POLICY IF EXISTS "Allow public read access to credit limits" ON public.institution_credit_limits;
+DROP POLICY IF EXISTS "Service role can manage limits" ON public.institution_credit_limits;
 
 -- ============================================================================
 -- STEP 1: Add code column to institutions table
