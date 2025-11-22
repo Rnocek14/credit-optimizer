@@ -64,7 +64,8 @@ export default function EduTreeV5Page() {
   const [provenanceWarningDismissed, setProvenanceWarningDismissed] = useState(false);
   
   // Detect if this is a TESU database template
-  const isTESUTemplate = templateId?.startsWith('tesu-') || false;
+  // Supports patterns like: 'tesu-bsba-cheapest' or 'bsba-tesu-cheapest-2025'
+  const isTESUTemplate = templateId?.toLowerCase().includes('-tesu-') || false;
   
   // Load TESU templates from database (when templateId starts with 'tesu-')
   const { data: dbTemplates, isLoading: dbTemplateLoading, error: dbTemplateError } = useDegreeTemplates({
