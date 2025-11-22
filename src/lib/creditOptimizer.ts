@@ -24,7 +24,9 @@ interface InstitutionCreditLimit {
     | 'min_residency'
     | 'clep_max'
     | 'dsst_max'
-    | 'upper_division_min';
+    | 'upper_division_min'
+    | 'sophia_max'
+    | 'study_com_max';
   credit_value: number;
   notes: string | null;
 }
