@@ -20,6 +20,9 @@ import { CreditOptimizerModal } from './components/CreditOptimizerModal';
 import { CreditOptimizerDevTools } from './components/CreditOptimizerDevTools';
 import { ProvenanceWarning } from './components/ProvenanceWarning';
 import { useMarketplaceTemplate } from '@/hooks/useMarketplaceTemplates';
+import { useDegreeTemplates } from '@/hooks/useDegreeTemplates';
+import { useAltCreditEquivalenciesForInstitution } from '@/hooks/useAltCreditEquivalencies';
+import { adaptDegreeTemplate } from './adapters/degreeTemplateAdapter';
 import SeedStatus from '@/components/SeedStatus';
 import { DragProvider } from './components/drag/DragProvider';
 import canonicalCourses from '@/fixtures/prereqs/canonical-courses.json';
@@ -60,22 +63,67 @@ export default function EduTreeV5Page() {
   const templateId = searchParams.get('templateId');
   const [provenanceWarningDismissed, setProvenanceWarningDismissed] = useState(false);
   
-  // Load marketplace template if templateId present
-  const { data: selectedTemplate, isLoading: templateLoading, error: templateError } = useMarketplaceTemplate(templateId || '');
+  // Detect if this is a TESU database template
+  const isTESUTemplate = templateId?.startsWith('tesu-') || false;
+  
+  // Load TESU templates from database (when templateId starts with 'tesu-')
+  const { data: dbTemplates, isLoading: dbTemplateLoading, error: dbTemplateError } = useDegreeTemplates({
+    institutionCode: 'TESU',
+    programCode: 'BSBA',
+    enabled: isTESUTemplate,
+  });
+  
+  // Load equivalencies for TESU (needed for adapter)
+  const { data: equivalencies } = useAltCreditEquivalenciesForInstitution('TESU');
+  
+  // Load marketplace template for non-TESU templates
+  const { data: fixtureTemplate, isLoading: fixtureLoading, error: fixtureError } = useMarketplaceTemplate(
+    isTESUTemplate ? '' : (templateId || '')
+  );
+  
+  // Select and adapt the appropriate template
+  const selectedTemplate = useMemo(() => {
+    if (isTESUTemplate && dbTemplates && dbTemplates.length > 0) {
+      // Find the specific template by ID
+      const dbTemplate = dbTemplates.find(t => t.id === templateId);
+      if (dbTemplate) {
+        console.log('[EduTreeV5] 🗄️ Using DATABASE template:', {
+          id: dbTemplate.id,
+          trackType: dbTemplate.track_type,
+          totalCredits: dbTemplate.total_credits,
+        });
+        return adaptDegreeTemplate(dbTemplate, equivalencies);
+      }
+    }
+    
+    if (!isTESUTemplate && fixtureTemplate) {
+      console.log('[EduTreeV5] 📋 Using FIXTURE template:', {
+        id: fixtureTemplate.id,
+      });
+      return fixtureTemplate;
+    }
+    
+    return null;
+  }, [isTESUTemplate, dbTemplates, fixtureTemplate, templateId, equivalencies]);
+  
+  const templateLoading = isTESUTemplate ? dbTemplateLoading : fixtureLoading;
+  const templateError = isTESUTemplate ? dbTemplateError : fixtureError;
   
   // Debug template loading state
   useEffect(() => {
     console.log('[EduTreeV5] 📋 Template query state:', {
       templateId,
+      isTESUTemplate,
       isLoading: templateLoading,
       hasData: !!selectedTemplate,
       error: templateError?.message,
       templateData: selectedTemplate ? {
         id: selectedTemplate.id,
-        yearCount: selectedTemplate.yearTemplates?.length
+        yearCount: selectedTemplate.yearTemplates?.length,
+        source: isTESUTemplate ? 'database' : 'fixture',
       } : null
     });
-  }, [templateId, templateLoading, selectedTemplate, templateError]);
+  }, [templateId, isTESUTemplate, templateLoading, selectedTemplate, templateError]);
   
   // Career context from handoff
   const [careerContext, setCareerContext] = useState<{

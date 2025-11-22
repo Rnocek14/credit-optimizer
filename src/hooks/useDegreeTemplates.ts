@@ -11,10 +11,11 @@ interface UseDegreeTemplatesParams {
   institutionCode: InstitutionCode;
   programCode: string; // 'BSBA', etc.
   trackType?: TrackType;
+  enabled?: boolean;
 }
 
 export function useDegreeTemplates(params: UseDegreeTemplatesParams) {
-  const { institutionCode, programCode, trackType } = params;
+  const { institutionCode, programCode, trackType, enabled = true } = params;
 
   return useQuery({
     queryKey: ['degreeTemplates', institutionCode, programCode, trackType],
@@ -51,5 +52,6 @@ export function useDegreeTemplates(params: UseDegreeTemplatesParams) {
         } as DegreeTemplate;
       });
     },
+    enabled,
   });
 }
