@@ -3,8 +3,12 @@ import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useInstitutionLimits } from '@/hooks/useInstitutionLimits';
+import { useGenEdCategories } from '@/hooks/useGenEdCategories';
+import { useAltCreditEquivalenciesForInstitution } from '@/hooks/useAltCreditEquivalencies';
 import { usePlanBasket } from '../state/usePlanBasket';
-import { AlertCircle, CheckCircle2 } from 'lucide-react';
+import { validateTESUPolicies } from '../engine/constraints';
+import { AlertCircle, CheckCircle2, AlertTriangle, Info } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 
 interface LimitProgress {
   label: string;
@@ -16,8 +20,12 @@ interface LimitProgress {
 }
 
 export function PlanAuditPanel() {
-  const { data: limits, isLoading } = useInstitutionLimits('TESU');
+  const { data: limits, isLoading: limitsLoading } = useInstitutionLimits('TESU');
+  const { data: genEdCategories, isLoading: genEdLoading } = useGenEdCategories('TESU');
+  const { data: equivalencies, isLoading: equivLoading } = useAltCreditEquivalenciesForInstitution('TESU');
   const basket = usePlanBasket(s => s.items);
+
+  const isLoading = limitsLoading || genEdLoading || equivLoading;
 
   const progress = useMemo<LimitProgress[]>(() => {
     if (!limits) return [];
@@ -117,6 +125,12 @@ export function PlanAuditPanel() {
     return results;
   }, [limits, basket]);
 
+  // Run TESU policy validation
+  const violations = useMemo(() => {
+    if (!limits || !genEdCategories) return [];
+    return validateTESUPolicies(basket, limits, genEdCategories, equivalencies);
+  }, [basket, limits, genEdCategories, equivalencies]);
+
   if (isLoading) {
     return (
       <Card className="p-6">
@@ -128,8 +142,8 @@ export function PlanAuditPanel() {
     );
   }
 
-  const hasWarnings = progress.some(p => p.status === 'warning');
-  const hasErrors = progress.some(p => p.status === 'error');
+  const hasWarnings = progress.some(p => p.status === 'warning') || violations.some(v => v.severity === 'warning');
+  const hasErrors = progress.some(p => p.status === 'error') || violations.some(v => v.severity === 'error');
 
   return (
     <Card className="p-6 space-y-6">
@@ -190,6 +204,54 @@ export function PlanAuditPanel() {
           </div>
         ))}
       </div>
+
+      {/* TESU Policy Violations */}
+      {violations.length > 0 && (
+        <div className="space-y-3 pt-4 border-t">
+          <div className="flex items-center justify-between">
+            <h4 className="text-sm font-semibold">Policy Violations</h4>
+            <Badge variant={hasErrors ? 'destructive' : 'secondary'} className="text-xs">
+              {violations.filter(v => v.severity === 'error').length} errors, {violations.filter(v => v.severity === 'warning').length} warnings
+            </Badge>
+          </div>
+          
+          <div className="space-y-2">
+            {violations.map((violation, idx) => (
+              <Alert 
+                key={idx} 
+                variant={violation.severity === 'error' ? 'destructive' : 'default'}
+                className="py-3"
+              >
+                <div className="flex items-start gap-2">
+                  {violation.severity === 'error' && <AlertCircle className="h-4 w-4 mt-0.5" />}
+                  {violation.severity === 'warning' && <AlertTriangle className="h-4 w-4 mt-0.5 text-orange-600" />}
+                  {violation.severity === 'info' && <Info className="h-4 w-4 mt-0.5 text-blue-600" />}
+                  <div className="flex-1 min-w-0">
+                    <AlertDescription className="text-sm">
+                      <span className="font-medium">{violation.message}</span>
+                      {violation.suggestedFix && (
+                        <p className="text-xs text-muted-foreground mt-1">
+                          💡 {violation.suggestedFix}
+                        </p>
+                      )}
+                    </AlertDescription>
+                  </div>
+                </div>
+              </Alert>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* All Clear Message */}
+      {!hasErrors && !hasWarnings && basket.length > 0 && (
+        <Alert className="bg-green-50 border-green-200 dark:bg-green-950 dark:border-green-800">
+          <CheckCircle2 className="h-4 w-4 text-green-600" />
+          <AlertDescription className="text-green-900 dark:text-green-100">
+            ✓ All TESU requirements met
+          </AlertDescription>
+        </Alert>
+      )}
     </Card>
   );
 }
