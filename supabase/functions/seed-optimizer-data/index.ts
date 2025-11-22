@@ -25,8 +25,19 @@ Deno.serve(async (req) => {
       .eq('code', 'TESU')
       .single();
 
-    if (instError || !institution) {
-      throw new Error('TESU institution not found');
+    if (instError) {
+      console.error('[Optimizer Seeder] Error fetching TESU:', {
+        message: instError.message,
+        code: instError.code,
+        details: instError.details,
+        hint: instError.hint
+      });
+      throw new Error(`Failed to fetch TESU institution: ${instError.message}`);
+    }
+
+    if (!institution) {
+      console.error('[Optimizer Seeder] TESU institution not found in database');
+      throw new Error('TESU institution not found. Please ensure institutions table has a row with code="TESU"');
     }
 
     const tesuId = institution.id;
@@ -101,7 +112,15 @@ Deno.serve(async (req) => {
       .upsert(altCredits, { onConflict: 'source_code,identifier' })
       .select('id, source_code, identifier');
 
-    if (creditsError) throw creditsError;
+    if (creditsError) {
+      console.error('[Optimizer Seeder] Error inserting alt_credits:', {
+        message: creditsError.message,
+        code: creditsError.code,
+        details: creditsError.details,
+        hint: creditsError.hint
+      });
+      throw new Error(`Failed to insert alt_credits: ${creditsError.message}`);
+    }
     console.log(`[Optimizer Seeder] Inserted ${insertedCredits?.length || 0} alt credits`);
 
     // ============================================================================
@@ -146,7 +165,15 @@ Deno.serve(async (req) => {
       .from('cross_institution_equivalencies')
       .upsert(equivalencies, { onConflict: 'alt_credit_id,institution_id,institutional_course_code' });
 
-    if (equivError) throw equivError;
+    if (equivError) {
+      console.error('[Optimizer Seeder] Error inserting equivalencies:', {
+        message: equivError.message,
+        code: equivError.code,
+        details: equivError.details,
+        hint: equivError.hint
+      });
+      throw new Error(`Failed to insert equivalencies: ${equivError.message}`);
+    }
     console.log(`[Optimizer Seeder] Inserted ${equivalencies.length} equivalencies`);
 
     // ============================================================================
@@ -198,7 +225,15 @@ Deno.serve(async (req) => {
       .from('degree_templates')
       .upsert(degreeTemplate, { onConflict: 'id' });
 
-    if (templateError) throw templateError;
+    if (templateError) {
+      console.error('[Optimizer Seeder] Error inserting degree template:', {
+        message: templateError.message,
+        code: templateError.code,
+        details: templateError.details,
+        hint: templateError.hint
+      });
+      throw new Error(`Failed to insert degree template: ${templateError.message}`);
+    }
     console.log('[Optimizer Seeder] Degree template inserted');
 
     const summary = {
@@ -217,9 +252,24 @@ Deno.serve(async (req) => {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error) {
-    console.error('[Optimizer Seeder] Error:', error);
+    const err = error as any;
+    console.error('[Optimizer Seeder] Detailed Error:', {
+      message: err?.message || 'Unknown error',
+      code: err?.code,
+      details: err?.details,
+      hint: err?.hint,
+      stack: err?.stack
+    });
+    
     const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-    return new Response(JSON.stringify({ success: false, error: errorMessage }), {
+    const errorDetails = err?.details || err?.hint || null;
+    
+    return new Response(JSON.stringify({ 
+      success: false, 
+      error: errorMessage,
+      details: errorDetails,
+      hint: 'Check Supabase logs for more information'
+    }), {
       status: 400,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
