@@ -1,4 +1,5 @@
 import { OptimizerMigrationTrigger } from '@/components/OptimizerMigrationTrigger';
+import { OptimizerDataSeeder } from '@/components/OptimizerDataSeeder';
 import { Week2AltCreditSeeder } from '@/components/Week2AltCreditSeeder';
 import { Week2EquivalencySeeder } from '@/components/Week2EquivalencySeeder';
 import { Week2TemplateSeeder } from '@/components/Week2TemplateSeeder';
@@ -125,6 +126,25 @@ export default function OptimizerSetup() {
         </TabsContent>
 
         <TabsContent value="week2" className="space-y-6">
+          <Alert className="mb-6">
+            <CheckCircle2 className="h-4 w-4" />
+            <AlertTitle>Quick Setup</AlertTitle>
+            <AlertDescription>
+              Use the automated seeder below to populate all Week 2 data with one click, or follow the step-by-step process.
+            </AlertDescription>
+          </Alert>
+
+          <OptimizerDataSeeder />
+
+          <div className="relative my-8">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-background px-2 text-muted-foreground">Or seed step by step</span>
+            </div>
+          </div>
+
           <div className="grid gap-6 md:grid-cols-2">
             <div>
               <div className="flex items-center gap-2 mb-4">
