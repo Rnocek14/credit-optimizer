@@ -11,3 +11,6 @@ verify_jwt = false
 
 [functions.seed-optimizer-data]
 verify_jwt = false
+
+[functions.check-optimizer-setup]
+verify_jwt = false
