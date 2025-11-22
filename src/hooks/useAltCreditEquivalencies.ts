@@ -9,7 +9,7 @@ export interface AltCreditEquivalency {
   institutional_course_name: string;
   credits_awarded: number;
   level: number;
-  gened_category_id: string | null;
+  gened_category_code: string | null;
   requirement_area: string | null; // 'gened' | 'major' | etc.
   confidence: number;
   source_documentation: string | null;
@@ -38,7 +38,7 @@ export function useAltCreditEquivalenciesForInstitution(code: InstitutionCode) {
           institutional_course_name,
           credits_awarded,
           level,
-          gened_category_id,
+          gened_category_code,
           requirement_area,
           confidence,
           source_documentation,
@@ -58,7 +58,7 @@ export function useAltCreditEquivalenciesForInstitution(code: InstitutionCode) {
         institutional_course_name: row.institutional_course_name,
         credits_awarded: row.credits_awarded,
         level: row.level,
-        gened_category_id: row.gened_category_id,
+        gened_category_code: row.gened_category_code,
         requirement_area: row.requirement_area,
         confidence: row.confidence,
         source_documentation: row.source_documentation,
