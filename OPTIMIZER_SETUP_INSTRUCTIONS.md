@@ -1,7 +1,7 @@
 # Optimizer Setup Instructions
 
 ## Overview
-The optimizer seeding was failing because the required database tables don't exist yet. This guide will help you create all the necessary tables.
+This guide walks you through setting up the optimizer database tables and seeding initial data. If you're getting SQL errors about policies or tables already existing, start with Step 0.
 
 ## What Was Fixed
 
@@ -11,6 +11,39 @@ The optimizer seeding was failing because the required database tables don't exi
 - Proper validation at each seeding step
 
 ### 🔧 What You Need To Do
+
+## Step 0: Cleanup (If Needed)
+
+**⚠️ Only do this if you're getting errors like:**
+- `ERROR: policy "..." already exists`
+- `ERROR: relation "..." already exists`
+- You've run setup scripts before and want a fresh start
+
+### When to Run Cleanup
+- You previously ran `phase1_institution_schema.sql` or other optimizer SQL scripts
+- You're seeing policy conflict errors in the SQL Editor
+- You want to completely reset the optimizer tables
+
+### How to Run Cleanup
+
+1. **Open Supabase Dashboard**
+   - Go to your Supabase project
+   - Click on "SQL Editor" in the left sidebar
+
+2. **Run the Cleanup Script**
+   - Open the file: `scripts/optimizer-cleanup.sql`
+   - Copy the entire contents
+   - Paste it into the SQL Editor
+   - Click "Run" or press `Ctrl/Cmd + Enter`
+
+3. **Verify Cleanup**
+   - You should see: `"Cleanup complete! All optimizer tables and policies removed."`
+   - All optimizer tables and policies are now removed
+   - You're ready for a fresh setup
+
+**Alternative:** You can also copy the cleanup script from the app at `/optimizer-setup` (Step 0 button)
+
+---
 
 ## Step 1: Create Database Tables
 
@@ -123,16 +156,24 @@ SELECT 'degree_templates', COUNT(*) FROM degree_templates;
 
 ### Common Issues
 
+**"policy already exists" or "relation already exists"**
+- You have old optimizer tables/policies from previous runs
+- **Solution:** Run `scripts/optimizer-cleanup.sql` (Step 0) then run setup again
+
 **"TESU institution not found"**
 - Run the SQL script again - it will insert TESU if missing
 
 **"relation does not exist"**
 - One or more tables weren't created
-- Run the complete SQL script again (it's safe to re-run)
+- Run the complete SQL script again (safe to re-run, now includes DROP statements)
 
 **"column code does not exist"**
 - The institutions table update didn't run
 - Run the SQL script again
+
+**"Failed to fetch" errors in the app**
+- This was caused by edge function deployment delays
+- Now fixed with direct client-side seeding (no edge functions needed)
 
 ## What Gets Seeded
 
