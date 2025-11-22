@@ -14,6 +14,7 @@ import { AnchorSchoolSelector } from './components/AnchorSchoolSelector';
 import { AdminFAB } from './components/AdminFAB';
 import { PolicyCard } from './components/PolicyCard';
 import { TransferWarningBanner } from './components/TransferWarningBanner';
+import { TESUDisclaimerBanner } from './components/TESUDisclaimerBanner';
 import { SmartReplaceModal } from './components/SmartReplaceModal';
 import { CreditOptimizerSuggestionBanner } from './components/CreditOptimizerSuggestionBanner';
 import { CreditOptimizerModal } from './components/CreditOptimizerModal';
@@ -62,6 +63,7 @@ export default function EduTreeV5Page() {
   const [searchParams, setSearchParams] = useSearchParams();
   const templateId = searchParams.get('templateId');
   const [provenanceWarningDismissed, setProvenanceWarningDismissed] = useState(false);
+  const [tesuDisclaimerDismissed, setTesuDisclaimerDismissed] = useState(false);
   
   // Detect if this is a TESU database template
   // Supports patterns like: 'tesu-bsba-cheapest' or 'bsba-tesu-cheapest-2025'
@@ -1190,6 +1192,13 @@ export default function EduTreeV5Page() {
                 template={selectedTemplate} 
                 onDismiss={() => setProvenanceWarningDismissed(true)} 
               />
+            </div>
+          )}
+          
+          {/* TESU Disclaimer Banner - Cost/Time Estimates */}
+          {isTESUTemplate && !tesuDisclaimerDismissed && (
+            <div className="mt-2">
+              <TESUDisclaimerBanner onDismiss={() => setTesuDisclaimerDismissed(true)} />
             </div>
           )}
         </div>
