@@ -40,6 +40,23 @@ export interface CreditOptimizerParams {
   limits: InstitutionCreditLimit[];
 }
 
+// Running metrics tracked during slot selection to enforce limits
+interface RunningMetrics {
+  totalCredits: number;
+  totalAltCredits: number;
+  totalInstitutionalCredits: number;
+  totalTransferCredits: number;
+  upperDivisionCredits: number;
+  perProviderCredits: {
+    CLEP: number;
+    DSST: number;
+    SOPHIA: number;
+    STUDY_COM: number;
+    TESU: number;
+  };
+  genedCreditsByCategory: Record<string, number>;
+}
+
 // ============================================================================
 // Main Optimizer Function
 // ============================================================================
@@ -65,9 +82,26 @@ export function optimizeDegreePlan(params: CreditOptimizerParams): OptimizedPlan
   const limitMap = buildLimitMap(limits);
   const equivIndex = buildEquivalencyIndex(equivalencies);
 
-  // 2) Iterate through terms/slots and choose options
+  // 2) Iterate through terms/slots and choose options with limit-aware selection
   const hydratedTerms: HydratedTerm[] = [];
   let metrics: OptimizedPlanMetrics = initEmptyMetrics(limitMap);
+  
+  // Initialize running metrics for limit enforcement
+  let runningMetrics: RunningMetrics = {
+    totalCredits: 0,
+    totalAltCredits: 0,
+    totalInstitutionalCredits: 0,
+    totalTransferCredits: 0,
+    upperDivisionCredits: 0,
+    perProviderCredits: {
+      CLEP: 0,
+      DSST: 0,
+      SOPHIA: 0,
+      STUDY_COM: 0,
+      TESU: 0,
+    },
+    genedCreditsByCategory: {},
+  };
 
   for (const term of template.template_data.terms) {
     const termSelected: SelectedOption[] = [];
@@ -79,10 +113,13 @@ export function optimizeDegreePlan(params: CreditOptimizerParams): OptimizedPlan
         mode,
         preferences,
         equivIndex,
+        runningMetrics,
+        limitMap,
       });
 
-      // Update metrics (credits, alt vs institutional, gened buckets)
+      // Update both metrics and running metrics
       metrics = updateMetricsWithSelection(metrics, selected, slot.requirementArea);
+      runningMetrics = updateRunningMetrics(runningMetrics, selected, slot, equivIndex);
 
       termSelected.push(selected);
     }
@@ -102,6 +139,8 @@ export function optimizeDegreePlan(params: CreditOptimizerParams): OptimizedPlan
     totalCredits: metrics.totalCredits,
     altCredits: metrics.totalAltCredits,
     institutionalCredits: metrics.totalInstitutionalCredits,
+    upperDivisionCredits: runningMetrics.upperDivisionCredits,
+    perProviderCredits: runningMetrics.perProviderCredits,
     estCost: metrics.estTotalCostUsd,
     warnings,
   });
@@ -168,7 +207,7 @@ function buildEquivalencyIndex(equivalencies: AltCreditEquivalency[]) {
 }
 
 // ============================================================================
-// Helper 3: Choosing the Best Option for a Slot
+// Helper 3: Choosing the Best Option for a Slot (Limit-Aware)
 // ============================================================================
 interface ChooseSlotParams {
   slot: TemplateSlot;
@@ -176,24 +215,37 @@ interface ChooseSlotParams {
   mode: OptimizerMode;
   preferences?: OptimizerPreferences;
   equivIndex: Map<string, AltCreditEquivalency[]>;
+  runningMetrics: RunningMetrics;
+  limitMap: Record<string, number | null>;
 }
 
 function chooseBestOptionForSlot(params: ChooseSlotParams): SelectedOption {
-  const { slot, mode, preferences, equivIndex } = params;
+  const { slot, mode, preferences, equivIndex, runningMetrics, limitMap } = params;
   const { preferred, alternatives = [] } = slot;
 
   const options: TemplateCourseOption[] = [preferred, ...alternatives];
 
-  // Filter out options based on prefs
-  const filtered = options.filter((opt) => {
+  // Filter out options based on preferences
+  let filtered = options.filter((opt) => {
     if (opt.type === 'alt_credit') {
       if (preferences?.avoidExams && (opt.sourceCode === 'CLEP' || opt.sourceCode === 'DSST')) {
         return false;
       }
-      // If preferSophia, we don't filter others here; we'll rank them.
     }
     return true;
   });
+
+  // CRITICAL: Filter out options that would violate limits
+  filtered = filtered.filter((opt) => {
+    const resolved = resolveOptionDetails(opt, slot, equivIndex);
+    return !wouldViolateLimits(opt, resolved, runningMetrics, limitMap, equivIndex);
+  });
+
+  // If all options filtered out (rare edge case), fall back to preferred
+  if (filtered.length === 0) {
+    console.warn('[Credit Optimizer] All options filtered out for slot:', slot.slotId, '- using preferred anyway');
+    filtered = [preferred];
+  }
 
   // Rank options
   const ranked = filtered.sort((a, b) =>
@@ -217,6 +269,135 @@ function chooseBestOptionForSlot(params: ChooseSlotParams): SelectedOption {
     credits: resolved.credits,
     estCostUsd: resolved.estCostUsd,
   };
+}
+
+// ============================================================================
+// Helper 3a: Check if adding an option would violate limits
+// ============================================================================
+function wouldViolateLimits(
+  option: TemplateCourseOption,
+  resolved: ResolvedOptionDetails,
+  runningMetrics: RunningMetrics,
+  limitMap: Record<string, number | null>,
+  equivIndex: Map<string, AltCreditEquivalency[]>
+): boolean {
+  const credits = resolved.credits;
+
+  // Per-provider caps
+  if (option.type === 'alt_credit') {
+    const provider = option.sourceCode;
+    const currentProviderCredits = runningMetrics.perProviderCredits[provider as keyof typeof runningMetrics.perProviderCredits] ?? 0;
+    
+    // Check provider-specific limits
+    const providerLimitMap: Record<string, string> = {
+      'CLEP': 'clep_max',
+      'DSST': 'dsst_max',
+      'SOPHIA': 'sophia_max',
+      'STUDY_COM': 'study_com_max',
+    };
+
+    const limitKey = providerLimitMap[provider];
+    if (limitKey) {
+      const limit = limitMap[limitKey];
+      if (limit != null && currentProviderCredits + credits > limit) {
+        console.log(`[Credit Optimizer] Rejecting ${provider} option - would exceed ${limit} credit cap (current: ${currentProviderCredits}, adding: ${credits})`);
+        return true;
+      }
+    }
+
+    // Check total alt credit cap
+    const altCreditMax = limitMap.alt_credit_max;
+    if (altCreditMax != null && runningMetrics.totalAltCredits + credits > altCreditMax) {
+      console.log(`[Credit Optimizer] Rejecting alt credit option - would exceed ${altCreditMax} alt credit cap`);
+      return true;
+    }
+  }
+
+  // Total transfer cap (non-TESU credits)
+  const totalTransferMax = limitMap.total_transfer;
+  if (totalTransferMax != null) {
+    const isTransfer = option.type === 'alt_credit' || 
+                      (option.type === 'institutional_course' && option.courseCode.includes('TESU') === false);
+    
+    if (isTransfer && runningMetrics.totalTransferCredits + credits > totalTransferMax) {
+      console.log(`[Credit Optimizer] Rejecting option - would exceed ${totalTransferMax} transfer credit cap`);
+      return true;
+    }
+  }
+
+  // Check upper-division minimum (should prefer 300/400 level courses)
+  // This is a "minimum" not a "maximum", so we don't reject, just de-prioritize via ranking
+
+  // Check residency minimum (should prefer TESU courses)
+  // Also a minimum, not enforced here but via ranking
+
+  return false;
+}
+
+// ============================================================================
+// Helper 3b: Update running metrics after selection
+// ============================================================================
+function updateRunningMetrics(
+  metrics: RunningMetrics,
+  selected: SelectedOption,
+  slot: TemplateSlot,
+  equivIndex: Map<string, AltCreditEquivalency[]>
+): RunningMetrics {
+  const next = { ...metrics };
+  const credits = selected.credits;
+
+  next.totalCredits += credits;
+
+  if (selected.sourceType === 'alt_credit') {
+    next.totalAltCredits += credits;
+    next.totalTransferCredits += credits;
+
+    // Update per-provider credits
+    const provider = selected.sourceCode as keyof typeof next.perProviderCredits;
+    if (provider && next.perProviderCredits[provider] !== undefined) {
+      next.perProviderCredits[provider] += credits;
+    }
+  } else {
+    next.totalInstitutionalCredits += credits;
+    
+    // Check if it's TESU or other institution
+    const isTESU = selected.courseCode?.includes('TESU') || 
+                   selected.chosen.type === 'institutional_course';
+    
+    if (isTESU) {
+      next.perProviderCredits.TESU += credits;
+    } else {
+      next.totalTransferCredits += credits;
+    }
+  }
+
+  // Track upper-division credits (300+ level)
+  if (selected.sourceType === 'alt_credit' && selected.sourceCode && selected.identifier) {
+    const key = `${selected.sourceCode}::${selected.identifier}`;
+    const equivs = equivIndex.get(key) || [];
+    const level = equivs[0]?.level ?? 100;
+    if (level >= 300) {
+      next.upperDivisionCredits += credits;
+    }
+  } else {
+    // Parse course code for level (e.g., "BUS-301" -> 301)
+    const match = selected.courseCode?.match(/[A-Z]+-(\d+)/);
+    if (match) {
+      const level = parseInt(match[1]);
+      if (level >= 300) {
+        next.upperDivisionCredits += credits;
+      }
+    }
+  }
+
+  // Update gen-ed category credits
+  if (slot.kind === 'gened') {
+    const categoryCode = slot.requirementArea;
+    next.genedCreditsByCategory[categoryCode] =
+      (next.genedCreditsByCategory[categoryCode] ?? 0) + credits;
+  }
+
+  return next;
 }
 
 function rankOption(
