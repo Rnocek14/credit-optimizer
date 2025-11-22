@@ -148,6 +148,7 @@ import { PageLoader } from "./components/PageLoader";
 import { isFeatureEnabled } from "./lib/featureFlags";
 import TrackOverlayPOCPage from "../sandbox/TrackOverlayPOCPage";
 import SeedV5Database from "./pages/Admin/SeedV5Database";
+import OptimizerSetup from "./pages/OptimizerSetup";
 
 const queryClient = new QueryClient();
 
@@ -367,6 +368,8 @@ const App = () => {
           <Route path="/sandbox/track-overlay" element={<TrackOverlayPOCPage />} />
           {/* Admin route for database seeding */}
           <Route path="/admin/seed-v5" element={<SeedV5Database />} />
+          {/* Optimizer Setup route */}
+          <Route path="/optimizer-setup" element={<OptimizerSetup />} />
           <Route 
             path="/compare" 
             element={
