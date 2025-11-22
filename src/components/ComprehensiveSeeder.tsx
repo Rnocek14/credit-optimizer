@@ -27,40 +27,64 @@ export function ComprehensiveSeeder() {
     // 1. Seed EduTree
     try {
       setStatus(prev => ({ ...prev, eduTree: 'loading' }));
-      await seedEduTreeData({ destructive: false });
+      console.log('🌱 Starting EduTree seeding (destructive mode)...');
+      await seedEduTreeData({ destructive: true });
       setStatus(prev => ({ ...prev, eduTree: 'success' }));
+      console.log('✅ EduTree data seeded successfully');
       toast.success('EduTree data seeded');
     } catch (error) {
-      console.error('EduTree seeding failed:', error);
+      console.error('❌ EduTree seeding failed:', error);
+      console.error('Error details:', {
+        message: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined,
+        error
+      });
       setStatus(prev => ({ ...prev, eduTree: 'error' }));
-      toast.error('EduTree seeding failed');
+      toast.error(`EduTree seeding failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
 
     // 2. Seed Marketplace
     try {
       setStatus(prev => ({ ...prev, marketplace: 'loading' }));
-      await seedMarketplace();
+      console.log('🌱 Starting marketplace seeding...');
+      const result = await seedMarketplace();
+      console.log('✅ Marketplace seeded successfully:', result);
       setStatus(prev => ({ ...prev, marketplace: 'success' }));
       toast.success('Marketplace seeded');
     } catch (error) {
-      console.error('Marketplace seeding failed:', error);
+      console.error('❌ Marketplace seeding failed:', error);
+      console.error('Error details:', {
+        message: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined,
+        error
+      });
       setStatus(prev => ({ ...prev, marketplace: 'error' }));
-      toast.error('Marketplace seeding failed');
+      toast.error(`Marketplace seeding failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
 
     // 3. Seed Demo Courses
     try {
       setStatus(prev => ({ ...prev, demoCourses: 'loading' }));
+      console.log('🌱 Starting demo courses seeding...');
       const { data, error } = await supabase.functions.invoke('demo-course-seeder', {
         body: {}
       });
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Demo courses edge function returned error:', error);
+        throw error;
+      }
+      console.log('✅ Demo courses seeded successfully:', data);
       setStatus(prev => ({ ...prev, demoCourses: 'success' }));
       toast.success(`Demo courses seeded: ${data?.coursesProcessed || 0} processed`);
     } catch (error) {
-      console.error('Demo courses seeding failed:', error);
+      console.error('❌ Demo courses seeding failed:', error);
+      console.error('Error details:', {
+        message: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined,
+        error
+      });
       setStatus(prev => ({ ...prev, demoCourses: 'error' }));
-      toast.error('Demo courses seeding failed');
+      toast.error(`Demo courses seeding failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
 
     setIsSeeding(false);
