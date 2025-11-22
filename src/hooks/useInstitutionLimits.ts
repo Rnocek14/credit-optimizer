@@ -8,7 +8,10 @@ interface InstitutionCreditLimit {
     | 'alt_credit_max'
     | 'comm_college_max'
     | 'min_ra_credit'
-    | 'min_residency';
+    | 'min_residency'
+    | 'clep_max'
+    | 'dsst_max'
+    | 'upper_division_min';
   credit_value: number;
   notes: string | null;
 }

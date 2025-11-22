@@ -191,7 +191,7 @@ function convertSlotOptionToMarketplaceOption(
       subject: slot.requirementArea,
       provider: 'TESU',
       providerType: 'university' as const,
-      cost_usd: 1500, // Default TESU per-course cost
+      cost_usd: slot.minCredits * 400, // TESU ~$400/credit (2025)
       duration_weeks: 16,
       workload_weekly_hours: 10,
       cri_score: 3.0,

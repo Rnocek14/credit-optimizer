@@ -82,32 +82,36 @@ export function PlanAuditPanel() {
       }
     });
 
-    // CLEP and DSST (hardcoded for now, could be in DB)
+    // Per-provider caps from database (with fallback defaults)
+    const clepLimit = limits.find(l => l.limit_type === 'clep_max')?.credit_value ?? 40;
+    const dsstLimit = limits.find(l => l.limit_type === 'dsst_max')?.credit_value ?? 30;
+    const upperLimit = limits.find(l => l.limit_type === 'upper_division_min')?.credit_value ?? 30;
+
     results.push({
       label: 'CLEP Credits',
       current: clepCredits,
-      limit: 40,
+      limit: clepLimit,
       limitType: 'max',
-      percentage: (clepCredits / 40) * 100,
-      status: clepCredits <= 40 ? 'ok' : clepCredits <= 44 ? 'warning' : 'error',
+      percentage: (clepCredits / clepLimit) * 100,
+      status: clepCredits <= clepLimit ? 'ok' : clepCredits <= clepLimit * 1.1 ? 'warning' : 'error',
     });
 
     results.push({
       label: 'DSST Credits',
       current: dsstCredits,
-      limit: 30,
+      limit: dsstLimit,
       limitType: 'max',
-      percentage: (dsstCredits / 30) * 100,
-      status: dsstCredits <= 30 ? 'ok' : dsstCredits <= 33 ? 'warning' : 'error',
+      percentage: (dsstCredits / dsstLimit) * 100,
+      status: dsstCredits <= dsstLimit ? 'ok' : dsstCredits <= dsstLimit * 1.1 ? 'warning' : 'error',
     });
 
     results.push({
       label: 'Upper Division',
       current: upperDivCredits,
-      limit: 30,
+      limit: upperLimit,
       limitType: 'min',
-      percentage: Math.min((upperDivCredits / 30) * 100, 100),
-      status: upperDivCredits >= 30 ? 'ok' : upperDivCredits >= 24 ? 'warning' : 'error',
+      percentage: Math.min((upperDivCredits / upperLimit) * 100, 100),
+      status: upperDivCredits >= upperLimit ? 'ok' : upperDivCredits >= upperLimit * 0.8 ? 'warning' : 'error',
     });
 
     return results;
