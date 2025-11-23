@@ -1,31 +1,27 @@
 -- ============================================================================
--- OPTIMIZER CLEANUP SCRIPT
+-- OPTIMIZER CLEANUP SCRIPT - NUCLEAR OPTION
 -- ============================================================================
--- This script removes ALL optimizer-related tables and policies.
--- Run this BEFORE running optimizer-complete-setup.sql if you're getting
--- "policy already exists" or "table already exists" errors.
---
--- This is safe to run multiple times.
+-- This drops ALL optimizer tables in a single transaction
+-- Handles all dependency orders automatically
 -- ============================================================================
 
--- Drop all optimizer tables with CASCADE (automatically drops all policies and dependencies)
--- ============================================================================
+DO $$ 
+BEGIN
+  -- Drop all tables in a single statement (PostgreSQL handles dependency order)
+  DROP TABLE IF EXISTS 
+    public.gened_categories,
+    public.gened_frameworks,
+    public.cross_institution_equivalencies,
+    public.degree_templates,
+    public.institution_credit_limits,
+    public.alt_credits
+  CASCADE;
+  
+  RAISE NOTICE 'Cleanup complete! All optimizer tables and policies removed.';
+END $$;
 
--- Tables with foreign key dependencies go first
-DROP TABLE IF EXISTS public.gened_categories CASCADE;
-DROP TABLE IF EXISTS public.gened_frameworks CASCADE;
-DROP TABLE IF EXISTS public.cross_institution_equivalencies CASCADE;
-DROP TABLE IF EXISTS public.degree_templates CASCADE;
-DROP TABLE IF EXISTS public.institution_credit_limits CASCADE;
-DROP TABLE IF EXISTS public.alt_credits CASCADE;
+-- Optional: Remove code column from institutions
+-- Uncomment only if you want a completely fresh start:
+-- ALTER TABLE public.institutions DROP COLUMN IF EXISTS code CASCADE;
 
--- Note: We're NOT dropping or modifying the institutions table itself
--- Just the code column if you want a completely fresh start
--- Uncomment the line below only if you want to remove the code column:
--- ALTER TABLE public.institutions DROP COLUMN IF EXISTS code;
-
--- Verification Query
--- ============================================================================
-SELECT 
-  'Cleanup complete! All optimizer tables and policies removed.' as status,
-  'Run optimizer-complete-setup.sql next to recreate everything fresh.' as next_step;
+SELECT 'Run optimizer-complete-setup.sql next to recreate everything fresh.' as next_step;
