@@ -1,9 +1,8 @@
 {
-  "appId": "app.lovable.1ef93e21cb9d484cb649098f2a66c1e2",
-  "appName": "path-to-success-tracker",
+  "appId": "com.lifepath.app",
+  "appName": "Life Path",
   "webDir": "dist",
   "server": {
-    "url": "https://1ef93e21-cb9d-484c-b649-098f2a66c1e2.lovableproject.com?forceHideBadge=true",
     "cleartext": true
   },
   "plugins": {
