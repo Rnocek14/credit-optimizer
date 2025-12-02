@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useOptimizerSeeder } from '@/hooks/useOptimizerSeeder';
+import { useOptimizerSeeder, FunctionHealthStatus } from '@/hooks/useOptimizerSeeder';
 import { SeedingJobCard } from '@/components/admin/SeedingJobCard';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -14,7 +14,9 @@ import {
   XCircle, 
   Loader2,
   ArrowLeft,
-  Info
+  Info,
+  Wifi,
+  WifiOff
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -24,11 +26,21 @@ interface TableStatus {
   rowCount: number | null;
 }
 
+const EDGE_FUNCTIONS = [
+  'optimizer-seed-tesu',
+  'optimizer-seed-cosc',
+  'optimizer-seed-excelsior',
+  'optimizer-seed-wgu',
+  'seed-v5-marketplace',
+];
+
 export default function OptimizerSeeding() {
-  const { runJob, getJobState, clearResults } = useOptimizerSeeder();
+  const { runJob, getJobState, clearResults, checkFunctionHealth } = useOptimizerSeeder();
   const { toast } = useToast();
   const [tableStatus, setTableStatus] = useState<TableStatus[]>([]);
   const [isCheckingTables, setIsCheckingTables] = useState(false);
+  const [healthStatus, setHealthStatus] = useState<FunctionHealthStatus[]>([]);
+  const [isCheckingHealth, setIsCheckingHealth] = useState(false);
 
   const tesuState = getJobState('seed-tesu');
   const coscState = getJobState('seed-cosc');
@@ -79,6 +91,36 @@ export default function OptimizerSeeding() {
         description: "Run the migration first to create tables.",
         variant: "destructive",
       });
+    }
+  };
+
+  const runHealthCheck = async () => {
+    setIsCheckingHealth(true);
+    try {
+      const results = await checkFunctionHealth(EDGE_FUNCTIONS);
+      setHealthStatus(results);
+      
+      const reachableCount = results.filter(r => r.reachable).length;
+      if (reachableCount === results.length) {
+        toast({
+          title: "All functions reachable ✓",
+          description: `${reachableCount}/${results.length} edge functions responding.`,
+        });
+      } else {
+        toast({
+          title: "Some functions unreachable",
+          description: `${reachableCount}/${results.length} edge functions responding. Check deployment status.`,
+          variant: "destructive",
+        });
+      }
+    } catch (err: any) {
+      toast({
+        title: "Health check failed",
+        description: err.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsCheckingHealth(false);
     }
   };
 
@@ -200,12 +242,90 @@ export default function OptimizerSeeding() {
         <AlertTitle>How This Works</AlertTitle>
         <AlertDescription>
           <ol className="list-decimal list-inside space-y-1 mt-2 text-sm">
+            <li><strong>Check Functions</strong> — Verify edge functions are deployed and reachable</li>
             <li><strong>Check Tables</strong> — Verify optimizer tables exist (created via migrations)</li>
-            <li><strong>Seed TESU Data</strong> — Click "Run Job" to populate TESU policies, alt credits, equivalencies, and templates</li>
-            <li><strong>Verify</strong> — Check the results show expected row counts</li>
+            <li><strong>Run Seeders</strong> — Click "Run Job" to populate institution data</li>
           </ol>
         </AlertDescription>
       </Alert>
+
+      {/* Edge Function Health Check */}
+      <div className="mb-8 p-6 border rounded-lg bg-card">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h2 className="text-lg font-semibold flex items-center gap-2">
+              <Wifi className="h-5 w-5" />
+              Edge Function Health
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              Check if edge functions are deployed and responding
+            </p>
+          </div>
+          <Button onClick={runHealthCheck} disabled={isCheckingHealth} variant="outline">
+            {isCheckingHealth ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Checking...
+              </>
+            ) : (
+              <>
+                <RefreshCw className="mr-2 h-4 w-4" />
+                Test Functions
+              </>
+            )}
+          </Button>
+        </div>
+
+        {healthStatus.length > 0 && (
+          <div className="space-y-2">
+            {healthStatus.map((fn) => (
+              <div 
+                key={fn.name}
+                className={`flex items-center justify-between p-3 rounded-lg border ${
+                  fn.reachable 
+                    ? 'bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800' 
+                    : 'bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800'
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  {fn.reachable ? (
+                    <CheckCircle2 className="h-4 w-4 text-green-600" />
+                  ) : (
+                    <WifiOff className="h-4 w-4 text-red-600" />
+                  )}
+                  <span className="text-sm font-mono">{fn.name}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  {fn.responseTime && (
+                    <Badge variant="outline" className="text-xs">
+                      {fn.responseTime}ms
+                    </Badge>
+                  )}
+                  {fn.reachable ? (
+                    <Badge className="bg-green-600 text-xs">Reachable</Badge>
+                  ) : (
+                    <Badge variant="destructive" className="text-xs">
+                      {fn.error?.slice(0, 40) || 'Unreachable'}
+                    </Badge>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {healthStatus.length > 0 && healthStatus.some(fn => !fn.reachable) && (
+          <Alert variant="destructive" className="mt-4">
+            <XCircle className="h-4 w-4" />
+            <AlertTitle>Functions Not Deployed</AlertTitle>
+            <AlertDescription className="text-sm">
+              Some edge functions are not reachable. This usually means they haven't been deployed yet.
+              <br />
+              <strong>Fix:</strong> Wait for the Lovable build to complete, or check Supabase Dashboard → Edge Functions.
+            </AlertDescription>
+          </Alert>
+        )}
+      </div>
 
       {/* Table Status Check */}
       <div className="mb-8 p-6 border rounded-lg bg-card">
@@ -339,15 +459,32 @@ export default function OptimizerSeeding() {
       {hasSeededData && (
         <Alert className="mt-8 border-green-500/30 bg-green-50 dark:bg-green-950/20">
           <CheckCircle2 className="h-4 w-4 text-green-600" />
-          <AlertTitle className="text-green-700 dark:text-green-400">TESU Data Ready</AlertTitle>
+          <AlertTitle className="text-green-700 dark:text-green-400">Data Ready</AlertTitle>
           <AlertDescription className="text-green-600 dark:text-green-300">
-            TESU optimizer data has been seeded. You can now test the Credit Optimizer at{' '}
+            Optimizer data has been seeded. You can now test the Credit Optimizer at{' '}
             <Link to="/edu-tree-v5" className="underline font-medium">
               /edu-tree-v5
             </Link>
           </AlertDescription>
         </Alert>
       )}
+
+      {/* Debug Info */}
+      <div className="mt-8 pt-6 border-t">
+        <details className="text-xs text-muted-foreground">
+          <summary className="cursor-pointer font-medium">Debug Info</summary>
+          <div className="mt-2 p-3 bg-muted rounded font-mono space-y-1">
+            <p>Supabase URL: https://vzpissitddpunkpythsb.supabase.co</p>
+            <p>Project ID: vzpissitddpunkpythsb</p>
+            <p>Functions:</p>
+            <ul className="ml-4 list-disc">
+              {EDGE_FUNCTIONS.map(fn => (
+                <li key={fn}>{fn}</li>
+              ))}
+            </ul>
+          </div>
+        </details>
+      </div>
     </div>
   );
 }
