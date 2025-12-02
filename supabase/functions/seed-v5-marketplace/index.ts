@@ -1,4 +1,5 @@
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+// Deployment trigger: 2025-12-02T18:45:00Z
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -230,56 +231,47 @@ Deno.serve(async (req) => {
       
       { source_institution: 'CLEP', source_course_code: 'CLEP-COLLEGE-ALG', target_institution: 'TESU', target_course_code: 'MAT-121', acceptance_status: 'accepted', confidence: 0.95, requirement_type: 'major', notes: 'CLEP accepted' },
       { source_institution: 'CLEP', source_course_code: 'CLEP-COLLEGE-ALG', target_institution: 'EXCU', target_course_code: 'MAT-1105', acceptance_status: 'accepted', confidence: 0.95, requirement_type: 'major', notes: 'CLEP accepted' },
-      { source_institution: 'CLEP', source_course_code: 'CLEP-ENG-COMP', target_institution: 'TESU', target_course_code: 'ENG-101', acceptance_status: 'accepted', confidence: 0.96, requirement_type: 'genED', notes: 'CLEP composition accepted' },
-      { source_institution: 'CLEP', source_course_code: 'CLEP-ENG-COMP', target_institution: 'EXCU', target_course_code: 'ENG-105', acceptance_status: 'accepted', confidence: 0.96, requirement_type: 'genED', notes: 'CLEP composition accepted' },
+      { source_institution: 'CLEP', source_course_code: 'CLEP-COLLEGE-ALG', target_institution: 'WGU', target_course_code: 'C191', acceptance_status: 'accepted', confidence: 0.92, requirement_type: 'major', notes: 'CLEP fulfills competency' },
+      { source_institution: 'CLEP', source_course_code: 'CLEP-ENG-COMP', target_institution: 'TESU', target_course_code: 'ENG-101', acceptance_status: 'accepted', confidence: 0.95, requirement_type: 'genED', notes: 'CLEP accepted for composition' },
+      { source_institution: 'CLEP', source_course_code: 'CLEP-ENG-COMP', target_institution: 'EXCU', target_course_code: 'ENG-105', acceptance_status: 'accepted', confidence: 0.95, requirement_type: 'genED', notes: 'CLEP accepted for composition' },
       
-      // Elective/MOOC mappings
-      { source_institution: 'COURSERA', source_course_code: 'COURSERA-PYTHON', target_institution: 'TESU', target_course_code: 'ELEC-CS', acceptance_status: 'elective', confidence: 0.70, requirement_type: 'elective', notes: 'Transfers as CS elective only' },
-      { source_institution: 'COURSERA', source_course_code: 'COURSERA-PYTHON', target_institution: 'EXCU', target_course_code: 'ELEC-CS', acceptance_status: 'elective', confidence: 0.68, requirement_type: 'elective', notes: 'Portfolio review may be required' },
-      { source_institution: 'EDX', source_course_code: 'EDX-DATA-SCI', target_institution: 'EXCU', target_course_code: 'ELEC-ANALYTICS', acceptance_status: 'elective', confidence: 0.72, requirement_type: 'elective', notes: 'Elective credit for data science' },
-      { source_institution: 'EDX', source_course_code: 'EDX-DATA-SCI', target_institution: 'TESU', target_course_code: 'ELEC-TECH', acceptance_status: 'elective', confidence: 0.70, requirement_type: 'elective', notes: 'Technical elective only' },
-      
-      // Cross-institutional
-      { source_institution: 'TESU', source_course_code: 'ENG-101', target_institution: 'EXCU', target_course_code: 'ENG-105', acceptance_status: 'accepted', confidence: 0.98, requirement_type: 'genED', notes: 'Regional accreditation reciprocity' },
-      { source_institution: 'TESU', source_course_code: 'MAT-121', target_institution: 'EXCU', target_course_code: 'MAT-1105', acceptance_status: 'accepted', confidence: 0.98, requirement_type: 'major', notes: 'Regional accreditation reciprocity' },
-      { source_institution: 'EXCU', source_course_code: 'ENG-105', target_institution: 'TESU', target_course_code: 'ENG-101', acceptance_status: 'accepted', confidence: 0.98, requirement_type: 'genED', notes: 'Regional accreditation reciprocity' },
-      { source_institution: 'EXCU', source_course_code: 'MAT-1105', target_institution: 'TESU', target_course_code: 'MAT-121', acceptance_status: 'accepted', confidence: 0.98, requirement_type: 'major', notes: 'Regional accreditation reciprocity' },
+      // Cross-RA transfers (lower confidence)
+      { source_institution: 'COURSERA', source_course_code: 'COURSERA-PYTHON', target_institution: 'TESU', target_course_code: 'ELEC-GEN', acceptance_status: 'elective', confidence: 0.65, requirement_type: 'elective', notes: 'May transfer as elective only; not ACE-approved' },
+      { source_institution: 'COURSERA', source_course_code: 'COURSERA-PYTHON', target_institution: 'EXCU', target_course_code: 'ELEC-GEN', acceptance_status: 'elective', confidence: 0.60, requirement_type: 'elective', notes: 'May transfer as elective only; not ACE-approved' },
+      { source_institution: 'EDX', source_course_code: 'EDX-DATA-SCI', target_institution: 'TESU', target_course_code: 'ELEC-GEN', acceptance_status: 'elective', confidence: 0.65, requirement_type: 'elective', notes: 'May transfer as elective only; requires review' },
     ];
 
-    const { data: rules, error: rulesError } = await supabase
-      .from('credit_transfer_rules')
+    const { data: seededRules, error: rulesError } = await supabase
+      .from('transfer_rules')
       .upsert(transferRules, { 
         onConflict: 'source_institution,source_course_code,target_institution,target_course_code' 
       })
       .select();
 
     if (rulesError) throw rulesError;
-    console.log(`✅ Seeded ${rules?.length || 0} transfer rules`);
+    console.log(`✅ Seeded ${seededRules?.length || 0} transfer rules`);
 
-    // Summary
-    const summary = {
-      success: true,
-      phases: {
-        providers: providers?.length || 0,
-        marketplace_courses: marketplaceCourses?.length || 0,
-        requirement_options: optionsToInsert.length,
-        transfer_rules: rules?.length || 0,
-      },
-      message: '🎉 V5 marketplace seeded successfully! Templates should now generate.',
-    };
-
-    console.log('✅ Seeding complete:', summary);
-
-    return new Response(JSON.stringify(summary), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
-
+    return new Response(
+      JSON.stringify({
+        success: true,
+        message: 'V5 Marketplace seeded successfully',
+        counts: {
+          providers: providers?.length || 0,
+          courses: marketplaceCourses?.length || 0,
+          requirementOptions: optionsToInsert.length,
+          transferRules: seededRules?.length || 0,
+        },
+      }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
   } catch (error) {
     console.error('❌ Seeding error:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-    return new Response(JSON.stringify({ error: errorMessage }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    return new Response(
+      JSON.stringify({
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
   }
 });

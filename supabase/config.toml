@@ -9,6 +9,9 @@ verify_jwt = false
 [functions.seed-data-2025]
 verify_jwt = false
 
+[functions.seed-v5-marketplace]
+verify_jwt = false
+
 [functions.optimizer-seed-tesu]
 verify_jwt = false
 
@@ -20,4 +23,3 @@ verify_jwt = false
 
 [functions.optimizer-seed-wgu]
 verify_jwt = false
-

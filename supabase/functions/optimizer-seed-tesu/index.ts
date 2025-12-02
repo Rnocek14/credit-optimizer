@@ -1,6 +1,6 @@
-// Deployment trigger: 2025-12-02T10:00:00Z
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
+// Deployment trigger: 2025-12-02T18:45:00Z
+import { serve } from 'https://deno.land/std@0.224.0/http/server.ts';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -186,12 +186,12 @@ serve(async (req) => {
       { source_code: 'STUDY_COM', identifier: 'MGRL_ACCT', title: 'Managerial Accounting', credits_typical: 3, level: 300, subject_area: 'accounting', cost_usd: 199, duration_estimate_weeks: 8, exam_based: false, provider_url: 'https://study.com/' },
       { source_code: 'STUDY_COM', identifier: 'OPS_MGMT', title: 'Operations Management', credits_typical: 3, level: 300, subject_area: 'business', cost_usd: 199, duration_estimate_weeks: 8, exam_based: false, provider_url: 'https://study.com/' },
       { source_code: 'STUDY_COM', identifier: 'BUS_STRATEGY', title: 'Business Strategy', credits_typical: 3, level: 400, subject_area: 'business', cost_usd: 199, duration_estimate_weeks: 8, exam_based: false, provider_url: 'https://study.com/' },
-      { source_code: 'STUDY_COM', identifier: 'BUS_ETHICS', title: 'Business Ethics', credits_typical: 3, level: 300, subject_area: 'business', cost_usd: 199, duration_estimate_weeks: 6, exam_based: false, provider_url: 'https://study.com/' },
+      { source_code: 'STUDY_COM', identifier: 'QUANT_METH', title: 'Quantitative Methods', credits_typical: 3, level: 300, subject_area: 'math', cost_usd: 199, duration_estimate_weeks: 8, exam_based: false, provider_url: 'https://study.com/' },
+      { source_code: 'STUDY_COM', identifier: 'ORG_BEHAVIOR', title: 'Organizational Behavior', credits_typical: 3, level: 300, subject_area: 'business', cost_usd: 199, duration_estimate_weeks: 8, exam_based: false, provider_url: 'https://study.com/' },
+      { source_code: 'STUDY_COM', identifier: 'HR_MGMT', title: 'Human Resource Management', credits_typical: 3, level: 300, subject_area: 'business', cost_usd: 199, duration_estimate_weeks: 8, exam_based: false, provider_url: 'https://study.com/' },
+      { source_code: 'STUDY_COM', identifier: 'BUS_LAW', title: 'Business Law', credits_typical: 3, level: 300, subject_area: 'business', cost_usd: 199, duration_estimate_weeks: 8, exam_based: false, provider_url: 'https://study.com/' },
       { source_code: 'STUDY_COM', identifier: 'INT_BUS', title: 'International Business', credits_typical: 3, level: 300, subject_area: 'business', cost_usd: 199, duration_estimate_weeks: 8, exam_based: false, provider_url: 'https://study.com/' },
-      { source_code: 'STUDY_COM', identifier: 'SUPPLY_CHAIN', title: 'Supply Chain Management', credits_typical: 3, level: 300, subject_area: 'business', cost_usd: 199, duration_estimate_weeks: 8, exam_based: false, provider_url: 'https://study.com/' },
-      { source_code: 'STUDY_COM', identifier: 'BUS_COMM', title: 'Business Communication', credits_typical: 3, level: 200, subject_area: 'communication', cost_usd: 199, duration_estimate_weeks: 6, exam_based: false, provider_url: 'https://study.com/' },
-      { source_code: 'STUDY_COM', identifier: 'LEADERSHIP', title: 'Leadership and Management', credits_typical: 3, level: 300, subject_area: 'business', cost_usd: 199, duration_estimate_weeks: 8, exam_based: false, provider_url: 'https://study.com/' },
-      { source_code: 'STUDY_COM', identifier: 'ECOMMERCE', title: 'E-Commerce', credits_typical: 3, level: 300, subject_area: 'business', cost_usd: 199, duration_estimate_weeks: 6, exam_based: false, provider_url: 'https://study.com/' },
+      { source_code: 'STUDY_COM', identifier: 'STRATEGIC_MGMT', title: 'Strategic Management', credits_typical: 3, level: 400, subject_area: 'business', cost_usd: 199, duration_estimate_weeks: 8, exam_based: false, provider_url: 'https://study.com/' },
     ];
 
     const { error: altCreditsError } = await supabase
@@ -202,123 +202,98 @@ serve(async (req) => {
     response.tables.alt_credits = { inserted: altCredits.length, updated: 0, skipped: 0 };
 
     // ============================================================
-    // STEP 6: Get all alt_credit IDs for equivalency mapping
+    // STEP 6: Seed cross_institution_equivalencies (50 mappings)
     // ============================================================
-    console.log('[optimizer-seed-tesu] Step 6: Fetching alt_credit IDs for equivalency mapping...');
-    const { data: altCreditIds, error: idsError } = await supabase
+    console.log('[optimizer-seed-tesu] Step 6: Seeding cross_institution_equivalencies...');
+    
+    // First, get all alt_credit IDs
+    const { data: altCreditRecords } = await supabase
       .from('alt_credits')
       .select('id, source_code, identifier');
-
-    if (idsError) throw new Error(`Failed to fetch alt_credit IDs: ${idsError.message}`);
     
-    const idMap: Record<string, string> = {};
-    altCreditIds?.forEach((ac: any) => {
-      idMap[`${ac.source_code}_${ac.identifier}`] = ac.id;
+    const altCreditMap = new Map<string, string>();
+    altCreditRecords?.forEach(ac => {
+      altCreditMap.set(`${ac.source_code}:${ac.identifier}`, ac.id);
     });
 
-    // ============================================================
-    // STEP 7: Seed cross_institution_equivalencies (50 mappings)
-    // ============================================================
-    console.log('[optimizer-seed-tesu] Step 7: Seeding cross_institution_equivalencies...');
     const equivalencies = [
-      // Gen-Ed: Written Communication
-      { alt_key: 'CLEP_COMP', course_code: 'ENC-101-102', course_name: 'English Composition I & II', credits: 6, level: 100, gened: 'WRITTEN_COMM', area: 'gened' },
-      { alt_key: 'SOPHIA_ENG_COMP1', course_code: 'ENC-101', course_name: 'English Composition I', credits: 3, level: 100, gened: 'WRITTEN_COMM', area: 'gened' },
-      { alt_key: 'SOPHIA_ENG_COMP2', course_code: 'ENC-102', course_name: 'English Composition II', credits: 3, level: 100, gened: 'WRITTEN_COMM', area: 'gened' },
-      { alt_key: 'CLEP_COMP_MOD', course_code: 'ENC-101', course_name: 'English Composition I', credits: 3, level: 100, gened: 'WRITTEN_COMM', area: 'gened' },
+      // CLEP equivalencies
+      { alt_credit_key: 'CLEP:COMP', institutional_course_code: 'ENG-101', credits_awarded: 6, gened_category_code: 'WRITTEN_COMM', requirement_area: 'genED', confidence: 0.95 },
+      { alt_credit_key: 'CLEP:ALGEBRA', institutional_course_code: 'MAT-115', credits_awarded: 3, gened_category_code: 'QUANTITATIVE', requirement_area: 'genED', confidence: 0.95 },
+      { alt_credit_key: 'CLEP:PSYCH', institutional_course_code: 'PSY-101', credits_awarded: 3, gened_category_code: 'SOCIAL_SCIENCE', requirement_area: 'genED', confidence: 0.95 },
+      { alt_credit_key: 'CLEP:SOCIO', institutional_course_code: 'SOC-101', credits_awarded: 3, gened_category_code: 'SOCIAL_SCIENCE', requirement_area: 'genED', confidence: 0.95 },
+      { alt_credit_key: 'CLEP:US_HIST1', institutional_course_code: 'HIS-111', credits_awarded: 3, gened_category_code: 'SOCIAL_SCIENCE', requirement_area: 'genED', confidence: 0.95 },
+      { alt_credit_key: 'CLEP:BIOLOGY', institutional_course_code: 'BIO-101', credits_awarded: 6, gened_category_code: 'NATURAL_SCIENCE', requirement_area: 'genED', confidence: 0.95 },
+      { alt_credit_key: 'CLEP:HUMANITIES', institutional_course_code: 'HUM-101', credits_awarded: 6, gened_category_code: 'HUMANITIES', requirement_area: 'genED', confidence: 0.95 },
+      { alt_credit_key: 'CLEP:PRINCIPLES_MGMT', institutional_course_code: 'MGT-301', credits_awarded: 3, gened_category_code: null, requirement_area: 'major', confidence: 0.90 },
+      { alt_credit_key: 'CLEP:PRINCIPLES_MKT', institutional_course_code: 'MKT-301', credits_awarded: 3, gened_category_code: null, requirement_area: 'major', confidence: 0.90 },
+      { alt_credit_key: 'CLEP:BUS_LAW', institutional_course_code: 'LAW-201', credits_awarded: 3, gened_category_code: null, requirement_area: 'major', confidence: 0.90 },
       
-      // Gen-Ed: Oral Communication
-      { alt_key: 'SOPHIA_PUBLIC_SPEAK', course_code: 'COM-101', course_name: 'Public Speaking', credits: 3, level: 100, gened: 'ORAL_COMM', area: 'gened' },
+      // DSST equivalencies
+      { alt_credit_key: 'DSST:INTRO_BUS', institutional_course_code: 'BUS-101', credits_awarded: 3, gened_category_code: null, requirement_area: 'major', confidence: 0.90 },
+      { alt_credit_key: 'DSST:ORG_BEH', institutional_course_code: 'MGT-310', credits_awarded: 3, gened_category_code: null, requirement_area: 'major', confidence: 0.90 },
+      { alt_credit_key: 'DSST:HR_MGMT', institutional_course_code: 'MGT-320', credits_awarded: 3, gened_category_code: null, requirement_area: 'major', confidence: 0.90 },
+      { alt_credit_key: 'DSST:PRINCIPLES_FIN', institutional_course_code: 'FIN-301', credits_awarded: 3, gened_category_code: null, requirement_area: 'major', confidence: 0.90 },
+      { alt_credit_key: 'DSST:MIS', institutional_course_code: 'CIS-310', credits_awarded: 3, gened_category_code: null, requirement_area: 'major', confidence: 0.90 },
+      { alt_credit_key: 'DSST:BUS_ETHICS', institutional_course_code: 'ETH-301', credits_awarded: 3, gened_category_code: 'CIVIC_GLOBAL', requirement_area: 'genED', confidence: 0.85 },
       
-      // Gen-Ed: Quantitative
-      { alt_key: 'CLEP_ALGEBRA', course_code: 'MAT-121', course_name: 'College Algebra', credits: 3, level: 100, gened: 'QUANTITATIVE', area: 'gened' },
-      { alt_key: 'SOPHIA_COLLEGE_ALG', course_code: 'MAT-121', course_name: 'College Algebra', credits: 3, level: 100, gened: 'QUANTITATIVE', area: 'gened' },
-      { alt_key: 'CLEP_PRECALC', course_code: 'MAT-129', course_name: 'Precalculus', credits: 3, level: 100, gened: 'QUANTITATIVE', area: 'gened' },
-      { alt_key: 'DSST_BUS_MATH', course_code: 'MAT-115', course_name: 'Business Math', credits: 3, level: 100, gened: 'QUANTITATIVE', area: 'gened' },
-      { alt_key: 'SOPHIA_INTRO_STATS', course_code: 'STA-201', course_name: 'Introduction to Statistics', credits: 3, level: 200, gened: 'QUANTITATIVE', area: 'gened' },
+      // Sophia equivalencies
+      { alt_credit_key: 'SOPHIA:ENG_COMP1', institutional_course_code: 'ENG-101', credits_awarded: 3, gened_category_code: 'WRITTEN_COMM', requirement_area: 'genED', confidence: 0.92 },
+      { alt_credit_key: 'SOPHIA:ENG_COMP2', institutional_course_code: 'ENG-102', credits_awarded: 3, gened_category_code: 'WRITTEN_COMM', requirement_area: 'genED', confidence: 0.92 },
+      { alt_credit_key: 'SOPHIA:PUBLIC_SPEAK', institutional_course_code: 'COM-101', credits_awarded: 3, gened_category_code: 'ORAL_COMM', requirement_area: 'genED', confidence: 0.92 },
+      { alt_credit_key: 'SOPHIA:COLLEGE_ALG', institutional_course_code: 'MAT-115', credits_awarded: 3, gened_category_code: 'QUANTITATIVE', requirement_area: 'genED', confidence: 0.92 },
+      { alt_credit_key: 'SOPHIA:INTRO_STATS', institutional_course_code: 'STA-201', credits_awarded: 3, gened_category_code: 'QUANTITATIVE', requirement_area: 'genED', confidence: 0.90 },
+      { alt_credit_key: 'SOPHIA:MACRO_ECON', institutional_course_code: 'ECO-201', credits_awarded: 3, gened_category_code: 'SOCIAL_SCIENCE', requirement_area: 'genED', confidence: 0.90 },
+      { alt_credit_key: 'SOPHIA:MICRO_ECON', institutional_course_code: 'ECO-202', credits_awarded: 3, gened_category_code: 'SOCIAL_SCIENCE', requirement_area: 'genED', confidence: 0.90 },
+      { alt_credit_key: 'SOPHIA:INTRO_BUS', institutional_course_code: 'BUS-101', credits_awarded: 3, gened_category_code: null, requirement_area: 'major', confidence: 0.90 },
+      { alt_credit_key: 'SOPHIA:PROJECT_MGMT', institutional_course_code: 'MGT-350', credits_awarded: 3, gened_category_code: null, requirement_area: 'major', confidence: 0.88 },
+      { alt_credit_key: 'SOPHIA:INTRO_PSYCH', institutional_course_code: 'PSY-101', credits_awarded: 3, gened_category_code: 'SOCIAL_SCIENCE', requirement_area: 'genED', confidence: 0.92 },
+      { alt_credit_key: 'SOPHIA:INTRO_SOCIO', institutional_course_code: 'SOC-101', credits_awarded: 3, gened_category_code: 'SOCIAL_SCIENCE', requirement_area: 'genED', confidence: 0.92 },
+      { alt_credit_key: 'SOPHIA:ENV_SCI', institutional_course_code: 'SCI-110', credits_awarded: 3, gened_category_code: 'NATURAL_SCIENCE', requirement_area: 'genED', confidence: 0.90 },
+      { alt_credit_key: 'SOPHIA:ART_HISTORY', institutional_course_code: 'ART-101', credits_awarded: 3, gened_category_code: 'HUMANITIES', requirement_area: 'genED', confidence: 0.90 },
+      { alt_credit_key: 'SOPHIA:ETHICS', institutional_course_code: 'PHI-101', credits_awarded: 3, gened_category_code: 'CIVIC_GLOBAL', requirement_area: 'genED', confidence: 0.90 },
+      { alt_credit_key: 'SOPHIA:COMM', institutional_course_code: 'COM-201', credits_awarded: 3, gened_category_code: 'ORAL_COMM', requirement_area: 'genED', confidence: 0.88 },
       
-      // Gen-Ed: Humanities
-      { alt_key: 'CLEP_HUMANITIES', course_code: 'HUM-101-102', course_name: 'Humanities I & II', credits: 6, level: 100, gened: 'HUMANITIES', area: 'gened' },
-      { alt_key: 'SOPHIA_ART_HISTORY', course_code: 'ART-101', course_name: 'Art History I', credits: 3, level: 100, gened: 'HUMANITIES', area: 'gened' },
-      { alt_key: 'SOPHIA_ETHICS', course_code: 'PHI-102', course_name: 'Introduction to Ethics', credits: 3, level: 100, gened: 'HUMANITIES', area: 'gened' },
-      
-      // Gen-Ed: Social Sciences
-      { alt_key: 'CLEP_PSYCH', course_code: 'PSY-101', course_name: 'Introduction to Psychology', credits: 3, level: 100, gened: 'SOCIAL_SCIENCE', area: 'gened' },
-      { alt_key: 'SOPHIA_INTRO_PSYCH', course_code: 'PSY-101', course_name: 'Introduction to Psychology', credits: 3, level: 100, gened: 'SOCIAL_SCIENCE', area: 'gened' },
-      { alt_key: 'CLEP_SOCIO', course_code: 'SOC-101', course_name: 'Introduction to Sociology', credits: 3, level: 100, gened: 'SOCIAL_SCIENCE', area: 'gened' },
-      { alt_key: 'SOPHIA_INTRO_SOCIO', course_code: 'SOC-101', course_name: 'Introduction to Sociology', credits: 3, level: 100, gened: 'SOCIAL_SCIENCE', area: 'gened' },
-      { alt_key: 'CLEP_US_HIST1', course_code: 'HIS-111', course_name: 'US History I', credits: 3, level: 100, gened: 'SOCIAL_SCIENCE', area: 'gened' },
-      { alt_key: 'CLEP_US_HIST2', course_code: 'HIS-112', course_name: 'US History II', credits: 3, level: 100, gened: 'SOCIAL_SCIENCE', area: 'gened' },
-      { alt_key: 'SOPHIA_MACRO_ECON', course_code: 'ECO-111', course_name: 'Macroeconomics', credits: 3, level: 200, gened: 'SOCIAL_SCIENCE', area: 'gened' },
-      { alt_key: 'SOPHIA_MICRO_ECON', course_code: 'ECO-112', course_name: 'Microeconomics', credits: 3, level: 200, gened: 'SOCIAL_SCIENCE', area: 'gened' },
-      
-      // Gen-Ed: Natural Sciences
-      { alt_key: 'CLEP_BIOLOGY', course_code: 'BIO-101-102', course_name: 'Biology I & II', credits: 6, level: 100, gened: 'NATURAL_SCIENCE', area: 'gened' },
-      { alt_key: 'CLEP_NAT_SCI', course_code: 'SCI-101-102', course_name: 'Natural Sciences I & II', credits: 6, level: 100, gened: 'NATURAL_SCIENCE', area: 'gened' },
-      { alt_key: 'SOPHIA_ENV_SCI', course_code: 'ENV-101', course_name: 'Environmental Science', credits: 3, level: 100, gened: 'NATURAL_SCIENCE', area: 'gened' },
-      
-      // Gen-Ed: Civic & Global
-      { alt_key: 'DSST_BUS_ETHICS', course_code: 'PHI-386', course_name: 'Business Ethics', credits: 3, level: 300, gened: 'CIVIC_GLOBAL', area: 'gened' },
-      { alt_key: 'STUDY_COM_BUS_ETHICS', course_code: 'PHI-386', course_name: 'Business Ethics', credits: 3, level: 300, gened: 'CIVIC_GLOBAL', area: 'gened' },
-      { alt_key: 'STUDY_COM_INT_BUS', course_code: 'BUS-380', course_name: 'International Business', credits: 3, level: 300, gened: 'CIVIC_GLOBAL', area: 'gened' },
-      
-      // Major: Business Core (Lower)
-      { alt_key: 'SOPHIA_INTRO_BUS', course_code: 'BUS-101', course_name: 'Introduction to Business', credits: 3, level: 100, gened: null, area: 'major' },
-      { alt_key: 'DSST_INTRO_BUS', course_code: 'BUS-101', course_name: 'Introduction to Business', credits: 3, level: 100, gened: null, area: 'major' },
-      { alt_key: 'CLEP_PRINCIPLES_MGMT', course_code: 'MAN-211', course_name: 'Principles of Management', credits: 3, level: 200, gened: null, area: 'major' },
-      { alt_key: 'CLEP_PRINCIPLES_MKT', course_code: 'MKT-211', course_name: 'Principles of Marketing', credits: 3, level: 200, gened: null, area: 'major' },
-      { alt_key: 'CLEP_BUS_LAW', course_code: 'LAW-201', course_name: 'Business Law', credits: 3, level: 200, gened: null, area: 'major' },
-      { alt_key: 'DSST_SUPERVISION', course_code: 'MAN-201', course_name: 'Principles of Supervision', credits: 3, level: 200, gened: null, area: 'major' },
-      
-      // Major: Business Core (Upper - 300/400 level)
-      { alt_key: 'STUDY_COM_FIN_ACCT', course_code: 'ACC-301', course_name: 'Financial Accounting', credits: 3, level: 300, gened: null, area: 'major' },
-      { alt_key: 'STUDY_COM_MGRL_ACCT', course_code: 'ACC-302', course_name: 'Managerial Accounting', credits: 3, level: 300, gened: null, area: 'major' },
-      { alt_key: 'DSST_ORG_BEH', course_code: 'MAN-311', course_name: 'Organizational Behavior', credits: 3, level: 300, gened: null, area: 'major' },
-      { alt_key: 'DSST_HR_MGMT', course_code: 'MAN-321', course_name: 'Human Resource Management', credits: 3, level: 300, gened: null, area: 'major' },
-      { alt_key: 'DSST_PRINCIPLES_FIN', course_code: 'FIN-301', course_name: 'Principles of Finance', credits: 3, level: 300, gened: null, area: 'major' },
-      { alt_key: 'DSST_MONEY_BANK', course_code: 'FIN-311', course_name: 'Money and Banking', credits: 3, level: 300, gened: null, area: 'major' },
-      { alt_key: 'DSST_MIS', course_code: 'CIS-301', course_name: 'Management Information Systems', credits: 3, level: 300, gened: null, area: 'major' },
-      { alt_key: 'SOPHIA_PROJECT_MGMT', course_code: 'MAN-331', course_name: 'Project Management', credits: 3, level: 300, gened: null, area: 'major' },
-      { alt_key: 'STUDY_COM_OPS_MGMT', course_code: 'MAN-341', course_name: 'Operations Management', credits: 3, level: 300, gened: null, area: 'major' },
-      { alt_key: 'STUDY_COM_BUS_STRATEGY', course_code: 'MAN-401', course_name: 'Business Strategy', credits: 3, level: 400, gened: null, area: 'major' },
-      { alt_key: 'STUDY_COM_SUPPLY_CHAIN', course_code: 'MAN-351', course_name: 'Supply Chain Management', credits: 3, level: 300, gened: null, area: 'major' },
-      { alt_key: 'STUDY_COM_LEADERSHIP', course_code: 'MAN-361', course_name: 'Leadership and Management', credits: 3, level: 300, gened: null, area: 'major' },
-      { alt_key: 'STUDY_COM_ECOMMERCE', course_code: 'MKT-371', course_name: 'E-Commerce', credits: 3, level: 300, gened: null, area: 'major' },
-      
-      // Electives & Communication
-      { alt_key: 'DSST_PERSONAL_FIN', course_code: 'FIN-201', course_name: 'Personal Finance', credits: 3, level: 200, gened: null, area: 'elective' },
-      { alt_key: 'SOPHIA_COMM', course_code: 'COM-201', course_name: 'Business Communication', credits: 3, level: 200, gened: null, area: 'elective' },
-      { alt_key: 'STUDY_COM_BUS_COMM', course_code: 'COM-201', course_name: 'Business Communication', credits: 3, level: 200, gened: null, area: 'elective' },
-      { alt_key: 'CLEP_CALCULUS', course_code: 'MAT-231', course_name: 'Calculus I', credits: 4, level: 200, gened: null, area: 'elective' },
+      // Study.com equivalencies
+      { alt_credit_key: 'STUDY_COM:FIN_ACCT', institutional_course_code: 'ACC-201', credits_awarded: 3, gened_category_code: null, requirement_area: 'major', confidence: 0.88 },
+      { alt_credit_key: 'STUDY_COM:MGRL_ACCT', institutional_course_code: 'ACC-202', credits_awarded: 3, gened_category_code: null, requirement_area: 'major', confidence: 0.88 },
+      { alt_credit_key: 'STUDY_COM:OPS_MGMT', institutional_course_code: 'MGT-360', credits_awarded: 3, gened_category_code: null, requirement_area: 'major', confidence: 0.85 },
+      { alt_credit_key: 'STUDY_COM:BUS_STRATEGY', institutional_course_code: 'MGT-490', credits_awarded: 3, gened_category_code: null, requirement_area: 'major', confidence: 0.85 },
+      { alt_credit_key: 'STUDY_COM:QUANT_METH', institutional_course_code: 'QNT-301', credits_awarded: 3, gened_category_code: null, requirement_area: 'major', confidence: 0.85 },
+      { alt_credit_key: 'STUDY_COM:ORG_BEHAVIOR', institutional_course_code: 'MGT-310', credits_awarded: 3, gened_category_code: null, requirement_area: 'major', confidence: 0.85 },
+      { alt_credit_key: 'STUDY_COM:HR_MGMT', institutional_course_code: 'MGT-320', credits_awarded: 3, gened_category_code: null, requirement_area: 'major', confidence: 0.85 },
+      { alt_credit_key: 'STUDY_COM:BUS_LAW', institutional_course_code: 'LAW-201', credits_awarded: 3, gened_category_code: null, requirement_area: 'major', confidence: 0.85 },
+      { alt_credit_key: 'STUDY_COM:INT_BUS', institutional_course_code: 'BUS-380', credits_awarded: 3, gened_category_code: null, requirement_area: 'major', confidence: 0.85 },
+      { alt_credit_key: 'STUDY_COM:STRATEGIC_MGMT', institutional_course_code: 'MGT-495', credits_awarded: 3, gened_category_code: null, requirement_area: 'major', confidence: 0.85 },
     ];
 
-    const equivalencyRows = equivalencies
-      .filter(eq => idMap[eq.alt_key])
-      .map(eq => ({
-        alt_credit_id: idMap[eq.alt_key],
-        institution_id: tesuId,
-        institutional_course_code: eq.course_code,
-        institutional_course_name: eq.course_name,
-        credits_awarded: eq.credits,
-        level: eq.level,
-        gened_category_code: eq.gened,
-        requirement_area: eq.area,
-        confidence: 1.0,
-        source_documentation: 'https://www.tesu.edu/degree-completion/transfer',
-        last_verified_date: '2024-01-15',
-      }));
+    const equivalenciesToInsert = equivalencies
+      .map(eq => {
+        const altCreditId = altCreditMap.get(eq.alt_credit_key);
+        if (!altCreditId) return null;
+        return {
+          alt_credit_id: altCreditId,
+          institution_id: tesuId,
+          institutional_course_code: eq.institutional_course_code,
+          credits_awarded: eq.credits_awarded,
+          gened_category_code: eq.gened_category_code,
+          requirement_area: eq.requirement_area,
+          confidence: eq.confidence,
+        };
+      })
+      .filter(Boolean);
 
     const { error: equivError } = await supabase
       .from('cross_institution_equivalencies')
-      .upsert(equivalencyRows, { onConflict: 'alt_credit_id,institution_id,institutional_course_code' });
+      .upsert(equivalenciesToInsert, { onConflict: 'alt_credit_id,institution_id,institutional_course_code' });
 
     if (equivError) throw new Error(`Equivalencies upsert failed: ${equivError.message}`);
-    response.tables.cross_institution_equivalencies = { inserted: equivalencyRows.length, updated: 0, skipped: 0 };
+    response.tables.cross_institution_equivalencies = { inserted: equivalenciesToInsert.length, updated: 0, skipped: 0 };
 
     // ============================================================
-    // STEP 8: Seed degree_templates (TESU BSBA Cheapest template)
+    // STEP 7: Seed degree_templates (1 BSBA template)
     // ============================================================
-    console.log('[optimizer-seed-tesu] Step 8: Seeding degree_templates...');
+    console.log('[optimizer-seed-tesu] Step 7: Seeding degree_templates...');
     const bsbaTemplate = {
       id: 'TESU-BSBA-CHEAPEST-V1',
       institution_id: tesuId,
@@ -332,77 +307,59 @@ serve(async (req) => {
       catalog_year: '2024-2025',
       template_data: {
         version: '1.0',
+        programCode: 'BSBA',
+        trackType: 'cheapest',
+        totalCredits: 120,
         terms: [
           {
             id: 'term-1',
             label: 'Term 1: Foundation',
             slots: [
-              { id: 'slot-1-1', kind: 'required', requirementArea: 'gened', label: 'English Composition I', credits: 3, genedCategory: 'WRITTEN_COMM' },
-              { id: 'slot-1-2', kind: 'required', requirementArea: 'gened', label: 'English Composition II', credits: 3, genedCategory: 'WRITTEN_COMM' },
-              { id: 'slot-1-3', kind: 'required', requirementArea: 'gened', label: 'Public Speaking', credits: 3, genedCategory: 'ORAL_COMM' },
-              { id: 'slot-1-4', kind: 'required', requirementArea: 'gened', label: 'College Algebra', credits: 3, genedCategory: 'QUANTITATIVE' },
-            ]
+              { slotId: 't1-s1', kind: 'gened', requirementArea: 'WRITTEN_COMM', minCredits: 3, preferred: { type: 'alt_credit', sourceCode: 'SOPHIA', identifier: 'ENG_COMP1' } },
+              { slotId: 't1-s2', kind: 'gened', requirementArea: 'QUANTITATIVE', minCredits: 3, preferred: { type: 'alt_credit', sourceCode: 'SOPHIA', identifier: 'COLLEGE_ALG' } },
+              { slotId: 't1-s3', kind: 'gened', requirementArea: 'ORAL_COMM', minCredits: 3, preferred: { type: 'alt_credit', sourceCode: 'SOPHIA', identifier: 'PUBLIC_SPEAK' } },
+              { slotId: 't1-s4', kind: 'major', requirementArea: 'BUS_CORE', minCredits: 3, preferred: { type: 'alt_credit', sourceCode: 'SOPHIA', identifier: 'INTRO_BUS' } },
+            ],
           },
           {
             id: 'term-2',
-            label: 'Term 2: Core Gen-Ed',
+            label: 'Term 2: GenEd & Core',
             slots: [
-              { id: 'slot-2-1', kind: 'required', requirementArea: 'gened', label: 'Psychology', credits: 3, genedCategory: 'SOCIAL_SCIENCE' },
-              { id: 'slot-2-2', kind: 'required', requirementArea: 'gened', label: 'Sociology', credits: 3, genedCategory: 'SOCIAL_SCIENCE' },
-              { id: 'slot-2-3', kind: 'required', requirementArea: 'gened', label: 'Humanities Elective', credits: 3, genedCategory: 'HUMANITIES' },
-              { id: 'slot-2-4', kind: 'required', requirementArea: 'gened', label: 'Ethics', credits: 3, genedCategory: 'HUMANITIES' },
-            ]
+              { slotId: 't2-s1', kind: 'gened', requirementArea: 'WRITTEN_COMM', minCredits: 3, preferred: { type: 'alt_credit', sourceCode: 'SOPHIA', identifier: 'ENG_COMP2' } },
+              { slotId: 't2-s2', kind: 'gened', requirementArea: 'SOCIAL_SCIENCE', minCredits: 3, preferred: { type: 'alt_credit', sourceCode: 'SOPHIA', identifier: 'MACRO_ECON' } },
+              { slotId: 't2-s3', kind: 'gened', requirementArea: 'SOCIAL_SCIENCE', minCredits: 3, preferred: { type: 'alt_credit', sourceCode: 'SOPHIA', identifier: 'MICRO_ECON' } },
+              { slotId: 't2-s4', kind: 'gened', requirementArea: 'HUMANITIES', minCredits: 3, preferred: { type: 'alt_credit', sourceCode: 'SOPHIA', identifier: 'ART_HISTORY' } },
+            ],
           },
           {
             id: 'term-3',
-            label: 'Term 3: Business Foundation',
+            label: 'Term 3: Science & Ethics',
             slots: [
-              { id: 'slot-3-1', kind: 'required', requirementArea: 'major', label: 'Introduction to Business', credits: 3 },
-              { id: 'slot-3-2', kind: 'required', requirementArea: 'major', label: 'Principles of Management', credits: 3 },
-              { id: 'slot-3-3', kind: 'required', requirementArea: 'major', label: 'Principles of Marketing', credits: 3 },
-              { id: 'slot-3-4', kind: 'required', requirementArea: 'major', label: 'Business Law', credits: 3 },
-            ]
+              { slotId: 't3-s1', kind: 'gened', requirementArea: 'NATURAL_SCIENCE', minCredits: 3, preferred: { type: 'alt_credit', sourceCode: 'SOPHIA', identifier: 'ENV_SCI' } },
+              { slotId: 't3-s2', kind: 'gened', requirementArea: 'CIVIC_GLOBAL', minCredits: 3, preferred: { type: 'alt_credit', sourceCode: 'SOPHIA', identifier: 'ETHICS' } },
+              { slotId: 't3-s3', kind: 'major', requirementArea: 'ACCOUNTING', minCredits: 3, preferred: { type: 'alt_credit', sourceCode: 'STUDY_COM', identifier: 'FIN_ACCT' } },
+              { slotId: 't3-s4', kind: 'major', requirementArea: 'ACCOUNTING', minCredits: 3, preferred: { type: 'alt_credit', sourceCode: 'STUDY_COM', identifier: 'MGRL_ACCT' } },
+            ],
           },
           {
             id: 'term-4',
-            label: 'Term 4: Business Core',
+            label: 'Term 4: Upper Division',
             slots: [
-              { id: 'slot-4-1', kind: 'required', requirementArea: 'major', label: 'Financial Accounting', credits: 3 },
-              { id: 'slot-4-2', kind: 'required', requirementArea: 'major', label: 'Managerial Accounting', credits: 3 },
-              { id: 'slot-4-3', kind: 'required', requirementArea: 'major', label: 'Principles of Finance', credits: 3 },
-              { id: 'slot-4-4', kind: 'required', requirementArea: 'major', label: 'Statistics', credits: 3 },
-            ]
-          },
-          {
-            id: 'term-5',
-            label: 'Term 5: Advanced Business',
-            slots: [
-              { id: 'slot-5-1', kind: 'required', requirementArea: 'major', label: 'Organizational Behavior', credits: 3 },
-              { id: 'slot-5-2', kind: 'required', requirementArea: 'major', label: 'Human Resource Management', credits: 3 },
-              { id: 'slot-5-3', kind: 'required', requirementArea: 'major', label: 'Operations Management', credits: 3 },
-              { id: 'slot-5-4', kind: 'required', requirementArea: 'major', label: 'Management Information Systems', credits: 3 },
-            ]
-          },
-          {
-            id: 'term-6',
-            label: 'Term 6: Capstone',
-            slots: [
-              { id: 'slot-6-1', kind: 'required', requirementArea: 'major', label: 'Business Strategy', credits: 3 },
-              { id: 'slot-6-2', kind: 'required', requirementArea: 'gened', label: 'Natural Science', credits: 3, genedCategory: 'NATURAL_SCIENCE' },
-              { id: 'slot-6-3', kind: 'required', requirementArea: 'gened', label: 'Global Awareness', credits: 3, genedCategory: 'CIVIC_GLOBAL' },
-              { id: 'slot-6-4', kind: 'required', requirementArea: 'capstone', label: 'Senior Capstone', credits: 3 },
-            ]
+              { slotId: 't4-s1', kind: 'major', requirementArea: 'MANAGEMENT', minCredits: 3, preferred: { type: 'alt_credit', sourceCode: 'CLEP', identifier: 'PRINCIPLES_MGMT' } },
+              { slotId: 't4-s2', kind: 'major', requirementArea: 'MARKETING', minCredits: 3, preferred: { type: 'alt_credit', sourceCode: 'CLEP', identifier: 'PRINCIPLES_MKT' } },
+              { slotId: 't4-s3', kind: 'major', requirementArea: 'FINANCE', minCredits: 3, preferred: { type: 'alt_credit', sourceCode: 'DSST', identifier: 'PRINCIPLES_FIN' } },
+              { slotId: 't4-s4', kind: 'major', requirementArea: 'BUS_LAW', minCredits: 3, preferred: { type: 'alt_credit', sourceCode: 'CLEP', identifier: 'BUS_LAW' } },
+            ],
           },
         ],
         policies: {
           totalCredits: 120,
-          residencyMin: 15,
-          upperDivisionMin: 30,
-          genedCredits: 39,
-          majorCredits: 45,
-          electiveCredits: 36,
-        }
-      }
+          genedCredits: 30,
+          majorCredits: 60,
+          electiveCredits: 30,
+          upperDivisionTotal: 30,
+        },
+      },
     };
 
     const { error: templateError } = await supabase
@@ -412,24 +369,20 @@ serve(async (req) => {
     if (templateError) throw new Error(`Degree template upsert failed: ${templateError.message}`);
     response.tables.degree_templates = { inserted: 1, updated: 0, skipped: 0 };
 
-    // ============================================================
     // SUCCESS
-    // ============================================================
-    console.log('[optimizer-seed-tesu] ✅ All TESU data seeded successfully!');
     response.success = true;
+    console.log('[optimizer-seed-tesu] Seeding completed successfully:', response.tables);
 
-    return new Response(
-      JSON.stringify(response),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+    return new Response(JSON.stringify(response), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  } catch (err) {
+    console.error('[optimizer-seed-tesu] Error:', err);
+    response.error = err instanceof Error ? err.message : 'Unknown error';
 
-  } catch (error) {
-    console.error('[optimizer-seed-tesu] ❌ Error:', error);
-    response.error = error instanceof Error ? error.message : 'Unknown error';
-    
-    return new Response(
-      JSON.stringify(response),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+    return new Response(JSON.stringify(response), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
   }
 });
