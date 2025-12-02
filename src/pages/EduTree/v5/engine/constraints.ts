@@ -399,7 +399,7 @@ function applyInstitutionSpecificRules(
     case 'EXCELSIOR': {
       // Excelsior has flexible residency but requires capstone
       const hasCapstone = basket.some(i => 
-        i.courseId?.includes('capstone') || i.requirementArea === 'CAPSTONE'
+        i.courseId?.toLowerCase().includes('capstone') || i.requirementArea === 'CAPSTONE'
       );
       if (!hasCapstone && summary.total >= 90) {
         violations.push({
@@ -408,6 +408,38 @@ function applyInstitutionSpecificRules(
           message: 'Excelsior: Consider adding capstone requirement',
           affectedCourses: [],
           suggestedFix: 'Add Excelsior capstone course',
+        });
+      }
+      break;
+    }
+
+    case 'WGU': {
+      const hasCapstone = basket.some(i =>
+        i.courseId?.toLowerCase().includes('capstone') || i.requirementArea === 'CAPSTONE'
+      );
+
+      // Soft expectation: ~30 in-house credits
+      if (summary.residency < 30 && summary.total >= 60) {
+        violations.push({
+          type: 'residency',
+          severity: 'warning',
+          message:
+            'WGU: Plan currently has fewer than ~30 institutional credits; WGU may require more in-house coursework (including capstone).',
+          affectedCourses: [],
+          suggestedFix:
+            'Shift some alt-credit/electives to WGU courses, especially near the end of the plan',
+          metadata: { current: summary.residency, required: 30 },
+        });
+      }
+
+      if (!hasCapstone && summary.total >= 90) {
+        violations.push({
+          type: 'residency',
+          severity: 'warning',
+          message:
+            'WGU: Capstone-like requirement is typically expected in the home institution near the end of the program.',
+          affectedCourses: [],
+          suggestedFix: 'Add WGU capstone / final project course to the last term',
         });
       }
       break;
