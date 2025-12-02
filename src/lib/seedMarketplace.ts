@@ -33,9 +33,15 @@ if (typeof window !== 'undefined' && import.meta.env.DEV) {
         console.log('✅ V5 Marketplace seeded successfully - templates should now work!');
       })
       .catch((error) => {
-        console.error('❌ seed-v5-marketplace failed:', error?.message ?? error);
-        // Log additional details for debugging
-        if (error?.context) console.error('Error context:', error.context);
+        // Gracefully handle "Failed to fetch" errors (edge function not deployed)
+        const errorMessage = error?.message ?? String(error);
+        if (errorMessage.includes('Failed to fetch') || errorMessage.includes('FunctionsHttpError')) {
+          console.warn('⚠️ seed-v5-marketplace edge function not available (may not be deployed yet)');
+        } else {
+          console.error('❌ seed-v5-marketplace failed:', errorMessage);
+          // Log additional details for debugging
+          if (error?.context) console.error('Error context:', error.context);
+        }
       });
   }
 }
