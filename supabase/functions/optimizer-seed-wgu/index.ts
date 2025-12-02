@@ -1,3 +1,4 @@
+// Deployment trigger: 2025-12-02T10:00:00Z
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.48.0';
 import { serve } from 'https://deno.land/std@0.224.0/http/server.ts';
 
