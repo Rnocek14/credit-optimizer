@@ -408,14 +408,16 @@ function rankOption(
   equivIndex: Map<string, AltCreditEquivalency[]>,
   slotMinCredits: number,
 ): number {
-  // Very simple heuristic for now:
-  // - alt_max → alt_credit first, prefer Sophia if preferSophia
-  // - standard_like → institutional first
+  // Negative => a before b, Positive => b before a, 0 => equal
+
+  // standard_like: prefer institutional courses
   if (mode === 'standard_like') {
     if (a.type === 'institutional_course' && b.type !== 'institutional_course') return -1;
     if (b.type === 'institutional_course' && a.type !== 'institutional_course') return 1;
+    return 0;
   }
 
+  // alt_max: prefer alt credits, with provider scoring
   if (mode === 'alt_max') {
     if (a.type === 'alt_credit' && b.type !== 'alt_credit') return -1;
     if (b.type === 'alt_credit' && a.type !== 'alt_credit') return 1;
@@ -424,9 +426,100 @@ function rankOption(
       if (isSophia(a) && !isSophia(b)) return -1;
       if (isSophia(b) && !isSophia(a)) return 1;
     }
+
+    // Provider preference scoring
+    const scoreProvider = (opt: TemplateCourseOption): number => {
+      if (opt.type !== 'alt_credit') return 0;
+      switch (opt.sourceCode) {
+        case 'SOPHIA': return 3;
+        case 'CLEP': 
+        case 'DSST': return 2;
+        case 'STUDY_COM': return 1;
+        default: return 0;
+      }
+    };
+    const diff = scoreProvider(b) - scoreProvider(a);
+    if (diff !== 0) return diff;
+    return 0;
   }
 
-  // TODO: add cost/time heuristics using resolved equivalencies
+  // cost_min & time_min: resolve details and compare
+  const resolveDetails = (opt: TemplateCourseOption) => {
+    const DEFAULT_TESU_COST = 399;
+    const DEFAULT_SOPHIA_COST = 50;
+    const DEFAULT_CLEP_COST = 35;
+    const DEFAULT_DSST_COST = 35;
+    const DEFAULT_STUDYCOM_COST = 60;
+    const DEFAULT_TESU_WEEKS = 16;
+    const DEFAULT_SOPHIA_WEEKS = 3;
+    const DEFAULT_CLEP_WEEKS = 4;
+    const DEFAULT_STUDYCOM_WEEKS = 8;
+
+    if (opt.type === 'institutional_course') {
+      return { 
+        cost: slotMinCredits * DEFAULT_TESU_COST, 
+        weeks: DEFAULT_TESU_WEEKS, 
+        credits: slotMinCredits,
+        isInstitutional: true 
+      };
+    }
+
+    const key = `${opt.sourceCode}::${opt.identifier}`;
+    const equivs = equivIndex.get(key) || [];
+    const credits = equivs[0]?.credits_awarded ?? slotMinCredits;
+
+    let costPerCr = DEFAULT_SOPHIA_COST;
+    let weeks = DEFAULT_SOPHIA_WEEKS;
+    switch (opt.sourceCode) {
+      case 'CLEP':
+        costPerCr = DEFAULT_CLEP_COST;
+        weeks = DEFAULT_CLEP_WEEKS;
+        break;
+      case 'DSST':
+        costPerCr = DEFAULT_DSST_COST;
+        weeks = DEFAULT_CLEP_WEEKS;
+        break;
+      case 'STUDY_COM':
+        costPerCr = DEFAULT_STUDYCOM_COST;
+        weeks = DEFAULT_STUDYCOM_WEEKS;
+        break;
+    }
+
+    return { cost: credits * costPerCr, weeks, credits, isInstitutional: false };
+  };
+
+  const aDetails = resolveDetails(a);
+  const bDetails = resolveDetails(b);
+
+  if (mode === 'cost_min') {
+    // Primary: lower cost
+    if (aDetails.cost !== bDetails.cost) return aDetails.cost - bDetails.cost;
+    // Tie-breaker 1: faster
+    if (aDetails.weeks !== bDetails.weeks) return aDetails.weeks - bDetails.weeks;
+    // Tie-breaker 2: more credits
+    if (aDetails.credits !== bDetails.credits) return bDetails.credits - aDetails.credits;
+    // Final tie: prefer institutional for stability
+    if (aDetails.isInstitutional !== bDetails.isInstitutional) {
+      return aDetails.isInstitutional ? -1 : 1;
+    }
+    return 0;
+  }
+
+  if (mode === 'time_min') {
+    // Primary: faster duration
+    if (aDetails.weeks !== bDetails.weeks) return aDetails.weeks - bDetails.weeks;
+    // Tie-breaker 1: cheaper
+    if (aDetails.cost !== bDetails.cost) return aDetails.cost - bDetails.cost;
+    // Tie-breaker 2: more credits
+    if (aDetails.credits !== bDetails.credits) return bDetails.credits - aDetails.credits;
+    // Final tie: prefer institutional
+    if (aDetails.isInstitutional !== bDetails.isInstitutional) {
+      return aDetails.isInstitutional ? -1 : 1;
+    }
+    return 0;
+  }
+
+  // Unknown mode: no bias
   return 0;
 }
 

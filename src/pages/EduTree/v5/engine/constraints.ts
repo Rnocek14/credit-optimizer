@@ -181,8 +181,13 @@ export function validatePlan(
  * @param equivalencies - Alt credit equivalencies for looking up gen-ed categories
  * @returns Array of TESU policy violations
  */
-export function validateTESUPolicies(
+/**
+ * Generic institution policy validator
+ * Works with any institution that has been seeded in institution_credit_limits
+ */
+export function validateInstitutionPolicies(
   basket: BasketItem[],
+  institutionCode: string,
   limits: InstitutionCreditLimit[],
   genEdCategories: GenEdCategory[],
   equivalencies?: AltCreditEquivalency[]
@@ -194,118 +199,136 @@ export function validateTESUPolicies(
     return limits.find(l => l.limit_type === type)?.credit_value ?? null;
   };
 
-  // 1. RESIDENCY REQUIREMENT (min credits from TESU)
-  const residencyMin = getLimit('min_residency') ?? 15;
-  const residencyCredits = basket
-    .filter(i => i.providerType === 'university' && i.providerCode === 'TESU')
-    .reduce((sum, i) => sum + i.credits, 0);
+  // Summarize plan credits
+  const summary = {
+    total: basket.reduce((sum, i) => sum + i.credits, 0),
+    residency: basket
+      .filter(i => i.providerType === 'university' && i.providerCode === institutionCode)
+      .reduce((sum, i) => sum + i.credits, 0),
+    upperDivision: basket
+      .filter(i => (i.level ?? 0) >= 300)
+      .reduce((sum, i) => sum + i.credits, 0),
+    altCredits: basket
+      .filter(i => i.providerType === 'mooc' || i.providerType === 'testing_center')
+      .reduce((sum, i) => sum + i.credits, 0),
+    transfer: basket
+      .filter(i => i.providerType !== 'university' || i.providerCode !== institutionCode)
+      .reduce((sum, i) => sum + i.credits, 0),
+    byProvider: {} as Record<string, number>,
+  };
 
-  if (residencyCredits < residencyMin) {
+  // Count per-provider credits
+  basket.forEach(i => {
+    const code = i.providerCode?.toUpperCase() || 'UNKNOWN';
+    summary.byProvider[code] = (summary.byProvider[code] ?? 0) + i.credits;
+  });
+
+  // 1. RESIDENCY REQUIREMENT
+  const residencyMin = getLimit('min_residency');
+  if (residencyMin != null && summary.residency < residencyMin) {
     violations.push({
       type: 'residency',
       severity: 'error',
-      message: `Need ${residencyMin - residencyCredits} more TESU credits to meet ${residencyMin}-credit residency requirement`,
+      message: `Need ${residencyMin - summary.residency} more ${institutionCode} credits to meet ${residencyMin}-credit residency requirement`,
       affectedCourses: [],
-      suggestedFix: 'Replace alternative credits with TESU courses',
-      metadata: {
-        current: residencyCredits,
-        required: residencyMin,
-      },
+      suggestedFix: `Replace alternative credits with ${institutionCode} courses`,
+      metadata: { current: summary.residency, required: residencyMin },
     });
   }
 
-  // 2. UPPER-DIVISION REQUIREMENT (min credits at 300/400 level)
-  const upperDivMin = getLimit('upper_division_min') ?? 30;
-  const upperDivCredits = basket
-    .filter(i => (i.level ?? 0) >= 300)
-    .reduce((sum, i) => sum + i.credits, 0);
-
-  if (upperDivCredits < upperDivMin) {
+  // 2. UPPER-DIVISION REQUIREMENT
+  const upperDivMin = getLimit('upper_division_min');
+  if (upperDivMin != null && summary.upperDivision < upperDivMin) {
     violations.push({
       type: 'upper_division',
       severity: 'error',
-      message: `Need ${upperDivMin - upperDivCredits} more upper-division (300/400 level) credits (current: ${upperDivCredits}/${upperDivMin})`,
+      message: `Need ${upperDivMin - summary.upperDivision} more upper-division (300/400 level) credits (current: ${summary.upperDivision}/${upperDivMin})`,
       affectedCourses: [],
       suggestedFix: 'Add more 300/400 level courses',
-      metadata: {
-        current: upperDivCredits,
-        required: upperDivMin,
-      },
+      metadata: { current: summary.upperDivision, required: upperDivMin },
     });
   }
 
   // 3. PER-PROVIDER CAPS
-  const providerCaps: Record<string, { limit: number; name: string }> = {
-    CLEP: { limit: getLimit('clep_max') ?? 40, name: 'CLEP' },
-    DSST: { limit: getLimit('dsst_max') ?? 30, name: 'DSST' },
-    SOPHIA: { limit: getLimit('sophia_max') ?? 90, name: 'Sophia Learning' },
-    STUDY_COM: { limit: getLimit('study_com_max') ?? 30, name: 'Study.com' },
+  const providerLimits: Record<string, string> = {
+    CLEP: 'clep_max',
+    DSST: 'dsst_max',
+    SOPHIA: 'sophia_max',
+    STUDY_COM: 'study_com_max',
   };
 
-  Object.entries(providerCaps).forEach(([code, { limit, name }]) => {
-    const providerCredits = basket
-      .filter(i => i.providerCode?.toUpperCase() === code)
-      .reduce((sum, i) => sum + i.credits, 0);
-
-    if (providerCredits > limit) {
-      const affectedCourses = basket
-        .filter(i => i.providerCode?.toUpperCase() === code)
-        .map(i => i.courseId);
-
+  Object.entries(providerLimits).forEach(([code, limitType]) => {
+    const limit = getLimit(limitType);
+    const credits = summary.byProvider[code] ?? 0;
+    if (limit != null && credits > limit) {
       violations.push({
         type: 'provider_cap',
         severity: 'error',
-        message: `${name} credits (${providerCredits}) exceed ${limit}-credit limit by ${providerCredits - limit}`,
-        affectedCourses,
-        suggestedFix: `Remove ${providerCredits - limit} credits from ${name} or replace with other providers`,
-        metadata: {
-          current: providerCredits,
-          limit,
-          provider: code,
-        },
+        message: `${code} credits (${credits}) exceed ${limit}-credit limit by ${credits - limit}`,
+        affectedCourses: basket.filter(i => i.providerCode?.toUpperCase() === code).map(i => i.courseId),
+        suggestedFix: `Remove ${credits - limit} credits from ${code} or replace with other providers`,
+        metadata: { current: credits, limit, provider: code },
       });
     }
   });
 
-  // 4. TOTAL TRANSFER CAP (max non-residency credits)
-  const totalTransferMax = getLimit('total_transfer') ?? 113;
-  const totalTransferCredits = basket
-    .filter(i => i.providerType !== 'university' || i.providerCode !== 'TESU')
-    .reduce((sum, i) => sum + i.credits, 0);
-
-  if (totalTransferCredits > totalTransferMax) {
+  // 4. TOTAL TRANSFER CAP
+  const totalTransferMax = getLimit('total_transfer');
+  if (totalTransferMax != null && summary.transfer > totalTransferMax) {
     violations.push({
       type: 'total_transfer',
       severity: 'error',
-      message: `Total transfer credits (${totalTransferCredits}) exceed ${totalTransferMax}-credit limit`,
+      message: `Total transfer credits (${summary.transfer}) exceed ${totalTransferMax}-credit limit`,
       affectedCourses: [],
-      suggestedFix: `Replace ${totalTransferCredits - totalTransferMax} transfer credits with TESU courses`,
-      metadata: {
-        current: totalTransferCredits,
-        limit: totalTransferMax,
-      },
+      suggestedFix: `Replace ${summary.transfer - totalTransferMax} transfer credits with ${institutionCode} courses`,
+      metadata: { current: summary.transfer, limit: totalTransferMax },
     });
   }
 
-  // 5. GEN-ED CATEGORY REQUIREMENTS
-  // Build a map of category_code -> credits earned
+  // 5. ALT CREDIT CAP
+  const altCreditMax = getLimit('alt_credit_max');
+  if (altCreditMax != null && summary.altCredits > altCreditMax) {
+    violations.push({
+      type: 'transfer_cap',
+      severity: 'error',
+      message: `Alternative credits (${summary.altCredits}) exceed ${altCreditMax}-credit limit`,
+      affectedCourses: [],
+      suggestedFix: 'Replace some alt-credit courses with university courses',
+      metadata: { current: summary.altCredits, limit: altCreditMax },
+    });
+  }
+
+  // 6. RA CREDIT MINIMUM
+  const raMin = getLimit('min_ra_credit');
+  if (raMin != null) {
+    // Count RA credits: university courses are assumed RA
+    const raCredits = basket
+      .filter(i => i.providerType === 'university')
+      .reduce((sum, i) => sum + i.credits, 0);
+    if (raCredits < raMin) {
+      violations.push({
+        type: 'residency',
+        severity: 'error',
+        message: `Regionally-accredited credits (${raCredits}) below required ${raMin}`,
+        affectedCourses: [],
+        suggestedFix: 'Add more courses from regionally-accredited institutions',
+        metadata: { current: raCredits, required: raMin },
+      });
+    }
+  }
+
+  // 7. GEN-ED CATEGORY REQUIREMENTS
   const genEdCreditsByCategory = new Map<string, number>();
   
   if (equivalencies && equivalencies.length > 0) {
     basket.forEach(item => {
-      // Try to find gen-ed category through equivalencies
       const equiv = equivalencies.find(
-        eq => 
-          eq.alt_source_code === item.providerCode &&
-          item.courseId.includes(eq.alt_identifier)
+        eq => eq.alt_source_code === item.providerCode && item.courseId.includes(eq.alt_identifier)
       );
-
       if (equiv?.gened_category_code) {
         const current = genEdCreditsByCategory.get(equiv.gened_category_code) ?? 0;
         genEdCreditsByCategory.set(equiv.gened_category_code, current + item.credits);
       }
-
-      // Also check requirementArea if it matches a gen-ed category
       if (item.requirementArea) {
         const current = genEdCreditsByCategory.get(item.requirementArea) ?? 0;
         genEdCreditsByCategory.set(item.requirementArea, current + item.credits);
@@ -313,11 +336,9 @@ export function validateTESUPolicies(
     });
   }
 
-  // Check each required category
   genEdCategories.forEach(category => {
     const earned = genEdCreditsByCategory.get(category.category_code) ?? 0;
     const required = category.credits_required;
-
     if (earned < required) {
       violations.push({
         type: 'gened_incomplete',
@@ -325,14 +346,84 @@ export function validateTESUPolicies(
         message: `${category.category_name}: Need ${required - earned} more credits (${earned}/${required})`,
         affectedCourses: [],
         suggestedFix: `Add courses in ${category.category_name} category`,
-        metadata: {
-          current: earned,
-          required,
-          category: category.category_code,
-        },
+        metadata: { current: earned, required, category: category.category_code },
       });
     }
   });
 
+  // 8. INSTITUTION-SPECIFIC RULES
+  applyInstitutionSpecificRules(institutionCode, basket, summary, violations);
+
   return violations;
+}
+
+/**
+ * Institution-specific rules that go beyond database limits
+ */
+function applyInstitutionSpecificRules(
+  institutionCode: string,
+  basket: BasketItem[],
+  summary: { total: number; residency: number; upperDivision: number },
+  violations: Violation[]
+) {
+  switch (institutionCode) {
+    case 'TESU': {
+      const hasCapstone = basket.some(i => 
+        i.courseId?.includes('capstone') || i.requirementArea === 'CAPSTONE'
+      );
+      if (!hasCapstone && summary.total >= 100) {
+        violations.push({
+          type: 'residency',
+          severity: 'warning',
+          message: 'TESU: Consider adding the capstone course to complete residency requirements',
+          affectedCourses: [],
+          suggestedFix: 'Add TESU capstone course',
+        });
+      }
+      break;
+    }
+    case 'COSC': {
+      // COSC requires exactly 6 institutional credits (cornerstone + capstone)
+      if (summary.residency < 6) {
+        violations.push({
+          type: 'residency',
+          severity: 'error',
+          message: 'COSC: Plan must include at least 6 institutional credits (cornerstone + capstone)',
+          affectedCourses: [],
+          suggestedFix: 'Add COSC cornerstone (3cr) and capstone (3cr) courses',
+          metadata: { current: summary.residency, required: 6 },
+        });
+      }
+      break;
+    }
+    case 'EXCELSIOR': {
+      // Excelsior has flexible residency but requires capstone
+      const hasCapstone = basket.some(i => 
+        i.courseId?.includes('capstone') || i.requirementArea === 'CAPSTONE'
+      );
+      if (!hasCapstone && summary.total >= 90) {
+        violations.push({
+          type: 'residency',
+          severity: 'warning',
+          message: 'Excelsior: Consider adding capstone requirement',
+          affectedCourses: [],
+          suggestedFix: 'Add Excelsior capstone course',
+        });
+      }
+      break;
+    }
+  }
+}
+
+/**
+ * Legacy TESU validator - now wraps the generic validator
+ * @deprecated Use validateInstitutionPolicies instead
+ */
+export function validateTESUPolicies(
+  basket: BasketItem[],
+  limits: InstitutionCreditLimit[],
+  genEdCategories: GenEdCategory[],
+  equivalencies?: AltCreditEquivalency[]
+): Violation[] {
+  return validateInstitutionPolicies(basket, 'TESU', limits, genEdCategories, equivalencies);
 }
