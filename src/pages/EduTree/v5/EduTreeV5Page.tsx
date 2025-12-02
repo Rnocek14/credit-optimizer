@@ -1,6 +1,11 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { useSearchParams, Link, useLocation } from 'react-router-dom';
 import { ChevronUp, ArrowLeft } from 'lucide-react';
+import type { OptimizerMode } from '@/types/optimizer';
+import { OptimizerModeSelector, PolicyStatusBanner } from '@/components/edu-tree';
+import { validateInstitutionPolicies, type Violation } from './engine/constraints';
+import { useInstitutionLimits } from '@/hooks/useInstitutionLimits';
+import { useGenEdCategories } from '@/hooks/useGenEdCategories';
 import { Button } from '@/components/ui/button';
 import { YearCard } from './components/YearCard';
 import { ModuleCard } from './components/ModuleCard';
@@ -64,6 +69,7 @@ export default function EduTreeV5Page() {
   const templateId = searchParams.get('templateId');
   const [provenanceWarningDismissed, setProvenanceWarningDismissed] = useState(false);
   const [tesuDisclaimerDismissed, setTesuDisclaimerDismissed] = useState(false);
+  const [optimizerMode, setOptimizerMode] = useState<OptimizerMode>('standard_like');
   
   // Detect if this is a TESU database template
   // Supports patterns like: 'tesu-bsba-cheapest' or 'bsba-tesu-cheapest-2025'
@@ -348,6 +354,29 @@ export default function EduTreeV5Page() {
   // Graph view dialog state
   const [graphDialogOpen, setGraphDialogOpen] = useState(false);
   const basket = usePlanBasket(s => s.items);
+  
+  // Determine institution code for policy validation
+  const institutionCode = useMemo(() => {
+    if (constraints.target_school) return constraints.target_school;
+    if (selectedTemplate?.anchorSchool) return selectedTemplate.anchorSchool;
+    return 'TESU'; // Default fallback
+  }, [constraints.target_school, selectedTemplate?.anchorSchool]);
+  
+  // Load institution limits and gen-ed categories for policy validation
+  const { data: institutionLimits = [] } = useInstitutionLimits(institutionCode as any);
+  const { data: genEdCategories = [] } = useGenEdCategories(institutionCode as any);
+  
+  // Compute policy violations when basket or institution changes
+  const policyViolations = useMemo<Violation[]>(() => {
+    if (!basket.length || !institutionLimits.length) return [];
+    return validateInstitutionPolicies(
+      basket,
+      institutionCode,
+      institutionLimits,
+      genEdCategories,
+      equivalencies
+    );
+  }, [basket, institutionCode, institutionLimits, genEdCategories, equivalencies]);
   
   // Week 2: Extract anchor policy from constraints for year summaries
   const anchorPolicy = useMemo(() => 
@@ -1201,6 +1230,19 @@ export default function EduTreeV5Page() {
               <TESUDisclaimerBanner onDismiss={() => setTesuDisclaimerDismissed(true)} />
             </div>
           )}
+          
+          {/* Optimizer Mode Selector */}
+          <div className="mt-4">
+            <OptimizerModeSelector
+              mode={optimizerMode}
+              onChange={setOptimizerMode}
+            />
+          </div>
+          
+          {/* Policy Status Banner */}
+          <div className="mt-3">
+            <PolicyStatusBanner violations={policyViolations} />
+          </div>
         </div>
       )}
 
