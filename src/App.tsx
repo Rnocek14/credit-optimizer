@@ -149,6 +149,7 @@ import { isFeatureEnabled } from "./lib/featureFlags";
 import TrackOverlayPOCPage from "../sandbox/TrackOverlayPOCPage";
 import SeedV5Database from "./pages/Admin/SeedV5Database";
 import OptimizerSetup from "./pages/OptimizerSetup";
+import OptimizerSeeding from "./pages/Admin/OptimizerSeeding";
 
 const queryClient = new QueryClient();
 
@@ -370,6 +371,8 @@ const App = () => {
           <Route path="/admin/seed-v5" element={<SeedV5Database />} />
           {/* Optimizer Setup route */}
           <Route path="/optimizer-setup" element={<OptimizerSetup />} />
+          {/* Optimizer Seeding Dashboard - no SQL editor needed */}
+          <Route path="/admin/optimizer-seeding" element={<OptimizerSeeding />} />
           <Route 
             path="/compare" 
             element={
