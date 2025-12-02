@@ -33,6 +33,7 @@ export default function OptimizerSeeding() {
   const tesuState = getJobState('seed-tesu');
   const coscState = getJobState('seed-cosc');
   const excelsiorState = getJobState('seed-excelsior');
+  const wguState = getJobState('seed-wgu');
 
   const checkTables = async () => {
     setIsCheckingTables(true);
@@ -130,7 +131,31 @@ export default function OptimizerSeeding() {
   };
 
   const allTablesExist = tableStatus.length > 0 && tableStatus.every(t => t.exists);
-  const hasSeededData = tesuState.lastResult?.success || coscState.lastResult?.success || excelsiorState.lastResult?.success;
+  const hasSeededData = tesuState.lastResult?.success || coscState.lastResult?.success || excelsiorState.lastResult?.success || wguState.lastResult?.success;
+
+  const handleRunWguSeed = async () => {
+    try {
+      const result = await runJob('seed-wgu');
+      if (result.success) {
+        toast({
+          title: 'WGU data seeded ✓',
+          description: `Seeded ${Object.values(result.tables).reduce((sum, t) => sum + t.inserted, 0)} rows across ${Object.keys(result.tables).length} tables.`,
+        });
+      } else {
+        toast({
+          title: 'Seeding failed',
+          description: result.error || 'Unknown error',
+          variant: 'destructive',
+        });
+      }
+    } catch (err: any) {
+      toast({
+        title: 'Seeding error',
+        description: err.message || 'Failed to run seeding job',
+        variant: 'destructive',
+      });
+    }
+  };
 
   const handleRunExcelsiorSeed = async () => {
     try {
@@ -279,6 +304,15 @@ export default function OptimizerSeeding() {
             state={excelsiorState}
             onRun={handleRunExcelsiorSeed}
             icon={<GraduationCap className="h-5 w-5 text-purple-600" />}
+          />
+
+          <SeedingJobCard
+            jobName="seed-wgu"
+            title="Seed WGU Core Data"
+            description="Seeds Western Governors University institution, 5 credit limits, 5 gen-ed categories, and BS IT template."
+            state={wguState}
+            onRun={handleRunWguSeed}
+            icon={<GraduationCap className="h-5 w-5 text-indigo-600" />}
           />
         </div>
       </div>
