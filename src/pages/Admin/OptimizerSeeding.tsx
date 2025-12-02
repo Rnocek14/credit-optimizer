@@ -31,6 +31,7 @@ export default function OptimizerSeeding() {
   const [isCheckingTables, setIsCheckingTables] = useState(false);
 
   const tesuState = getJobState('seed-tesu');
+  const coscState = getJobState('seed-cosc');
 
   const checkTables = async () => {
     setIsCheckingTables(true);
@@ -103,8 +104,32 @@ export default function OptimizerSeeding() {
     }
   };
 
+  const handleRunCoscSeed = async () => {
+    try {
+      const result = await runJob('seed-cosc');
+      if (result.success) {
+        toast({
+          title: "COSC data seeded ✓",
+          description: `Seeded ${Object.values(result.tables).reduce((sum, t) => sum + t.inserted, 0)} rows across ${Object.keys(result.tables).length} tables.`,
+        });
+      } else {
+        toast({
+          title: "Seeding failed",
+          description: result.error || "Unknown error",
+          variant: "destructive",
+        });
+      }
+    } catch (err: any) {
+      toast({
+        title: "Seeding error",
+        description: err.message || "Failed to run seeding job",
+        variant: "destructive",
+      });
+    }
+  };
+
   const allTablesExist = tableStatus.length > 0 && tableStatus.every(t => t.exists);
-  const hasSeededData = tesuState.lastResult?.success;
+  const hasSeededData = tesuState.lastResult?.success || coscState.lastResult?.success;
 
   return (
     <div className="container mx-auto py-8 max-w-4xl">
@@ -213,14 +238,14 @@ export default function OptimizerSeeding() {
             icon={<GraduationCap className="h-5 w-5 text-blue-600" />}
           />
 
-          {/* Placeholder for future institutions */}
-          <div className="flex flex-col items-center justify-center p-8 border-2 border-dashed rounded-lg bg-muted/30">
-            <GraduationCap className="h-10 w-10 text-muted-foreground/50 mb-3" />
-            <p className="text-sm font-medium text-muted-foreground">More Institutions Coming</p>
-            <p className="text-xs text-muted-foreground/70 text-center mt-1">
-              COSC, Excelsior, WGU, SNHU...
-            </p>
-          </div>
+          <SeedingJobCard
+            jobName="seed-cosc"
+            title="Seed COSC Core Data"
+            description="Seeds Charter Oak State College institution, 6 credit limits, 11 gen-ed categories, and BA General Studies template."
+            state={coscState}
+            onRun={handleRunCoscSeed}
+            icon={<GraduationCap className="h-5 w-5 text-emerald-600" />}
+          />
         </div>
       </div>
 

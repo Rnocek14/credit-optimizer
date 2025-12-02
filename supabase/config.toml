@@ -12,3 +12,6 @@ verify_jwt = false
 [functions.optimizer-seed-tesu]
 verify_jwt = false
 
+[functions.optimizer-seed-cosc]
+verify_jwt = false
+
