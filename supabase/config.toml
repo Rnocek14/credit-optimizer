@@ -15,3 +15,6 @@ verify_jwt = false
 [functions.optimizer-seed-cosc]
 verify_jwt = false
 
+[functions.optimizer-seed-excelsior]
+verify_jwt = false
+
