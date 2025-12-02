@@ -1,4 +1,4 @@
-// Deployment trigger: 2025-12-02T18:45:00Z
+// Deployment trigger: 2025-12-02T22:30:00Z – force redeploy for optimizer seeding fix
 import { serve } from 'https://deno.land/std@0.224.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1';
 
