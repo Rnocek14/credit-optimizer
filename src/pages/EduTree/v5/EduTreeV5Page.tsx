@@ -71,29 +71,31 @@ export default function EduTreeV5Page() {
   const [tesuDisclaimerDismissed, setTesuDisclaimerDismissed] = useState(false);
   const [optimizerMode, setOptimizerMode] = useState<OptimizerMode>('standard_like');
   
-  // Detect if this is a TESU database template
-  // Supports patterns like: 'tesu-bsba-cheapest' or 'bsba-tesu-cheapest-2025'
-  const isTESUTemplate = templateId?.toLowerCase().includes('-tesu-') || false;
+  // Detect if this is a DATABASE template (starts with institution code like 'tesu-')
+  // vs FIXTURE template (has institution in middle like 'bsba-tesu-cheapest-2025')
+  const isDbTemplate = templateId?.toLowerCase().startsWith('tesu-') || false;
+  // For UI purposes (showing TESU disclaimer), check if template is TESU-related
+  const isTESUTemplate = templateId?.toLowerCase().includes('tesu') || false;
   
   // Load TESU templates from database (when templateId starts with 'tesu-')
   const { data: dbTemplates, isLoading: dbTemplateLoading, error: dbTemplateError } = useDegreeTemplates({
     institutionCode: 'TESU',
     programCode: 'BSBA',
-    enabled: isTESUTemplate,
+    enabled: isDbTemplate,
   });
   
   // Load equivalencies for TESU (needed for adapter)
   const { data: equivalencies } = useAltCreditEquivalenciesForInstitution('TESU');
   
-  // Load marketplace template for non-TESU templates
+  // Load marketplace template for fixture templates (non-database)
   const { data: fixtureTemplate, isLoading: fixtureLoading, error: fixtureError } = useMarketplaceTemplate(
-    isTESUTemplate ? '' : (templateId || '')
+    isDbTemplate ? '' : (templateId || '')
   );
   
-  // Select and adapt the appropriate template
+  // Select and adapt the appropriate template with fallback logic
   const selectedTemplate = useMemo(() => {
-    if (isTESUTemplate && dbTemplates && dbTemplates.length > 0) {
-      // Find the specific template by ID
+    // Priority 1: Database template (if isDbTemplate and data exists)
+    if (isDbTemplate && dbTemplates && dbTemplates.length > 0) {
       const dbTemplate = dbTemplates.find(t => t.id === templateId);
       if (dbTemplate) {
         console.log('[EduTreeV5] 🗄️ Using DATABASE template:', {
@@ -105,7 +107,8 @@ export default function EduTreeV5Page() {
       }
     }
     
-    if (!isTESUTemplate && fixtureTemplate) {
+    // Priority 2: Fixture template (marketplace templates)
+    if (fixtureTemplate) {
       console.log('[EduTreeV5] 📋 Using FIXTURE template:', {
         id: fixtureTemplate.id,
       });
@@ -113,26 +116,26 @@ export default function EduTreeV5Page() {
     }
     
     return null;
-  }, [isTESUTemplate, dbTemplates, fixtureTemplate, templateId, equivalencies]);
+  }, [isDbTemplate, dbTemplates, fixtureTemplate, templateId, equivalencies]);
   
-  const templateLoading = isTESUTemplate ? dbTemplateLoading : fixtureLoading;
-  const templateError = isTESUTemplate ? dbTemplateError : fixtureError;
+  const templateLoading = isDbTemplate ? dbTemplateLoading : fixtureLoading;
+  const templateError = isDbTemplate ? dbTemplateError : fixtureError;
   
   // Debug template loading state
   useEffect(() => {
     console.log('[EduTreeV5] 📋 Template query state:', {
       templateId,
-      isTESUTemplate,
+      isDbTemplate,
       isLoading: templateLoading,
       hasData: !!selectedTemplate,
       error: templateError?.message,
       templateData: selectedTemplate ? {
         id: selectedTemplate.id,
         yearCount: selectedTemplate.yearTemplates?.length,
-        source: isTESUTemplate ? 'database' : 'fixture',
+        source: isDbTemplate ? 'database' : 'fixture',
       } : null
     });
-  }, [templateId, isTESUTemplate, templateLoading, selectedTemplate, templateError]);
+  }, [templateId, isDbTemplate, templateLoading, selectedTemplate, templateError]);
   
   // Career context from handoff
   const [careerContext, setCareerContext] = useState<{

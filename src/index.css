@@ -282,8 +282,7 @@
     --foreground: 222 84% 5%;
     --card: 0 0% 98%;
     --card-foreground: 222 84% 5%;
-    --border: 214 32% 91%;
-    --ring: 0.70 0.14 220;
+    /* Border and ring defined in OKLCH below (lines 403-405) */
 
     /* Refined color system - Brand purple + AI cyan + supporting accents */
     --brand-primary: 0.55 0.22 280;
