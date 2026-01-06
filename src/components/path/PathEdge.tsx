@@ -7,6 +7,10 @@ interface PathEdgeData {
   edgeType?: 'prerequisite' | 'sequence' | 'suggested' | 'alternative' | 'branch';
 }
 
+/**
+ * PathEdge component for React Flow
+ * Note: CSS variables contain full OKLCH values, so use var() directly (not hsl())
+ */
 const PathEdge = ({
   id,
   sourceX,
@@ -42,32 +46,32 @@ const PathEdge = ({
       case 'prerequisite':
         return {
           ...baseStyle,
-          stroke: 'hsl(var(--destructive))',
+          stroke: 'var(--destructive)',
           strokeDasharray: 'none',
         };
       case 'suggested':
         return {
           ...baseStyle,
-          stroke: 'hsl(var(--primary))',
+          stroke: 'var(--primary)',
           strokeDasharray: '8 4',
         };
       case 'alternative':
         return {
           ...baseStyle,
-          stroke: 'hsl(var(--muted-foreground))',
+          stroke: 'var(--muted-foreground)',
           strokeDasharray: '4 4',
         };
       case 'branch':
         return {
           ...baseStyle,
-          stroke: 'hsl(var(--accent-foreground))',
+          stroke: 'var(--accent-foreground)',
           strokeDasharray: 'none',
         };
       case 'sequence':
       default:
         return {
           ...baseStyle,
-          stroke: 'hsl(var(--border))',
+          stroke: 'var(--border)',
           strokeDasharray: 'none',
         };
     }

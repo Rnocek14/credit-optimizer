@@ -125,16 +125,19 @@ export function GhostPathLegend() {
 }
 
 // Utility to get ghost styling for React Flow nodes/edges
+// Note: CSS variables contain full OKLCH values, so use var() directly (not hsl())
 export function getGhostNodeStyle(isGhost: boolean) {
   return {
     opacity: isGhost ? 0.5 : 1,
     filter: isGhost ? 'grayscale(0.3)' : 'none',
     borderStyle: isGhost ? 'dashed' : 'solid',
     borderWidth: isGhost ? '2px' : '1px',
-    borderColor: isGhost ? 'hsl(var(--muted-foreground) / 0.3)' : 'hsl(var(--border))',
+    borderColor: isGhost 
+      ? 'color-mix(in oklch, var(--muted-foreground) 30%, transparent)' 
+      : 'var(--border)',
     backgroundColor: isGhost 
-      ? 'hsl(var(--muted) / 0.2)' 
-      : 'hsl(var(--card))',
+      ? 'color-mix(in oklch, var(--muted) 20%, transparent)' 
+      : 'var(--card)',
     transition: 'all 0.2s ease-in-out'
   };
 }
@@ -144,8 +147,8 @@ export function getGhostEdgeStyle(isGhost: boolean) {
     opacity: isGhost ? 0.4 : 1,
     strokeDasharray: isGhost ? '8,4' : 'none',
     stroke: isGhost 
-      ? 'hsl(var(--muted-foreground) / 0.4)' 
-      : 'hsl(var(--border))',
+      ? 'color-mix(in oklch, var(--muted-foreground) 40%, transparent)' 
+      : 'var(--border)',
     strokeWidth: isGhost ? 1 : 2,
     filter: isGhost ? 'grayscale(0.5)' : 'none',
     transition: 'all 0.2s ease-in-out'
