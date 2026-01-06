@@ -277,12 +277,8 @@
     --touch-target-generous-width: 52px;
     --touch-target-generous-height: 52px;
 
-    /* Base surfaces */
-    --background: 0 0% 100%;
-    --foreground: 222 84% 5%;
-    --card: 0 0% 98%;
-    --card-foreground: 222 84% 5%;
-    /* Border and ring defined in OKLCH below (lines 403-405) */
+    /* Base surfaces - OKLCH format (canonical definitions below at lines ~313-405) */
+    /* Legacy HSL removed - all colors now use OKLCH for consistency */
 
     /* Refined color system - Brand purple + AI cyan + supporting accents */
     --brand-primary: 0.55 0.22 280;
@@ -399,8 +395,8 @@
     --risk-critical: oklch(0.68 0.16 30); /* Red - same as destructive */
     --risk-critical-foreground: oklch(0.99 0.00 0);
 
-    --border: oklch(0.87 0.00 0);
-    --input: oklch(0.87 0.00 0);
+    --border: oklch(0.80 0.01 250);
+    --input: oklch(0.80 0.01 250);
     --ring: oklch(0.75 0.12 270);
 
     --radius: 0.75rem;

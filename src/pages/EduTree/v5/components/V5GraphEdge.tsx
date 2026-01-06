@@ -33,8 +33,8 @@ export function V5GraphEdge({
     const baseStyle: React.CSSProperties = {
       strokeWidth: isHighlighted ? 3 : 2,
       stroke: isHighlighted 
-        ? 'hsl(var(--primary))' 
-        : 'hsl(var(--muted-foreground))',
+        ? 'var(--primary)' 
+        : 'var(--muted-foreground)',
       opacity: isHighlighted ? 1 : 0.6,
     };
 
