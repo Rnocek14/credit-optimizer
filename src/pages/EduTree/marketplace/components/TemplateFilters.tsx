@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { GraduationCap, BookOpen, Building2, TrendingUp } from 'lucide-react';
 import { usePlanBasket } from '@/pages/EduTree/v5/state/usePlanBasket';
-import { getAnchorPolicy } from '@/pages/EduTree/v5/data/anchorPolicies';
+import { getAnchorPolicy } from '@/lib/degree/institutionPolicies';
 import {
   Select,
   SelectContent,

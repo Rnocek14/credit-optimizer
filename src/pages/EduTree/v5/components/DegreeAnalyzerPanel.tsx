@@ -6,7 +6,7 @@ import { Progress } from "@/components/ui/progress";
 import { ScopeBreadcrumbs } from './ScopeBreadcrumbs';
 import { GraduationChecklist } from './GraduationChecklist';
 import { usePlanBasket } from '../state/usePlanBasket';
-import { getAnchorPolicy } from '../data/anchorPolicies';
+import { getAnchorPolicy } from '@/lib/degree/institutionPolicies';
 import type { DegreeSummary } from '../types/v5';
 
 interface DegreeAnalyzerPanelProps {
