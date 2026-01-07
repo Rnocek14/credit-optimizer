@@ -18,7 +18,7 @@ export function styleEdge(edgeType: EdgeType, isHighlighted = false, isGhost = f
       style = {
         kind: 'curve',
         thickness: 4,
-        color: 'hsl(var(--primary))',
+        color: 'var(--primary)',
       };
       break;
       
@@ -26,7 +26,7 @@ export function styleEdge(edgeType: EdgeType, isHighlighted = false, isGhost = f
       style = {
         kind: 'curve',
         thickness: 2,
-        color: 'hsl(var(--secondary))',
+        color: 'var(--secondary)',
         dash: [6, 4],
       };
       break;
@@ -35,7 +35,7 @@ export function styleEdge(edgeType: EdgeType, isHighlighted = false, isGhost = f
       style = {
         kind: 'straight',
         thickness: 2,
-        color: 'hsl(var(--accent))',
+        color: 'var(--accent)',
       };
       break;
       
@@ -43,7 +43,7 @@ export function styleEdge(edgeType: EdgeType, isHighlighted = false, isGhost = f
       style = {
         kind: 'orthogonal',
         thickness: 2,
-        color: 'hsl(var(--muted-foreground))',
+        color: 'var(--muted-foreground)',
       };
       break;
       
@@ -51,7 +51,7 @@ export function styleEdge(edgeType: EdgeType, isHighlighted = false, isGhost = f
       style = {
         kind: 'straight',
         thickness: 1,
-        color: 'hsl(var(--muted-foreground) / 0.7)',
+        color: 'color-mix(in oklch, var(--muted-foreground) 70%, transparent)',
       };
       break;
       
@@ -59,7 +59,7 @@ export function styleEdge(edgeType: EdgeType, isHighlighted = false, isGhost = f
       style = {
         kind: 'straight',
         thickness: 3,
-        color: 'hsl(var(--destructive))',
+        color: 'var(--destructive)',
       };
       break;
       
@@ -67,7 +67,7 @@ export function styleEdge(edgeType: EdgeType, isHighlighted = false, isGhost = f
       style = {
         kind: 'thin',
         thickness: 1,
-        color: 'hsl(var(--muted-foreground) / 0.5)',
+        color: 'color-mix(in oklch, var(--muted-foreground) 50%, transparent)',
       };
   }
   
@@ -83,7 +83,7 @@ export function styleEdge(edgeType: EdgeType, isHighlighted = false, isGhost = f
   if (isGhost) {
     style.dash = [5, 5];
     style.opacity = 0.4;
-    style.color = 'hsl(var(--muted-foreground) / 0.4)';
+    style.color = 'color-mix(in oklch, var(--muted-foreground) 40%, transparent)';
   }
   
   return style;

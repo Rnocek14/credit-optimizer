@@ -37,27 +37,27 @@ export const CareerStepNode: React.FC<CareerStepNodeProps> = ({
   
   const stepStyle = {
     backgroundColor: isCompleted 
-      ? 'hsl(var(--primary))' 
+      ? 'var(--primary)' 
       : isInProgress 
-        ? 'hsl(var(--warning))' 
+        ? 'var(--warning)' 
         : isTerminal
           ? '#fef3c7' // Light gold background for terminal steps
-          : 'hsl(var(--muted))',
+          : 'var(--muted)',
     color: isCompleted || isInProgress 
-      ? 'hsl(var(--primary-foreground))' 
+      ? 'var(--primary-foreground)' 
       : isTerminal
         ? '#92400e' // Dark gold text for terminal steps
-        : 'hsl(var(--muted-foreground))',
+        : 'var(--muted-foreground)',
     border: `${isTerminal ? '3px' : '2px'} solid ${
       isTerminal
         ? '#facc15' // Gold border for terminal steps
         : step.is_capstone 
-          ? 'hsl(var(--primary))' 
+          ? 'var(--primary)' 
           : step.is_checkpoint 
-            ? 'hsl(var(--secondary))' 
+            ? 'var(--secondary)' 
             : isInPath
-              ? 'hsl(var(--primary))'
-              : 'hsl(var(--border))'
+              ? 'var(--primary)'
+              : 'var(--border)'
     }`,
     borderRadius: '12px',
     padding: '12px',

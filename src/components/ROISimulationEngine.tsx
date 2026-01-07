@@ -230,14 +230,14 @@ export function ROISimulationEngine({ userId, pivotPath }: ROISimulationEnginePr
                   <Line 
                     type="monotone" 
                     dataKey="currentSalary" 
-                    stroke="hsl(var(--muted-foreground))" 
+                    stroke="var(--muted-foreground)" 
                     strokeDasharray="5 5"
                     name="Current Salary"
                   />
                   <Line 
                     type="monotone" 
                     dataKey="projectedSalary" 
-                    stroke="hsl(var(--primary))" 
+                    stroke="var(--primary)" 
                     strokeWidth={2}
                     name="Projected Salary"
                   />
@@ -259,8 +259,8 @@ export function ROISimulationEngine({ userId, pivotPath }: ROISimulationEnginePr
                     type="monotone" 
                     dataKey="cumulativeInvestment" 
                     stackId="1"
-                    stroke="hsl(var(--destructive))" 
-                    fill="hsl(var(--destructive))" 
+                    stroke="var(--destructive)" 
+                    fill="var(--destructive)" 
                     fillOpacity={0.3}
                     name="Investment"
                   />
@@ -268,8 +268,8 @@ export function ROISimulationEngine({ userId, pivotPath }: ROISimulationEnginePr
                     type="monotone" 
                     dataKey="cumulativeReturn" 
                     stackId="2"
-                    stroke="hsl(var(--primary))" 
-                    fill="hsl(var(--primary))" 
+                    stroke="var(--primary)" 
+                    fill="var(--primary)" 
                     fillOpacity={0.3}
                     name="Returns"
                   />
@@ -285,7 +285,7 @@ export function ROISimulationEngine({ userId, pivotPath }: ROISimulationEnginePr
                   />
                   <Bar 
                     dataKey="marketDemandMultiplier" 
-                    fill="hsl(var(--primary))" 
+                    fill="var(--primary)" 
                     fillOpacity={0.7}
                     name="Market Demand"
                   />

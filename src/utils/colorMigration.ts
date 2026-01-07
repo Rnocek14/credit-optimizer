@@ -75,14 +75,14 @@ export function validateNoHardcodedColors(content: string): ValidationResult {
 export function migrateHardcodedColors(content: string): string {
   // Common color migrations
   const colorMigrations: Record<string, string> = {
-    '#000000': 'hsl(var(--foreground))',
-    '#ffffff': 'hsl(var(--background))',
-    '#f8f9fa': 'hsl(var(--muted))',
-    '#6c757d': 'hsl(var(--muted-foreground))',
-    '#dc3545': 'hsl(var(--destructive))',
-    '#28a745': 'hsl(var(--success))',
-    '#ffc107': 'hsl(var(--warning))',
-    '#007bff': 'hsl(var(--primary))',
+    '#000000': 'var(--foreground)',
+    '#ffffff': 'var(--background)',
+    '#f8f9fa': 'var(--muted)',
+    '#6c757d': 'var(--muted-foreground)',
+    '#dc3545': 'var(--destructive)',
+    '#28a745': 'var(--success)',
+    '#ffc107': 'var(--warning)',
+    '#007bff': 'var(--primary)',
     
     // Tailwind color classes to semantic tokens
     'text-red-500': 'text-destructive',

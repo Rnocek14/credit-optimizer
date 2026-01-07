@@ -313,15 +313,15 @@ export default function InterventionHistory() {
                     yAxisId="left"
                     type="monotone" 
                     dataKey="engagement" 
-                    stroke="hsl(var(--primary))" 
+                    stroke="var(--primary)" 
                     strokeWidth={2}
                     name="Engagement Score"
                     dot={(props) => props.payload.hasIntervention ? 
-                      <circle r={6} fill="hsl(var(--warning))" stroke="hsl(var(--warning))" strokeWidth={2} cx={props.cx} cy={props.cy} /> :
-                      <circle r={3} fill="hsl(var(--primary))" cx={props.cx} cy={props.cy} />
+                      <circle r={6} fill="var(--warning)" stroke="var(--warning)" strokeWidth={2} cx={props.cx} cy={props.cy} /> :
+                      <circle r={3} fill="var(--primary)" cx={props.cx} cy={props.cy} />
                     }
                   />
-                  <Bar yAxisId="right" dataKey="duration" fill="hsl(var(--secondary))" name="Duration (min)" opacity={0.3} />
+                  <Bar yAxisId="right" dataKey="duration" fill="var(--secondary)" name="Duration (min)" opacity={0.3} />
                 </LineChart>
               </ResponsiveContainer>
             </CardContent>
@@ -420,8 +420,8 @@ export default function InterventionHistory() {
                   <YAxis yAxisId="right" orientation="right" />
                   <Tooltip />
                   <Legend />
-                  <Bar yAxisId="left" dataKey="count" fill="hsl(var(--primary))" name="Count" />
-                  <Bar yAxisId="right" dataKey="effectiveness" fill="hsl(var(--secondary))" name="Effectiveness %" />
+                  <Bar yAxisId="left" dataKey="count" fill="var(--primary)" name="Count" />
+                  <Bar yAxisId="right" dataKey="effectiveness" fill="var(--secondary)" name="Effectiveness %" />
                 </BarChart>
               </ResponsiveContainer>
             </CardContent>

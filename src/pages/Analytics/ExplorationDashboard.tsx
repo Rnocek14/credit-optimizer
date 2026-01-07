@@ -290,8 +290,8 @@ export default function ExplorationDashboard() {
               <XAxis dataKey="bucket" />
               <YAxis />
               <Tooltip />
-              <Bar dataKey="users" name="Users" fill="hsl(var(--primary))" />
-              <Bar dataKey="overrides" name="Overrides" fill="hsl(var(--muted))" />
+              <Bar dataKey="users" name="Users" fill="var(--primary)" />
+              <Bar dataKey="overrides" name="Overrides" fill="var(--muted)" />
             </BarChart>
           </ResponsiveContainer>
         </CardContent>
@@ -307,8 +307,8 @@ export default function ExplorationDashboard() {
               <XAxis dataKey="bucket" />
               <YAxis />
               <Tooltip />
-              <Bar dataKey="explored" name="Explored" fill="hsl(var(--chart-1))" />
-              <Bar dataKey="applied" name="Applied" fill="hsl(var(--chart-2))" />
+              <Bar dataKey="explored" name="Explored" fill="var(--chart-1)" />
+              <Bar dataKey="applied" name="Applied" fill="var(--chart-2)" />
             </BarChart>
           </ResponsiveContainer>
         </CardContent>
@@ -338,14 +338,14 @@ export default function ExplorationDashboard() {
               <Line 
                 dataKey="a" 
                 name="Bucket A" 
-                stroke="hsl(var(--chart-1))" 
+                stroke="var(--chart-1)" 
                 strokeWidth={2}
                 dot={{ r: 3 }}
               />
               <Line 
                 dataKey="b" 
                 name="Bucket B" 
-                stroke="hsl(var(--chart-2))" 
+                stroke="var(--chart-2)" 
                 strokeWidth={2}
                 dot={{ r: 3 }}
               />
