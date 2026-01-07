@@ -381,17 +381,17 @@
           },
           {
             "moduleId": "DISCRETE_MATH",
-            "label": "Discrete Mathematics (3cr)",
-            "creditsRequired": 3,
+            "label": "Discrete Mathematics (4cr)",
+            "creditsRequired": 4,
             "requirementArea": "MATH_CORE",
             "options": [
               {
                 "id": "sdc-discrete-math",
                 "courseId": "SDC-DISCRETE-MATH",
                 "title": "Discrete Mathematics",
-                "credits": 3,
+                "credits": 4,
                 "cost_usd": 79,
-                "duration_weeks": 4,
+                "duration_weeks": 5,
                 "provider": "Study.com",
                 "providerType": "mooc",
                 "providerCode": "STUDYCOM",
@@ -489,22 +489,22 @@
             "requirementArea": "CS_CORE",
             "options": [
               {
-                "id": "sdc-java",
-                "courseId": "SDC-JAVA",
+                "id": "sophia-java",
+                "courseId": "SOPHIA-JAVA",
                 "title": "Introduction to Java",
                 "credits": 3,
-                "cost_usd": 79,
+                "cost_usd": 99,
                 "duration_weeks": 4,
-                "provider": "Study.com",
+                "provider": "Sophia Learning",
                 "providerType": "mooc",
-                "providerCode": "STUDYCOM",
+                "providerCode": "SOPHIA",
                 "level": 200,
-                "cri_score": 84,
+                "cri_score": 82,
                 "workload_weekly_hours": 8,
                 "subject": "Computer Science"
               }
             ],
-            "recommendedCourseId": "SDC-JAVA"
+            "recommendedCourseId": "SOPHIA-JAVA"
           },
           {
             "moduleId": "LINEAR_ALGEBRA",
@@ -513,22 +513,22 @@
             "requirementArea": "MATH_CORE",
             "options": [
               {
-                "id": "sdc-linear-algebra",
-                "courseId": "SDC-LINEAR-ALG",
+                "id": "sophia-linear-algebra",
+                "courseId": "SOPHIA-LINEAR-ALG",
                 "title": "Linear Algebra",
                 "credits": 3,
-                "cost_usd": 79,
+                "cost_usd": 99,
                 "duration_weeks": 4,
-                "provider": "Study.com",
+                "provider": "Sophia Learning",
                 "providerType": "mooc",
-                "providerCode": "STUDYCOM",
+                "providerCode": "SOPHIA",
                 "level": 200,
-                "cri_score": 82,
+                "cri_score": 80,
                 "workload_weekly_hours": 8,
                 "subject": "Mathematics"
               }
             ],
-            "recommendedCourseId": "SDC-LINEAR-ALG"
+            "recommendedCourseId": "SOPHIA-LINEAR-ALG"
           },
           {
             "moduleId": "DATA_STRUCTURES",
@@ -537,22 +537,22 @@
             "requirementArea": "CS_CORE",
             "options": [
               {
-                "id": "sdc-data-structures",
-                "courseId": "SDC-DATA-STRUCT",
+                "id": "sophia-data-structures",
+                "courseId": "SOPHIA-DATA-STRUCT",
                 "title": "Data Structures",
                 "credits": 3,
-                "cost_usd": 79,
+                "cost_usd": 99,
                 "duration_weeks": 4,
-                "provider": "Study.com",
+                "provider": "Sophia Learning",
                 "providerType": "mooc",
-                "providerCode": "STUDYCOM",
+                "providerCode": "SOPHIA",
                 "level": 200,
-                "cri_score": 85,
+                "cri_score": 83,
                 "workload_weekly_hours": 10,
                 "subject": "Computer Science"
               }
             ],
-            "recommendedCourseId": "SDC-DATA-STRUCT"
+            "recommendedCourseId": "SOPHIA-DATA-STRUCT"
           },
           {
             "moduleId": "ALGORITHMS",
@@ -561,22 +561,22 @@
             "requirementArea": "CS_CORE",
             "options": [
               {
-                "id": "sdc-algorithms",
-                "courseId": "SDC-ALGORITHMS",
+                "id": "sophia-algorithms",
+                "courseId": "SOPHIA-ALGORITHMS",
                 "title": "Analysis of Algorithms",
                 "credits": 3,
-                "cost_usd": 79,
+                "cost_usd": 99,
                 "duration_weeks": 4,
-                "provider": "Study.com",
+                "provider": "Sophia Learning",
                 "providerType": "mooc",
-                "providerCode": "STUDYCOM",
+                "providerCode": "SOPHIA",
                 "level": 300,
-                "cri_score": 86,
+                "cri_score": 84,
                 "workload_weekly_hours": 10,
                 "subject": "Computer Science"
               }
             ],
-            "recommendedCourseId": "SDC-ALGORITHMS"
+            "recommendedCourseId": "SOPHIA-ALGORITHMS"
           },
           {
             "moduleId": "COMPUTER_ARCH",
@@ -585,22 +585,22 @@
             "requirementArea": "CS_CORE",
             "options": [
               {
-                "id": "sdc-comp-arch",
-                "courseId": "SDC-COMP-ARCH",
+                "id": "sophia-comp-arch",
+                "courseId": "SOPHIA-COMP-ARCH",
                 "title": "Computer Architecture",
                 "credits": 3,
-                "cost_usd": 79,
+                "cost_usd": 99,
                 "duration_weeks": 4,
-                "provider": "Study.com",
+                "provider": "Sophia Learning",
                 "providerType": "mooc",
-                "providerCode": "STUDYCOM",
+                "providerCode": "SOPHIA",
                 "level": 200,
-                "cri_score": 82,
+                "cri_score": 80,
                 "workload_weekly_hours": 8,
                 "subject": "Computer Science"
               }
             ],
-            "recommendedCourseId": "SDC-COMP-ARCH"
+            "recommendedCourseId": "SOPHIA-COMP-ARCH"
           },
           {
             "moduleId": "OPERATING_SYSTEMS",
@@ -609,22 +609,22 @@
             "requirementArea": "CS_CORE",
             "options": [
               {
-                "id": "sdc-os",
-                "courseId": "SDC-OS",
+                "id": "sophia-os",
+                "courseId": "SOPHIA-OS",
                 "title": "Operating Systems",
                 "credits": 3,
-                "cost_usd": 79,
+                "cost_usd": 99,
                 "duration_weeks": 4,
-                "provider": "Study.com",
+                "provider": "Sophia Learning",
                 "providerType": "mooc",
-                "providerCode": "STUDYCOM",
+                "providerCode": "SOPHIA",
                 "level": 300,
-                "cri_score": 84,
+                "cri_score": 82,
                 "workload_weekly_hours": 10,
                 "subject": "Computer Science"
               }
             ],
-            "recommendedCourseId": "SDC-OS"
+            "recommendedCourseId": "SOPHIA-OS"
           },
           {
             "moduleId": "DATABASE_SYSTEMS",
@@ -633,22 +633,22 @@
             "requirementArea": "CS_CORE",
             "options": [
               {
-                "id": "sdc-database",
-                "courseId": "SDC-DATABASE",
+                "id": "sophia-database",
+                "courseId": "SOPHIA-DATABASE",
                 "title": "Database Systems",
                 "credits": 3,
-                "cost_usd": 79,
+                "cost_usd": 99,
                 "duration_weeks": 4,
-                "provider": "Study.com",
+                "provider": "Sophia Learning",
                 "providerType": "mooc",
-                "providerCode": "STUDYCOM",
+                "providerCode": "SOPHIA",
                 "level": 300,
-                "cri_score": 85,
+                "cri_score": 83,
                 "workload_weekly_hours": 10,
                 "subject": "Computer Science"
               }
             ],
-            "recommendedCourseId": "SDC-DATABASE"
+            "recommendedCourseId": "SOPHIA-DATABASE"
           },
           {
             "moduleId": "SOFTWARE_ENGINEERING",
@@ -856,22 +856,22 @@
             "requirementArea": "CS_ELECTIVE",
             "options": [
               {
-                "id": "sdc-cybersecurity",
-                "courseId": "SDC-CYBERSEC",
+                "id": "sophia-cybersecurity",
+                "courseId": "SOPHIA-CYBERSEC",
                 "title": "Introduction to Cybersecurity",
                 "credits": 3,
-                "cost_usd": 79,
+                "cost_usd": 99,
                 "duration_weeks": 4,
-                "provider": "Study.com",
+                "provider": "Sophia Learning",
                 "providerType": "mooc",
-                "providerCode": "STUDYCOM",
+                "providerCode": "SOPHIA",
                 "level": 300,
-                "cri_score": 81,
+                "cri_score": 79,
                 "workload_weekly_hours": 8,
                 "subject": "Computer Science"
               }
             ],
-            "recommendedCourseId": "SDC-CYBERSEC"
+            "recommendedCourseId": "SOPHIA-CYBERSEC"
           },
           {
             "moduleId": "CS_ELECTIVE_2",
@@ -880,22 +880,22 @@
             "requirementArea": "CS_ELECTIVE",
             "options": [
               {
-                "id": "sdc-ai",
-                "courseId": "SDC-INTRO-AI",
+                "id": "sophia-ai",
+                "courseId": "SOPHIA-INTRO-AI",
                 "title": "Introduction to AI",
                 "credits": 3,
-                "cost_usd": 79,
+                "cost_usd": 99,
                 "duration_weeks": 4,
-                "provider": "Study.com",
+                "provider": "Sophia Learning",
                 "providerType": "mooc",
-                "providerCode": "STUDYCOM",
+                "providerCode": "SOPHIA",
                 "level": 300,
-                "cri_score": 85,
+                "cri_score": 83,
                 "workload_weekly_hours": 10,
                 "subject": "Computer Science"
               }
             ],
-            "recommendedCourseId": "SDC-INTRO-AI"
+            "recommendedCourseId": "SOPHIA-INTRO-AI"
           },
           {
             "moduleId": "CS_ELECTIVE_3",
@@ -904,22 +904,22 @@
             "requirementArea": "CS_ELECTIVE",
             "options": [
               {
-                "id": "sdc-web-dev",
-                "courseId": "SDC-WEB-DEV",
+                "id": "sophia-web-dev",
+                "courseId": "SOPHIA-WEB-DEV",
                 "title": "Web Development",
                 "credits": 3,
-                "cost_usd": 79,
+                "cost_usd": 99,
                 "duration_weeks": 4,
-                "provider": "Study.com",
+                "provider": "Sophia Learning",
                 "providerType": "mooc",
-                "providerCode": "STUDYCOM",
+                "providerCode": "SOPHIA",
                 "level": 300,
-                "cri_score": 84,
+                "cri_score": 82,
                 "workload_weekly_hours": 8,
                 "subject": "Computer Science"
               }
             ],
-            "recommendedCourseId": "SDC-WEB-DEV"
+            "recommendedCourseId": "SOPHIA-WEB-DEV"
           },
           {
             "moduleId": "FREE_ELECTIVE_2",
