@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useOptimizerSeeder, FunctionHealthStatus } from '@/hooks/useOptimizerSeeder';
+import { useClientSideSeeder } from '@/hooks/useClientSideSeeder';
 import { SeedingJobCard } from '@/components/admin/SeedingJobCard';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -40,6 +41,13 @@ const EDGE_FUNCTIONS = [
 
 export default function OptimizerSeeding() {
   const { runJob, getJobState, clearResults, checkFunctionHealth } = useOptimizerSeeder();
+  const { 
+    seedTransferRules, 
+    isSeeding: isTransferRulesSeeding, 
+    lastResult: transferRulesLastResult, 
+    error: transferRulesError,
+    totalRules 
+  } = useClientSideSeeder();
   const { toast } = useToast();
   const [tableStatus, setTableStatus] = useState<TableStatus[]>([]);
   const [isCheckingTables, setIsCheckingTables] = useState(false);
@@ -50,13 +58,6 @@ export default function OptimizerSeeding() {
   const coscState = getJobState('seed-cosc');
   const excelsiorState = getJobState('seed-excelsior');
   const wguState = getJobState('seed-wgu');
-  
-  // Transfer rules seeding state
-  const [transferRulesState, setTransferRulesState] = useState<{
-    isRunning: boolean;
-    lastResult: any;
-    error: string | null;
-  }>({ isRunning: false, lastResult: null, error: null });
 
   const checkTables = async () => {
     setIsCheckingTables(true);
@@ -234,43 +235,27 @@ export default function OptimizerSeeding() {
     }
   };
 
-  // Handler for Transfer Rules seeding
+  // Handler for Transfer Rules seeding (client-side - no edge function)
   const handleRunTransferRulesSeed = async () => {
-    setTransferRulesState(prev => ({ ...prev, isRunning: true, error: null }));
-    
     try {
-      const { data, error } = await supabase.functions.invoke('run-seeds', {
-        body: {}
-      });
+      const result = await seedTransferRules();
       
-      if (error) {
-        throw new Error(error.message || 'Failed to invoke run-seeds');
-      }
-      
-      if (data?.success) {
-        setTransferRulesState({
-          isRunning: false,
-          lastResult: data,
-          error: null
-        });
-        
+      if (result.success) {
         toast({
           title: "Transfer rules seeded ✓",
-          description: `${data.stats?.total || 0} rules processed: ${data.stats?.inserted || 0} inserted, ${data.stats?.updated || 0} updated`,
+          description: `${result.stats.total} rules processed: ${result.stats.inserted} inserted, ${result.stats.skipped} skipped`,
         });
       } else {
-        throw new Error(data?.error || 'Seeding returned success=false');
+        toast({
+          title: "Transfer rules seeding failed",
+          description: result.error || "Unknown error",
+          variant: "destructive",
+        });
       }
     } catch (err: any) {
-      setTransferRulesState(prev => ({
-        ...prev,
-        isRunning: false,
-        error: err.message || 'Unknown error'
-      }));
-      
       toast({
         title: "Transfer rules seeding failed",
-        description: err.message || "Failed to run seeding job",
+        description: err.message || "Failed to run seeding",
         variant: "destructive",
       });
     }
@@ -504,44 +489,42 @@ export default function OptimizerSeeding() {
                   <h4 className="font-semibold">Seed Credit Transfer Rules</h4>
                 </div>
                 <p className="text-sm text-muted-foreground mb-4">
-                  Seeds 70+ verified transfer rules for Sophia, Study.com, CLEP → TESU. 
+                  Seeds {totalRules} verified transfer rules for Sophia, Study.com, CLEP → TESU. 
                   Critical for decentralized degrees - ensures all template courses have verified transfer paths.
+                  <br />
+                  <span className="text-xs text-green-600 font-medium">✓ Client-side seeding (no edge function required)</span>
                 </p>
                 
-                {transferRulesState.lastResult && (
+                {transferRulesLastResult && (
                   <div className="mb-4 p-3 bg-muted rounded-lg text-sm">
                     <div className="flex items-center gap-2 mb-2">
                       <CheckCircle2 className="h-4 w-4 text-green-600" />
-                      <span className="font-medium">Last Run: {new Date(transferRulesState.lastResult.runAt || Date.now()).toLocaleString()}</span>
+                      <span className="font-medium">Last Run: {new Date(transferRulesLastResult.runAt || Date.now()).toLocaleString()}</span>
                     </div>
-                    <div className="grid grid-cols-4 gap-4 text-xs">
+                    <div className="grid grid-cols-3 gap-4 text-xs">
                       <div>
                         <span className="text-muted-foreground">Total:</span>{' '}
-                        <span className="font-mono">{transferRulesState.lastResult.stats?.total || 0}</span>
+                        <span className="font-mono">{transferRulesLastResult.stats?.total || 0}</span>
                       </div>
                       <div>
                         <span className="text-muted-foreground">Inserted:</span>{' '}
-                        <span className="font-mono text-green-600">{transferRulesState.lastResult.stats?.inserted || 0}</span>
+                        <span className="font-mono text-green-600">{transferRulesLastResult.stats?.inserted || 0}</span>
                       </div>
                       <div>
                         <span className="text-muted-foreground">Skipped:</span>{' '}
-                        <span className="font-mono text-muted-foreground">{transferRulesState.lastResult.stats?.skipped || 0}</span>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground">After:</span>{' '}
-                        <span className="font-mono">{transferRulesState.lastResult.stats?.afterCount || 0}</span>
+                        <span className="font-mono text-muted-foreground">{transferRulesLastResult.stats?.skipped || 0}</span>
                       </div>
                     </div>
                   </div>
                 )}
                 
-                {transferRulesState.error && (
+                {transferRulesError && (
                   <Alert variant="destructive" className="mb-4">
                     <XCircle className="h-4 w-4" />
                     <AlertTitle>Seeding Failed</AlertTitle>
                     <AlertDescription className="text-sm">
-                      <p className="mb-2">{transferRulesState.error}</p>
-                      {transferRulesState.error.includes('row-level security') && (
+                      <p className="mb-2">{transferRulesError}</p>
+                      {transferRulesError.includes('row-level security') && (
                         <div className="mt-3 p-3 bg-background rounded border text-xs">
                           <p className="font-medium mb-2">RLS Policy Required:</p>
                           <p className="mb-2">Run this SQL in Supabase Dashboard → SQL Editor:</p>
@@ -571,9 +554,9 @@ export default function OptimizerSeeding() {
               <div className="flex flex-col gap-2 ml-4">
                 <Button 
                   onClick={handleRunTransferRulesSeed}
-                  disabled={transferRulesState.isRunning}
+                  disabled={isTransferRulesSeeding}
                 >
-                  {transferRulesState.isRunning ? (
+                  {isTransferRulesSeeding ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       Seeding...
