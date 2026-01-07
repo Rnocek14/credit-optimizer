@@ -132,13 +132,13 @@ export const SkillTreeMinimap: React.FC<SkillTreeMinimapProps> = ({
 
   const getCategoryColor = useCallback((category: string) => {
     const colors = {
-      'Frontend': 'hsl(210, 70%, 60%)',
-      'Backend': 'hsl(120, 60%, 50%)',
-      'Data Science': 'hsl(280, 60%, 60%)',
-      'DevOps': 'hsl(30, 70%, 55%)',
-      'Mobile': 'hsl(340, 60%, 60%)',
+      'Frontend': 'oklch(0.65 0.15 240)',
+      'Backend': 'oklch(0.60 0.15 145)',
+      'Data Science': 'oklch(0.60 0.18 300)',
+      'DevOps': 'oklch(0.70 0.15 50)',
+      'Mobile': 'oklch(0.65 0.15 350)',
     };
-    return colors[category as keyof typeof colors] || 'hsl(var(--muted-foreground))';
+    return colors[category as keyof typeof colors] || 'var(--muted-foreground)';
   }, []);
 
   return (
@@ -221,7 +221,7 @@ export const SkillTreeMinimap: React.FC<SkillTreeMinimapProps> = ({
                 cy={pos.y}
                 r={skill.id === selectedSkillId ? DOT_SIZE + 1 : DOT_SIZE}
                 fill={getSkillColor(skill.status)}
-                stroke={skill.id === selectedSkillId ? 'hsl(var(--ring))' : 'none'}
+                stroke={skill.id === selectedSkillId ? 'var(--ring)' : 'none'}
                 strokeWidth={skill.id === selectedSkillId ? 2 : 0}
                 className="transition-all duration-200"
               />
@@ -235,7 +235,7 @@ export const SkillTreeMinimap: React.FC<SkillTreeMinimapProps> = ({
           width={Math.min(viewportRect.width, MINIMAP_SIZE.width - Math.max(0, viewportRect.x))}
           height={Math.min(viewportRect.height, MINIMAP_SIZE.height - Math.max(0, viewportRect.y))}
           fill="none"
-          stroke="hsl(var(--ring))"
+          stroke="var(--ring)"
           strokeWidth={2}
           strokeDasharray="4,2"
           className="animate-pulse"

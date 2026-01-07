@@ -156,10 +156,10 @@ export function OverlayTogglePanel() {
 
 // Colorblind-safe palette
 export const colorBlindSafePalette = {
-  primary: { normal: 'hsl(var(--primary))', safe: 'hsl(221, 83%, 53%)' },
-  success: { normal: 'hsl(var(--success))', safe: 'hsl(142, 76%, 36%)' },
-  warning: { normal: 'hsl(var(--warning))', safe: 'hsl(45, 93%, 47%)' },
-  destructive: { normal: 'hsl(var(--destructive))', safe: 'hsl(0, 84%, 60%)' },
-  info: { normal: 'hsl(var(--info))', safe: 'hsl(197, 71%, 52%)' },
-  muted: { normal: 'hsl(var(--muted))', safe: 'hsl(210, 40%, 50%)' }
+  primary: { normal: 'var(--primary)', safe: 'oklch(0.55 0.20 250)' },
+  success: { normal: 'var(--success)', safe: 'oklch(0.55 0.15 145)' },
+  warning: { normal: 'var(--warning)', safe: 'oklch(0.80 0.18 85)' },
+  destructive: { normal: 'var(--destructive)', safe: 'oklch(0.60 0.20 25)' },
+  info: { normal: 'var(--info)', safe: 'oklch(0.65 0.15 220)' },
+  muted: { normal: 'var(--muted)', safe: 'oklch(0.60 0.05 250)' }
 };

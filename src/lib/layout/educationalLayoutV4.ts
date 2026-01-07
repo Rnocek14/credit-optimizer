@@ -41,11 +41,11 @@ interface EducationalLayoutOptions {
 
 // Semantic lane configuration for educational progression
 const SEMANTIC_LANES = {
-  foundation: { x: 0, label: 'Foundation', color: 'hsl(var(--blue-500))' },
-  lower: { x: 340, label: 'Lower Division', color: 'hsl(var(--green-500))' },
-  upper: { x: 680, label: 'Upper Division', color: 'hsl(var(--orange-500))' },
-  credential: { x: 1020, label: 'Credentials', color: 'hsl(var(--purple-500))' },
-  career: { x: 1360, label: 'Career', color: 'hsl(var(--red-500))' }
+  foundation: { x: 0, label: 'Foundation', color: 'var(--primary)' },
+  lower: { x: 340, label: 'Lower Division', color: 'var(--success)' },
+  upper: { x: 680, label: 'Upper Division', color: 'var(--warning)' },
+  credential: { x: 1020, label: 'Credentials', color: 'var(--accent)' },
+  career: { x: 1360, label: 'Career', color: 'var(--destructive)' }
 } as const;
 
 const DEFAULT_OPTIONS: EducationalLayoutOptions = {
