@@ -1629,16 +1629,16 @@ export const usePathStore = create<PathState>()(
 const getEdgeStyle = (edgeType: PathEdge['type']) => {
   switch (edgeType) {
     case 'prerequisite':
-      return { stroke: 'hsl(var(--destructive))', strokeWidth: 2 };
+      return { stroke: 'var(--destructive)', strokeWidth: 2 };
     case 'suggested':
-      return { stroke: 'hsl(var(--primary))', strokeWidth: 2, strokeDasharray: '5,5' };
+      return { stroke: 'var(--primary)', strokeWidth: 2, strokeDasharray: '5,5' };
     case 'alternative':
-      return { stroke: 'hsl(var(--muted-foreground))', strokeWidth: 1, strokeDasharray: '2,2' };
+      return { stroke: 'var(--muted-foreground)', strokeWidth: 1, strokeDasharray: '2,2' };
     case 'sequence':
-      return { stroke: 'hsl(var(--border))', strokeWidth: 2 };
+      return { stroke: 'var(--border)', strokeWidth: 2 };
     case 'branch':
-      return { stroke: 'hsl(var(--accent))', strokeWidth: 2 };
+      return { stroke: 'var(--accent)', strokeWidth: 2 };
     default:
-      return { stroke: 'hsl(var(--border))', strokeWidth: 2 };
+      return { stroke: 'var(--border)', strokeWidth: 2 };
   }
 };

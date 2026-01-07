@@ -427,16 +427,16 @@ function getNodeModeStyle(mode: 'progress' | 'builder') {
   if (mode === 'progress') {
     return {
       ...baseStyle,
-      border: '2px solid hsl(var(--border))',
-      background: 'hsl(var(--card))',
-      boxShadow: '0 2px 8px hsl(var(--foreground) / 0.1)',
+      border: '2px solid var(--border)',
+      background: 'var(--card)',
+      boxShadow: '0 2px 8px color-mix(in oklch, var(--foreground) 10%, transparent)',
     };
   } else {
     return {
       ...baseStyle,
-      border: '2px solid hsl(var(--primary) / 0.3)',
-      background: 'hsl(var(--primary) / 0.05)',
-      boxShadow: '0 3px 12px hsl(var(--primary) / 0.15)',
+      border: '2px solid color-mix(in oklch, var(--primary) 30%, transparent)',
+      background: 'color-mix(in oklch, var(--primary) 5%, transparent)',
+      boxShadow: '0 3px 12px color-mix(in oklch, var(--primary) 15%, transparent)',
     };
   }
 }
@@ -444,13 +444,13 @@ function getNodeModeStyle(mode: 'progress' | 'builder') {
 function getEdgeModeStyle(mode: 'progress' | 'builder') {
   if (mode === 'progress') {
     return {
-      stroke: 'hsl(var(--muted-foreground))',
+      stroke: 'var(--muted-foreground)',
       strokeWidth: 2,
       opacity: 0.7,
     };
   } else {
     return {
-      stroke: 'hsl(var(--primary))',
+      stroke: 'var(--primary)',
       strokeWidth: 2,
       opacity: 0.8,
     };

@@ -62,7 +62,7 @@ export function EdgeLegend({ show = true }: EdgeLegendProps) {
               className="w-6 h-0.5 bg-border rounded"
               style={{ 
                 height: '2px',
-                background: 'repeating-linear-gradient(90deg, hsl(var(--border)), hsl(var(--border)) 2px, transparent 2px, transparent 4px)'
+                background: 'repeating-linear-gradient(90deg, var(--border), var(--border) 2px, transparent 2px, transparent 4px)'
               }}
             />
             <span className="text-muted-foreground">Advisory</span>

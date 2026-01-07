@@ -85,8 +85,8 @@ export function V5GraphNode({ data }: V5GraphNodeProps) {
         position={Position.Left}
         id="target"
         style={{
-          background: 'hsl(var(--primary))',
-          border: '2px solid hsl(var(--background))',
+          background: 'var(--primary)',
+          border: '2px solid var(--background)',
           width: 10,
           height: 10,
         }}
@@ -220,8 +220,8 @@ export function V5GraphNode({ data }: V5GraphNodeProps) {
         position={Position.Right}
         id="source"
         style={{
-          background: 'hsl(var(--primary))',
-          border: '2px solid hsl(var(--background))',
+          background: 'var(--primary)',
+          border: '2px solid var(--background)',
           width: 10,
           height: 10,
         }}

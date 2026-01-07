@@ -123,10 +123,10 @@ export const SkillTreeMinimap: React.FC<SkillTreeMinimapProps> = ({
 
   const getSkillColor = useCallback((status: string) => {
     switch (status) {
-      case 'completed': return 'hsl(var(--success))';
-      case 'in_progress': return 'hsl(var(--warning))';
-      case 'available': return 'hsl(var(--primary))';
-      default: return 'hsl(var(--muted))';
+      case 'completed': return 'var(--success)';
+      case 'in_progress': return 'var(--warning)';
+      case 'available': return 'var(--primary)';
+      default: return 'var(--muted)';
     }
   }, []);
 

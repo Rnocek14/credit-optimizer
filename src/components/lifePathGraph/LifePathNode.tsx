@@ -145,8 +145,8 @@ export function LifePathNodeComponent({ data }: LifePathNodeProps) {
         position={LP_VISUAL_V2 ? Position.Left : Position.Top}
         id="target"
         style={{
-          background: 'hsl(var(--primary))',
-          border: '2px solid hsl(var(--background))',
+          background: 'var(--primary)',
+          border: '2px solid var(--background)',
           width: 12,
           height: 12,
         }}
@@ -276,8 +276,8 @@ export function LifePathNodeComponent({ data }: LifePathNodeProps) {
         position={LP_VISUAL_V2 ? Position.Right : Position.Bottom}
         id="source"
         style={{
-          background: 'hsl(var(--primary))',
-          border: '2px solid hsl(var(--background))',
+          background: 'var(--primary)',
+          border: '2px solid var(--background)',
           width: 12,
           height: 12,
         }}
