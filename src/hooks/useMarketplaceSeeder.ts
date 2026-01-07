@@ -79,6 +79,60 @@ export function useMarketplaceSeeder() {
     optionsSkipped: 0,
   });
   const [isSeeding, setIsSeeding] = useState(false);
+  const [isClearing, setIsClearing] = useState(false);
+
+  // Clear all marketplace data for a fresh reseed
+  const clearMarketplaceData = useCallback(async () => {
+    setIsClearing(true);
+    try {
+      console.log('Clearing marketplace data...');
+      
+      // Delete in order: options → courses → providers (due to FK constraints)
+      const { error: optionsError } = await supabase
+        .from('requirement_options')
+        .delete()
+        .eq('option_kind', 'course'); // Delete all course options
+      
+      if (optionsError) console.warn('Options clear warning:', optionsError.message);
+      
+      const { error: coursesError } = await supabase
+        .from('marketplace_courses')
+        .delete()
+        .neq('id', '00000000-0000-0000-0000-000000000000'); // Delete all
+      
+      if (coursesError) throw new Error(`Courses clear error: ${coursesError.message}`);
+      
+      const { error: providersError } = await supabase
+        .from('providers')
+        .delete()
+        .neq('id', '00000000-0000-0000-0000-000000000000'); // Delete all
+      
+      if (providersError) throw new Error(`Providers clear error: ${providersError.message}`);
+      
+      console.log('Marketplace data cleared successfully');
+      
+      // Reset progress
+      setProgress({
+        phase: 'idle',
+        providersInserted: 0,
+        providersSkipped: 0,
+        coursesInserted: 0,
+        coursesSkipped: 0,
+        optionsInserted: 0,
+        optionsSkipped: 0,
+      });
+      
+      return { success: true };
+    } catch (error) {
+      console.error('Clear marketplace error:', error);
+      return { 
+        success: false, 
+        error: error instanceof Error ? error.message : 'Unknown error' 
+      };
+    } finally {
+      setIsClearing(false);
+    }
+  }, []);
 
   const seedMarketplace = useCallback(async () => {
     setIsSeeding(true);
@@ -286,9 +340,22 @@ export function useMarketplaceSeeder() {
     return progress;
   }, []);
 
+  // Clear and reseed in one action
+  const clearAndReseed = useCallback(async () => {
+    const clearResult = await clearMarketplaceData();
+    if (!clearResult.success) {
+      setProgress(p => ({ ...p, phase: 'error', error: clearResult.error }));
+      return;
+    }
+    await seedMarketplace();
+  }, [clearMarketplaceData, seedMarketplace]);
+
   return {
     seedMarketplace,
+    clearMarketplaceData,
+    clearAndReseed,
     progress,
     isSeeding,
+    isClearing,
   };
 }
