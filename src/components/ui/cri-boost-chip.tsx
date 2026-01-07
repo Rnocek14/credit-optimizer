@@ -51,7 +51,7 @@ export function CRIBoostChip({
              style={{ 
                borderColor: boostColor,
                color: boostColor,
-               backgroundColor: `hsl(from ${boostColor} h s l / 0.1)`
+               backgroundColor: `color-mix(in oklch, ${boostColor} 10%, transparent)`
              }}
              data-testid="cri-boost-chip"
            >

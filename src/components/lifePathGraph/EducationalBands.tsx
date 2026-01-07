@@ -22,7 +22,7 @@ export const EducationalBands: React.FC<EducationalBandsProps> = ({ height }) =>
           style={{
             top: band.y,
             height: band.height,
-            backgroundColor: index % 2 === 0 ? 'transparent' : 'hsl(var(--muted)/0.02)'
+            backgroundColor: index % 2 === 0 ? 'transparent' : 'color-mix(in oklch, var(--muted) 2%, transparent)'
           }}
         >
           <div className="absolute left-2 top-2 text-xs font-medium text-muted-foreground">

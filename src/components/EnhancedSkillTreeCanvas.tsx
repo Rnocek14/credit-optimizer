@@ -395,7 +395,7 @@ export const EnhancedSkillTreeCanvas: React.FC<EnhancedSkillTreeCanvasProps> = (
             y1={fromPos.y + 35}
             x2={toPos.x + 70}
             y2={toPos.y + 35}
-            stroke={isHighlighted ? "hsl(var(--primary))" : "hsl(var(--border))"}
+            stroke={isHighlighted ? "var(--primary)" : "var(--border)"}
             strokeWidth={isHighlighted ? 3 : 1}
             strokeDasharray={isAnimated ? "5,5" : "none"}
             className={isAnimated ? "animate-pulse" : ""}
@@ -524,7 +524,7 @@ export const EnhancedSkillTreeCanvas: React.FC<EnhancedSkillTreeCanvasProps> = (
             >
               <polygon
                 points="0 0, 10 3.5, 0 7"
-                fill="hsl(var(--border))"
+                fill="var(--border)"
               />
             </marker>
           </defs>

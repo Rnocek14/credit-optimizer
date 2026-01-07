@@ -222,8 +222,8 @@ export const HistoricalTrendsVisualization: React.FC<HistoricalTrendsVisualizati
                 key={path.id}
                 type="monotone"
                 dataKey={`${path.title}_${metric}`}
-                stroke={chartConfig[`${path.title}_${metric}`]?.color || 'hsl(var(--primary))'}
-                fill={chartConfig[`${path.title}_${metric}`]?.color || 'hsl(var(--primary))'}
+                stroke={chartConfig[`${path.title}_${metric}`]?.color || 'var(--primary)'}
+                fill={chartConfig[`${path.title}_${metric}`]?.color || 'var(--primary)'}
                 fillOpacity={0.3}
                 strokeWidth={2}
               />
@@ -246,7 +246,7 @@ export const HistoricalTrendsVisualization: React.FC<HistoricalTrendsVisualizati
               <Bar
                 key={path.id}
                 dataKey={`${path.title}_${metric}`}
-                fill={chartConfig[`${path.title}_${metric}`]?.color || 'hsl(var(--primary))'}
+                fill={chartConfig[`${path.title}_${metric}`]?.color || 'var(--primary)'}
               />
             ))}
           </BarChart>
