@@ -1,20 +1,10 @@
-import { create } from 'zustand';
+/**
+ * CONSOLIDATED PLAN STORE
+ * 
+ * This file re-exports the unified plan store from EduTree V5.
+ * All plan state (legacy addedCourses + V5 selections/semesters) is now in one place.
+ * 
+ * @deprecated Import directly from '@/pages/EduTree/v5/state/usePlanStore' for new code.
+ */
 
-export interface CourseLite {
-  id?: string;
-  title: string;
-  provider?: string;
-  url?: string;
-}
-
-interface PlanState {
-  addedCourses: CourseLite[];
-  addCourseToPlan: (course: CourseLite) => void;
-  clear: () => void;
-}
-
-export const usePlanStore = create<PlanState>((set) => ({
-  addedCourses: [],
-  addCourseToPlan: (course) => set((state) => ({ addedCourses: [course, ...state.addedCourses] })),
-  clear: () => set({ addedCourses: [] }),
-}));
+export { usePlanStore, type CourseLite } from '@/pages/EduTree/v5/state/usePlanStore';
