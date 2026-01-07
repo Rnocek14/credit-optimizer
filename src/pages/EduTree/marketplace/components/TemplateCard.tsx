@@ -28,8 +28,10 @@ export function TemplateCard({ template, isSelected, onToggleSelect }: TemplateC
   const { constraints } = usePlanBasket();
   
   const isMatchingAnchor = constraints.target_school === template.anchorSchool;
+  const isIncomplete = !template.yearTemplates || template.yearTemplates.length === 0;
 
   const handleSelect = () => {
+    if (isIncomplete) return;
     navigate(`/edu-tree-v5?templateId=${template.id}`);
   };
 
@@ -75,9 +77,31 @@ export function TemplateCard({ template, isSelected, onToggleSelect }: TemplateC
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
   return (
-    <Card className="relative hover:shadow-lg transition-shadow">
+    <Card className={cn(
+      "relative hover:shadow-lg transition-shadow",
+      isIncomplete && "opacity-75 border-dashed border-amber-500/50"
+    )}>
+      {/* Incomplete Warning Badge */}
+      {isIncomplete && (
+        <div className="absolute -top-3 -left-3 z-10">
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Badge variant="destructive" className="shadow-md gap-1">
+                  <AlertCircle className="h-3 w-3" />
+                  Coming Soon
+                </Badge>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p className="text-xs">This template is not yet available. Course data is being prepared.</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
+      )}
+      
       {/* Badge */}
-      {template.marketplace.badge && (
+      {template.marketplace.badge && !isIncomplete && (
         <div className="absolute -top-3 -right-3 z-10">
           <Badge className="shadow-md" variant={
             template.marketplace.badge === 'Cheapest' ? 'default' :
@@ -238,9 +262,27 @@ export function TemplateCard({ template, isSelected, onToggleSelect }: TemplateC
 
         {/* Actions */}
         <div className="flex gap-2 pt-2">
-          <Button onClick={handleSelect} className="flex-1">
-            Select Path
-          </Button>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="flex-1">
+                  <Button 
+                    onClick={handleSelect} 
+                    className="w-full"
+                    disabled={isIncomplete}
+                    variant={isIncomplete ? "outline" : "default"}
+                  >
+                    {isIncomplete ? "Coming Soon" : "Select Path"}
+                  </Button>
+                </div>
+              </TooltipTrigger>
+              {isIncomplete && (
+                <TooltipContent>
+                  <p className="text-xs">This template is being prepared and will be available soon.</p>
+                </TooltipContent>
+              )}
+            </Tooltip>
+          </TooltipProvider>
           <Button 
             variant="outline" 
             onClick={() => setIsDrawerOpen(true)}
