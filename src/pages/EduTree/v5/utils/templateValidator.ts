@@ -6,7 +6,10 @@
  * 2. Residency requirements met per anchor school policy
  * 3. Upper-division requirements met
  * 4. Each module has sufficient course options to fill creditsRequired
+ * 5. ALL courses have verified transfer rules (via templateTransferValidator)
  */
+
+import { validateTemplateTransferability, TemplateTransferValidationResult } from './templateTransferValidator';
 
 export interface PolicyRequirements {
   residencyCredits: number;
@@ -38,6 +41,7 @@ export interface TemplateValidationResult {
     filledModules: number;
     unfilledModules: string[];
   };
+  transferValidation?: TemplateTransferValidationResult;
 }
 
 // Anchor school policies
@@ -207,6 +211,49 @@ export function validateTemplate(template: any): TemplateValidationResult {
       filledModules,
       unfilledModules,
     },
+  };
+}
+
+/**
+ * Full validation including async transfer rule verification
+ * This is the COMPLETE validation for decentralized degrees
+ */
+export async function validateTemplateWithTransfers(template: any): Promise<TemplateValidationResult> {
+  // First run synchronous credit/policy validation
+  const baseResult = validateTemplate(template);
+  
+  // Then run async transfer validation
+  const transferResult = await validateTemplateTransferability(template);
+  
+  // Add transfer issues to the result
+  if (!transferResult.valid) {
+    baseResult.issues.push({
+      type: 'error',
+      code: 'UNVERIFIED_TRANSFERS',
+      message: `${transferResult.unverifiedCourses} course(s) have no verified transfer rule to ${transferResult.anchorSchool}`,
+      details: {
+        expected: 0,
+        actual: transferResult.unverifiedCourses,
+      },
+    });
+    baseResult.valid = false;
+  }
+  
+  if (transferResult.electiveOnlyCourses > 0) {
+    baseResult.issues.push({
+      type: 'warning',
+      code: 'ELECTIVE_ONLY_TRANSFERS',
+      message: `${transferResult.electiveOnlyCourses} course(s) transfer as elective credit only`,
+      details: {
+        expected: 0,
+        actual: transferResult.electiveOnlyCourses,
+      },
+    });
+  }
+  
+  return {
+    ...baseResult,
+    transferValidation: transferResult,
   };
 }
 

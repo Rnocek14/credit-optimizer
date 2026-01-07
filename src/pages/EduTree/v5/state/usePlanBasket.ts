@@ -3,6 +3,7 @@ import { persist } from 'zustand/middleware';
 import type { ProviderType, PlanScenario } from '../types/v5';
 import { calculateTotals } from '../utils/totalsCalculator';
 import { trackTelemetryEvent } from '@/utils/telemetry';
+import { checkTransferRule } from '../engine/transferEngine';
 
 /**
  * Phase 1a: BasketItem with ACE Credit Tracking
@@ -25,6 +26,15 @@ export interface BasketItem {
   providerCode?: string;
   level?: number;
   semester?: 'fall' | 'spring' | 'summer'; // Week 1.5: Track semester assignment for DnD
+  
+  // Transfer verification status - core for decentralized degrees
+  transferStatus?: {
+    verified: boolean;
+    electiveOnly: boolean;
+    confidence: number;
+    targetEquivCode?: string;
+    checkedAt?: string;
+  };
   
   // Structured provenance (replaces autoFillReason string parsing)
   source?: {
@@ -418,10 +428,17 @@ export const usePlanBasket = create<PlanBasketState>()(
             }
             
             // Create basket items from all selected courses
+            // Transfer verification happens lazily via TransferVerificationBadge component
             for (const selectedOption of selectedCourses) {
+              const providerCode = selectedOption.providerCode || 'UNKNOWN';
+              const anchorSchool = template.anchorSchool || 'TESU';
+              
+              // Mark institutional courses as verified immediately
+              const isInstitutional = providerCode.toUpperCase() === anchorSchool.toUpperCase();
+              
               items.push({
                 moduleId,
-                requirementArea: moduleId, // Store requirement area for cross-compatibility
+                requirementArea: moduleId,
                 courseId: selectedOption.courseId,
                 title: selectedOption.title,
                 credits: selectedOption.credits,
@@ -433,6 +450,13 @@ export const usePlanBasket = create<PlanBasketState>()(
                 providerType: selectedOption.providerType,
                 providerCode: selectedOption.providerCode,
                 level: selectedOption.level,
+                transferStatus: isInstitutional ? {
+                  verified: true,
+                  electiveOnly: false,
+                  confidence: 1.0,
+                  targetEquivCode: selectedOption.courseId,
+                  checkedAt: new Date().toISOString(),
+                } : undefined, // Will be verified lazily via UI component
                 source: {
                   type: 'template',
                   templateId: template.id,
