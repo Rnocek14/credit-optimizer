@@ -1,5 +1,5 @@
 // Transfer Rules Seeder - Uses anon key with public insert policy
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.56.0?target=deno';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
