@@ -29,32 +29,32 @@
 }
 
 .chip-ace {
-  background: rgba(245, 158, 11, 0.08);
-  color: hsl(38, 92%, 35%);
-  border-color: rgba(245, 158, 11, 0.25);
+  background: color-mix(in oklch, var(--warning) 8%, transparent);
+  color: var(--warning-700);
+  border-color: color-mix(in oklch, var(--warning) 25%, transparent);
 }
 
 .chip-ace:hover {
-  background: rgba(245, 158, 11, 0.15);
-  border-color: rgba(245, 158, 11, 0.4);
+  background: color-mix(in oklch, var(--warning) 15%, transparent);
+  border-color: color-mix(in oklch, var(--warning) 40%, transparent);
 }
 
 .chip-clep {
-  background: rgba(59, 130, 246, 0.08);
-  color: hsl(217, 91%, 40%);
-  border-color: rgba(59, 130, 246, 0.25);
+  background: color-mix(in oklch, var(--info) 8%, transparent);
+  color: var(--info-700);
+  border-color: color-mix(in oklch, var(--info) 25%, transparent);
 }
 
 .chip-clep:hover {
-  background: rgba(59, 130, 246, 0.15);
-  border-color: rgba(59, 130, 246, 0.4);
+  background: color-mix(in oklch, var(--info) 15%, transparent);
+  border-color: color-mix(in oklch, var(--info) 40%, transparent);
 }
 
 .chip-ghost {
   opacity: 0.7;
-  background: rgba(156, 163, 175, 0.08);
-  color: hsl(217, 10%, 50%);
-  border: 1px dashed rgba(156, 163, 175, 0.3);
+  background: color-mix(in oklch, var(--muted-foreground) 8%, transparent);
+  color: var(--muted-foreground);
+  border: 1px dashed color-mix(in oklch, var(--muted-foreground) 30%, transparent);
 }
 
 /* Tooltip on hover */

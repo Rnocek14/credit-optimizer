@@ -129,7 +129,7 @@ export const interactiveUtilities = {
     },
   },
   
-  // Hover effects
+  // Hover effects - use color-mix for overlay
   '.hover-overlay': {
     position: 'relative',
     '&::before': {
@@ -137,13 +137,13 @@ export const interactiveUtilities = {
       position: 'absolute',
       inset: '0',
       borderRadius: 'inherit',
-      backgroundColor: 'oklch(var(--hover-overlay))',
+      backgroundColor: 'color-mix(in oklch, var(--foreground) 8%, transparent)',
       opacity: '0',
       transition: 'opacity var(--motion-fast) var(--ease-standard)',
       pointerEvents: 'none',
     },
     '&:hover::before': {
-      opacity: 'var(--hover-opacity)',
+      opacity: '1',
     },
   },
   

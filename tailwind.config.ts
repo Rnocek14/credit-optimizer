@@ -334,63 +334,64 @@ export default {
 	},
 	plugins: [
 		require("tailwindcss-animate"),
-			// Plugin to ensure OKLCH utilities are always available
+		// Plugin to ensure OKLCH utilities are always available
+		// All vars now contain full oklch() values, so use var() directly
 		({ addUtilities }) => {
 			addUtilities({
-				// Brand utilities
+				// Brand utilities - vars already contain oklch()
 				'.bg-brand-primary': { 
-					'background': 'oklch(var(--brand-primary))', 
-					'color': 'oklch(var(--brand-primary-foreground))' 
+					'background': 'var(--brand-primary)', 
+					'color': 'var(--brand-primary-foreground)' 
 				},
 				'.bg-brand-primary-hover': { 
-					'background': 'oklch(var(--brand-primary-hover))', 
-					'color': 'oklch(var(--brand-primary-foreground))' 
+					'background': 'var(--brand-primary-hover)', 
+					'color': 'var(--brand-primary-foreground)' 
 				},
 				
 				// AI/Maya accent utilities
 				'.bg-accent-cyan': { 
-					'background': 'oklch(var(--accent-cyan))', 
-					'color': 'oklch(var(--accent-cyan-foreground))' 
+					'background': 'var(--accent-cyan)', 
+					'color': 'var(--accent-cyan-foreground)' 
 				},
 				'.bg-accent-cyan-hover': { 
-					'background': 'oklch(var(--accent-cyan-hover))', 
-					'color': 'oklch(var(--accent-cyan-foreground))' 
+					'background': 'var(--accent-cyan-hover)', 
+					'color': 'var(--accent-cyan-foreground)' 
 				},
 				
 				// Supporting accents with full utility set
 				'.bg-accent-gold': { 
-					'background': 'oklch(var(--accent-gold))', 
-					'color': 'oklch(var(--accent-gold-foreground))' 
+					'background': 'var(--accent-gold)', 
+					'color': 'var(--accent-gold-foreground)' 
 				},
 				'.border-accent-gold': { 
-					'border-color': 'oklch(var(--accent-gold))' 
+					'border-color': 'var(--accent-gold)' 
 				},
 				'.text-accent-gold': { 
-					'color': 'oklch(var(--accent-gold))' 
+					'color': 'var(--accent-gold)' 
 				},
 				'.text-accent-gold-foreground': { 
-					'color': 'oklch(var(--accent-gold-foreground))' 
+					'color': 'var(--accent-gold-foreground)' 
 				},
 				'.ring-accent-gold': { 
-					'--tw-ring-color': 'oklch(var(--accent-gold))' 
+					'--tw-ring-color': 'var(--accent-gold)' 
 				},
 				'.shadow-accent-gold': { 
-					'--tw-shadow-color': 'oklch(var(--accent-gold))' 
+					'--tw-shadow-color': 'var(--accent-gold)' 
 				},
 				'.bg-accent-lime': { 
-					'background': 'oklch(var(--accent-lime))', 
-					'color': 'oklch(var(--accent-lime-foreground))' 
+					'background': 'var(--accent-lime)', 
+					'color': 'var(--accent-lime-foreground)' 
 				},
 				
-				// Risk matrix
-				'.bg-risk-low': { 'background': 'oklch(var(--risk-low))', 'color': 'white' },
-				'.bg-risk-medium': { 'background': 'oklch(var(--risk-medium))', 'color': 'black' },
-				'.bg-risk-high': { 'background': 'oklch(var(--risk-high))', 'color': 'white' },
-				'.bg-risk-critical': { 'background': 'oklch(var(--risk-critical))', 'color': 'white' },
+				// Risk matrix - vars already contain oklch()
+				'.bg-risk-low': { 'background': 'var(--risk-low)', 'color': 'var(--risk-low-foreground)' },
+				'.bg-risk-medium': { 'background': 'var(--risk-medium)', 'color': 'var(--risk-medium-foreground)' },
+				'.bg-risk-high': { 'background': 'var(--risk-high)', 'color': 'var(--risk-high-foreground)' },
+				'.bg-risk-critical': { 'background': 'var(--risk-critical)', 'color': 'var(--risk-critical-foreground)' },
 				
-				// Gradient
+				// Gradient - vars already contain oklch()
 				'.gradient-primary': { 
-					'background-image': 'linear-gradient(135deg, oklch(var(--primary)), oklch(var(--primary-hover)))' 
+					'background-image': 'linear-gradient(135deg, var(--primary), var(--primary-hover))' 
 				}
 			})
 		}

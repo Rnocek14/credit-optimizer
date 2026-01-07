@@ -281,28 +281,10 @@
     /* Legacy HSL removed - all colors now use OKLCH for consistency */
 
     /* Refined color system - Brand purple + AI cyan + supporting accents */
-    --brand-primary: 0.55 0.22 280;
-    --brand-primary-hover: 0.50 0.24 280;
-    --brand-primary-foreground: 0.95 0.02 280;
-    
-    --accent-cyan: 0.75 0.15 200;
-    --accent-cyan-foreground: 0.20 0.03 200;
-    
-    --accent-gold: 0.78 0.13 84;
-    --accent-gold-foreground: 0.20 0.03 84;
-    
-    --accent-lime: 0.82 0.11 135;
-    --accent-lime-foreground: 0.20 0.03 135;
-
-    /* Risk matrix - WCAG AA compliant */
-    --risk-low: 0.82 0.11 135;        /* lime */
-    --risk-low-foreground: 0.24 0.03 135;
-    --risk-medium: 0.84 0.10 95;      /* yellow-green */
-    --risk-medium-foreground: 0.26 0.03 95;
-    --risk-high: 0.72 0.16 45;        /* orange */
-    --risk-high-foreground: 0.20 0.03 45;
-    --risk-critical: 0.65 0.20 28;    /* red-orange */
-    --risk-critical-foreground: 0.20 0.03 28;
+    /* All brand colors use full oklch() format */
+    --brand-primary: oklch(0.55 0.22 280);
+    --brand-primary-hover: oklch(0.50 0.24 280);
+    --brand-primary-foreground: oklch(0.95 0.02 280);
 
     /* OKLCH Color System - Phase 2 Implementation */
     /* Surfaces */
@@ -416,29 +398,11 @@
 
     /* Refined accent colors - REMOVED DUPLICATE, using OKLCH definitions above */
 
-    /* risk matrix */
-    --risk-low:       0.85 0.07 140;
-    --risk-medium:    0.83 0.10 95;
-    --risk-high:      0.75 0.13 55;
-    --risk-critical:  0.70 0.16 30;
-
-    /* gradient stops */
-    --gradient-primary: 0.78 0.10 250;
-    --gradient-primary-hover: 0.72 0.12 260;
-
-    /* foreground pairing (on-color text) */
-    --on-accent: 0.22 0.03 250;       /* deep slate */
-    --on-risk:   0.18 0.03 250;       /* deep slate */
-
-    /* Gradients must use OKLCH explicitly (don't wrap OKLCH vars in hsl()) */
-    --gradient-primary: linear-gradient(
-      135deg,
-      oklch(var(--gradient-primary)) 0%,
-      oklch(var(--gradient-primary-hover)) 100%
-    );
-    --gradient-secondary: linear-gradient(135deg, oklch(var(--secondary)), oklch(var(--secondary-hover)));
-    --gradient-subtle: linear-gradient(180deg, oklch(var(--background)), oklch(var(--muted) / 0.3));
-    --gradient-glass: linear-gradient(135deg, oklch(var(--background) / 0.8), oklch(var(--background) / 0.4));
+    /* Gradients - use var() directly since variables already contain oklch() */
+    --gradient-primary: linear-gradient(135deg, var(--primary), var(--primary-hover));
+    --gradient-secondary: linear-gradient(135deg, var(--secondary), var(--secondary-hover));
+    --gradient-subtle: linear-gradient(180deg, var(--background), color-mix(in oklch, var(--muted) 30%, transparent));
+    --gradient-glass: linear-gradient(135deg, color-mix(in oklch, var(--background) 80%, transparent), color-mix(in oklch, var(--background) 40%, transparent));
 
     /* Semantic purple variants */
     --purple-primary: var(--primary);
@@ -466,22 +430,23 @@
     --lp-dimmed-light: oklch(0.94 0.00 0);     /* Light gray background */
     
     /* Visual V2 - Enhanced visual hierarchy */
-    --node-glow-on-path: 0 0 12px oklch(var(--lp-primary) / 0.6);
-    --node-glow-shared: 0 0 8px oklch(var(--lp-shared) / 0.4);
-    --node-glow-comparison: 0 0 8px oklch(var(--lp-compare) / 0.4);
+    /* Use color-mix for opacity since vars already contain oklch() */
+    --node-glow-on-path: 0 0 12px color-mix(in oklch, var(--lp-primary) 60%, transparent);
+    --node-glow-shared: 0 0 8px color-mix(in oklch, var(--lp-shared) 40%, transparent);
+    --node-glow-comparison: 0 0 8px color-mix(in oklch, var(--lp-compare) 40%, transparent);
     
-    /* Enhanced edge styling with better contrast */
-    --edge-on-path: oklch(var(--lp-primary));
-    --edge-comparison: oklch(var(--lp-compare));
-    --edge-shared: oklch(var(--lp-shared));
-    --edge-related: oklch(var(--muted-foreground) / 0.6);
-    --edge-off-path: oklch(var(--muted-foreground) / 0.25);
+    /* Enhanced edge styling with better contrast - use var() directly */
+    --edge-on-path: var(--lp-primary);
+    --edge-comparison: var(--lp-compare);
+    --edge-shared: var(--lp-shared);
+    --edge-related: color-mix(in oklch, var(--muted-foreground) 60%, transparent);
+    --edge-off-path: color-mix(in oklch, var(--muted-foreground) 25%, transparent);
     
-    /* Course completion status colors */
-    --status-complete: oklch(var(--lp-shared));     /* Green for completed */
-    --status-in-progress: oklch(0.75 0.12 60);      /* Yellow for in-progress */
-    --status-prerequisite: oklch(0.70 0.10 220);    /* Blue for prerequisite */
-    --status-locked: oklch(var(--lp-dimmed));       /* Gray for locked */
+    /* Course completion status colors - use var() directly */
+    --status-complete: var(--lp-shared);
+    --status-in-progress: oklch(0.75 0.12 60);
+    --status-prerequisite: oklch(0.70 0.10 220);
+    --status-locked: var(--lp-dimmed);
 
     /* Spacing Scale */
     --space-1: 0.25rem;
@@ -506,21 +471,15 @@
     
     --lp-blue-50: oklch(0.97 0.02 250);      /* Light blue background */
     --lp-blue-200: oklch(0.86 0.08 250);     /* Blue border */
-    --sidebar-background: 0 0% 98%;
-
-    --sidebar-foreground: 240 5.3% 26.1%;
-
-    --sidebar-primary: 240 5.9% 10%;
-
-    --sidebar-primary-foreground: 0 0% 98%;
-
-    --sidebar-accent: 240 4.8% 95.9%;
-
-    --sidebar-accent-foreground: 240 5.9% 10%;
-
-    --sidebar-border: 220 13% 91%;
-
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    /* Sidebar - full oklch format */
+    --sidebar-background: oklch(0.98 0.00 0);
+    --sidebar-foreground: oklch(0.30 0.02 250);
+    --sidebar-primary: oklch(0.15 0.02 250);
+    --sidebar-primary-foreground: oklch(0.98 0.00 0);
+    --sidebar-accent: oklch(0.96 0.01 250);
+    --sidebar-accent-foreground: oklch(0.15 0.02 250);
+    --sidebar-border: oklch(0.90 0.01 250);
+    --sidebar-ring: oklch(0.60 0.20 230);
   }
 
   .dark {
@@ -618,8 +577,8 @@
     /* Dark mode gradients - use var() directly, variables already contain oklch() */
     --gradient-primary: linear-gradient(135deg, var(--primary), var(--primary-hover));
     --gradient-secondary: linear-gradient(135deg, var(--secondary), var(--secondary-hover));
-    --gradient-subtle: linear-gradient(180deg, oklch(var(--background)), oklch(var(--muted) / 0.5));
-    --gradient-glass: linear-gradient(135deg, oklch(var(--background) / 0.95), oklch(var(--background) / 0.8));
+    --gradient-subtle: linear-gradient(180deg, var(--background), color-mix(in oklch, var(--muted) 50%, transparent));
+    --gradient-glass: linear-gradient(135deg, color-mix(in oklch, var(--background) 95%, transparent), color-mix(in oklch, var(--background) 80%, transparent));
 
     /* Dark mode semantic purple variants */
     --purple-primary: var(--primary);
@@ -629,20 +588,22 @@
     --purple-muted: 262 20% 15%;
     --purple-muted-foreground: 262 20% 70%;
     
-    /* Visual V2 - Life Path Graph Hierarchy (Dark Mode) - Fixed: Use OKLCH directly */
-    --node-glow-on-path: 0 0 12px oklch(var(--primary) / 0.6);
-    --node-glow-related: 0 0 6px oklch(var(--secondary) / 0.4);
-    --edge-on-path: oklch(var(--primary));
-    --edge-related: oklch(var(--muted-foreground) / 0.6);
-    --edge-off-path: oklch(var(--muted-foreground) / 0.25);
-    --sidebar-background: 240 5.9% 8%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 20%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 22%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    /* Visual V2 - Life Path Graph Hierarchy (Dark Mode) - use var() directly */
+    --node-glow-on-path: 0 0 12px color-mix(in oklch, var(--primary) 60%, transparent);
+    --node-glow-related: 0 0 6px color-mix(in oklch, var(--secondary) 40%, transparent);
+    --edge-on-path: var(--primary);
+    --edge-related: color-mix(in oklch, var(--muted-foreground) 60%, transparent);
+    --edge-off-path: color-mix(in oklch, var(--muted-foreground) 25%, transparent);
+    
+    /* Sidebar - Dark mode full oklch format */
+    --sidebar-background: oklch(0.12 0.02 250);
+    --sidebar-foreground: oklch(0.96 0.01 250);
+    --sidebar-primary: oklch(0.55 0.18 230);
+    --sidebar-primary-foreground: oklch(0.99 0.00 0);
+    --sidebar-accent: oklch(0.22 0.01 250);
+    --sidebar-accent-foreground: oklch(0.96 0.01 250);
+    --sidebar-border: oklch(0.25 0.01 250);
+    --sidebar-ring: oklch(0.60 0.20 230);
 
     /* Status colors for dark mode - OKLCH format (no hsl() wrapper needed) */
     --lp-green-50: oklch(0.32 0.05 145);     /* Dark green background */

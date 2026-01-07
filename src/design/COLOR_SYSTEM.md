@@ -4,28 +4,28 @@ This project uses **OKLCH** (Oklch Lightness Chroma Hue) as the primary color fo
 
 ---
 
-## ⚠️ Critical Rule: Never Wrap CSS Variables in `hsl()`
+## ⚠️ Critical Rule: Never Wrap CSS Variables
 
-Our CSS variables in `index.css` contain **full OKLCH color values**, not raw HSL triplets.
+**All CSS variables contain COMPLETE `oklch()` values.** Never wrap them in `hsl()` or `oklch()`.
 
 ```css
-/* ✅ Variables contain COMPLETE color values */
+/* Variables already contain the full color value */
 --primary: oklch(0.55 0.22 280);
 --background: oklch(0.99 0.00 0);
 --border: oklch(0.80 0.01 250);
 ```
 
-### ❌ WRONG - Creates Invalid CSS
+### ❌ WRONG - Double-wrapping breaks colors
 ```tsx
-// This creates: hsl(oklch(0.55 0.22 280)) - BROKEN!
-background: 'hsl(var(--primary))'
+// Creates invalid CSS like oklch(oklch(...)) or hsl(oklch(...))
+background: 'oklch(var(--primary))'  // BROKEN!
+background: 'hsl(var(--primary))'    // BROKEN!
 border: '1px solid hsl(var(--border))'
-filter: 'drop-shadow(0 0 2em hsl(var(--primary) / 0.5))'
 ```
 
 ### ✅ CORRECT - Use Variables Directly
 ```tsx
-// Direct usage - variables already contain valid colors
+// Direct usage - variables ARE valid colors
 background: 'var(--primary)'
 border: '1px solid var(--border)'
 color: 'var(--foreground)'
@@ -35,11 +35,11 @@ color: 'var(--foreground)'
 
 ## Using Colors with Opacity
 
-Since OKLCH values can't use the `/opacity` shorthand, use `color-mix()`:
+Use `color-mix()` for transparency:
 
 ### ❌ WRONG
 ```css
-background: hsl(var(--primary) / 0.5);
+background: oklch(var(--primary) / 0.5);  /* Invalid - var already contains oklch() */
 box-shadow: 0 4px 12px hsl(var(--foreground) / 0.1);
 ```
 
@@ -63,37 +63,40 @@ box-shadow: 0 4px 12px color-mix(in oklch, var(--foreground) 10%, transparent);
 
 ---
 
-## All Variables Use OKLCH
+## All Variables Use Full OKLCH
 
-All CSS variables in this project—including the `--lp-*` status colors—now use **full OKLCH values**. There are no longer any HSL triplet exceptions:
+Every CSS variable contains a complete `oklch()` value - no exceptions:
 
 ```css
-/* All variables contain complete OKLCH color values */
+/* All variables are complete color values */
+--primary: oklch(0.55 0.22 280);
 --lp-green-50: oklch(0.97 0.03 145);
---lp-red-50: oklch(0.97 0.02 25);
---lp-blue-50: oklch(0.97 0.02 250);
+--brand-primary: oklch(0.55 0.22 280);
+--accent-cyan: oklch(0.75 0.15 200);
 ```
 
-Use them directly without any wrapper:
+Use them directly:
 ```tsx
 className="bg-[var(--lp-green-50)]"
+style={{ backgroundColor: 'var(--primary)' }}
 ```
 
 ---
 
 ## Tailwind Classes
 
-Tailwind handles the color format automatically. Use semantic tokens:
+Tailwind handles OKLCH colors automatically:
 
 ```tsx
 // ✅ CORRECT - Tailwind classes
 className="bg-primary text-foreground border-border"
 className="bg-primary/50"  // Tailwind handles opacity
 
-// ❌ AVOID - Arbitrary values with hsl()
-className="bg-[hsl(var(--primary))]"  // BROKEN!
+// ❌ WRONG - Don't use arbitrary values with wrappers
+className="bg-[oklch(var(--primary))]"  // BROKEN!
+className="bg-[hsl(var(--primary))]"    // BROKEN!
 
-// ✅ OK - Arbitrary values with var()
+// ✅ OK - Arbitrary values with var() directly
 className="bg-[var(--primary)]"
 ```
 
@@ -101,10 +104,9 @@ className="bg-[var(--primary)]"
 
 ## Chart Libraries (Recharts, etc.)
 
-For SVG-based charts, CSS variables work directly:
+CSS variables work directly in SVG:
 
 ```tsx
-// ✅ CORRECT
 <Line stroke="var(--primary)" />
 <Bar fill="var(--destructive)" />
 <Area fill="var(--success)" fillOpacity={0.3} />
@@ -114,19 +116,20 @@ For SVG-based charts, CSS variables work directly:
 
 ## Summary
 
-1. **Never** use `hsl(var(--xxx))` for semantic tokens
+1. **Never** wrap variables in `hsl()` or `oklch()` - they already contain full values
 2. **Always** use `var(--xxx)` directly for solid colors
-3. **Use** `color-mix(in oklch, ...)` for opacity
-4. **Exception**: `--lp-*` variables need `hsl()` wrapper
-5. **Tailwind** classes handle everything automatically
+3. **Use** `color-mix(in oklch, var(--xxx) %, transparent)` for opacity
+4. **Tailwind** classes handle everything automatically
 
 ---
 
 ## Audit Command
 
-To find violations, search for this pattern:
+Find violations:
 ```bash
+# Find hsl() wrapping (always wrong)
 grep -r "hsl(var(--" src/ --include="*.tsx" --include="*.ts" --include="*.css"
-```
 
-Exclude false positives for `--lp-*` variables which legitimately need `hsl()`.
+# Find oklch() wrapping (wrong if variable already contains oklch)
+grep -r "oklch(var(--" src/ --include="*.tsx" --include="*.ts" --include="*.css"
+```
