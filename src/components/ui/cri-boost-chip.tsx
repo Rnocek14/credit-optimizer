@@ -31,8 +31,8 @@ export function CRIBoostChip({
 
   const getBoostColor = (percentage: number) => {
     if (percentage >= 30) return 'var(--destructive)'; // Red for high boost
-    if (percentage >= 15) return 'oklch(0.70 0.15 50)'; // Orange for medium boost
-    return 'oklch(0.85 0.15 85)'; // Yellow for low boost
+    if (percentage >= 15) return 'var(--warning)'; // Orange for medium boost
+    return 'var(--accent-gold)'; // Yellow for low boost
   };
 
   const boostColor = getBoostColor(boostPercentage);

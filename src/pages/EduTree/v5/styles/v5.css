@@ -20,7 +20,7 @@
 }
 
 .year-card:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 12px color-mix(in oklch, var(--foreground) 10%, transparent);
 }
 
 .year-card.collapsed {
@@ -38,10 +38,10 @@
 
 @keyframes subtle-pulse {
   0%, 100% { 
-    box-shadow: 0 0 20px rgba(34, 197, 94, 0.12);
+    box-shadow: 0 0 20px color-mix(in oklch, var(--success) 12%, transparent);
   }
   50% { 
-    box-shadow: 0 0 25px rgba(34, 197, 94, 0.18);
+    box-shadow: 0 0 25px color-mix(in oklch, var(--success) 18%, transparent);
   }
 }
 
@@ -90,7 +90,7 @@
 }
 
 .degree-node:hover {
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 6px 20px color-mix(in oklch, var(--foreground) 12%, transparent);
 }
 
 .degree-node:active {
