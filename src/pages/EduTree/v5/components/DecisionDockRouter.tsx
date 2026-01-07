@@ -771,11 +771,11 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
             "z-[110] fixed inset-x-0 bottom-0 mt-24 flex flex-col",
             "min-h-[148px] h-[var(--vaul-drawer-height,50vh)]",
             "pointer-events-auto border-t shadow-2xl",
-            "rounded-t-[10px] bg-background"
+            "rounded-t-[10px] bg-card"
           )}
           style={{ 
             backdropFilter: 'blur(8px)',
-            backgroundColor: 'color-mix(in oklch, var(--background) 95%, transparent)',
+            // Use --card which is properly defined as full OKLCH value
             maxHeight: (activeSnapPoint && snapPoints.includes(String(activeSnapPoint)))
               ? activeSnapPoint 
               : getScopedDefaultSnap(),
