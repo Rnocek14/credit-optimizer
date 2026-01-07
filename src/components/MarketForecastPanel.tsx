@@ -209,9 +209,9 @@ export function MarketForecastPanel({ careerPath, location, autoData, autoTrigge
                         <Line 
                           type="monotone" 
                           dataKey="impact" 
-                          stroke="hsl(var(--primary))" 
+                          stroke="var(--primary)" 
                           strokeWidth={3}
-                          dot={{ fill: 'hsl(var(--primary))', strokeWidth: 2, r: 6 }}
+                          dot={{ fill: 'var(--primary)', strokeWidth: 2, r: 6 }}
                         />
                       </LineChart>
                     </ResponsiveContainer>

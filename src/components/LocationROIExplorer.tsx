@@ -559,7 +559,7 @@ export const LocationROIExplorer: React.FC<LocationROIExplorerProps> = ({
                           
                           const fillColor = locationData 
                             ? getColorByMetric(metricValue, mapMetric, maxMetricValue)
-                            : "hsl(var(--muted))";
+                            : "var(--muted)";
                           
                           const isSelected = selectedLocation === locationData?.value;
                           const isHovered = hoveredLocation === locationData?.value;
@@ -570,7 +570,7 @@ export const LocationROIExplorer: React.FC<LocationROIExplorerProps> = ({
                               key={geo.rsmKey}
                               geography={geo}
                               fill={fillColor}
-                              stroke={isSelected ? "hsl(var(--primary))" : "hsl(var(--border))"}
+                              stroke={isSelected ? "var(--primary)" : "var(--border)"}
                               strokeWidth={isSelected ? 2 : 0.5}
                               style={{
                                 default: { 
@@ -621,7 +621,7 @@ export const LocationROIExplorer: React.FC<LocationROIExplorerProps> = ({
                           
                           const fillColor = locationData 
                             ? getColorByMetric(metricValue, mapMetric, maxMetricValue)
-                            : "hsl(var(--muted))";
+                            : "var(--muted)";
                           
                           const isSelected = selectedLocation === locationData?.value;
                           const isHovered = hoveredLocation === locationData?.value;
@@ -631,7 +631,7 @@ export const LocationROIExplorer: React.FC<LocationROIExplorerProps> = ({
                               key={geo.rsmKey}
                               geography={geo}
                               fill={fillColor}
-                              stroke={isSelected ? "hsl(var(--primary))" : "hsl(var(--border))"}
+                              stroke={isSelected ? "var(--primary)" : "var(--border)"}
                               strokeWidth={isSelected ? 2 : 0.5}
                               style={{
                                 default: { outline: "none" },
@@ -685,7 +685,7 @@ export const LocationROIExplorer: React.FC<LocationROIExplorerProps> = ({
                           <circle
                             r={isSelected ? 8 : 6}
                             fill={getColorByMetric(metricValue, mapMetric, maxMetricValue)}
-                            stroke={isSelected ? "hsl(var(--primary))" : "hsl(var(--background))"}
+                            stroke={isSelected ? "var(--primary)" : "var(--background)"}
                             strokeWidth={2}
                             style={{
                               cursor: "pointer",
@@ -697,7 +697,7 @@ export const LocationROIExplorer: React.FC<LocationROIExplorerProps> = ({
                             y={-12}
                             style={{
                               fontSize: "12px",
-                              fill: "hsl(var(--foreground))",
+                              fill: "var(--foreground)",
                               fontWeight: isSelected ? "bold" : "normal",
                               pointerEvents: "none"
                             }}
@@ -723,7 +723,7 @@ export const LocationROIExplorer: React.FC<LocationROIExplorerProps> = ({
                           mapMetric,
                           maxMetricValue
                         )}
-                        stroke={selectedLocation === 'remote' ? "hsl(var(--primary))" : "hsl(var(--background))"}
+                        stroke={selectedLocation === 'remote' ? "var(--primary)" : "var(--background)"}
                         strokeWidth={2}
                         style={{
                           cursor: "pointer",
@@ -735,7 +735,7 @@ export const LocationROIExplorer: React.FC<LocationROIExplorerProps> = ({
                         y={4}
                         style={{
                           fontSize: "14px",
-                          fill: "hsl(var(--background))",
+                          fill: "var(--background)",
                           fontWeight: "bold",
                           pointerEvents: "none"
                         }}

@@ -273,9 +273,9 @@ function GraphViewInner({ open, onOpenChange }: GraphViewProps) {
               <MiniMap 
                 nodeColor={(node) => {
                   const data = node.data as any;
-                  if (!data.isInBasket) return 'hsl(var(--muted))';
-                  if (data.status === 'pinned') return 'hsl(var(--primary))';
-                  return 'hsl(var(--secondary))';
+                  if (!data.isInBasket) return 'var(--muted)';
+                  if (data.status === 'pinned') return 'var(--primary)';
+                  return 'var(--secondary)';
                 }}
                 className="bg-background border border-border"
               />

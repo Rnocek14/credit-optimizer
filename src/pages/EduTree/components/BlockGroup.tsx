@@ -143,7 +143,7 @@ export const BlockGroup: React.FC<NodeProps> = (props: NodeProps) => {
               value={progressPercent} 
               className={`h-3 ${isDegreeNode ? 'bg-accent-gold/20' : ''}`}
               style={isDegreeNode ? {
-                background: 'hsl(var(--accent-gold) / 0.2)'
+                background: 'color-mix(in oklch, var(--accent-gold) 20%, transparent)'
               } : {}}
             />
           </div>

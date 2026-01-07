@@ -1,10 +1,11 @@
 import { Document, Page, Text, View, StyleSheet, Font } from '@react-pdf/renderer';
 
 // Define styles for the PDF
+// Note: react-pdf doesn't support CSS variables, so we use static colors
 const styles = StyleSheet.create({
   page: {
     padding: 40,
-    backgroundColor: 'hsl(var(--background))',
+    backgroundColor: '#fafafa',
     fontFamily: 'Helvetica',
   },
   header: {
@@ -14,13 +15,13 @@ const styles = StyleSheet.create({
   logo: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: 'hsl(var(--primary))',
+    color: '#7c3aed', // primary purple
     marginBottom: 10,
   },
   certificateTitle: {
     fontSize: 36,
     fontWeight: 'bold',
-    color: 'hsl(var(--muted-foreground))',
+    color: '#64748b', // muted-foreground
     marginBottom: 20,
     textAlign: 'center',
   },

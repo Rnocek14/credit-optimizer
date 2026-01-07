@@ -164,18 +164,18 @@ export const EnhancedSkillTreeCanvas: React.FC<EnhancedSkillTreeCanvasProps> = (
   // Category color mapping using design tokens
   const getCategoryColor = useCallback((category: string) => {
     const colors: Record<string, string> = {
-      Programming: 'hsl(var(--primary))',
-      Framework: 'hsl(var(--warning))', 
-      Backend: 'hsl(var(--success))',
-      Design: 'hsl(var(--accent))',
-      API: 'hsl(var(--primary))',
-      Cloud: 'hsl(var(--info))',
-      DevOps: 'hsl(var(--warning))',
-      Quality: 'hsl(var(--success))',
-      Styling: 'hsl(var(--destructive))',
-      Markup: 'hsl(var(--warning))'
+      Programming: 'var(--primary)',
+      Framework: 'var(--warning)', 
+      Backend: 'var(--success)',
+      Design: 'var(--accent)',
+      API: 'var(--primary)',
+      Cloud: 'var(--info)',
+      DevOps: 'var(--warning)',
+      Quality: 'var(--success)',
+      Styling: 'var(--destructive)',
+      Markup: 'var(--warning)'
     };
-    return colors[category] || 'hsl(var(--muted-foreground))';
+    return colors[category] || 'var(--muted-foreground)';
   }, []);
 
   const focusOnSkill = useCallback((skillId: string) => {
