@@ -69,18 +69,20 @@ serve(async (req) => {
     // STEP 2: Seed institution_credit_limits (11 policies)
     // ============================================================
     console.log('[optimizer-seed-tesu] Step 2: Seeding institution_credit_limits...');
+    // NOTE: Policy values verified from src/lib/degree/institutionPolicies.ts (single source of truth)
+    // TESU uses a COMBINED 90-credit noncollegiate pool - NO fake per-provider caps
     const creditLimits = [
       { institution_id: tesuId, limit_type: 'total_credits', credit_value: 120, provider_code: null, notes: 'Standard bachelor degree requirement' },
-      { institution_id: tesuId, limit_type: 'min_residency', credit_value: 15, provider_code: null, notes: 'Can be satisfied with cornerstone + capstone + 9 other credits' },
-      { institution_id: tesuId, limit_type: 'upper_division_min', credit_value: 30, provider_code: null, notes: 'Minimum 300/400 level credits required' },
-      { institution_id: tesuId, limit_type: 'total_transfer', credit_value: 113, provider_code: null, notes: 'Max credits that can transfer (120 - 15 residency + waivers)' },
-      { institution_id: tesuId, limit_type: 'alt_credit_max', credit_value: 80, provider_code: null, notes: 'Max ACE/NCCRS alternative credits combined' },
-      { institution_id: tesuId, limit_type: 'min_ra_credit', credit_value: 40, provider_code: null, notes: 'Minimum regionally-accredited credits' },
-      { institution_id: tesuId, limit_type: 'clep_max', credit_value: 40, provider_code: null, notes: 'Maximum CLEP exam credits' },
-      { institution_id: tesuId, limit_type: 'dsst_max', credit_value: 30, provider_code: null, notes: 'Maximum DSST exam credits' },
-      { institution_id: tesuId, limit_type: 'sophia_max', credit_value: 90, provider_code: 'SOPHIA', notes: 'Max Sophia Learning credits' },
-      { institution_id: tesuId, limit_type: 'study_com_max', credit_value: 30, provider_code: 'STUDY_COM', notes: 'Max Study.com credits' },
-      { institution_id: tesuId, limit_type: 'per_provider_max', credit_value: 30, provider_code: 'STRAIGHTERLINE', notes: 'Max StraighterLine credits' },
+      { institution_id: tesuId, limit_type: 'min_residency', credit_value: 15, provider_code: null, notes: 'VERIFIED: 15 credits for standard path (SOS-1100 + Capstone + 9 elective credits)' },
+      { institution_id: tesuId, limit_type: 'upper_division_area_of_study_min', credit_value: 18, provider_code: null, notes: 'VERIFIED: 18 credits upper-division in area of study' },
+      { institution_id: tesuId, limit_type: 'total_transfer', credit_value: 105, provider_code: null, notes: 'Max credits that can transfer (120 - 15 residency)' },
+      { institution_id: tesuId, limit_type: 'noncollegiate_pool_max', credit_value: 90, provider_code: null, notes: 'VERIFIED: COMBINED 90-credit cap for all noncollegiate (ACE, NCCRS, CLEP, DSST, Sophia, Study.com, etc.)' },
+      { institution_id: tesuId, limit_type: 'noncollegiate_pool_associate_max', credit_value: 45, provider_code: null, notes: 'VERIFIED: COMBINED 45-credit cap for associate degree' },
+      // DEPRECATED: These per-provider caps are FAKE and should NOT be used
+      // TESU does NOT have individual caps for CLEP, DSST, Sophia, Study.com - only a combined pool
+      // Keeping these marked as deprecated for backward compatibility with old DB consumers
+      { institution_id: tesuId, limit_type: 'clep_max_deprecated', credit_value: null, provider_code: null, notes: 'DEPRECATED: TESU has no per-provider CLEP cap - use combined pool' },
+      { institution_id: tesuId, limit_type: 'dsst_max_deprecated', credit_value: null, provider_code: null, notes: 'DEPRECATED: TESU has no per-provider DSST cap - use combined pool' },
     ];
 
     const { error: limitsError } = await supabase
