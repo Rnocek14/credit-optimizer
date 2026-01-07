@@ -369,50 +369,99 @@ export const usePlanBasket = create<PlanBasketState>()(
         }
         
         const items: BasketItem[] = [];
+        let totalCreditsAdded = 0;
         
         // Hydrate basket from template structure
         for (const yearTemplate of template.yearTemplates) {
           if (!yearTemplate.moduleTemplates) continue;
           
           for (const moduleTemplate of yearTemplate.moduleTemplates) {
-            const { moduleId, options, recommendedCourseId } = moduleTemplate;
+            const { moduleId, options, recommendedCourseId, creditsRequired } = moduleTemplate;
             
-            // Pick the recommended course or first option
-            const selectedOption = recommendedCourseId
-              ? options.find(opt => opt.courseId === recommendedCourseId)
-              : options[0];
+            if (!options || options.length === 0) continue;
             
-            if (!selectedOption) continue;
+            // Phase 1 Fix: Select MULTIPLE courses to fill module's creditsRequired
+            // Instead of just picking one recommended course
+            const targetCredits = creditsRequired ?? 3; // Default to 3 if not specified
+            let creditsSelected = 0;
+            const selectedCourses: typeof options = [];
             
-            // Create basket item from template option
-            items.push({
-              moduleId,
-              requirementArea: moduleId, // Store requirement area for cross-compatibility
-              courseId: selectedOption.courseId,
-              title: selectedOption.title,
-              credits: selectedOption.credits,
-              cost_usd: selectedOption.cost_usd ?? null,
-              duration_weeks: selectedOption.duration_weeks ?? null,
-              workload_weekly_hours: selectedOption.workload_weekly_hours ?? (selectedOption.credits * 3),
-              cri_score: selectedOption.cri_score ?? 0,
-              status: 'auto-filled',
-              providerType: selectedOption.providerType,
-              providerCode: selectedOption.providerCode,
-              level: selectedOption.level,
-              source: {
-                type: 'template',
-                templateId: template.id,
-                templateVersion: 1,
-                templateLabel: template.label || template.optimization,
-              },
-            });
+            // First, try to add the recommended course
+            if (recommendedCourseId) {
+              const recommended = options.find(opt => opt.courseId === recommendedCourseId);
+              if (recommended) {
+                selectedCourses.push(recommended);
+                creditsSelected += recommended.credits;
+              }
+            }
+            
+            // If we still need more credits, select additional courses
+            if (creditsSelected < targetCredits) {
+              // Sort remaining options by CRI score (quality) to pick best ones
+              const remainingOptions = options
+                .filter(opt => !selectedCourses.some(s => s.courseId === opt.courseId))
+                .sort((a, b) => (b.cri_score ?? 0) - (a.cri_score ?? 0));
+              
+              for (const opt of remainingOptions) {
+                if (creditsSelected >= targetCredits) break;
+                selectedCourses.push(opt);
+                creditsSelected += opt.credits;
+              }
+            }
+            
+            // Create basket items from all selected courses
+            for (const selectedOption of selectedCourses) {
+              items.push({
+                moduleId,
+                requirementArea: moduleId, // Store requirement area for cross-compatibility
+                courseId: selectedOption.courseId,
+                title: selectedOption.title,
+                credits: selectedOption.credits,
+                cost_usd: selectedOption.cost_usd ?? null,
+                duration_weeks: selectedOption.duration_weeks ?? null,
+                workload_weekly_hours: selectedOption.workload_weekly_hours ?? (selectedOption.credits * 3),
+                cri_score: selectedOption.cri_score ?? 0,
+                status: 'auto-filled',
+                providerType: selectedOption.providerType,
+                providerCode: selectedOption.providerCode,
+                level: selectedOption.level,
+                source: {
+                  type: 'template',
+                  templateId: template.id,
+                  templateVersion: 1,
+                  templateLabel: template.label || template.optimization,
+                },
+              });
+              totalCreditsAdded += selectedOption.credits;
+            }
+            
+            // Log if module couldn't be fully filled
+            if (creditsSelected < targetCredits) {
+              console.warn('[usePlanBasket] ⚠️ Module not fully filled:', {
+                moduleId,
+                targetCredits,
+                creditsSelected,
+                optionsAvailable: options.length,
+              });
+            }
           }
+        }
+        
+        // Validate total credits
+        const REQUIRED_CREDITS = 120;
+        if (totalCreditsAdded < REQUIRED_CREDITS) {
+          console.warn('[usePlanBasket] ⚠️ Template does not meet 120 credit requirement:', {
+            templateId: template.id,
+            totalCredits: totalCreditsAdded,
+            shortfall: REQUIRED_CREDITS - totalCreditsAdded,
+          });
         }
         
         console.log('[usePlanBasket] Template hydrated:', {
           templateId: template.id,
           itemsCreated: items.length,
-          totalCredits: items.reduce((sum, i) => sum + i.credits, 0),
+          totalCredits: totalCreditsAdded,
+          meetsRequirement: totalCreditsAdded >= REQUIRED_CREDITS,
         });
         
         // Replace basket with template items
@@ -442,6 +491,7 @@ export const usePlanBasket = create<PlanBasketState>()(
           complexity: {
             templateId: template.id,
             itemsCount: items.length,
+            totalCredits: totalCreditsAdded,
             programId: template.programId,
             optimization: template.optimization,
           },
