@@ -141,21 +141,43 @@ export function useMarketplaceSeeder() {
         active: c.active,
       })).filter(c => c.provider_id); // Only courses with valid provider_id
       
-      // Use upsert with ignoreDuplicates to handle both unique constraints
-      // (code unique + provider_id+title unique)
-      const { error: courseError } = await supabase
+      // Check existing courses by BOTH unique constraints (code AND provider_id+title)
+      const { data: existingCourses } = await supabase
         .from('marketplace_courses')
-        .upsert(coursesWithProviderIds, { 
-          onConflict: 'code',
-          ignoreDuplicates: true
-        });
-      
-      if (courseError) throw new Error(`Course insert error: ${courseError.message}`);
-      
+        .select('code, provider_id, title');
+
+      // Create sets for both constraint checks
+      const existingCourseCodes = new Set(existingCourses?.map(c => c.code) || []);
+      const existingProviderTitles = new Set(
+        existingCourses?.map(c => `${c.provider_id}::${c.title}`) || []
+      );
+
+      // Filter out courses that violate EITHER constraint
+      const coursesToInsert = coursesWithProviderIds.filter(c => {
+        const codeExists = existingCourseCodes.has(c.code);
+        const providerTitleExists = existingProviderTitles.has(`${c.provider_id}::${c.title}`);
+        
+        if (codeExists || providerTitleExists) {
+          console.log(`Skipping course: ${c.code} (code exists: ${codeExists}, provider+title exists: ${providerTitleExists})`);
+          return false;
+        }
+        return true;
+      });
+
+      const skippedCount = coursesWithProviderIds.length - coursesToInsert.length;
+
+      if (coursesToInsert.length > 0) {
+        const { error: courseError } = await supabase
+          .from('marketplace_courses')
+          .insert(coursesToInsert);
+        
+        if (courseError) throw new Error(`Course insert error: ${courseError.message}`);
+      }
+
       setProgress(p => ({
         ...p,
-        coursesInserted: coursesWithProviderIds.length,
-        coursesSkipped: 0,
+        coursesInserted: coursesToInsert.length,
+        coursesSkipped: skippedCount,
         phase: 'options',
       }));
 
