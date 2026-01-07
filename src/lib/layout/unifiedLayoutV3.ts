@@ -291,10 +291,13 @@ function routeEdges(graph: Graph, opts: LayoutOptions = {}) {
 }
 
 // --------------------------- Credit Edge Decoration -------------------------------
-const INSTITUTION_POLICY = {
-  TESU: { aceLimit: 60, nccrsLimit: 40, clepLimit: 30 },
-  SNHU: { aceLimit: 45, nccrsLimit: 30, clepLimit: 24 },
-  WGU: { aceLimit: 36, nccrsLimit: 24, clepLimit: 18 },
+// NOTE: Policy values now come from src/lib/degree/institutionPolicies.ts (single source of truth)
+// This legacy constant is DEPRECATED - use getPolicyOrDefault() instead
+// Kept temporarily for backward compatibility with decorateCreditEdges
+const INSTITUTION_POLICY_LEGACY = {
+  TESU: { aceLimit: 90, nccrsLimit: 90, clepLimit: 90 }, // Combined pool, no per-provider caps
+  SNHU: { aceLimit: 90, nccrsLimit: 90, clepLimit: 90 },
+  WGU: { aceLimit: 78, nccrsLimit: 78, clepLimit: 78 },
 } as const;
 
 function decorateCreditEdges(graph: Graph) {
@@ -305,7 +308,7 @@ function decorateCreditEdges(graph: Graph) {
     
     if (edge.credit) {
       const { source, units, institution } = edge.credit;
-      const policy = institution ? INSTITUTION_POLICY[institution as keyof typeof INSTITUTION_POLICY] : null;
+      const policy = institution ? INSTITUTION_POLICY_LEGACY[institution as keyof typeof INSTITUTION_POLICY_LEGACY] : null;
       
       let tone: 'success' | 'warn' | 'alert' = 'success';
       let text = `${source}`;
