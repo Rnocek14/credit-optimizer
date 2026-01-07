@@ -1,6 +1,15 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
+// ============ LEGACY TYPES (from src/state/planStore.ts) ============
+export interface CourseLite {
+  id?: string;
+  title: string;
+  provider?: string;
+  url?: string;
+}
+
+// ============ V5 TYPES ============
 type Selection = Record<string, { // requirementId -> selected courseIds
   selected: string[]
   selectedCredits: number
@@ -14,23 +23,35 @@ type SemesterState = Record<string, { // semesterId -> placed courses
 }>
 
 type Actions = {
+  // V5 actions
   toggleCourse: (requirementId: string, courseId: string, courseCredits: number, maxCredits: number) => void
   clearRequirement: (requirementId: string) => void
   clearAll: () => void
   addCourseToSemester: (semesterId: string, courseId: string, credits: number) => void
   removeCourseFromSemester: (semesterId: string, courseId: string) => void
   clearYear: (year: number) => void
+  // Legacy actions (from src/state/planStore.ts)
+  addCourseToPlan: (course: CourseLite) => void
+  clear: () => void
 }
 
 type State = {
+  // V5 state
   selections: Selection
   semesters: SemesterState
+  // Legacy state (from src/state/planStore.ts)
+  addedCourses: CourseLite[]
 } & Actions
 
 export const usePlanStore = create<State>()(persist(
   (set, get) => ({
+    // V5 state
     selections: {},
     semesters: {},
+    // Legacy state
+    addedCourses: [],
+    
+    // V5 actions
     toggleCourse: (reqId, courseId, courseCredits, maxCredits) => {
       const s = structuredClone(get().selections)
       const entry = s[reqId] ?? { selected: [], selectedCredits: 0 }
@@ -59,7 +80,7 @@ export const usePlanStore = create<State>()(persist(
       set({ selections: s })
     },
     clearAll: () => {
-      set({ selections: {}, semesters: {} })
+      set({ selections: {}, semesters: {}, addedCourses: [] })
     },
     addCourseToSemester: (semesterId, courseId, credits) => {
       const semesters = structuredClone(get().semesters)
@@ -103,6 +124,12 @@ export const usePlanStore = create<State>()(persist(
       
       set({ semesters })
     },
+    
+    // Legacy actions
+    addCourseToPlan: (course) => set((state) => ({ 
+      addedCourses: [course, ...state.addedCourses] 
+    })),
+    clear: () => set({ addedCourses: [] }),
   }),
   { name: 'v5-plan' }
 ))
