@@ -5,6 +5,7 @@ import {
 } from '@/lib/degree/yearNodes';
 import { usePlanBasket } from '@/pages/EduTree/v5/state/usePlanBasket';
 import type { ModuleData } from '@/pages/EduTree/v5/types/v5';
+import { getPolicyOrDefault, getResidencyCredits, getNoncollegiateCap } from '@/lib/degree/institutionPolicies';
 
 /**
  * Hook to compute year-level view models from basket + modules
@@ -26,11 +27,13 @@ export function useYearNodesVM(modules: ModuleData[]) {
       { 1: [], 2: [], 3: [], 4: [] }
     );
 
-    // Get policies from constraints
+    // Get policies from central service
+    const targetSchool = constraints?.target_school || 'TESU';
+    const policy = getPolicyOrDefault(targetSchool);
     const policies = {
-      max_transfer_credits: constraints?.max_ace_credits ?? 90,
-      max_exam_credits: 30,
-      residency_required: 30,
+      max_transfer_credits: getNoncollegiateCap(targetSchool),
+      max_exam_credits: 30, // Legacy field, not used for TESU validation
+      residency_required: getResidencyCredits(targetSchool),
     };
 
     return aggregateAllYears(byYear, items, policies);

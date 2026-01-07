@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { getAnchorPolicy } from '@/pages/EduTree/v5/data/anchorPolicies';
+import { getAnchorPolicy } from '@/lib/degree/institutionPolicies';
 
 /**
  * Fetch Edu-Tree V5 data specifically for career exploration

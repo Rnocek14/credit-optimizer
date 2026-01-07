@@ -1,5 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
-import { getAnchorPolicy } from '@/pages/EduTree/v5/data/anchorPolicies';
+import { getAnchorPolicy } from '@/lib/degree/institutionPolicies';
 
 /**
  * Non-hook helper to fetch V5 data for a specific program + anchor school
