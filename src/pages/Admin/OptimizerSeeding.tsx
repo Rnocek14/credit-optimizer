@@ -16,7 +16,8 @@ import {
   ArrowLeft,
   Info,
   Wifi,
-  WifiOff
+  WifiOff,
+  ArrowRightLeft
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -32,6 +33,7 @@ const EDGE_FUNCTIONS = [
   'optimizer-seed-excelsior',
   'optimizer-seed-wgu',
   'seed-v5-marketplace',
+  'run-seeds',
 ];
 
 export default function OptimizerSeeding() {
@@ -46,6 +48,13 @@ export default function OptimizerSeeding() {
   const coscState = getJobState('seed-cosc');
   const excelsiorState = getJobState('seed-excelsior');
   const wguState = getJobState('seed-wgu');
+  
+  // Transfer rules seeding state
+  const [transferRulesState, setTransferRulesState] = useState<{
+    isRunning: boolean;
+    lastResult: any;
+    error: string | null;
+  }>({ isRunning: false, lastResult: null, error: null });
 
   const checkTables = async () => {
     setIsCheckingTables(true);
@@ -217,6 +226,48 @@ export default function OptimizerSeeding() {
     } catch (err: any) {
       toast({
         title: "Seeding error",
+        description: err.message || "Failed to run seeding job",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Handler for Transfer Rules seeding
+  const handleRunTransferRulesSeed = async () => {
+    setTransferRulesState(prev => ({ ...prev, isRunning: true, error: null }));
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('run-seeds', {
+        body: {}
+      });
+      
+      if (error) {
+        throw new Error(error.message || 'Failed to invoke run-seeds');
+      }
+      
+      if (data?.success) {
+        setTransferRulesState({
+          isRunning: false,
+          lastResult: data,
+          error: null
+        });
+        
+        toast({
+          title: "Transfer rules seeded ✓",
+          description: `${data.stats?.total || 0} rules processed: ${data.stats?.inserted || 0} inserted, ${data.stats?.updated || 0} updated`,
+        });
+      } else {
+        throw new Error(data?.error || 'Seeding returned success=false');
+      }
+    } catch (err: any) {
+      setTransferRulesState(prev => ({
+        ...prev,
+        isRunning: false,
+        error: err.message || 'Unknown error'
+      }));
+      
+      toast({
+        title: "Transfer rules seeding failed",
         description: err.message || "Failed to run seeding job",
         variant: "destructive",
       });
@@ -434,6 +485,79 @@ export default function OptimizerSeeding() {
             onRun={handleRunWguSeed}
             icon={<GraduationCap className="h-5 w-5 text-indigo-600" />}
           />
+        </div>
+        
+        {/* Transfer Rules Section */}
+        <div className="mt-8">
+          <h3 className="text-md font-semibold mb-4 flex items-center gap-2">
+            <ArrowRightLeft className="h-5 w-5" />
+            Transfer Rules (Decentralized Degrees)
+          </h3>
+          
+          <div className="p-6 border rounded-lg bg-card">
+            <div className="flex items-start justify-between">
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-2">
+                  <ArrowRightLeft className="h-5 w-5 text-orange-600" />
+                  <h4 className="font-semibold">Seed Credit Transfer Rules</h4>
+                </div>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Seeds 70+ verified transfer rules for Sophia, Study.com, CLEP → TESU. 
+                  Critical for decentralized degrees - ensures all template courses have verified transfer paths.
+                </p>
+                
+                {transferRulesState.lastResult && (
+                  <div className="mb-4 p-3 bg-muted rounded-lg text-sm">
+                    <div className="flex items-center gap-2 mb-2">
+                      <CheckCircle2 className="h-4 w-4 text-green-600" />
+                      <span className="font-medium">Last Run: {new Date(transferRulesState.lastResult.runAt || Date.now()).toLocaleString()}</span>
+                    </div>
+                    <div className="grid grid-cols-3 gap-4 text-xs">
+                      <div>
+                        <span className="text-muted-foreground">Total:</span>{' '}
+                        <span className="font-mono">{transferRulesState.lastResult.stats?.total || 0}</span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Inserted:</span>{' '}
+                        <span className="font-mono text-green-600">{transferRulesState.lastResult.stats?.inserted || 0}</span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Updated:</span>{' '}
+                        <span className="font-mono text-blue-600">{transferRulesState.lastResult.stats?.updated || 0}</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
+                {transferRulesState.error && (
+                  <Alert variant="destructive" className="mb-4">
+                    <XCircle className="h-4 w-4" />
+                    <AlertDescription className="text-sm">
+                      {transferRulesState.error}
+                    </AlertDescription>
+                  </Alert>
+                )}
+              </div>
+              
+              <Button 
+                onClick={handleRunTransferRulesSeed}
+                disabled={transferRulesState.isRunning}
+                className="ml-4"
+              >
+                {transferRulesState.isRunning ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Seeding...
+                  </>
+                ) : (
+                  <>
+                    <ArrowRightLeft className="mr-2 h-4 w-4" />
+                    Run Seed
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
         </div>
       </div>
 
