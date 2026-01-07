@@ -1,4 +1,4 @@
-// Deployment trigger: 2026-01-07T13:16:00Z - force redeploy
+// Transfer Rules Seeder - Uses anon key with public insert policy
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1';
 
 const corsHeaders = {
@@ -14,17 +14,18 @@ Deno.serve(async (req: Request) => {
 
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    // Use anon key - table has public insert policy
+    const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY');
     
     if (!supabaseUrl || !supabaseKey) {
       console.error('Missing environment variables');
       return new Response(
-        JSON.stringify({ success: false, error: 'Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY' }),
+        JSON.stringify({ success: false, error: 'Missing SUPABASE_URL or SUPABASE_ANON_KEY' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    const supabaseAdmin = createClient(supabaseUrl, supabaseKey, {
+    const supabase = createClient(supabaseUrl, supabaseKey, {
       auth: { persistSession: false }
     });
 
@@ -106,42 +107,60 @@ Deno.serve(async (req: Request) => {
     ];
 
     // Get existing count
-    const { count: beforeCount } = await supabaseAdmin
+    const { count: beforeCount, error: countError } = await supabase
       .from('credit_transfer_rules')
       .select('*', { count: 'exact', head: true });
 
+    if (countError) {
+      console.error('❌ Error checking existing count:', countError);
+      // Continue anyway - table might exist but be empty
+    }
+
     console.log(`📊 Before: ${beforeCount || 0} rules in database`);
 
-    // Simple batch insert - let database handle duplicates
-    const { error: insertError, count: insertedCount } = await supabaseAdmin
-      .from('credit_transfer_rules')
-      .insert(transferRules, { count: 'exact' });
+    // Insert rules one by one to handle upsert-like behavior
+    let inserted = 0;
+    let skipped = 0;
+    const errors: string[] = [];
 
-    if (insertError) {
-      // Check if it's a duplicate key error - that's OK
-      if (insertError.code === '23505') {
-        console.log('ℹ️ Some rules already exist, skipping duplicates');
+    for (const rule of transferRules) {
+      // Check if rule already exists
+      const { data: existing } = await supabase
+        .from('credit_transfer_rules')
+        .select('id')
+        .eq('source_institution', rule.source_institution)
+        .eq('source_course_code', rule.source_course_code)
+        .eq('target_institution', rule.target_institution)
+        .maybeSingle();
+
+      if (existing) {
+        skipped++;
+        continue;
+      }
+
+      // Insert new rule
+      const { error: insertError } = await supabase
+        .from('credit_transfer_rules')
+        .insert(rule);
+
+      if (insertError) {
+        if (insertError.code === '23505') {
+          skipped++;
+        } else {
+          console.error(`❌ Insert error for ${rule.source_course_code}:`, insertError);
+          errors.push(`${rule.source_course_code}: ${insertError.message}`);
+        }
       } else {
-        console.error('❌ Insert error:', insertError);
-        return new Response(
-          JSON.stringify({ 
-            success: false, 
-            error: insertError.message,
-            code: insertError.code 
-          }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
+        inserted++;
       }
     }
 
     // Get final count
-    const { count: afterCount } = await supabaseAdmin
+    const { count: afterCount } = await supabase
       .from('credit_transfer_rules')
       .select('*', { count: 'exact', head: true });
 
-    const inserted = (afterCount || 0) - (beforeCount || 0);
-
-    console.log(`✅ Seed complete: ${inserted} new rules added (${afterCount} total)`);
+    console.log(`✅ Seed complete: ${inserted} new rules added, ${skipped} skipped (${afterCount} total)`);
 
     return new Response(
       JSON.stringify({
@@ -149,10 +168,13 @@ Deno.serve(async (req: Request) => {
         message: `Seeded transfer rules successfully`,
         stats: {
           total: transferRules.length,
-          inserted: inserted,
+          inserted,
+          skipped,
+          errors: errors.length,
           beforeCount: beforeCount || 0,
           afterCount: afterCount || 0
-        }
+        },
+        errors: errors.length > 0 ? errors : undefined
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
