@@ -137,10 +137,7 @@ import { useCircuitBreakerClient } from "./hooks/useCircuitBreakerClient";
 import { initializeCircuitBreaker } from "./lib/edgeFunctionClient";
 import { MobileNavigation } from "./components/MobileNavigation";
 import { useEffect } from "react";
-import EduTree from "./pages/EduTree";
-import EduTreeV2Page from "./pages/EduTree/EduTreeV2Page";
-import EduTreeV3Route from "./pages/EduTree/v3";
-import EduTreeV4Route from "./pages/EduTree/v4";
+// EduTree V5 is the canonical version - legacy versions archived to _archive/
 import EduTreeV5Route from "./pages/EduTree/v5";
 import MarketplacePage from "./pages/EduTree/marketplace/MarketplacePage";
 import { EduTreeError } from "./components/EduTreeError";
@@ -289,51 +286,13 @@ const App = () => {
               </ProtectedRoute>
             } 
           />
-          {/* Education-First Skill Tree */}
-          <Route 
-            path="/edu-tree" 
-            element={
-              <EnhancedErrorBoundary 
-                fallback={<EduTreeError />}
-                onError={(error) => console.error('EduTree error:', error)}
-              >
-                <React.Suspense fallback={<PageLoader message="Loading education tree..." />}>
-                  <EduTree />
-                </React.Suspense>
-              </EnhancedErrorBoundary>
-            }
-          />
-          {/* EduTree V2 - Clean slate implementation */}
-          <Route 
-            path="/edu-tree-v2" 
-            element={<EduTreeV2Page />}
-          />
-          {/* EduTree V3 - Redirect to vertical layout (checkpoints require vertical) */}
-          <Route 
-            path="/edu-tree-v3" 
-            element={<Navigate to="/edu-tree?v3=1&layout=vertical" replace />}
-          />
-          {/* EduTree V3 Vertical Flow - Direct access (Phase 3: No redirect) */}
-          <Route 
-            path="/edu-tree-v3-vertical" 
-            element={<EduTree />}
-          />
-          {/* EduTree V3 Harness - Dev-only Week-1 engine demo */}
-          <Route 
-            path="/edu-tree-v3-harness" 
-            element={<EduTreeV3Route />}
-          />
-          {/* EduTree V4 - Spine-first planner with overlay system */}
-          <Route 
-            path="/edu-tree-v4" 
-            element={
-              <EnhancedErrorBoundary fallback={<EduTreeError />}>
-                <React.Suspense fallback={<PageLoader message="Loading V4 planner..." />}>
-                  <EduTreeV4Route />
-                </React.Suspense>
-              </EnhancedErrorBoundary>
-            }
-          />
+          {/* Legacy EduTree routes - all redirect to V5 */}
+          <Route path="/edu-tree" element={<Navigate to="/edu-tree-v5" replace />} />
+          <Route path="/edu-tree-v2" element={<Navigate to="/edu-tree-v5" replace />} />
+          <Route path="/edu-tree-v3" element={<Navigate to="/edu-tree-v5" replace />} />
+          <Route path="/edu-tree-v3-vertical" element={<Navigate to="/edu-tree-v5" replace />} />
+          <Route path="/edu-tree-v3-harness" element={<Navigate to="/edu-tree-v5" replace />} />
+          <Route path="/edu-tree-v4" element={<Navigate to="/edu-tree-v5" replace />} />
           {/* EduTree V5 - Perfect year spine foundation */}
           <Route 
             path="/edu-tree-v5" 
