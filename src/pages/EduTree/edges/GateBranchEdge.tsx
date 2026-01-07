@@ -24,7 +24,7 @@ const GateBranchEdge = ({
 
   // Determine branch direction for semantic styling  
   const isUpBranch = targetY < sourceY;
-  const branchColor = isUpBranch ? 'hsl(var(--primary))' : 'hsl(var(--secondary))';
+  const branchColor = isUpBranch ? 'var(--primary)' : 'var(--secondary)';
 
   return (
     <BaseEdge

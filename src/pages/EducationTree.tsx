@@ -472,9 +472,9 @@ export default function EducationTree() {
           type: 'smoothstep',
           animated: isHighlighted,
           style: {
-            stroke: isCompleted ? 'hsl(var(--success))' : 
-                   isHighlighted ? 'hsl(var(--primary))' : 
-                   'hsl(var(--muted-foreground)/0.6)',
+            stroke: isCompleted ? 'var(--success)' : 
+                   isHighlighted ? 'var(--primary)' : 
+                   'color-mix(in oklch, var(--muted-foreground) 60%, transparent)',
             strokeWidth: isHighlighted ? 3 : isCompleted ? 2 : 1,
             strokeDasharray: node.creditGate ? '5,5' : undefined
           },
