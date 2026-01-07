@@ -110,12 +110,15 @@ export const accessibilityChecks = {
 };
 
 /**
- * Design token validation
+ * Design token validation - OKLCH system
+ * All CSS variables contain full oklch() values, so use var() directly
  */
 export function validateDesignToken(token: string, value: string): boolean {
-  // Ensure all colors use HSL format
-  if (token.includes('color') && !value.includes('hsl(var(')) {
-    return false;
+  // Reject double-wrapped color patterns (these cause the white outline bug)
+  if (token.includes('color')) {
+    if (value.includes('hsl(var(') || value.includes('oklch(var(')) {
+      return false; // Invalid: double-wrapped
+    }
   }
   
   // Ensure all spacing uses rem or consistent units

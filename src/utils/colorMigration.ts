@@ -121,10 +121,10 @@ export function generateColorMigrationReport(violations: ColorViolation[]): stri
     });
     
     report += '## Recommended Actions\n\n';
-    report += '1. Replace hex colors with semantic tokens: `hsl(var(--primary))`\n';
+    report += '1. Replace hex colors with semantic tokens: `var(--primary)` (do NOT wrap in hsl())\n';
     report += '2. Use semantic Tailwind classes: `text-primary` instead of `text-blue-500`\n';
-    report += '3. Define new semantic tokens in `index.css` if needed\n';
-    report += '4. Run the automated migration tool: `npx migrate-colors`\n';
+    report += '3. For opacity, use: `color-mix(in oklch, var(--primary) 50%, transparent)`\n';
+    report += '4. Define new semantic tokens in `index.css` if needed\n';
   } else {
     report += '✅ No hardcoded color violations found!\n';
   }

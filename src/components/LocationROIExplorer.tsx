@@ -67,18 +67,25 @@ interface SalaryInsightsData {
 const worldGeoUrl = "https://raw.githubusercontent.com/holtzy/D3-graph-gallery/master/DATA/world.geojson";
 const usaStatesGeoUrl = "https://raw.githubusercontent.com/deldersveld/topojson/master/countries/united-states/us-albers-50.json";
 
-// Color scale function for heat map
+// Color scale function for heat map - uses OKLCH for perceptual uniformity
 const getColorByMetric = (value: number, metric: 'roi' | 'colAdjustedRoi' | 'lqi', maxValue: number) => {
   const normalizedValue = Math.min(value / maxValue, 1);
   
+  // OKLCH-based color scale: red (low) -> yellow (mid) -> green (high)
   if (normalizedValue < 0.3) {
-    return `hsl(${10 + normalizedValue / 0.3 * 20}, 70%, ${40 + normalizedValue / 0.3 * 20}%)`;
+    // Red to orange range
+    const l = 0.55 + normalizedValue / 0.3 * 0.15;
+    return `oklch(${l} 0.18 30)`;
   } else if (normalizedValue < 0.7) {
+    // Orange to yellow range
     const intensity = (normalizedValue - 0.3) / 0.4;
-    return `hsl(${30 + intensity * 30}, 70%, ${60 + intensity * 20}%)`;
+    const hue = 30 + intensity * 50;
+    return `oklch(0.75 0.15 ${hue})`;
   } else {
+    // Yellow to green range
     const intensity = (normalizedValue - 0.7) / 0.3;
-    return `hsl(${60 + intensity * 60}, 70%, ${50 + intensity * 20}%)`;
+    const hue = 80 + intensity * 60;
+    return `oklch(0.75 0.12 ${hue})`;
   }
 };
 
