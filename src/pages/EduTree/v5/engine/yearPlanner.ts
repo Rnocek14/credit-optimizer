@@ -55,7 +55,7 @@ export interface SemesterPlan {
 }
 
 export interface Violation {
-  type: 'transfer_cap' | 'residency' | 'upper_division' | 'prerequisite' | 'overload';
+  type: 'transfer_cap' | 'residency' | 'upper_division' | 'prerequisite' | 'overload' | 'total_credits';
   severity: 'error' | 'warning' | 'info';
   message: string;
   affectedCourses: string[];
@@ -436,14 +436,31 @@ export async function buildYearPlan(
 export function validateAnchorPolicies(
   plan: SemesterPlan,
   policy: PartnerPolicy,
-  totals: { aceCredits: number; residencyCredits: number; upperDivisionCredits: number }
+  totals: { aceCredits: number; residencyCredits: number; upperDivisionCredits: number },
+  totalPlanCredits?: number // Optional: pass basket total for 120-credit check
 ): Violation[] {
   console.log('[yearPlanner] validateAnchorPolicies called', {
     policy: policy.partner_name,
     totals,
+    totalPlanCredits,
   });
 
   const warnings: Violation[] = [];
+  
+  // 0. Check total degree credits (120 required for graduation)
+  const REQUIRED_CREDITS = 120;
+  if (totalPlanCredits !== undefined) {
+    const shortfall = REQUIRED_CREDITS - totalPlanCredits;
+    if (totalPlanCredits < REQUIRED_CREDITS) {
+      warnings.push({
+        type: 'total_credits',
+        severity: shortfall > 30 ? 'error' : 'warning',
+        message: `Plan has ${totalPlanCredits}/${REQUIRED_CREDITS} credits required for graduation`,
+        affectedCourses: [],
+        suggestedFix: `Add ${shortfall} more credits to complete your degree`,
+      });
+    }
+  }
 
   // 1. Check transfer cap (with safety margin)
   if (totals.aceCredits > policy.max_alt_credits) {
@@ -478,8 +495,8 @@ export function validateAnchorPolicies(
     });
   }
 
-  // 3. Check upper-division requirement
-  if (totals.upperDivisionCredits < policy.upper_division_min) {
+  // 3. Check upper-division requirement (skip if policy doesn't require it)
+  if (policy.upper_division_min > 0 && totals.upperDivisionCredits < policy.upper_division_min) {
     const shortfall = policy.upper_division_min - totals.upperDivisionCredits;
     warnings.push({
       type: 'upper_division',

@@ -82,20 +82,32 @@ export function ModuleCard({
   
   // Phase 3: Dual filtering - match basket items by EITHER moduleId OR requirementArea
   // This allows template items (with requirement-based IDs) to show in structured modules
-  const basketItems = basket.filter(item => {
-    // Direct ID match (structured: "y1-fall-gened-humanities" or template: "WRITTEN_COMM")
-    if (item.moduleId === id) return true;
+  // Phase 4 Fix: Deduplicate to prevent double-counting when both matches occur
+  const basketItems = useMemo(() => {
+    const seen = new Set<string>();
+    const result: typeof basket = [];
     
-    // Requirement area match (allows template items to show in structured modules)
-    // Example: item.requirementArea="WRITTEN_COMM" matches module with requirementArea="WRITTEN_COMM"
-    if (requirementArea && item.requirementArea === requirementArea) return true;
+    for (const item of basket) {
+      // Skip if already added (prevents double-counting)
+      if (seen.has(item.courseId)) continue;
+      
+      // Direct ID match (structured: "y1-fall-gened-humanities" or template: "WRITTEN_COMM")
+      const directMatch = item.moduleId === id;
+      
+      // Requirement area match (allows template items to show in structured modules)
+      const areaMatch = requirementArea && item.requirementArea === requirementArea;
+      
+      // Reverse match: structured module can match template item's primary ID
+      const reverseMatch = requirementArea && item.moduleId === requirementArea;
+      
+      if (directMatch || areaMatch || reverseMatch) {
+        seen.add(item.courseId);
+        result.push(item);
+      }
+    }
     
-    // Reverse match: structured module can match template item's primary ID
-    // Example: module with requirementArea="WRITTEN_COMM" matches item.moduleId="WRITTEN_COMM"
-    if (requirementArea && item.moduleId === requirementArea) return true;
-    
-    return false;
-  });
+    return result;
+  }, [basket, id, requirementArea]);
   const { quickPick } = useAutoFillModule();
   
   // Debug logging for basket items per module

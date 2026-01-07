@@ -15,12 +15,22 @@ export interface AnchorPolicy {
   notes?: string;
 }
 
+/**
+ * IMPORTANT: These values MUST match database `partner_policies` table
+ * Last synced: 2025-01 from partner_policies table
+ * 
+ * Database source of truth:
+ * - TESU: max_alt=80, min_residency=15, upper_div=30
+ * - WGU: max_alt=78, min_residency=42, upper_div=0 (competency-based)
+ * - UMGC: max_alt=90, min_residency=30, upper_div=15
+ * - COSC: max_alt=90, min_residency=30, upper_div=15
+ */
 export const ANCHOR_POLICIES: Record<AnchorKey, AnchorPolicy> = {
   TESU: {
     partner_name: 'Thomas Edison State University',
-    max_alt_credits: 113,
-    min_residency_credits: 30,
-    upper_division_min: 18,
+    max_alt_credits: 80,        // Was 113, synced to DB
+    min_residency_credits: 15,  // Was 30, synced to DB  
+    upper_division_min: 30,     // Was 18, synced to DB
     notes: 'Highly transfer-friendly, accepts ACE/NCCRS. Flat-rate tuition per term.',
   },
   COSC: {
@@ -34,7 +44,7 @@ export const ANCHOR_POLICIES: Record<AnchorKey, AnchorPolicy> = {
     partner_name: 'Western Governors University',
     max_alt_credits: 78,
     min_residency_credits: 42,
-    upper_division_min: 0,
+    upper_division_min: 0,      // Competency-based, no strict upper-div requirement
     notes: 'Competency-based, subscription model ($3,985/6mo term). Self-paced acceleration possible.',
   },
   UMGC: {
