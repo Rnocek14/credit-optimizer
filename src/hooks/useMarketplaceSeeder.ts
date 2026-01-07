@@ -141,32 +141,21 @@ export function useMarketplaceSeeder() {
         active: c.active,
       })).filter(c => c.provider_id); // Only courses with valid provider_id
       
-      // Check existing courses by provider_id + title (matches unique constraint)
-      const existingCourses = await supabase
+      // Use upsert with ignoreDuplicates to handle both unique constraints
+      // (code unique + provider_id+title unique)
+      const { error: courseError } = await supabase
         .from('marketplace_courses')
-        .select('title, provider_id')
-        .in('provider_id', coursesWithProviderIds.map(c => c.provider_id));
+        .upsert(coursesWithProviderIds, { 
+          onConflict: 'code',
+          ignoreDuplicates: true
+        });
       
-      const existingCourseKeys = new Set(
-        existingCourses.data?.map(c => `${c.provider_id}-${c.title}`) || []
-      );
-      
-      const newCourses = coursesWithProviderIds.filter(
-        c => !existingCourseKeys.has(`${c.provider_id}-${c.title}`)
-      );
-      
-      if (newCourses.length > 0) {
-        const { error: courseError } = await supabase
-          .from('marketplace_courses')
-          .insert(newCourses);
-        
-        if (courseError) throw new Error(`Course insert error: ${courseError.message}`);
-      }
+      if (courseError) throw new Error(`Course insert error: ${courseError.message}`);
       
       setProgress(p => ({
         ...p,
-        coursesInserted: newCourses.length,
-        coursesSkipped: coursesWithProviderIds.length - newCourses.length,
+        coursesInserted: coursesWithProviderIds.length,
+        coursesSkipped: 0,
         phase: 'options',
       }));
 
