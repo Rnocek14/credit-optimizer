@@ -774,8 +774,8 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
             "rounded-t-[10px] bg-background"
           )}
           style={{ 
-            backdropFilter: 'blur(2px)',
-            backgroundColor: 'oklch(var(--background) / 0.95)',
+            backdropFilter: 'blur(8px)',
+            backgroundColor: 'color-mix(in oklch, var(--background) 95%, transparent)',
             maxHeight: (activeSnapPoint && snapPoints.includes(String(activeSnapPoint)))
               ? activeSnapPoint 
               : getScopedDefaultSnap(),
