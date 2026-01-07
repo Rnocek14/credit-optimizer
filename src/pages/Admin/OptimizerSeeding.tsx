@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useOptimizerSeeder, FunctionHealthStatus } from '@/hooks/useOptimizerSeeder';
 import { useClientSideSeeder } from '@/hooks/useClientSideSeeder';
+import { useMarketplaceSeeder } from '@/hooks/useMarketplaceSeeder';
 import { SeedingJobCard } from '@/components/admin/SeedingJobCard';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -20,7 +21,8 @@ import {
   WifiOff,
   ArrowRightLeft,
   Copy,
-  ExternalLink
+  ExternalLink,
+  Store
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -48,6 +50,11 @@ export default function OptimizerSeeding() {
     error: transferRulesError,
     totalRules 
   } = useClientSideSeeder();
+  const { 
+    seedMarketplace, 
+    isSeeding: isMarketplaceSeeding, 
+    progress: marketplaceProgress 
+  } = useMarketplaceSeeder();
   const { toast } = useToast();
   const [tableStatus, setTableStatus] = useState<TableStatus[]>([]);
   const [isCheckingTables, setIsCheckingTables] = useState(false);
@@ -474,12 +481,140 @@ export default function OptimizerSeeding() {
           />
         </div>
         
-        {/* Transfer Rules Section */}
+        {/* Client-Side Seeders Section */}
         <div className="mt-8">
           <h3 className="text-md font-semibold mb-4 flex items-center gap-2">
             <ArrowRightLeft className="h-5 w-5" />
-            Transfer Rules (Decentralized Degrees)
+            Client-Side Seeders (No Edge Functions Required)
           </h3>
+          
+          {/* Marketplace Seeder */}
+          <div className="p-6 border rounded-lg bg-card mb-4">
+            <div className="flex items-start justify-between">
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-2">
+                  <Database className="h-5 w-5 text-purple-600" />
+                  <h4 className="font-semibold">Seed Marketplace Data</h4>
+                </div>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Seeds 11 providers, 23 marketplace courses, and links requirement options.
+                  <br />
+                  <span className="text-xs text-green-600 font-medium">✓ Client-side seeding (no edge function required)</span>
+                </p>
+                
+                {marketplaceProgress.phase !== 'idle' && (
+                  <div className="mb-4 p-3 bg-muted rounded-lg text-sm">
+                    <div className="flex items-center gap-2 mb-2">
+                      {marketplaceProgress.phase === 'complete' ? (
+                        <CheckCircle2 className="h-4 w-4 text-green-600" />
+                      ) : marketplaceProgress.phase === 'error' ? (
+                        <XCircle className="h-4 w-4 text-red-600" />
+                      ) : (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      )}
+                      <span className="font-medium capitalize">Phase: {marketplaceProgress.phase}</span>
+                    </div>
+                    <div className="grid grid-cols-3 gap-4 text-xs">
+                      <div>
+                        <span className="text-muted-foreground">Providers:</span>{' '}
+                        <span className="font-mono text-green-600">{marketplaceProgress.providersInserted}</span>
+                        <span className="text-muted-foreground"> / </span>
+                        <span className="font-mono">{marketplaceProgress.providersSkipped} skipped</span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Courses:</span>{' '}
+                        <span className="font-mono text-green-600">{marketplaceProgress.coursesInserted}</span>
+                        <span className="text-muted-foreground"> / </span>
+                        <span className="font-mono">{marketplaceProgress.coursesSkipped} skipped</span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Options:</span>{' '}
+                        <span className="font-mono text-green-600">{marketplaceProgress.optionsInserted}</span>
+                        <span className="text-muted-foreground"> / </span>
+                        <span className="font-mono">{marketplaceProgress.optionsSkipped} skipped</span>
+                      </div>
+                    </div>
+                    {marketplaceProgress.error && (
+                      <p className="mt-2 text-xs text-red-600">{marketplaceProgress.error}</p>
+                    )}
+                  </div>
+                )}
+                
+                {marketplaceProgress.phase === 'error' && marketplaceProgress.error?.includes('row-level security') && (
+                  <Alert variant="destructive" className="mb-4">
+                    <XCircle className="h-4 w-4" />
+                    <AlertTitle>RLS Policy Required</AlertTitle>
+                    <AlertDescription className="text-sm">
+                      <p className="mb-2">Run this SQL in Supabase Dashboard → SQL Editor:</p>
+                      <pre className="p-2 bg-background rounded overflow-x-auto text-[10px]">
+{`-- Add public insert policies for marketplace tables
+CREATE POLICY "Allow public insert for seeding" ON providers
+  FOR INSERT TO public WITH CHECK (true);
+CREATE POLICY "Allow public update for seeding" ON providers
+  FOR UPDATE TO public USING (true) WITH CHECK (true);
+
+CREATE POLICY "Allow public insert for seeding" ON marketplace_courses
+  FOR INSERT TO public WITH CHECK (true);
+CREATE POLICY "Allow public update for seeding" ON marketplace_courses
+  FOR UPDATE TO public USING (true) WITH CHECK (true);
+
+CREATE POLICY "Allow public insert for seeding" ON requirement_options
+  FOR INSERT TO public WITH CHECK (true);
+CREATE POLICY "Allow public update for seeding" ON requirement_options
+  FOR UPDATE TO public USING (true) WITH CHECK (true);`}
+                      </pre>
+                      <Button 
+                        size="sm" 
+                        variant="outline" 
+                        className="mt-2"
+                        onClick={() => {
+                          navigator.clipboard.writeText(`CREATE POLICY "Allow public insert for seeding" ON providers FOR INSERT TO public WITH CHECK (true);
+CREATE POLICY "Allow public update for seeding" ON providers FOR UPDATE TO public USING (true) WITH CHECK (true);
+CREATE POLICY "Allow public insert for seeding" ON marketplace_courses FOR INSERT TO public WITH CHECK (true);
+CREATE POLICY "Allow public update for seeding" ON marketplace_courses FOR UPDATE TO public USING (true) WITH CHECK (true);
+CREATE POLICY "Allow public insert for seeding" ON requirement_options FOR INSERT TO public WITH CHECK (true);
+CREATE POLICY "Allow public update for seeding" ON requirement_options FOR UPDATE TO public USING (true) WITH CHECK (true);`);
+                          toast({ title: "SQL copied to clipboard" });
+                        }}
+                      >
+                        <Copy className="h-3 w-3 mr-1" /> Copy SQL
+                      </Button>
+                    </AlertDescription>
+                  </Alert>
+                )}
+              </div>
+              
+              <div className="flex flex-col gap-2 ml-4">
+                <Button 
+                  onClick={async () => {
+                    await seedMarketplace();
+                  }}
+                  disabled={isMarketplaceSeeding}
+                >
+                  {isMarketplaceSeeding ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Seeding...
+                    </>
+                  ) : (
+                    <>
+                      <Store className="mr-2 h-4 w-4" />
+                      Run Seed
+                    </>
+                  )}
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => window.open('https://supabase.com/dashboard/project/vzpissitddpunkpythsb/sql/new', '_blank')}
+                >
+                  <ExternalLink className="h-3 w-3 mr-1" /> SQL Editor
+                </Button>
+              </div>
+            </div>
+          </div>
+          
+          {/* Transfer Rules Seeder */}
           
           <div className="p-6 border rounded-lg bg-card">
             <div className="flex items-start justify-between">
