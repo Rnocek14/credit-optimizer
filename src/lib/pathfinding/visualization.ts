@@ -92,48 +92,48 @@ export function styleEdge(edgeType: EdgeType, isHighlighted = false, isGhost = f
 export function getNodeColorByType(nodeType: string): string {
   switch (nodeType) {
     case 'skill':
-      return 'hsl(var(--primary) / 0.1)';
+      return 'color-mix(in oklch, var(--primary) 10%, transparent)';
     case 'course':
-      return 'hsl(var(--secondary) / 0.1)';
+      return 'color-mix(in oklch, var(--secondary) 10%, transparent)';
     case 'credential':
-      return 'hsl(var(--accent) / 0.1)';
+      return 'color-mix(in oklch, var(--accent) 10%, transparent)';
     case 'job':
     case 'jobGoal':
-      return 'hsl(var(--destructive) / 0.1)';
+      return 'color-mix(in oklch, var(--destructive) 10%, transparent)';
     case 'certification':
-      return 'hsl(var(--warning) / 0.1)';
+      return 'color-mix(in oklch, var(--warning) 10%, transparent)';
     case 'exam':
-      return 'hsl(var(--info) / 0.1)';
+      return 'color-mix(in oklch, var(--info) 10%, transparent)';
     case 'project':
-      return 'hsl(var(--success) / 0.1)';
+      return 'color-mix(in oklch, var(--success) 10%, transparent)';
     case 'creditBlock':
-      return 'hsl(var(--muted) / 0.2)';
+      return 'color-mix(in oklch, var(--muted) 20%, transparent)';
     default:
-      return 'hsl(var(--background))';
+      return 'var(--background)';
   }
 }
 
 export function getNodeBorderColorByType(nodeType: string): string {
   switch (nodeType) {
     case 'skill':
-      return 'hsl(var(--primary))';
+      return 'var(--primary)';
     case 'course':
-      return 'hsl(var(--secondary))';
+      return 'var(--secondary)';
     case 'credential':
-      return 'hsl(var(--accent))';
+      return 'var(--accent)';
     case 'job':
     case 'jobGoal':
-      return 'hsl(var(--destructive))';
+      return 'var(--destructive)';
     case 'certification':
-      return 'hsl(var(--warning))';
+      return 'var(--warning)';
     case 'exam':
-      return 'hsl(var(--info))';
+      return 'var(--info)';
     case 'project':
-      return 'hsl(var(--success))';
+      return 'var(--success)';
     case 'creditBlock':
-      return 'hsl(var(--muted-foreground))';
+      return 'var(--muted-foreground)';
     default:
-      return 'hsl(var(--border))';
+      return 'var(--border)';
   }
 }
 

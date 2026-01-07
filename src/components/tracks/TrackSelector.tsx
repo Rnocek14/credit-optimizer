@@ -25,7 +25,7 @@ const TrackItem: React.FC<{ track: CareerTrack; activeId: string | null; onSelec
       className={`px-3 py-2 cursor-pointer ${isActive ? 'bg-primary/10 text-primary' : ''}`}
     >
       <div className="flex items-center gap-2">
-        <span className="inline-block w-2 h-2 rounded-full" style={{ backgroundColor: track.color || 'hsl(var(--primary))' }} />
+        <span className="inline-block w-2 h-2 rounded-full" style={{ backgroundColor: track.color || 'var(--primary)' }} />
         <span className="truncate">{track.track_name || track.title || 'Untitled Track'}</span>
         {track.archived && <span className="ml-2 text-xs opacity-60">(Archived)</span>}
       </div>
@@ -138,7 +138,7 @@ export const TrackSelector: React.FC<TrackSelectorProps> = ({ className }) => {
             <div className="flex items-center gap-2">
               <span 
                 className={`inline-block w-4 h-4 rounded-full flex-shrink-0 border-2 border-background transition-all duration-300 ${active ? 'shadow-lg shadow-primary/40' : ''}`} 
-                style={{ backgroundColor: active?.color || 'hsl(var(--primary))' }} 
+                style={{ backgroundColor: active?.color || 'var(--primary)' }} 
               />
               <span className={`truncate font-semibold transition-all duration-300 ${active ? 'text-primary' : 'text-muted-foreground'}`}>
                 {isLoading ? (

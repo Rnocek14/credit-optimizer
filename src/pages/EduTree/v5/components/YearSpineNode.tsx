@@ -36,8 +36,8 @@ export function YearSpineNode({ data, selected }: YearSpineNodeProps) {
         position={Position.Top}
         id="target"
         style={{
-          background: 'hsl(var(--primary))',
-          border: '2px solid hsl(var(--background))',
+          background: 'var(--primary)',
+          border: '2px solid var(--background)',
           width: 10,
           height: 10,
         }}
@@ -114,8 +114,8 @@ export function YearSpineNode({ data, selected }: YearSpineNodeProps) {
         position={Position.Bottom}
         id="source"
         style={{
-          background: 'hsl(var(--primary))',
-          border: '2px solid hsl(var(--background))',
+          background: 'var(--primary)',
+          border: '2px solid var(--background)',
           width: 10,
           height: 10,
         }}

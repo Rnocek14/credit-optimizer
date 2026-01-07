@@ -50,13 +50,13 @@ export function LifePathEdgeComponent(props: LifePathEdgeProps) {
     opacity: tier === 'off-path' ? 0.35 : isRelatedToHovered ? 0.6 : 1,
     stroke:
       tier === 'on-path'
-        ? 'hsl(var(--primary))'
+        ? 'var(--primary)'
         : tier === 'related'
-        ? 'hsl(var(--secondary))'
-        : 'hsl(var(--muted-foreground))',
+        ? 'var(--secondary)'
+        : 'var(--muted-foreground)',
     strokeWidth: tier === 'on-path' ? 3.5 : tier === 'related' ? 2 : 1,
     strokeDasharray: edge?.type === 'creditTransfersTo' ? '6 6' : undefined,
-    filter: tier === 'on-path' ? 'drop-shadow(0 0 4px hsl(var(--primary) / 0.3))' : undefined,
+    filter: tier === 'on-path' ? 'drop-shadow(0 0 4px color-mix(in oklch, var(--primary) 30%, transparent))' : undefined,
   } as React.CSSProperties;
 
   const tierClass = tier ? `lp-edge-${tier}` : '';

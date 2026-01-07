@@ -547,8 +547,8 @@ function buildLaneLayout(
             'data-node-id': clusterId
           },
           style: {
-            border: '2px dashed hsl(var(--border))',
-            background: 'hsl(var(--muted))',
+            border: '2px dashed var(--border)',
+            background: 'var(--muted)',
             borderRadius: '8px',
             padding: '12px',
             width: 160,

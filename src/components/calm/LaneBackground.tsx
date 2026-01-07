@@ -52,7 +52,7 @@ export const CALM_LANES = [
     id: 'foundations',
     title: 'FCC',
     subtitle: 'Community College',
-    color: 'hsl(var(--primary))',
+    color: 'var(--primary)',
     x: 100,
     width: 280
   },
@@ -60,7 +60,7 @@ export const CALM_LANES = [
     id: 'skills',
     title: 'Global/Orphan', 
     subtitle: 'Skills • Projects',
-    color: 'hsl(var(--secondary))',
+    color: 'var(--secondary)',
     x: 380,
     width: 280
   },
@@ -68,7 +68,7 @@ export const CALM_LANES = [
     id: 'projects',
     title: 'FSU',
     subtitle: 'Universities',
-    color: 'hsl(var(--accent))',
+    color: 'var(--accent)',
     x: 660,
     width: 280
   },
@@ -76,7 +76,7 @@ export const CALM_LANES = [
     id: 'credentials',
     title: 'Credentials',
     subtitle: 'Degrees • Certs',
-    color: 'hsl(var(--muted-foreground))',
+    color: 'var(--muted-foreground)',
     x: 940,
     width: 280
   },
@@ -84,7 +84,7 @@ export const CALM_LANES = [
     id: 'jobs',
     title: 'Career Goals',
     subtitle: 'Jobs • Roles',
-    color: 'hsl(var(--destructive))',
+    color: 'var(--destructive)',
     x: 1220,
     width: 280
   }

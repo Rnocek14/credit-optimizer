@@ -93,7 +93,7 @@ export const TrackDisplay: React.FC<TrackDisplayProps> = ({ className }) => {
           <div className="relative">
             <span 
               className="inline-block w-6 h-6 rounded-full shadow-lg border-2 border-background transition-all duration-300 hover-quiet" 
-              style={{ backgroundColor: displayedTrack.color || 'hsl(var(--primary))' }} 
+              style={{ backgroundColor: displayedTrack.color || 'var(--primary)' }} 
             />
             <div className="absolute -top-1 -right-1 w-4 h-4 bg-success rounded-full animate-bounce border-2 border-background">
               <Sparkles className="w-2 h-2 text-white m-0.5" />

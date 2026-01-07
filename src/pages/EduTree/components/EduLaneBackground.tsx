@@ -25,7 +25,7 @@ export const EduLaneBackground: React.FC<EduLaneBackgroundProps> = ({
           style={{
             left: lane.x,
             width: lane.width,
-            backgroundColor: index % 2 === 0 ? 'transparent' : 'hsl(var(--muted)/0.02)'
+            backgroundColor: index % 2 === 0 ? 'transparent' : 'color-mix(in oklch, var(--muted) 2%, transparent)'
           }}
         >
           <div 
@@ -51,7 +51,7 @@ export const EDU_YEAR_LANES = [
     id: 'year-1',
     title: 'Year 1',
     subtitle: 'Foundations • 0-30 Credits',
-    color: 'hsl(var(--primary))',
+    color: 'var(--primary)',
     x: 0,
     width: 400
   },
@@ -59,7 +59,7 @@ export const EDU_YEAR_LANES = [
     id: 'year-2', 
     title: 'Year 2',
     subtitle: 'Lower Division • 30-60 Credits',
-    color: 'hsl(var(--secondary))',
+    color: 'var(--secondary)',
     x: 400,
     width: 400
   },
@@ -67,7 +67,7 @@ export const EDU_YEAR_LANES = [
     id: 'year-3',
     title: 'Year 3',
     subtitle: 'Upper Division • 60-90 Credits',
-    color: 'hsl(var(--accent))',
+    color: 'var(--accent)',
     x: 800,
     width: 400
   },
@@ -75,7 +75,7 @@ export const EDU_YEAR_LANES = [
     id: 'year-4',
     title: 'Year 4',
     subtitle: 'Specialization • 90-120 Credits',
-    color: 'hsl(var(--muted-foreground))',
+    color: 'var(--muted-foreground)',
     x: 1200,
     width: 400
   }
