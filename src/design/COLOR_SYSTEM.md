@@ -63,20 +63,20 @@ box-shadow: 0 4px 12px color-mix(in oklch, var(--foreground) 10%, transparent);
 
 ---
 
-## Exception: Raw HSL Triplet Variables
+## All Variables Use OKLCH
 
-A few legacy variables still use raw HSL triplets and **do** require the `hsl()` wrapper:
+All CSS variables in this project—including the `--lp-*` status colors—now use **full OKLCH values**. There are no longer any HSL triplet exceptions:
 
 ```css
-/* These ARE raw triplets - wrapper needed */
---lp-green-50: 120 90% 96%;
---lp-red-50: 0 86% 97%;
---lp-blue-50: 214 100% 97%;
+/* All variables contain complete OKLCH color values */
+--lp-green-50: oklch(0.97 0.03 145);
+--lp-red-50: oklch(0.97 0.02 25);
+--lp-blue-50: oklch(0.97 0.02 250);
 ```
 
-For these specific variables, use:
+Use them directly without any wrapper:
 ```tsx
-className="bg-[hsl(var(--lp-green-50))]"
+className="bg-[var(--lp-green-50)]"
 ```
 
 ---

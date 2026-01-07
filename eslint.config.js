@@ -43,11 +43,11 @@ export default tseslint.config(
         },
         // OKLCH Color System Guards - prevent hsl() wrapping of OKLCH variables
         {
-          selector: "Literal[value=/hsl\\(var\\(--(?!lp-)/]",
+          selector: "Literal[value=/hsl\\(var\\(--/]",
           message: "❌ Don't wrap OKLCH variables in hsl(). Use var(--xxx) directly or color-mix() for opacity. See src/design/COLOR_SYSTEM.md"
         },
         {
-          selector: "TemplateLiteral[quasis.0.value.raw=/hsl\\(var\\(--(?!lp-)/]",
+          selector: "TemplateLiteral[quasis.0.value.raw=/hsl\\(var\\(--/]",
           message: "❌ Don't wrap OKLCH variables in hsl(). Use var(--xxx) directly or color-mix() for opacity. See src/design/COLOR_SYSTEM.md"
         }
       ],

@@ -497,16 +497,15 @@
     --space-20: 5rem;
     --space-24: 6rem;
 
-    /* Status colors for nodes */
-    --lp-green-50: 120 90% 96%;     /* Equivalent to #EBFEEF */
-    --lp-green-200: 159 75% 85%;    /* Equivalent to #A7F3D0 */
+    /* Status colors for nodes - OKLCH format (no hsl() wrapper needed) */
+    --lp-green-50: oklch(0.97 0.03 145);     /* Light green background */
+    --lp-green-200: oklch(0.88 0.10 160);    /* Green border */
     
-    --lp-red-50: 0 86% 97%;         /* Equivalent to #FEF2F2 */
-    --lp-red-300: 0 86% 82%;        /* Equivalent to #FCA5A5 */
+    --lp-red-50: oklch(0.97 0.02 25);        /* Light red background */
+    --lp-red-300: oklch(0.78 0.12 25);       /* Red border */
     
-    --lp-blue-50: 214 100% 97%;     /* Equivalent to #EFF6FF */
-    --lp-blue-200: 213 94% 88%;     /* Equivalent to #BFDBFE */
-
+    --lp-blue-50: oklch(0.97 0.02 250);      /* Light blue background */
+    --lp-blue-200: oklch(0.86 0.08 250);     /* Blue border */
     --sidebar-background: 0 0% 98%;
 
     --sidebar-foreground: 240 5.3% 26.1%;
@@ -645,15 +644,15 @@
     --sidebar-border: 240 3.7% 22%;
     --sidebar-ring: 217.2 91.2% 59.8%;
 
-    /* Status colors for dark mode - improved contrast */
-    --lp-green-50: 120 40% 22%;        /* Brighter dark mode green background */
-    --lp-green-200: 159 50% 55%;       /* More vibrant green border */
+    /* Status colors for dark mode - OKLCH format (no hsl() wrapper needed) */
+    --lp-green-50: oklch(0.32 0.05 145);     /* Dark green background */
+    --lp-green-200: oklch(0.65 0.12 160);    /* Vibrant green border */
     
-    --lp-red-50: 0 40% 22%;           /* Brighter dark mode red background */
-    --lp-red-300: 0 55% 65%;          /* More vibrant red border */
+    --lp-red-50: oklch(0.32 0.05 25);        /* Dark red background */
+    --lp-red-300: oklch(0.68 0.14 25);       /* Vibrant red border */
     
-    --lp-blue-50: 214 40% 22%;        /* Brighter dark mode blue background */
-    --lp-blue-200: 213 50% 55%;       /* More vibrant blue border */
+    --lp-blue-50: oklch(0.32 0.05 250);      /* Dark blue background */
+    --lp-blue-200: oklch(0.65 0.10 250);     /* Vibrant blue border */
   }
 }
 
