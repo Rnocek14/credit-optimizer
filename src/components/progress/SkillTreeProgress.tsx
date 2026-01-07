@@ -161,24 +161,24 @@ export const SkillTreeProgress: React.FC = () => {
     }
   };
 
-  // Get CRI-based node styling
+  // Get CRI-based node styling - uses semantic tokens
   const getNodeStyle = (nodeId: string) => {
     if (!criScore) return {};
     
     const readiness = getReadinessLevel(criScore.overall);
     
-    // Apply tinting based on CRI level
+    // Apply tinting based on CRI level using design system tokens
     switch (readiness.level) {
       case 'Ready':
-        return { backgroundColor: 'hsl(142 76% 36%)', opacity: 0.9 }; // Green tint
+        return { backgroundColor: 'var(--success)', opacity: 0.9 };
       case 'Nearly Ready':
-        return { backgroundColor: 'hsl(43 96% 56%)', opacity: 0.8 }; // Yellow tint
+        return { backgroundColor: 'var(--warning)', opacity: 0.8 };
       case 'In Progress':
-        return { backgroundColor: 'hsl(221 83% 53%)', opacity: 0.7 }; // Blue tint
+        return { backgroundColor: 'var(--info)', opacity: 0.7 };
       case 'Getting Started':
-        return { backgroundColor: 'hsl(25 95% 53%)', opacity: 0.6 }; // Orange tint
+        return { backgroundColor: 'var(--risk-high)', opacity: 0.6 };
       default:
-        return { backgroundColor: 'hsl(210 14% 53%)', opacity: 0.5 }; // Gray tint
+        return { backgroundColor: 'var(--muted-foreground)', opacity: 0.5 };
     }
   };
 
