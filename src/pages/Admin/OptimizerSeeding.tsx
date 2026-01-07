@@ -22,7 +22,8 @@ import {
   ArrowRightLeft,
   Copy,
   ExternalLink,
-  Store
+  Store,
+  Trash2
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -52,7 +53,9 @@ export default function OptimizerSeeding() {
   } = useClientSideSeeder();
   const { 
     seedMarketplace, 
+    clearAndReseed,
     isSeeding: isMarketplaceSeeding, 
+    isClearing: isMarketplaceClearing,
     progress: marketplaceProgress 
   } = useMarketplaceSeeder();
   const { toast } = useToast();
@@ -600,6 +603,25 @@ CREATE POLICY "Allow public update for seeding" ON requirement_options FOR UPDAT
                     <>
                       <Store className="mr-2 h-4 w-4" />
                       Run Seed
+                    </>
+                  )}
+                </Button>
+                <Button 
+                  variant="destructive"
+                  onClick={async () => {
+                    await clearAndReseed();
+                  }}
+                  disabled={isMarketplaceSeeding || isMarketplaceClearing}
+                >
+                  {isMarketplaceClearing ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Clearing...
+                    </>
+                  ) : (
+                    <>
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Clear & Reseed
                     </>
                   )}
                 </Button>
