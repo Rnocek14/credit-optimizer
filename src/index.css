@@ -306,6 +306,9 @@
 
     /* OKLCH Color System - Phase 2 Implementation */
     /* Surfaces */
+    --background: oklch(0.99 0.00 0);
+    --foreground: oklch(0.15 0.00 0);
+    
     --card: oklch(0.96 0.00 0);
     --card-foreground: oklch(0.23 0.00 0);
 
@@ -523,12 +526,12 @@
 
   .dark {
     /* Dark mode enhanced - boosted accents for visibility */
-    --background: 222 84% 5%;
-    --foreground: 0 0% 98%;
-    --card: 240 10% 10%;
-    --card-foreground: 0 0% 98%;
-    --border: 240 6% 20%;
-    --ring: 0.75 0.14 220;
+    --background: oklch(0.15 0.02 250);
+    --foreground: oklch(0.95 0.00 0);
+    --card: oklch(0.18 0.01 250);
+    --card-foreground: oklch(0.95 0.00 0);
+    --border: oklch(0.30 0.01 250);
+    --ring: oklch(0.75 0.14 220);
 
     /* Dark mode accent colors - adjusted for visibility */
     --accent-cyan: 0.77 0.16 200;
