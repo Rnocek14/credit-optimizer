@@ -1381,7 +1381,2995 @@
       "credits": 120,
       "costUsd": 18720,
       "weeks": 104,
-      "avgCri": 4.3
+    "avgCri": 4.3
+    }
+  },
+  {
+    "id": "data-tesu-cheapest-2025",
+    "kind": "degree",
+    "programId": "data-science-bachelor",
+    "anchorSchool": "TESU",
+    "optimization": "cheapest",
+    "label": "BS Data Science @ TESU • Cheapest",
+    "summary": "Complete your Data Science degree for under $10,000 using ACE credits and TESU's flexible policy. Meets all graduation requirements: 120 credits, 15cr residency, 30cr upper-division.",
+    "badge": "Cheapest",
+    "catalogYear": "2025",
+    "policyVersion": "TESU-2025-v1",
+    "generatedAt": "2025-01-07T00:00:00Z",
+    "lastVerified": "2025-01-07T00:00:00Z",
+    "marketplace": {
+      "title": "Budget Data Science Degree",
+      "tagline": "Complete for under $10K using ACE credits + TESU residency",
+      "badge": "Cheapest",
+      "isPremium": false
+    },
+    "lifestyle": {
+      "avgWeeklyHours": 12,
+      "paceType": "flexible",
+      "workCompatible": true
+    },
+    "primaryCareerIds": ["data-scientist", "data-analyst", "machine-learning-engineer"],
+    "deliveryMode": "fully_online",
+    "inPersonWeeks": 0,
+    "socialProof": {
+      "popularityScore": 4.3,
+      "dataSource": "simulated"
+    },
+    "yearTemplates": [
+      {
+        "year": 1,
+        "label": "Year 1 – Gen Ed Foundation (30cr)",
+        "recommendedPace": "part_time",
+        "moduleTemplates": [
+          {
+            "moduleId": "WRITTEN_COMM",
+            "label": "Written Communication (6cr)",
+            "creditsRequired": 6,
+            "requirementArea": "WRITTEN_COMM",
+            "options": [
+              {
+                "id": "sophia-eng-comp-bundle",
+                "courseId": "SOPHIA-ENG-COMP-I-II",
+                "title": "English Composition I & II",
+                "credits": 6,
+                "cost_usd": 99,
+                "duration_weeks": 8,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 100,
+                "cri_score": 72,
+                "workload_weekly_hours": 8,
+                "subject": "English"
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-ENG-COMP-I-II"
+          },
+          {
+            "moduleId": "ORAL_COMM",
+            "label": "Oral Communication (3cr)",
+            "creditsRequired": 3,
+            "requirementArea": "ORAL_COMM",
+            "options": [
+              {
+                "id": "sophia-public-speaking",
+                "courseId": "SOPHIA-PUBLIC-SPEAK",
+                "title": "Public Speaking",
+                "credits": 3,
+                "cost_usd": 99,
+                "duration_weeks": 4,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 100,
+                "cri_score": 75,
+                "workload_weekly_hours": 7.5,
+                "subject": "Communication"
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-PUBLIC-SPEAK"
+          },
+          {
+            "moduleId": "QUANTITATIVE",
+            "label": "College Algebra (3cr)",
+            "creditsRequired": 3,
+            "requirementArea": "QUANTITATIVE",
+            "options": [
+              {
+                "id": "sophia-college-algebra",
+                "courseId": "SOPHIA-COLLEGE-ALG",
+                "title": "College Algebra",
+                "credits": 3,
+                "cost_usd": 99,
+                "duration_weeks": 4,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 100,
+                "cri_score": 78,
+                "workload_weekly_hours": 7.5,
+                "subject": "Mathematics"
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-COLLEGE-ALG"
+          },
+          {
+            "moduleId": "HUMANITIES_1",
+            "label": "Humanities - Ethics (3cr)",
+            "creditsRequired": 3,
+            "requirementArea": "HUMANITIES",
+            "options": [
+              {
+                "id": "sophia-intro-ethics",
+                "courseId": "SOPHIA-INTRO-ETHICS",
+                "title": "Introduction to Ethics",
+                "credits": 3,
+                "cost_usd": 99,
+                "duration_weeks": 4,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 100,
+                "cri_score": 70,
+                "workload_weekly_hours": 7.5,
+                "subject": "Philosophy"
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-INTRO-ETHICS"
+          },
+          {
+            "moduleId": "HUMANITIES_2",
+            "label": "Humanities - Art History (3cr)",
+            "creditsRequired": 3,
+            "requirementArea": "HUMANITIES",
+            "options": [
+              {
+                "id": "sophia-art-history",
+                "courseId": "SOPHIA-ART-HIST-I",
+                "title": "Art History I",
+                "credits": 3,
+                "cost_usd": 99,
+                "duration_weeks": 4,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 100,
+                "cri_score": 69,
+                "workload_weekly_hours": 7.5,
+                "subject": "Art History"
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-ART-HIST-I"
+          },
+          {
+            "moduleId": "HUMANITIES_3",
+            "label": "Humanities - Literature (3cr)",
+            "creditsRequired": 3,
+            "requirementArea": "HUMANITIES",
+            "options": [
+              {
+                "id": "sophia-world-lit",
+                "courseId": "SOPHIA-WORLD-LIT",
+                "title": "World Literature",
+                "credits": 3,
+                "cost_usd": 99,
+                "duration_weeks": 4,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 100,
+                "cri_score": 68,
+                "workload_weekly_hours": 7.5,
+                "subject": "Literature"
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-WORLD-LIT"
+          },
+          {
+            "moduleId": "SOCIAL_SCIENCE_1",
+            "label": "Social Science - Psychology (3cr)",
+            "creditsRequired": 3,
+            "requirementArea": "SOCIAL_SCIENCE",
+            "options": [
+              {
+                "id": "sophia-intro-psychology",
+                "courseId": "SOPHIA-INTRO-PSYCH",
+                "title": "Introduction to Psychology",
+                "credits": 3,
+                "cost_usd": 99,
+                "duration_weeks": 4,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 100,
+                "cri_score": 73,
+                "workload_weekly_hours": 7.5,
+                "subject": "Psychology"
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-INTRO-PSYCH"
+          },
+          {
+            "moduleId": "SOCIAL_SCIENCE_2",
+            "label": "Social Science - Sociology (3cr)",
+            "creditsRequired": 3,
+            "requirementArea": "SOCIAL_SCIENCE",
+            "options": [
+              {
+                "id": "sophia-intro-sociology",
+                "courseId": "SOPHIA-INTRO-SOC",
+                "title": "Introduction to Sociology",
+                "credits": 3,
+                "cost_usd": 99,
+                "duration_weeks": 4,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 100,
+                "cri_score": 71,
+                "workload_weekly_hours": 7.5,
+                "subject": "Sociology"
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-INTRO-SOC"
+          },
+          {
+            "moduleId": "SOCIAL_SCIENCE_3",
+            "label": "Social Science - Economics (3cr)",
+            "creditsRequired": 3,
+            "requirementArea": "SOCIAL_SCIENCE",
+            "options": [
+              {
+                "id": "sophia-micro-econ",
+                "courseId": "SOPHIA-MICRO-ECON",
+                "title": "Microeconomics",
+                "credits": 3,
+                "cost_usd": 99,
+                "duration_weeks": 4,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 100,
+                "cri_score": 74,
+                "workload_weekly_hours": 8,
+                "subject": "Economics"
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-MICRO-ECON"
+          }
+        ]
+      },
+      {
+        "year": 2,
+        "label": "Year 2 – Math & Data Foundations (30cr)",
+        "recommendedPace": "part_time",
+        "moduleTemplates": [
+          {
+            "moduleId": "NATURAL_SCIENCE_1",
+            "label": "Natural Science - Biology (3cr)",
+            "creditsRequired": 3,
+            "requirementArea": "NATURAL_SCIENCE",
+            "options": [
+              {
+                "id": "sophia-human-biology",
+                "courseId": "SOPHIA-HUMAN-BIO",
+                "title": "Human Biology",
+                "credits": 3,
+                "cost_usd": 99,
+                "duration_weeks": 4,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 100,
+                "cri_score": 68,
+                "workload_weekly_hours": 7.5,
+                "subject": "Biology"
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-HUMAN-BIO"
+          },
+          {
+            "moduleId": "NATURAL_SCIENCE_2",
+            "label": "Natural Science - Environmental (3cr)",
+            "creditsRequired": 3,
+            "requirementArea": "NATURAL_SCIENCE",
+            "options": [
+              {
+                "id": "sophia-env-science",
+                "courseId": "SOPHIA-ENV-SCI",
+                "title": "Environmental Science",
+                "credits": 3,
+                "cost_usd": 99,
+                "duration_weeks": 4,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 100,
+                "cri_score": 70,
+                "workload_weekly_hours": 7.5,
+                "subject": "Science"
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-ENV-SCI"
+          },
+          {
+            "moduleId": "CIVIC_GLOBAL",
+            "label": "Civic & Global Awareness (3cr)",
+            "creditsRequired": 3,
+            "requirementArea": "CIVIC_GLOBAL",
+            "options": [
+              {
+                "id": "sophia-ancient-civ",
+                "courseId": "SOPHIA-ANCIENT-CIV",
+                "title": "Ancient Civilizations",
+                "credits": 3,
+                "cost_usd": 99,
+                "duration_weeks": 4,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 100,
+                "cri_score": 67,
+                "workload_weekly_hours": 7.5,
+                "subject": "History"
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-ANCIENT-CIV"
+          },
+          {
+            "moduleId": "CALCULUS_I",
+            "label": "Calculus I (4cr)",
+            "creditsRequired": 4,
+            "requirementArea": "MATH_CORE",
+            "options": [
+              {
+                "id": "sdc-calculus-1",
+                "courseId": "SDC-CALC-I",
+                "title": "Calculus I",
+                "credits": 4,
+                "cost_usd": 79,
+                "duration_weeks": 6,
+                "provider": "Study.com",
+                "providerType": "mooc",
+                "providerCode": "STUDYCOM",
+                "level": 100,
+                "cri_score": 82,
+                "workload_weekly_hours": 10,
+                "subject": "Mathematics"
+              }
+            ],
+            "recommendedCourseId": "SDC-CALC-I"
+          },
+          {
+            "moduleId": "CALCULUS_II",
+            "label": "Calculus II (4cr)",
+            "creditsRequired": 4,
+            "requirementArea": "MATH_CORE",
+            "options": [
+              {
+                "id": "sdc-calculus-2",
+                "courseId": "SDC-CALC-II",
+                "title": "Calculus II",
+                "credits": 4,
+                "cost_usd": 79,
+                "duration_weeks": 6,
+                "provider": "Study.com",
+                "providerType": "mooc",
+                "providerCode": "STUDYCOM",
+                "level": 200,
+                "cri_score": 80,
+                "workload_weekly_hours": 10,
+                "subject": "Mathematics"
+              }
+            ],
+            "recommendedCourseId": "SDC-CALC-II"
+          },
+          {
+            "moduleId": "STATISTICS",
+            "label": "Statistics (3cr)",
+            "creditsRequired": 3,
+            "requirementArea": "MATH_CORE",
+            "options": [
+              {
+                "id": "sophia-statistics",
+                "courseId": "SOPHIA-STATS",
+                "title": "Introduction to Statistics",
+                "credits": 3,
+                "cost_usd": 99,
+                "duration_weeks": 4,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 200,
+                "cri_score": 74,
+                "workload_weekly_hours": 8,
+                "subject": "Mathematics"
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-STATS"
+          },
+          {
+            "moduleId": "LINEAR_ALGEBRA",
+            "label": "Linear Algebra (3cr)",
+            "creditsRequired": 3,
+            "requirementArea": "MATH_CORE",
+            "options": [
+              {
+                "id": "sophia-linear-algebra",
+                "courseId": "SOPHIA-LINEAR-ALG",
+                "title": "Linear Algebra",
+                "credits": 3,
+                "cost_usd": 99,
+                "duration_weeks": 4,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 200,
+                "cri_score": 80,
+                "workload_weekly_hours": 8,
+                "subject": "Mathematics"
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-LINEAR-ALG"
+          },
+          {
+            "moduleId": "PROGRAMMING_I",
+            "label": "Programming I - Python (3cr)",
+            "creditsRequired": 3,
+            "requirementArea": "DS_CORE",
+            "options": [
+              {
+                "id": "sdc-python",
+                "courseId": "SDC-PYTHON",
+                "title": "Introduction to Python",
+                "credits": 3,
+                "cost_usd": 79,
+                "duration_weeks": 4,
+                "provider": "Study.com",
+                "providerType": "mooc",
+                "providerCode": "STUDYCOM",
+                "level": 100,
+                "cri_score": 85,
+                "workload_weekly_hours": 8,
+                "subject": "Computer Science"
+              }
+            ],
+            "recommendedCourseId": "SDC-PYTHON"
+          },
+          {
+            "moduleId": "DATABASE_INTRO",
+            "label": "Database Systems (3cr)",
+            "creditsRequired": 3,
+            "requirementArea": "DS_CORE",
+            "options": [
+              {
+                "id": "sophia-database",
+                "courseId": "SOPHIA-DATABASE",
+                "title": "Database Systems",
+                "credits": 3,
+                "cost_usd": 99,
+                "duration_weeks": 4,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 200,
+                "cri_score": 83,
+                "workload_weekly_hours": 10,
+                "subject": "Computer Science"
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-DATABASE"
+          }
+        ]
+      },
+      {
+        "year": 3,
+        "label": "Year 3 – Data Science Core (30cr)",
+        "recommendedPace": "part_time",
+        "moduleTemplates": [
+          {
+            "moduleId": "DATA_STRUCTURES",
+            "label": "Data Structures (3cr)",
+            "creditsRequired": 3,
+            "requirementArea": "DS_CORE",
+            "options": [
+              {
+                "id": "sophia-data-structures",
+                "courseId": "SOPHIA-DATA-STRUCT",
+                "title": "Data Structures",
+                "credits": 3,
+                "cost_usd": 99,
+                "duration_weeks": 4,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 200,
+                "cri_score": 83,
+                "workload_weekly_hours": 10,
+                "subject": "Computer Science"
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-DATA-STRUCT"
+          },
+          {
+            "moduleId": "ALGORITHMS",
+            "label": "Algorithms (3cr)",
+            "creditsRequired": 3,
+            "requirementArea": "DS_CORE",
+            "options": [
+              {
+                "id": "sophia-algorithms",
+                "courseId": "SOPHIA-ALGORITHMS",
+                "title": "Analysis of Algorithms",
+                "credits": 3,
+                "cost_usd": 99,
+                "duration_weeks": 4,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 300,
+                "cri_score": 84,
+                "workload_weekly_hours": 10,
+                "subject": "Computer Science"
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-ALGORITHMS"
+          },
+          {
+            "moduleId": "DATA_VISUALIZATION",
+            "label": "Data Visualization (3cr)",
+            "creditsRequired": 3,
+            "requirementArea": "DS_CORE",
+            "options": [
+              {
+                "id": "sophia-data-viz",
+                "courseId": "SOPHIA-DATA-VIZ",
+                "title": "Data Visualization",
+                "credits": 3,
+                "cost_usd": 99,
+                "duration_weeks": 4,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 300,
+                "cri_score": 82,
+                "workload_weekly_hours": 8,
+                "subject": "Data Science"
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-DATA-VIZ"
+          },
+          {
+            "moduleId": "MACHINE_LEARNING_INTRO",
+            "label": "Intro to Machine Learning (3cr)",
+            "creditsRequired": 3,
+            "requirementArea": "DS_CORE",
+            "options": [
+              {
+                "id": "sophia-intro-ml",
+                "courseId": "SOPHIA-INTRO-ML",
+                "title": "Introduction to Machine Learning",
+                "credits": 3,
+                "cost_usd": 99,
+                "duration_weeks": 4,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 300,
+                "cri_score": 85,
+                "workload_weekly_hours": 10,
+                "subject": "Data Science"
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-INTRO-ML"
+          },
+          {
+            "moduleId": "BIG_DATA",
+            "label": "Big Data Analytics (3cr)",
+            "creditsRequired": 3,
+            "requirementArea": "DS_CORE",
+            "options": [
+              {
+                "id": "sophia-big-data",
+                "courseId": "SOPHIA-BIG-DATA",
+                "title": "Big Data Analytics",
+                "credits": 3,
+                "cost_usd": 99,
+                "duration_weeks": 4,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 300,
+                "cri_score": 83,
+                "workload_weekly_hours": 10,
+                "subject": "Data Science"
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-BIG-DATA"
+          },
+          {
+            "moduleId": "PROB_THEORY",
+            "label": "Probability Theory (3cr)",
+            "creditsRequired": 3,
+            "requirementArea": "MATH_CORE",
+            "options": [
+              {
+                "id": "sdc-probability",
+                "courseId": "SDC-PROBABILITY",
+                "title": "Probability Theory",
+                "credits": 3,
+                "cost_usd": 79,
+                "duration_weeks": 4,
+                "provider": "Study.com",
+                "providerType": "mooc",
+                "providerCode": "STUDYCOM",
+                "level": 300,
+                "cri_score": 81,
+                "workload_weekly_hours": 10,
+                "subject": "Mathematics"
+              }
+            ],
+            "recommendedCourseId": "SDC-PROBABILITY"
+          },
+          {
+            "moduleId": "DATA_MINING",
+            "label": "Data Mining (3cr)",
+            "creditsRequired": 3,
+            "requirementArea": "DS_CORE",
+            "options": [
+              {
+                "id": "sdc-data-mining",
+                "courseId": "SDC-DATA-MINING",
+                "title": "Data Mining",
+                "credits": 3,
+                "cost_usd": 79,
+                "duration_weeks": 4,
+                "provider": "Study.com",
+                "providerType": "mooc",
+                "providerCode": "STUDYCOM",
+                "level": 300,
+                "cri_score": 82,
+                "workload_weekly_hours": 10,
+                "subject": "Data Science"
+              }
+            ],
+            "recommendedCourseId": "SDC-DATA-MINING"
+          },
+          {
+            "moduleId": "INTRO_AI",
+            "label": "Introduction to AI (3cr)",
+            "creditsRequired": 3,
+            "requirementArea": "DS_CORE",
+            "options": [
+              {
+                "id": "sophia-ai",
+                "courseId": "SOPHIA-INTRO-AI",
+                "title": "Introduction to AI",
+                "credits": 3,
+                "cost_usd": 99,
+                "duration_weeks": 4,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 300,
+                "cri_score": 83,
+                "workload_weekly_hours": 10,
+                "subject": "Computer Science"
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-INTRO-AI"
+          },
+          {
+            "moduleId": "FREE_ELECTIVE_1",
+            "label": "Free Elective - Project Mgmt (3cr)",
+            "creditsRequired": 3,
+            "requirementArea": "FREE_ELECTIVE",
+            "options": [
+              {
+                "id": "sophia-project-mgmt",
+                "courseId": "SOPHIA-PROJECT-MGMT",
+                "title": "Project Management",
+                "credits": 3,
+                "cost_usd": 99,
+                "duration_weeks": 4,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 200,
+                "cri_score": 76,
+                "workload_weekly_hours": 8,
+                "subject": "Business"
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-PROJECT-MGMT"
+          },
+          {
+            "moduleId": "FREE_ELECTIVE_2",
+            "label": "Free Elective - Business Comm (3cr)",
+            "creditsRequired": 3,
+            "requirementArea": "FREE_ELECTIVE",
+            "options": [
+              {
+                "id": "sophia-business-comm",
+                "courseId": "SOPHIA-BUS-COMM",
+                "title": "Business Communication",
+                "credits": 3,
+                "cost_usd": 99,
+                "duration_weeks": 4,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 200,
+                "cri_score": 73,
+                "workload_weekly_hours": 8,
+                "subject": "Business"
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-BUS-COMM"
+          }
+        ]
+      },
+      {
+        "year": 4,
+        "label": "Year 4 – Advanced DS & TESU Residency (30cr)",
+        "recommendedPace": "part_time",
+        "moduleTemplates": [
+          {
+            "moduleId": "ADV_ML",
+            "label": "Advanced Machine Learning (3cr) - TESU",
+            "creditsRequired": 3,
+            "requirementArea": "DS_CORE",
+            "options": [
+              {
+                "id": "tesu-adv-ml",
+                "courseId": "TESU-ADV-ML",
+                "title": "Advanced Machine Learning",
+                "credits": 3,
+                "cost_usd": 1200,
+                "duration_weeks": 12,
+                "provider": "TESU",
+                "providerType": "university",
+                "providerCode": "TESU",
+                "level": 400,
+                "cri_score": 90,
+                "workload_weekly_hours": 12,
+                "subject": "Data Science"
+              }
+            ],
+            "recommendedCourseId": "TESU-ADV-ML"
+          },
+          {
+            "moduleId": "DATA_ETHICS",
+            "label": "Data Ethics (3cr) - TESU",
+            "creditsRequired": 3,
+            "requirementArea": "DS_CORE",
+            "options": [
+              {
+                "id": "tesu-data-ethics",
+                "courseId": "TESU-DATA-ETHICS",
+                "title": "Data Ethics",
+                "credits": 3,
+                "cost_usd": 1200,
+                "duration_weeks": 12,
+                "provider": "TESU",
+                "providerType": "university",
+                "providerCode": "TESU",
+                "level": 300,
+                "cri_score": 88,
+                "workload_weekly_hours": 10,
+                "subject": "Data Science"
+              }
+            ],
+            "recommendedCourseId": "TESU-DATA-ETHICS"
+          },
+          {
+            "moduleId": "ADV_ANALYTICS",
+            "label": "Advanced Analytics (3cr) - TESU",
+            "creditsRequired": 3,
+            "requirementArea": "DS_CORE",
+            "options": [
+              {
+                "id": "tesu-adv-analytics",
+                "courseId": "TESU-ADV-ANALYTICS",
+                "title": "Advanced Analytics",
+                "credits": 3,
+                "cost_usd": 1200,
+                "duration_weeks": 12,
+                "provider": "TESU",
+                "providerType": "university",
+                "providerCode": "TESU",
+                "level": 400,
+                "cri_score": 90,
+                "workload_weekly_hours": 12,
+                "subject": "Data Science"
+              }
+            ],
+            "recommendedCourseId": "TESU-ADV-ANALYTICS"
+          },
+          {
+            "moduleId": "SENIOR_PROJECT",
+            "label": "Senior Project I (3cr) - TESU",
+            "creditsRequired": 3,
+            "requirementArea": "CAPSTONE",
+            "options": [
+              {
+                "id": "tesu-ds-senior-project",
+                "courseId": "TESU-DS-SENIOR-PROJ",
+                "title": "Data Science Senior Project",
+                "credits": 3,
+                "cost_usd": 1200,
+                "duration_weeks": 12,
+                "provider": "TESU",
+                "providerType": "university",
+                "providerCode": "TESU",
+                "level": 400,
+                "cri_score": 92,
+                "workload_weekly_hours": 15,
+                "subject": "Data Science"
+              }
+            ],
+            "recommendedCourseId": "TESU-DS-SENIOR-PROJ"
+          },
+          {
+            "moduleId": "CAPSTONE",
+            "label": "DS Capstone (3cr) - TESU",
+            "creditsRequired": 3,
+            "requirementArea": "CAPSTONE",
+            "options": [
+              {
+                "id": "tesu-ds-capstone",
+                "courseId": "TESU-DS-CAPSTONE",
+                "title": "Data Science Capstone",
+                "credits": 3,
+                "cost_usd": 1200,
+                "duration_weeks": 12,
+                "provider": "TESU",
+                "providerType": "university",
+                "providerCode": "TESU",
+                "level": 400,
+                "cri_score": 94,
+                "workload_weekly_hours": 15,
+                "subject": "Data Science"
+              }
+            ],
+            "recommendedCourseId": "TESU-DS-CAPSTONE"
+          },
+          {
+            "moduleId": "DS_ELECTIVE_1",
+            "label": "DS Elective - Deep Learning (3cr)",
+            "creditsRequired": 3,
+            "requirementArea": "DS_ELECTIVE",
+            "options": [
+              {
+                "id": "sophia-deep-learning",
+                "courseId": "SOPHIA-DEEP-LEARN",
+                "title": "Deep Learning",
+                "credits": 3,
+                "cost_usd": 99,
+                "duration_weeks": 4,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 300,
+                "cri_score": 84,
+                "workload_weekly_hours": 10,
+                "subject": "Data Science"
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-DEEP-LEARN"
+          },
+          {
+            "moduleId": "DS_ELECTIVE_2",
+            "label": "DS Elective - NLP (3cr)",
+            "creditsRequired": 3,
+            "requirementArea": "DS_ELECTIVE",
+            "options": [
+              {
+                "id": "sophia-nlp",
+                "courseId": "SOPHIA-NLP",
+                "title": "Natural Language Processing",
+                "credits": 3,
+                "cost_usd": 99,
+                "duration_weeks": 4,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 300,
+                "cri_score": 83,
+                "workload_weekly_hours": 10,
+                "subject": "Data Science"
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-NLP"
+          },
+          {
+            "moduleId": "DS_ELECTIVE_3",
+            "label": "DS Elective - Cloud Computing (3cr)",
+            "creditsRequired": 3,
+            "requirementArea": "DS_ELECTIVE",
+            "options": [
+              {
+                "id": "sophia-cloud",
+                "courseId": "SOPHIA-CLOUD",
+                "title": "Cloud Computing",
+                "credits": 3,
+                "cost_usd": 99,
+                "duration_weeks": 4,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 300,
+                "cri_score": 81,
+                "workload_weekly_hours": 8,
+                "subject": "Computer Science"
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-CLOUD"
+          },
+          {
+            "moduleId": "FREE_ELECTIVE_3",
+            "label": "Free Elective (3cr)",
+            "creditsRequired": 3,
+            "requirementArea": "FREE_ELECTIVE",
+            "options": [
+              {
+                "id": "sophia-macro-econ",
+                "courseId": "SOPHIA-MACRO-ECON",
+                "title": "Macroeconomics",
+                "credits": 3,
+                "cost_usd": 99,
+                "duration_weeks": 4,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 200,
+                "cri_score": 72,
+                "workload_weekly_hours": 8,
+                "subject": "Economics"
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-MACRO-ECON"
+          },
+          {
+            "moduleId": "FREE_ELECTIVE_4",
+            "label": "Free Elective (3cr)",
+            "creditsRequired": 3,
+            "requirementArea": "FREE_ELECTIVE",
+            "options": [
+              {
+                "id": "sophia-marketing",
+                "courseId": "SOPHIA-MARKETING",
+                "title": "Introduction to Marketing",
+                "credits": 3,
+                "cost_usd": 99,
+                "duration_weeks": 4,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 200,
+                "cri_score": 71,
+                "workload_weekly_hours": 8,
+                "subject": "Business"
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-MARKETING"
+          }
+        ]
+      }
+    ],
+    "totals": {
+      "credits": 120,
+      "costUsd": 9876,
+      "weeks": 180,
+      "avgCri": 80.5
+    }
+  },
+  {
+    "id": "cyber-tesu-cheapest-2025",
+    "kind": "degree",
+    "programId": "cybersecurity-bachelor",
+    "anchorSchool": "TESU",
+    "optimization": "cheapest",
+    "label": "BS Cybersecurity @ TESU • Cheapest",
+    "summary": "Complete your Cybersecurity degree for under $10,000 using ACE credits and TESU's flexible policy. Meets all graduation requirements: 120 credits, 15cr residency, 30cr upper-division.",
+    "badge": "Cheapest",
+    "catalogYear": "2025",
+    "policyVersion": "TESU-2025-v1",
+    "generatedAt": "2025-01-07T00:00:00Z",
+    "lastVerified": "2025-01-07T00:00:00Z",
+    "marketplace": {
+      "title": "Budget Cybersecurity Degree",
+      "tagline": "Complete for under $10K using ACE credits + TESU residency",
+      "badge": "Cheapest",
+      "isPremium": false
+    },
+    "lifestyle": {
+      "avgWeeklyHours": 12,
+      "paceType": "flexible",
+      "workCompatible": true
+    },
+    "primaryCareerIds": ["security-analyst", "penetration-tester", "security-engineer"],
+    "deliveryMode": "fully_online",
+    "inPersonWeeks": 0,
+    "socialProof": {
+      "popularityScore": 4.4,
+      "dataSource": "simulated"
+    },
+    "yearTemplates": [
+      {
+        "year": 1,
+        "label": "Year 1 – Gen Ed Foundation (30cr)",
+        "recommendedPace": "part_time",
+        "moduleTemplates": [
+          {
+            "moduleId": "WRITTEN_COMM",
+            "label": "Written Communication (6cr)",
+            "creditsRequired": 6,
+            "requirementArea": "WRITTEN_COMM",
+            "options": [
+              {
+                "id": "sophia-eng-comp-bundle",
+                "courseId": "SOPHIA-ENG-COMP-I-II",
+                "title": "English Composition I & II",
+                "credits": 6,
+                "cost_usd": 99,
+                "duration_weeks": 8,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 100,
+                "cri_score": 72,
+                "workload_weekly_hours": 8,
+                "subject": "English"
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-ENG-COMP-I-II"
+          },
+          {
+            "moduleId": "ORAL_COMM",
+            "label": "Oral Communication (3cr)",
+            "creditsRequired": 3,
+            "requirementArea": "ORAL_COMM",
+            "options": [
+              {
+                "id": "sophia-public-speaking",
+                "courseId": "SOPHIA-PUBLIC-SPEAK",
+                "title": "Public Speaking",
+                "credits": 3,
+                "cost_usd": 99,
+                "duration_weeks": 4,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 100,
+                "cri_score": 75,
+                "workload_weekly_hours": 7.5,
+                "subject": "Communication"
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-PUBLIC-SPEAK"
+          },
+          {
+            "moduleId": "QUANTITATIVE",
+            "label": "College Algebra (3cr)",
+            "creditsRequired": 3,
+            "requirementArea": "QUANTITATIVE",
+            "options": [
+              {
+                "id": "sophia-college-algebra",
+                "courseId": "SOPHIA-COLLEGE-ALG",
+                "title": "College Algebra",
+                "credits": 3,
+                "cost_usd": 99,
+                "duration_weeks": 4,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 100,
+                "cri_score": 78,
+                "workload_weekly_hours": 7.5,
+                "subject": "Mathematics"
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-COLLEGE-ALG"
+          },
+          {
+            "moduleId": "HUMANITIES_1",
+            "label": "Humanities - Ethics (3cr)",
+            "creditsRequired": 3,
+            "requirementArea": "HUMANITIES",
+            "options": [
+              {
+                "id": "sophia-intro-ethics",
+                "courseId": "SOPHIA-INTRO-ETHICS",
+                "title": "Introduction to Ethics",
+                "credits": 3,
+                "cost_usd": 99,
+                "duration_weeks": 4,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 100,
+                "cri_score": 70,
+                "workload_weekly_hours": 7.5,
+                "subject": "Philosophy"
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-INTRO-ETHICS"
+          },
+          {
+            "moduleId": "HUMANITIES_2",
+            "label": "Humanities - Art History (3cr)",
+            "creditsRequired": 3,
+            "requirementArea": "HUMANITIES",
+            "options": [
+              {
+                "id": "sophia-art-history",
+                "courseId": "SOPHIA-ART-HIST-I",
+                "title": "Art History I",
+                "credits": 3,
+                "cost_usd": 99,
+                "duration_weeks": 4,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 100,
+                "cri_score": 69,
+                "workload_weekly_hours": 7.5,
+                "subject": "Art History"
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-ART-HIST-I"
+          },
+          {
+            "moduleId": "HUMANITIES_3",
+            "label": "Humanities - Literature (3cr)",
+            "creditsRequired": 3,
+            "requirementArea": "HUMANITIES",
+            "options": [
+              {
+                "id": "sophia-world-lit",
+                "courseId": "SOPHIA-WORLD-LIT",
+                "title": "World Literature",
+                "credits": 3,
+                "cost_usd": 99,
+                "duration_weeks": 4,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 100,
+                "cri_score": 68,
+                "workload_weekly_hours": 7.5,
+                "subject": "Literature"
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-WORLD-LIT"
+          },
+          {
+            "moduleId": "SOCIAL_SCIENCE_1",
+            "label": "Social Science - Psychology (3cr)",
+            "creditsRequired": 3,
+            "requirementArea": "SOCIAL_SCIENCE",
+            "options": [
+              {
+                "id": "sophia-intro-psychology",
+                "courseId": "SOPHIA-INTRO-PSYCH",
+                "title": "Introduction to Psychology",
+                "credits": 3,
+                "cost_usd": 99,
+                "duration_weeks": 4,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 100,
+                "cri_score": 73,
+                "workload_weekly_hours": 7.5,
+                "subject": "Psychology"
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-INTRO-PSYCH"
+          },
+          {
+            "moduleId": "SOCIAL_SCIENCE_2",
+            "label": "Social Science - Sociology (3cr)",
+            "creditsRequired": 3,
+            "requirementArea": "SOCIAL_SCIENCE",
+            "options": [
+              {
+                "id": "sophia-intro-sociology",
+                "courseId": "SOPHIA-INTRO-SOC",
+                "title": "Introduction to Sociology",
+                "credits": 3,
+                "cost_usd": 99,
+                "duration_weeks": 4,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 100,
+                "cri_score": 71,
+                "workload_weekly_hours": 7.5,
+                "subject": "Sociology"
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-INTRO-SOC"
+          },
+          {
+            "moduleId": "SOCIAL_SCIENCE_3",
+            "label": "Social Science - Economics (3cr)",
+            "creditsRequired": 3,
+            "requirementArea": "SOCIAL_SCIENCE",
+            "options": [
+              {
+                "id": "sophia-micro-econ",
+                "courseId": "SOPHIA-MICRO-ECON",
+                "title": "Microeconomics",
+                "credits": 3,
+                "cost_usd": 99,
+                "duration_weeks": 4,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 100,
+                "cri_score": 74,
+                "workload_weekly_hours": 8,
+                "subject": "Economics"
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-MICRO-ECON"
+          }
+        ]
+      },
+      {
+        "year": 2,
+        "label": "Year 2 – IT & Security Foundations (30cr)",
+        "recommendedPace": "part_time",
+        "moduleTemplates": [
+          {
+            "moduleId": "NATURAL_SCIENCE_1",
+            "label": "Natural Science - Biology (3cr)",
+            "creditsRequired": 3,
+            "requirementArea": "NATURAL_SCIENCE",
+            "options": [
+              {
+                "id": "sophia-human-biology",
+                "courseId": "SOPHIA-HUMAN-BIO",
+                "title": "Human Biology",
+                "credits": 3,
+                "cost_usd": 99,
+                "duration_weeks": 4,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 100,
+                "cri_score": 68,
+                "workload_weekly_hours": 7.5,
+                "subject": "Biology"
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-HUMAN-BIO"
+          },
+          {
+            "moduleId": "NATURAL_SCIENCE_2",
+            "label": "Natural Science - Environmental (3cr)",
+            "creditsRequired": 3,
+            "requirementArea": "NATURAL_SCIENCE",
+            "options": [
+              {
+                "id": "sophia-env-science",
+                "courseId": "SOPHIA-ENV-SCI",
+                "title": "Environmental Science",
+                "credits": 3,
+                "cost_usd": 99,
+                "duration_weeks": 4,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 100,
+                "cri_score": 70,
+                "workload_weekly_hours": 7.5,
+                "subject": "Science"
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-ENV-SCI"
+          },
+          {
+            "moduleId": "CIVIC_GLOBAL",
+            "label": "Civic & Global Awareness (3cr)",
+            "creditsRequired": 3,
+            "requirementArea": "CIVIC_GLOBAL",
+            "options": [
+              {
+                "id": "sophia-ancient-civ",
+                "courseId": "SOPHIA-ANCIENT-CIV",
+                "title": "Ancient Civilizations",
+                "credits": 3,
+                "cost_usd": 99,
+                "duration_weeks": 4,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 100,
+                "cri_score": 67,
+                "workload_weekly_hours": 7.5,
+                "subject": "History"
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-ANCIENT-CIV"
+          },
+          {
+            "moduleId": "INTRO_CS",
+            "label": "Intro to Computer Science (3cr)",
+            "creditsRequired": 3,
+            "requirementArea": "CYBER_CORE",
+            "options": [
+              {
+                "id": "sdc-intro-cs",
+                "courseId": "SDC-INTRO-CS",
+                "title": "Introduction to Computer Science",
+                "credits": 3,
+                "cost_usd": 79,
+                "duration_weeks": 4,
+                "provider": "Study.com",
+                "providerType": "mooc",
+                "providerCode": "STUDYCOM",
+                "level": 100,
+                "cri_score": 80,
+                "workload_weekly_hours": 8,
+                "subject": "Computer Science"
+              }
+            ],
+            "recommendedCourseId": "SDC-INTRO-CS"
+          },
+          {
+            "moduleId": "INTRO_CYBERSEC",
+            "label": "Intro to Cybersecurity (3cr)",
+            "creditsRequired": 3,
+            "requirementArea": "CYBER_CORE",
+            "options": [
+              {
+                "id": "sophia-cybersecurity",
+                "courseId": "SOPHIA-CYBERSEC",
+                "title": "Introduction to Cybersecurity",
+                "credits": 3,
+                "cost_usd": 99,
+                "duration_weeks": 4,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 200,
+                "cri_score": 79,
+                "workload_weekly_hours": 8,
+                "subject": "Cybersecurity"
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-CYBERSEC"
+          },
+          {
+            "moduleId": "NETWORKING_FUND",
+            "label": "Networking Fundamentals (3cr)",
+            "creditsRequired": 3,
+            "requirementArea": "CYBER_CORE",
+            "options": [
+              {
+                "id": "sdc-networking",
+                "courseId": "SDC-NET-FUND",
+                "title": "Computer Networks",
+                "credits": 3,
+                "cost_usd": 79,
+                "duration_weeks": 4,
+                "provider": "Study.com",
+                "providerType": "mooc",
+                "providerCode": "STUDYCOM",
+                "level": 200,
+                "cri_score": 83,
+                "workload_weekly_hours": 8,
+                "subject": "Computer Science"
+              }
+            ],
+            "recommendedCourseId": "SDC-NET-FUND"
+          },
+          {
+            "moduleId": "LINUX_ADMIN",
+            "label": "Linux Administration (3cr)",
+            "creditsRequired": 3,
+            "requirementArea": "CYBER_CORE",
+            "options": [
+              {
+                "id": "sophia-linux",
+                "courseId": "SOPHIA-LINUX",
+                "title": "Linux Administration",
+                "credits": 3,
+                "cost_usd": 99,
+                "duration_weeks": 4,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 200,
+                "cri_score": 80,
+                "workload_weekly_hours": 8,
+                "subject": "Computer Science"
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-LINUX"
+          },
+          {
+            "moduleId": "PROGRAMMING_I",
+            "label": "Programming - Python (3cr)",
+            "creditsRequired": 3,
+            "requirementArea": "CYBER_CORE",
+            "options": [
+              {
+                "id": "sdc-python",
+                "courseId": "SDC-PYTHON",
+                "title": "Introduction to Python",
+                "credits": 3,
+                "cost_usd": 79,
+                "duration_weeks": 4,
+                "provider": "Study.com",
+                "providerType": "mooc",
+                "providerCode": "STUDYCOM",
+                "level": 100,
+                "cri_score": 85,
+                "workload_weekly_hours": 8,
+                "subject": "Computer Science"
+              }
+            ],
+            "recommendedCourseId": "SDC-PYTHON"
+          },
+          {
+            "moduleId": "STATISTICS",
+            "label": "Statistics (3cr)",
+            "creditsRequired": 3,
+            "requirementArea": "MATH_CORE",
+            "options": [
+              {
+                "id": "sophia-statistics",
+                "courseId": "SOPHIA-STATS",
+                "title": "Introduction to Statistics",
+                "credits": 3,
+                "cost_usd": 99,
+                "duration_weeks": 4,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 200,
+                "cri_score": 74,
+                "workload_weekly_hours": 8,
+                "subject": "Mathematics"
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-STATS"
+          },
+          {
+            "moduleId": "DATABASE_INTRO",
+            "label": "Database Systems (3cr)",
+            "creditsRequired": 3,
+            "requirementArea": "CYBER_CORE",
+            "options": [
+              {
+                "id": "sophia-database",
+                "courseId": "SOPHIA-DATABASE",
+                "title": "Database Systems",
+                "credits": 3,
+                "cost_usd": 99,
+                "duration_weeks": 4,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 200,
+                "cri_score": 83,
+                "workload_weekly_hours": 10,
+                "subject": "Computer Science"
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-DATABASE"
+          }
+        ]
+      },
+      {
+        "year": 3,
+        "label": "Year 3 – Cybersecurity Core (30cr)",
+        "recommendedPace": "part_time",
+        "moduleTemplates": [
+          {
+            "moduleId": "NETWORK_SECURITY",
+            "label": "Network Security (3cr)",
+            "creditsRequired": 3,
+            "requirementArea": "CYBER_CORE",
+            "options": [
+              {
+                "id": "sophia-net-security",
+                "courseId": "SOPHIA-NET-SEC",
+                "title": "Network Security",
+                "credits": 3,
+                "cost_usd": 99,
+                "duration_weeks": 4,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 300,
+                "cri_score": 84,
+                "workload_weekly_hours": 10,
+                "subject": "Cybersecurity"
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-NET-SEC"
+          },
+          {
+            "moduleId": "ETHICAL_HACKING",
+            "label": "Ethical Hacking (3cr)",
+            "creditsRequired": 3,
+            "requirementArea": "CYBER_CORE",
+            "options": [
+              {
+                "id": "sophia-ethical-hack",
+                "courseId": "SOPHIA-ETH-HACK",
+                "title": "Ethical Hacking",
+                "credits": 3,
+                "cost_usd": 99,
+                "duration_weeks": 4,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 300,
+                "cri_score": 86,
+                "workload_weekly_hours": 10,
+                "subject": "Cybersecurity"
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-ETH-HACK"
+          },
+          {
+            "moduleId": "CRYPTOGRAPHY",
+            "label": "Cryptography (3cr)",
+            "creditsRequired": 3,
+            "requirementArea": "CYBER_CORE",
+            "options": [
+              {
+                "id": "sophia-crypto",
+                "courseId": "SOPHIA-CRYPTO",
+                "title": "Cryptography",
+                "credits": 3,
+                "cost_usd": 99,
+                "duration_weeks": 4,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 300,
+                "cri_score": 85,
+                "workload_weekly_hours": 10,
+                "subject": "Cybersecurity"
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-CRYPTO"
+          },
+          {
+            "moduleId": "INCIDENT_RESPONSE",
+            "label": "Incident Response (3cr)",
+            "creditsRequired": 3,
+            "requirementArea": "CYBER_CORE",
+            "options": [
+              {
+                "id": "sophia-incident-resp",
+                "courseId": "SOPHIA-INC-RESP",
+                "title": "Incident Response",
+                "credits": 3,
+                "cost_usd": 99,
+                "duration_weeks": 4,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 300,
+                "cri_score": 84,
+                "workload_weekly_hours": 10,
+                "subject": "Cybersecurity"
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-INC-RESP"
+          },
+          {
+            "moduleId": "SEC_OPERATIONS",
+            "label": "Security Operations (3cr)",
+            "creditsRequired": 3,
+            "requirementArea": "CYBER_CORE",
+            "options": [
+              {
+                "id": "sdc-sec-ops",
+                "courseId": "SDC-SEC-OPS",
+                "title": "Security Operations",
+                "credits": 3,
+                "cost_usd": 79,
+                "duration_weeks": 4,
+                "provider": "Study.com",
+                "providerType": "mooc",
+                "providerCode": "STUDYCOM",
+                "level": 300,
+                "cri_score": 83,
+                "workload_weekly_hours": 10,
+                "subject": "Cybersecurity"
+              }
+            ],
+            "recommendedCourseId": "SDC-SEC-OPS"
+          },
+          {
+            "moduleId": "RISK_MGMT",
+            "label": "Risk Management (3cr)",
+            "creditsRequired": 3,
+            "requirementArea": "CYBER_CORE",
+            "options": [
+              {
+                "id": "sdc-risk-mgmt",
+                "courseId": "SDC-RISK-MGMT",
+                "title": "Risk Management",
+                "credits": 3,
+                "cost_usd": 79,
+                "duration_weeks": 4,
+                "provider": "Study.com",
+                "providerType": "mooc",
+                "providerCode": "STUDYCOM",
+                "level": 300,
+                "cri_score": 82,
+                "workload_weekly_hours": 8,
+                "subject": "Cybersecurity"
+              }
+            ],
+            "recommendedCourseId": "SDC-RISK-MGMT"
+          },
+          {
+            "moduleId": "WEB_SEC",
+            "label": "Web Application Security (3cr)",
+            "creditsRequired": 3,
+            "requirementArea": "CYBER_CORE",
+            "options": [
+              {
+                "id": "sophia-web-sec",
+                "courseId": "SOPHIA-WEB-SEC",
+                "title": "Web Application Security",
+                "credits": 3,
+                "cost_usd": 99,
+                "duration_weeks": 4,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 300,
+                "cri_score": 84,
+                "workload_weekly_hours": 10,
+                "subject": "Cybersecurity"
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-WEB-SEC"
+          },
+          {
+            "moduleId": "DIGITAL_FORENSICS",
+            "label": "Digital Forensics (3cr)",
+            "creditsRequired": 3,
+            "requirementArea": "CYBER_CORE",
+            "options": [
+              {
+                "id": "sophia-forensics",
+                "courseId": "SOPHIA-FORENSICS",
+                "title": "Digital Forensics",
+                "credits": 3,
+                "cost_usd": 99,
+                "duration_weeks": 4,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 300,
+                "cri_score": 85,
+                "workload_weekly_hours": 10,
+                "subject": "Cybersecurity"
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-FORENSICS"
+          },
+          {
+            "moduleId": "FREE_ELECTIVE_1",
+            "label": "Free Elective - Project Mgmt (3cr)",
+            "creditsRequired": 3,
+            "requirementArea": "FREE_ELECTIVE",
+            "options": [
+              {
+                "id": "sophia-project-mgmt",
+                "courseId": "SOPHIA-PROJECT-MGMT",
+                "title": "Project Management",
+                "credits": 3,
+                "cost_usd": 99,
+                "duration_weeks": 4,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 200,
+                "cri_score": 76,
+                "workload_weekly_hours": 8,
+                "subject": "Business"
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-PROJECT-MGMT"
+          },
+          {
+            "moduleId": "FREE_ELECTIVE_2",
+            "label": "Free Elective - Business Comm (3cr)",
+            "creditsRequired": 3,
+            "requirementArea": "FREE_ELECTIVE",
+            "options": [
+              {
+                "id": "sophia-business-comm",
+                "courseId": "SOPHIA-BUS-COMM",
+                "title": "Business Communication",
+                "credits": 3,
+                "cost_usd": 99,
+                "duration_weeks": 4,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 200,
+                "cri_score": 73,
+                "workload_weekly_hours": 8,
+                "subject": "Business"
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-BUS-COMM"
+          }
+        ]
+      },
+      {
+        "year": 4,
+        "label": "Year 4 – Advanced Security & TESU Residency (30cr)",
+        "recommendedPace": "part_time",
+        "moduleTemplates": [
+          {
+            "moduleId": "ADV_THREAT_INTEL",
+            "label": "Threat Intelligence (3cr) - TESU",
+            "creditsRequired": 3,
+            "requirementArea": "CYBER_CORE",
+            "options": [
+              {
+                "id": "tesu-threat-intel",
+                "courseId": "TESU-THREAT-INTEL",
+                "title": "Threat Intelligence",
+                "credits": 3,
+                "cost_usd": 1200,
+                "duration_weeks": 12,
+                "provider": "TESU",
+                "providerType": "university",
+                "providerCode": "TESU",
+                "level": 400,
+                "cri_score": 90,
+                "workload_weekly_hours": 12,
+                "subject": "Cybersecurity"
+              }
+            ],
+            "recommendedCourseId": "TESU-THREAT-INTEL"
+          },
+          {
+            "moduleId": "CYBER_LAW",
+            "label": "Cyber Law & Policy (3cr) - TESU",
+            "creditsRequired": 3,
+            "requirementArea": "CYBER_CORE",
+            "options": [
+              {
+                "id": "tesu-cyber-law",
+                "courseId": "TESU-CYBER-LAW",
+                "title": "Cyber Law & Policy",
+                "credits": 3,
+                "cost_usd": 1200,
+                "duration_weeks": 12,
+                "provider": "TESU",
+                "providerType": "university",
+                "providerCode": "TESU",
+                "level": 300,
+                "cri_score": 88,
+                "workload_weekly_hours": 10,
+                "subject": "Cybersecurity"
+              }
+            ],
+            "recommendedCourseId": "TESU-CYBER-LAW"
+          },
+          {
+            "moduleId": "ADV_PENTESTING",
+            "label": "Advanced Penetration Testing (3cr) - TESU",
+            "creditsRequired": 3,
+            "requirementArea": "CYBER_CORE",
+            "options": [
+              {
+                "id": "tesu-adv-pentest",
+                "courseId": "TESU-ADV-PENTEST",
+                "title": "Advanced Penetration Testing",
+                "credits": 3,
+                "cost_usd": 1200,
+                "duration_weeks": 12,
+                "provider": "TESU",
+                "providerType": "university",
+                "providerCode": "TESU",
+                "level": 400,
+                "cri_score": 92,
+                "workload_weekly_hours": 12,
+                "subject": "Cybersecurity"
+              }
+            ],
+            "recommendedCourseId": "TESU-ADV-PENTEST"
+          },
+          {
+            "moduleId": "SENIOR_PROJECT",
+            "label": "Senior Project (3cr) - TESU",
+            "creditsRequired": 3,
+            "requirementArea": "CAPSTONE",
+            "options": [
+              {
+                "id": "tesu-cyber-senior-project",
+                "courseId": "TESU-CYBER-SENIOR-PROJ",
+                "title": "Cybersecurity Senior Project",
+                "credits": 3,
+                "cost_usd": 1200,
+                "duration_weeks": 12,
+                "provider": "TESU",
+                "providerType": "university",
+                "providerCode": "TESU",
+                "level": 400,
+                "cri_score": 92,
+                "workload_weekly_hours": 15,
+                "subject": "Cybersecurity"
+              }
+            ],
+            "recommendedCourseId": "TESU-CYBER-SENIOR-PROJ"
+          },
+          {
+            "moduleId": "CAPSTONE",
+            "label": "Cybersecurity Capstone (3cr) - TESU",
+            "creditsRequired": 3,
+            "requirementArea": "CAPSTONE",
+            "options": [
+              {
+                "id": "tesu-cyber-capstone",
+                "courseId": "TESU-CYBER-CAPSTONE",
+                "title": "Cybersecurity Capstone",
+                "credits": 3,
+                "cost_usd": 1200,
+                "duration_weeks": 12,
+                "provider": "TESU",
+                "providerType": "university",
+                "providerCode": "TESU",
+                "level": 400,
+                "cri_score": 94,
+                "workload_weekly_hours": 15,
+                "subject": "Cybersecurity"
+              }
+            ],
+            "recommendedCourseId": "TESU-CYBER-CAPSTONE"
+          },
+          {
+            "moduleId": "CYBER_ELECTIVE_1",
+            "label": "Cyber Elective - Cloud Security (3cr)",
+            "creditsRequired": 3,
+            "requirementArea": "CYBER_ELECTIVE",
+            "options": [
+              {
+                "id": "sophia-cloud-sec",
+                "courseId": "SOPHIA-CLOUD-SEC",
+                "title": "Cloud Security",
+                "credits": 3,
+                "cost_usd": 99,
+                "duration_weeks": 4,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 300,
+                "cri_score": 83,
+                "workload_weekly_hours": 10,
+                "subject": "Cybersecurity"
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-CLOUD-SEC"
+          },
+          {
+            "moduleId": "CYBER_ELECTIVE_2",
+            "label": "Cyber Elective - Mobile Security (3cr)",
+            "creditsRequired": 3,
+            "requirementArea": "CYBER_ELECTIVE",
+            "options": [
+              {
+                "id": "sophia-mobile-sec",
+                "courseId": "SOPHIA-MOBILE-SEC",
+                "title": "Mobile Security",
+                "credits": 3,
+                "cost_usd": 99,
+                "duration_weeks": 4,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 300,
+                "cri_score": 82,
+                "workload_weekly_hours": 10,
+                "subject": "Cybersecurity"
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-MOBILE-SEC"
+          },
+          {
+            "moduleId": "CYBER_ELECTIVE_3",
+            "label": "Cyber Elective - IoT Security (3cr)",
+            "creditsRequired": 3,
+            "requirementArea": "CYBER_ELECTIVE",
+            "options": [
+              {
+                "id": "sophia-iot-sec",
+                "courseId": "SOPHIA-IOT-SEC",
+                "title": "IoT Security",
+                "credits": 3,
+                "cost_usd": 99,
+                "duration_weeks": 4,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 300,
+                "cri_score": 81,
+                "workload_weekly_hours": 8,
+                "subject": "Cybersecurity"
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-IOT-SEC"
+          },
+          {
+            "moduleId": "FREE_ELECTIVE_3",
+            "label": "Free Elective (3cr)",
+            "creditsRequired": 3,
+            "requirementArea": "FREE_ELECTIVE",
+            "options": [
+              {
+                "id": "sophia-macro-econ",
+                "courseId": "SOPHIA-MACRO-ECON",
+                "title": "Macroeconomics",
+                "credits": 3,
+                "cost_usd": 99,
+                "duration_weeks": 4,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 200,
+                "cri_score": 72,
+                "workload_weekly_hours": 8,
+                "subject": "Economics"
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-MACRO-ECON"
+          },
+          {
+            "moduleId": "FREE_ELECTIVE_4",
+            "label": "Free Elective (3cr)",
+            "creditsRequired": 3,
+            "requirementArea": "FREE_ELECTIVE",
+            "options": [
+              {
+                "id": "sophia-marketing",
+                "courseId": "SOPHIA-MARKETING",
+                "title": "Introduction to Marketing",
+                "credits": 3,
+                "cost_usd": 99,
+                "duration_weeks": 4,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 200,
+                "cri_score": 71,
+                "workload_weekly_hours": 8,
+                "subject": "Business"
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-MARKETING"
+          }
+        ]
+      }
+    ],
+    "totals": {
+      "credits": 120,
+      "costUsd": 9876,
+      "weeks": 180,
+      "avgCri": 80.5
+    }
+  },
+  {
+    "id": "bsba-tesu-cheapest-2025",
+    "kind": "degree",
+    "programId": "bsba",
+    "anchorSchool": "TESU",
+    "optimization": "cheapest",
+    "label": "BSBA @ TESU • Cheapest",
+    "summary": "Complete your Business Administration degree for under $10,000 using ACE credits and TESU's flexible policy. Meets all graduation requirements: 120 credits, 15cr residency, 30cr upper-division.",
+    "badge": "Cheapest",
+    "catalogYear": "2025",
+    "policyVersion": "TESU-2025-v1",
+    "generatedAt": "2025-01-07T00:00:00Z",
+    "lastVerified": "2025-01-07T00:00:00Z",
+    "marketplace": {
+      "title": "Budget Business Degree",
+      "tagline": "Complete for under $10K using ACE credits + TESU residency",
+      "badge": "Cheapest",
+      "isPremium": false
+    },
+    "lifestyle": {
+      "avgWeeklyHours": 12,
+      "paceType": "flexible",
+      "workCompatible": true
+    },
+    "primaryCareerIds": ["business-analyst", "marketing-manager", "operations-manager"],
+    "deliveryMode": "fully_online",
+    "inPersonWeeks": 0,
+    "socialProof": {
+      "popularityScore": 4.5,
+      "dataSource": "simulated"
+    },
+    "yearTemplates": [
+      {
+        "year": 1,
+        "label": "Year 1 – Gen Ed Foundation (30cr)",
+        "recommendedPace": "part_time",
+        "moduleTemplates": [
+          {
+            "moduleId": "WRITTEN_COMM",
+            "label": "Written Communication (6cr)",
+            "creditsRequired": 6,
+            "requirementArea": "WRITTEN_COMM",
+            "options": [
+              {
+                "id": "sophia-eng-comp-bundle",
+                "courseId": "SOPHIA-ENG-COMP-I-II",
+                "title": "English Composition I & II",
+                "credits": 6,
+                "cost_usd": 99,
+                "duration_weeks": 8,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 100,
+                "cri_score": 72,
+                "workload_weekly_hours": 8,
+                "subject": "English"
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-ENG-COMP-I-II"
+          },
+          {
+            "moduleId": "ORAL_COMM",
+            "label": "Oral Communication (3cr)",
+            "creditsRequired": 3,
+            "requirementArea": "ORAL_COMM",
+            "options": [
+              {
+                "id": "sophia-public-speaking",
+                "courseId": "SOPHIA-PUBLIC-SPEAK",
+                "title": "Public Speaking",
+                "credits": 3,
+                "cost_usd": 99,
+                "duration_weeks": 4,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 100,
+                "cri_score": 75,
+                "workload_weekly_hours": 7.5,
+                "subject": "Communication"
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-PUBLIC-SPEAK"
+          },
+          {
+            "moduleId": "QUANTITATIVE",
+            "label": "College Algebra (3cr)",
+            "creditsRequired": 3,
+            "requirementArea": "QUANTITATIVE",
+            "options": [
+              {
+                "id": "sophia-college-algebra",
+                "courseId": "SOPHIA-COLLEGE-ALG",
+                "title": "College Algebra",
+                "credits": 3,
+                "cost_usd": 99,
+                "duration_weeks": 4,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 100,
+                "cri_score": 78,
+                "workload_weekly_hours": 7.5,
+                "subject": "Mathematics"
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-COLLEGE-ALG"
+          },
+          {
+            "moduleId": "HUMANITIES_1",
+            "label": "Humanities - Ethics (3cr)",
+            "creditsRequired": 3,
+            "requirementArea": "HUMANITIES",
+            "options": [
+              {
+                "id": "sophia-intro-ethics",
+                "courseId": "SOPHIA-INTRO-ETHICS",
+                "title": "Introduction to Ethics",
+                "credits": 3,
+                "cost_usd": 99,
+                "duration_weeks": 4,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 100,
+                "cri_score": 70,
+                "workload_weekly_hours": 7.5,
+                "subject": "Philosophy"
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-INTRO-ETHICS"
+          },
+          {
+            "moduleId": "HUMANITIES_2",
+            "label": "Humanities - Art History (3cr)",
+            "creditsRequired": 3,
+            "requirementArea": "HUMANITIES",
+            "options": [
+              {
+                "id": "sophia-art-history",
+                "courseId": "SOPHIA-ART-HIST-I",
+                "title": "Art History I",
+                "credits": 3,
+                "cost_usd": 99,
+                "duration_weeks": 4,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 100,
+                "cri_score": 69,
+                "workload_weekly_hours": 7.5,
+                "subject": "Art History"
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-ART-HIST-I"
+          },
+          {
+            "moduleId": "HUMANITIES_3",
+            "label": "Humanities - Literature (3cr)",
+            "creditsRequired": 3,
+            "requirementArea": "HUMANITIES",
+            "options": [
+              {
+                "id": "sophia-world-lit",
+                "courseId": "SOPHIA-WORLD-LIT",
+                "title": "World Literature",
+                "credits": 3,
+                "cost_usd": 99,
+                "duration_weeks": 4,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 100,
+                "cri_score": 68,
+                "workload_weekly_hours": 7.5,
+                "subject": "Literature"
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-WORLD-LIT"
+          },
+          {
+            "moduleId": "SOCIAL_SCIENCE_1",
+            "label": "Social Science - Psychology (3cr)",
+            "creditsRequired": 3,
+            "requirementArea": "SOCIAL_SCIENCE",
+            "options": [
+              {
+                "id": "sophia-intro-psychology",
+                "courseId": "SOPHIA-INTRO-PSYCH",
+                "title": "Introduction to Psychology",
+                "credits": 3,
+                "cost_usd": 99,
+                "duration_weeks": 4,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 100,
+                "cri_score": 73,
+                "workload_weekly_hours": 7.5,
+                "subject": "Psychology"
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-INTRO-PSYCH"
+          },
+          {
+            "moduleId": "SOCIAL_SCIENCE_2",
+            "label": "Social Science - Sociology (3cr)",
+            "creditsRequired": 3,
+            "requirementArea": "SOCIAL_SCIENCE",
+            "options": [
+              {
+                "id": "sophia-intro-sociology",
+                "courseId": "SOPHIA-INTRO-SOC",
+                "title": "Introduction to Sociology",
+                "credits": 3,
+                "cost_usd": 99,
+                "duration_weeks": 4,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 100,
+                "cri_score": 71,
+                "workload_weekly_hours": 7.5,
+                "subject": "Sociology"
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-INTRO-SOC"
+          },
+          {
+            "moduleId": "SOCIAL_SCIENCE_3",
+            "label": "Social Science - Economics (3cr)",
+            "creditsRequired": 3,
+            "requirementArea": "SOCIAL_SCIENCE",
+            "options": [
+              {
+                "id": "sophia-micro-econ",
+                "courseId": "SOPHIA-MICRO-ECON",
+                "title": "Microeconomics",
+                "credits": 3,
+                "cost_usd": 99,
+                "duration_weeks": 4,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 100,
+                "cri_score": 74,
+                "workload_weekly_hours": 8,
+                "subject": "Economics"
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-MICRO-ECON"
+          }
+        ]
+      },
+      {
+        "year": 2,
+        "label": "Year 2 – Business Foundations (30cr)",
+        "recommendedPace": "part_time",
+        "moduleTemplates": [
+          {
+            "moduleId": "NATURAL_SCIENCE_1",
+            "label": "Natural Science - Biology (3cr)",
+            "creditsRequired": 3,
+            "requirementArea": "NATURAL_SCIENCE",
+            "options": [
+              {
+                "id": "sophia-human-biology",
+                "courseId": "SOPHIA-HUMAN-BIO",
+                "title": "Human Biology",
+                "credits": 3,
+                "cost_usd": 99,
+                "duration_weeks": 4,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 100,
+                "cri_score": 68,
+                "workload_weekly_hours": 7.5,
+                "subject": "Biology"
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-HUMAN-BIO"
+          },
+          {
+            "moduleId": "NATURAL_SCIENCE_2",
+            "label": "Natural Science - Environmental (3cr)",
+            "creditsRequired": 3,
+            "requirementArea": "NATURAL_SCIENCE",
+            "options": [
+              {
+                "id": "sophia-env-science",
+                "courseId": "SOPHIA-ENV-SCI",
+                "title": "Environmental Science",
+                "credits": 3,
+                "cost_usd": 99,
+                "duration_weeks": 4,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 100,
+                "cri_score": 70,
+                "workload_weekly_hours": 7.5,
+                "subject": "Science"
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-ENV-SCI"
+          },
+          {
+            "moduleId": "CIVIC_GLOBAL",
+            "label": "Civic & Global Awareness (3cr)",
+            "creditsRequired": 3,
+            "requirementArea": "CIVIC_GLOBAL",
+            "options": [
+              {
+                "id": "sophia-ancient-civ",
+                "courseId": "SOPHIA-ANCIENT-CIV",
+                "title": "Ancient Civilizations",
+                "credits": 3,
+                "cost_usd": 99,
+                "duration_weeks": 4,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 100,
+                "cri_score": 67,
+                "workload_weekly_hours": 7.5,
+                "subject": "History"
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-ANCIENT-CIV"
+          },
+          {
+            "moduleId": "STATISTICS",
+            "label": "Business Statistics (3cr)",
+            "creditsRequired": 3,
+            "requirementArea": "MATH_CORE",
+            "options": [
+              {
+                "id": "sophia-statistics",
+                "courseId": "SOPHIA-STATS",
+                "title": "Introduction to Statistics",
+                "credits": 3,
+                "cost_usd": 99,
+                "duration_weeks": 4,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 200,
+                "cri_score": 74,
+                "workload_weekly_hours": 8,
+                "subject": "Mathematics"
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-STATS"
+          },
+          {
+            "moduleId": "INTRO_BUSINESS",
+            "label": "Introduction to Business (3cr)",
+            "creditsRequired": 3,
+            "requirementArea": "BUS_CORE",
+            "options": [
+              {
+                "id": "sophia-intro-business",
+                "courseId": "SOPHIA-INTRO-BUS",
+                "title": "Introduction to Business",
+                "credits": 3,
+                "cost_usd": 99,
+                "duration_weeks": 4,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 100,
+                "cri_score": 75,
+                "workload_weekly_hours": 8,
+                "subject": "Business"
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-INTRO-BUS"
+          },
+          {
+            "moduleId": "ACCOUNTING_I",
+            "label": "Financial Accounting (3cr)",
+            "creditsRequired": 3,
+            "requirementArea": "BUS_CORE",
+            "options": [
+              {
+                "id": "sophia-fin-accounting",
+                "courseId": "SOPHIA-FIN-ACCT",
+                "title": "Financial Accounting",
+                "credits": 3,
+                "cost_usd": 99,
+                "duration_weeks": 4,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 200,
+                "cri_score": 78,
+                "workload_weekly_hours": 10,
+                "subject": "Accounting"
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-FIN-ACCT"
+          },
+          {
+            "moduleId": "ACCOUNTING_II",
+            "label": "Managerial Accounting (3cr)",
+            "creditsRequired": 3,
+            "requirementArea": "BUS_CORE",
+            "options": [
+              {
+                "id": "sophia-mgmt-accounting",
+                "courseId": "SOPHIA-MGMT-ACCT",
+                "title": "Managerial Accounting",
+                "credits": 3,
+                "cost_usd": 99,
+                "duration_weeks": 4,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 200,
+                "cri_score": 77,
+                "workload_weekly_hours": 10,
+                "subject": "Accounting"
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-MGMT-ACCT"
+          },
+          {
+            "moduleId": "MACRO_ECON",
+            "label": "Macroeconomics (3cr)",
+            "creditsRequired": 3,
+            "requirementArea": "BUS_CORE",
+            "options": [
+              {
+                "id": "sophia-macro-econ",
+                "courseId": "SOPHIA-MACRO-ECON",
+                "title": "Macroeconomics",
+                "credits": 3,
+                "cost_usd": 99,
+                "duration_weeks": 4,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 200,
+                "cri_score": 72,
+                "workload_weekly_hours": 8,
+                "subject": "Economics"
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-MACRO-ECON"
+          },
+          {
+            "moduleId": "BUS_COMM",
+            "label": "Business Communication (3cr)",
+            "creditsRequired": 3,
+            "requirementArea": "BUS_CORE",
+            "options": [
+              {
+                "id": "sophia-business-comm",
+                "courseId": "SOPHIA-BUS-COMM",
+                "title": "Business Communication",
+                "credits": 3,
+                "cost_usd": 99,
+                "duration_weeks": 4,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 200,
+                "cri_score": 73,
+                "workload_weekly_hours": 8,
+                "subject": "Business"
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-BUS-COMM"
+          },
+          {
+            "moduleId": "PROJECT_MGMT",
+            "label": "Project Management (3cr)",
+            "creditsRequired": 3,
+            "requirementArea": "BUS_CORE",
+            "options": [
+              {
+                "id": "sophia-project-mgmt",
+                "courseId": "SOPHIA-PROJECT-MGMT",
+                "title": "Project Management",
+                "credits": 3,
+                "cost_usd": 99,
+                "duration_weeks": 4,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 200,
+                "cri_score": 76,
+                "workload_weekly_hours": 8,
+                "subject": "Business"
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-PROJECT-MGMT"
+          }
+        ]
+      },
+      {
+        "year": 3,
+        "label": "Year 3 – Business Core (30cr)",
+        "recommendedPace": "part_time",
+        "moduleTemplates": [
+          {
+            "moduleId": "MARKETING",
+            "label": "Principles of Marketing (3cr)",
+            "creditsRequired": 3,
+            "requirementArea": "BUS_CORE",
+            "options": [
+              {
+                "id": "sophia-marketing",
+                "courseId": "SOPHIA-MARKETING",
+                "title": "Introduction to Marketing",
+                "credits": 3,
+                "cost_usd": 99,
+                "duration_weeks": 4,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 200,
+                "cri_score": 75,
+                "workload_weekly_hours": 8,
+                "subject": "Business"
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-MARKETING"
+          },
+          {
+            "moduleId": "MANAGEMENT",
+            "label": "Principles of Management (3cr)",
+            "creditsRequired": 3,
+            "requirementArea": "BUS_CORE",
+            "options": [
+              {
+                "id": "sophia-management",
+                "courseId": "SOPHIA-MANAGEMENT",
+                "title": "Principles of Management",
+                "credits": 3,
+                "cost_usd": 99,
+                "duration_weeks": 4,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 200,
+                "cri_score": 76,
+                "workload_weekly_hours": 8,
+                "subject": "Business"
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-MANAGEMENT"
+          },
+          {
+            "moduleId": "FINANCE",
+            "label": "Business Finance (3cr)",
+            "creditsRequired": 3,
+            "requirementArea": "BUS_CORE",
+            "options": [
+              {
+                "id": "sophia-finance",
+                "courseId": "SOPHIA-BUS-FIN",
+                "title": "Business Finance",
+                "credits": 3,
+                "cost_usd": 99,
+                "duration_weeks": 4,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 300,
+                "cri_score": 79,
+                "workload_weekly_hours": 10,
+                "subject": "Finance"
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-BUS-FIN"
+          },
+          {
+            "moduleId": "BUS_LAW",
+            "label": "Business Law (3cr)",
+            "creditsRequired": 3,
+            "requirementArea": "BUS_CORE",
+            "options": [
+              {
+                "id": "sdc-bus-law",
+                "courseId": "SDC-BUS-LAW",
+                "title": "Business Law",
+                "credits": 3,
+                "cost_usd": 79,
+                "duration_weeks": 4,
+                "provider": "Study.com",
+                "providerType": "mooc",
+                "providerCode": "STUDYCOM",
+                "level": 300,
+                "cri_score": 80,
+                "workload_weekly_hours": 8,
+                "subject": "Business"
+              }
+            ],
+            "recommendedCourseId": "SDC-BUS-LAW"
+          },
+          {
+            "moduleId": "ORG_BEHAVIOR",
+            "label": "Organizational Behavior (3cr)",
+            "creditsRequired": 3,
+            "requirementArea": "BUS_CORE",
+            "options": [
+              {
+                "id": "sdc-org-behavior",
+                "courseId": "SDC-ORG-BEHAV",
+                "title": "Organizational Behavior",
+                "credits": 3,
+                "cost_usd": 79,
+                "duration_weeks": 4,
+                "provider": "Study.com",
+                "providerType": "mooc",
+                "providerCode": "STUDYCOM",
+                "level": 300,
+                "cri_score": 78,
+                "workload_weekly_hours": 8,
+                "subject": "Business"
+              }
+            ],
+            "recommendedCourseId": "SDC-ORG-BEHAV"
+          },
+          {
+            "moduleId": "HR_MGMT",
+            "label": "Human Resource Management (3cr)",
+            "creditsRequired": 3,
+            "requirementArea": "BUS_CORE",
+            "options": [
+              {
+                "id": "sdc-hr-mgmt",
+                "courseId": "SDC-HR-MGMT",
+                "title": "Human Resource Management",
+                "credits": 3,
+                "cost_usd": 79,
+                "duration_weeks": 4,
+                "provider": "Study.com",
+                "providerType": "mooc",
+                "providerCode": "STUDYCOM",
+                "level": 300,
+                "cri_score": 77,
+                "workload_weekly_hours": 8,
+                "subject": "Business"
+              }
+            ],
+            "recommendedCourseId": "SDC-HR-MGMT"
+          },
+          {
+            "moduleId": "OPERATIONS",
+            "label": "Operations Management (3cr)",
+            "creditsRequired": 3,
+            "requirementArea": "BUS_CORE",
+            "options": [
+              {
+                "id": "sophia-operations",
+                "courseId": "SOPHIA-OPS-MGMT",
+                "title": "Operations Management",
+                "credits": 3,
+                "cost_usd": 99,
+                "duration_weeks": 4,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 300,
+                "cri_score": 78,
+                "workload_weekly_hours": 8,
+                "subject": "Business"
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-OPS-MGMT"
+          },
+          {
+            "moduleId": "MIS",
+            "label": "Management Information Systems (3cr)",
+            "creditsRequired": 3,
+            "requirementArea": "BUS_CORE",
+            "options": [
+              {
+                "id": "sophia-mis",
+                "courseId": "SOPHIA-MIS",
+                "title": "Management Information Systems",
+                "credits": 3,
+                "cost_usd": 99,
+                "duration_weeks": 4,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 300,
+                "cri_score": 77,
+                "workload_weekly_hours": 8,
+                "subject": "Business"
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-MIS"
+          },
+          {
+            "moduleId": "FREE_ELECTIVE_1",
+            "label": "Free Elective (3cr)",
+            "creditsRequired": 3,
+            "requirementArea": "FREE_ELECTIVE",
+            "options": [
+              {
+                "id": "sophia-intro-cs",
+                "courseId": "SOPHIA-INTRO-CS",
+                "title": "Introduction to Computer Science",
+                "credits": 3,
+                "cost_usd": 99,
+                "duration_weeks": 4,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 100,
+                "cri_score": 76,
+                "workload_weekly_hours": 8,
+                "subject": "Computer Science"
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-INTRO-CS"
+          },
+          {
+            "moduleId": "FREE_ELECTIVE_2",
+            "label": "Free Elective (3cr)",
+            "creditsRequired": 3,
+            "requirementArea": "FREE_ELECTIVE",
+            "options": [
+              {
+                "id": "sophia-environ-bus",
+                "courseId": "SOPHIA-ENVIRON-BUS",
+                "title": "Business Environment",
+                "credits": 3,
+                "cost_usd": 99,
+                "duration_weeks": 4,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 200,
+                "cri_score": 74,
+                "workload_weekly_hours": 8,
+                "subject": "Business"
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-ENVIRON-BUS"
+          }
+        ]
+      },
+      {
+        "year": 4,
+        "label": "Year 4 – Advanced Business & TESU Residency (30cr)",
+        "recommendedPace": "part_time",
+        "moduleTemplates": [
+          {
+            "moduleId": "STRATEGIC_MGMT",
+            "label": "Strategic Management (3cr) - TESU",
+            "creditsRequired": 3,
+            "requirementArea": "BUS_CORE",
+            "options": [
+              {
+                "id": "tesu-strategic-mgmt",
+                "courseId": "TESU-STRATEGIC-MGMT",
+                "title": "Strategic Management",
+                "credits": 3,
+                "cost_usd": 1200,
+                "duration_weeks": 12,
+                "provider": "TESU",
+                "providerType": "university",
+                "providerCode": "TESU",
+                "level": 400,
+                "cri_score": 90,
+                "workload_weekly_hours": 12,
+                "subject": "Business"
+              }
+            ],
+            "recommendedCourseId": "TESU-STRATEGIC-MGMT"
+          },
+          {
+            "moduleId": "BUS_ETHICS",
+            "label": "Business Ethics (3cr) - TESU",
+            "creditsRequired": 3,
+            "requirementArea": "BUS_CORE",
+            "options": [
+              {
+                "id": "tesu-bus-ethics",
+                "courseId": "TESU-BUS-ETHICS",
+                "title": "Business Ethics",
+                "credits": 3,
+                "cost_usd": 1200,
+                "duration_weeks": 12,
+                "provider": "TESU",
+                "providerType": "university",
+                "providerCode": "TESU",
+                "level": 300,
+                "cri_score": 88,
+                "workload_weekly_hours": 10,
+                "subject": "Business"
+              }
+            ],
+            "recommendedCourseId": "TESU-BUS-ETHICS"
+          },
+          {
+            "moduleId": "GLOBAL_BUS",
+            "label": "Global Business (3cr) - TESU",
+            "creditsRequired": 3,
+            "requirementArea": "BUS_CORE",
+            "options": [
+              {
+                "id": "tesu-global-bus",
+                "courseId": "TESU-GLOBAL-BUS",
+                "title": "Global Business",
+                "credits": 3,
+                "cost_usd": 1200,
+                "duration_weeks": 12,
+                "provider": "TESU",
+                "providerType": "university",
+                "providerCode": "TESU",
+                "level": 400,
+                "cri_score": 89,
+                "workload_weekly_hours": 12,
+                "subject": "Business"
+              }
+            ],
+            "recommendedCourseId": "TESU-GLOBAL-BUS"
+          },
+          {
+            "moduleId": "SENIOR_PROJECT",
+            "label": "Senior Project (3cr) - TESU",
+            "creditsRequired": 3,
+            "requirementArea": "CAPSTONE",
+            "options": [
+              {
+                "id": "tesu-bus-senior-project",
+                "courseId": "TESU-BUS-SENIOR-PROJ",
+                "title": "Business Senior Project",
+                "credits": 3,
+                "cost_usd": 1200,
+                "duration_weeks": 12,
+                "provider": "TESU",
+                "providerType": "university",
+                "providerCode": "TESU",
+                "level": 400,
+                "cri_score": 92,
+                "workload_weekly_hours": 15,
+                "subject": "Business"
+              }
+            ],
+            "recommendedCourseId": "TESU-BUS-SENIOR-PROJ"
+          },
+          {
+            "moduleId": "CAPSTONE",
+            "label": "Business Capstone (3cr) - TESU",
+            "creditsRequired": 3,
+            "requirementArea": "CAPSTONE",
+            "options": [
+              {
+                "id": "tesu-bus-capstone",
+                "courseId": "TESU-BUS-CAPSTONE",
+                "title": "Business Administration Capstone",
+                "credits": 3,
+                "cost_usd": 1200,
+                "duration_weeks": 12,
+                "provider": "TESU",
+                "providerType": "university",
+                "providerCode": "TESU",
+                "level": 400,
+                "cri_score": 94,
+                "workload_weekly_hours": 15,
+                "subject": "Business"
+              }
+            ],
+            "recommendedCourseId": "TESU-BUS-CAPSTONE"
+          },
+          {
+            "moduleId": "BUS_ELECTIVE_1",
+            "label": "Business Elective - Entrepreneurship (3cr)",
+            "creditsRequired": 3,
+            "requirementArea": "BUS_ELECTIVE",
+            "options": [
+              {
+                "id": "sophia-entrepreneurship",
+                "courseId": "SOPHIA-ENTREPREN",
+                "title": "Entrepreneurship",
+                "credits": 3,
+                "cost_usd": 99,
+                "duration_weeks": 4,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 300,
+                "cri_score": 80,
+                "workload_weekly_hours": 8,
+                "subject": "Business"
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-ENTREPREN"
+          },
+          {
+            "moduleId": "BUS_ELECTIVE_2",
+            "label": "Business Elective - Digital Marketing (3cr)",
+            "creditsRequired": 3,
+            "requirementArea": "BUS_ELECTIVE",
+            "options": [
+              {
+                "id": "sophia-digital-mktg",
+                "courseId": "SOPHIA-DIG-MKTG",
+                "title": "Digital Marketing",
+                "credits": 3,
+                "cost_usd": 99,
+                "duration_weeks": 4,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 300,
+                "cri_score": 79,
+                "workload_weekly_hours": 8,
+                "subject": "Business"
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-DIG-MKTG"
+          },
+          {
+            "moduleId": "BUS_ELECTIVE_3",
+            "label": "Business Elective - Supply Chain (3cr)",
+            "creditsRequired": 3,
+            "requirementArea": "BUS_ELECTIVE",
+            "options": [
+              {
+                "id": "sophia-supply-chain",
+                "courseId": "SOPHIA-SUPPLY-CHAIN",
+                "title": "Supply Chain Management",
+                "credits": 3,
+                "cost_usd": 99,
+                "duration_weeks": 4,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 300,
+                "cri_score": 78,
+                "workload_weekly_hours": 8,
+                "subject": "Business"
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-SUPPLY-CHAIN"
+          },
+          {
+            "moduleId": "FREE_ELECTIVE_3",
+            "label": "Free Elective (3cr)",
+            "creditsRequired": 3,
+            "requirementArea": "FREE_ELECTIVE",
+            "options": [
+              {
+                "id": "sophia-data-analytics",
+                "courseId": "SOPHIA-DATA-ANAL",
+                "title": "Data Analytics",
+                "credits": 3,
+                "cost_usd": 99,
+                "duration_weeks": 4,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 200,
+                "cri_score": 77,
+                "workload_weekly_hours": 8,
+                "subject": "Business"
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-DATA-ANAL"
+          },
+          {
+            "moduleId": "FREE_ELECTIVE_4",
+            "label": "Free Elective (3cr)",
+            "creditsRequired": 3,
+            "requirementArea": "FREE_ELECTIVE",
+            "options": [
+              {
+                "id": "sophia-leadership",
+                "courseId": "SOPHIA-LEADERSHIP",
+                "title": "Leadership",
+                "credits": 3,
+                "cost_usd": 99,
+                "duration_weeks": 4,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 300,
+                "cri_score": 76,
+                "workload_weekly_hours": 8,
+                "subject": "Business"
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-LEADERSHIP"
+          }
+        ]
+      }
+    ],
+    "totals": {
+      "credits": 120,
+      "costUsd": 9876,
+      "weeks": 180,
+      "avgCri": 78.5
     }
   }
 ]
