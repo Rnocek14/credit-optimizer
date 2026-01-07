@@ -30,7 +30,579 @@
       "popularityScore": 4.2,
       "dataSource": "simulated"
     },
-    "yearTemplates": [],
+    "yearTemplates": [
+      {
+        "year": 1,
+        "label": "Year 1 – Gen Ed Foundation (Budget)",
+        "recommendedPace": "part_time",
+        "moduleTemplates": [
+          {
+            "moduleId": "WRITTEN_COMM",
+            "label": "Written Communication (6cr)",
+            "requirementArea": "WRITTEN_COMM",
+            "options": [
+              {
+                "id": "sophia-eng-comp-bundle",
+                "courseId": "SOPHIA-ENG-COMP-I-II",
+                "title": "English Composition I & II",
+                "credits": 6,
+                "cost_usd": 99,
+                "duration_weeks": 4,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 100,
+                "cri_score": 72,
+                "workload_weekly_hours": 15,
+                "subject": "English"
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-ENG-COMP-I-II"
+          },
+          {
+            "moduleId": "QUANTITATIVE",
+            "label": "College Algebra (3cr)",
+            "requirementArea": "QUANTITATIVE",
+            "options": [
+              {
+                "id": "sophia-college-algebra",
+                "courseId": "SOPHIA-COLLEGE-ALG",
+                "title": "College Algebra",
+                "credits": 3,
+                "cost_usd": 99,
+                "duration_weeks": 4,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 100,
+                "cri_score": 78,
+                "workload_weekly_hours": 7.5,
+                "subject": "Mathematics"
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-COLLEGE-ALG"
+          },
+          {
+            "moduleId": "HUMANITIES",
+            "label": "Humanities (6cr)",
+            "requirementArea": "HUMANITIES",
+            "options": [
+              {
+                "id": "sophia-intro-ethics",
+                "courseId": "SOPHIA-INTRO-ETHICS",
+                "title": "Introduction to Ethics",
+                "credits": 3,
+                "cost_usd": 99,
+                "duration_weeks": 4,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 100,
+                "cri_score": 70,
+                "workload_weekly_hours": 7.5,
+                "subject": "Philosophy"
+              },
+              {
+                "id": "sophia-art-history",
+                "courseId": "SOPHIA-ART-HIST-I",
+                "title": "Art History I",
+                "credits": 3,
+                "cost_usd": 99,
+                "duration_weeks": 4,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 100,
+                "cri_score": 69,
+                "workload_weekly_hours": 7.5,
+                "subject": "Art History"
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-INTRO-ETHICS"
+          },
+          {
+            "moduleId": "SOCIAL_SCIENCE",
+            "label": "Social Sciences (6cr)",
+            "requirementArea": "SOCIAL_SCIENCE",
+            "options": [
+              {
+                "id": "sophia-intro-psychology",
+                "courseId": "SOPHIA-INTRO-PSYCH",
+                "title": "Introduction to Psychology",
+                "credits": 3,
+                "cost_usd": 99,
+                "duration_weeks": 4,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 100,
+                "cri_score": 73,
+                "workload_weekly_hours": 7.5,
+                "subject": "Psychology"
+              },
+              {
+                "id": "sophia-intro-sociology",
+                "courseId": "SOPHIA-INTRO-SOC",
+                "title": "Introduction to Sociology",
+                "credits": 3,
+                "cost_usd": 99,
+                "duration_weeks": 4,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 100,
+                "cri_score": 71,
+                "workload_weekly_hours": 7.5,
+                "subject": "Sociology"
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-INTRO-PSYCH"
+          },
+          {
+            "moduleId": "CS_INTRO",
+            "label": "Intro to Computer Science (3cr)",
+            "requirementArea": "CS_CORE",
+            "options": [
+              {
+                "id": "sdc-intro-cs",
+                "courseId": "SDC-INTRO-CS",
+                "title": "Introduction to Computer Science",
+                "credits": 3,
+                "cost_usd": 79,
+                "duration_weeks": 4,
+                "provider": "Study.com",
+                "providerType": "mooc",
+                "providerCode": "STUDYCOM",
+                "level": 100,
+                "cri_score": 80,
+                "workload_weekly_hours": 8,
+                "subject": "Computer Science"
+              }
+            ],
+            "recommendedCourseId": "SDC-INTRO-CS"
+          }
+        ]
+      },
+      {
+        "year": 2,
+        "label": "Year 2 – Math & Programming Core",
+        "recommendedPace": "part_time",
+        "moduleTemplates": [
+          {
+            "moduleId": "ORAL_COMM",
+            "label": "Oral Communication (3cr)",
+            "requirementArea": "ORAL_COMM",
+            "options": [
+              {
+                "id": "sophia-public-speaking",
+                "courseId": "SOPHIA-PUBLIC-SPEAK",
+                "title": "Public Speaking",
+                "credits": 3,
+                "cost_usd": 99,
+                "duration_weeks": 4,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 100,
+                "cri_score": 75,
+                "workload_weekly_hours": 7.5,
+                "subject": "Communication"
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-PUBLIC-SPEAK"
+          },
+          {
+            "moduleId": "NATURAL_SCIENCE",
+            "label": "Natural Science (6cr)",
+            "requirementArea": "NATURAL_SCIENCE",
+            "options": [
+              {
+                "id": "sophia-human-biology",
+                "courseId": "SOPHIA-HUMAN-BIO",
+                "title": "Human Biology",
+                "credits": 3,
+                "cost_usd": 99,
+                "duration_weeks": 4,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 100,
+                "cri_score": 68,
+                "workload_weekly_hours": 7.5,
+                "subject": "Biology"
+              },
+              {
+                "id": "sophia-env-science",
+                "courseId": "SOPHIA-ENV-SCI",
+                "title": "Environmental Science",
+                "credits": 3,
+                "cost_usd": 99,
+                "duration_weeks": 4,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 100,
+                "cri_score": 70,
+                "workload_weekly_hours": 7.5,
+                "subject": "Science"
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-HUMAN-BIO"
+          },
+          {
+            "moduleId": "CALCULUS",
+            "label": "Calculus I (4cr)",
+            "requirementArea": "MATH_CORE",
+            "options": [
+              {
+                "id": "sdc-calculus-1",
+                "courseId": "SDC-CALC-I",
+                "title": "Calculus I",
+                "credits": 4,
+                "cost_usd": 79,
+                "duration_weeks": 6,
+                "provider": "Study.com",
+                "providerType": "mooc",
+                "providerCode": "STUDYCOM",
+                "level": 100,
+                "cri_score": 82,
+                "workload_weekly_hours": 10,
+                "subject": "Mathematics"
+              }
+            ],
+            "recommendedCourseId": "SDC-CALC-I"
+          },
+          {
+            "moduleId": "PROGRAMMING_I",
+            "label": "Programming I - Python (3cr)",
+            "requirementArea": "CS_CORE",
+            "options": [
+              {
+                "id": "sdc-python",
+                "courseId": "SDC-PYTHON",
+                "title": "Introduction to Python",
+                "credits": 3,
+                "cost_usd": 79,
+                "duration_weeks": 4,
+                "provider": "Study.com",
+                "providerType": "mooc",
+                "providerCode": "STUDYCOM",
+                "level": 100,
+                "cri_score": 85,
+                "workload_weekly_hours": 8,
+                "subject": "Computer Science"
+              }
+            ],
+            "recommendedCourseId": "SDC-PYTHON"
+          },
+          {
+            "moduleId": "DISCRETE_MATH",
+            "label": "Discrete Mathematics (3cr)",
+            "requirementArea": "MATH_CORE",
+            "options": [
+              {
+                "id": "sdc-discrete-math",
+                "courseId": "SDC-DISCRETE-MATH",
+                "title": "Discrete Mathematics",
+                "credits": 3,
+                "cost_usd": 79,
+                "duration_weeks": 4,
+                "provider": "Study.com",
+                "providerType": "mooc",
+                "providerCode": "STUDYCOM",
+                "level": 200,
+                "cri_score": 80,
+                "workload_weekly_hours": 8,
+                "subject": "Mathematics"
+              }
+            ],
+            "recommendedCourseId": "SDC-DISCRETE-MATH"
+          }
+        ]
+      },
+      {
+        "year": 3,
+        "label": "Year 3 – CS Core & Data Structures",
+        "recommendedPace": "part_time",
+        "moduleTemplates": [
+          {
+            "moduleId": "DATA_STRUCTURES",
+            "label": "Data Structures (3cr)",
+            "requirementArea": "CS_CORE",
+            "options": [
+              {
+                "id": "sdc-data-structures",
+                "courseId": "SDC-DATA-STRUCT",
+                "title": "Data Structures",
+                "credits": 3,
+                "cost_usd": 79,
+                "duration_weeks": 4,
+                "provider": "Study.com",
+                "providerType": "mooc",
+                "providerCode": "STUDYCOM",
+                "level": 200,
+                "cri_score": 85,
+                "workload_weekly_hours": 10,
+                "subject": "Computer Science"
+              }
+            ],
+            "recommendedCourseId": "SDC-DATA-STRUCT"
+          },
+          {
+            "moduleId": "ALGORITHMS",
+            "label": "Algorithms (3cr)",
+            "requirementArea": "CS_CORE",
+            "options": [
+              {
+                "id": "sdc-algorithms",
+                "courseId": "SDC-ALGORITHMS",
+                "title": "Analysis of Algorithms",
+                "credits": 3,
+                "cost_usd": 79,
+                "duration_weeks": 4,
+                "provider": "Study.com",
+                "providerType": "mooc",
+                "providerCode": "STUDYCOM",
+                "level": 300,
+                "cri_score": 86,
+                "workload_weekly_hours": 10,
+                "subject": "Computer Science"
+              }
+            ],
+            "recommendedCourseId": "SDC-ALGORITHMS"
+          },
+          {
+            "moduleId": "COMPUTER_ARCH",
+            "label": "Computer Architecture (3cr)",
+            "requirementArea": "CS_CORE",
+            "options": [
+              {
+                "id": "sdc-comp-arch",
+                "courseId": "SDC-COMP-ARCH",
+                "title": "Computer Architecture",
+                "credits": 3,
+                "cost_usd": 79,
+                "duration_weeks": 4,
+                "provider": "Study.com",
+                "providerType": "mooc",
+                "providerCode": "STUDYCOM",
+                "level": 200,
+                "cri_score": 82,
+                "workload_weekly_hours": 8,
+                "subject": "Computer Science"
+              }
+            ],
+            "recommendedCourseId": "SDC-COMP-ARCH"
+          },
+          {
+            "moduleId": "OPERATING_SYSTEMS",
+            "label": "Operating Systems (3cr)",
+            "requirementArea": "CS_CORE",
+            "options": [
+              {
+                "id": "sdc-os",
+                "courseId": "SDC-OS",
+                "title": "Operating Systems",
+                "credits": 3,
+                "cost_usd": 79,
+                "duration_weeks": 4,
+                "provider": "Study.com",
+                "providerType": "mooc",
+                "providerCode": "STUDYCOM",
+                "level": 300,
+                "cri_score": 84,
+                "workload_weekly_hours": 10,
+                "subject": "Computer Science"
+              }
+            ],
+            "recommendedCourseId": "SDC-OS"
+          },
+          {
+            "moduleId": "DATABASE_SYSTEMS",
+            "label": "Database Systems (3cr)",
+            "requirementArea": "CS_CORE",
+            "options": [
+              {
+                "id": "sdc-database",
+                "courseId": "SDC-DATABASE",
+                "title": "Database Systems",
+                "credits": 3,
+                "cost_usd": 79,
+                "duration_weeks": 4,
+                "provider": "Study.com",
+                "providerType": "mooc",
+                "providerCode": "STUDYCOM",
+                "level": 300,
+                "cri_score": 85,
+                "workload_weekly_hours": 10,
+                "subject": "Computer Science"
+              }
+            ],
+            "recommendedCourseId": "SDC-DATABASE"
+          },
+          {
+            "moduleId": "SOFTWARE_ENGINEERING",
+            "label": "Software Engineering (3cr)",
+            "requirementArea": "CS_CORE",
+            "options": [
+              {
+                "id": "sdc-software-eng",
+                "courseId": "SDC-SOFTWARE-ENG",
+                "title": "Software Engineering",
+                "credits": 3,
+                "cost_usd": 79,
+                "duration_weeks": 4,
+                "provider": "Study.com",
+                "providerType": "mooc",
+                "providerCode": "STUDYCOM",
+                "level": 300,
+                "cri_score": 83,
+                "workload_weekly_hours": 10,
+                "subject": "Computer Science"
+              }
+            ],
+            "recommendedCourseId": "SDC-SOFTWARE-ENG"
+          }
+        ]
+      },
+      {
+        "year": 4,
+        "label": "Year 4 – Advanced CS & Capstone",
+        "recommendedPace": "part_time",
+        "moduleTemplates": [
+          {
+            "moduleId": "NETWORKS",
+            "label": "Computer Networks (3cr)",
+            "requirementArea": "CS_CORE",
+            "options": [
+              {
+                "id": "sdc-networks",
+                "courseId": "SDC-NET-FUND",
+                "title": "Computer Networks",
+                "credits": 3,
+                "cost_usd": 79,
+                "duration_weeks": 4,
+                "provider": "Study.com",
+                "providerType": "mooc",
+                "providerCode": "STUDYCOM",
+                "level": 300,
+                "cri_score": 83,
+                "workload_weekly_hours": 8,
+                "subject": "Computer Science"
+              }
+            ],
+            "recommendedCourseId": "SDC-NET-FUND"
+          },
+          {
+            "moduleId": "THEORY_COMPUTATION",
+            "label": "Theory of Computation (3cr)",
+            "requirementArea": "CS_CORE",
+            "options": [
+              {
+                "id": "tesu-theory-comp",
+                "courseId": "TESU-THEORY-COMP",
+                "title": "Theory of Computation",
+                "credits": 3,
+                "cost_usd": 1200,
+                "duration_weeks": 12,
+                "provider": "TESU",
+                "providerType": "university",
+                "providerCode": "TESU",
+                "level": 400,
+                "cri_score": 90,
+                "workload_weekly_hours": 12,
+                "subject": "Computer Science"
+              }
+            ],
+            "recommendedCourseId": "TESU-THEORY-COMP"
+          },
+          {
+            "moduleId": "SENIOR_PROJECT",
+            "label": "Senior Project (3cr)",
+            "requirementArea": "CAPSTONE",
+            "options": [
+              {
+                "id": "tesu-senior-project-1",
+                "courseId": "TESU-SENIOR-PROJ-I",
+                "title": "Senior Project I",
+                "credits": 3,
+                "cost_usd": 1200,
+                "duration_weeks": 12,
+                "provider": "TESU",
+                "providerType": "university",
+                "providerCode": "TESU",
+                "level": 400,
+                "cri_score": 92,
+                "workload_weekly_hours": 15,
+                "subject": "Computer Science"
+              }
+            ],
+            "recommendedCourseId": "TESU-SENIOR-PROJ-I"
+          },
+          {
+            "moduleId": "CAPSTONE",
+            "label": "Capstone (3cr)",
+            "requirementArea": "CAPSTONE",
+            "options": [
+              {
+                "id": "tesu-cs-capstone",
+                "courseId": "TESU-CS-CAPSTONE",
+                "title": "Computer Science Capstone",
+                "credits": 3,
+                "cost_usd": 1200,
+                "duration_weeks": 12,
+                "provider": "TESU",
+                "providerType": "university",
+                "providerCode": "TESU",
+                "level": 400,
+                "cri_score": 94,
+                "workload_weekly_hours": 15,
+                "subject": "Computer Science"
+              }
+            ],
+            "recommendedCourseId": "TESU-CS-CAPSTONE"
+          },
+          {
+            "moduleId": "FREE_ELECTIVE",
+            "label": "Free Electives (6cr)",
+            "requirementArea": "FREE_ELECTIVE",
+            "options": [
+              {
+                "id": "sophia-project-mgmt",
+                "courseId": "SOPHIA-PROJECT-MGMT",
+                "title": "Project Management",
+                "credits": 3,
+                "cost_usd": 99,
+                "duration_weeks": 4,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 200,
+                "cri_score": 76,
+                "workload_weekly_hours": 8,
+                "subject": "Business"
+              },
+              {
+                "id": "sophia-micro-econ",
+                "courseId": "SOPHIA-MICRO-ECON",
+                "title": "Microeconomics",
+                "credits": 3,
+                "cost_usd": 99,
+                "duration_weeks": 4,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 200,
+                "cri_score": 74,
+                "workload_weekly_hours": 8,
+                "subject": "Economics"
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-PROJECT-MGMT"
+          }
+        ]
+      }
+    ],
     "totals": {
       "credits": 120,
       "costUsd": 6850,
@@ -69,7 +641,121 @@
       "popularityScore": 4.7,
       "dataSource": "simulated"
     },
-    "yearTemplates": [],
+    "yearTemplates": [
+      {
+        "year": 1,
+        "label": "Year 1 – Accelerated Foundations",
+        "recommendedPace": "accelerated",
+        "moduleTemplates": [
+          {
+            "moduleId": "GEN_ED_BLOCK",
+            "label": "General Education Block (30cr)",
+            "requirementArea": "GEN_ED",
+            "options": [
+              {
+                "id": "wgu-gen-ed-bundle",
+                "courseId": "WGU-GEN-ED-BUNDLE",
+                "title": "WGU General Education Bundle",
+                "credits": 30,
+                "cost_usd": 3750,
+                "duration_weeks": 26,
+                "provider": "WGU",
+                "providerType": "university",
+                "providerCode": "WGU",
+                "level": 100,
+                "cri_score": 78,
+                "workload_weekly_hours": 25,
+                "subject": "General Education"
+              }
+            ],
+            "recommendedCourseId": "WGU-GEN-ED-BUNDLE"
+          }
+        ]
+      },
+      {
+        "year": 2,
+        "label": "Year 2 – CS Core Accelerated",
+        "recommendedPace": "accelerated",
+        "moduleTemplates": [
+          {
+            "moduleId": "CS_CORE_BLOCK",
+            "label": "CS Core Block (30cr)",
+            "requirementArea": "CS_CORE",
+            "options": [
+              {
+                "id": "wgu-cs-core-bundle",
+                "courseId": "WGU-CS-CORE-BUNDLE",
+                "title": "WGU CS Core Bundle",
+                "credits": 30,
+                "cost_usd": 3750,
+                "duration_weeks": 26,
+                "provider": "WGU",
+                "providerType": "university",
+                "providerCode": "WGU",
+                "level": 200,
+                "cri_score": 82,
+                "workload_weekly_hours": 25,
+                "subject": "Computer Science"
+              }
+            ],
+            "recommendedCourseId": "WGU-CS-CORE-BUNDLE"
+          }
+        ]
+      },
+      {
+        "year": 3,
+        "label": "Year 3 – Advanced CS & Capstone",
+        "recommendedPace": "accelerated",
+        "moduleTemplates": [
+          {
+            "moduleId": "CS_ADVANCED_BLOCK",
+            "label": "Advanced CS & Electives (30cr)",
+            "requirementArea": "CS_CORE",
+            "options": [
+              {
+                "id": "wgu-cs-advanced-bundle",
+                "courseId": "WGU-CS-ADV-BUNDLE",
+                "title": "WGU Advanced CS Bundle",
+                "credits": 30,
+                "cost_usd": 3750,
+                "duration_weeks": 26,
+                "provider": "WGU",
+                "providerType": "university",
+                "providerCode": "WGU",
+                "level": 300,
+                "cri_score": 85,
+                "workload_weekly_hours": 25,
+                "subject": "Computer Science"
+              }
+            ],
+            "recommendedCourseId": "WGU-CS-ADV-BUNDLE"
+          },
+          {
+            "moduleId": "CAPSTONE",
+            "label": "Capstone (3cr)",
+            "requirementArea": "CAPSTONE",
+            "options": [
+              {
+                "id": "wgu-cs-capstone",
+                "courseId": "WGU-CS-CAPSTONE",
+                "title": "WGU CS Capstone",
+                "credits": 3,
+                "cost_usd": 0,
+                "duration_weeks": 8,
+                "provider": "WGU",
+                "providerType": "university",
+                "providerCode": "WGU",
+                "level": 400,
+                "cri_score": 90,
+                "workload_weekly_hours": 20,
+                "subject": "Computer Science"
+              }
+            ],
+            "recommendedCourseId": "WGU-CS-CAPSTONE"
+          }
+        ]
+      }
+    ],
     "totals": {
       "credits": 120,
       "costUsd": 10500,
@@ -108,7 +794,220 @@
       "popularityScore": 4.5,
       "dataSource": "simulated"
     },
-    "yearTemplates": [],
+    "yearTemplates": [
+      {
+        "year": 1,
+        "label": "Year 1 – Gen Ed at UMGC",
+        "recommendedPace": "standard",
+        "moduleTemplates": [
+          {
+            "moduleId": "WRITTEN_COMM",
+            "label": "Written Communication (6cr)",
+            "requirementArea": "WRITTEN_COMM",
+            "options": [
+              {
+                "id": "umgc-eng-comp-bundle",
+                "courseId": "UMGC-ENG-101-102",
+                "title": "English Composition I & II",
+                "credits": 6,
+                "cost_usd": 1872,
+                "duration_weeks": 16,
+                "provider": "UMGC",
+                "providerType": "university",
+                "providerCode": "UMGC",
+                "level": 100,
+                "cri_score": 82,
+                "workload_weekly_hours": 15,
+                "subject": "English"
+              }
+            ],
+            "recommendedCourseId": "UMGC-ENG-101-102"
+          },
+          {
+            "moduleId": "QUANTITATIVE",
+            "label": "Math (6cr)",
+            "requirementArea": "QUANTITATIVE",
+            "options": [
+              {
+                "id": "umgc-math-bundle",
+                "courseId": "UMGC-MATH-BUNDLE",
+                "title": "College Algebra & Calculus I",
+                "credits": 6,
+                "cost_usd": 1872,
+                "duration_weeks": 16,
+                "provider": "UMGC",
+                "providerType": "university",
+                "providerCode": "UMGC",
+                "level": 100,
+                "cri_score": 80,
+                "workload_weekly_hours": 15,
+                "subject": "Mathematics"
+              }
+            ],
+            "recommendedCourseId": "UMGC-MATH-BUNDLE"
+          },
+          {
+            "moduleId": "HUMANITIES",
+            "label": "Humanities (6cr)",
+            "requirementArea": "HUMANITIES",
+            "options": [
+              {
+                "id": "umgc-hum-bundle",
+                "courseId": "UMGC-HUM-BUNDLE",
+                "title": "Humanities Block",
+                "credits": 6,
+                "cost_usd": 1872,
+                "duration_weeks": 16,
+                "provider": "UMGC",
+                "providerType": "university",
+                "providerCode": "UMGC",
+                "level": 100,
+                "cri_score": 78,
+                "workload_weekly_hours": 15,
+                "subject": "Humanities"
+              }
+            ],
+            "recommendedCourseId": "UMGC-HUM-BUNDLE"
+          }
+        ]
+      },
+      {
+        "year": 2,
+        "label": "Year 2 – CS Foundations",
+        "recommendedPace": "standard",
+        "moduleTemplates": [
+          {
+            "moduleId": "CS_FOUNDATIONS",
+            "label": "CS Foundations (12cr)",
+            "requirementArea": "CS_CORE",
+            "options": [
+              {
+                "id": "umgc-cs-foundations-bundle",
+                "courseId": "UMGC-CS-FOUND-BUNDLE",
+                "title": "UMGC CS Foundations",
+                "credits": 12,
+                "cost_usd": 3744,
+                "duration_weeks": 16,
+                "provider": "UMGC",
+                "providerType": "university",
+                "providerCode": "UMGC",
+                "level": 200,
+                "cri_score": 84,
+                "workload_weekly_hours": 15,
+                "subject": "Computer Science"
+              }
+            ],
+            "recommendedCourseId": "UMGC-CS-FOUND-BUNDLE"
+          },
+          {
+            "moduleId": "MATH_CORE",
+            "label": "CS Math (6cr)",
+            "requirementArea": "MATH_CORE",
+            "options": [
+              {
+                "id": "umgc-cs-math-bundle",
+                "courseId": "UMGC-CS-MATH-BUNDLE",
+                "title": "Discrete Math & Linear Algebra",
+                "credits": 6,
+                "cost_usd": 1872,
+                "duration_weeks": 16,
+                "provider": "UMGC",
+                "providerType": "university",
+                "providerCode": "UMGC",
+                "level": 200,
+                "cri_score": 82,
+                "workload_weekly_hours": 15,
+                "subject": "Mathematics"
+              }
+            ],
+            "recommendedCourseId": "UMGC-CS-MATH-BUNDLE"
+          }
+        ]
+      },
+      {
+        "year": 3,
+        "label": "Year 3 – Advanced CS",
+        "recommendedPace": "standard",
+        "moduleTemplates": [
+          {
+            "moduleId": "CS_ADVANCED",
+            "label": "Advanced CS (18cr)",
+            "requirementArea": "CS_CORE",
+            "options": [
+              {
+                "id": "umgc-cs-advanced-bundle",
+                "courseId": "UMGC-CS-ADV-BUNDLE",
+                "title": "UMGC Advanced CS",
+                "credits": 18,
+                "cost_usd": 5616,
+                "duration_weeks": 32,
+                "provider": "UMGC",
+                "providerType": "university",
+                "providerCode": "UMGC",
+                "level": 300,
+                "cri_score": 86,
+                "workload_weekly_hours": 15,
+                "subject": "Computer Science"
+              }
+            ],
+            "recommendedCourseId": "UMGC-CS-ADV-BUNDLE"
+          }
+        ]
+      },
+      {
+        "year": 4,
+        "label": "Year 4 – Capstone & Electives",
+        "recommendedPace": "standard",
+        "moduleTemplates": [
+          {
+            "moduleId": "CAPSTONE",
+            "label": "Capstone (6cr)",
+            "requirementArea": "CAPSTONE",
+            "options": [
+              {
+                "id": "umgc-cs-capstone",
+                "courseId": "UMGC-CS-CAPSTONE",
+                "title": "UMGC CS Capstone",
+                "credits": 6,
+                "cost_usd": 1872,
+                "duration_weeks": 16,
+                "provider": "UMGC",
+                "providerType": "university",
+                "providerCode": "UMGC",
+                "level": 400,
+                "cri_score": 90,
+                "workload_weekly_hours": 18,
+                "subject": "Computer Science"
+              }
+            ],
+            "recommendedCourseId": "UMGC-CS-CAPSTONE"
+          },
+          {
+            "moduleId": "CS_ELECTIVES",
+            "label": "CS Electives (12cr)",
+            "requirementArea": "CS_ELECTIVE",
+            "options": [
+              {
+                "id": "umgc-cs-electives-bundle",
+                "courseId": "UMGC-CS-ELEC-BUNDLE",
+                "title": "UMGC CS Electives",
+                "credits": 12,
+                "cost_usd": 3744,
+                "duration_weeks": 16,
+                "provider": "UMGC",
+                "providerType": "university",
+                "providerCode": "UMGC",
+                "level": 300,
+                "cri_score": 84,
+                "workload_weekly_hours": 15,
+                "subject": "Computer Science"
+              }
+            ],
+            "recommendedCourseId": "UMGC-CS-ELEC-BUNDLE"
+          }
+        ]
+      }
+    ],
     "totals": {
       "credits": 120,
       "costUsd": 18720,
@@ -880,7 +1779,350 @@
       "popularityScore": 4.0,
       "dataSource": "simulated"
     },
-    "yearTemplates": [],
+    "yearTemplates": [
+      {
+        "year": 1,
+        "label": "Year 1 – Gen Ed Foundation",
+        "recommendedPace": "part_time",
+        "moduleTemplates": [
+          {
+            "moduleId": "WRITTEN_COMM",
+            "label": "Written Communication (6cr)",
+            "requirementArea": "WRITTEN_COMM",
+            "options": [
+              {
+                "id": "sophia-eng-comp-bundle",
+                "courseId": "SOPHIA-ENG-COMP-I-II",
+                "title": "English Composition I & II",
+                "credits": 6,
+                "cost_usd": 99,
+                "duration_weeks": 4,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 100,
+                "cri_score": 72,
+                "workload_weekly_hours": 15,
+                "subject": "English"
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-ENG-COMP-I-II"
+          },
+          {
+            "moduleId": "QUANTITATIVE",
+            "label": "College Algebra (3cr)",
+            "requirementArea": "QUANTITATIVE",
+            "options": [
+              {
+                "id": "sophia-college-algebra",
+                "courseId": "SOPHIA-COLLEGE-ALG",
+                "title": "College Algebra",
+                "credits": 3,
+                "cost_usd": 99,
+                "duration_weeks": 4,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 100,
+                "cri_score": 78,
+                "workload_weekly_hours": 7.5,
+                "subject": "Mathematics"
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-COLLEGE-ALG"
+          },
+          {
+            "moduleId": "STATISTICS",
+            "label": "Statistics (3cr)",
+            "requirementArea": "MATH_CORE",
+            "options": [
+              {
+                "id": "sophia-statistics",
+                "courseId": "SOPHIA-STATS",
+                "title": "Introduction to Statistics",
+                "credits": 3,
+                "cost_usd": 99,
+                "duration_weeks": 4,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 200,
+                "cri_score": 76,
+                "workload_weekly_hours": 8,
+                "subject": "Mathematics"
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-STATS"
+          },
+          {
+            "moduleId": "HUMANITIES",
+            "label": "Humanities (6cr)",
+            "requirementArea": "HUMANITIES",
+            "options": [
+              {
+                "id": "sophia-intro-ethics",
+                "courseId": "SOPHIA-INTRO-ETHICS",
+                "title": "Introduction to Ethics",
+                "credits": 3,
+                "cost_usd": 99,
+                "duration_weeks": 4,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 100,
+                "cri_score": 70,
+                "workload_weekly_hours": 7.5,
+                "subject": "Philosophy"
+              },
+              {
+                "id": "sophia-art-history",
+                "courseId": "SOPHIA-ART-HIST-I",
+                "title": "Art History I",
+                "credits": 3,
+                "cost_usd": 99,
+                "duration_weeks": 4,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 100,
+                "cri_score": 69,
+                "workload_weekly_hours": 7.5,
+                "subject": "Art History"
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-INTRO-ETHICS"
+          }
+        ]
+      },
+      {
+        "year": 2,
+        "label": "Year 2 – Data & Programming Core",
+        "recommendedPace": "part_time",
+        "moduleTemplates": [
+          {
+            "moduleId": "PROGRAMMING_I",
+            "label": "Python Programming (3cr)",
+            "requirementArea": "DATA_CORE",
+            "options": [
+              {
+                "id": "sdc-python",
+                "courseId": "SDC-PYTHON",
+                "title": "Introduction to Python",
+                "credits": 3,
+                "cost_usd": 79,
+                "duration_weeks": 4,
+                "provider": "Study.com",
+                "providerType": "mooc",
+                "providerCode": "STUDYCOM",
+                "level": 100,
+                "cri_score": 85,
+                "workload_weekly_hours": 8,
+                "subject": "Computer Science"
+              }
+            ],
+            "recommendedCourseId": "SDC-PYTHON"
+          },
+          {
+            "moduleId": "DATABASE_SYSTEMS",
+            "label": "Database Systems (3cr)",
+            "requirementArea": "DATA_CORE",
+            "options": [
+              {
+                "id": "sdc-database",
+                "courseId": "SDC-DATABASE",
+                "title": "Database Systems",
+                "credits": 3,
+                "cost_usd": 79,
+                "duration_weeks": 4,
+                "provider": "Study.com",
+                "providerType": "mooc",
+                "providerCode": "STUDYCOM",
+                "level": 300,
+                "cri_score": 85,
+                "workload_weekly_hours": 10,
+                "subject": "Computer Science"
+              }
+            ],
+            "recommendedCourseId": "SDC-DATABASE"
+          },
+          {
+            "moduleId": "CALCULUS",
+            "label": "Calculus I (4cr)",
+            "requirementArea": "MATH_CORE",
+            "options": [
+              {
+                "id": "sdc-calculus-1",
+                "courseId": "SDC-CALC-I",
+                "title": "Calculus I",
+                "credits": 4,
+                "cost_usd": 79,
+                "duration_weeks": 6,
+                "provider": "Study.com",
+                "providerType": "mooc",
+                "providerCode": "STUDYCOM",
+                "level": 100,
+                "cri_score": 82,
+                "workload_weekly_hours": 10,
+                "subject": "Mathematics"
+              }
+            ],
+            "recommendedCourseId": "SDC-CALC-I"
+          },
+          {
+            "moduleId": "DISCRETE_MATH",
+            "label": "Discrete Mathematics (3cr)",
+            "requirementArea": "MATH_CORE",
+            "options": [
+              {
+                "id": "sdc-discrete-math",
+                "courseId": "SDC-DISCRETE-MATH",
+                "title": "Discrete Mathematics",
+                "credits": 3,
+                "cost_usd": 79,
+                "duration_weeks": 4,
+                "provider": "Study.com",
+                "providerType": "mooc",
+                "providerCode": "STUDYCOM",
+                "level": 200,
+                "cri_score": 80,
+                "workload_weekly_hours": 8,
+                "subject": "Mathematics"
+              }
+            ],
+            "recommendedCourseId": "SDC-DISCRETE-MATH"
+          }
+        ]
+      },
+      {
+        "year": 3,
+        "label": "Year 3 – Data Science Core",
+        "recommendedPace": "part_time",
+        "moduleTemplates": [
+          {
+            "moduleId": "DATA_STRUCTURES",
+            "label": "Data Structures (3cr)",
+            "requirementArea": "DATA_CORE",
+            "options": [
+              {
+                "id": "sdc-data-structures",
+                "courseId": "SDC-DATA-STRUCT",
+                "title": "Data Structures",
+                "credits": 3,
+                "cost_usd": 79,
+                "duration_weeks": 4,
+                "provider": "Study.com",
+                "providerType": "mooc",
+                "providerCode": "STUDYCOM",
+                "level": 200,
+                "cri_score": 85,
+                "workload_weekly_hours": 10,
+                "subject": "Computer Science"
+              }
+            ],
+            "recommendedCourseId": "SDC-DATA-STRUCT"
+          },
+          {
+            "moduleId": "MACHINE_LEARNING",
+            "label": "Machine Learning (3cr)",
+            "requirementArea": "DATA_CORE",
+            "options": [
+              {
+                "id": "sdc-machine-learning",
+                "courseId": "SDC-MACHINE-LEARN",
+                "title": "Machine Learning",
+                "credits": 3,
+                "cost_usd": 79,
+                "duration_weeks": 4,
+                "provider": "Study.com",
+                "providerType": "mooc",
+                "providerCode": "STUDYCOM",
+                "level": 300,
+                "cri_score": 86,
+                "workload_weekly_hours": 10,
+                "subject": "Computer Science"
+              }
+            ],
+            "recommendedCourseId": "SDC-MACHINE-LEARN"
+          },
+          {
+            "moduleId": "DATA_VISUALIZATION",
+            "label": "Data Visualization (3cr)",
+            "requirementArea": "DATA_CORE",
+            "options": [
+              {
+                "id": "sdc-data-viz",
+                "courseId": "SDC-DATA-VIZ",
+                "title": "Data Visualization",
+                "credits": 3,
+                "cost_usd": 79,
+                "duration_weeks": 4,
+                "provider": "Study.com",
+                "providerType": "mooc",
+                "providerCode": "STUDYCOM",
+                "level": 300,
+                "cri_score": 84,
+                "workload_weekly_hours": 8,
+                "subject": "Data Science"
+              }
+            ],
+            "recommendedCourseId": "SDC-DATA-VIZ"
+          }
+        ]
+      },
+      {
+        "year": 4,
+        "label": "Year 4 – Advanced Analytics & Capstone",
+        "recommendedPace": "part_time",
+        "moduleTemplates": [
+          {
+            "moduleId": "ADVANCED_ANALYTICS",
+            "label": "Advanced Analytics (6cr)",
+            "requirementArea": "DATA_CORE",
+            "options": [
+              {
+                "id": "tesu-adv-analytics",
+                "courseId": "TESU-ADV-ANALYTICS",
+                "title": "Advanced Analytics",
+                "credits": 6,
+                "cost_usd": 2400,
+                "duration_weeks": 16,
+                "provider": "TESU",
+                "providerType": "university",
+                "providerCode": "TESU",
+                "level": 400,
+                "cri_score": 88,
+                "workload_weekly_hours": 15,
+                "subject": "Data Science"
+              }
+            ],
+            "recommendedCourseId": "TESU-ADV-ANALYTICS"
+          },
+          {
+            "moduleId": "CAPSTONE",
+            "label": "Capstone (3cr)",
+            "requirementArea": "CAPSTONE",
+            "options": [
+              {
+                "id": "tesu-data-capstone",
+                "courseId": "TESU-DATA-CAPSTONE",
+                "title": "Data Science Capstone",
+                "credits": 3,
+                "cost_usd": 1200,
+                "duration_weeks": 12,
+                "provider": "TESU",
+                "providerType": "university",
+                "providerCode": "TESU",
+                "level": 400,
+                "cri_score": 92,
+                "workload_weekly_hours": 15,
+                "subject": "Data Science"
+              }
+            ],
+            "recommendedCourseId": "TESU-DATA-CAPSTONE"
+          }
+        ]
+      }
+    ],
     "totals": {
       "credits": 120,
       "costUsd": 7200,
@@ -919,7 +2161,121 @@
       "popularityScore": 4.6,
       "dataSource": "simulated"
     },
-    "yearTemplates": [],
+    "yearTemplates": [
+      {
+        "year": 1,
+        "label": "Year 1 – Accelerated Foundations",
+        "recommendedPace": "accelerated",
+        "moduleTemplates": [
+          {
+            "moduleId": "GEN_ED_BLOCK",
+            "label": "General Education Block (30cr)",
+            "requirementArea": "GEN_ED",
+            "options": [
+              {
+                "id": "wgu-gen-ed-bundle",
+                "courseId": "WGU-GEN-ED-BUNDLE",
+                "title": "WGU General Education Bundle",
+                "credits": 30,
+                "cost_usd": 4200,
+                "duration_weeks": 26,
+                "provider": "WGU",
+                "providerType": "university",
+                "providerCode": "WGU",
+                "level": 100,
+                "cri_score": 78,
+                "workload_weekly_hours": 22,
+                "subject": "General Education"
+              }
+            ],
+            "recommendedCourseId": "WGU-GEN-ED-BUNDLE"
+          }
+        ]
+      },
+      {
+        "year": 2,
+        "label": "Year 2 – Data Analytics Core",
+        "recommendedPace": "accelerated",
+        "moduleTemplates": [
+          {
+            "moduleId": "DATA_CORE_BLOCK",
+            "label": "Data Analytics Core (30cr)",
+            "requirementArea": "DATA_CORE",
+            "options": [
+              {
+                "id": "wgu-data-core-bundle",
+                "courseId": "WGU-DATA-CORE-BUNDLE",
+                "title": "WGU Data Analytics Core",
+                "credits": 30,
+                "cost_usd": 4200,
+                "duration_weeks": 30,
+                "provider": "WGU",
+                "providerType": "university",
+                "providerCode": "WGU",
+                "level": 200,
+                "cri_score": 84,
+                "workload_weekly_hours": 22,
+                "subject": "Data Science"
+              }
+            ],
+            "recommendedCourseId": "WGU-DATA-CORE-BUNDLE"
+          }
+        ]
+      },
+      {
+        "year": 3,
+        "label": "Year 3 – Advanced Analytics & Capstone",
+        "recommendedPace": "accelerated",
+        "moduleTemplates": [
+          {
+            "moduleId": "DATA_ADVANCED_BLOCK",
+            "label": "Advanced Analytics (30cr)",
+            "requirementArea": "DATA_CORE",
+            "options": [
+              {
+                "id": "wgu-data-advanced-bundle",
+                "courseId": "WGU-DATA-ADV-BUNDLE",
+                "title": "WGU Advanced Data Analytics",
+                "credits": 30,
+                "cost_usd": 4200,
+                "duration_weeks": 30,
+                "provider": "WGU",
+                "providerType": "university",
+                "providerCode": "WGU",
+                "level": 300,
+                "cri_score": 86,
+                "workload_weekly_hours": 22,
+                "subject": "Data Science"
+              }
+            ],
+            "recommendedCourseId": "WGU-DATA-ADV-BUNDLE"
+          },
+          {
+            "moduleId": "CAPSTONE",
+            "label": "Capstone (3cr)",
+            "requirementArea": "CAPSTONE",
+            "options": [
+              {
+                "id": "wgu-data-capstone",
+                "courseId": "WGU-DATA-CAPSTONE",
+                "title": "WGU Data Analytics Capstone",
+                "credits": 3,
+                "cost_usd": 0,
+                "duration_weeks": 8,
+                "provider": "WGU",
+                "providerType": "university",
+                "providerCode": "WGU",
+                "level": 400,
+                "cri_score": 90,
+                "workload_weekly_hours": 20,
+                "subject": "Data Science"
+              }
+            ],
+            "recommendedCourseId": "WGU-DATA-CAPSTONE"
+          }
+        ]
+      }
+    ],
     "totals": {
       "credits": 120,
       "costUsd": 11200,
@@ -958,7 +2314,128 @@
       "popularityScore": 4.4,
       "dataSource": "simulated"
     },
-    "yearTemplates": [],
+    "yearTemplates": [
+      {
+        "year": 1,
+        "label": "Year 1 – Gen Ed at UMGC",
+        "recommendedPace": "standard",
+        "moduleTemplates": [
+          {
+            "moduleId": "GEN_ED_BLOCK",
+            "label": "General Education (30cr)",
+            "requirementArea": "GEN_ED",
+            "options": [
+              {
+                "id": "umgc-gen-ed-bundle",
+                "courseId": "UMGC-GEN-ED-BUNDLE",
+                "title": "UMGC General Education Bundle",
+                "credits": 30,
+                "cost_usd": 9360,
+                "duration_weeks": 32,
+                "provider": "UMGC",
+                "providerType": "university",
+                "providerCode": "UMGC",
+                "level": 100,
+                "cri_score": 80,
+                "workload_weekly_hours": 16,
+                "subject": "General Education"
+              }
+            ],
+            "recommendedCourseId": "UMGC-GEN-ED-BUNDLE"
+          }
+        ]
+      },
+      {
+        "year": 2,
+        "label": "Year 2 – Data Science Foundations",
+        "recommendedPace": "standard",
+        "moduleTemplates": [
+          {
+            "moduleId": "DATA_FOUNDATIONS",
+            "label": "Data Foundations (30cr)",
+            "requirementArea": "DATA_CORE",
+            "options": [
+              {
+                "id": "umgc-data-foundations-bundle",
+                "courseId": "UMGC-DATA-FOUND-BUNDLE",
+                "title": "UMGC Data Science Foundations",
+                "credits": 30,
+                "cost_usd": 9360,
+                "duration_weeks": 32,
+                "provider": "UMGC",
+                "providerType": "university",
+                "providerCode": "UMGC",
+                "level": 200,
+                "cri_score": 84,
+                "workload_weekly_hours": 16,
+                "subject": "Data Science"
+              }
+            ],
+            "recommendedCourseId": "UMGC-DATA-FOUND-BUNDLE"
+          }
+        ]
+      },
+      {
+        "year": 3,
+        "label": "Year 3 – Advanced Data Science",
+        "recommendedPace": "standard",
+        "moduleTemplates": [
+          {
+            "moduleId": "DATA_ADVANCED",
+            "label": "Advanced Data Science (30cr)",
+            "requirementArea": "DATA_CORE",
+            "options": [
+              {
+                "id": "umgc-data-advanced-bundle",
+                "courseId": "UMGC-DATA-ADV-BUNDLE",
+                "title": "UMGC Advanced Data Science",
+                "credits": 30,
+                "cost_usd": 9360,
+                "duration_weeks": 32,
+                "provider": "UMGC",
+                "providerType": "university",
+                "providerCode": "UMGC",
+                "level": 300,
+                "cri_score": 86,
+                "workload_weekly_hours": 16,
+                "subject": "Data Science"
+              }
+            ],
+            "recommendedCourseId": "UMGC-DATA-ADV-BUNDLE"
+          }
+        ]
+      },
+      {
+        "year": 4,
+        "label": "Year 4 – Capstone & Electives",
+        "recommendedPace": "standard",
+        "moduleTemplates": [
+          {
+            "moduleId": "CAPSTONE",
+            "label": "Capstone (6cr)",
+            "requirementArea": "CAPSTONE",
+            "options": [
+              {
+                "id": "umgc-data-capstone",
+                "courseId": "UMGC-DATA-CAPSTONE",
+                "title": "UMGC Data Science Capstone",
+                "credits": 6,
+                "cost_usd": 1872,
+                "duration_weeks": 16,
+                "provider": "UMGC",
+                "providerType": "university",
+                "providerCode": "UMGC",
+                "level": 400,
+                "cri_score": 90,
+                "workload_weekly_hours": 18,
+                "subject": "Data Science"
+              }
+            ],
+            "recommendedCourseId": "UMGC-DATA-CAPSTONE"
+          }
+        ]
+      }
+    ],
     "totals": {
       "credits": 120,
       "costUsd": 19200,
@@ -1545,7 +3022,121 @@
       "popularityScore": 4.8,
       "dataSource": "simulated"
     },
-    "yearTemplates": [],
+    "yearTemplates": [
+      {
+        "year": 1,
+        "label": "Year 1 – Accelerated Foundations",
+        "recommendedPace": "accelerated",
+        "moduleTemplates": [
+          {
+            "moduleId": "GEN_ED_BLOCK",
+            "label": "General Education Block (30cr)",
+            "requirementArea": "GEN_ED",
+            "options": [
+              {
+                "id": "wgu-gen-ed-bundle",
+                "courseId": "WGU-GEN-ED-BUNDLE",
+                "title": "WGU General Education Bundle",
+                "credits": 30,
+                "cost_usd": 4200,
+                "duration_weeks": 26,
+                "provider": "WGU",
+                "providerType": "university",
+                "providerCode": "WGU",
+                "level": 100,
+                "cri_score": 78,
+                "workload_weekly_hours": 24,
+                "subject": "General Education"
+              }
+            ],
+            "recommendedCourseId": "WGU-GEN-ED-BUNDLE"
+          }
+        ]
+      },
+      {
+        "year": 2,
+        "label": "Year 2 – Security Core + Certs",
+        "recommendedPace": "accelerated",
+        "moduleTemplates": [
+          {
+            "moduleId": "CYBER_CORE_BLOCK",
+            "label": "Cybersecurity Core + Security+ (36cr)",
+            "requirementArea": "CYBER_CORE",
+            "options": [
+              {
+                "id": "wgu-cyber-core-bundle",
+                "courseId": "WGU-CYBER-CORE-BUNDLE",
+                "title": "WGU Cybersecurity Core with Security+",
+                "credits": 36,
+                "cost_usd": 4200,
+                "duration_weeks": 35,
+                "provider": "WGU",
+                "providerType": "university",
+                "providerCode": "WGU",
+                "level": 200,
+                "cri_score": 86,
+                "workload_weekly_hours": 24,
+                "subject": "Cybersecurity"
+              }
+            ],
+            "recommendedCourseId": "WGU-CYBER-CORE-BUNDLE"
+          }
+        ]
+      },
+      {
+        "year": 3,
+        "label": "Year 3 – Advanced Security & Capstone",
+        "recommendedPace": "accelerated",
+        "moduleTemplates": [
+          {
+            "moduleId": "CYBER_ADVANCED_BLOCK",
+            "label": "Advanced Security + CySA+, PenTest+ (36cr)",
+            "requirementArea": "CYBER_CORE",
+            "options": [
+              {
+                "id": "wgu-cyber-advanced-bundle",
+                "courseId": "WGU-CYBER-ADV-BUNDLE",
+                "title": "WGU Advanced Cybersecurity Bundle",
+                "credits": 36,
+                "cost_usd": 4000,
+                "duration_weeks": 35,
+                "provider": "WGU",
+                "providerType": "university",
+                "providerCode": "WGU",
+                "level": 300,
+                "cri_score": 88,
+                "workload_weekly_hours": 24,
+                "subject": "Cybersecurity"
+              }
+            ],
+            "recommendedCourseId": "WGU-CYBER-ADV-BUNDLE"
+          },
+          {
+            "moduleId": "CAPSTONE",
+            "label": "Capstone (3cr)",
+            "requirementArea": "CAPSTONE",
+            "options": [
+              {
+                "id": "wgu-cyber-capstone",
+                "courseId": "WGU-CYBER-CAPSTONE",
+                "title": "WGU Cybersecurity Capstone",
+                "credits": 3,
+                "cost_usd": 0,
+                "duration_weeks": 8,
+                "provider": "WGU",
+                "providerType": "university",
+                "providerCode": "WGU",
+                "level": 400,
+                "cri_score": 92,
+                "workload_weekly_hours": 20,
+                "subject": "Cybersecurity"
+              }
+            ],
+            "recommendedCourseId": "WGU-CYBER-CAPSTONE"
+          }
+        ]
+      }
+    ],
     "totals": {
       "credits": 120,
       "costUsd": 12400,
@@ -1584,7 +3175,151 @@
       "popularityScore": 4.6,
       "dataSource": "simulated"
     },
-    "yearTemplates": [],
+    "yearTemplates": [
+      {
+        "year": 1,
+        "label": "Year 1 – Gen Ed at UMGC",
+        "recommendedPace": "standard",
+        "moduleTemplates": [
+          {
+            "moduleId": "GEN_ED_BLOCK",
+            "label": "General Education (30cr)",
+            "requirementArea": "GEN_ED",
+            "options": [
+              {
+                "id": "umgc-gen-ed-bundle",
+                "courseId": "UMGC-GEN-ED-BUNDLE",
+                "title": "UMGC General Education Bundle",
+                "credits": 30,
+                "cost_usd": 9360,
+                "duration_weeks": 32,
+                "provider": "UMGC",
+                "providerType": "university",
+                "providerCode": "UMGC",
+                "level": 100,
+                "cri_score": 80,
+                "workload_weekly_hours": 17,
+                "subject": "General Education"
+              }
+            ],
+            "recommendedCourseId": "UMGC-GEN-ED-BUNDLE"
+          }
+        ]
+      },
+      {
+        "year": 2,
+        "label": "Year 2 – Cybersecurity Foundations",
+        "recommendedPace": "standard",
+        "moduleTemplates": [
+          {
+            "moduleId": "CYBER_FOUNDATIONS",
+            "label": "Cybersecurity Foundations (30cr)",
+            "requirementArea": "CYBER_CORE",
+            "options": [
+              {
+                "id": "umgc-cyber-foundations-bundle",
+                "courseId": "UMGC-CYBER-FOUND-BUNDLE",
+                "title": "UMGC Cybersecurity Foundations",
+                "credits": 30,
+                "cost_usd": 9360,
+                "duration_weeks": 32,
+                "provider": "UMGC",
+                "providerType": "university",
+                "providerCode": "UMGC",
+                "level": 200,
+                "cri_score": 86,
+                "workload_weekly_hours": 17,
+                "subject": "Cybersecurity"
+              }
+            ],
+            "recommendedCourseId": "UMGC-CYBER-FOUND-BUNDLE"
+          }
+        ]
+      },
+      {
+        "year": 3,
+        "label": "Year 3 – Advanced Cybersecurity",
+        "recommendedPace": "standard",
+        "moduleTemplates": [
+          {
+            "moduleId": "CYBER_ADVANCED",
+            "label": "Advanced Cybersecurity (30cr)",
+            "requirementArea": "CYBER_CORE",
+            "options": [
+              {
+                "id": "umgc-cyber-advanced-bundle",
+                "courseId": "UMGC-CYBER-ADV-BUNDLE",
+                "title": "UMGC Advanced Cybersecurity (NSA-Designated)",
+                "credits": 30,
+                "cost_usd": 9360,
+                "duration_weeks": 32,
+                "provider": "UMGC",
+                "providerType": "university",
+                "providerCode": "UMGC",
+                "level": 300,
+                "cri_score": 88,
+                "workload_weekly_hours": 17,
+                "subject": "Cybersecurity"
+              }
+            ],
+            "recommendedCourseId": "UMGC-CYBER-ADV-BUNDLE"
+          }
+        ]
+      },
+      {
+        "year": 4,
+        "label": "Year 4 – Capstone & Labs",
+        "recommendedPace": "standard",
+        "moduleTemplates": [
+          {
+            "moduleId": "CAPSTONE",
+            "label": "Capstone with Virtual Labs (6cr)",
+            "requirementArea": "CAPSTONE",
+            "options": [
+              {
+                "id": "umgc-cyber-capstone",
+                "courseId": "UMGC-CYBER-CAPSTONE",
+                "title": "UMGC Cybersecurity Capstone",
+                "credits": 6,
+                "cost_usd": 1872,
+                "duration_weeks": 16,
+                "provider": "UMGC",
+                "providerType": "university",
+                "providerCode": "UMGC",
+                "level": 400,
+                "cri_score": 92,
+                "workload_weekly_hours": 18,
+                "subject": "Cybersecurity"
+              }
+            ],
+            "recommendedCourseId": "UMGC-CYBER-CAPSTONE"
+          },
+          {
+            "moduleId": "CYBER_ELECTIVES",
+            "label": "Cybersecurity Electives (12cr)",
+            "requirementArea": "CYBER_ELECTIVE",
+            "options": [
+              {
+                "id": "umgc-cyber-electives-bundle",
+                "courseId": "UMGC-CYBER-ELEC-BUNDLE",
+                "title": "UMGC Cybersecurity Electives",
+                "credits": 12,
+                "cost_usd": 3744,
+                "duration_weeks": 16,
+                "provider": "UMGC",
+                "providerType": "university",
+                "providerCode": "UMGC",
+                "level": 300,
+                "cri_score": 85,
+                "workload_weekly_hours": 15,
+                "subject": "Cybersecurity"
+              }
+            ],
+            "recommendedCourseId": "UMGC-CYBER-ELEC-BUNDLE"
+          }
+        ]
+      }
+    ],
     "totals": {
       "credits": 120,
       "costUsd": 20100,
@@ -1623,7 +3358,206 @@
       "popularityScore": 4.1,
       "dataSource": "simulated"
     },
-    "yearTemplates": [],
+    "yearTemplates": [
+      {
+        "year": 1,
+        "label": "Year 1 – Pre-Nursing Prerequisites",
+        "recommendedPace": "standard",
+        "moduleTemplates": [
+          {
+            "moduleId": "ANATOMY_PHYS",
+            "label": "Anatomy & Physiology I & II (8cr)",
+            "requirementArea": "NURSING_PREREQ",
+            "options": [
+              {
+                "id": "cc-anat-phys-bundle",
+                "courseId": "CC-ANAT-PHYS-BUNDLE",
+                "title": "Anatomy & Physiology I & II with Labs",
+                "credits": 8,
+                "cost_usd": 1600,
+                "duration_weeks": 16,
+                "provider": "Community College",
+                "providerType": "university",
+                "providerCode": "CC",
+                "level": 100,
+                "cri_score": 85,
+                "workload_weekly_hours": 12,
+                "subject": "Biology"
+              }
+            ],
+            "recommendedCourseId": "CC-ANAT-PHYS-BUNDLE"
+          },
+          {
+            "moduleId": "MICROBIOLOGY",
+            "label": "Microbiology (4cr)",
+            "requirementArea": "NURSING_PREREQ",
+            "options": [
+              {
+                "id": "cc-microbiology",
+                "courseId": "CC-MICROBIOLOGY",
+                "title": "Microbiology with Lab",
+                "credits": 4,
+                "cost_usd": 800,
+                "duration_weeks": 8,
+                "provider": "Community College",
+                "providerType": "university",
+                "providerCode": "CC",
+                "level": 200,
+                "cri_score": 83,
+                "workload_weekly_hours": 12,
+                "subject": "Biology"
+              }
+            ],
+            "recommendedCourseId": "CC-MICROBIOLOGY"
+          },
+          {
+            "moduleId": "GEN_ED",
+            "label": "General Education (12cr)",
+            "requirementArea": "GEN_ED",
+            "options": [
+              {
+                "id": "sophia-gen-ed-bundle",
+                "courseId": "SOPHIA-GEN-ED-BUNDLE",
+                "title": "Gen Ed Bundle (English, Psychology, Math, Sociology)",
+                "credits": 12,
+                "cost_usd": 99,
+                "duration_weeks": 8,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 100,
+                "cri_score": 72,
+                "workload_weekly_hours": 15,
+                "subject": "General Education"
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-GEN-ED-BUNDLE"
+          }
+        ]
+      },
+      {
+        "year": 2,
+        "label": "Year 2 – ADN Clinical Program",
+        "recommendedPace": "full_time",
+        "moduleTemplates": [
+          {
+            "moduleId": "NURSING_FUNDAMENTALS",
+            "label": "Nursing Fundamentals (8cr)",
+            "requirementArea": "NURSING_CORE",
+            "options": [
+              {
+                "id": "cc-nursing-fund",
+                "courseId": "CC-NUR-FUND",
+                "title": "Nursing Fundamentals with Clinical",
+                "credits": 8,
+                "cost_usd": 2400,
+                "duration_weeks": 16,
+                "provider": "Community College",
+                "providerType": "university",
+                "providerCode": "CC",
+                "level": 200,
+                "cri_score": 90,
+                "workload_weekly_hours": 20,
+                "subject": "Nursing"
+              }
+            ],
+            "recommendedCourseId": "CC-NUR-FUND"
+          },
+          {
+            "moduleId": "MED_SURG_I",
+            "label": "Medical-Surgical I (8cr)",
+            "requirementArea": "NURSING_CORE",
+            "options": [
+              {
+                "id": "cc-med-surg-1",
+                "courseId": "CC-MED-SURG-I",
+                "title": "Medical-Surgical Nursing I",
+                "credits": 8,
+                "cost_usd": 2400,
+                "duration_weeks": 16,
+                "provider": "Community College",
+                "providerType": "university",
+                "providerCode": "CC",
+                "level": 200,
+                "cri_score": 88,
+                "workload_weekly_hours": 20,
+                "subject": "Nursing"
+              }
+            ],
+            "recommendedCourseId": "CC-MED-SURG-I"
+          },
+          {
+            "moduleId": "PHARMACOLOGY",
+            "label": "Pharmacology (4cr)",
+            "requirementArea": "NURSING_CORE",
+            "options": [
+              {
+                "id": "cc-pharmacology",
+                "courseId": "CC-PHARMACOLOGY",
+                "title": "Pharmacology for Nurses",
+                "credits": 4,
+                "cost_usd": 1200,
+                "duration_weeks": 8,
+                "provider": "Community College",
+                "providerType": "university",
+                "providerCode": "CC",
+                "level": 200,
+                "cri_score": 86,
+                "workload_weekly_hours": 15,
+                "subject": "Nursing"
+              }
+            ],
+            "recommendedCourseId": "CC-PHARMACOLOGY"
+          },
+          {
+            "moduleId": "MED_SURG_II",
+            "label": "Medical-Surgical II (8cr)",
+            "requirementArea": "NURSING_CORE",
+            "options": [
+              {
+                "id": "cc-med-surg-2",
+                "courseId": "CC-MED-SURG-II",
+                "title": "Medical-Surgical Nursing II",
+                "credits": 8,
+                "cost_usd": 2400,
+                "duration_weeks": 16,
+                "provider": "Community College",
+                "providerType": "university",
+                "providerCode": "CC",
+                "level": 200,
+                "cri_score": 88,
+                "workload_weekly_hours": 20,
+                "subject": "Nursing"
+              }
+            ],
+            "recommendedCourseId": "CC-MED-SURG-II"
+          },
+          {
+            "moduleId": "CAPSTONE",
+            "label": "NCLEX Prep & Capstone (4cr)",
+            "requirementArea": "CAPSTONE",
+            "options": [
+              {
+                "id": "cc-nclex-capstone",
+                "courseId": "CC-NCLEX-CAPSTONE",
+                "title": "NCLEX Prep & Clinical Capstone",
+                "credits": 4,
+                "cost_usd": 600,
+                "duration_weeks": 8,
+                "provider": "Community College",
+                "providerType": "university",
+                "providerCode": "CC",
+                "level": 200,
+                "cri_score": 92,
+                "workload_weekly_hours": 20,
+                "subject": "Nursing"
+              }
+            ],
+            "recommendedCourseId": "CC-NCLEX-CAPSTONE"
+          }
+        ]
+      }
+    ],
     "totals": {
       "credits": 72,
       "costUsd": 11500,
@@ -1662,7 +3596,107 @@
       "popularityScore": 4.4,
       "dataSource": "simulated"
     },
-    "yearTemplates": [],
+    "yearTemplates": [
+      {
+        "year": 1,
+        "label": "Semester 1-3 – Intensive ADN Program",
+        "recommendedPace": "accelerated",
+        "moduleTemplates": [
+          {
+            "moduleId": "PREREQ_BUNDLE",
+            "label": "Prerequisites (16cr)",
+            "requirementArea": "NURSING_PREREQ",
+            "options": [
+              {
+                "id": "cc-accel-prereq-bundle",
+                "courseId": "CC-ACCEL-PREREQ",
+                "title": "Accelerated Prerequisites Bundle",
+                "credits": 16,
+                "cost_usd": 3200,
+                "duration_weeks": 12,
+                "provider": "Community College",
+                "providerType": "university",
+                "providerCode": "CC",
+                "level": 100,
+                "cri_score": 82,
+                "workload_weekly_hours": 35,
+                "subject": "Nursing Prerequisites"
+              }
+            ],
+            "recommendedCourseId": "CC-ACCEL-PREREQ"
+          },
+          {
+            "moduleId": "NURSING_CORE_1",
+            "label": "Nursing Core I (20cr)",
+            "requirementArea": "NURSING_CORE",
+            "options": [
+              {
+                "id": "cc-nursing-core-1",
+                "courseId": "CC-NUR-CORE-I",
+                "title": "Nursing Fundamentals & Med-Surg I",
+                "credits": 20,
+                "cost_usd": 4500,
+                "duration_weeks": 16,
+                "provider": "Community College",
+                "providerType": "university",
+                "providerCode": "CC",
+                "level": 200,
+                "cri_score": 88,
+                "workload_weekly_hours": 35,
+                "subject": "Nursing"
+              }
+            ],
+            "recommendedCourseId": "CC-NUR-CORE-I"
+          },
+          {
+            "moduleId": "NURSING_CORE_2",
+            "label": "Nursing Core II (20cr)",
+            "requirementArea": "NURSING_CORE",
+            "options": [
+              {
+                "id": "cc-nursing-core-2",
+                "courseId": "CC-NUR-CORE-II",
+                "title": "Med-Surg II, Peds, OB & Mental Health",
+                "credits": 20,
+                "cost_usd": 4500,
+                "duration_weeks": 16,
+                "provider": "Community College",
+                "providerType": "university",
+                "providerCode": "CC",
+                "level": 200,
+                "cri_score": 88,
+                "workload_weekly_hours": 35,
+                "subject": "Nursing"
+              }
+            ],
+            "recommendedCourseId": "CC-NUR-CORE-II"
+          },
+          {
+            "moduleId": "CAPSTONE",
+            "label": "NCLEX Prep & Capstone (8cr)",
+            "requirementArea": "CAPSTONE",
+            "options": [
+              {
+                "id": "cc-nclex-intensive",
+                "courseId": "CC-NCLEX-INTENSIVE",
+                "title": "Intensive NCLEX Prep & Preceptorship",
+                "credits": 8,
+                "cost_usd": 2000,
+                "duration_weeks": 8,
+                "provider": "Community College",
+                "providerType": "university",
+                "providerCode": "CC",
+                "level": 200,
+                "cri_score": 92,
+                "workload_weekly_hours": 40,
+                "subject": "Nursing"
+              }
+            ],
+            "recommendedCourseId": "CC-NCLEX-INTENSIVE"
+          }
+        ]
+      }
+    ],
     "totals": {
       "credits": 72,
       "costUsd": 14200,
