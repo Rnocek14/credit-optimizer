@@ -1,48 +1,66 @@
 /**
  * Anchor Policy Adapter - Extract PartnerPolicy from Constraints
+ * NOTE: Policy values come from src/lib/degree/institutionPolicies.ts (single source of truth)
  */
 
 import type { Constraints } from '../state/usePlanBasket';
 import type { PartnerPolicy } from '../engine/yearPlanner';
+import { 
+  getPolicyOrDefault, 
+  getNoncollegiateCap, 
+  getResidencyCredits,
+  type InstitutionCode 
+} from '@/lib/degree/institutionPolicies';
 
 /**
  * Extract anchor policy from constraints for year planner
- * Week 1.5: Basic policy extraction with sane defaults
- * Week 2: Fetch actual policy from partner_policies table
+ * Uses central policy service - NO hardcoded fallbacks allowed
  */
 export function getAnchorPolicyFromConstraints(
   constraints: Constraints
 ): PartnerPolicy | undefined {
-  // If no target school, return undefined
   const targetSchool = constraints.target_school;
   if (!targetSchool) return undefined;
   
-  // Week 1.5: Extract from constraints if available (Week 2 will query DB)
-  if (typeof targetSchool === 'object') {
+  // Extract institution code from target_school
+  let institutionCode: InstitutionCode = 'TESU'; // Default to TESU via central service
+  let partnerName = 'Thomas Edison State University';
+  
+  if (typeof targetSchool === 'string') {
+    // Map string to institution code
+    // Map known school names to institution codes (only supported codes)
+    const codeMap: Partial<Record<string, InstitutionCode>> = {
+      'tesu': 'TESU',
+      'thomas edison': 'TESU',
+      'thomas edison state university': 'TESU',
+      'wgu': 'WGU',
+      'western governors': 'WGU',
+      'cosc': 'COSC',
+      'charter oak': 'COSC',
+      // Other institutions default to TESU via getPolicyOrDefault()
+    };
+    const normalized = targetSchool.toLowerCase();
+    institutionCode = codeMap[normalized] || 'TESU';
+    partnerName = targetSchool;
+  } else if (typeof targetSchool === 'object') {
     const school = targetSchool as any;
-    if (school?.policy) {
-      return {
-        partner_name: school.name || 'Unknown',
-        max_alt_credits: Number(school.policy.max_alt_credits ?? 60),
-        min_residency_credits: Number(school.policy.min_residency_credits ?? 30),
-        upper_division_min: Number(school.policy.upper_division_min ?? 0),
-        notes: school.policy.notes,
-      };
+    partnerName = school.name || 'Unknown';
+    // Try to extract code from object
+    if (school.code) {
+      institutionCode = school.code as InstitutionCode;
     }
   }
   
-  // If target_school is just a string, return default policy (prevents crashes)
-  if (typeof targetSchool === 'string') {
-    console.warn('[anchorPolicy] Using default policy for string target_school:', targetSchool);
-    return {
-      partner_name: targetSchool,
-      max_alt_credits: 60,
-      min_residency_credits: 30,
-      upper_division_min: 0,
-    };
-  }
+  // Get policy from central service (single source of truth)
+  const centralPolicy = getPolicyOrDefault(institutionCode);
   
-  return undefined;
+  return {
+    partner_name: partnerName,
+    max_alt_credits: getNoncollegiateCap(institutionCode),
+    min_residency_credits: getResidencyCredits(institutionCode, 'standard'),
+    upper_division_min: centralPolicy.upperDivisionAreaOfStudyMin,
+    notes: `Policy from central service for ${institutionCode}`,
+  };
 }
 
 /**
