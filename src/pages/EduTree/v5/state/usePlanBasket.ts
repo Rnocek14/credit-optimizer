@@ -376,13 +376,21 @@ export const usePlanBasket = create<PlanBasketState>()(
           if (!yearTemplate.moduleTemplates) continue;
           
           for (const moduleTemplate of yearTemplate.moduleTemplates) {
-            const { moduleId, options, recommendedCourseId, creditsRequired } = moduleTemplate;
+            const { moduleId, options, recommendedCourseId, creditsRequired, label } = moduleTemplate;
             
             if (!options || options.length === 0) continue;
             
             // Phase 1 Fix: Select MULTIPLE courses to fill module's creditsRequired
-            // Instead of just picking one recommended course
-            const targetCredits = creditsRequired ?? 3; // Default to 3 if not specified
+            // Parse creditsRequired from label if not explicitly set (e.g., "Humanities (6cr)")
+            let targetCredits = creditsRequired;
+            if (!targetCredits && label) {
+              const match = label.match(/\((\d+)cr\)/);
+              if (match) {
+                targetCredits = parseInt(match[1], 10);
+              }
+            }
+            targetCredits = targetCredits ?? 3; // Default to 3 if still not specified
+            
             let creditsSelected = 0;
             const selectedCourses: typeof options = [];
             

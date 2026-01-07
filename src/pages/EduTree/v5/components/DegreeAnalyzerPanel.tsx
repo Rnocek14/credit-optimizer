@@ -1,9 +1,12 @@
-import { useRef } from 'react';
+import { useRef, useMemo } from 'react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { ScopeBreadcrumbs } from './ScopeBreadcrumbs';
+import { GraduationChecklist } from './GraduationChecklist';
+import { usePlanBasket } from '../state/usePlanBasket';
+import { getAnchorPolicy } from '../data/anchorPolicies';
 import type { DegreeSummary } from '../types/v5';
 
 interface DegreeAnalyzerPanelProps {
@@ -13,6 +16,7 @@ interface DegreeAnalyzerPanelProps {
   activeTab?: string;
   onTabChange: (tab: string) => void;
   onNavigate: (scope: any, nodeId?: string) => void;
+  anchorSchool?: string;
 }
 
 export function DegreeAnalyzerPanel({
@@ -21,10 +25,15 @@ export function DegreeAnalyzerPanel({
   degreeSummary,
   activeTab = 'overview',
   onTabChange,
-  onNavigate
+  onNavigate,
+  anchorSchool = 'TESU'
 }: DegreeAnalyzerPanelProps) {
   const progressPercent = (degreeSummary.totalCreditsEarned / degreeSummary.totalCreditsRequired) * 100;
   const previousFocusRef = useRef<HTMLElement | null>(null);
+  
+  // Get basket and policy for graduation checklist
+  const basket = usePlanBasket(state => state.items);
+  const policy = useMemo(() => getAnchorPolicy(anchorSchool), [anchorSchool]);
   
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -112,20 +121,9 @@ export function DegreeAnalyzerPanel({
               </div>
             )}
 
-            {/* What's Blocking Completion */}
+            {/* Graduation Readiness Checklist */}
             <div className="bg-accent/20 rounded-lg p-4">
-              <h4 className="font-medium text-sm mb-3">🎯 What's Blocking Completion?</h4>
-              <div className="space-y-2 text-sm">
-                {degreeSummary.totalCreditsEarned < degreeSummary.totalCreditsRequired ? (
-                  <p className="text-muted-foreground">
-                    Complete {degreeSummary.totalCreditsRequired - degreeSummary.totalCreditsEarned} more credits to finish your degree.
-                  </p>
-                ) : (
-                  <p className="text-green-600 dark:text-green-400">
-                    ✓ All degree requirements met!
-                  </p>
-                )}
-              </div>
+              <GraduationChecklist basket={basket} policy={policy} />
             </div>
 
             {/* Actions */}
