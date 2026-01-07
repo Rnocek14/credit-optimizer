@@ -3868,22 +3868,22 @@
             "requirementArea": "BUS_ELECTIVE",
             "options": [
               {
-                "id": "sophia-entrepreneurship",
-                "courseId": "SOPHIA-ENTREPREN",
+                "id": "sdc-entrepreneurship",
+                "courseId": "SDC-ENTREPREN",
                 "title": "Entrepreneurship",
                 "credits": 3,
-                "cost_usd": 99,
+                "cost_usd": 79,
                 "duration_weeks": 4,
-                "provider": "Sophia Learning",
+                "provider": "Study.com",
                 "providerType": "mooc",
-                "providerCode": "SOPHIA",
+                "providerCode": "STUDYCOM",
                 "level": 300,
                 "cri_score": 80,
                 "workload_weekly_hours": 8,
                 "subject": "Business"
               }
             ],
-            "recommendedCourseId": "SOPHIA-ENTREPREN"
+            "recommendedCourseId": "SDC-ENTREPREN"
           },
           {
             "moduleId": "BUS_ELECTIVE_2",
@@ -3892,22 +3892,22 @@
             "requirementArea": "BUS_ELECTIVE",
             "options": [
               {
-                "id": "sophia-digital-mktg",
-                "courseId": "SOPHIA-DIG-MKTG",
+                "id": "sdc-digital-mktg",
+                "courseId": "SDC-DIG-MKTG",
                 "title": "Digital Marketing",
                 "credits": 3,
-                "cost_usd": 99,
+                "cost_usd": 79,
                 "duration_weeks": 4,
-                "provider": "Sophia Learning",
+                "provider": "Study.com",
                 "providerType": "mooc",
-                "providerCode": "SOPHIA",
+                "providerCode": "STUDYCOM",
                 "level": 300,
                 "cri_score": 79,
                 "workload_weekly_hours": 8,
                 "subject": "Business"
               }
             ],
-            "recommendedCourseId": "SOPHIA-DIG-MKTG"
+            "recommendedCourseId": "SDC-DIG-MKTG"
           },
           {
             "moduleId": "BUS_ELECTIVE_3",
@@ -3916,22 +3916,22 @@
             "requirementArea": "BUS_ELECTIVE",
             "options": [
               {
-                "id": "sophia-supply-chain",
-                "courseId": "SOPHIA-SUPPLY-CHAIN",
+                "id": "sdc-supply-chain",
+                "courseId": "SDC-SUPPLY-CHAIN",
                 "title": "Supply Chain Management",
                 "credits": 3,
-                "cost_usd": 99,
+                "cost_usd": 79,
                 "duration_weeks": 4,
-                "provider": "Sophia Learning",
+                "provider": "Study.com",
                 "providerType": "mooc",
-                "providerCode": "SOPHIA",
+                "providerCode": "STUDYCOM",
                 "level": 300,
                 "cri_score": 78,
                 "workload_weekly_hours": 8,
                 "subject": "Business"
               }
             ],
-            "recommendedCourseId": "SOPHIA-SUPPLY-CHAIN"
+            "recommendedCourseId": "SDC-SUPPLY-CHAIN"
           },
           {
             "moduleId": "FREE_ELECTIVE_3",
