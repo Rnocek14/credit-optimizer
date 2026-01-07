@@ -1494,9 +1494,9 @@
             "recommendedCourseId": "SOPHIA-COLLEGE-ALG"
           },
           {
-            "moduleId": "HUMANITIES",
-            "label": "Humanities (9cr)",
-            "creditsRequired": 9,
+            "moduleId": "HUMANITIES_1",
+            "label": "Humanities - Ethics (3cr)",
+            "creditsRequired": 3,
             "requirementArea": "HUMANITIES",
             "options": [
               {
@@ -1513,7 +1513,16 @@
                 "cri_score": 70,
                 "workload_weekly_hours": 7.5,
                 "subject": "Philosophy"
-              },
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-INTRO-ETHICS"
+          },
+          {
+            "moduleId": "HUMANITIES_2",
+            "label": "Humanities - Art History (3cr)",
+            "creditsRequired": 3,
+            "requirementArea": "HUMANITIES",
+            "options": [
               {
                 "id": "sophia-art-history",
                 "courseId": "SOPHIA-ART-HIST-I",
@@ -1528,7 +1537,16 @@
                 "cri_score": 69,
                 "workload_weekly_hours": 7.5,
                 "subject": "Art History"
-              },
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-ART-HIST-I"
+          },
+          {
+            "moduleId": "HUMANITIES_3",
+            "label": "Humanities - Literature (3cr)",
+            "creditsRequired": 3,
+            "requirementArea": "HUMANITIES",
+            "options": [
               {
                 "id": "sophia-world-lit",
                 "courseId": "SOPHIA-WORLD-LIT",
@@ -1545,12 +1563,12 @@
                 "subject": "Literature"
               }
             ],
-            "recommendedCourseId": "SOPHIA-INTRO-ETHICS"
+            "recommendedCourseId": "SOPHIA-WORLD-LIT"
           },
           {
-            "moduleId": "SOCIAL_SCIENCE",
-            "label": "Social Sciences (9cr)",
-            "creditsRequired": 9,
+            "moduleId": "SOCIAL_SCIENCE_1",
+            "label": "Social Science - Psychology (3cr)",
+            "creditsRequired": 3,
             "requirementArea": "SOCIAL_SCIENCE",
             "options": [
               {
@@ -1567,7 +1585,16 @@
                 "cri_score": 73,
                 "workload_weekly_hours": 7.5,
                 "subject": "Psychology"
-              },
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-INTRO-PSYCH"
+          },
+          {
+            "moduleId": "SOCIAL_SCIENCE_2",
+            "label": "Social Science - Sociology (3cr)",
+            "creditsRequired": 3,
+            "requirementArea": "SOCIAL_SCIENCE",
+            "options": [
               {
                 "id": "sophia-intro-sociology",
                 "courseId": "SOPHIA-INTRO-SOC",
@@ -1582,7 +1609,16 @@
                 "cri_score": 71,
                 "workload_weekly_hours": 7.5,
                 "subject": "Sociology"
-              },
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-INTRO-SOC"
+          },
+          {
+            "moduleId": "SOCIAL_SCIENCE_3",
+            "label": "Social Science - Economics (3cr)",
+            "creditsRequired": 3,
+            "requirementArea": "SOCIAL_SCIENCE",
+            "options": [
               {
                 "id": "sophia-micro-econ",
                 "courseId": "SOPHIA-MICRO-ECON",
@@ -1599,7 +1635,7 @@
                 "subject": "Economics"
               }
             ],
-            "recommendedCourseId": "SOPHIA-INTRO-PSYCH"
+            "recommendedCourseId": "SOPHIA-MICRO-ECON"
           }
         ]
       },
@@ -1609,9 +1645,9 @@
         "recommendedPace": "part_time",
         "moduleTemplates": [
           {
-            "moduleId": "NATURAL_SCIENCE",
-            "label": "Natural Science (6cr)",
-            "creditsRequired": 6,
+            "moduleId": "NATURAL_SCIENCE_1",
+            "label": "Natural Science - Biology (3cr)",
+            "creditsRequired": 3,
             "requirementArea": "NATURAL_SCIENCE",
             "options": [
               {
@@ -1628,7 +1664,16 @@
                 "cri_score": 68,
                 "workload_weekly_hours": 7.5,
                 "subject": "Biology"
-              },
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-HUMAN-BIO"
+          },
+          {
+            "moduleId": "NATURAL_SCIENCE_2",
+            "label": "Natural Science - Environmental (3cr)",
+            "creditsRequired": 3,
+            "requirementArea": "NATURAL_SCIENCE",
+            "options": [
               {
                 "id": "sophia-env-science",
                 "courseId": "SOPHIA-ENV-SCI",
@@ -1645,7 +1690,7 @@
                 "subject": "Science"
               }
             ],
-            "recommendedCourseId": "SOPHIA-HUMAN-BIO"
+            "recommendedCourseId": "SOPHIA-ENV-SCI"
           },
           {
             "moduleId": "CIVIC_GLOBAL",
@@ -1688,12 +1733,60 @@
                 "providerType": "mooc",
                 "providerCode": "SOPHIA",
                 "level": 100,
-                "cri_score": 80,
+                "cri_score": 82,
                 "workload_weekly_hours": 10,
                 "subject": "Mathematics"
               }
             ],
             "recommendedCourseId": "SOPHIA-CALC-I"
+          },
+          {
+            "moduleId": "CALCULUS_II",
+            "label": "Calculus II (4cr)",
+            "creditsRequired": 4,
+            "requirementArea": "MATH_CORE",
+            "options": [
+              {
+                "id": "sophia-calculus-2",
+                "courseId": "SOPHIA-CALC-II",
+                "title": "Calculus II",
+                "credits": 4,
+                "cost_usd": 99,
+                "duration_weeks": 6,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 200,
+                "cri_score": 80,
+                "workload_weekly_hours": 10,
+                "subject": "Mathematics"
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-CALC-II"
+          },
+          {
+            "moduleId": "DISCRETE_MATH",
+            "label": "Discrete Mathematics (4cr)",
+            "creditsRequired": 4,
+            "requirementArea": "MATH_CORE",
+            "options": [
+              {
+                "id": "sophia-discrete-math",
+                "courseId": "SOPHIA-DISCRETE-MATH",
+                "title": "Discrete Mathematics",
+                "credits": 4,
+                "cost_usd": 99,
+                "duration_weeks": 5,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 200,
+                "cri_score": 80,
+                "workload_weekly_hours": 8,
+                "subject": "Mathematics"
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-DISCRETE-MATH"
           },
           {
             "moduleId": "STATISTICS",
@@ -1736,7 +1829,7 @@
                 "providerType": "mooc",
                 "providerCode": "SOPHIA",
                 "level": 100,
-                "cri_score": 78,
+                "cri_score": 80,
                 "workload_weekly_hours": 8,
                 "subject": "Computer Science"
               }
@@ -1760,13 +1853,20 @@
                 "providerType": "mooc",
                 "providerCode": "SOPHIA",
                 "level": 100,
-                "cri_score": 82,
+                "cri_score": 85,
                 "workload_weekly_hours": 8,
                 "subject": "Computer Science"
               }
             ],
             "recommendedCourseId": "SOPHIA-PYTHON"
-          },
+          }
+        ]
+      },
+      {
+        "year": 3,
+        "label": "Year 3 – CS Core (30cr)",
+        "recommendedPace": "part_time",
+        "moduleTemplates": [
           {
             "moduleId": "PROGRAMMING_II",
             "label": "Programming II - Java (3cr)",
@@ -1784,211 +1884,12 @@
                 "providerType": "mooc",
                 "providerCode": "SOPHIA",
                 "level": 200,
-                "cri_score": 80,
+                "cri_score": 82,
                 "workload_weekly_hours": 8,
                 "subject": "Computer Science"
               }
             ],
             "recommendedCourseId": "SOPHIA-JAVA"
-          },
-          {
-            "moduleId": "DISCRETE_MATH",
-            "label": "Discrete Mathematics (4cr)",
-            "creditsRequired": 4,
-            "requirementArea": "MATH_CORE",
-            "options": [
-              {
-                "id": "sophia-discrete-math",
-                "courseId": "SOPHIA-DISCRETE-MATH",
-                "title": "Discrete Mathematics",
-                "credits": 4,
-                "cost_usd": 99,
-                "duration_weeks": 5,
-                "provider": "Sophia Learning",
-                "providerType": "mooc",
-                "providerCode": "SOPHIA",
-                "level": 200,
-                "cri_score": 78,
-                "workload_weekly_hours": 8,
-                "subject": "Mathematics"
-              }
-            ],
-            "recommendedCourseId": "SOPHIA-DISCRETE-MATH"
-          }
-        ]
-      },
-      {
-        "year": 3,
-        "label": "Year 3 – CS Core (30cr)",
-        "recommendedPace": "part_time",
-        "moduleTemplates": [
-          {
-            "moduleId": "DATA_STRUCTURES",
-            "label": "Data Structures (3cr)",
-            "creditsRequired": 3,
-            "requirementArea": "CS_CORE",
-            "options": [
-              {
-                "id": "sophia-data-structures",
-                "courseId": "SOPHIA-DATA-STRUCT",
-                "title": "Data Structures",
-                "credits": 3,
-                "cost_usd": 99,
-                "duration_weeks": 4,
-                "provider": "Sophia Learning",
-                "providerType": "mooc",
-                "providerCode": "SOPHIA",
-                "level": 200,
-                "cri_score": 80,
-                "workload_weekly_hours": 10,
-                "subject": "Computer Science"
-              }
-            ],
-            "recommendedCourseId": "SOPHIA-DATA-STRUCT"
-          },
-          {
-            "moduleId": "ALGORITHMS",
-            "label": "Algorithms (3cr)",
-            "creditsRequired": 3,
-            "requirementArea": "CS_CORE",
-            "options": [
-              {
-                "id": "tesu-algorithms",
-                "courseId": "TESU-ALGORITHMS",
-                "title": "Algorithm Design & Analysis",
-                "credits": 3,
-                "cost_usd": 1800,
-                "duration_weeks": 12,
-                "provider": "TESU",
-                "providerType": "university",
-                "providerCode": "TESU",
-                "level": 300,
-                "cri_score": 88,
-                "workload_weekly_hours": 12,
-                "subject": "Computer Science"
-              }
-            ],
-            "recommendedCourseId": "TESU-ALGORITHMS"
-          },
-          {
-            "moduleId": "OPERATING_SYSTEMS",
-            "label": "Operating Systems (3cr)",
-            "creditsRequired": 3,
-            "requirementArea": "CS_CORE",
-            "options": [
-              {
-                "id": "tesu-os",
-                "courseId": "TESU-OS",
-                "title": "Operating Systems",
-                "credits": 3,
-                "cost_usd": 1800,
-                "duration_weeks": 12,
-                "provider": "TESU",
-                "providerType": "university",
-                "providerCode": "TESU",
-                "level": 300,
-                "cri_score": 85,
-                "workload_weekly_hours": 10,
-                "subject": "Computer Science"
-              }
-            ],
-            "recommendedCourseId": "TESU-OS"
-          },
-          {
-            "moduleId": "DATABASE_SYSTEMS",
-            "label": "Database Systems (3cr)",
-            "creditsRequired": 3,
-            "requirementArea": "CS_CORE",
-            "options": [
-              {
-                "id": "sophia-database",
-                "courseId": "SOPHIA-DATABASE",
-                "title": "Database Management",
-                "credits": 3,
-                "cost_usd": 99,
-                "duration_weeks": 4,
-                "provider": "Sophia Learning",
-                "providerType": "mooc",
-                "providerCode": "SOPHIA",
-                "level": 300,
-                "cri_score": 78,
-                "workload_weekly_hours": 8,
-                "subject": "Computer Science"
-              }
-            ],
-            "recommendedCourseId": "SOPHIA-DATABASE"
-          },
-          {
-            "moduleId": "COMPUTER_NETWORKS",
-            "label": "Computer Networks (3cr)",
-            "creditsRequired": 3,
-            "requirementArea": "CS_CORE",
-            "options": [
-              {
-                "id": "tesu-networks",
-                "courseId": "TESU-NETWORKS",
-                "title": "Computer Networks",
-                "credits": 3,
-                "cost_usd": 1800,
-                "duration_weeks": 12,
-                "provider": "TESU",
-                "providerType": "university",
-                "providerCode": "TESU",
-                "level": 300,
-                "cri_score": 86,
-                "workload_weekly_hours": 10,
-                "subject": "Computer Science"
-              }
-            ],
-            "recommendedCourseId": "TESU-NETWORKS"
-          },
-          {
-            "moduleId": "SOFTWARE_ENGINEERING",
-            "label": "Software Engineering (3cr)",
-            "creditsRequired": 3,
-            "requirementArea": "CS_CORE",
-            "options": [
-              {
-                "id": "tesu-software-eng",
-                "courseId": "TESU-SOFTWARE-ENG",
-                "title": "Software Engineering",
-                "credits": 3,
-                "cost_usd": 1800,
-                "duration_weeks": 12,
-                "provider": "TESU",
-                "providerType": "university",
-                "providerCode": "TESU",
-                "level": 400,
-                "cri_score": 88,
-                "workload_weekly_hours": 12,
-                "subject": "Computer Science"
-              }
-            ],
-            "recommendedCourseId": "TESU-SOFTWARE-ENG"
-          },
-          {
-            "moduleId": "CALCULUS_II",
-            "label": "Calculus II (4cr)",
-            "creditsRequired": 4,
-            "requirementArea": "MATH_CORE",
-            "options": [
-              {
-                "id": "sophia-calculus-2",
-                "courseId": "SOPHIA-CALC-II",
-                "title": "Calculus II",
-                "credits": 4,
-                "cost_usd": 99,
-                "duration_weeks": 6,
-                "provider": "Sophia Learning",
-                "providerType": "mooc",
-                "providerCode": "SOPHIA",
-                "level": 200,
-                "cri_score": 78,
-                "workload_weekly_hours": 10,
-                "subject": "Mathematics"
-              }
-            ],
-            "recommendedCourseId": "SOPHIA-CALC-II"
           },
           {
             "moduleId": "LINEAR_ALGEBRA",
@@ -2015,15 +1916,87 @@
             "recommendedCourseId": "SOPHIA-LINEAR-ALG"
           },
           {
-            "moduleId": "CS_ELECTIVE_1",
-            "label": "CS Elective (3cr)",
+            "moduleId": "DATA_STRUCTURES",
+            "label": "Data Structures (3cr)",
             "creditsRequired": 3,
-            "requirementArea": "CS_ELECTIVE",
+            "requirementArea": "CS_CORE",
             "options": [
               {
-                "id": "sophia-web-dev",
-                "courseId": "SOPHIA-WEB-DEV",
-                "title": "Web Development",
+                "id": "sophia-data-structures",
+                "courseId": "SOPHIA-DATA-STRUCT",
+                "title": "Data Structures",
+                "credits": 3,
+                "cost_usd": 99,
+                "duration_weeks": 4,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 200,
+                "cri_score": 83,
+                "workload_weekly_hours": 10,
+                "subject": "Computer Science"
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-DATA-STRUCT"
+          },
+          {
+            "moduleId": "ALGORITHMS",
+            "label": "Algorithms (3cr)",
+            "creditsRequired": 3,
+            "requirementArea": "CS_CORE",
+            "options": [
+              {
+                "id": "sophia-algorithms",
+                "courseId": "SOPHIA-ALGORITHMS",
+                "title": "Analysis of Algorithms",
+                "credits": 3,
+                "cost_usd": 99,
+                "duration_weeks": 4,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 300,
+                "cri_score": 84,
+                "workload_weekly_hours": 10,
+                "subject": "Computer Science"
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-ALGORITHMS"
+          },
+          {
+            "moduleId": "COMPUTER_ARCH",
+            "label": "Computer Architecture (3cr)",
+            "creditsRequired": 3,
+            "requirementArea": "CS_CORE",
+            "options": [
+              {
+                "id": "sophia-comp-arch",
+                "courseId": "SOPHIA-COMP-ARCH",
+                "title": "Computer Architecture",
+                "credits": 3,
+                "cost_usd": 99,
+                "duration_weeks": 4,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 200,
+                "cri_score": 80,
+                "workload_weekly_hours": 8,
+                "subject": "Computer Science"
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-COMP-ARCH"
+          },
+          {
+            "moduleId": "OPERATING_SYSTEMS",
+            "label": "Operating Systems (3cr)",
+            "creditsRequired": 3,
+            "requirementArea": "CS_CORE",
+            "options": [
+              {
+                "id": "sophia-os",
+                "courseId": "SOPHIA-OS",
+                "title": "Operating Systems",
                 "credits": 3,
                 "cost_usd": 99,
                 "duration_weeks": 4,
@@ -2032,125 +2005,22 @@
                 "providerCode": "SOPHIA",
                 "level": 300,
                 "cri_score": 82,
-                "workload_weekly_hours": 8,
-                "subject": "Computer Science"
-              }
-            ],
-            "recommendedCourseId": "SOPHIA-WEB-DEV"
-          }
-        ]
-      },
-      {
-        "year": 4,
-        "label": "Year 4 – Senior Year & Capstone (30cr)",
-        "recommendedPace": "part_time",
-        "moduleTemplates": [
-          {
-            "moduleId": "COMPUTER_ARCHITECTURE",
-            "label": "Computer Architecture (3cr)",
-            "creditsRequired": 3,
-            "requirementArea": "CS_CORE",
-            "options": [
-              {
-                "id": "tesu-comp-arch",
-                "courseId": "TESU-COMP-ARCH",
-                "title": "Computer Architecture",
-                "credits": 3,
-                "cost_usd": 1800,
-                "duration_weeks": 12,
-                "provider": "TESU",
-                "providerType": "university",
-                "providerCode": "TESU",
-                "level": 400,
-                "cri_score": 87,
                 "workload_weekly_hours": 10,
                 "subject": "Computer Science"
               }
             ],
-            "recommendedCourseId": "TESU-COMP-ARCH"
+            "recommendedCourseId": "SOPHIA-OS"
           },
           {
-            "moduleId": "THEORY_COMPUTATION",
-            "label": "Theory of Computation (3cr)",
+            "moduleId": "DATABASE_SYSTEMS",
+            "label": "Database Systems (3cr)",
             "creditsRequired": 3,
             "requirementArea": "CS_CORE",
             "options": [
               {
-                "id": "tesu-theory-comp",
-                "courseId": "TESU-THEORY-COMP",
-                "title": "Theory of Computation",
-                "credits": 3,
-                "cost_usd": 1800,
-                "duration_weeks": 12,
-                "provider": "TESU",
-                "providerType": "university",
-                "providerCode": "TESU",
-                "level": 400,
-                "cri_score": 90,
-                "workload_weekly_hours": 12,
-                "subject": "Computer Science"
-              }
-            ],
-            "recommendedCourseId": "TESU-THEORY-COMP"
-          },
-          {
-            "moduleId": "SENIOR_PROJECT",
-            "label": "Senior Project I (3cr)",
-            "creditsRequired": 3,
-            "requirementArea": "CAPSTONE",
-            "options": [
-              {
-                "id": "tesu-senior-project-1",
-                "courseId": "TESU-SENIOR-PROJ-I",
-                "title": "Senior Project I",
-                "credits": 3,
-                "cost_usd": 1800,
-                "duration_weeks": 12,
-                "provider": "TESU",
-                "providerType": "university",
-                "providerCode": "TESU",
-                "level": 400,
-                "cri_score": 92,
-                "workload_weekly_hours": 15,
-                "subject": "Computer Science"
-              }
-            ],
-            "recommendedCourseId": "TESU-SENIOR-PROJ-I"
-          },
-          {
-            "moduleId": "CAPSTONE",
-            "label": "Capstone (3cr)",
-            "creditsRequired": 3,
-            "requirementArea": "CAPSTONE",
-            "options": [
-              {
-                "id": "tesu-cs-capstone",
-                "courseId": "TESU-CS-CAPSTONE",
-                "title": "Computer Science Capstone",
-                "credits": 3,
-                "cost_usd": 1800,
-                "duration_weeks": 12,
-                "provider": "TESU",
-                "providerType": "university",
-                "providerCode": "TESU",
-                "level": 400,
-                "cri_score": 94,
-                "workload_weekly_hours": 15,
-                "subject": "Computer Science"
-              }
-            ],
-            "recommendedCourseId": "TESU-CS-CAPSTONE"
-          },
-          {
-            "moduleId": "CS_ELECTIVE_2",
-            "label": "CS Elective (3cr)",
-            "creditsRequired": 3,
-            "requirementArea": "CS_ELECTIVE",
-            "options": [
-              {
-                "id": "sophia-machine-learning",
-                "courseId": "SOPHIA-MACHINE-LEARN",
-                "title": "Machine Learning",
+                "id": "sophia-database",
+                "courseId": "SOPHIA-DATABASE",
+                "title": "Database Systems",
                 "credits": 3,
                 "cost_usd": 99,
                 "duration_weeks": 4,
@@ -2163,12 +2033,60 @@
                 "subject": "Computer Science"
               }
             ],
-            "recommendedCourseId": "SOPHIA-MACHINE-LEARN"
+            "recommendedCourseId": "SOPHIA-DATABASE"
           },
           {
-            "moduleId": "FREE_ELECTIVE",
-            "label": "Free Electives (9cr)",
-            "creditsRequired": 9,
+            "moduleId": "SOFTWARE_ENGINEERING",
+            "label": "Software Engineering (3cr)",
+            "creditsRequired": 3,
+            "requirementArea": "CS_CORE",
+            "options": [
+              {
+                "id": "sophia-software-eng",
+                "courseId": "SOPHIA-SOFTWARE-ENG",
+                "title": "Software Engineering",
+                "credits": 3,
+                "cost_usd": 99,
+                "duration_weeks": 4,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 300,
+                "cri_score": 83,
+                "workload_weekly_hours": 10,
+                "subject": "Computer Science"
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-SOFTWARE-ENG"
+          },
+          {
+            "moduleId": "NETWORKS",
+            "label": "Computer Networks (3cr)",
+            "creditsRequired": 3,
+            "requirementArea": "CS_CORE",
+            "options": [
+              {
+                "id": "sophia-networks",
+                "courseId": "SOPHIA-NETWORKS",
+                "title": "Computer Networks",
+                "credits": 3,
+                "cost_usd": 99,
+                "duration_weeks": 4,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 300,
+                "cri_score": 83,
+                "workload_weekly_hours": 8,
+                "subject": "Computer Science"
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-NETWORKS"
+          },
+          {
+            "moduleId": "FREE_ELECTIVE_1",
+            "label": "Free Elective (3cr)",
+            "creditsRequired": 3,
             "requirementArea": "FREE_ELECTIVE",
             "options": [
               {
@@ -2185,22 +2103,215 @@
                 "cri_score": 76,
                 "workload_weekly_hours": 8,
                 "subject": "Business"
-              },
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-PROJECT-MGMT"
+          }
+        ]
+      },
+      {
+        "year": 4,
+        "label": "Year 4 – Advanced CS & TESU Residency (30cr)",
+        "recommendedPace": "part_time",
+        "moduleTemplates": [
+          {
+            "moduleId": "THEORY_COMPUTATION",
+            "label": "Theory of Computation (3cr) - TESU",
+            "creditsRequired": 3,
+            "requirementArea": "CS_CORE",
+            "options": [
               {
-                "id": "sophia-macro-econ",
-                "courseId": "SOPHIA-MACRO-ECON",
-                "title": "Macroeconomics",
+                "id": "tesu-theory-comp",
+                "courseId": "TESU-THEORY-COMP",
+                "title": "Theory of Computation",
+                "credits": 3,
+                "cost_usd": 1200,
+                "duration_weeks": 12,
+                "provider": "TESU",
+                "providerType": "university",
+                "providerCode": "TESU",
+                "level": 400,
+                "cri_score": 90,
+                "workload_weekly_hours": 12,
+                "subject": "Computer Science"
+              }
+            ],
+            "recommendedCourseId": "TESU-THEORY-COMP"
+          },
+          {
+            "moduleId": "COMPUTER_ETHICS",
+            "label": "Computer Ethics (3cr) - TESU",
+            "creditsRequired": 3,
+            "requirementArea": "CS_CORE",
+            "options": [
+              {
+                "id": "tesu-comp-ethics",
+                "courseId": "TESU-COMP-ETHICS",
+                "title": "Computer Ethics",
+                "credits": 3,
+                "cost_usd": 1200,
+                "duration_weeks": 12,
+                "provider": "TESU",
+                "providerType": "university",
+                "providerCode": "TESU",
+                "level": 300,
+                "cri_score": 88,
+                "workload_weekly_hours": 10,
+                "subject": "Computer Science"
+              }
+            ],
+            "recommendedCourseId": "TESU-COMP-ETHICS"
+          },
+          {
+            "moduleId": "ADV_PROGRAMMING",
+            "label": "Advanced Programming (3cr) - TESU",
+            "creditsRequired": 3,
+            "requirementArea": "CS_CORE",
+            "options": [
+              {
+                "id": "tesu-adv-programming",
+                "courseId": "TESU-ADV-PROG",
+                "title": "Advanced Programming",
+                "credits": 3,
+                "cost_usd": 1200,
+                "duration_weeks": 12,
+                "provider": "TESU",
+                "providerType": "university",
+                "providerCode": "TESU",
+                "level": 400,
+                "cri_score": 90,
+                "workload_weekly_hours": 12,
+                "subject": "Computer Science"
+              }
+            ],
+            "recommendedCourseId": "TESU-ADV-PROG"
+          },
+          {
+            "moduleId": "SENIOR_PROJECT",
+            "label": "Senior Project I (3cr) - TESU",
+            "creditsRequired": 3,
+            "requirementArea": "CAPSTONE",
+            "options": [
+              {
+                "id": "tesu-senior-project-1",
+                "courseId": "TESU-SENIOR-PROJ-I",
+                "title": "Senior Project I",
+                "credits": 3,
+                "cost_usd": 1200,
+                "duration_weeks": 12,
+                "provider": "TESU",
+                "providerType": "university",
+                "providerCode": "TESU",
+                "level": 400,
+                "cri_score": 92,
+                "workload_weekly_hours": 15,
+                "subject": "Computer Science"
+              }
+            ],
+            "recommendedCourseId": "TESU-SENIOR-PROJ-I"
+          },
+          {
+            "moduleId": "CAPSTONE",
+            "label": "CS Capstone (3cr) - TESU",
+            "creditsRequired": 3,
+            "requirementArea": "CAPSTONE",
+            "options": [
+              {
+                "id": "tesu-cs-capstone",
+                "courseId": "TESU-CS-CAPSTONE",
+                "title": "Computer Science Capstone",
+                "credits": 3,
+                "cost_usd": 1200,
+                "duration_weeks": 12,
+                "provider": "TESU",
+                "providerType": "university",
+                "providerCode": "TESU",
+                "level": 400,
+                "cri_score": 94,
+                "workload_weekly_hours": 15,
+                "subject": "Computer Science"
+              }
+            ],
+            "recommendedCourseId": "TESU-CS-CAPSTONE"
+          },
+          {
+            "moduleId": "CS_ELECTIVE_1",
+            "label": "CS Elective - Security (3cr)",
+            "creditsRequired": 3,
+            "requirementArea": "CS_ELECTIVE",
+            "options": [
+              {
+                "id": "sophia-cybersecurity",
+                "courseId": "SOPHIA-CYBERSEC",
+                "title": "Introduction to Cybersecurity",
                 "credits": 3,
                 "cost_usd": 99,
                 "duration_weeks": 4,
                 "provider": "Sophia Learning",
                 "providerType": "mooc",
                 "providerCode": "SOPHIA",
-                "level": 200,
-                "cri_score": 74,
+                "level": 300,
+                "cri_score": 79,
                 "workload_weekly_hours": 8,
-                "subject": "Economics"
-              },
+                "subject": "Computer Science"
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-CYBERSEC"
+          },
+          {
+            "moduleId": "CS_ELECTIVE_2",
+            "label": "CS Elective - AI (3cr)",
+            "creditsRequired": 3,
+            "requirementArea": "CS_ELECTIVE",
+            "options": [
+              {
+                "id": "sophia-ai",
+                "courseId": "SOPHIA-INTRO-AI",
+                "title": "Introduction to AI",
+                "credits": 3,
+                "cost_usd": 99,
+                "duration_weeks": 4,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 300,
+                "cri_score": 83,
+                "workload_weekly_hours": 10,
+                "subject": "Computer Science"
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-INTRO-AI"
+          },
+          {
+            "moduleId": "CS_ELECTIVE_3",
+            "label": "CS Elective - Web Dev (3cr)",
+            "creditsRequired": 3,
+            "requirementArea": "CS_ELECTIVE",
+            "options": [
+              {
+                "id": "sophia-web-dev",
+                "courseId": "SOPHIA-WEB-DEV",
+                "title": "Web Development",
+                "credits": 3,
+                "cost_usd": 99,
+                "duration_weeks": 4,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 300,
+                "cri_score": 82,
+                "workload_weekly_hours": 10,
+                "subject": "Computer Science"
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-WEB-DEV"
+          },
+          {
+            "moduleId": "FREE_ELECTIVE_2",
+            "label": "Free Elective II (3cr)",
+            "creditsRequired": 3,
+            "requirementArea": "FREE_ELECTIVE",
+            "options": [
               {
                 "id": "sophia-business-comm",
                 "courseId": "SOPHIA-BUS-COMM",
@@ -2217,38 +2328,38 @@
                 "subject": "Business"
               }
             ],
-            "recommendedCourseId": "SOPHIA-PROJECT-MGMT"
+            "recommendedCourseId": "SOPHIA-BUS-COMM"
           },
           {
-            "moduleId": "TESU_RESIDENCY_1",
-            "label": "Computer Ethics (3cr)",
+            "moduleId": "FREE_ELECTIVE_3",
+            "label": "Free Elective III (3cr)",
             "creditsRequired": 3,
-            "requirementArea": "CS_CORE",
+            "requirementArea": "FREE_ELECTIVE",
             "options": [
               {
-                "id": "tesu-comp-ethics",
-                "courseId": "TESU-COMP-ETHICS",
-                "title": "Computer Ethics",
+                "id": "sophia-macro-econ",
+                "courseId": "SOPHIA-MACRO-ECON",
+                "title": "Macroeconomics",
                 "credits": 3,
-                "cost_usd": 1800,
-                "duration_weeks": 12,
-                "provider": "TESU",
-                "providerType": "university",
-                "providerCode": "TESU",
-                "level": 300,
-                "cri_score": 88,
-                "workload_weekly_hours": 10,
-                "subject": "Computer Science"
+                "cost_usd": 99,
+                "duration_weeks": 4,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 200,
+                "cri_score": 74,
+                "workload_weekly_hours": 8,
+                "subject": "Economics"
               }
             ],
-            "recommendedCourseId": "TESU-COMP-ETHICS"
+            "recommendedCourseId": "SOPHIA-MACRO-ECON"
           }
         ]
       }
     ],
     "totals": {
       "credits": 120,
-      "costUsd": 12800,
+      "costUsd": 9450,
       "weeks": 140,
       "avgCri": 4.0
     }
