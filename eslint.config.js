@@ -40,6 +40,15 @@ export default tseslint.config(
         {
           selector: "AssignmentExpression[left.property.name='signature'][right.type='BinaryExpression']",
           message: "Use buildMarketplaceSig() for marketplace.signature — no string concatenation."
+        },
+        // OKLCH Color System Guards - prevent hsl() wrapping of OKLCH variables
+        {
+          selector: "Literal[value=/hsl\\(var\\(--(?!lp-)/]",
+          message: "❌ Don't wrap OKLCH variables in hsl(). Use var(--xxx) directly or color-mix() for opacity. See src/design/COLOR_SYSTEM.md"
+        },
+        {
+          selector: "TemplateLiteral[quasis.0.value.raw=/hsl\\(var\\(--(?!lp-)/]",
+          message: "❌ Don't wrap OKLCH variables in hsl(). Use var(--xxx) directly or color-mix() for opacity. See src/design/COLOR_SYSTEM.md"
         }
       ],
       // Block new usage of deprecated V3NodeData.year field
