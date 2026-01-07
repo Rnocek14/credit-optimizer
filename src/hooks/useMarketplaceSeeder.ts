@@ -141,18 +141,18 @@ export function useMarketplaceSeeder() {
         active: c.active,
       })).filter(c => c.provider_id); // Only courses with valid provider_id
       
-      // Check existing courses
+      // Check existing courses by provider_id + title (matches unique constraint)
       const existingCourses = await supabase
         .from('marketplace_courses')
-        .select('code, provider_id')
-        .in('code', coursesWithProviderIds.map(c => c.code));
+        .select('title, provider_id')
+        .in('provider_id', coursesWithProviderIds.map(c => c.provider_id));
       
       const existingCourseKeys = new Set(
-        existingCourses.data?.map(c => `${c.code}-${c.provider_id}`) || []
+        existingCourses.data?.map(c => `${c.provider_id}-${c.title}`) || []
       );
       
       const newCourses = coursesWithProviderIds.filter(
-        c => !existingCourseKeys.has(`${c.code}-${c.provider_id}`)
+        c => !existingCourseKeys.has(`${c.provider_id}-${c.title}`)
       );
       
       if (newCourses.length > 0) {
