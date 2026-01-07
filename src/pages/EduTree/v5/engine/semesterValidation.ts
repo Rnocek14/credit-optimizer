@@ -115,9 +115,54 @@ export function validateSemesterDrop({
     });
   }
 
-  // 4. Check prerequisites (warning only for now)
+  // 4. Check prerequisites - now enforced as errors when unmet
   if (course.prereq_course_ids && course.prereq_course_ids.length > 0) {
-    warnings.push(`Has ${course.prereq_course_ids.length} prerequisite(s) - verify completion order`);
+    // Get all courses placed in earlier semesters
+    const [targetYear, targetTerm] = semesterId.split('-');
+    const targetYearNum = parseInt(targetYear) || 1;
+    const targetTermNum = targetTerm === 'fall' ? 0 : targetTerm === 'spring' ? 1 : 2;
+    
+    // Collect all course IDs from prior semesters
+    const priorCourseIds = new Set<string>();
+    for (const [semId, semState] of Object.entries(plan.semesters)) {
+      const [yearStr, term] = semId.split('-');
+      const yearNum = parseInt(yearStr) || 1;
+      const termNum = term === 'fall' ? 0 : term === 'spring' ? 1 : 2;
+      
+      // Check if this semester is before the target
+      const isBefore = yearNum < targetYearNum || 
+        (yearNum === targetYearNum && termNum < targetTermNum);
+      
+      if (isBefore) {
+        semState.courseIds.forEach(id => priorCourseIds.add(id));
+      }
+    }
+    
+    // Check which prereqs are missing
+    const missingPrereqs = course.prereq_course_ids.filter(
+      prereqId => !priorCourseIds.has(prereqId)
+    );
+    
+    if (missingPrereqs.length > 0) {
+      errors.push({
+        code: 'PREREQ',
+        message: `Missing prerequisite(s): ${missingPrereqs.join(', ')} must be completed first`
+      });
+      
+      // Suggest placing in a later semester
+      const nextYear = targetTerm === 'spring' ? targetYearNum + 1 : targetYearNum;
+      const nextTerm = targetTerm === 'fall' ? 'spring' : 'fall';
+      const suggestedSemester = `${nextYear}-${nextTerm}`;
+      
+      fixes.push({
+        label: `Move to ${nextTerm.charAt(0).toUpperCase() + nextTerm.slice(1)} ${nextYear}`,
+        semesterId: suggestedSemester,
+        apply: () => {}
+      });
+    } else {
+      // All prereqs satisfied - just show info
+      warnings.push(`Prerequisites satisfied: ${course.prereq_course_ids.join(', ')}`);
+    }
   }
 
   // 5. Check ACE cap (placeholder - would need full plan context)
