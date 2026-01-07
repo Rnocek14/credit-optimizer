@@ -209,9 +209,9 @@ export function PatternRecognitionPanel({ careerPath, location, autoData, autoTr
 
   const getCorrelationColor = (coefficient: number) => {
     const abs = Math.abs(coefficient);
-    if (abs > 0.7) return 'hsl(var(--primary))';
-    if (abs > 0.5) return 'hsl(var(--secondary))';
-    return 'hsl(var(--muted))';
+    if (abs > 0.7) return 'var(--primary)';
+    if (abs > 0.5) return 'var(--secondary)';
+    return 'var(--muted)';
   };
 
   return (

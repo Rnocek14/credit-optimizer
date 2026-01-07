@@ -133,15 +133,15 @@ export const RoadmapOverlay: React.FC<RoadmapOverlayProps> = ({
           const { orderIndex, step, minX, minY, width, height } = bound;
           
           // Determine color based on step type
-          let strokeColor = 'hsl(var(--primary))';
-          let fillColor = 'hsl(var(--primary) / 0.1)';
+          let strokeColor = 'var(--primary)';
+          let fillColor = 'color-mix(in oklch, var(--primary) 10%, transparent)';
           
           if (step.is_checkpoint) {
-            strokeColor = 'hsl(var(--warning))';
-            fillColor = 'hsl(var(--warning) / 0.1)';
+            strokeColor = 'var(--warning)';
+            fillColor = 'color-mix(in oklch, var(--warning) 10%, transparent)';
           } else if (step.is_capstone) {
-            strokeColor = 'hsl(var(--success))';
-            fillColor = 'hsl(var(--success) / 0.1)';
+            strokeColor = 'var(--success)';
+            fillColor = 'color-mix(in oklch, var(--success) 10%, transparent)';
           }
 
           return (

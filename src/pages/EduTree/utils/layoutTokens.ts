@@ -181,15 +181,15 @@ export function snapToGrid(value: number): number {
  */
 export const LANE_COLORS = {
   se: {
-    primary: 'hsl(var(--primary))',
-    bg: 'rgba(var(--primary), 0.03)',
-    border: 'rgba(var(--primary), 0.1)',
-    accent: 'rgba(var(--primary), 0.15)'
+    primary: 'var(--primary)',
+    bg: 'color-mix(in oklch, var(--primary) 3%, transparent)',
+    border: 'color-mix(in oklch, var(--primary) 10%, transparent)',
+    accent: 'color-mix(in oklch, var(--primary) 15%, transparent)'
   },
   ds: {
-    primary: 'hsl(var(--secondary))', 
-    bg: 'rgba(var(--secondary), 0.03)',
-    border: 'rgba(var(--secondary), 0.1)',
-    accent: 'rgba(var(--secondary), 0.15)'
+    primary: 'var(--secondary)', 
+    bg: 'color-mix(in oklch, var(--secondary) 3%, transparent)',
+    border: 'color-mix(in oklch, var(--secondary) 10%, transparent)',
+    accent: 'color-mix(in oklch, var(--secondary) 15%, transparent)'
   }
 } as const;

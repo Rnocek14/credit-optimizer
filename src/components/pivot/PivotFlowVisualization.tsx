@@ -167,7 +167,7 @@ export const PivotFlowVisualization: React.FC<PivotFlowVisualizationProps> = ({
               type: MarkerType.ArrowClosed,
               width: 20,
               height: 20,
-              color: 'hsl(var(--primary))',
+              color: 'var(--primary)',
             },
             data: {
               animated: true,
@@ -284,7 +284,7 @@ export const PivotFlowVisualization: React.FC<PivotFlowVisualizationProps> = ({
         <Background 
           gap={20} 
           size={1} 
-          color="hsl(var(--muted-foreground))"
+          color="var(--muted-foreground)"
           className="opacity-30"
         />
       </ReactFlow>

@@ -273,14 +273,14 @@ export function OutcomePredictor({
                     <Line 
                       type="monotone" 
                       dataKey="probability" 
-                      stroke="hsl(var(--primary))" 
+                      stroke="var(--primary)" 
                       strokeWidth={3}
                       name="Success Probability"
                     />
                     <Line 
                       type="monotone" 
                       dataKey="confidence" 
-                      stroke="hsl(var(--accent))" 
+                      stroke="var(--accent)" 
                       strokeWidth={2}
                       strokeDasharray="5 5"
                       name="Confidence"

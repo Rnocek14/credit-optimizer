@@ -54,43 +54,43 @@ export const NODE_STYLES = {
   job: {
     width: 280,
     height: 140,
-    color: 'hsl(var(--primary))',
-    bgColor: 'hsl(var(--primary-foreground))',
+    color: 'var(--primary)',
+    bgColor: 'var(--primary-foreground)',
     icon: '💼'
   },
   skill: {
     width: 200,
     height: 100,
-    color: 'hsl(var(--secondary))',
-    bgColor: 'hsl(var(--secondary-foreground))',
+    color: 'var(--secondary)',
+    bgColor: 'var(--secondary-foreground)',
     icon: '🎯'
   },
   course: {
     width: 240,
     height: 110,
-    color: 'hsl(var(--accent))',
-    bgColor: 'hsl(var(--accent-foreground))',
+    color: 'var(--accent)',
+    bgColor: 'var(--accent-foreground)',
     icon: '📚'
   },
   project: {
     width: 260,
     height: 120,
-    color: 'hsl(var(--destructive))',
-    bgColor: 'hsl(var(--destructive-foreground))',
+    color: 'var(--destructive)',
+    bgColor: 'var(--destructive-foreground)',
     icon: '🛠️'
   },
   certification: {
     width: 220,
     height: 100,
-    color: 'hsl(var(--warning))',
-    bgColor: 'hsl(var(--warning-foreground))',
+    color: 'var(--warning)',
+    bgColor: 'var(--warning-foreground)',
     icon: '🏆'
   },
   step: {
     width: 200,
     height: 90,
-    color: 'hsl(var(--muted))',
-    bgColor: 'hsl(var(--muted-foreground))',
+    color: 'var(--muted)',
+    bgColor: 'var(--muted-foreground)',
     icon: '📋'
   }
 };

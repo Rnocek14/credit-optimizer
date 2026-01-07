@@ -154,7 +154,7 @@ export const HistoricalTrendsVisualization: React.FC<HistoricalTrendsVisualizati
   }, [selectedCareerPaths, selectedLocation, timeRange, autoData, autoTrigger]);
 
   const chartConfig = useMemo(() => {
-    const colors = ['hsl(var(--primary))', 'hsl(var(--secondary))', 'hsl(var(--accent))', 'hsl(120, 70%, 50%)', 'hsl(280, 70%, 50%)'];
+    const colors = ['var(--primary)', 'var(--secondary)', 'var(--accent)', 'oklch(0.65 0.15 145)', 'oklch(0.60 0.18 300)'];
     const config: any = {};
     
     selectedCareerPaths.forEach((path, index) => {
@@ -268,7 +268,7 @@ export const HistoricalTrendsVisualization: React.FC<HistoricalTrendsVisualizati
               key={path.id}
               type="monotone"
               dataKey={`${path.title}_${metric}`}
-              stroke={chartConfig[`${path.title}_${metric}`]?.color || 'hsl(var(--primary))'}
+              stroke={chartConfig[`${path.title}_${metric}`]?.color || 'var(--primary)'}
               strokeWidth={2}
               dot={{ r: 4 }}
               activeDot={{ r: 6 }}

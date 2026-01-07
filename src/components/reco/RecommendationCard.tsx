@@ -25,15 +25,15 @@ export function RecommendationCard({
   const getPriorityColor = (priority: string) => {
     switch (priority) {
       case 'critical':
-        return 'hsl(var(--destructive))';
+        return 'var(--destructive)';
       case 'high':
-        return 'hsl(25 95% 53%)'; // Orange
+        return 'oklch(0.70 0.15 50)'; // Orange
       case 'medium':
-        return 'hsl(48 96% 53%)'; // Yellow
+        return 'oklch(0.85 0.15 85)'; // Yellow
       case 'low':
-        return 'hsl(142 76% 36%)'; // Green
+        return 'oklch(0.55 0.15 145)'; // Green
       default:
-        return 'hsl(var(--muted))';
+        return 'var(--muted)';
     }
   };
 

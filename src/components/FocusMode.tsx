@@ -66,15 +66,15 @@ export const FocusMode: React.FC<FocusModeProps> = ({
 
   const getRelationshipColor = (type: string): string => {
     const colors: Record<string, string> = {
-      prerequisite: 'hsl(var(--destructive))',
-      learningPath: 'hsl(var(--primary))',
-      skillDependency: 'hsl(var(--secondary))',
-      courseMapping: 'hsl(var(--accent))',
-      jobRequirement: 'hsl(var(--warning))',
-      careerProgression: 'hsl(var(--success))'
+      prerequisite: 'var(--destructive)',
+      learningPath: 'var(--primary)',
+      skillDependency: 'var(--secondary)',
+      courseMapping: 'var(--accent)',
+      jobRequirement: 'var(--warning)',
+      careerProgression: 'var(--success)'
     };
     
-    return colors[type] || 'hsl(var(--muted))';
+    return colors[type] || 'var(--muted)';
   };
 
   if (!focusedNodeId) return null;

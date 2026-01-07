@@ -186,10 +186,10 @@ export default function AdminAnalytics() {
                     <XAxis dataKey="date" />
                     <YAxis />
                     <Tooltip />
-                    <Bar dataKey="signups" fill="hsl(var(--primary))" name="Signups" />
-                    <Bar dataKey="emailConnected" fill="hsl(var(--secondary))" name="Email Connected" />
-                    <Bar dataKey="checkouts" fill="hsl(var(--accent))" name="Checkouts" />
-                    <Bar dataKey="proConversions" fill="hsl(var(--success))" name="Pro Conversions" />
+                    <Bar dataKey="signups" fill="var(--primary)" name="Signups" />
+                    <Bar dataKey="emailConnected" fill="var(--secondary)" name="Email Connected" />
+                    <Bar dataKey="checkouts" fill="var(--accent)" name="Checkouts" />
+                    <Bar dataKey="proConversions" fill="var(--success)" name="Pro Conversions" />
                   </BarChart>
                 </ResponsiveContainer>
               </CardContent>
