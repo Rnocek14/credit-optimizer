@@ -25,6 +25,7 @@ import { CreditOptimizerSuggestionBanner } from './components/CreditOptimizerSug
 import { CreditOptimizerModal } from './components/CreditOptimizerModal';
 import { CreditOptimizerDevTools } from './components/CreditOptimizerDevTools';
 import { ProvenanceWarning } from './components/ProvenanceWarning';
+import { TemplateValidationBanner } from './components/TemplateValidationBanner';
 import { useMarketplaceTemplate } from '@/hooks/useMarketplaceTemplates';
 import { useDegreeTemplates } from '@/hooks/useDegreeTemplates';
 import { useAltCreditEquivalenciesForInstitution } from '@/hooks/useAltCreditEquivalencies';
@@ -69,6 +70,7 @@ export default function EduTreeV5Page() {
   const templateId = searchParams.get('templateId');
   const [provenanceWarningDismissed, setProvenanceWarningDismissed] = useState(false);
   const [tesuDisclaimerDismissed, setTesuDisclaimerDismissed] = useState(false);
+  const [templateValidationDismissed, setTemplateValidationDismissed] = useState(false);
   const [optimizerMode, setOptimizerMode] = useState<OptimizerMode>('standard_like');
   
   // Detect if this is a DATABASE template (starts with institution code like 'tesu-')
@@ -1231,6 +1233,16 @@ export default function EduTreeV5Page() {
           {isTESUTemplate && !tesuDisclaimerDismissed && (
             <div className="mt-2">
               <TESUDisclaimerBanner onDismiss={() => setTesuDisclaimerDismissed(true)} />
+            </div>
+          )}
+          
+          {/* Template Graduation Validation Banner */}
+          {!templateValidationDismissed && (
+            <div className="mt-2">
+              <TemplateValidationBanner 
+                template={selectedTemplate} 
+                onDismiss={() => setTemplateValidationDismissed(true)} 
+              />
             </div>
           )}
           
