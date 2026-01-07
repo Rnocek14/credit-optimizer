@@ -99,6 +99,7 @@ export function useMarketplaceTemplates(filters?: Partial<MarketplaceFilters>) {
 
 /**
  * Hook to get a single template by ID
+ * Returns null if template not found (doesn't throw)
  */
 export function useMarketplaceTemplate(templateId: string) {
   return useQuery({
@@ -108,7 +109,9 @@ export function useMarketplaceTemplate(templateId: string) {
       const template = templates.find(t => t.id === templateId);
       
       if (!template) {
-        throw new Error(`Template not found: ${templateId}`);
+        console.warn(`[useMarketplaceTemplate] Template not found: ${templateId}`);
+        console.log('[useMarketplaceTemplate] Available templates:', templates.map(t => t.id));
+        return null;
       }
       
       return template;
