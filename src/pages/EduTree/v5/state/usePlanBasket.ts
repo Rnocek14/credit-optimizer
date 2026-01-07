@@ -455,13 +455,56 @@ export const usePlanBasket = create<PlanBasketState>()(
           }
         }
         
-        // Validate total credits
+        // Validate total credits and policy compliance
         const REQUIRED_CREDITS = 120;
+        const policyIssues: string[] = [];
+        
+        // Calculate policy metrics
+        const universityCredits = items.filter(i => i.providerType === 'university').reduce((sum, i) => sum + i.credits, 0);
+        const moocCredits = items.filter(i => i.providerType === 'mooc' || i.providerType === 'testing_center').reduce((sum, i) => sum + i.credits, 0);
+        const upperDivCredits = items.filter(i => (i.level || 0) >= 300).reduce((sum, i) => sum + i.credits, 0);
+        
+        // TESU policy: 15 residency, 30 upper-div, 80 transfer cap
+        // WGU policy: 42 residency, no upper-div req
+        // UMGC policy: 30 residency, 15 upper-div, 90 transfer cap
+        const anchorSchool = template.anchorSchool || 'TESU';
+        const policies: Record<string, { residency: number; upperDiv: number; transferCap: number }> = {
+          'TESU': { residency: 15, upperDiv: 30, transferCap: 80 },
+          'WGU': { residency: 42, upperDiv: 0, transferCap: 78 },
+          'UMGC': { residency: 30, upperDiv: 15, transferCap: 90 },
+        };
+        const policy = policies[anchorSchool] || policies['TESU'];
+        
         if (totalCreditsAdded < REQUIRED_CREDITS) {
-          console.warn('[usePlanBasket] ⚠️ Template does not meet 120 credit requirement:', {
+          policyIssues.push(`Need ${REQUIRED_CREDITS - totalCreditsAdded} more credits (${totalCreditsAdded}/120)`);
+        }
+        
+        if (universityCredits < policy.residency) {
+          policyIssues.push(`Need ${policy.residency - universityCredits} more residency credits (${universityCredits}/${policy.residency})`);
+        }
+        
+        if (policy.upperDiv > 0 && upperDivCredits < policy.upperDiv) {
+          policyIssues.push(`Need ${policy.upperDiv - upperDivCredits} more upper-division credits (${upperDivCredits}/${policy.upperDiv})`);
+        }
+        
+        if (moocCredits > policy.transferCap) {
+          policyIssues.push(`Exceeds transfer cap by ${moocCredits - policy.transferCap} credits (${moocCredits}/${policy.transferCap})`);
+        }
+        
+        if (policyIssues.length > 0) {
+          console.warn('[usePlanBasket] ⚠️ Template policy violations:', {
             templateId: template.id,
-            totalCredits: totalCreditsAdded,
-            shortfall: REQUIRED_CREDITS - totalCreditsAdded,
+            anchorSchool,
+            issues: policyIssues,
+            metrics: { totalCreditsAdded, universityCredits, moocCredits, upperDivCredits },
+          });
+          
+          // Show toast warning to user
+          import('sonner').then(({ toast }) => {
+            toast.warning('Template Policy Issues', {
+              description: policyIssues.slice(0, 2).join('. '),
+              duration: 8000,
+            });
           });
         }
         

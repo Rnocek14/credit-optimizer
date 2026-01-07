@@ -563,6 +563,52 @@
             "recommendedCourseId": "TESU-CS-CAPSTONE"
           },
           {
+            "moduleId": "TESU_RESIDENCY_1",
+            "label": "Computer Ethics (3cr)",
+            "requirementArea": "CS_CORE",
+            "options": [
+              {
+                "id": "tesu-comp-ethics",
+                "courseId": "TESU-COMP-ETHICS",
+                "title": "Computer Ethics",
+                "credits": 3,
+                "cost_usd": 1800,
+                "duration_weeks": 12,
+                "provider": "TESU",
+                "providerType": "university",
+                "providerCode": "TESU",
+                "level": 300,
+                "cri_score": 88,
+                "workload_weekly_hours": 10,
+                "subject": "Computer Science"
+              }
+            ],
+            "recommendedCourseId": "TESU-COMP-ETHICS"
+          },
+          {
+            "moduleId": "TESU_RESIDENCY_2",
+            "label": "Advanced Programming (3cr)",
+            "requirementArea": "CS_CORE",
+            "options": [
+              {
+                "id": "tesu-adv-programming",
+                "courseId": "TESU-ADV-PROG",
+                "title": "Advanced Programming",
+                "credits": 3,
+                "cost_usd": 1800,
+                "duration_weeks": 12,
+                "provider": "TESU",
+                "providerType": "university",
+                "providerCode": "TESU",
+                "level": 400,
+                "cri_score": 90,
+                "workload_weekly_hours": 12,
+                "subject": "Computer Science"
+              }
+            ],
+            "recommendedCourseId": "TESU-ADV-PROG"
+          },
+          {
             "moduleId": "FREE_ELECTIVE",
             "label": "Free Electives (6cr)",
             "requirementArea": "FREE_ELECTIVE",
@@ -599,14 +645,106 @@
               }
             ],
             "recommendedCourseId": "SOPHIA-PROJECT-MGMT"
+          },
+          {
+            "moduleId": "CALCULUS_II",
+            "label": "Calculus II (4cr)",
+            "requirementArea": "MATH_CORE",
+            "options": [
+              {
+                "id": "sdc-calculus-2",
+                "courseId": "SDC-CALC-II",
+                "title": "Calculus II",
+                "credits": 4,
+                "cost_usd": 79,
+                "duration_weeks": 6,
+                "provider": "Study.com",
+                "providerType": "mooc",
+                "providerCode": "STUDYCOM",
+                "level": 200,
+                "cri_score": 80,
+                "workload_weekly_hours": 10,
+                "subject": "Mathematics"
+              }
+            ],
+            "recommendedCourseId": "SDC-CALC-II"
+          },
+          {
+            "moduleId": "LINEAR_ALGEBRA",
+            "label": "Linear Algebra (3cr)",
+            "requirementArea": "MATH_CORE",
+            "options": [
+              {
+                "id": "sdc-linear-algebra",
+                "courseId": "SDC-LINEAR-ALG",
+                "title": "Linear Algebra",
+                "credits": 3,
+                "cost_usd": 79,
+                "duration_weeks": 4,
+                "provider": "Study.com",
+                "providerType": "mooc",
+                "providerCode": "STUDYCOM",
+                "level": 200,
+                "cri_score": 82,
+                "workload_weekly_hours": 8,
+                "subject": "Mathematics"
+              }
+            ],
+            "recommendedCourseId": "SDC-LINEAR-ALG"
+          },
+          {
+            "moduleId": "PROGRAMMING_II",
+            "label": "Programming II - Java (3cr)",
+            "requirementArea": "CS_CORE",
+            "options": [
+              {
+                "id": "sdc-java",
+                "courseId": "SDC-JAVA",
+                "title": "Introduction to Java",
+                "credits": 3,
+                "cost_usd": 79,
+                "duration_weeks": 4,
+                "provider": "Study.com",
+                "providerType": "mooc",
+                "providerCode": "STUDYCOM",
+                "level": 200,
+                "cri_score": 84,
+                "workload_weekly_hours": 8,
+                "subject": "Computer Science"
+              }
+            ],
+            "recommendedCourseId": "SDC-JAVA"
+          },
+          {
+            "moduleId": "STATISTICS",
+            "label": "Statistics (3cr)",
+            "requirementArea": "MATH_CORE",
+            "options": [
+              {
+                "id": "sophia-statistics",
+                "courseId": "SOPHIA-STATS",
+                "title": "Introduction to Statistics",
+                "credits": 3,
+                "cost_usd": 99,
+                "duration_weeks": 4,
+                "provider": "Sophia Learning",
+                "providerType": "mooc",
+                "providerCode": "SOPHIA",
+                "level": 200,
+                "cri_score": 74,
+                "workload_weekly_hours": 8,
+                "subject": "Mathematics"
+              }
+            ],
+            "recommendedCourseId": "SOPHIA-STATS"
           }
         ]
       }
     ],
     "totals": {
       "credits": 120,
-      "costUsd": 6850,
-      "weeks": 156,
+      "costUsd": 9450,
+      "weeks": 170,
       "avgCri": 3.8
     }
   },
@@ -1686,6 +1824,52 @@
             "recommendedCourseId": "TESU-CS-CAPSTONE"
           },
           {
+            "moduleId": "TESU_RESIDENCY_1",
+            "label": "Computer Ethics (3cr)",
+            "requirementArea": "CS_CORE",
+            "options": [
+              {
+                "id": "tesu-comp-ethics",
+                "courseId": "TESU-COMP-ETHICS",
+                "title": "Computer Ethics",
+                "credits": 3,
+                "cost_usd": 1800,
+                "duration_weeks": 12,
+                "provider": "TESU",
+                "providerType": "university",
+                "providerCode": "TESU",
+                "level": 300,
+                "cri_score": 88,
+                "workload_weekly_hours": 10,
+                "subject": "Computer Science"
+              }
+            ],
+            "recommendedCourseId": "TESU-COMP-ETHICS"
+          },
+          {
+            "moduleId": "TESU_RESIDENCY_2",
+            "label": "Advanced Programming (3cr)",
+            "requirementArea": "CS_CORE",
+            "options": [
+              {
+                "id": "tesu-adv-programming",
+                "courseId": "TESU-ADV-PROG",
+                "title": "Advanced Programming",
+                "credits": 3,
+                "cost_usd": 1800,
+                "duration_weeks": 12,
+                "provider": "TESU",
+                "providerType": "university",
+                "providerCode": "TESU",
+                "level": 400,
+                "cri_score": 90,
+                "workload_weekly_hours": 12,
+                "subject": "Computer Science"
+              }
+            ],
+            "recommendedCourseId": "TESU-ADV-PROG"
+          },
+          {
             "moduleId": "FREE_ELECTIVE",
             "label": "Free Electives (9cr)",
             "requirementArea": "FREE_ELECTIVE",
@@ -1737,14 +1921,60 @@
               }
             ],
             "recommendedCourseId": "SOPHIA-PROJECT-MGMT"
+          },
+          {
+            "moduleId": "CALCULUS_II",
+            "label": "Calculus II (4cr)",
+            "requirementArea": "MATH_CORE",
+            "options": [
+              {
+                "id": "sdc-calculus-2",
+                "courseId": "SDC-CALC-II",
+                "title": "Calculus II",
+                "credits": 4,
+                "cost_usd": 79,
+                "duration_weeks": 6,
+                "provider": "Study.com",
+                "providerType": "mooc",
+                "providerCode": "STUDYCOM",
+                "level": 200,
+                "cri_score": 80,
+                "workload_weekly_hours": 10,
+                "subject": "Mathematics"
+              }
+            ],
+            "recommendedCourseId": "SDC-CALC-II"
+          },
+          {
+            "moduleId": "LINEAR_ALGEBRA",
+            "label": "Linear Algebra (3cr)",
+            "requirementArea": "MATH_CORE",
+            "options": [
+              {
+                "id": "sdc-linear-algebra",
+                "courseId": "SDC-LINEAR-ALG",
+                "title": "Linear Algebra",
+                "credits": 3,
+                "cost_usd": 79,
+                "duration_weeks": 4,
+                "provider": "Study.com",
+                "providerType": "mooc",
+                "providerCode": "STUDYCOM",
+                "level": 200,
+                "cri_score": 82,
+                "workload_weekly_hours": 8,
+                "subject": "Mathematics"
+              }
+            ],
+            "recommendedCourseId": "SDC-LINEAR-ALG"
           }
         ]
       }
     ],
     "totals": {
       "credits": 120,
-      "costUsd": 9200,
-      "weeks": 120,
+      "costUsd": 12800,
+      "weeks": 140,
       "avgCri": 4.0
     }
   },
