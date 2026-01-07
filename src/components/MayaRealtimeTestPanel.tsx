@@ -37,7 +37,7 @@ export function MayaRealtimeTestPanel() {
           <TestTube className="h-5 w-5" />
           Real-time Connection Test
           <Badge variant={isConnected ? "default" : "destructive"} className="ml-auto"
-                style={isConnected ? { backgroundColor: 'hsl(var(--success))', color: 'hsl(var(--success-foreground))' } : undefined}>
+                style={isConnected ? { backgroundColor: 'var(--success)', color: 'var(--success-foreground)' } : undefined}>
             {isConnected ? (
               <>
                 <Wifi className="h-3 w-3 mr-1" />

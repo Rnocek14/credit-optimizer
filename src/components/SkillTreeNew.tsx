@@ -221,7 +221,7 @@ export const SkillTreeNew: React.FC = () => {
             target: step.id,
             type: 'smoothstep',
             markerEnd: { type: MarkerType.ArrowClosed },
-            style: { stroke: 'hsl(var(--primary))' },
+            style: { stroke: 'var(--primary)' },
           });
         });
       });
@@ -259,7 +259,7 @@ export const SkillTreeNew: React.FC = () => {
                 target: mapping.step_id,
                 type: 'smoothstep',
                 style: { 
-                  stroke: 'hsl(var(--muted-foreground))',
+                  stroke: 'var(--muted-foreground)',
                   strokeDasharray: '5,5',
                   opacity: 0.6
                 },

@@ -30,7 +30,7 @@ const PivotEdge = ({
         path={edgePath} 
         markerEnd={markerEnd} 
         style={{
-          stroke: 'hsl(var(--primary))',
+          stroke: 'var(--primary)',
           strokeWidth: 2,
           ...style,
         }}

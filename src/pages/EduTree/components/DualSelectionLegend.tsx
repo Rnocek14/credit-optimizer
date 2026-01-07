@@ -20,7 +20,7 @@ export function DualSelectionLegend() {
       
       {primarySelection && (
         <div className="flex items-center gap-2 mb-1">
-          <div className="w-3 h-3 border-2 rounded" style={{ borderColor: 'hsl(var(--lp-primary))' }} />
+          <div className="w-3 h-3 border-2 rounded" style={{ borderColor: 'var(--lp-primary)' }} />
           <span className="text-xs">
             Primary: {primarySelection.kind === 'program' ? 'Program' : 'Track'} {primarySelection.id.toUpperCase()}
           </span>
@@ -29,7 +29,7 @@ export function DualSelectionLegend() {
       
       {secondarySelection && (
         <div className="flex items-center gap-2 mb-1">
-          <div className="w-3 h-3 border-2 rounded border-dashed" style={{ borderColor: 'hsl(var(--lp-compare))' }} />
+          <div className="w-3 h-3 border-2 rounded border-dashed" style={{ borderColor: 'var(--lp-compare)' }} />
           <span className="text-xs">
             Compare: {secondarySelection.kind === 'program' ? 'Program' : 'Track'} {secondarySelection.id.toUpperCase()}
           </span>
@@ -38,7 +38,7 @@ export function DualSelectionLegend() {
       
       {primarySelection && secondarySelection && (
         <div className="flex items-center gap-2">
-          <div className="w-3 h-3 border-4 rounded" style={{ borderColor: 'hsl(var(--lp-shared))' }} />
+          <div className="w-3 h-3 border-4 rounded" style={{ borderColor: 'var(--lp-shared)' }} />
           <span className="text-xs">Shared Requirements</span>
         </div>
       )}

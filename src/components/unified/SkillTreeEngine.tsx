@@ -136,15 +136,15 @@ export const SkillTreeEngine: React.FC<SkillTreeEngineProps> = ({
     // Apply tinting based on CRI level
     switch (readiness.level) {
       case 'Ready':
-        return { backgroundColor: 'hsl(142 76% 36%)', opacity: 0.9 }; // Green tint
+        return { backgroundColor: 'oklch(0.55 0.15 142)', opacity: 0.9 }; // Green tint
       case 'Nearly Ready':
-        return { backgroundColor: 'hsl(43 96% 56%)', opacity: 0.8 }; // Yellow tint
+        return { backgroundColor: 'oklch(0.80 0.15 85)', opacity: 0.8 }; // Yellow tint
       case 'In Progress':
-        return { backgroundColor: 'hsl(221 83% 53%)', opacity: 0.7 }; // Blue tint
+        return { backgroundColor: 'oklch(0.55 0.15 250)', opacity: 0.7 }; // Blue tint
       case 'Getting Started':
-        return { backgroundColor: 'hsl(25 95% 53%)', opacity: 0.6 }; // Orange tint
+        return { backgroundColor: 'oklch(0.65 0.15 45)', opacity: 0.6 }; // Orange tint
       default:
-        return { backgroundColor: 'hsl(210 14% 53%)', opacity: 0.5 }; // Gray tint
+        return { backgroundColor: 'oklch(0.55 0.02 250)', opacity: 0.5 }; // Gray tint
     }
   }, [mode, criScore, getReadinessLevel]);
 
