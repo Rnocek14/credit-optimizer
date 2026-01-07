@@ -75,11 +75,12 @@ export function validateDesignTokens(tokens: Record<string, string>): {
   const errors: Array<{ token: string; error: string }> = [];
   
   Object.entries(tokens).forEach(([token, value]) => {
-    // Validate color tokens use HSL format
-    if (token.includes('color') && !value.includes('hsl(var(')) {
+    // Validate color tokens use var() directly (OKLCH values are in the CSS vars)
+    // Invalid patterns: hsl(var(--...) or oklch(var(--...) - these double-wrap
+    if (token.includes('color') && (value.includes('hsl(var(') || value.includes('oklch(var('))) {
       errors.push({
         token,
-        error: 'Color tokens must use HSL format with CSS variables',
+        error: 'Color tokens must use var(--xxx) directly - do not wrap in hsl() or oklch()',
       });
     }
     

@@ -810,7 +810,7 @@
   
   .hover-overlay::before {
     @apply content-[''] absolute inset-0 rounded-[inherit] opacity-0 pointer-events-none;
-    background-color: oklch(var(--hover-overlay));
+    background-color: color-mix(in oklch, var(--foreground) 8%, transparent);
     transition: opacity var(--motion-fast) var(--ease-standard);
   }
   
@@ -1021,22 +1021,18 @@
 }
 
 /* ---- Life Path: OKLCH Accent & Risk Tokens ---- */
-/* Enhanced OKLCH utilities (no Tailwind config needed) */
-.bg-accent-cyan         { background: oklch(var(--accent-cyan));        color: oklch(var(--on-accent)); }
-.bg-accent-gold         { background: oklch(var(--accent-gold));        color: oklch(var(--on-accent)); }
-.bg-accent-lime         { background: oklch(var(--accent-lime));        color: oklch(var(--on-accent)); }
+/* All vars already contain oklch(), use var() directly */
+.bg-accent-cyan         { background: var(--accent-cyan);        color: var(--accent-cyan-foreground); }
+.bg-accent-gold         { background: var(--accent-gold);        color: var(--accent-gold-foreground); }
+.bg-accent-lime         { background: var(--accent-lime);        color: var(--accent-lime-foreground); }
 
-.bg-risk-low            { background: oklch(var(--risk-low));           color: oklch(var(--on-risk)); }
-.bg-risk-medium         { background: oklch(var(--risk-medium));        color: oklch(var(--on-risk)); }
-.bg-risk-high           { background: oklch(var(--risk-high));          color: oklch(var(--on-risk)); }
-.bg-risk-critical       { background: oklch(var(--risk-critical));      color: oklch(var(--on-risk)); }
+.bg-risk-low            { background: var(--risk-low);           color: var(--risk-low-foreground); }
+.bg-risk-medium         { background: var(--risk-medium);        color: var(--risk-medium-foreground); }
+.bg-risk-high           { background: var(--risk-high);          color: var(--risk-high-foreground); }
+.bg-risk-critical       { background: var(--risk-critical);      color: var(--risk-critical-foreground); }
 
 .gradient-primary {
-  background: linear-gradient(
-    135deg,
-    oklch(var(--gradient-primary)),
-    oklch(var(--gradient-primary-hover))
-  );
+  background: linear-gradient(135deg, var(--primary), var(--primary-hover));
 }
 
 /* Swatch helpers for the demo */
@@ -1044,6 +1040,6 @@
 .lp-grid   { display:grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap:.75rem; }
 @media (min-width: 768px) { .lp-grid { grid-template-columns: repeat(4, minmax(0,1fr)); } }
 
-/* Enhanced surface utilities */
-.bg-surface { background-color: oklch(var(--background)); }
-.text-surface { color: oklch(var(--foreground)); }
+/* Enhanced surface utilities - use var() directly */
+.bg-surface { background-color: var(--background); }
+.text-surface { color: var(--foreground); }

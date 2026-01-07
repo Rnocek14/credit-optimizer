@@ -14,15 +14,23 @@ module.exports = {
       'error',
       // ===== OKLCH Color System Guards =====
       // These are the MOST IMPORTANT rules - prevent the white outline bug
+      // All CSS variables contain full oklch() values - never wrap them
       {
         selector: 'Literal[value=/hsl\\(var\\(--/]',
         message: '❌ OKLCH ERROR: Don\'t wrap CSS variables in hsl(). All variables contain full OKLCH values. Use var(--xxx) directly or color-mix(in oklch, var(--xxx) 50%, transparent) for opacity. See src/design/COLOR_SYSTEM.md'
       },
       {
         selector: 'TemplateLiteral[quasis.0.value.raw=/hsl\\(var\\(--/]',
-        message: '❌ OKLCH ERROR: Don\'t wrap CSS variables in hsl(). All variables contain full OKLCH values. Use var(--xxx) directly or color-mix(in oklch, var(--xxx) 50%, transparent) for opacity. See src/design/COLOR_SYSTEM.md'
+        message: '❌ OKLCH ERROR: Don\'t wrap CSS variables in hsl(). Use var(--xxx) directly.'
       },
-      
+      {
+        selector: 'Literal[value=/oklch\\(var\\(--/]',
+        message: '❌ OKLCH ERROR: Don\'t wrap CSS variables in oklch(). Variables already contain oklch() values. Use var(--xxx) directly.'
+      },
+      {
+        selector: 'TemplateLiteral[quasis.0.value.raw=/oklch\\(var\\(--/]',
+        message: '❌ OKLCH ERROR: Don\'t wrap CSS variables in oklch(). Use var(--xxx) directly.'
+      },
       // ===== Hardcoded Tailwind Color Guards =====
       {
         selector: 'Literal[value*="purple-"]',
