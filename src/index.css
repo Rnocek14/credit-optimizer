@@ -412,7 +412,7 @@
     --shadow-lg: 0 10px 15px -3px hsl(0 0% 0% / 0.1), 0 4px 6px -4px hsl(0 0% 0% / 0.1);
     --shadow-xl: 0 20px 25px -5px hsl(0 0% 0% / 0.1), 0 8px 10px -6px hsl(0 0% 0% / 0.1);
     --shadow-2xl: 0 25px 50px -12px hsl(0 0% 0% / 0.25);
-    --shadow-colored: 0 8px 30px oklch(var(--primary) / 0.12);
+    --shadow-colored: 0 8px 30px color-mix(in oklch, var(--primary) 12%, transparent);
 
     /* Refined accent colors - REMOVED DUPLICATE, using OKLCH definitions above */
 
@@ -533,17 +533,17 @@
     --ring: oklch(0.75 0.14 220);
 
     /* Dark mode accent colors - adjusted for visibility */
-    --accent-cyan: 0.77 0.16 200;
-    --accent-gold: 0.80 0.14 84;
-    --accent-lime: 0.84 0.12 135;
+    --accent-cyan: oklch(0.77 0.16 200);
+    --accent-gold: oklch(0.80 0.14 84);
+    --accent-lime: oklch(0.84 0.12 135);
 
-    --risk-low:       0.88 0.08 140;
-    --risk-medium:    0.86 0.11 95;
-    --risk-high:      0.78 0.15 55;
-    --risk-critical:  0.72 0.18 30;
+    --risk-low: oklch(0.88 0.08 140);
+    --risk-medium: oklch(0.86 0.11 95);
+    --risk-high: oklch(0.78 0.15 55);
+    --risk-critical: oklch(0.72 0.18 30);
 
-    --on-accent: 0.20 0.03 250;
-    --on-risk:   0.16 0.03 250;
+    --on-accent: oklch(0.20 0.03 250);
+    --on-risk: oklch(0.16 0.03 250);
 
     /* Dark mode OKLCH - Reduced chroma for eye comfort */
     --card: oklch(0.15 0.00 0);
@@ -613,11 +613,11 @@
     --shadow-lg: 0 10px 15px -3px hsl(0 0% 0% / 0.5), 0 4px 6px -4px hsl(0 0% 0% / 0.5);
     --shadow-xl: 0 20px 25px -5px hsl(0 0% 0% / 0.6), 0 8px 10px -6px hsl(0 0% 0% / 0.6);
     --shadow-2xl: 0 25px 50px -12px hsl(0 0% 0% / 0.7);
-    --shadow-colored: 0 8px 30px oklch(var(--primary) / 0.3);
+    --shadow-colored: 0 8px 30px color-mix(in oklch, var(--primary) 30%, transparent);
 
-    /* Dark mode gradients - Fixed: OKLCH colors should not be wrapped in hsl() */
-    --gradient-primary: linear-gradient(135deg, oklch(var(--primary)), oklch(var(--primary-hover)));
-    --gradient-secondary: linear-gradient(135deg, oklch(var(--secondary)), oklch(var(--secondary-hover)));
+    /* Dark mode gradients - use var() directly, variables already contain oklch() */
+    --gradient-primary: linear-gradient(135deg, var(--primary), var(--primary-hover));
+    --gradient-secondary: linear-gradient(135deg, var(--secondary), var(--secondary-hover));
     --gradient-subtle: linear-gradient(180deg, oklch(var(--background)), oklch(var(--muted) / 0.5));
     --gradient-glass: linear-gradient(135deg, oklch(var(--background) / 0.95), oklch(var(--background) / 0.8));
 
@@ -999,10 +999,10 @@
   
   @keyframes pulse-glow {
     0%, 100% {
-      box-shadow: 0 0 8px hsl(var(--primary) / 0.3);
+      box-shadow: 0 0 8px color-mix(in oklch, var(--primary) 30%, transparent);
     }
     50% {
-      box-shadow: 0 0 16px hsl(var(--primary) / 0.6);
+      box-shadow: 0 0 16px color-mix(in oklch, var(--primary) 60%, transparent);
     }
   }
 

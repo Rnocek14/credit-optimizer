@@ -137,7 +137,7 @@ export function ParetoFrontierPanel({
                   <Scatter 
                     name="Efficient Paths" 
                     dataKey="cost"
-                    fill="hsl(var(--primary))"
+                    fill="var(--primary)"
                     onClick={(data) => {
                       const point = frontier.find(p => p.id === data.id);
                       if (point) onSelectPath(point);
