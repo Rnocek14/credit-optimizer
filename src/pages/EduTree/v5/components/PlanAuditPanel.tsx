@@ -9,6 +9,8 @@ import { usePlanBasket } from '../state/usePlanBasket';
 import { validateTESUPolicies } from '../engine/constraints';
 import { AlertCircle, CheckCircle2, AlertTriangle, Info } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+// NOTE: Policy values come from src/lib/degree/institutionPolicies.ts (single source of truth)
+import { getPolicyOrDefault, getNoncollegiateCap } from '@/lib/degree/institutionPolicies';
 
 interface LimitProgress {
   label: string;
@@ -39,14 +41,21 @@ export function PlanAuditPanel() {
       .filter(item => item.providerCode === 'TESU' || item.providerType === 'university')
       .reduce((sum, item) => sum + item.credits, 0);
     const clepCredits = basket
-      .filter(item => item.courseId.includes('CLEP'))
+      .filter(item => item.providerCode === 'CLEP' || item.courseId.includes('CLEP'))
       .reduce((sum, item) => sum + item.credits, 0);
     const dsstCredits = basket
-      .filter(item => item.courseId.includes('DSST'))
+      .filter(item => item.providerCode === 'DSST' || item.courseId.includes('DSST'))
       .reduce((sum, item) => sum + item.credits, 0);
-    // Approximate upper-division (300/400 level courses)
+    const sophiaCredits = basket
+      .filter(item => item.providerCode === 'SOPHIA')
+      .reduce((sum, item) => sum + item.credits, 0);
+    const studycomCredits = basket
+      .filter(item => item.providerCode === 'STUDYCOM')
+      .reduce((sum, item) => sum + item.credits, 0);
+    // Upper-division (300/400 level courses) using level field or course code pattern
     const upperDivCredits = basket
       .filter(item => {
+        if (item.level && item.level >= 300) return true;
         const match = item.courseId.match(/[A-Z]+-(\d+)/);
         return match && parseInt(match[1]) >= 300;
       })
@@ -90,27 +99,31 @@ export function PlanAuditPanel() {
       }
     });
 
-    // Per-provider caps from database (with fallback defaults)
-    const clepLimit = limits.find(l => l.limit_type === 'clep_max')?.credit_value ?? 40;
-    const dsstLimit = limits.find(l => l.limit_type === 'dsst_max')?.credit_value ?? 30;
-    const upperLimit = limits.find(l => l.limit_type === 'upper_division_min')?.credit_value ?? 30;
-
+    // CRITICAL FIX: Use COMBINED noncollegiate pool from central service
+    // No fake per-provider caps (CLEP/DSST) - TESU uses a single 90-credit pool
+    const policy = getPolicyOrDefault('TESU');
+    const combinedNoncollegiateCap = getNoncollegiateCap('TESU');
+    const upperLimit = policy.upperDivisionAreaOfStudyMin;
+    
+    // Combined noncollegiate credits (CLEP + DSST + Sophia + Study.com, etc.)
+    const totalNoncollegiate = clepCredits + dsstCredits + sophiaCredits + studycomCredits;
+    
     results.push({
-      label: 'CLEP Credits',
-      current: clepCredits,
-      limit: clepLimit,
+      label: 'Noncollegiate Credits (Combined)',
+      current: totalNoncollegiate,
+      limit: combinedNoncollegiateCap,
       limitType: 'max',
-      percentage: (clepCredits / clepLimit) * 100,
-      status: clepCredits <= clepLimit ? 'ok' : clepCredits <= clepLimit * 1.1 ? 'warning' : 'error',
+      percentage: (totalNoncollegiate / combinedNoncollegiateCap) * 100,
+      status: totalNoncollegiate <= combinedNoncollegiateCap ? 'ok' : 'error',
     });
 
     results.push({
-      label: 'DSST Credits',
-      current: dsstCredits,
-      limit: dsstLimit,
-      limitType: 'max',
-      percentage: (dsstCredits / dsstLimit) * 100,
-      status: dsstCredits <= dsstLimit ? 'ok' : dsstCredits <= dsstLimit * 1.1 ? 'warning' : 'error',
+      label: 'Upper Division',
+      current: upperDivCredits,
+      limit: upperLimit,
+      limitType: 'min',
+      percentage: Math.min((upperDivCredits / upperLimit) * 100, 100),
+      status: upperDivCredits >= upperLimit ? 'ok' : upperDivCredits >= upperLimit * 0.8 ? 'warning' : 'error',
     });
 
     results.push({

@@ -8,6 +8,8 @@ import type { DegreeSummary, ModuleData } from '../types/v5';
 import { usePlanBasket } from '../state/usePlanBasket';
 import { useRequirementBlocks } from '../hooks/useRequirementBlocks';
 import { useV5DatabaseData } from '../hooks/useV5DatabaseData';
+// NOTE: Policy values come from src/lib/degree/institutionPolicies.ts (single source of truth)
+import { getAnchorPolicy } from '@/lib/degree/institutionPolicies';
 
 interface ScopePanelRouterProps {
   // Panel state
@@ -63,13 +65,9 @@ export function ScopePanelRouter(props: ScopePanelRouterProps) {
   const allOptionsResolved = props.allOptions ?? Object.values(dbData?.modulesByYear || {})
     .flat()
     .flatMap(m => m.marketplaceOptions || []);
+  // Get anchor policy from central service (no hardcoded values!)
   const anchorPolicy = constraints.target_school 
-    ? {
-        partner_name: constraints.target_school,
-        max_alt_credits: constraints.max_ace_credits ?? 90,
-        min_residency_credits: 30, // Default from common anchor policies
-        upper_division_min: 30, // Default from common anchor policies
-      }
+    ? getAnchorPolicy(constraints.target_school)
     : undefined;
 
   // Feature flag check: use Decision Dock if enabled

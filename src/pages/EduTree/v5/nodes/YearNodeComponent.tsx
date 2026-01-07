@@ -4,18 +4,25 @@ import { Badge } from '@/components/ui/badge';
 import { ChevronRight, ChevronDown, AlertCircle } from 'lucide-react';
 import { CapMeter } from '@/components/lifePathGraph/CapMeter';
 import type { YearNodeVM } from '@/lib/degree/yearNodes';
+// NOTE: Policy values come from src/lib/degree/institutionPolicies.ts (single source of truth)
+import { getPolicyOrDefault, getResidencyCredits, getNoncollegiateCap } from '@/lib/degree/institutionPolicies';
 
 interface YearNodeComponentProps {
   data: YearNodeVM;
   onToggle?: (yearId: string) => void;
+  anchorSchool?: string; // Target institution for policy lookup
 }
 
 /**
  * Year node component for ReactFlow canvas
  * Displays aggregated year totals, policy state, and CapMeter
  */
-export function YearNodeComponent({ data, onToggle }: YearNodeComponentProps) {
+export function YearNodeComponent({ data, onToggle, anchorSchool = 'TESU' }: YearNodeComponentProps) {
   const y = data;
+  
+  // Get policy values from central service (no hardcoded values!)
+  const noncollegiateCap = getNoncollegiateCap(anchorSchool);
+  const residencyRequired = getResidencyCredits(anchorSchool);
 
   return (
     <Card
@@ -46,13 +53,13 @@ export function YearNodeComponent({ data, onToggle }: YearNodeComponentProps) {
           </div>
         </div>
 
-        {/* CapMeter */}
+        {/* CapMeter - uses policy values from central service */}
         <CapMeter
           transferUsed={y.totals.transferUsed}
-          transferCap={90}
+          transferCap={noncollegiateCap}
           examUsed={y.totals.examCredits}
-          examCap={30}
-          residencyRequired={30}
+          examCap={30} // Legacy field, kept for UI compatibility
+          residencyRequired={residencyRequired}
           residencyMet={y.totals.residencyCredits}
         />
 
