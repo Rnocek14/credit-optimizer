@@ -17,7 +17,9 @@ import {
   Info,
   Wifi,
   WifiOff,
-  ArrowRightLeft
+  ArrowRightLeft,
+  Copy,
+  ExternalLink
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -512,7 +514,7 @@ export default function OptimizerSeeding() {
                       <CheckCircle2 className="h-4 w-4 text-green-600" />
                       <span className="font-medium">Last Run: {new Date(transferRulesState.lastResult.runAt || Date.now()).toLocaleString()}</span>
                     </div>
-                    <div className="grid grid-cols-3 gap-4 text-xs">
+                    <div className="grid grid-cols-4 gap-4 text-xs">
                       <div>
                         <span className="text-muted-foreground">Total:</span>{' '}
                         <span className="font-mono">{transferRulesState.lastResult.stats?.total || 0}</span>
@@ -522,8 +524,12 @@ export default function OptimizerSeeding() {
                         <span className="font-mono text-green-600">{transferRulesState.lastResult.stats?.inserted || 0}</span>
                       </div>
                       <div>
-                        <span className="text-muted-foreground">Updated:</span>{' '}
-                        <span className="font-mono text-blue-600">{transferRulesState.lastResult.stats?.updated || 0}</span>
+                        <span className="text-muted-foreground">Skipped:</span>{' '}
+                        <span className="font-mono text-muted-foreground">{transferRulesState.lastResult.stats?.skipped || 0}</span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">After:</span>{' '}
+                        <span className="font-mono">{transferRulesState.lastResult.stats?.afterCount || 0}</span>
                       </div>
                     </div>
                   </div>
@@ -532,30 +538,61 @@ export default function OptimizerSeeding() {
                 {transferRulesState.error && (
                   <Alert variant="destructive" className="mb-4">
                     <XCircle className="h-4 w-4" />
+                    <AlertTitle>Seeding Failed</AlertTitle>
                     <AlertDescription className="text-sm">
-                      {transferRulesState.error}
+                      <p className="mb-2">{transferRulesState.error}</p>
+                      {transferRulesState.error.includes('row-level security') && (
+                        <div className="mt-3 p-3 bg-background rounded border text-xs">
+                          <p className="font-medium mb-2">RLS Policy Required:</p>
+                          <p className="mb-2">Run this SQL in Supabase Dashboard → SQL Editor:</p>
+                          <pre className="p-2 bg-muted rounded overflow-x-auto text-[10px]">
+{`CREATE POLICY "Allow public insert for seeding"
+  ON credit_transfer_rules FOR INSERT TO public
+  WITH CHECK (true);`}
+                          </pre>
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            className="mt-2"
+                            onClick={() => {
+                              navigator.clipboard.writeText(`CREATE POLICY "Allow public insert for seeding" ON credit_transfer_rules FOR INSERT TO public WITH CHECK (true);`);
+                              toast({ title: "SQL copied to clipboard" });
+                            }}
+                          >
+                            <Copy className="h-3 w-3 mr-1" /> Copy SQL
+                          </Button>
+                        </div>
+                      )}
                     </AlertDescription>
                   </Alert>
                 )}
               </div>
               
-              <Button 
-                onClick={handleRunTransferRulesSeed}
-                disabled={transferRulesState.isRunning}
-                className="ml-4"
-              >
-                {transferRulesState.isRunning ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Seeding...
-                  </>
-                ) : (
-                  <>
-                    <ArrowRightLeft className="mr-2 h-4 w-4" />
-                    Run Seed
-                  </>
-                )}
-              </Button>
+              <div className="flex flex-col gap-2 ml-4">
+                <Button 
+                  onClick={handleRunTransferRulesSeed}
+                  disabled={transferRulesState.isRunning}
+                >
+                  {transferRulesState.isRunning ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Seeding...
+                    </>
+                  ) : (
+                    <>
+                      <ArrowRightLeft className="mr-2 h-4 w-4" />
+                      Run Seed
+                    </>
+                  )}
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => window.open('https://supabase.com/dashboard/project/vzpissitddpunkpythsb/sql/new', '_blank')}
+                >
+                  <ExternalLink className="h-3 w-3 mr-1" /> SQL Editor
+                </Button>
+              </div>
             </div>
           </div>
         </div>
