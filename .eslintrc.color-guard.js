@@ -15,12 +15,12 @@ module.exports = {
       // ===== OKLCH Color System Guards =====
       // These are the MOST IMPORTANT rules - prevent the white outline bug
       {
-        selector: 'Literal[value=/hsl\\(var\\(--(?!lp-)/]',
-        message: '❌ OKLCH ERROR: Don\'t wrap CSS variables in hsl(). Variables contain full OKLCH values. Use var(--xxx) directly or color-mix(in oklch, var(--xxx) 50%, transparent) for opacity. See src/design/COLOR_SYSTEM.md'
+        selector: 'Literal[value=/hsl\\(var\\(--/]',
+        message: '❌ OKLCH ERROR: Don\'t wrap CSS variables in hsl(). All variables contain full OKLCH values. Use var(--xxx) directly or color-mix(in oklch, var(--xxx) 50%, transparent) for opacity. See src/design/COLOR_SYSTEM.md'
       },
       {
-        selector: 'TemplateLiteral[quasis.0.value.raw=/hsl\\(var\\(--(?!lp-)/]',
-        message: '❌ OKLCH ERROR: Don\'t wrap CSS variables in hsl(). Variables contain full OKLCH values. Use var(--xxx) directly or color-mix(in oklch, var(--xxx) 50%, transparent) for opacity. See src/design/COLOR_SYSTEM.md'
+        selector: 'TemplateLiteral[quasis.0.value.raw=/hsl\\(var\\(--/]',
+        message: '❌ OKLCH ERROR: Don\'t wrap CSS variables in hsl(). All variables contain full OKLCH values. Use var(--xxx) directly or color-mix(in oklch, var(--xxx) 50%, transparent) for opacity. See src/design/COLOR_SYSTEM.md'
       },
       
       // ===== Hardcoded Tailwind Color Guards =====
@@ -80,6 +80,5 @@ module.exports = {
  *   border: '1px solid var(--border)'
  *   box-shadow: '0 4px 12px color-mix(in oklch, var(--foreground) 10%, transparent)'
  * 
- * EXCEPTION - These --lp-* variables ARE raw HSL triplets:
- *   ✅ className="bg-[hsl(var(--lp-green-50))]"
+ * All CSS variables now use full OKLCH values - no exceptions.
  */

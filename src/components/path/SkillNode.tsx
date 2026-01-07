@@ -14,12 +14,12 @@ export const SkillNode = memo(({ data, selected }: SkillNodeProps) => {
     const normalizedStatus = status || 'available';
     
     if (normalizedStatus === 'completed') {
-      return 'bg-[hsl(var(--lp-green-50))] border-[hsl(var(--lp-green-200))]';
+      return 'bg-[var(--lp-green-50)] border-[var(--lp-green-200)]';
     } else if (normalizedStatus === 'locked') {
-      return 'bg-[hsl(var(--lp-red-50))] border-[hsl(var(--lp-red-300))]';
+      return 'bg-[var(--lp-red-50)] border-[var(--lp-red-300)]';
     } else {
       // available / default
-      return 'bg-[hsl(var(--lp-blue-50))] border-[hsl(var(--lp-blue-200))]';
+      return 'bg-[var(--lp-blue-50)] border-[var(--lp-blue-200)]';
     }
   };
 
