@@ -51,7 +51,7 @@ export function YearSpineNode({ data, selected }: YearSpineNodeProps) {
           selectedSummary?.isEmpty && "border-dashed opacity-70",
           selectedSummary?.isComplete && "border-primary shadow-md",
           !selectedSummary?.isEmpty && !selectedSummary?.isComplete && "border-secondary",
-          selected && "ring-2 ring-primary ring-offset-2"
+          selected && "ring-2 ring-primary ring-inset"
         )}
         onClick={() => {
           console.log('[YearSpineNode] Clicked:', data.label);

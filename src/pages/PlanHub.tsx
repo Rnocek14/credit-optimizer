@@ -247,13 +247,13 @@ export default function PlanHub() {
             <div className="w-full mb-4 no-hover-scale">
               <div className="tab-surface">
                 <TabsList className="w-full grid grid-cols-7 bg-transparent border-0 p-1 h-auto min-h-[48px]">
-                <TabsTrigger value="overview" data-testid="tab-overview" className="text-sm px-3 py-2.5 min-h-[40px] data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm rounded-lg transition-all focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background">Overview</TabsTrigger>
-                <TabsTrigger value="goals" data-testid="tab-goals" className="text-sm px-3 py-2.5 min-h-[40px] data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm rounded-lg transition-all focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background">Goals</TabsTrigger>
-                <TabsTrigger value="roadmap" data-testid="tab-roadmap" className="text-sm px-3 py-2.5 min-h-[40px] data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm rounded-lg transition-all focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background">Roadmap</TabsTrigger>
-                <TabsTrigger value="gaps" data-testid="tab-gaps" className="text-sm px-3 py-2.5 min-h-[40px] data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm rounded-lg transition-all focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background">Gaps</TabsTrigger>
-                <TabsTrigger value="workflows" data-testid="tab-workflows" className="text-sm px-3 py-2.5 min-h-[40px] data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm rounded-lg transition-all focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background">Workflows</TabsTrigger>
-                <TabsTrigger value="proof" data-testid="tab-proof" className="text-sm px-3 py-2.5 min-h-[40px] data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm rounded-lg transition-all focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background">Projects</TabsTrigger>
-                <TabsTrigger value="switch" data-testid="tab-switch" className="text-sm px-3 py-2.5 min-h-[40px] data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm rounded-lg transition-all focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background">Switch</TabsTrigger>
+                <TabsTrigger value="overview" data-testid="tab-overview" className="text-sm px-3 py-2.5 min-h-[40px] data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm rounded-lg transition-all focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset">Overview</TabsTrigger>
+                <TabsTrigger value="goals" data-testid="tab-goals" className="text-sm px-3 py-2.5 min-h-[40px] data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm rounded-lg transition-all focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset">Goals</TabsTrigger>
+                <TabsTrigger value="roadmap" data-testid="tab-roadmap" className="text-sm px-3 py-2.5 min-h-[40px] data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm rounded-lg transition-all focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset">Roadmap</TabsTrigger>
+                <TabsTrigger value="gaps" data-testid="tab-gaps" className="text-sm px-3 py-2.5 min-h-[40px] data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm rounded-lg transition-all focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset">Gaps</TabsTrigger>
+                <TabsTrigger value="workflows" data-testid="tab-workflows" className="text-sm px-3 py-2.5 min-h-[40px] data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm rounded-lg transition-all focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset">Workflows</TabsTrigger>
+                <TabsTrigger value="proof" data-testid="tab-proof" className="text-sm px-3 py-2.5 min-h-[40px] data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm rounded-lg transition-all focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset">Projects</TabsTrigger>
+                <TabsTrigger value="switch" data-testid="tab-switch" className="text-sm px-3 py-2.5 min-h-[40px] data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm rounded-lg transition-all focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset">Switch</TabsTrigger>
                 </TabsList>
               </div>
             </div>
@@ -400,7 +400,7 @@ export default function PlanHub() {
           h-12 w-12 rounded-full shadow-lg
           bg-primary text-primary-foreground
           hover:opacity-90 focus-visible:outline-none
-          focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-primary
+          focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary
         "
       >
         <Wrench className="h-5 w-5" />

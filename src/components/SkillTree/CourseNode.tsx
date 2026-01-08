@@ -72,7 +72,7 @@ export const CourseNode: React.FC<CourseNodeProps> = memo(({ data, selected, onS
           : 'border border-border hover:border-primary'
         }
         ${getProgressColor(userProgress)}
-        ${selected ? 'ring-2 ring-primary ring-offset-2' : ''}
+        ${selected ? 'ring-2 ring-primary ring-inset' : ''}
       `}>
         {/* Header */}
         <div className="flex items-start justify-between mb-3">

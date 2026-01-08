@@ -93,7 +93,7 @@ export const CertificationNode: React.FC<CertificationNodeProps> = memo(({
             : 'border-2 border-green-500 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950 dark:to-emerald-950'
           : 'border border-border hover:border-primary'
         }
-        ${selected ? 'ring-2 ring-primary ring-offset-2' : ''}
+        ${selected ? 'ring-2 ring-primary ring-inset' : ''}
       `}>
         {/* Header */}
         <div className="flex items-start justify-between mb-3">

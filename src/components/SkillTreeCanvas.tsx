@@ -1269,8 +1269,8 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = ({
               data-skill-index={index}
               data-skill-id={skill.id}
               tabIndex={isKeyboardSelected ? 0 : -1}
-              className={`focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 rounded-lg ${
-                isKeyboardSelected ? 'ring-2 ring-blue-400 ring-offset-2' : ''
+              className={`focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-inset rounded-lg ${
+                isKeyboardSelected ? 'ring-2 ring-blue-400 ring-inset' : ''
               }`}
               style={{
                 position: 'absolute',

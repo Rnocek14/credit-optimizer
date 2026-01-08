@@ -84,7 +84,7 @@ export const ProjectNode: React.FC<ProjectNodeProps> = memo(({
         w-80 p-4 transition-all duration-200 hover:shadow-lg
         border border-border hover:border-primary
         ${getStatusColor()}
-        ${selected ? 'ring-2 ring-primary ring-offset-2' : ''}
+        ${selected ? 'ring-2 ring-primary ring-inset' : ''}
       `}>
         {/* Header */}
         <div className="flex items-start justify-between mb-3">

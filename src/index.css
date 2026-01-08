@@ -780,13 +780,13 @@
   /* Enhanced touch target utilities with focus rings */
   .touch-target-icon {
     @apply h-12 w-12 min-h-12 min-w-12 inline-flex items-center justify-center;
-    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2;
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset;
     @apply transition-colors hover:bg-accent;
   }
   
   /* Focus ring utility for all interactive elements */
   .focus-ring {
-    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2;
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset;
   }
   
   /* Hover effects */
@@ -890,7 +890,7 @@
   }
 
   .focus-ring {
-    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2;
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset;
   }
 
   /* Enhanced Container System */
