@@ -40,7 +40,7 @@ export function MobileNavigation({ className }: MobileNavigationProps) {
                 "hover:bg-accent hover:text-accent-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
                 "active:scale-95 transform",
                 isActive 
-                  ? "text-primary bg-primary/15 shadow-soft" 
+                  ? "text-primary bg-primary/15" 
                   : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
               )}
             >
