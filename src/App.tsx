@@ -48,6 +48,7 @@ import AdminAnalytics from "./pages/Admin/AdminAnalytics";
 import SeedGoldenProgram from "./pages/Admin/SeedGoldenProgram";
 import TemplateValidation from "./pages/Admin/TemplateValidation";
 import DegreeIntegrityScan from "./pages/Admin/DegreeIntegrityScan";
+import SchoolScraperDashboard from "./pages/Admin/SchoolScraperDashboard";
 import MentorChat from "./pages/MentorChat";
 import AdminBadges from "./pages/AdminBadges";
 import EmbedExplorer from "./pages/EmbedExplorer";
@@ -869,6 +870,7 @@ const App = () => {
         <Route path="/admin/locations" element={<LocationManagerPanel />} />
         <Route path="/admin/template-validation" element={<TemplateValidation />} />
         <Route path="/admin/degree-integrity-scan" element={<DegreeIntegrityScan />} />
+        <Route path="/admin/school-scraper" element={<SchoolScraperDashboard />} />
         <Route path="/embed-explorer" element={<EmbedExplorer />} />
           <Route 
             path="/resume-analytics" 
