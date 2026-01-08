@@ -481,6 +481,79 @@ async function scanTemplate(
         });
       }
       
+      // ========================================================================
+      // STRESS STRATEGY ASSERTIONS - Prove blocking works, not just final failure
+      // ========================================================================
+      
+      // A) push_cap_then_over: Verify cap breaches are blocked before they happen
+      if (strategy === 'push_cap_then_over') {
+        const noncollegiateCap = getNoncollegiateCap(anchorSchool);
+        const capExceededInLog = run.selectionLog.some(entry => entry.runningAceCredits > noncollegiateCap);
+        const hadCapBlock = run.blockedSelections.some(
+          b => b.blockType === 'dead_end' || b.blockType === 'apply_blocked'
+        );
+        
+        if (capExceededInLog && !hadCapBlock) {
+          failures.push({
+            code: 'NONCOLLEGIATE_CAP_BYPASSED',
+            message: `Noncollegiate credits exceeded cap (${noncollegiateCap}) without blocking. Cap enforcement failed.`,
+            details: {
+              cap: noncollegiateCap,
+              maxReached: Math.max(...run.selectionLog.map(e => e.runningAceCredits)),
+              blockedSelections: run.blockedSelections,
+            },
+          });
+        }
+      }
+      
+      // B) minimize_residency: Verify we either graduate OR block dead-ends along the way
+      if (strategy === 'minimize_residency') {
+        const residencyRequired = getResidencyCredits(anchorSchool, 'standard');
+        const finalResidency = run.selectionLog.length > 0 
+          ? run.selectionLog[run.selectionLog.length - 1].runningResidency 
+          : 0;
+        const residencyShortfall = residencyRequired - finalResidency;
+        const hadDeadEndBlocks = run.blockedSelections.some(b => b.blockType === 'dead_end');
+        
+        // If we filled most modules but failed residency WITHOUT any dead-end blocks, that's a leak
+        if (!run.success && residencyShortfall > 0 && !hadDeadEndBlocks && run.selectionLog.length >= 5) {
+          failures.push({
+            code: 'RESIDENCY_STARVE_PATH_ALLOWED',
+            message: `Plan starved residency (need ${residencyShortfall} more) without dead-end blocks. Feasibility filtering failed.`,
+            details: {
+              residencyRequired,
+              finalResidency,
+              shortfall: residencyShortfall,
+              modulesCompleted: run.selectionLog.length,
+            },
+          });
+        }
+      }
+      
+      // C) minimize_upper_div: Same pattern for upper-division
+      if (strategy === 'minimize_upper_div') {
+        const policy = getPolicyOrDefault(anchorSchool);
+        const upperDivRequired = policy.upperDivisionAreaOfStudyMin;
+        const hadDeadEndBlocks = run.blockedSelections.some(b => b.blockType === 'dead_end');
+        
+        // Check final readiness for upper-div shortfall
+        const upperDivBlocker = run.finalReadiness?.blockers?.find(
+          b => b.includes('upper') || b.includes('Upper') || b.includes('300')
+        );
+        
+        if (!run.success && upperDivBlocker && !hadDeadEndBlocks && run.selectionLog.length >= 5) {
+          failures.push({
+            code: 'UPPER_DIV_STARVE_PATH_ALLOWED',
+            message: `Plan starved upper-division requirements without dead-end blocks. Feasibility filtering failed.`,
+            details: {
+              upperDivRequired,
+              blocker: upperDivBlocker,
+              modulesCompleted: run.selectionLog.length,
+            },
+          });
+        }
+      }
+      
       // Check for transfer bypasses
       if (run.transferSummary.rejected > 0) {
         // Good - we blocked them
