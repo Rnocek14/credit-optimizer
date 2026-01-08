@@ -1,6 +1,7 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.56.0?target=deno";
-import OpenAI from "https://esm.sh/openai@4.67.3?target=deno";
+// Deployment trigger: 2026-01-08 - fix imports for Deno edge runtime
+import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import OpenAI from "https://esm.sh/openai@4.20.1";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -282,10 +283,9 @@ For each field, include the source_url from which you extracted the value if ide
 serve(async (req) => {
   console.log(`[school-scraper] ${req.method} request received`);
   
-  // Handle CORS preflight - MUST return 200 with proper headers
+  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
-    console.log('[school-scraper] Returning CORS preflight response');
-    return new Response('ok', { status: 200, headers: corsHeaders });
+    return new Response(null, { headers: corsHeaders });
   }
 
   try {
