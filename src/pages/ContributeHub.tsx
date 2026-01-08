@@ -66,7 +66,8 @@ export default function ContributeHub() {
       actions: [
         { label: "User Management", href: "/admin" },
         { label: "Content Moderation", href: "/admin/moderation" },
-        { label: "System Settings", href: "/admin/settings" }
+        { label: "System Settings", href: "/admin/settings" },
+        { label: "School Scraper", href: "/admin/school-scraper" }
       ]
     }
   ];
