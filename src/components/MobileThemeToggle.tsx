@@ -27,9 +27,9 @@ export function MobileThemeToggle({ className, showLabel = false }: MobileThemeT
       onClick={() => setTheme(isDark ? "light" : "dark")}
       className={cn(
         "inline-flex items-center justify-center rounded-full p-3 transition-all duration-200",
-        "bg-background border border-border shadow-soft hover:shadow-elevation",
-        "hover:bg-accent hover:text-accent-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
-        "min-w-[48px] min-h-[48px] touch-manipulation", // Mobile touch target
+        "bg-background border border-border hover:shadow-elevation",
+        "hover:bg-accent hover:text-accent-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
+        "min-w-[48px] min-h-[48px] touch-manipulation",
         className
       )}
       aria-label={`Switch to ${isDark ? "light" : "dark"} mode`}
