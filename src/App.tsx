@@ -50,6 +50,7 @@ import TemplateValidation from "./pages/Admin/TemplateValidation";
 import DegreeIntegrityScan from "./pages/Admin/DegreeIntegrityScan";
 import SchoolScraperDashboard from "./pages/Admin/SchoolScraperDashboard";
 import PolicyScraperPage from "./pages/Admin/PolicyScraperPage";
+import ContentScraperPage from "./pages/Admin/ContentScraperPage";
 import MentorChat from "./pages/MentorChat";
 import AdminBadges from "./pages/AdminBadges";
 import EmbedExplorer from "./pages/EmbedExplorer";
@@ -336,7 +337,8 @@ const App = () => {
           <Route path="/optimizer-setup" element={<OptimizerSetup />} />
           {/* Optimizer Seeding Dashboard - no SQL editor needed */}
           <Route path="/admin/optimizer-seeding" element={<OptimizerSeeding />} />
-          <Route 
+          <Route path="/admin/content-scraper" element={<ContentScraperPage />} />
+          <Route
             path="/compare" 
             element={
               <ProtectedRoute requireAuth={true} requireOnboarding={true}>
