@@ -23,3 +23,6 @@ verify_jwt = false
 
 [functions.optimizer-seed-wgu]
 verify_jwt = false
+
+[functions.school-scraper]
+verify_jwt = false
