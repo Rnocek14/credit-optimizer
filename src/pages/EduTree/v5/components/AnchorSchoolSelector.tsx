@@ -1,33 +1,46 @@
-import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+/**
+ * AnchorSchoolSelector - Uses central policy service as source of truth
+ * 
+ * CRITICAL: Policy values come from institutionPolicies.ts, NOT from DB
+ * DB partner_policies table is for reference only - central service is authoritative
+ */
+import { useMemo } from 'react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { GraduationCap } from 'lucide-react';
 import { usePlanBasket } from '../state/usePlanBasket';
+import { 
+  getAvailableInstitutions, 
+  getPolicyOrDefault, 
+  getResidencyCredits,
+  getNoncollegiateCap,
+  type InstitutionCode 
+} from '@/lib/degree/institutionPolicies';
 
-type Policy = {
-  partner_code: string;
-  partner_name: string;
-  max_alt_credits: number;
-  min_residency_credits: number;
-  upper_division_min: number;
-  notes: string | null;
-};
+interface PolicyDisplay {
+  code: InstitutionCode;
+  name: string;
+  maxAltCredits: number;
+  minResidency: number;
+  upperDivMin: number;
+}
 
 export function AnchorSchoolSelector() {
   const { constraints, setConstraints } = usePlanBasket();
 
-  const { data, isLoading } = useQuery({
-    queryKey: ['partner-policies'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('partner_policies' as any)
-        .select('partner_code, partner_name, max_alt_credits, min_residency_credits, upper_division_min, notes')
-        .order('partner_name');
-      if (error) throw error;
-      return data as unknown as Policy[];
-    },
-  });
+  // Get policies from central service (single source of truth)
+  const policies = useMemo((): PolicyDisplay[] => {
+    return getAvailableInstitutions().map(code => {
+      const policy = getPolicyOrDefault(code);
+      return {
+        code,
+        name: policy.name,
+        maxAltCredits: getNoncollegiateCap(code, 'bachelor'),
+        minResidency: getResidencyCredits(code, 'standard'),
+        upperDivMin: policy.upperDivisionAreaOfStudyMin,
+      };
+    });
+  }, []);
 
   return (
     <div className="flex items-center gap-2">
@@ -35,20 +48,19 @@ export function AnchorSchoolSelector() {
       <Select
         onValueChange={(v) => setConstraints({ target_school: v })}
         value={constraints.target_school}
-        disabled={isLoading || !data?.length}
       >
         <SelectTrigger className="w-[320px]">
-          <SelectValue placeholder={isLoading ? 'Loading schools…' : 'Select anchor school'} />
+          <SelectValue placeholder="Select anchor school" />
         </SelectTrigger>
         <SelectContent>
-          {(data || []).map((p) => (
-            <SelectItem key={p.partner_code} value={p.partner_code}>
+          {policies.map((p) => (
+            <SelectItem key={p.code} value={p.code}>
               <div className="flex items-center justify-between gap-2 w-full">
-                <span>{p.partner_name}</span>
+                <span>{p.name}</span>
                 <div className="flex items-center gap-1">
-                  <Badge variant="outline">{p.max_alt_credits} ACE</Badge>
-                  <Badge variant="outline">{p.min_residency_credits} res</Badge>
-                  <Badge variant="outline">{p.upper_division_min} UD</Badge>
+                  <Badge variant="outline">{p.maxAltCredits} ACE</Badge>
+                  <Badge variant="outline">{p.minResidency} res</Badge>
+                  <Badge variant="outline">{p.upperDivMin} UD</Badge>
                 </div>
               </div>
             </SelectItem>

@@ -212,21 +212,25 @@ serve(async (req) => {
     const tesuId = tesuData.id;
 
     // Seed TESU credit limits
+    // CRITICAL: Values from src/lib/degree/institutionPolicies.ts (single source of truth)
+    // - upper_division_min: 18 (Area of Study requirement, NOT 30)
+    // - alt_credit_max: 90 (combined noncollegiate pool, NOT 80)
+    // - clep_max/dsst_max: NULL (no fake per-provider caps - use combined pool)
     console.log('Seeding TESU credit limits...');
     const { error: limitsError } = await supabaseClient
       .from('institution_credit_limits')
       .upsert([
         { institution_id: tesuId, limit_type: 'total_credits', credit_value: 120, provider_code: null, notes: 'Standard bachelor degree requirement' },
-        { institution_id: tesuId, limit_type: 'min_residency', credit_value: 15, provider_code: null, notes: 'Can be satisfied with cornerstone + capstone + 9 other credits' },
-        { institution_id: tesuId, limit_type: 'upper_division_min', credit_value: 30, provider_code: null, notes: 'Minimum 300/400 level credits required' },
-        { institution_id: tesuId, limit_type: 'total_transfer', credit_value: 113, provider_code: null, notes: 'Max credits that can transfer (120 - 15 residency + waivers)' },
-        { institution_id: tesuId, limit_type: 'alt_credit_max', credit_value: 80, provider_code: null, notes: 'Max ACE/NCCRS alternative credits combined' },
+        { institution_id: tesuId, limit_type: 'min_residency', credit_value: 15, provider_code: null, notes: 'Per Credit Tuition: 15 TESU credits via Online/Guided Study/e-Pack' },
+        { institution_id: tesuId, limit_type: 'upper_division_min', credit_value: 18, provider_code: null, notes: 'Minimum 18 upper-division credits in Area of Study (300/400 level)' },
+        { institution_id: tesuId, limit_type: 'total_transfer', credit_value: 105, provider_code: null, notes: 'Max transfer not strictly enforced - marketing says 105-114' },
+        { institution_id: tesuId, limit_type: 'alt_credit_max', credit_value: 90, provider_code: null, notes: 'TESU combined noncollegiate pool: 90cr bachelor / 45cr associate (effective Jan 2021)' },
         { institution_id: tesuId, limit_type: 'min_ra_credit', credit_value: 40, provider_code: null, notes: 'Minimum regionally-accredited credits' },
-        { institution_id: tesuId, limit_type: 'clep_max', credit_value: 40, provider_code: null, notes: 'Maximum CLEP exam credits' },
-        { institution_id: tesuId, limit_type: 'dsst_max', credit_value: 30, provider_code: null, notes: 'Maximum DSST exam credits' },
-        { institution_id: tesuId, limit_type: 'per_provider_max', credit_value: 30, provider_code: 'STUDY_COM', notes: 'Max Study.com credits' },
-        { institution_id: tesuId, limit_type: 'per_provider_max', credit_value: 90, provider_code: 'SOPHIA', notes: 'Max Sophia Learning credits' },
-        { institution_id: tesuId, limit_type: 'per_provider_max', credit_value: 30, provider_code: 'STRAIGHTERLINE', notes: 'Max StraighterLine credits' }
+        // NOTE: TESU does NOT have per-provider caps for CLEP/DSST - uses combined pool only
+        // Removing clep_max and dsst_max entries to prevent drift
+        { institution_id: tesuId, limit_type: 'per_provider_max', credit_value: 90, provider_code: 'SOPHIA', notes: 'Sophia: included in 90cr combined pool, no separate cap' },
+        { institution_id: tesuId, limit_type: 'per_provider_max', credit_value: 90, provider_code: 'STUDYCOM', notes: 'Study.com: included in 90cr combined pool, no separate cap' },
+        { institution_id: tesuId, limit_type: 'per_provider_max', credit_value: 90, provider_code: 'STRAIGHTERLINE', notes: 'StraighterLine: included in 90cr combined pool, no separate cap' }
       ], { onConflict: 'institution_id,limit_type,provider_code', ignoreDuplicates: true });
 
     if (limitsError) throw new Error(`TESU limits: ${limitsError.message}`);

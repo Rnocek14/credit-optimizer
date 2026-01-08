@@ -291,14 +291,8 @@ function routeEdges(graph: Graph, opts: LayoutOptions = {}) {
 }
 
 // --------------------------- Credit Edge Decoration -------------------------------
-// NOTE: Policy values now come from src/lib/degree/institutionPolicies.ts (single source of truth)
-// This legacy constant is DEPRECATED - use getPolicyOrDefault() instead
-// Kept temporarily for backward compatibility with decorateCreditEdges
-const INSTITUTION_POLICY_LEGACY = {
-  TESU: { aceLimit: 90, nccrsLimit: 90, clepLimit: 90 }, // Combined pool, no per-provider caps
-  SNHU: { aceLimit: 90, nccrsLimit: 90, clepLimit: 90 },
-  WGU: { aceLimit: 78, nccrsLimit: 78, clepLimit: 78 },
-} as const;
+// Uses central policy service - no local constants
+import { getNoncollegiateCap } from '@/lib/degree/institutionPolicies';
 
 function decorateCreditEdges(graph: Graph) {
   graph.edges.forEach(edge => {
@@ -308,18 +302,16 @@ function decorateCreditEdges(graph: Graph) {
     
     if (edge.credit) {
       const { source, units, institution } = edge.credit;
-      const policy = institution ? INSTITUTION_POLICY_LEGACY[institution as keyof typeof INSTITUTION_POLICY_LEGACY] : null;
+      // Use central policy service for caps
+      const cap = institution ? getNoncollegiateCap(institution, 'bachelor') : 90;
       
       let tone: 'success' | 'warn' | 'alert' = 'success';
       let text = `${source}`;
       
-      if (units && policy) {
-        const limit = source === 'ACE' ? policy.aceLimit : 
-                     source === 'NCCRS' ? policy.nccrsLimit :
-                     source === 'CLEP' ? policy.clepLimit : 999;
-        
-        if (units > limit * 0.8) tone = 'warn';
-        if (units > limit) tone = 'alert';
+      if (units) {
+        // All noncollegiate sources share the same combined pool cap
+        if (units > cap * 0.8) tone = 'warn';
+        if (units > cap) tone = 'alert';
         text += ` (${units})`;
       }
       
