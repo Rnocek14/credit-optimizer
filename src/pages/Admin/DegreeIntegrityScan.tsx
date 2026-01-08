@@ -5,6 +5,7 @@
  * - Template validity (graduation requirements)
  * - Policy consistency (no drift from institutionPolicies.ts)
  * - Required course presence (SOS-1100 + Capstone)
+ * - Policy drift findings across codebase
  */
 
 import React, { useMemo } from 'react';
@@ -12,10 +13,70 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { CheckCircle, XCircle, AlertTriangle, Download, Shield, Database, FileCheck } from 'lucide-react';
+import { CheckCircle, XCircle, AlertTriangle, Download, Shield, Database, FileCheck, AlertOctagon } from 'lucide-react';
 import marketplaceTemplates from '@/fixtures/templates/marketplace-v1-templates.json';
 import { auditAllTemplates, generateAuditReport } from '@/pages/EduTree/v5/utils/templateAudit';
-import { getPolicyOrDefault, getAvailableInstitutions, getNoncollegiateCap } from '@/lib/degree/institutionPolicies';
+import { getPolicyOrDefault, getAvailableInstitutions, getNoncollegiateCap, getResidencyCredits } from '@/lib/degree/institutionPolicies';
+
+// Static policy drift findings from codebase audit
+const POLICY_DRIFT_FINDINGS = [
+  {
+    file: 'src/pages/EduTree/v5/engine/constraints.ts',
+    lines: '253-270',
+    issue: 'Hardcoded providerLimits for CLEP/DSST/Sophia/Study.com',
+    severity: 'error' as const,
+    fix: 'Replace with getNoncollegiateCap() from institutionPolicies.ts',
+  },
+  {
+    file: 'src/lib/creditOptimizer.ts',
+    lines: '292-306',
+    issue: 'providerLimitMap uses legacy clep_max, dsst_max keys',
+    severity: 'error' as const,
+    fix: 'Use combined pool validation from validateNoncollegiateCredits()',
+  },
+  {
+    file: 'src/hooks/useInstitutionLimits.ts',
+    lines: '5-19',
+    issue: 'Interface includes legacy clep_max, dsst_max, sophia_max, study_com_max',
+    severity: 'warning' as const,
+    fix: 'Update interface to use combined pool model',
+  },
+  {
+    file: 'scripts/optimizer-tables-setup.sql',
+    lines: '197-206',
+    issue: 'Seeds upper_division_min: 30, alt_credit_max: 80, and per-provider caps',
+    severity: 'error' as const,
+    fix: 'Update to upper_division_min: 18, alt_credit_max: 90, remove per-provider caps',
+  },
+  {
+    file: 'supabase/migrations/20251022184913_*.sql',
+    lines: '72-76',
+    issue: 'Seeds TESU with min_residency_credits: 30 (should be 15)',
+    severity: 'error' as const,
+    fix: 'Update to min_residency_credits: 15 for TESU',
+  },
+  {
+    file: 'supabase/migrations/20250909142159_*.sql',
+    lines: '3-7',
+    issue: 'Seeds all institutions with residency: 30 or 45',
+    severity: 'warning' as const,
+    fix: 'Use institution-specific values from institutionPolicies.ts',
+  },
+  {
+    file: 'src/pages/EduTree/v5/EduTreeV5Page.tsx',
+    lines: '932-947',
+    issue: 'Manual shortfall calculations instead of validateGraduationReadiness()',
+    severity: 'warning' as const,
+    fix: 'Use validateGraduationReadiness() for consistent validation',
+  },
+  {
+    file: 'src/pages/EduTree/v5/engine/README-TESU-VALIDATOR.md',
+    lines: '26-31',
+    issue: 'Documents legacy per-provider caps (CLEP: 40, DSST: 30)',
+    severity: 'warning' as const,
+    fix: 'Update documentation to reflect combined pool model',
+  },
+];
 
 const DegreeIntegrityScan: React.FC = () => {
   const { results, summary } = useMemo(() => {
@@ -30,7 +91,7 @@ const DegreeIntegrityScan: React.FC = () => {
         code,
         name: policy.name,
         noncollegiateCap: getNoncollegiateCap(code, 'bachelor'),
-        residency: policy.residencyOptions[0]?.credits ?? 0,
+        residency: getResidencyCredits(code, 'standard'),
         upperDiv: policy.upperDivisionAreaOfStudyMin,
         confidence: policy.overallConfidence,
         requiredCourses: policy.requiredResidenceCourses.length,
@@ -39,14 +100,38 @@ const DegreeIntegrityScan: React.FC = () => {
   }, []);
 
   const publishBlockers = results.filter(r => !r.validation.publishable);
+  const driftErrors = POLICY_DRIFT_FINDINGS.filter(f => f.severity === 'error');
+  const driftWarnings = POLICY_DRIFT_FINDINGS.filter(f => f.severity === 'warning');
 
   const downloadReport = () => {
     const report = generateAuditReport(marketplaceTemplates as any[]);
-    const blob = new Blob([report], { type: 'text/plain' });
+    const driftReport = POLICY_DRIFT_FINDINGS.map(f => 
+      `[${f.severity.toUpperCase()}] ${f.file}:${f.lines}\n  Issue: ${f.issue}\n  Fix: ${f.fix}`
+    ).join('\n\n');
+    
+    const fullReport = `${report}\n\n===== POLICY DRIFT FINDINGS =====\n\n${driftReport}`;
+    const blob = new Blob([fullReport], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
     a.download = `integrity-scan-${new Date().toISOString().split('T')[0]}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const downloadJSON = () => {
+    const data = {
+      summary,
+      results,
+      policyCheck,
+      driftFindings: POLICY_DRIFT_FINDINGS,
+      scanDate: new Date().toISOString(),
+    };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `integrity-scan-${new Date().toISOString().split('T')[0]}.json`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -61,30 +146,42 @@ const DegreeIntegrityScan: React.FC = () => {
           </h1>
           <p className="text-muted-foreground">Compliance verification for degree templates</p>
         </div>
-        <Button onClick={downloadReport}>
-          <Download className="h-4 w-4 mr-2" />
-          Export Report
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={downloadReport}>
+            <Download className="h-4 w-4 mr-2" />
+            Export TXT
+          </Button>
+          <Button onClick={downloadJSON}>
+            <Download className="h-4 w-4 mr-2" />
+            Export JSON
+          </Button>
+        </div>
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <Card>
           <CardContent className="pt-6 text-center">
             <div className="text-3xl font-bold text-green-600">{summary.passingTemplates}</div>
-            <div className="text-sm text-muted-foreground">Passing Templates</div>
+            <div className="text-sm text-muted-foreground">Passing</div>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-6 text-center">
             <div className="text-3xl font-bold text-destructive">{summary.failingTemplates}</div>
-            <div className="text-sm text-muted-foreground">Failing Templates</div>
+            <div className="text-sm text-muted-foreground">Failing</div>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-6 text-center">
             <div className="text-3xl font-bold text-amber-600">{publishBlockers.length}</div>
             <div className="text-sm text-muted-foreground">Publish Blocked</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6 text-center">
+            <div className="text-3xl font-bold text-destructive">{driftErrors.length}</div>
+            <div className="text-sm text-muted-foreground">Drift Errors</div>
           </CardContent>
         </Card>
         <Card>
@@ -102,6 +199,9 @@ const DegreeIntegrityScan: React.FC = () => {
           </TabsTrigger>
           <TabsTrigger value="policies" className="gap-2">
             <Database className="h-4 w-4" /> Policy Values
+          </TabsTrigger>
+          <TabsTrigger value="drift" className="gap-2">
+            <AlertOctagon className="h-4 w-4" /> Policy Drift ({POLICY_DRIFT_FINDINGS.length})
           </TabsTrigger>
         </TabsList>
 
@@ -197,6 +297,48 @@ const DegreeIntegrityScan: React.FC = () => {
                   </tbody>
                 </table>
               </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="drift" className="space-y-4">
+          <Card className="border-destructive">
+            <CardHeader>
+              <CardTitle className="text-destructive flex items-center gap-2">
+                <AlertOctagon className="h-5 w-5" />
+                Policy Drift Errors ({driftErrors.length})
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {driftErrors.map((f, idx) => (
+                <div key={idx} className="p-3 bg-destructive/10 rounded-lg">
+                  <div className="font-mono text-sm font-medium">{f.file}:{f.lines}</div>
+                  <div className="text-sm mt-1">{f.issue}</div>
+                  <div className="text-xs text-muted-foreground mt-1">
+                    <strong>Fix:</strong> {f.fix}
+                  </div>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+
+          <Card className="border-amber-500">
+            <CardHeader>
+              <CardTitle className="text-amber-600 flex items-center gap-2">
+                <AlertTriangle className="h-5 w-5" />
+                Policy Drift Warnings ({driftWarnings.length})
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {driftWarnings.map((f, idx) => (
+                <div key={idx} className="p-3 bg-amber-500/10 rounded-lg">
+                  <div className="font-mono text-sm font-medium">{f.file}:{f.lines}</div>
+                  <div className="text-sm mt-1">{f.issue}</div>
+                  <div className="text-xs text-muted-foreground mt-1">
+                    <strong>Fix:</strong> {f.fix}
+                  </div>
+                </div>
+              ))}
             </CardContent>
           </Card>
         </TabsContent>
