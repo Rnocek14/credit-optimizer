@@ -280,8 +280,9 @@ For each field, include the source_url from which you extracted the value if ide
 // Main Handler
 // ============================================================================
 serve(async (req) => {
+  // Handle CORS preflight - MUST return 200 with proper headers
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return new Response('ok', { status: 200, headers: corsHeaders });
   }
 
   try {
