@@ -59,7 +59,7 @@ export const JobNode: React.FC<JobNodeProps> = memo(({ data, selected }) => {
             ? 'border-2 border-secondary bg-gradient-to-br from-secondary/5 to-secondary/10'
             : 'border border-border hover:border-primary'
         }
-        ${selected ? 'ring-2 ring-primary ring-offset-2' : ''}
+        ${selected ? 'ring-2 ring-primary ring-inset' : ''}
       `}>
         {/* Header */}
         <div className="flex items-start justify-between mb-3">

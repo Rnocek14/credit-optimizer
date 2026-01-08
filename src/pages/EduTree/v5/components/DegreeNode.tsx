@@ -152,7 +152,7 @@ function DegreeNodeImpl({
         transition-all duration-300
         bg-gradient-to-r from-primary/5 to-secondary/5
         hover:shadow-xl hover:scale-[1.01]
-        focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2
+        focus:outline-none focus:ring-2 focus:ring-primary focus:ring-inset
         ${isCollapsed 
           ? 'collapsed border-primary/30 border-dashed min-h-[70px]' 
           : 'expanded border-primary min-h-[180px]'
