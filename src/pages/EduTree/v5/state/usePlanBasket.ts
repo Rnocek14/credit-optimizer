@@ -79,6 +79,10 @@ interface PlanBasketState {
   moduleStates: Record<string, ModuleState>;
   currentBasket: any | null; // PlanBasket from optimizer
   
+  // Debug mode
+  showDeadEndReasons: boolean;
+  setShowDeadEndReasons: (show: boolean) => void;
+  
   // Actions
   addItem: (item: BasketItem) => void;
   removeItem: (courseId: string) => void;
@@ -181,6 +185,8 @@ export const usePlanBasket = create<PlanBasketState>()(
       scenarios: [],
       moduleStates: {},
       currentBasket: null,
+      showDeadEndReasons: false,
+      setShowDeadEndReasons: (show) => set({ showDeadEndReasons: show }),
       
       addItem: (item) => {
         const items = get().items;

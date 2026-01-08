@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { useSearchParams, Link, useLocation } from 'react-router-dom';
-import { ChevronUp, ArrowLeft } from 'lucide-react';
+import { ChevronUp, ArrowLeft, Bug } from 'lucide-react';
 import type { OptimizerMode } from '@/types/optimizer';
 import { OptimizerModeSelector, PolicyStatusBanner } from '@/components/edu-tree';
 import { validateInstitutionPolicies, type Violation } from './engine/constraints';
@@ -228,6 +228,8 @@ export default function EduTreeV5Page() {
   const applyTemplateToPlan = usePlanBasket(s => s.applyTemplateToPlan);
   const clearBasket = usePlanBasket(s => s.clearAll);
   const constraints = usePlanBasket(s => s.constraints);
+  const showDeadEndReasons = usePlanBasket(s => s.showDeadEndReasons);
+  const setShowDeadEndReasons = usePlanBasket(s => s.setShowDeadEndReasons);
   
   // Auto-set anchor from marketplace navigation
   useEffect(() => {
@@ -1258,6 +1260,19 @@ export default function EduTreeV5Page() {
           <div className="mt-3">
             <PolicyStatusBanner violations={policyViolations} />
           </div>
+          
+          {/* Dead-End Debug Toggle */}
+          <div className="mt-3 flex items-center gap-2">
+            <Button 
+              variant={showDeadEndReasons ? "secondary" : "ghost"} 
+              size="sm"
+              onClick={() => setShowDeadEndReasons(!showDeadEndReasons)}
+              className="text-xs"
+            >
+              <Bug className="h-3 w-3 mr-1" />
+              {showDeadEndReasons ? 'Hide' : 'Show'} Dead-End Reasons
+            </Button>
+          </div>
         </div>
       )}
 
@@ -1397,9 +1412,10 @@ export default function EduTreeV5Page() {
             {/* Module Cards - Stack vertically below */}
             {!collapsedYears[year] && (
               <div className="modules-stack mt-4 space-y-3">
-                {getModulesForYear(year).map(module => {
+                {getModulesForYear(year).map((module, idx) => {
                   const yearEarned = getYearEarnedCredits(year);
                   const yearCap = YEAR_CREDIT_CAP;
+                  const yearModules = getModulesForYear(year);
                   
                   return (
                     <ModuleCard
@@ -1410,6 +1426,9 @@ export default function EduTreeV5Page() {
                       onOpenPanel={() => handleOpenPanel(module, year)}
                       yearEarned={yearEarned}
                       yearCap={yearCap}
+                      allModules={yearModules}
+                      moduleIndex={idx}
+                      showDeadEndReasons={showDeadEndReasons}
                     />
                   );
                 })}
