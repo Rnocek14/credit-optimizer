@@ -21,7 +21,8 @@ import {
   FileText,
   Plus,
   Trash2,
-  ExternalLink
+  ExternalLink,
+  Database
 } from 'lucide-react';
 import { PolicyReviewForm } from '@/components/school-scraper/PolicyReviewForm';
 
@@ -85,8 +86,11 @@ export default function SchoolScraperDashboard() {
   const [newTemplateUrl, setNewTemplateUrl] = useState('');
   const [newTemplateType, setNewTemplateType] = useState('catalog');
 
-  // Fetch jobs
-  const { data: jobs, isLoading: jobsLoading } = useQuery({
+  const [isSettingUp, setIsSettingUp] = useState(false);
+  const [tablesExist, setTablesExist] = useState<boolean | null>(null);
+
+  // Fetch jobs - also checks if tables exist
+  const { data: jobs, isLoading: jobsLoading, error: jobsError } = useQuery({
     queryKey: ['scrape-jobs'],
     queryFn: async () => {
       const { data, error } = await (supabase as any)
@@ -95,10 +99,42 @@ export default function SchoolScraperDashboard() {
         .order('created_at', { ascending: false })
         .limit(50);
       
-      if (error) throw error;
+      if (error) {
+        // Check if error is due to missing table
+        if (error.message?.includes('does not exist') || error.code === '42P01') {
+          setTablesExist(false);
+          return [];
+        }
+        throw error;
+      }
+      setTablesExist(true);
       return data as ScrapeJob[];
     },
+    retry: false,
   });
+
+  // Setup tables
+  const handleSetup = async () => {
+    setIsSettingUp(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('setup-school-scraper');
+      
+      if (error) throw error;
+      
+      toast.success('Database tables created!', {
+        description: data.message || 'School scraper is ready to use.',
+      });
+      setTablesExist(true);
+      queryClient.invalidateQueries({ queryKey: ['scrape-jobs'] });
+      queryClient.invalidateQueries({ queryKey: ['scrape-templates'] });
+    } catch (err) {
+      toast.error('Setup failed', {
+        description: (err as Error).message,
+      });
+    } finally {
+      setIsSettingUp(false);
+    }
+  };
 
   // Fetch URL templates
   const { data: templates, isLoading: templatesLoading } = useQuery({
@@ -203,9 +239,25 @@ export default function SchoolScraperDashboard() {
             AI-powered extraction of institution transfer policies with human review
           </p>
         </div>
-        <Badge variant="outline" className="text-sm">
-          {reviewJobs.length} pending review
-        </Badge>
+        <div className="flex items-center gap-2">
+          {tablesExist === false && (
+            <Button 
+              onClick={handleSetup} 
+              disabled={isSettingUp}
+              variant="default"
+            >
+              {isSettingUp ? (
+                <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <Database className="w-4 h-4 mr-2" />
+              )}
+              Setup Database
+            </Button>
+          )}
+          <Badge variant="outline" className="text-sm">
+            {reviewJobs.length} pending review
+          </Badge>
+        </div>
       </div>
 
       <Tabs defaultValue="scrape" className="space-y-4">
@@ -226,94 +278,116 @@ export default function SchoolScraperDashboard() {
 
         {/* Scrape Tab */}
         <TabsContent value="scrape" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Start New Scrape</CardTitle>
-              <CardDescription>
-                Select an institution and optionally provide custom URLs to scrape
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex gap-4">
-                <Select value={selectedInstitution} onValueChange={setSelectedInstitution}>
-                  <SelectTrigger className="w-48">
-                    <SelectValue placeholder="Select institution" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {INSTITUTION_CODES.map(code => (
-                      <SelectItem key={code} value={code}>{code}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                
-                <Button 
-                  onClick={handleStartScrape}
-                  disabled={startScrapeMutation.isPending}
-                >
-                  {startScrapeMutation.isPending ? (
+          {tablesExist === false ? (
+            <Card>
+              <CardContent className="py-12 text-center">
+                <Database className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+                <h3 className="text-lg font-semibold mb-2">Database Setup Required</h3>
+                <p className="text-muted-foreground mb-4">
+                  The school scraper tables need to be created before you can start scraping.
+                </p>
+                <Button onClick={handleSetup} disabled={isSettingUp}>
+                  {isSettingUp ? (
                     <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
                   ) : (
-                    <Play className="w-4 h-4 mr-2" />
+                    <Database className="w-4 h-4 mr-2" />
                   )}
-                  Start Scrape
+                  Setup Database Tables
                 </Button>
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Custom URLs (optional, one per line)</label>
-                <textarea
-                  className="w-full h-24 p-2 border rounded-md text-sm font-mono bg-background"
-                  placeholder="https://example.edu/catalog/transfer-credit..."
-                  value={customUrls}
-                  onChange={(e) => setCustomUrls(e.target.value)}
-                />
-              </div>
-
-              {templates && templates.length > 0 && (
-                <div className="text-sm text-muted-foreground">
-                  <strong>{templates.length}</strong> URL templates configured for {selectedInstitution}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Recent Jobs */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Recent Jobs</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {jobsLoading ? (
-                <div className="text-center py-8 text-muted-foreground">Loading...</div>
-              ) : recentJobs.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">No jobs yet</div>
-              ) : (
-                <div className="space-y-2">
-                  {recentJobs.map(job => (
-                    <div 
-                      key={job.id}
-                      className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 cursor-pointer"
-                      onClick={() => setSelectedJob(job)}
+              </CardContent>
+            </Card>
+          ) : (
+            <>
+              <Card>
+                <CardHeader>
+                  <CardTitle>Start New Scrape</CardTitle>
+                  <CardDescription>
+                    Select an institution and optionally provide custom URLs to scrape
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex gap-4">
+                    <Select value={selectedInstitution} onValueChange={setSelectedInstitution}>
+                      <SelectTrigger className="w-48">
+                        <SelectValue placeholder="Select institution" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {INSTITUTION_CODES.map(code => (
+                          <SelectItem key={code} value={code}>{code}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    
+                    <Button 
+                      onClick={handleStartScrape}
+                      disabled={startScrapeMutation.isPending}
                     >
-                      <div className="flex items-center gap-3">
-                        {getStatusIcon(job.status)}
-                        <div>
-                          <div className="font-medium">{job.institution_code}</div>
-                          <div className="text-xs text-muted-foreground">
-                            {new Date(job.created_at).toLocaleString()}
+                      {startScrapeMutation.isPending ? (
+                        <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                      ) : (
+                        <Play className="w-4 h-4 mr-2" />
+                      )}
+                      Start Scrape
+                    </Button>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Custom URLs (optional, one per line)</label>
+                    <textarea
+                      className="w-full h-24 p-2 border rounded-md text-sm font-mono bg-background"
+                      placeholder="https://example.edu/catalog/transfer-credit..."
+                      value={customUrls}
+                      onChange={(e) => setCustomUrls(e.target.value)}
+                    />
+                  </div>
+
+                  {templates && templates.length > 0 && (
+                    <div className="text-sm text-muted-foreground">
+                      <strong>{templates.length}</strong> URL templates configured for {selectedInstitution}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Recent Jobs */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Recent Jobs</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {jobsLoading ? (
+                    <div className="text-center py-8 text-muted-foreground">Loading...</div>
+                  ) : recentJobs.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground">No jobs yet</div>
+                  ) : (
+                    <div className="space-y-2">
+                      {recentJobs.map(job => (
+                        <div 
+                          key={job.id}
+                          className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 cursor-pointer"
+                          onClick={() => setSelectedJob(job)}
+                        >
+                          <div className="flex items-center gap-3">
+                            {getStatusIcon(job.status)}
+                            <div>
+                              <div className="font-medium">{job.institution_code}</div>
+                              <div className="text-xs text-muted-foreground">
+                                {new Date(job.created_at).toLocaleString()}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline">{job.status}</Badge>
+                            {getConfidenceBadge(job.overall_confidence)}
                           </div>
                         </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Badge variant="outline">{job.status}</Badge>
-                        {getConfidenceBadge(job.overall_confidence)}
-                      </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                  )}
+                </CardContent>
+              </Card>
+            </>
+          )}
         </TabsContent>
 
         {/* Review Tab */}
