@@ -113,11 +113,13 @@ export default function SchoolScraperDashboard() {
     retry: false,
   });
 
-  // Setup tables
+  // Setup tables using existing run-migrations function
   const handleSetup = async () => {
     setIsSettingUp(true);
     try {
-      const { data, error } = await supabase.functions.invoke('setup-school-scraper');
+      const { data, error } = await supabase.functions.invoke('run-migrations', {
+        body: { confirm: true }
+      });
       
       if (error) throw error;
       
