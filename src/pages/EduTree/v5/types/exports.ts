@@ -37,6 +37,7 @@ export interface Constraints {
   min_cri_score?: number;
   max_ace_credits?: number;
   max_concurrent_courses?: number;
+  target_school?: string; // Anchor school for transfer policy tracking
 }
 
 export interface ScoringWeights {
