@@ -28,8 +28,7 @@ export default function EdgeTestPage() {
     setResults({});
 
     const tests = [
-      { name: "ping-test", body: undefined },
-      { name: "content-scraper", body: { action: "ping" } },
+      { name: "run-seeds", body: { action: "ping" } },
       { name: "run-migrations", body: { action: "ping" } },
     ];
 

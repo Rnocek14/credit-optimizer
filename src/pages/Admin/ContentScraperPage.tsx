@@ -6,7 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Loader2, CheckCircle, XCircle } from "lucide-react";
 
 export default function ContentScraperPage() {
-  const [connectionStatus, setConnectionStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [connectionStatus, setConnectionStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
   const [connectionMessage, setConnectionMessage] = useState('');
 
   const [url, setUrl] = useState('');
@@ -15,12 +15,11 @@ export default function ContentScraperPage() {
   const [scrapeError, setScrapeError] = useState('');
 
   const testConnection = async () => {
-    setConnectionStatus('loading');
+    setConnectionStatus('testing');
     try {
-      const { data, error } = await supabase.functions.invoke('content-scraper', {
+      const { data, error } = await supabase.functions.invoke('run-seeds', {
         body: { action: 'ping' }
       });
-
       if (error) throw error;
 
       setConnectionStatus('success');
@@ -39,7 +38,7 @@ export default function ContentScraperPage() {
     setScrapeError('');
 
     try {
-      const { data, error } = await supabase.functions.invoke('content-scraper', {
+      const { data, error } = await supabase.functions.invoke('run-seeds', {
         body: { action: 'scrape', url }
       });
 
@@ -70,8 +69,8 @@ export default function ContentScraperPage() {
           <CardTitle>Test Connection</CardTitle>
         </CardHeader>
         <CardContent>
-          <Button onClick={testConnection} disabled={connectionStatus === 'loading'}>
-            {connectionStatus === 'loading' && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          <Button onClick={testConnection} disabled={connectionStatus === 'testing'}>
+            {connectionStatus === 'testing' && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Test Connection
           </Button>
 
