@@ -52,7 +52,7 @@ export function PolicyReviewForm({ job }: PolicyReviewFormProps) {
   const { data: fields, isLoading } = useQuery({
     queryKey: ['field-extractions', job.id],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from('policy_field_extractions')
         .select('*')
         .eq('job_id', job.id)
@@ -76,7 +76,7 @@ export function PolicyReviewForm({ job }: PolicyReviewFormProps) {
       finalValue?: unknown;
       notes?: string;
     }) => {
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from('policy_field_extractions')
         .update({
           review_status: status,
@@ -101,7 +101,7 @@ export function PolicyReviewForm({ job }: PolicyReviewFormProps) {
   // Complete job mutation
   const completeJobMutation = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from('school_scrape_jobs')
         .update({ 
           status: 'completed',

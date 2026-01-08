@@ -89,7 +89,7 @@ export default function SchoolScraperDashboard() {
   const { data: jobs, isLoading: jobsLoading } = useQuery({
     queryKey: ['scrape-jobs'],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from('school_scrape_jobs')
         .select('*')
         .order('created_at', { ascending: false })
@@ -104,7 +104,7 @@ export default function SchoolScraperDashboard() {
   const { data: templates, isLoading: templatesLoading } = useQuery({
     queryKey: ['scrape-templates', selectedInstitution],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from('scrape_url_templates')
         .select('*')
         .eq('institution_code', selectedInstitution)
@@ -144,7 +144,7 @@ export default function SchoolScraperDashboard() {
   // Add template mutation
   const addTemplateMutation = useMutation({
     mutationFn: async ({ url, pageType }: { url: string; pageType: string }) => {
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from('scrape_url_templates')
         .insert({
           institution_code: selectedInstitution,
@@ -170,7 +170,7 @@ export default function SchoolScraperDashboard() {
   // Delete template mutation
   const deleteTemplateMutation = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from('scrape_url_templates')
         .delete()
         .eq('id', id);
