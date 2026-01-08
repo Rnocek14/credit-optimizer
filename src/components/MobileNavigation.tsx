@@ -20,8 +20,8 @@ export function MobileNavigation({ className }: MobileNavigationProps) {
 
   return (
     <nav className={cn(
-      "fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60",
-      "pb-safe-bottom transition-colors duration-200 shadow-lg",
+      "fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60",
+      "pb-safe-bottom transition-colors duration-200",
       className
     )}
     style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 0.75rem)' }}
