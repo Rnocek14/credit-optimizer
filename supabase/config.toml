@@ -1,5 +1,6 @@
 project_id = "vzpissitddpunkpythsb"
 
+# Edge Functions Configuration
 [functions.ping-test]
 verify_jwt = false
 
