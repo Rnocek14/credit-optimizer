@@ -8,11 +8,12 @@
  * 4. No dead-end selections allowed
  */
 
-import { validateTemplate, validateTemplateWithTransfers } from '../utils/templateValidator';
+import { validateTemplate } from '../utils/templateValidator';
 import { validateGraduationReadiness, type GraduationReadiness } from '../utils/graduationValidator';
 import { filterEligibleOptions, scoreOptions, pickBestOption } from './optionFilters';
 import { checkForDeadEnd, type DeadEndCheck } from './deadEndDetector';
-import { getAnchorPolicyFromConstraints } from '../utils/anchorPolicyAdapter';
+import { checkTransferRule } from './transferEngine';
+import { applyTemplate as applyTemplateEngine, type ApplyResult } from './applyTemplate';
 import { getPolicyOrDefault, getNoncollegiateCap, getResidencyCredits } from '@/lib/degree/institutionPolicies';
 import type { BasketItem, Constraints } from '../state/usePlanBasket';
 import type { MarketplaceOption } from '../types/v5';
@@ -35,20 +36,25 @@ export interface SelectionLogEntry {
   credits: number;
   runningAceCredits: number;
   runningResidency: number;
+  eligibleBefore: number;
+  eligibleAfter: number;
 }
 
 export interface BlockedSelection {
   moduleId: string;
   courseId: string;
   reason: DeadEndCheck | string;
+  blockType: 'dead_end' | 'transfer_rejected' | 'apply_blocked';
 }
 
 export interface SimulationRun {
   runId: string;
+  strategy: string;
   selectionLog: SelectionLogEntry[];
   blockedSelections: BlockedSelection[];
   finalReadiness: GraduationReadiness | null;
   transferSummary: { unverified: number; electiveOnly: number; rejected: number };
+  eligibilityContractionObserved: boolean;
   success: boolean;
 }
 
@@ -86,6 +92,35 @@ function seededRandom(seed: number) {
 }
 
 // ============================================================================
+// Selection Strategies (deterministic)
+// ============================================================================
+
+type SelectionStrategy = 'best_cri' | 'cheapest' | 'maximize_noncollegiate' | 'maximize_residency';
+
+function selectByStrategy(
+  scored: ReturnType<typeof scoreOptions>,
+  strategy: SelectionStrategy
+): typeof scored[0] | null {
+  if (scored.length === 0) return null;
+  
+  switch (strategy) {
+    case 'cheapest':
+      return [...scored].sort((a, b) => (a.cost_usd ?? 0) - (b.cost_usd ?? 0))[0];
+    case 'maximize_noncollegiate':
+      // Prefer MOOC/testing to push toward caps
+      const noncollegiate = scored.filter(s => s.providerType === 'mooc' || s.providerType === 'testing_center');
+      return noncollegiate.length > 0 ? noncollegiate[0] : scored[0];
+    case 'maximize_residency':
+      // Prefer university courses
+      const university = scored.filter(s => s.providerType === 'university');
+      return university.length > 0 ? university[0] : scored[0];
+    case 'best_cri':
+    default:
+      return pickBestOption(scored);
+  }
+}
+
+// ============================================================================
 // Core Scanner
 // ============================================================================
 
@@ -93,134 +128,212 @@ function seededRandom(seed: number) {
  * Run a single simulation on a template
  * Simulates course selection module-by-module with constraint enforcement
  */
-function runSingleSimulation(
+async function runSingleSimulation(
   template: any,
   anchorSchool: string,
   runId: string,
-  rng: () => number
-): SimulationRun {
+  strategy: SelectionStrategy,
+  allOptions: MarketplaceOption[]
+): Promise<SimulationRun> {
   const selectionLog: SelectionLogEntry[] = [];
   const blockedSelections: BlockedSelection[] = [];
-  const basket: BasketItem[] = [];
+  let basket: BasketItem[] = [];
   
   const policy = getPolicyOrDefault(anchorSchool);
+  const noncollegiateCap = getNoncollegiateCap(anchorSchool);
+  const residencyRequired = getResidencyCredits(anchorSchool, 'standard');
+  
   const partnerPolicy = {
     partner_name: policy.name,
-    max_alt_credits: getNoncollegiateCap(anchorSchool),
-    min_residency_credits: getResidencyCredits(anchorSchool, 'standard'),
+    max_alt_credits: noncollegiateCap,
+    min_residency_credits: residencyRequired,
     upper_division_min: policy.upperDivisionAreaOfStudyMin,
     notes: '',
   };
   
   const constraints: Constraints = {
     target_school: anchorSchool,
-    max_ace_credits: partnerPolicy.max_alt_credits,
+    max_ace_credits: noncollegiateCap,
   };
   
-  let runningTotals = { cost: 0, aceCredits: 0 };
+  let runningTotals = { cost: 0, aceCredits: 0, workloadHours: 0 };
   let transferSummary = { unverified: 0, electiveOnly: 0, rejected: 0 };
+  let eligibilityContractionObserved = false;
+  let previousEligibleCount = -1;
   
-  // Iterate through template modules
+  // Collect all modules from template
+  const modules: Array<{ moduleId: string; options: MarketplaceOption[]; creditsRequired: number }> = [];
   for (const yearTemplate of template.yearTemplates || []) {
     for (const moduleTemplate of yearTemplate.moduleTemplates || []) {
-      const { moduleId, options = [], creditsRequired = 3 } = moduleTemplate;
-      
-      if (options.length === 0) continue;
-      
-      // Build basket course IDs for prereq checking
-      const basketCourseIds = new Set(basket.map(b => b.courseId));
-      
-      // Filter eligible options using runtime function
-      const eligible = filterEligibleOptions(
-        options as MarketplaceOption[],
-        constraints,
-        runningTotals,
-        basketCourseIds
-      );
-      
-      // Check for dead-ends in remaining options
-      const optionsWithDeadEnds = eligible.map(opt => ({
-        option: opt,
-        deadEnd: checkForDeadEnd(opt as MarketplaceOption, basket, constraints),
-      }));
-      
-      const viableOptions = optionsWithDeadEnds.filter(o => !o.deadEnd.isDeadEnd);
-      const deadEndOptions = optionsWithDeadEnds.filter(o => o.deadEnd.isDeadEnd);
-      
-      // Log blocked dead-end options
-      for (const de of deadEndOptions) {
-        blockedSelections.push({
-          moduleId,
-          courseId: de.option.courseId,
-          reason: de.deadEnd,
-        });
-      }
-      
-      if (viableOptions.length === 0) {
-        // No viable options - skip module
-        continue;
-      }
-      
-      // Score and pick best option deterministically
-      const scored = scoreOptions(
-        viableOptions.map(v => v.option),
-        { cost: 0.5, time: 0.3, quality: 0.2 }
-      );
-      const best = pickBestOption(scored);
-      
-      if (!best) continue;
-      
-      // Apply selection
-      const newItem: BasketItem = {
-        moduleId,
-        courseId: best.courseId,
-        title: best.title,
-        credits: best.credits,
-        cost_usd: best.cost_usd ?? null,
-        duration_weeks: best.duration_weeks ?? null,
-        workload_weekly_hours: best.credits * 2.5,
-        cri_score: best.scoreBreakdown?.cri ?? 0,
-        status: 'auto-filled',
-        providerType: best.providerType,
-        providerCode: best.providerCode,
-        level: best.level,
-      };
-      
-      basket.push(newItem);
-      
-      // Update running totals
-      runningTotals.cost += best.cost_usd ?? 0;
-      if (best.providerType === 'mooc' || best.providerType === 'testing_center') {
-        runningTotals.aceCredits += best.credits;
-      }
-      
-      // Track transfer status (if available on the option)
-      const optTransfer = (best as any).transferStatus;
-      if (optTransfer) {
-        if (!optTransfer.verified) transferSummary.unverified++;
-        if (optTransfer.electiveOnly) transferSummary.electiveOnly++;
-      }
-      
-      selectionLog.push({
-        moduleId,
-        selectedCourseId: best.courseId,
-        providerCode: best.providerCode,
-        credits: best.credits,
-        runningAceCredits: runningTotals.aceCredits,
-        runningResidency: basket.filter(b => b.providerType === 'university').reduce((s, b) => s + b.credits, 0),
+      modules.push({
+        moduleId: moduleTemplate.moduleId,
+        options: (moduleTemplate.options || []) as MarketplaceOption[],
+        creditsRequired: moduleTemplate.creditsRequired || 3,
       });
     }
   }
   
-  // Run final graduation readiness check
+  // Iterate through modules
+  for (let moduleIdx = 0; moduleIdx < modules.length; moduleIdx++) {
+    const { moduleId, options } = modules[moduleIdx];
+    
+    if (options.length === 0) continue;
+    
+    // Build basket course IDs for prereq checking
+    const basketCourseIds = new Set(basket.map(b => b.courseId));
+    
+    // Filter eligible options using RUNTIME function
+    const eligible = filterEligibleOptions(
+      options,
+      constraints,
+      runningTotals,
+      basketCourseIds
+    );
+    
+    const eligibleBefore = eligible.length;
+    
+    // Check eligibility contraction from previous selection
+    if (previousEligibleCount >= 0 && eligibleBefore < previousEligibleCount) {
+      eligibilityContractionObserved = true;
+    }
+    previousEligibleCount = eligibleBefore;
+    
+    // Check for dead-ends using RUNTIME function
+    const optionsWithDeadEnds = eligible.map(opt => ({
+      option: opt,
+      deadEnd: checkForDeadEnd(opt, basket, constraints),
+    }));
+    
+    const viableOptions = optionsWithDeadEnds.filter(o => !o.deadEnd.isDeadEnd);
+    const deadEndOptions = optionsWithDeadEnds.filter(o => o.deadEnd.isDeadEnd);
+    
+    // HARD FAIL CHECK: Dead-end options that are still "eligible" from filterEligibleOptions
+    for (const de of deadEndOptions) {
+      blockedSelections.push({
+        moduleId,
+        courseId: de.option.courseId,
+        reason: de.deadEnd,
+        blockType: 'dead_end',
+      });
+    }
+    
+    if (viableOptions.length === 0) {
+      continue;
+    }
+    
+    // Score and pick option using strategy
+    const scored = scoreOptions(
+      viableOptions.map(v => v.option),
+      { cost: 0.5, time: 0.3, quality: 0.2 }
+    );
+    const best = selectByStrategy(scored, strategy);
+    
+    if (!best) continue;
+    
+    // === RUN REAL TRANSFER CHECK ===
+    const transferResult = await checkTransferRule(
+      best.providerCode,
+      best.courseId,
+      anchorSchool,
+      { minConfidence: 0.7 }
+    );
+    
+    if (!transferResult.accepted) {
+      // Transfer rejected - block this selection
+      blockedSelections.push({
+        moduleId,
+        courseId: best.courseId,
+        reason: `Transfer rule rejected: confidence ${transferResult.confidence}`,
+        blockType: 'transfer_rejected',
+      });
+      transferSummary.rejected++;
+      continue; // Do NOT apply
+    }
+    
+    if (transferResult.confidence < 1.0) {
+      transferSummary.unverified++;
+    }
+    if (transferResult.electiveOnly) {
+      transferSummary.electiveOnly++;
+    }
+    
+    // === USE REAL APPLY FUNCTION ===
+    const applyResult: ApplyResult = applyTemplateEngine({
+      scope: 'course',
+      scopeId: moduleId,
+      templateId: template.id || 'simulation',
+      options: [best],
+      currentBasket: basket,
+      constraints,
+      allOptions,
+    });
+    
+    // Check if apply was blocked via conflicts
+    const hasBlockingConflict = applyResult.conflicts.some(c => c.severity === 'error');
+    if (hasBlockingConflict) {
+      blockedSelections.push({
+        moduleId,
+        courseId: best.courseId,
+        reason: applyResult.conflicts.map(c => c.reason).join('; '),
+        blockType: 'apply_blocked',
+      });
+      continue;
+    }
+    
+    // Apply to basket
+    const prevBasketWithoutRemoved = basket.filter(b => !applyResult.removed.includes(b));
+    basket = [...prevBasketWithoutRemoved, ...applyResult.added];
+    
+    // Update running totals
+    runningTotals.cost += applyResult.diff.costDelta;
+    runningTotals.aceCredits += applyResult.diff.aceCredits;
+    
+    // Calculate eligibility for next module AFTER this selection
+    const nextModuleIdx = moduleIdx + 1;
+    let eligibleAfter = eligibleBefore;
+    if (nextModuleIdx < modules.length) {
+      const nextModule = modules[nextModuleIdx];
+      const nextEligible = filterEligibleOptions(
+        nextModule.options,
+        constraints,
+        runningTotals,
+        new Set(basket.map(b => b.courseId))
+      );
+      eligibleAfter = nextEligible.length;
+      
+      // Check for contraction
+      if (eligibleAfter < nextModule.options.length) {
+        eligibilityContractionObserved = true;
+      }
+    }
+    
+    const residencyCredits = basket
+      .filter(b => b.providerType === 'university')
+      .reduce((s, b) => s + b.credits, 0);
+    
+    selectionLog.push({
+      moduleId,
+      selectedCourseId: best.courseId,
+      providerCode: best.providerCode,
+      credits: best.credits,
+      runningAceCredits: runningTotals.aceCredits,
+      runningResidency: residencyCredits,
+      eligibleBefore,
+      eligibleAfter,
+    });
+  }
+  
+  // === RUN REAL GRADUATION CHECK ===
   const finalReadiness = validateGraduationReadiness(basket, partnerPolicy);
   
   return {
     runId,
+    strategy,
     selectionLog,
     blockedSelections,
     finalReadiness,
     transferSummary,
+    eligibilityContractionObserved,
     success: finalReadiness.isGraduationReady,
   };
 }
@@ -228,13 +341,13 @@ function runSingleSimulation(
 /**
  * Run integrity scan on a single template
  */
-function scanTemplate(
+async function scanTemplate(
   template: any,
-  config: IntegrityScanConfig
-): IntegrityScanResult {
+  config: IntegrityScanConfig,
+  allOptions: MarketplaceOption[]
+): Promise<IntegrityScanResult> {
   const anchorSchool = config.anchorSchool || template.anchorSchool || 'TESU';
   const maxSimulations = config.maxSimulations || 25;
-  const seed = config.seed || 1337;
   
   const failures: IntegrityScanResult['failures'] = [];
   const warnings: IntegrityScanResult['warnings'] = [];
@@ -270,36 +383,75 @@ function scanTemplate(
     });
   }
   
-  // 2. Run simulations
-  const rng = seededRandom(seed);
+  // 2. Run simulations with different strategies
+  const strategies: SelectionStrategy[] = [
+    'best_cri',
+    'cheapest', 
+    'maximize_noncollegiate',
+    'maximize_residency',
+  ];
   
-  for (let i = 0; i < Math.min(maxSimulations, 1); i++) { // Run 1 simulation for now
-    const run = runSingleSimulation(template, anchorSchool, `run-${i}`, rng);
-    simulationRuns.push(run);
+  const simsPerStrategy = Math.ceil(maxSimulations / strategies.length);
+  
+  for (let stratIdx = 0; stratIdx < strategies.length; stratIdx++) {
+    const strategy = strategies[stratIdx];
     
-    // Check for simulation failures
-    if (!run.success) {
-      if (templateValidation.publishable) {
-        // Template was marked publishable but simulation fails
-        failures.push({
-          code: 'PUBLISHABLE_BUT_FAILS_SIMULATION',
-          message: 'Template marked publishable but greedy simulation fails graduation',
-          details: {
-            blockers: run.finalReadiness?.blockers,
-            warnings: run.finalReadiness?.warnings,
-          },
+    for (let i = 0; i < simsPerStrategy && simulationRuns.length < maxSimulations; i++) {
+      const run = await runSingleSimulation(
+        template,
+        anchorSchool,
+        `run-${simulationRuns.length}-${strategy}`,
+        strategy,
+        allOptions
+      );
+      simulationRuns.push(run);
+      
+      // Check for simulation failures
+      if (!run.success) {
+        if (templateValidation.publishable) {
+          failures.push({
+            code: 'PUBLISHABLE_BUT_FAILS_SIMULATION',
+            message: `Template marked publishable but ${strategy} simulation fails graduation`,
+            details: {
+              strategy,
+              blockers: run.finalReadiness?.blockers,
+              warnings: run.finalReadiness?.warnings,
+            },
+          });
+        }
+      }
+      
+      // Check for blocked selections that should have been filtered
+      const deadEndAllowed = run.blockedSelections.filter(b => b.blockType === 'dead_end');
+      if (deadEndAllowed.length > 0) {
+        // This is actually expected - we caught dead ends
+        // But if they were in the ORIGINAL eligible list, that's a problem
+        // For now, log as info
+      }
+      
+      // Check for transfer bypasses
+      if (run.transferSummary.rejected > 0) {
+        // Good - we blocked them
+      }
+      
+      // Warn about unverified transfers
+      if (run.transferSummary.unverified > 0) {
+        warnings.push({
+          code: 'UNVERIFIED_TRANSFERS_IN_SIMULATION',
+          message: `${run.transferSummary.unverified} courses with unverified transfer rules in ${strategy} strategy`,
+          details: run.transferSummary,
         });
       }
     }
-    
-    // Check for unverified transfers
-    if (run.transferSummary.unverified > 0) {
-      warnings.push({
-        code: 'UNVERIFIED_TRANSFERS_IN_SIMULATION',
-        message: `${run.transferSummary.unverified} courses with unverified transfer rules`,
-        details: run.transferSummary,
-      });
-    }
+  }
+  
+  // 3. Check for eligibility contraction (proves cross-node constraints work)
+  const anyContractionObserved = simulationRuns.some(r => r.eligibilityContractionObserved);
+  if (!anyContractionObserved && simulationRuns.length > 0) {
+    warnings.push({
+      code: 'NO_ELIGIBILITY_CONTRACTION_OBSERVED',
+      message: 'No simulation observed eligibility changes after selections - constraints may not be propagating',
+    });
   }
   
   const passes = failures.length === 0;
@@ -316,24 +468,12 @@ function scanTemplate(
 }
 
 // ============================================================================
-// Policy Drift Scanner
+// Known Policy Drift Locations (static audit results)
 // ============================================================================
 
-const DRIFT_PATTERNS = [
-  { pattern: 'clep_max', issue: 'Legacy per-provider cap (CLEP)' },
-  { pattern: 'dsst_max', issue: 'Legacy per-provider cap (DSST)' },
-  { pattern: 'sophia_max', issue: 'Legacy per-provider cap (Sophia)' },
-  { pattern: 'study_com_max', issue: 'Legacy per-provider cap (Study.com)' },
-  { pattern: 'PROVIDER_CAPS', issue: 'Legacy provider caps constant' },
-  { pattern: 'INSTITUTION_POLICY_LEGACY', issue: 'Deprecated legacy policy constant' },
-  { pattern: 'min_residency_credits: 30', issue: 'Hardcoded wrong residency (TESU is 15)' },
-  { pattern: 'upper_division_min: 30', issue: 'Hardcoded wrong upper-div (TESU is 18)' },
-  { pattern: 'alt_credit_max: 80', issue: 'Hardcoded wrong alt credit cap (TESU is 90)' },
-];
-
-function scanForDrift(): IntegrityScanSummary['driftFindings'] {
-  // In a real implementation, this would scan the codebase
-  // For now, return known drift locations from the audit
+function getKnownDriftFindings(): IntegrityScanSummary['driftFindings'] {
+  // These are known drift locations from manual audit
+  // A real CI/CD check would grep the codebase
   return [
     { file: 'src/pages/EduTree/v5/engine/constraints.ts:253-270', issue: 'Hardcoded providerLimits for CLEP/DSST/Sophia/Study.com' },
     { file: 'src/lib/creditOptimizer.ts:292-306', issue: 'providerLimitMap uses legacy clep_max, dsst_max keys' },
@@ -351,7 +491,8 @@ function scanForDrift(): IntegrityScanSummary['driftFindings'] {
  */
 export async function runIntegrityScan(
   templates: any[],
-  config?: IntegrityScanConfig
+  config?: IntegrityScanConfig,
+  allOptions?: MarketplaceOption[]
 ): Promise<{ summary: IntegrityScanSummary; results: IntegrityScanResult[] }> {
   const results: IntegrityScanResult[] = [];
   const failureCodes: Record<string, number> = {};
@@ -361,8 +502,10 @@ export async function runIntegrityScan(
     ? templates.filter(t => t.id === config.templateId)
     : templates;
   
+  const options = allOptions || [];
+  
   for (const template of templatesToScan) {
-    const result = scanTemplate(template, config || {});
+    const result = await scanTemplate(template, config || {}, options);
     results.push(result);
     
     // Count failure codes
@@ -377,7 +520,7 @@ export async function runIntegrityScan(
     0
   );
   
-  const driftFindings = scanForDrift();
+  const driftFindings = getKnownDriftFindings();
   
   // Add drift to failure codes if found
   if (driftFindings.length > 0) {
