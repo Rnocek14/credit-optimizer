@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
-import { ChevronDown, ChevronRight } from 'lucide-react';
+import { ChevronDown, ChevronRight, AlertTriangle } from 'lucide-react';
 import { CourseCard } from './CourseCard';
 import { ModuleData } from '../types/v5';
 import { usePlanStore } from '../state/usePlanStore';
@@ -18,6 +18,9 @@ import { useAutoFillModule } from '../hooks/useAutoFillModule';
 import { Sparkles } from 'lucide-react';
 import { safeTrack } from '../utils/safeTelemetry';
 import { shouldSample } from '@/utils/telemetrySampling';
+import { useDeadEndGuard, formatDeadEndTooltip } from '../hooks/useDeadEndGuard';
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
+import type { RemainingModule } from '../engine/deadEndDetector';
 
 // Helper: Pluralization utility (reusable across components)
 const plural = (n: number, singular: string, pluralForm: string) => (n === 1 ? singular : pluralForm);
@@ -42,9 +45,15 @@ interface ModuleCardProps extends ModuleData {
   onOpenPanel?: () => void;
   yearEarned?: number;
   yearCap?: number;
+  /** All modules for dead-end feasibility computation */
+  allModules?: ModuleData[];
+  /** Current module index in allModules array */
+  moduleIndex?: number;
+  /** Show dead-end options with tooltips (debug mode) */
+  showDeadEndReasons?: boolean;
 }
 
-export function ModuleCard({ 
+export function ModuleCard({
   id,
   requirementArea,
   label, 
@@ -62,7 +71,10 @@ export function ModuleCard({
   onOpenPanel,
   yearEarned = 0,
   yearCap = 30,
-  selectedSummary
+  selectedSummary,
+  allModules,
+  moduleIndex,
+  showDeadEndReasons = false,
 }: ModuleCardProps) {
   // Derive options count locally (belt + suspenders: guards against stale prop)
   // Memoized for performance with large marketplace options arrays
@@ -109,7 +121,34 @@ export function ModuleCard({
     return result;
   }, [basket, id, requirementArea]);
   const { quickPick } = useAutoFillModule();
+  const { annotateOptions } = useDeadEndGuard();
+  const { addItemGuarded } = usePlanBasketWithToasts();
   
+  // Compute remaining modules for dead-end feasibility checks
+  const remainingModules = useMemo((): RemainingModule[] => {
+    if (!allModules || moduleIndex === undefined) return [];
+    return allModules.slice(moduleIndex + 1).map(m => ({
+      moduleId: m.id,
+      options: m.marketplaceOptions ?? [],
+      creditsRequired: m.creditsRequired,
+    }));
+  }, [allModules, moduleIndex]);
+  
+  // Annotate options with dead-end info
+  const annotatedOptions = useMemo(() => {
+    if (!marketplaceOptions) return [];
+    // Cast to MarketplaceOption for annotateOptions - the original data has all required fields
+    return annotateOptions(marketplaceOptions, remainingModules);
+  }, [marketplaceOptions, annotateOptions, remainingModules]);
+  
+  // Filter viable options (no dead-ends) for normal display
+  const viableOptions = useMemo(() => 
+    annotatedOptions.filter(opt => !opt.deadEnd?.isDeadEnd),
+    [annotatedOptions]
+  );
+  
+  // Which options to show: viable only by default, annotated (with dead-ends) in debug mode
+  const displayOptions = showDeadEndReasons ? annotatedOptions : viableOptions;
   // Debug logging for basket items per module
   useEffect(() => {
     if (basketItems.length > 0 || process.env.NODE_ENV === 'development') {
@@ -208,26 +247,25 @@ export function ModuleCard({
   const [sortBy, setSortBy] = useState<'cheapest' | 'shortest' | 'credits'>('cheapest');
 
   const sortedOptions = useMemo(() => {
-    if (!marketplaceOptions) return [];
-    
-    const opts = [...marketplaceOptions];
+    // Use displayOptions (which respects dead-end filtering based on showDeadEndReasons)
+    const opts = [...displayOptions];
     
     if (sortBy === 'cheapest') {
       return opts.sort((a, b) => {
         if (a.cost_usd === null) return 1;
         if (b.cost_usd === null) return -1;
-        return a.cost_usd - b.cost_usd;
+        return (a.cost_usd ?? 0) - (b.cost_usd ?? 0);
       });
     } else if (sortBy === 'shortest') {
       return opts.sort((a, b) => {
         if (a.duration_weeks === null) return 1;
         if (b.duration_weeks === null) return -1;
-        return a.duration_weeks - b.duration_weeks;
+        return (a.duration_weeks ?? 0) - (b.duration_weeks ?? 0);
       });
     }
     // Most credits
-    return opts.sort((a, b) => b.credits - a.credits);
-  }, [marketplaceOptions, sortBy]);
+    return opts.sort((a, b) => (b.credits ?? 0) - (a.credits ?? 0));
+  }, [displayOptions, sortBy]);
   
   // Phase 0: Simple stateful CSS border (no SVG geometry issues)
   const getProgressBorderClass = useCallback((progress: number): string => {
@@ -490,106 +528,141 @@ export function ModuleCard({
                   <option value="credits">📊 Most Credits</option>
                 </select>
               </div>
-              {sortedOptions.map(option => {
-                const isSelected = selectedIds.includes(option.courseId);
-                const optionCredits = Number(option.credits) || 0;
-                const wouldExceedYearCap = !isSelected && yearEarned + optionCredits > yearCap;
-                const atMax = !isSelected && (selections[id]?.selectedCredits ?? 0) >= creditsRequired;
-                
-                return (
-                  <DraggableCourseChip key={option.id} course={option}>
-                    <div
-                      className={`course-card bg-background rounded-md p-1.5 hover:bg-accent/50 transition-all flex items-center gap-2 ${
-                        isSelected ? 'border-2 border-primary bg-primary/5' : 'border border-border'
-                      }`}
-                    >
-                      <Checkbox 
-                        checked={isSelected}
-                        onCheckedChange={() => {
-                          if (!atMax && !wouldExceedYearCap) {
-                            toggleCourse(id, option.courseId, optionCredits, creditsRequired);
-                          }
-                        }}
-                        disabled={atMax || wouldExceedYearCap}
-                        data-interactive="true"
-                      />
-                      <div className="flex-1 min-w-0">
-                        <div className="text-[11px] font-medium truncate leading-tight">
-                          {option.courseId}: {option.title}
-                        </div>
-                        <div className="text-[10px] text-muted-foreground flex items-center gap-1 mt-0.5 flex-wrap">
-                          <span>{option.credits} cr</span>
-                          
-                          {/* Provider badge with icon */}
-                          {option.providerType && (
-                            <span className={`ml-1 px-1.5 py-0.5 rounded text-[10px] font-medium ${
-                              option.providerType === 'university' 
-                                ? 'bg-blue-100 text-blue-700'
-                                : option.providerType === 'mooc'
-                                ? 'bg-purple-100 text-purple-700'
-                                : option.providerType === 'bootcamp'
-                                ? 'bg-orange-100 text-orange-700'
-                                : option.providerType === 'testing_center'
-                                ? 'bg-amber-100 text-amber-700'
-                                : 'bg-gray-100 text-gray-700'
-                            }`}>
-                              {option.providerType === 'university' && '🎓'}
-                              {option.providerType === 'mooc' && '🌐'}
-                              {option.providerType === 'bootcamp' && '⚡'}
-                              {option.providerType === 'testing_center' && '📝'}
-                              {' '}{option.provider}
-                            </span>
-                          )}
-                          
-                          {/* Price badge */}
-                      {option.cost_usd !== null && (
-                        <span className="ml-1 px-1.5 py-0.5 rounded bg-green-100 text-green-700 text-[10px] font-medium">
-                          {option.cost_usd === 0 ? 'Included' : `$${new Intl.NumberFormat().format(option.cost_usd)}`}
-                        </span>
-                      )}
-                          
-                          {/* Duration */}
-                          {option.duration_weeks && (
-                            <span className="ml-1 text-[10px]">
-                              {option.duration_weeks}w
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                      {isSelected ? (
-                        <Badge variant="default" className="text-[10px] px-2 py-0.5 whitespace-nowrap">
-                          ✓ Selected
-                        </Badge>
-                      ) : (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (!atMax && !wouldExceedYearCap) {
-                              toggleCourse(id, option.courseId, optionCredits, creditsRequired);
+              <TooltipProvider>
+                {sortedOptions.map(option => {
+                  const isSelected = selectedIds.includes(option.courseId);
+                  const optionCredits = Number(option.credits) || 0;
+                  const wouldExceedYearCap = !isSelected && yearEarned + optionCredits > yearCap;
+                  const atMax = !isSelected && (selections[id]?.selectedCredits ?? 0) >= creditsRequired;
+                  const isDeadEnd = !!option.deadEnd?.isDeadEnd;
+                  const deadEndTooltip = isDeadEnd ? formatDeadEndTooltip(option.deadEnd!) : '';
+                  const isDisabled = atMax || wouldExceedYearCap || isDeadEnd;
+                  
+                  // Find the original MarketplaceOption for guarded selection
+                  const originalOption = marketplaceOptions?.find(o => o.courseId === option.courseId);
+                  
+                  const cardContent = (
+                    <DraggableCourseChip key={option.id} course={option}>
+                      <div
+                        className={`course-card bg-background rounded-md p-1.5 transition-all flex items-center gap-2 ${
+                          isSelected ? 'border-2 border-primary bg-primary/5' : 
+                          isDeadEnd ? 'border border-destructive/50 bg-destructive/5 opacity-60' :
+                          'border border-border hover:bg-accent/50'
+                        }`}
+                      >
+                        <Checkbox 
+                          checked={isSelected}
+                          onCheckedChange={() => {
+                            if (!isDisabled && originalOption) {
+                              // Use guarded selection for new picks
+                              addItemGuarded(originalOption, id, remainingModules);
                             }
                           }}
-                          disabled={atMax || wouldExceedYearCap}
-                          className={`text-[10px] px-2 py-1 rounded transition-colors whitespace-nowrap ${
-                            atMax || wouldExceedYearCap
-                              ? 'bg-muted text-muted-foreground cursor-not-allowed'
-                              : 'bg-primary/10 text-primary hover:bg-primary/20'
-                          }`}
-                          title={
-                            wouldExceedYearCap && !isSelected
-                              ? `Year cap reached (${yearCap} cr)`
-                              : atMax
-                              ? 'Module max reached'
-                              : ''
-                          }
+                          disabled={isDisabled}
                           data-interactive="true"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="text-[11px] font-medium truncate leading-tight flex items-center gap-1">
+                            {isDeadEnd && <AlertTriangle className="h-3 w-3 text-destructive flex-shrink-0" />}
+                            {option.courseId}: {option.title}
+                          </div>
+                          <div className="text-[10px] text-muted-foreground flex items-center gap-1 mt-0.5 flex-wrap">
+                            <span>{option.credits} cr</span>
+                            
+                            {/* Provider badge with icon */}
+                            {option.providerType && (
+                              <span className={`ml-1 px-1.5 py-0.5 rounded text-[10px] font-medium ${
+                                option.providerType === 'university' 
+                                  ? 'bg-blue-100 text-blue-700'
+                                  : option.providerType === 'mooc'
+                                  ? 'bg-purple-100 text-purple-700'
+                                  : option.providerType === 'bootcamp'
+                                  ? 'bg-orange-100 text-orange-700'
+                                  : option.providerType === 'testing_center'
+                                  ? 'bg-amber-100 text-amber-700'
+                                  : 'bg-gray-100 text-gray-700'
+                              }`}>
+                                {option.providerType === 'university' && '🎓'}
+                                {option.providerType === 'mooc' && '🌐'}
+                                {option.providerType === 'bootcamp' && '⚡'}
+                                {option.providerType === 'testing_center' && '📝'}
+                                {' '}{option.provider}
+                              </span>
+                            )}
+                            
+                            {/* Price badge */}
+                            {option.cost_usd !== null && (
+                              <span className="ml-1 px-1.5 py-0.5 rounded bg-green-100 text-green-700 text-[10px] font-medium">
+                                {option.cost_usd === 0 ? 'Included' : `$${new Intl.NumberFormat().format(option.cost_usd)}`}
+                              </span>
+                            )}
+                            
+                            {/* Duration */}
+                            {option.duration_weeks && (
+                              <span className="ml-1 text-[10px]">
+                                {option.duration_weeks}w
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        {isSelected ? (
+                          <Badge variant="default" className="text-[10px] px-2 py-0.5 whitespace-nowrap">
+                            ✓ Selected
+                          </Badge>
+                        ) : isDeadEnd ? (
+                          <Badge variant="destructive" className="text-[10px] px-2 py-0.5 whitespace-nowrap">
+                            Not viable
+                          </Badge>
+                        ) : (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (!isDisabled && originalOption) {
+                                addItemGuarded(originalOption, id, remainingModules);
+                              }
+                            }}
+                            disabled={isDisabled}
+                            className={`text-[10px] px-2 py-1 rounded transition-colors whitespace-nowrap ${
+                              isDisabled
+                                ? 'bg-muted text-muted-foreground cursor-not-allowed'
+                                : 'bg-primary/10 text-primary hover:bg-primary/20'
+                            }`}
+                            title={
+                              wouldExceedYearCap && !isSelected
+                                ? `Year cap reached (${yearCap} cr)`
+                                : atMax
+                                ? 'Module max reached'
+                                : ''
+                            }
+                            data-interactive="true"
+                          >
+                            {atMax || wouldExceedYearCap ? 'Cap Reached' : 'Select'}
+                          </button>
+                        )}
+                      </div>
+                    </DraggableCourseChip>
+                  );
+                  
+                  // Wrap dead-end options with tooltip
+                  if (isDeadEnd && deadEndTooltip) {
+                    return (
+                      <Tooltip key={option.id}>
+                        <TooltipTrigger asChild>
+                          {cardContent}
+                        </TooltipTrigger>
+                        <TooltipContent 
+                          className="max-w-xs whitespace-pre-line text-xs"
+                          side="left"
                         >
-                          {(atMax || wouldExceedYearCap) ? 'Cap Reached' : 'Select'}
-                        </button>
-                      )}
-                    </div>
-                  </DraggableCourseChip>
-                );
-              })}
+                          {deadEndTooltip}
+                        </TooltipContent>
+                      </Tooltip>
+                    );
+                  }
+                  
+                  return cardContent;
+                })}
+              </TooltipProvider>
             </div>
           )}
 
