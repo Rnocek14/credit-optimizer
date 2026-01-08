@@ -271,12 +271,12 @@ Deno.serve(async (req) => {
       // Seed TESU URL templates
       await connection.queryObject(
         `INSERT INTO public.scrape_url_templates (institution_code, url, page_type, priority) VALUES
-          ('TESU', 'https://tesu.smartcatalogiq.com/current/undergraduate-catalog/Academic-Policies-and-Procedures/What-You-Can-Transfer', 'transfer_policy', 1),
-          ('TESU', 'https://tesu.smartcatalogiq.com/current/undergraduate-catalog/Academic-Policies-and-Procedures/Residency-Requirements', 'residency', 2),
-          ('TESU', 'https://tesu.smartcatalogiq.com/current/undergraduate-catalog/Academic-Policies-and-Procedures/General-Education-Requirements', 'gened', 3),
-          ('TESU', 'https://tesu.smartcatalogiq.com/current/undergraduate-catalog/Degree-Programs/Bachelor-of-Arts-Degree-Programs', 'catalog', 4),
-          ('TESU', 'https://tesu.smartcatalogiq.com/current/undergraduate-catalog/Degree-Programs/Bachelor-of-Science-Degree-Programs', 'catalog', 5),
-          ('TESU', 'https://www.tesu.edu/tuition', 'tuition', 6)
+          ('TESU', 'https://tesu.smartcatalogiq.com/en/current/undergraduate-catalog/methods-of-learning-and-earning-credit/transfer-credit', 'transfer_policy', 1),
+          ('TESU', 'https://www.tesu.edu/admissions/faqs/transfer-credits.php', 'transfer_faq', 2),
+          ('TESU', 'https://www.tesu.edu/admissions/faqs/credit-hour-residency.php', 'residency', 3),
+          ('TESU', 'https://tesu.smartcatalogiq.com/en/current/undergraduate-catalog/degree-programs-and-certificates/overview', 'catalog', 4),
+          ('TESU', 'https://www.tesu.edu/tuition-financial-aid/tuition-fees/undergraduate.php', 'tuition', 5),
+          ('TESU', 'https://www.tesu.edu/student-resources/transfer-credits/index.php', 'transfer_info', 6)
         ON CONFLICT (institution_code, url) DO NOTHING`
       );
       console.log('✓ School scraper tables and TESU templates created');
