@@ -51,6 +51,7 @@ import DegreeIntegrityScan from "./pages/Admin/DegreeIntegrityScan";
 import SchoolScraperDashboard from "./pages/Admin/SchoolScraperDashboard";
 import PolicyScraperPage from "./pages/Admin/PolicyScraperPage";
 import ContentScraperPage from "./pages/Admin/ContentScraperPage";
+import EdgeTestPage from "./pages/Admin/EdgeTestPage";
 import MentorChat from "./pages/MentorChat";
 import AdminBadges from "./pages/AdminBadges";
 import EmbedExplorer from "./pages/EmbedExplorer";
@@ -337,7 +338,8 @@ const App = () => {
           <Route path="/optimizer-setup" element={<OptimizerSetup />} />
           {/* Optimizer Seeding Dashboard - no SQL editor needed */}
           <Route path="/admin/optimizer-seeding" element={<OptimizerSeeding />} />
-          <Route path="/admin/content-scraper" element={<ContentScraperPage />} />
+<Route path="/admin/content-scraper" element={<ContentScraperPage />} />
+          <Route path="/admin/edge-test" element={<EdgeTestPage />} />
           <Route
             path="/compare" 
             element={

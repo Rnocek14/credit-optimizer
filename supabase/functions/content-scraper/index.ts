@@ -1,3 +1,4 @@
+// Redeployment trigger: 2026-01-08T21:30:00Z
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
