@@ -1,9 +1,9 @@
 project_id = "vzpissitddpunkpythsb"
 
-[functions.content-scraper]
+[functions.ping-test]
 verify_jwt = false
 
-[functions.policy-scraper]
+[functions.content-scraper]
 verify_jwt = false
 
 [functions.run-migrations]
@@ -28,10 +28,4 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.optimizer-seed-wgu]
-verify_jwt = false
-
-[functions.school-scraper]
-verify_jwt = false
-
-[functions.setup-school-scraper]
 verify_jwt = false
