@@ -156,6 +156,8 @@ export default function SchoolScraperDashboard() {
   // Start scrape mutation
   const startScrapeMutation = useMutation({
     mutationFn: async ({ institutionCode, urls }: { institutionCode: string; urls?: string[] }) => {
+      console.log('Starting scrape for:', institutionCode, 'with urls:', urls);
+      
       const { data, error } = await supabase.functions.invoke('school-scraper', {
         body: { 
           institutionCode, 
@@ -163,16 +165,30 @@ export default function SchoolScraperDashboard() {
         },
       });
       
-      if (error) throw error;
+      console.log('Scrape response:', { data, error });
+      
+      // Handle network/invoke errors
+      if (error) {
+        console.error('Invoke error:', error);
+        throw new Error(error.message || 'Failed to call scraper function');
+      }
+      
+      // Handle errors returned in response body (500 responses)
+      if (data?.error) {
+        console.error('Function error:', data.error);
+        throw new Error(data.error);
+      }
+      
       return data;
     },
     onSuccess: (data) => {
-      toast.success(`Scrape started`, {
-        description: `Job ID: ${data.jobId}`,
+      toast.success(`Scrape completed`, {
+        description: `${data.overallConfidence}% confidence, Job ID: ${data.jobId}`,
       });
       queryClient.invalidateQueries({ queryKey: ['scrape-jobs'] });
     },
     onError: (error) => {
+      console.error('Mutation error:', error);
       toast.error('Failed to start scrape', {
         description: (error as Error).message,
       });
