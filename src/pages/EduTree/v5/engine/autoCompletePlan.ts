@@ -14,6 +14,7 @@ import {
   pickBestOption,
   withinConstraints,
 } from './optionFilters';
+import { filterViableOptions, type RemainingModule } from './deadEndDetector';
 import { resolveChain } from './prereqs';
 
 export interface PlanAutoCompleteResult {
@@ -81,15 +82,36 @@ export function autoCompletePlan(
 
   const unfilled = modules.filter(m => (m.creditsRequired - m.creditsEarned) > 0);
 
-  for (const mod of unfilled) {
+  for (let modIdx = 0; modIdx < unfilled.length; modIdx++) {
+    const mod = unfilled[modIdx];
     const options = (mod.marketplaceOptions ?? []);
     if (options.length === 0) continue;
 
-    // Filter eligible options
+    // Filter eligible options (local constraints: budget/workload/prereq/transfer cap)
     const runningBefore = computeRunning();
     const eligible = filterEligibleOptions(options, constraints, runningBefore, basketIds);
 
     if (eligible.length === 0) {
+      continue;
+    }
+
+    // Build remaining modules list for dead-end feasibility checks
+    const remainingMods: RemainingModule[] = unfilled.slice(modIdx + 1).map(m => ({
+      moduleId: m.id,
+      options: m.marketplaceOptions ?? [],
+      creditsRequired: m.creditsRequired,
+    }));
+
+    // Filter viable options (global feasibility: residency/upper-div/total credits reachable)
+    const viable = filterViableOptions(
+      eligible,
+      [...basket, ...suggestions],
+      constraints,
+      remainingMods
+    );
+
+    if (viable.length === 0) {
+      // All eligible options are dead-ends - skip module
       continue;
     }
 
@@ -99,7 +121,7 @@ export function autoCompletePlan(
       time: weights.time,
       quality: weights.cri, // map cri to quality for optionScoring
     };
-    const scored = scoreOptions(eligible, scoringWeights);
+    const scored = scoreOptions(viable, scoringWeights);
     const best = pickBestOption(scored);
     if (!best) continue;
 
