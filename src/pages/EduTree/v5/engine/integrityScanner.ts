@@ -11,7 +11,7 @@
 import { validateTemplate } from '../utils/templateValidator';
 import { validateGraduationReadiness, type GraduationReadiness } from '../utils/graduationValidator';
 import { filterEligibleOptions, scoreOptions, pickBestOption } from './optionFilters';
-import { checkForDeadEnd, type DeadEndCheck } from './deadEndDetector';
+import { checkForDeadEnd, type DeadEndCheck, type RemainingModule } from './deadEndDetector';
 import { checkTransferRule } from './transferEngine';
 import { applyTemplate as applyTemplateEngine, type ApplyResult } from './applyTemplate';
 import { getPolicyOrDefault, getNoncollegiateCap, getResidencyCredits } from '@/lib/degree/institutionPolicies';
@@ -198,16 +198,24 @@ async function runSingleSimulation(
     }
     previousEligibleCount = eligibleBefore;
     
-    // Check for dead-ends using RUNTIME function
+    // Build remaining modules list for dead-end detection
+    const remainingMods: RemainingModule[] = modules.slice(moduleIdx + 1).map(m => ({
+      moduleId: m.moduleId,
+      options: m.options,
+      creditsRequired: m.creditsRequired,
+    }));
+    
+    // Check for dead-ends using RUNTIME function with remaining modules
     const optionsWithDeadEnds = eligible.map(opt => ({
       option: opt,
-      deadEnd: checkForDeadEnd(opt, basket, constraints),
+      deadEnd: checkForDeadEnd(opt, basket, constraints, remainingMods),
     }));
     
     const viableOptions = optionsWithDeadEnds.filter(o => !o.deadEnd.isDeadEnd);
     const deadEndOptions = optionsWithDeadEnds.filter(o => o.deadEnd.isDeadEnd);
     
-    // HARD FAIL CHECK: Dead-end options that are still "eligible" from filterEligibleOptions
+    // HARD FAIL CHECK: Dead-end options that passed filterEligibleOptions but fail dead-end check
+    // This means eligibility filtering is NOT enforcing degree feasibility
     for (const de of deadEndOptions) {
       blockedSelections.push({
         moduleId,
@@ -288,21 +296,32 @@ async function runSingleSimulation(
     runningTotals.cost += applyResult.diff.costDelta;
     runningTotals.aceCredits += applyResult.diff.aceCredits;
     
-    // Calculate eligibility for next module AFTER this selection
+    // Calculate eligibility contraction for next module (BEFORE vs AFTER this selection)
     const nextModuleIdx = moduleIdx + 1;
     let eligibleAfter = eligibleBefore;
     if (nextModuleIdx < modules.length) {
       const nextModule = modules[nextModuleIdx];
-      const nextEligible = filterEligibleOptions(
+      
+      // Compute what next module's eligibility WOULD have been before this selection
+      const eligibleBeforeNext = filterEligibleOptions(
+        nextModule.options,
+        constraints,
+        { cost: runningTotals.cost - (best.cost_usd ?? 0), aceCredits: runningTotals.aceCredits - best.credits },
+        new Set(prevBasketWithoutRemoved.map(b => b.courseId))
+      ).length;
+      
+      // Compute eligibility AFTER this selection
+      const eligibleAfterNext = filterEligibleOptions(
         nextModule.options,
         constraints,
         runningTotals,
         new Set(basket.map(b => b.courseId))
-      );
-      eligibleAfter = nextEligible.length;
+      ).length;
       
-      // Check for contraction
-      if (eligibleAfter < nextModule.options.length) {
+      eligibleAfter = eligibleAfterNext;
+      
+      // True contraction: same module, fewer options after selection
+      if (eligibleAfterNext < eligibleBeforeNext) {
         eligibilityContractionObserved = true;
       }
     }
@@ -421,12 +440,15 @@ async function scanTemplate(
         }
       }
       
-      // Check for blocked selections that should have been filtered
-      const deadEndAllowed = run.blockedSelections.filter(b => b.blockType === 'dead_end');
-      if (deadEndAllowed.length > 0) {
-        // This is actually expected - we caught dead ends
-        // But if they were in the ORIGINAL eligible list, that's a problem
-        // For now, log as info
+      // HARD FAILURE: Dead-end options that were in the eligible list
+      // These passed filterEligibleOptions but would brick the degree
+      const deadEndLeaks = run.blockedSelections.filter(b => b.blockType === 'dead_end');
+      if (deadEndLeaks.length > 0) {
+        failures.push({
+          code: 'DEAD_END_OPTION_ALLOWED',
+          message: `${deadEndLeaks.length} dead-end options were in eligible list. Eligibility filtering not enforcing degree feasibility.`,
+          details: deadEndLeaks.slice(0, 10),
+        });
       }
       
       // Check for transfer bypasses
