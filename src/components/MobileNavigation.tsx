@@ -36,8 +36,8 @@ export function MobileNavigation({ className }: MobileNavigationProps) {
               key={item.path}
               to={item.path}
               className={cn(
-                "flex flex-col items-center justify-center rounded-xl p-3 min-w-[56px] min-h-[56px] transition-all duration-200",
-                "hover:bg-accent hover:text-accent-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+              "flex flex-col items-center justify-center rounded-xl p-3 min-w-[56px] min-h-[56px] transition-all duration-200",
+                "hover:bg-accent hover:text-accent-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
                 "active:scale-95 transform",
                 isActive 
                   ? "text-primary bg-primary/15" 
