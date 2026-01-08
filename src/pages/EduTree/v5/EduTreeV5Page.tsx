@@ -286,6 +286,23 @@ export default function EduTreeV5Page() {
     }
   }, [selectedTemplate, templateId]); // Zustand functions are stable, removed from deps
   
+  // Keyboard shortcut: Ctrl/Cmd+Shift+D toggles dead-end debug mode
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      const mod = e.ctrlKey || e.metaKey;
+      if (mod && e.shiftKey && e.key.toLowerCase() === 'd') {
+        e.preventDefault();
+        const newValue = !showDeadEndReasons;
+        setShowDeadEndReasons(newValue);
+        toast.message(`Dead-end reasons ${newValue ? 'enabled' : 'disabled'}`, {
+          description: 'Use Ctrl+Shift+D to toggle'
+        });
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [showDeadEndReasons, setShowDeadEndReasons]);
+  
   useEffect(() => {
     const programId = searchParams.get('programId');
     const anchorSchool = searchParams.get('anchorSchool');
@@ -1410,14 +1427,14 @@ export default function EduTreeV5Page() {
               />
             
             {/* Module Cards - Stack vertically below */}
-            {!collapsedYears[year] && (
-              <div className="modules-stack mt-4 space-y-3">
-                {getModulesForYear(year).map((module, idx) => {
-                  const yearEarned = getYearEarnedCredits(year);
-                  const yearCap = YEAR_CREDIT_CAP;
-                  const yearModules = getModulesForYear(year);
-                  
-                  return (
+            {!collapsedYears[year] && (() => {
+              const yearModules = getModulesForYear(year);
+              const yearEarned = getYearEarnedCredits(year);
+              const yearCap = YEAR_CREDIT_CAP;
+              
+              return (
+                <div className="modules-stack mt-4 space-y-3">
+                  {yearModules.map((module, idx) => (
                     <ModuleCard
                       key={module.id}
                       {...module}
@@ -1430,10 +1447,10 @@ export default function EduTreeV5Page() {
                       moduleIndex={idx}
                       showDeadEndReasons={showDeadEndReasons}
                     />
-                  );
-                })}
-              </div>
-            )}
+                  ))}
+                </div>
+              );
+            })()}
             </div>
           );
         })}
