@@ -95,7 +95,14 @@ function seededRandom(seed: number) {
 // Selection Strategies (deterministic)
 // ============================================================================
 
-type SelectionStrategy = 'best_cri' | 'cheapest' | 'maximize_noncollegiate' | 'maximize_residency';
+type SelectionStrategy = 
+  | 'best_cri' 
+  | 'cheapest' 
+  | 'maximize_noncollegiate' 
+  | 'maximize_residency'
+  | 'minimize_residency'
+  | 'minimize_upper_div'
+  | 'push_cap_then_over';
 
 function selectByStrategy(
   scored: ReturnType<typeof scoreOptions>,
@@ -106,14 +113,33 @@ function selectByStrategy(
   switch (strategy) {
     case 'cheapest':
       return [...scored].sort((a, b) => (a.cost_usd ?? 0) - (b.cost_usd ?? 0))[0];
+    
     case 'maximize_noncollegiate':
       // Prefer MOOC/testing to push toward caps
       const noncollegiate = scored.filter(s => s.providerType === 'mooc' || s.providerType === 'testing_center');
       return noncollegiate.length > 0 ? noncollegiate[0] : scored[0];
+    
     case 'maximize_residency':
       // Prefer university courses
       const university = scored.filter(s => s.providerType === 'university');
       return university.length > 0 ? university[0] : scored[0];
+    
+    case 'minimize_residency':
+      // Stress test: avoid university to starve residency
+      const nonUni = scored.filter(s => s.providerType !== 'university');
+      return nonUni.length > 0 ? nonUni[0] : scored[0];
+    
+    case 'minimize_upper_div':
+      // Stress test: prefer < 300 level courses to starve upper-div
+      const lowLevel = scored.filter(s => !((s as any).level >= 300));
+      return lowLevel.length > 0 ? lowLevel[0] : scored[0];
+    
+    case 'push_cap_then_over':
+      // Stress test: always pick noncollegiate even near/over cap
+      // This tests whether apply/eligibility blocks correctly
+      const noncol = scored.filter(s => s.providerType === 'mooc' || s.providerType === 'testing_center');
+      return noncol.length > 0 ? noncol[0] : scored[0];
+    
     case 'best_cri':
     default:
       return pickBestOption(scored);
@@ -402,12 +428,16 @@ async function scanTemplate(
     });
   }
   
-  // 2. Run simulations with different strategies
+  // 2. Run simulations with different strategies including stress tests
   const strategies: SelectionStrategy[] = [
     'best_cri',
     'cheapest', 
     'maximize_noncollegiate',
     'maximize_residency',
+    // Stress test strategies to prove constraint enforcement
+    'minimize_residency',      // Starve residency to trigger dead-end detection
+    'minimize_upper_div',      // Starve upper-div to trigger dead-end detection  
+    'push_cap_then_over',      // Push past noncollegiate cap to verify blocking
   ];
   
   const simsPerStrategy = Math.ceil(maxSimulations / strategies.length);
