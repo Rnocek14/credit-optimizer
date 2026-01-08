@@ -280,17 +280,41 @@ For each field, include the source_url from which you extracted the value if ide
 // Main Handler
 // ============================================================================
 serve(async (req) => {
+  console.log(`[school-scraper] ${req.method} request received`);
+  
   // Handle CORS preflight - MUST return 200 with proper headers
   if (req.method === 'OPTIONS') {
+    console.log('[school-scraper] Returning CORS preflight response');
     return new Response('ok', { status: 200, headers: corsHeaders });
   }
 
   try {
+    // Parse request body first to check for ping
+    let body: { action?: string; institutionCode?: string; customUrls?: string[]; jobId?: string } = {};
+    try {
+      body = await req.json();
+    } catch {
+      // Empty body is OK for ping
+    }
+    
+    // Simple health check endpoint
+    if (body.action === 'ping') {
+      console.log('[school-scraper] Ping received - function is healthy');
+      return new Response(
+        JSON.stringify({ 
+          status: 'ok', 
+          timestamp: new Date().toISOString(),
+          message: 'school-scraper function is running'
+        }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
     // Initialize clients inside handler to avoid cold-start crashes
     const supabase = getSupabaseClient();
     const openai = getOpenAIClient();
     
-    const { institutionCode, customUrls, jobId } = await req.json();
+    const { institutionCode, customUrls, jobId } = body;
 
     if (!institutionCode) {
       return new Response(
