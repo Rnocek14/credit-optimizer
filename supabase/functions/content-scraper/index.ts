@@ -1,6 +1,3 @@
-// Deploy trigger: 2026-01-08T21:06:30Z
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -12,7 +9,6 @@ const USER_AGENTS = [
 ];
 
 function extractMainContent(html: string, maxLength = 50000): string {
-  // Remove scripts, styles, and other non-content elements
   let text = html
     .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
     .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
@@ -35,7 +31,6 @@ Deno.serve(async (req) => {
   try {
     const { action, url } = await req.json();
 
-    // Ping test
     if (action === 'ping') {
       return new Response(
         JSON.stringify({ success: true, message: 'Content scraper is alive', timestamp: new Date().toISOString() }),
@@ -43,7 +38,6 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Scrape URL
     if (action === 'scrape') {
       if (!url) {
         return new Response(
