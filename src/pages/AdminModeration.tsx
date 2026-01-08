@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { AlertTriangle, CheckCircle, XCircle, Star, Flag, Users, Settings, Zap, MapPin } from "lucide-react";
+import { AlertTriangle, CheckCircle, XCircle, Star, Flag, Users, Settings, Zap, MapPin, Bot } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "react-router-dom";
 import { AdminDevToolsPanel } from "@/components/AdminDevToolsPanel";
@@ -292,6 +292,12 @@ const AdminModeration = () => {
               <Button variant="outline" size="sm">
                 <MapPin className="h-4 w-4 mr-2" />
                 Locations
+              </Button>
+            </Link>
+            <Link to="/admin/school-scraper">
+              <Button variant="outline" size="sm">
+                <Bot className="h-4 w-4 mr-2" />
+                School Scraper
               </Button>
             </Link>
           </div>
