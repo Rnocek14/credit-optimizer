@@ -1,12 +1,21 @@
-// Deployment trigger: 2026-01-08 - fix imports for Deno edge runtime
-import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
-import OpenAI from "https://esm.sh/openai@4.20.1";
+// School Policy Scraper - Rebuilt with proven patterns from restaurant scraper
+// Deployment trigger: 2026-01-08 - complete overhaul
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { DOMParser } from "https://deno.land/x/deno_dom@v0.1.38/deno-dom-wasm.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+// User agents rotation for anti-bot evasion
+const USER_AGENTS = [
+  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+  'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+  'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_3) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2 Safari/605.1.15',
+];
 
 // Helper to create clients inside handler (avoid cold-start crashes)
 function getSupabaseClient() {
@@ -18,52 +27,90 @@ function getSupabaseClient() {
   return createClient(url, key, { auth: { persistSession: false } });
 }
 
-function getOpenAIClient() {
-  const apiKey = Deno.env.get("OPENAI_API_KEY");
-  if (!apiKey) {
-    throw new Error("Missing OPENAI_API_KEY secret");
+// ============================================================================
+// Robust Fetch with Retries, Timeout, and Anti-Bot Headers
+// ============================================================================
+async function fetchContent(
+  url: string, 
+  options: { timeout?: number } = {}
+): Promise<{ html: string; error?: string }> {
+  const { timeout = 10000 } = options;
+
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      // Add delay between retries
+      if (attempt > 0) {
+        await new Promise(r => setTimeout(r, 500 + Math.random() * 1000));
+      }
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+      let referer = '';
+      try { referer = new URL(url).origin; } catch {}
+
+      const res = await fetch(url, {
+        headers: {
+          'User-Agent': USER_AGENTS[attempt % USER_AGENTS.length],
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+          'Accept-Language': 'en-US,en;q=0.9',
+          'Accept-Encoding': 'gzip, deflate, br',
+          'Sec-Fetch-Dest': 'document',
+          'Sec-Fetch-Mode': 'navigate',
+          'Sec-Fetch-Site': 'none',
+          'Upgrade-Insecure-Requests': '1',
+          'Referer': referer,
+        },
+        redirect: 'follow',
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      if (res.ok) {
+        const html = await res.text();
+        if (html.length >= 1000) {
+          return { html };
+        }
+        console.log(`Sparse content (${html.length} chars) from ${url}, retrying...`);
+      } else if (res.status === 403 || res.status === 429) {
+        console.log(`Got ${res.status} from ${url}, retrying with different UA...`);
+      } else {
+        throw new Error(`HTTP ${res.status}`);
+      }
+    } catch (e: any) {
+      console.log(`Attempt ${attempt + 1} failed for ${url}: ${e.message}`);
+      if (attempt === 1) {
+        return { html: '', error: e.message };
+      }
+    }
   }
-  return new OpenAI({ apiKey });
+  
+  return { html: '', error: 'All fetch attempts failed' };
 }
 
 // ============================================================================
-// HTML → Clean Text Extractor (key cost saver)
+// DOM-based Content Extraction (replaces regex parsing)
 // ============================================================================
-function htmlToCleanText(html: string): string {
-  // Remove script, style, nav, footer, header, aside tags
-  let clean = html
-    .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
-    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
-    .replace(/<nav[^>]*>[\s\S]*?<\/nav>/gi, '')
-    .replace(/<footer[^>]*>[\s\S]*?<\/footer>/gi, '')
-    .replace(/<header[^>]*>[\s\S]*?<\/header>/gi, '')
-    .replace(/<aside[^>]*>[\s\S]*?<\/aside>/gi, '')
-    .replace(/<!--[\s\S]*?-->/g, ''); // Remove comments
-  
-  // Convert common elements to readable text
-  clean = clean
-    .replace(/<h1[^>]*>(.*?)<\/h1>/gi, '\n# $1\n')
-    .replace(/<h2[^>]*>(.*?)<\/h2>/gi, '\n## $1\n')
-    .replace(/<h3[^>]*>(.*?)<\/h3>/gi, '\n### $1\n')
-    .replace(/<h[4-6][^>]*>(.*?)<\/h[4-6]>/gi, '\n#### $1\n')
-    .replace(/<li[^>]*>(.*?)<\/li>/gi, '• $1\n')
-    .replace(/<p[^>]*>(.*?)<\/p>/gi, '$1\n\n')
-    .replace(/<br\s*\/?>/gi, '\n')
-    .replace(/<td[^>]*>(.*?)<\/td>/gi, ' $1 |')
-    .replace(/<tr[^>]*>/gi, '\n|')
-    .replace(/<\/tr>/gi, '')
-    .replace(/<[^>]+>/g, ' ')
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/\s+/g, ' ')
-    .replace(/\n\s*\n\s*\n/g, '\n\n')
-    .trim();
-  
-  return clean;
+function extractMainContent(html: string, maxLength = 50000): string {
+  const doc = new DOMParser().parseFromString(html, "text/html");
+  if (!doc) return html.substring(0, maxLength);
+
+  // Remove noise elements
+  ['script', 'style', 'nav', 'footer', 'header', 'aside', 'iframe', 'noscript', 'svg', 'form', 'button'].forEach(sel => {
+    doc.querySelectorAll(sel).forEach((el: any) => el.parentNode?.removeChild(el));
+  });
+
+  // Try to find main content area
+  const mainSelectors = ['main', 'article', '[role="main"]', '.content', '#content', '.post', '.entry-content', '.catalog-content', '.page-content'];
+  for (const selector of mainSelectors) {
+    const main = doc.querySelector(selector);
+    if (main?.textContent && main.textContent.length > 500) {
+      return main.textContent.replace(/\s+/g, ' ').trim().substring(0, maxLength);
+    }
+  }
+
+  return (doc.body?.textContent || "").replace(/\s+/g, ' ').trim().substring(0, maxLength);
 }
 
 // ============================================================================
@@ -77,20 +124,16 @@ async function fetchPages(urls: string[]): Promise<{ url: string; text: string; 
       await new Promise(r => setTimeout(r, 500)); // 500ms between requests
       
       console.log(`Fetching: ${url}`);
-      const response = await fetch(url, {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (compatible; EduScraper/1.0; +https://pathfind.ai/bot)',
-          'Accept': 'text/html,application/xhtml+xml',
-        },
-      });
+      const { html, error } = await fetchContent(url);
       
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      if (error) {
+        results.push({ url, text: '', error });
+        continue;
+      }
       
-      const html = await response.text();
-      const text = htmlToCleanText(html);
-      
+      const text = extractMainContent(html);
       console.log(`Extracted ${text.length} chars from ${url}`);
-      results.push({ url, text: text.slice(0, 50000) }); // Cap at 50K chars
+      results.push({ url, text });
     } catch (error) {
       console.error(`Error fetching ${url}:`, error);
       results.push({ url, text: '', error: (error as Error).message });
@@ -278,6 +321,63 @@ When listing noncollegiate providers, use these exact codes: ACE, NCCRS, CLEP, D
 For each field, include the source_url from which you extracted the value if identifiable from the content.`;
 
 // ============================================================================
+// AI Extraction (Direct Fetch - No SDK)
+// ============================================================================
+async function extractWithAI(
+  content: string, 
+  institutionCode: string
+): Promise<any> {
+  const openaiKey = Deno.env.get('OPENAI_API_KEY');
+  const lovableKey = Deno.env.get('LOVABLE_API_KEY');
+
+  const apiKey = openaiKey || lovableKey;
+  const apiUrl = openaiKey 
+    ? 'https://api.openai.com/v1/chat/completions'
+    : 'https://ai.gateway.lovable.dev/v1/chat/completions';
+
+  if (!apiKey) {
+    throw new Error('No AI API key configured (OPENAI_API_KEY or LOVABLE_API_KEY)');
+  }
+
+  console.log(`Calling AI for extraction (${content.length} chars, using ${openaiKey ? 'OpenAI' : 'Lovable AI'})`);
+
+  const response = await fetch(apiUrl, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: openaiKey ? 'gpt-4o' : 'google/gemini-2.5-flash',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { 
+          role: 'user', 
+          content: `Extract the transfer credit and graduation policies for ${institutionCode} from the following scraped content:\n\n${content.slice(0, 100000)}` 
+        },
+      ],
+      tools: [extractionTool],
+      tool_choice: { type: 'function', function: { name: 'extract_institution_policy' } },
+      max_tokens: 4000,
+    }),
+  });
+
+  if (!response.ok) {
+    const errText = await response.text();
+    throw new Error(`AI API error: ${response.status} - ${errText.slice(0, 200)}`);
+  }
+
+  const data = await response.json();
+  const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
+
+  if (!toolCall?.function?.arguments) {
+    throw new Error('AI did not return structured extraction');
+  }
+
+  return JSON.parse(toolCall.function.arguments);
+}
+
+// ============================================================================
 // Main Handler
 // ============================================================================
 serve(async (req) => {
@@ -287,6 +387,9 @@ serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
+
+  let currentJobId: string | null = null;
+  let supabase: ReturnType<typeof getSupabaseClient> | null = null;
 
   try {
     // Parse request body first to check for ping
@@ -310,9 +413,8 @@ serve(async (req) => {
       );
     }
     
-    // Initialize clients inside handler to avoid cold-start crashes
-    const supabase = getSupabaseClient();
-    const openai = getOpenAIClient();
+    // Initialize client inside handler to avoid cold-start crashes
+    supabase = getSupabaseClient();
     
     const { institutionCode, customUrls, jobId } = body;
 
@@ -347,7 +449,7 @@ serve(async (req) => {
     }
 
     // Create or update job
-    let currentJobId = jobId;
+    currentJobId = jobId || null;
     if (!currentJobId) {
       const { data: newJob, error: jobError } = await supabase
         .from('school_scrape_jobs')
@@ -406,29 +508,8 @@ serve(async (req) => {
       );
     }
 
-    // Call OpenAI for extraction
-    console.log(`Calling OpenAI for extraction (${combinedText.length} chars)`);
-    
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o",
-      messages: [
-        { role: "system", content: systemPrompt },
-        { 
-          role: "user", 
-          content: `Extract the transfer credit and graduation policies for ${institutionCode} from the following scraped content:\n\n${combinedText.slice(0, 100000)}` 
-        }
-      ],
-      tools: [extractionTool],
-      tool_choice: { type: "function", function: { name: "extract_institution_policy" } },
-      max_tokens: 4000,
-    });
-
-    const toolCall = response.choices[0]?.message?.tool_calls?.[0];
-    if (!toolCall || toolCall.function.name !== 'extract_institution_policy') {
-      throw new Error('AI did not return structured extraction');
-    }
-
-    const extractedData = JSON.parse(toolCall.function.arguments);
+    // Call AI for extraction
+    const extractedData = await extractWithAI(combinedText, institutionCode);
     const overallConfidence = extractedData.overallConfidence || 0;
 
     // Determine status based on confidence
@@ -515,8 +596,28 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('School scraper error:', error);
+    
+    // Update job status if we have one
+    if (currentJobId && supabase) {
+      try {
+        await supabase
+          .from('school_scrape_jobs')
+          .update({ 
+            status: 'failed',
+            error_message: (error as Error).message,
+          })
+          .eq('id', currentJobId);
+      } catch (e) {
+        console.error('Failed to update job status:', e);
+      }
+    }
+    
     return new Response(
-      JSON.stringify({ error: (error as Error).message }),
+      JSON.stringify({ 
+        success: false,
+        error: (error as Error).message,
+        jobId: currentJobId,
+      }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
