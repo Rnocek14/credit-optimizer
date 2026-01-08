@@ -7,13 +7,23 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const supabase = createClient(
-  Deno.env.get("SUPABASE_URL")!,
-  Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-  { auth: { persistSession: false } }
-);
+// Helper to create clients inside handler (avoid cold-start crashes)
+function getSupabaseClient() {
+  const url = Deno.env.get("SUPABASE_URL");
+  const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (!url || !key) {
+    throw new Error("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY");
+  }
+  return createClient(url, key, { auth: { persistSession: false } });
+}
 
-const openai = new OpenAI({ apiKey: Deno.env.get("OPENAI_API_KEY")! });
+function getOpenAIClient() {
+  const apiKey = Deno.env.get("OPENAI_API_KEY");
+  if (!apiKey) {
+    throw new Error("Missing OPENAI_API_KEY secret");
+  }
+  return new OpenAI({ apiKey });
+}
 
 // ============================================================================
 // HTML → Clean Text Extractor (key cost saver)
@@ -275,6 +285,10 @@ serve(async (req) => {
   }
 
   try {
+    // Initialize clients inside handler to avoid cold-start crashes
+    const supabase = getSupabaseClient();
+    const openai = getOpenAIClient();
+    
     const { institutionCode, customUrls, jobId } = await req.json();
 
     if (!institutionCode) {
@@ -297,7 +311,7 @@ serve(async (req) => {
         .eq('institution_code', institutionCode)
         .order('priority', { ascending: true });
       
-      urls = templates?.map(t => t.url) || [];
+      urls = templates?.map((t: { url: string }) => t.url) || [];
     }
 
     if (urls.length === 0) {
