@@ -1,5 +1,8 @@
 project_id = "vzpissitddpunkpythsb"
 
+[functions.content-scraper]
+verify_jwt = false
+
 [functions.policy-scraper]
 verify_jwt = false
 
