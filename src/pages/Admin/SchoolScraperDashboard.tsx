@@ -22,7 +22,9 @@ import {
   Plus,
   Trash2,
   ExternalLink,
-  Database
+  Database,
+  Wifi,
+  WifiOff
 } from 'lucide-react';
 import { PolicyReviewForm } from '@/components/school-scraper/PolicyReviewForm';
 
@@ -88,6 +90,7 @@ export default function SchoolScraperDashboard() {
 
   const [isSettingUp, setIsSettingUp] = useState(false);
   const [tablesExist, setTablesExist] = useState<boolean | null>(null);
+  const [isTesting, setIsTesting] = useState(false);
 
   // Fetch jobs - also checks if tables exist
   const { data: jobs, isLoading: jobsLoading, error: jobsError } = useQuery({
@@ -245,6 +248,38 @@ export default function SchoolScraperDashboard() {
     });
   };
 
+  // Test connection to edge function
+  const handleTestConnection = async () => {
+    setIsTesting(true);
+    try {
+      console.log('Testing school-scraper function connection...');
+      const { data, error } = await supabase.functions.invoke('school-scraper', {
+        body: { action: 'ping' },
+      });
+      
+      console.log('Test response:', { data, error });
+      
+      if (error) {
+        throw new Error(error.message || 'Connection failed');
+      }
+      
+      if (data?.status === 'ok') {
+        toast.success('Function Connected!', {
+          description: `Response at ${data.timestamp}`,
+        });
+      } else {
+        throw new Error(data?.error || 'Unexpected response');
+      }
+    } catch (err) {
+      console.error('Connection test failed:', err);
+      toast.error('Function Not Deployed', {
+        description: `${(err as Error).message}. Deploy with: supabase functions deploy school-scraper`,
+      });
+    } finally {
+      setIsTesting(false);
+    }
+  };
+
   const reviewJobs = jobs?.filter(j => j.status === 'review') || [];
   const recentJobs = jobs?.slice(0, 10) || [];
 
@@ -346,6 +381,19 @@ export default function SchoolScraperDashboard() {
                         <Play className="w-4 h-4 mr-2" />
                       )}
                       Start Scrape
+                    </Button>
+                    
+                    <Button 
+                      variant="outline"
+                      onClick={handleTestConnection}
+                      disabled={isTesting}
+                    >
+                      {isTesting ? (
+                        <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                      ) : (
+                        <Wifi className="w-4 h-4 mr-2" />
+                      )}
+                      Test Connection
                     </Button>
                   </div>
 
