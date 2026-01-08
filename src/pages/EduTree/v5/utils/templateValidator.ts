@@ -9,8 +9,10 @@
  * 5. Gen-ed category completeness
  * 6. Each module has sufficient course options to fill creditsRequired
  * 7. ALL courses have verified transfer rules (via templateTransferValidator)
+ * 8. Required in-residence courses exist (SOS-1100 + Capstone for TESU)
  * 
  * CRITICAL FIX: Uses central policy service instead of hardcoded values
+ * MARKETPLACE BLOCKER: Templates failing required checks cannot be published
  */
 
 import { validateTemplateTransferability, TemplateTransferValidationResult } from './templateTransferValidator';
@@ -32,11 +34,14 @@ export interface ValidationIssue {
     shortfall?: number;
     provider?: string;
     category?: string;
+    missingCourses?: string[];
   };
+  blocksPublish?: boolean; // If true, template cannot be published to Marketplace
 }
 
 export interface TemplateValidationResult {
   valid: boolean;
+  publishable: boolean; // False if any blocksPublish issues exist
   issues: ValidationIssue[];
   metrics: {
     totalCredits: number;
@@ -48,6 +53,8 @@ export interface TemplateValidationResult {
     unfilledModules: string[];
     creditsByProvider: Record<string, number>;
     genedCreditsByCategory: Record<string, number>;
+    hasRequiredResidenceCourses: boolean;
+    missingResidenceCourses: string[];
   };
   transferValidation?: TemplateTransferValidationResult;
 }
@@ -79,6 +86,54 @@ function mapToGenEdCategory(requirementArea?: string): string | null {
 }
 
 /**
+ * Check if required in-residence courses exist in template
+ */
+function validateRequiredResidenceCourses(
+  template: any,
+  policy: InstitutionPolicy
+): { hasAll: boolean; missing: string[] } {
+  const requiredCourses = policy.requiredResidenceCourses;
+  if (!requiredCourses || requiredCourses.length === 0) {
+    return { hasAll: true, missing: [] };
+  }
+  
+  // Collect all course codes from template
+  const allCourseCodes: string[] = [];
+  for (const yearTemplate of template.yearTemplates || []) {
+    for (const moduleTemplate of yearTemplate.moduleTemplates || []) {
+      for (const option of moduleTemplate.options || []) {
+        if (option.courseId) allCourseCodes.push(option.courseId.toUpperCase());
+        if (option.code) allCourseCodes.push(option.code.toUpperCase());
+      }
+    }
+  }
+  
+  const missing: string[] = [];
+  for (const req of requiredCourses) {
+    // Check for exact match or partial match (e.g., "SOS-1100" in "TESU-SOS-1100")
+    const found = allCourseCodes.some(code => 
+      code.includes(req.code.toUpperCase()) || 
+      code.includes(req.code.replace('-', '').toUpperCase())
+    );
+    
+    // Capstone is special - many templates have a capstone slot but specific course varies
+    const isCapstone = req.code === 'CAPSTONE';
+    const hasCapstoneSlot = template.yearTemplates?.some((yt: any) => 
+      yt.moduleTemplates?.some((mt: any) => 
+        mt.requirementArea === 'CAPSTONE' || 
+        mt.label?.toLowerCase().includes('capstone')
+      )
+    );
+    
+    if (!found && !(isCapstone && hasCapstoneSlot)) {
+      missing.push(`${req.code} (${req.name})`);
+    }
+  }
+  
+  return { hasAll: missing.length === 0, missing };
+}
+
+/**
  * Validates a marketplace template for graduation requirements
  * Uses central policy service - no hardcoded values
  */
@@ -90,6 +145,9 @@ export function validateTemplate(template: any): TemplateValidationResult {
   const policy = getPolicyOrDefault(anchorSchool);
   const residencyCreditsRequired = getResidencyCredits(anchorSchool);
   const genEdReqs = policy.genEdRequirements;
+  
+  // Check required in-residence courses FIRST (MARKETPLACE BLOCKER)
+  const residenceCourseCheck = validateRequiredResidenceCourses(template, policy);
   
   // Calculate metrics by analyzing all modules and their options
   let totalCredits = 0;
@@ -166,6 +224,21 @@ export function validateTemplate(template: any): TemplateValidationResult {
     }
   }
   
+  // Validate: Required in-residence courses (BLOCKS PUBLISH)
+  if (!residenceCourseCheck.hasAll) {
+    issues.push({
+      type: 'error',
+      code: 'MISSING_REQUIRED_COURSES',
+      message: `Missing required ${anchorSchool} residence courses: ${residenceCourseCheck.missing.join(', ')}`,
+      details: { 
+        expected: policy.requiredResidenceCourses.length, 
+        actual: policy.requiredResidenceCourses.length - residenceCourseCheck.missing.length,
+        missingCourses: residenceCourseCheck.missing,
+      },
+      blocksPublish: true, // MARKETPLACE BLOCKER
+    });
+  }
+  
   // Validate: Total credits
   if (totalCredits < policy.totalCreditsBachelor) {
     issues.push({
@@ -173,6 +246,7 @@ export function validateTemplate(template: any): TemplateValidationResult {
       code: 'CREDIT_SHORTFALL',
       message: `Template only provides ${totalCredits} credits, need ${policy.totalCreditsBachelor}`,
       details: { expected: policy.totalCreditsBachelor, actual: totalCredits, shortfall: policy.totalCreditsBachelor - totalCredits },
+      blocksPublish: true,
     });
   }
   
@@ -183,6 +257,7 @@ export function validateTemplate(template: any): TemplateValidationResult {
       code: 'RESIDENCY_SHORTFALL',
       message: `Only ${universityCredits} university credits, need ${residencyCreditsRequired} for ${anchorSchool} residency`,
       details: { expected: residencyCreditsRequired, actual: universityCredits, shortfall: residencyCreditsRequired - universityCredits },
+      blocksPublish: true,
     });
   }
   
@@ -194,6 +269,7 @@ export function validateTemplate(template: any): TemplateValidationResult {
       code: 'UPPER_DIV_SHORTFALL',
       message: `Only ${upperDivCredits} upper-division credits, need ${upperDivRequired}`,
       details: { expected: upperDivRequired, actual: upperDivCredits, shortfall: upperDivRequired - upperDivCredits },
+      blocksPublish: true,
     });
   }
   
@@ -205,6 +281,7 @@ export function validateTemplate(template: any): TemplateValidationResult {
       code: issue.code,
       message: issue.message,
       details: issue.details as any,
+      blocksPublish: issue.type === 'error',
     });
   }
   
@@ -233,11 +310,25 @@ export function validateTemplate(template: any): TemplateValidationResult {
   }
   
   const hasErrors = issues.filter(i => i.type === 'error').length > 0;
+  const hasPublishBlockers = issues.filter(i => i.blocksPublish).length > 0;
   
   return {
     valid: !hasErrors,
+    publishable: !hasPublishBlockers,
     issues,
-    metrics: { totalCredits, universityCredits, upperDivCredits, moocCredits, moduleCount, filledModules, unfilledModules, creditsByProvider, genedCreditsByCategory },
+    metrics: { 
+      totalCredits, 
+      universityCredits, 
+      upperDivCredits, 
+      moocCredits, 
+      moduleCount, 
+      filledModules, 
+      unfilledModules, 
+      creditsByProvider, 
+      genedCreditsByCategory,
+      hasRequiredResidenceCourses: residenceCourseCheck.hasAll,
+      missingResidenceCourses: residenceCourseCheck.missing,
+    },
   };
 }
 
