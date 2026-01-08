@@ -1,5 +1,8 @@
 project_id = "vzpissitddpunkpythsb"
 
+[functions.policy-scraper]
+verify_jwt = false
+
 [functions.run-migrations]
 verify_jwt = false
 
