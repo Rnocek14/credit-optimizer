@@ -1,3 +1,6 @@
+// Content scraper edge function - v2
+console.log("content-scraper function initialized");
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -24,12 +27,15 @@ function extractMainContent(html: string, maxLength = 50000): string {
 }
 
 Deno.serve(async (req) => {
+  console.log("content-scraper called:", req.method, new Date().toISOString());
+
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
     const { action, url } = await req.json();
+    console.log("Action:", action, "URL:", url);
 
     if (action === 'ping') {
       return new Response(
