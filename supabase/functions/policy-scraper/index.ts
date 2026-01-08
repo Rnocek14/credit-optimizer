@@ -1,4 +1,4 @@
-// Policy Scraper - Fresh build
+// Policy Scraper v2 - Fresh build - Deploy trigger: 2026-01-08-v2
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.52.0";
 
