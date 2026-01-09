@@ -16,6 +16,8 @@ import { usePlanBasket } from '../state/usePlanBasket';
 export interface UseVerifiedPolicyResult {
   policy: VerifiedPolicy | null;
   isVerified: boolean;
+  isProgramScoped: boolean;
+  maxTransferVerified: boolean;
   isLoading: boolean;
   error: Error | null;
 }
@@ -37,6 +39,8 @@ export function useVerifiedPolicy(): UseVerifiedPolicyResult {
   return {
     policy: data ?? null,
     isVerified: data?.verified ?? false,
+    isProgramScoped: data?.isProgramScoped ?? false,
+    maxTransferVerified: data?.maxTransferVerified ?? false,
     isLoading,
     error: error as Error | null,
   };
@@ -59,6 +63,8 @@ export function useVerifiedPolicyForInstitution(
   return {
     policy: data ?? null,
     isVerified: data?.verified ?? false,
+    isProgramScoped: data?.isProgramScoped ?? false,
+    maxTransferVerified: data?.maxTransferVerified ?? false,
     isLoading,
     error: error as Error | null,
   };

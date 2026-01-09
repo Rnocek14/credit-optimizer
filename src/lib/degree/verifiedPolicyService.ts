@@ -31,12 +31,19 @@ export interface VerifiedPolicy {
   upperDivisionMin: number;
   
   // Metadata
-  source: 'live_pack' | 'central_service' | 'fallback';
+  source: 'live_pack' | 'central_service' | 'fallback' | 'partial_finding';
   packId?: string;
   packScope?: string;
   verifiedAt?: string;
   evidenceUrl?: string;
   notes?: string;
+  
+  // Program-scoped status
+  programScopedReason?: 'likely_program_scoped' | 'partial_caps_need_verification';
+  isProgramScoped?: boolean;
+  maxTransferVerified?: boolean;  // True if max_transfer has evidence
+  maxTransferEvidenceUrl?: string;
+  residencyVerified?: boolean;    // True if residency has evidence
 }
 
 export interface VerifiedPolicyResult {
@@ -89,6 +96,9 @@ export async function getVerifiedPolicy(
     upperDivisionMin: centralPolicy.upperDivisionAreaOfStudyMin,
     source: 'central_service',
     notes: 'Using central service fallback - no verified pack available',
+    isProgramScoped: false,
+    maxTransferVerified: false,
+    residencyVerified: false,
   };
 
   try {
@@ -104,43 +114,81 @@ export async function getVerifiedPolicy(
 
     if (error) {
       console.warn(`[VerifiedPolicyService] Error fetching live pack for ${institutionCode}:`, error);
-      return fallbackPolicy;
     }
 
-    if (!data) {
-      return fallbackPolicy;
+    // If we have a verified pack, use it
+    if (data) {
+      const packData = data as any;
+      const policyData = packData.policy_data || {};
+      const parsed = parsePolicyData(policyData);
+
+      const hasRequiredValues = 
+        parsed.residencyCredits !== null && 
+        parsed.maxTransferCredits !== null;
+
+      return {
+        verified: hasRequiredValues,
+        confidence: hasRequiredValues ? 95 : 75,
+        institutionCode,
+        institutionName: packData.institution || centralPolicy.name,
+        residencyCredits: parsed.residencyCredits ?? getCentralResidency(institutionCode),
+        maxTransferCredits: parsed.maxTransferCredits ?? (centralPolicy.maxTransferTotal ?? 90),
+        maxNoncollegiateCredits: parsed.maxNoncollegiateCredits ?? getCentralNoncollegiateCap(institutionCode),
+        upperDivisionMin: parsed.upperDivisionMin ?? centralPolicy.upperDivisionAreaOfStudyMin,
+        source: 'live_pack',
+        packId: packData.id,
+        packScope: packData.pack_scope,
+        verifiedAt: packData.created_at,
+        evidenceUrl: policyData.evidence_url,
+        notes: policyData.notes,
+        isProgramScoped: false,
+        maxTransferVerified: parsed.maxTransferCredits !== null,
+        residencyVerified: parsed.residencyCredits !== null,
+      };
     }
 
-    // Parse the policy data
-    const packData = data as any;
-    const policyData = packData.policy_data || {};
-    const parsed = parsePolicyData(policyData);
+    // No live pack - check for partial findings (likely_program_scoped)
+    const { data: findingData } = await supabase
+      .from('policy_scan_findings')
+      .select('*')
+      .eq('institution', institutionCode)
+      .in('reason', ['likely_program_scoped', 'partial_caps_need_verification'])
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
 
-    // Only mark as verified if we have BOTH critical transfer cap values
-    // This is the trust gate - partial data should NOT be treated as verified
-    const hasRequiredValues = 
-      parsed.residencyCredits !== null && 
-      parsed.maxTransferCredits !== null;
+    if (findingData) {
+      const finding = findingData as any;
+      const details = finding.details || {};
+      const extractedValues = finding.extracted_values || {};
+      const capsFound = details.caps_found || {};
+      
+      // Extract max_transfer if it has evidence
+      const maxTransferVal = extractedValues.max_transfer_credits;
+      const hasMaxTransferEvidence = maxTransferVal?.evidence_url || details.has_max_transfer_evidence;
+      
+      return {
+        verified: false,
+        confidence: finding.confidence_score || 60,
+        institutionCode,
+        institutionName: centralPolicy.name,
+        residencyCredits: getCentralResidency(institutionCode),
+        maxTransferCredits: capsFound.max_transfer_credits 
+          ? parseInt(capsFound.max_transfer_credits, 10) 
+          : (centralPolicy.maxTransferTotal ?? 90),
+        maxNoncollegiateCredits: getCentralNoncollegiateCap(institutionCode),
+        upperDivisionMin: centralPolicy.upperDivisionAreaOfStudyMin,
+        source: 'partial_finding',
+        notes: `Program-scoped: ${details.recommendation || finding.reason}`,
+        isProgramScoped: true,
+        programScopedReason: finding.reason as 'likely_program_scoped' | 'partial_caps_need_verification',
+        maxTransferVerified: hasMaxTransferEvidence,
+        maxTransferEvidenceUrl: maxTransferVal?.evidence_url,
+        residencyVerified: false,
+      };
+    }
 
-    return {
-      verified: hasRequiredValues,
-      confidence: hasRequiredValues ? 95 : 75,
-      institutionCode,
-      institutionName: packData.institution || centralPolicy.name,
-      
-      // Use parsed values with central fallbacks
-      residencyCredits: parsed.residencyCredits ?? getCentralResidency(institutionCode),
-      maxTransferCredits: parsed.maxTransferCredits ?? (centralPolicy.maxTransferTotal ?? 90),
-      maxNoncollegiateCredits: parsed.maxNoncollegiateCredits ?? getCentralNoncollegiateCap(institutionCode),
-      upperDivisionMin: parsed.upperDivisionMin ?? centralPolicy.upperDivisionAreaOfStudyMin,
-      
-      source: 'live_pack',
-      packId: packData.id,
-      packScope: packData.pack_scope,
-      verifiedAt: packData.created_at,
-      evidenceUrl: policyData.evidence_url,
-      notes: policyData.notes,
-    };
+    return fallbackPolicy;
   } catch (err) {
     console.error(`[VerifiedPolicyService] Exception fetching policy for ${institutionCode}:`, err);
     return fallbackPolicy;
