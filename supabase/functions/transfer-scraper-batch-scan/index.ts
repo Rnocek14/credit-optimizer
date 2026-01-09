@@ -103,9 +103,9 @@ Deno.serve(async (req) => {
 
           const scanData = await scanResponse.json();
           result.status = 'success';
-          result.templates_scanned = scanData.total || 0;
-          result.succeeded = scanData.succeeded || 0;
-          result.failed = scanData.failed || 0;
+          result.templates_scanned = typeof scanData?.total === 'number' ? scanData.total : 0;
+          result.succeeded = typeof scanData?.succeeded === 'number' ? scanData.succeeded : 0;
+          result.failed = typeof scanData?.failed === 'number' ? scanData.failed : 0;
           
           console.log(`Completed: ${institution} - ${result.succeeded}/${result.templates_scanned} succeeded`);
           
@@ -134,8 +134,11 @@ Deno.serve(async (req) => {
     const summary = {
       tier,
       maxPriority,
-      total_institutions: institutions.length,
+      institutions_attempted: institutions.length,
+      institutions_completed: results.length,
       successful_institutions: results.filter(r => r.status === 'success').length,
+      failed_institutions: results.filter(r => r.status === 'failed').length,
+      skipped_institutions: results.filter(r => r.status === 'skipped').length,
       total_templates_succeeded: totalSucceeded,
       total_templates_failed: totalFailed,
       results,
