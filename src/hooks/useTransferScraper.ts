@@ -104,6 +104,24 @@ export interface ValidateParams {
   reviewer_notes?: string;
 }
 
+export interface AutoScanProgress {
+  institution: string;
+  total: number;
+  succeeded: number;
+  failed: number;
+  results: AutoScanUrlResult[];
+}
+
+export interface AutoScanUrlResult {
+  url: string;
+  page_type: string;
+  status: 'success' | 'crawl_failed' | 'extract_failed' | 'validate_failed';
+  scrape_job_id: string | null;
+  confidence_score: number | null;
+  action: string | null;
+  error: string | null;
+}
+
 // -----------------------------------------------------------------------------
 // Hook
 // -----------------------------------------------------------------------------
@@ -323,6 +341,28 @@ export function useTransferScraper() {
     }
   }, []);
 
+  // ---------------------------------------------------------------------------
+  // Auto-Scan Institution
+  // ---------------------------------------------------------------------------
+  const autoScan = useCallback(async (institution: string): Promise<AutoScanProgress | null> => {
+    setLoading(true);
+    setError(null);
+    try {
+      const { data, error: err } = await supabase.functions.invoke('transfer-scraper-auto-scan', {
+        body: { institution },
+      });
+
+      if (err) throw err;
+      return data as AutoScanProgress;
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Auto-scan failed';
+      setError(msg);
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   return {
     loading,
     error,
@@ -334,5 +374,6 @@ export function useTransferScraper() {
     extract,
     validate,
     addToQueue,
+    autoScan,
   };
 }

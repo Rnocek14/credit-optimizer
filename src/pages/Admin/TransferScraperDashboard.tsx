@@ -9,8 +9,9 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { RefreshCw, Play, Sparkles, CheckCircle, XCircle, Plus, ExternalLink, Copy, Database, Brain, RotateCcw } from 'lucide-react';
-import { useTransferScraper, ScrapeJob, ScrapedContent, ExtractionResult } from '@/hooks/useTransferScraper';
+import { RefreshCw, Play, Sparkles, CheckCircle, XCircle, Plus, ExternalLink, Copy, Database, Brain, RotateCcw, Zap, AlertTriangle } from 'lucide-react';
+import { useTransferScraper, ScrapeJob, ScrapedContent, ExtractionResult, AutoScanProgress, AutoScanUrlResult } from '@/hooks/useTransferScraper';
+import { Progress } from '@/components/ui/progress';
 
 // -----------------------------------------------------------------------------
 // Status Badge Component
@@ -107,6 +108,10 @@ function TransferScraperDashboardContent() {
   
   // Validate modal state
   const [reviewerNotes, setReviewerNotes] = useState('');
+  
+  // Auto-scan state
+  const [autoScanResult, setAutoScanResult] = useState<AutoScanProgress | null>(null);
+  const [isAutoScanning, setIsAutoScanning] = useState(false);
 
   // Load jobs on mount and filter change
   useEffect(() => {
@@ -269,10 +274,50 @@ function TransferScraperDashboardContent() {
     toast({ title: `Copied ${label}`, duration: 1500 });
   };
 
+  // Auto-scan handler
+  const handleAutoScan = async () => {
+    if (!filters.institution) return;
+    
+    setIsAutoScanning(true);
+    setAutoScanResult(null);
+    
+    try {
+      const result = await scraper.autoScan(filters.institution);
+      setAutoScanResult(result);
+      
+      if (result) {
+        toast({
+          title: 'Auto-Scan Complete',
+          description: `${result.succeeded}/${result.total} URLs processed successfully`,
+        });
+        // Refresh job list
+        await loadJobs();
+      }
+    } catch (e) {
+      toast({ 
+        title: 'Auto-Scan Failed', 
+        description: scraper.error || 'Unknown error', 
+        variant: 'destructive' 
+      });
+    } finally {
+      setIsAutoScanning(false);
+    }
+  };
+
   // Better guards for content/extraction existence
   const hasContent = !!content?.extracted_text && content.extracted_text.length > 100;
   const hasExtraction = !!(content?.ai_extracted_data?.policy_pack || (content?.ai_extracted_data?.provider_rules?.length ?? 0) > 0);
   const extraction = content?.ai_extracted_data as ExtractionResult | null;
+
+  // Helper to get status icon for auto-scan results
+  const getStatusIcon = (status: AutoScanUrlResult['status']) => {
+    switch (status) {
+      case 'success': return <CheckCircle className="h-3.5 w-3.5 text-green-500" />;
+      case 'crawl_failed': return <XCircle className="h-3.5 w-3.5 text-red-500" />;
+      case 'extract_failed': return <AlertTriangle className="h-3.5 w-3.5 text-yellow-500" />;
+      case 'validate_failed': return <AlertTriangle className="h-3.5 w-3.5 text-orange-500" />;
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -295,6 +340,23 @@ function TransferScraperDashboardContent() {
                 <SelectItem value="SNHU">SNHU</SelectItem>
               </SelectContent>
             </Select>
+            <Button 
+              onClick={handleAutoScan}
+              disabled={isAutoScanning || !filters.institution}
+              className="gap-2"
+            >
+              {isAutoScanning ? (
+                <>
+                  <LoadingSpinner size="sm" />
+                  Scanning...
+                </>
+              ) : (
+                <>
+                  <Zap className="h-4 w-4" />
+                  Auto-Scan {filters.institution}
+                </>
+              )}
+            </Button>
             <Select value={filters.status || 'all'} onValueChange={(v) => setFilters(f => ({ ...f, status: v === 'all' ? '' : v }))}>
               <SelectTrigger className="w-32">
                 <SelectValue placeholder="All Status" />
@@ -311,6 +373,98 @@ function TransferScraperDashboardContent() {
             </Button>
           </div>
         </div>
+
+        {/* Auto-Scan Progress Panel */}
+        {(isAutoScanning || autoScanResult) && (
+          <Card className="mb-6">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Zap className="h-5 w-5" />
+                  Auto-Scan: {autoScanResult?.institution || filters.institution}
+                </CardTitle>
+                {autoScanResult && !isAutoScanning && (
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    onClick={() => setAutoScanResult(null)}
+                  >
+                    Dismiss
+                  </Button>
+                )}
+              </div>
+            </CardHeader>
+            <CardContent>
+              {isAutoScanning ? (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3">
+                    <LoadingSpinner size="sm" />
+                    <span className="text-sm text-muted-foreground">
+                      Running full pipeline (Crawl → Extract → Validate) for all URLs...
+                    </span>
+                  </div>
+                  <Progress value={undefined} className="h-2" />
+                </div>
+              ) : autoScanResult && (
+                <div className="space-y-4">
+                  {/* Summary */}
+                  <div className="flex items-center gap-4 text-sm">
+                    <span className="font-medium">
+                      {autoScanResult.succeeded}/{autoScanResult.total} URLs processed
+                    </span>
+                    {autoScanResult.failed > 0 && (
+                      <Badge variant="destructive">{autoScanResult.failed} failed</Badge>
+                    )}
+                    <Progress 
+                      value={(autoScanResult.succeeded / autoScanResult.total) * 100} 
+                      className="flex-1 h-2" 
+                    />
+                  </div>
+
+                  {/* Results List */}
+                  <div className="grid gap-2 max-h-48 overflow-y-auto">
+                    {autoScanResult.results.map((result, i) => (
+                      <div 
+                        key={i}
+                        className={`flex items-center justify-between p-2 rounded-lg text-sm ${
+                          result.status === 'success' ? 'bg-green-500/10' : 'bg-red-500/10'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2 flex-1 min-w-0">
+                          {getStatusIcon(result.status)}
+                          <span className="truncate">{new URL(result.url).pathname}</span>
+                          <Badge variant="outline" className="text-xs shrink-0">
+                            {result.page_type}
+                          </Badge>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          {result.confidence_score !== null && (
+                            <span className={`text-xs font-medium ${
+                              result.confidence_score >= 85 ? 'text-green-600' :
+                              result.confidence_score >= 60 ? 'text-yellow-600' : 'text-red-600'
+                            }`}>
+                              Score: {result.confidence_score}
+                            </span>
+                          )}
+                          {result.action && (
+                            <Badge variant={result.action === 'auto_approve' ? 'default' : 'secondary'}>
+                              {result.action.replace('_', ' ')}
+                            </Badge>
+                          )}
+                          {result.error && (
+                            <span className="text-xs text-red-500 truncate max-w-32" title={result.error}>
+                              {result.error}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         {/* 3-Column Layout */}
         <div className="grid grid-cols-12 gap-6">
