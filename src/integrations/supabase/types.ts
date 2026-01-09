@@ -686,6 +686,60 @@ export type Database = {
           },
         ]
       }
+      alt_credits: {
+        Row: {
+          cost_usd: number | null
+          created_at: string | null
+          credits_typical: number
+          description: string | null
+          duration_estimate_weeks: number | null
+          exam_based: boolean | null
+          id: string
+          identifier: string
+          level: number | null
+          metadata: Json | null
+          provider_url: string | null
+          source_code: string
+          subject_area: string | null
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          cost_usd?: number | null
+          created_at?: string | null
+          credits_typical: number
+          description?: string | null
+          duration_estimate_weeks?: number | null
+          exam_based?: boolean | null
+          id?: string
+          identifier: string
+          level?: number | null
+          metadata?: Json | null
+          provider_url?: string | null
+          source_code: string
+          subject_area?: string | null
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          cost_usd?: number | null
+          created_at?: string | null
+          credits_typical?: number
+          description?: string | null
+          duration_estimate_weeks?: number | null
+          exam_based?: boolean | null
+          id?: string
+          identifier?: string
+          level?: number | null
+          metadata?: Json | null
+          provider_url?: string | null
+          source_code?: string
+          subject_area?: string | null
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       alternative_courses: {
         Row: {
           created_at: string | null
@@ -3530,46 +3584,150 @@ export type Database = {
         Row: {
           acceptance_status: string | null
           confidence: number | null
+          effective_end: string | null
           effective_from: string | null
+          effective_start: string | null
           effective_to: string | null
           evidence_url: string | null
           id: string
+          last_verified_at: string | null
           precedence: number | null
+          rule_payload: Json | null
           rule_source: string | null
+          rule_type: string | null
           source_course_code: string | null
           source_institution: string
+          status: string | null
+          superseded_by: string | null
           target_course_code: string | null
           target_institution: string
+          verification_source: string | null
         }
         Insert: {
           acceptance_status?: string | null
           confidence?: number | null
+          effective_end?: string | null
           effective_from?: string | null
+          effective_start?: string | null
           effective_to?: string | null
           evidence_url?: string | null
           id?: string
+          last_verified_at?: string | null
           precedence?: number | null
+          rule_payload?: Json | null
           rule_source?: string | null
+          rule_type?: string | null
           source_course_code?: string | null
           source_institution: string
+          status?: string | null
+          superseded_by?: string | null
           target_course_code?: string | null
           target_institution: string
+          verification_source?: string | null
         }
         Update: {
           acceptance_status?: string | null
           confidence?: number | null
+          effective_end?: string | null
           effective_from?: string | null
+          effective_start?: string | null
           effective_to?: string | null
           evidence_url?: string | null
           id?: string
+          last_verified_at?: string | null
           precedence?: number | null
+          rule_payload?: Json | null
           rule_source?: string | null
+          rule_type?: string | null
           source_course_code?: string | null
           source_institution?: string
+          status?: string | null
+          superseded_by?: string | null
           target_course_code?: string | null
           target_institution?: string
+          verification_source?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "credit_transfer_rules_superseded_by_fkey"
+            columns: ["superseded_by"]
+            isOneToOne: false
+            referencedRelation: "credit_transfer_rules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cross_institution_equivalencies: {
+        Row: {
+          alt_credit_id: string
+          confidence: number | null
+          created_at: string | null
+          credits_awarded: number
+          gened_category_code: string | null
+          id: string
+          institution_id: string
+          institutional_course_code: string
+          institutional_course_name: string | null
+          last_verified_date: string | null
+          level: number | null
+          metadata: Json | null
+          notes: string | null
+          requirement_area: string | null
+          source_documentation: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          alt_credit_id: string
+          confidence?: number | null
+          created_at?: string | null
+          credits_awarded: number
+          gened_category_code?: string | null
+          id?: string
+          institution_id: string
+          institutional_course_code: string
+          institutional_course_name?: string | null
+          last_verified_date?: string | null
+          level?: number | null
+          metadata?: Json | null
+          notes?: string | null
+          requirement_area?: string | null
+          source_documentation?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          alt_credit_id?: string
+          confidence?: number | null
+          created_at?: string | null
+          credits_awarded?: number
+          gened_category_code?: string | null
+          id?: string
+          institution_id?: string
+          institutional_course_code?: string
+          institutional_course_name?: string | null
+          last_verified_date?: string | null
+          level?: number | null
+          metadata?: Json | null
+          notes?: string | null
+          requirement_area?: string | null
+          source_documentation?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cross_institution_equivalencies_alt_credit_id_fkey"
+            columns: ["alt_credit_id"]
+            isOneToOne: false
+            referencedRelation: "alt_credits"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cross_institution_equivalencies_institution_id_fkey"
+            columns: ["institution_id"]
+            isOneToOne: false
+            referencedRelation: "institutions"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       data_imports: {
         Row: {
@@ -3621,6 +3779,71 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_transcript_health"
             referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      degree_templates: {
+        Row: {
+          catalog_year: string | null
+          created_at: string | null
+          estimated_cost: number | null
+          estimated_duration_months: number | null
+          id: string
+          institution_code: string
+          institution_id: string
+          metadata: Json | null
+          notes: string | null
+          policy_last_verified: string | null
+          program_code: string
+          program_name: string
+          template_data: Json
+          total_credits: number
+          track_type: string
+          updated_at: string | null
+        }
+        Insert: {
+          catalog_year?: string | null
+          created_at?: string | null
+          estimated_cost?: number | null
+          estimated_duration_months?: number | null
+          id: string
+          institution_code: string
+          institution_id: string
+          metadata?: Json | null
+          notes?: string | null
+          policy_last_verified?: string | null
+          program_code: string
+          program_name: string
+          template_data: Json
+          total_credits: number
+          track_type: string
+          updated_at?: string | null
+        }
+        Update: {
+          catalog_year?: string | null
+          created_at?: string | null
+          estimated_cost?: number | null
+          estimated_duration_months?: number | null
+          id?: string
+          institution_code?: string
+          institution_id?: string
+          metadata?: Json | null
+          notes?: string | null
+          policy_last_verified?: string | null
+          program_code?: string
+          program_name?: string
+          template_data?: Json
+          total_credits?: number
+          track_type?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "degree_templates_institution_id_fkey"
+            columns: ["institution_id"]
+            isOneToOne: false
+            referencedRelation: "institutions"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -4212,6 +4435,97 @@ export type Database = {
         }
         Relationships: []
       }
+      gened_categories: {
+        Row: {
+          category_code: string
+          category_name: string
+          created_at: string | null
+          credits_required: number
+          description: string | null
+          display_order: number | null
+          id: string
+          institution_id: string
+          metadata: Json | null
+          min_grade: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          category_code: string
+          category_name: string
+          created_at?: string | null
+          credits_required: number
+          description?: string | null
+          display_order?: number | null
+          id?: string
+          institution_id: string
+          metadata?: Json | null
+          min_grade?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          category_code?: string
+          category_name?: string
+          created_at?: string | null
+          credits_required?: number
+          description?: string | null
+          display_order?: number | null
+          id?: string
+          institution_id?: string
+          metadata?: Json | null
+          min_grade?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gened_categories_institution_id_fkey"
+            columns: ["institution_id"]
+            isOneToOne: false
+            referencedRelation: "institutions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gened_frameworks: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          framework_code: string
+          framework_name: string
+          id: string
+          institution_id: string
+          total_credits: number
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          framework_code: string
+          framework_name: string
+          id?: string
+          institution_id: string
+          total_credits: number
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          framework_code?: string
+          framework_name?: string
+          id?: string
+          institution_id?: string
+          total_credits?: number
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gened_frameworks_institution_id_fkey"
+            columns: ["institution_id"]
+            isOneToOne: true
+            referencedRelation: "institutions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       goal_autonomous_actions: {
         Row: {
           action_description: string
@@ -4534,9 +4848,116 @@ export type Database = {
           },
         ]
       }
+      institution_credit_limits: {
+        Row: {
+          created_at: string | null
+          credit_value: number
+          id: string
+          institution_id: string
+          limit_type: string
+          notes: string | null
+          provider_code: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          credit_value: number
+          id?: string
+          institution_id: string
+          limit_type: string
+          notes?: string | null
+          provider_code?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          credit_value?: number
+          id?: string
+          institution_id?: string
+          limit_type?: string
+          notes?: string | null
+          provider_code?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "institution_credit_limits_institution_id_fkey"
+            columns: ["institution_id"]
+            isOneToOne: false
+            referencedRelation: "institutions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      institution_policy_packs: {
+        Row: {
+          academic_year: string
+          confidence_score: number | null
+          created_at: string | null
+          degree_level: string
+          effective_end: string | null
+          effective_start: string | null
+          id: string
+          institution: string
+          last_verified_at: string | null
+          policy_json: Json
+          source_scrape_ids: string[] | null
+          status: string
+          superseded_by: string | null
+          updated_at: string | null
+          verification_source: string | null
+          verified_by: string | null
+        }
+        Insert: {
+          academic_year: string
+          confidence_score?: number | null
+          created_at?: string | null
+          degree_level?: string
+          effective_end?: string | null
+          effective_start?: string | null
+          id?: string
+          institution: string
+          last_verified_at?: string | null
+          policy_json: Json
+          source_scrape_ids?: string[] | null
+          status?: string
+          superseded_by?: string | null
+          updated_at?: string | null
+          verification_source?: string | null
+          verified_by?: string | null
+        }
+        Update: {
+          academic_year?: string
+          confidence_score?: number | null
+          created_at?: string | null
+          degree_level?: string
+          effective_end?: string | null
+          effective_start?: string | null
+          id?: string
+          institution?: string
+          last_verified_at?: string | null
+          policy_json?: Json
+          source_scrape_ids?: string[] | null
+          status?: string
+          superseded_by?: string | null
+          updated_at?: string | null
+          verification_source?: string | null
+          verified_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "institution_policy_packs_superseded_by_fkey"
+            columns: ["superseded_by"]
+            isOneToOne: false
+            referencedRelation: "institution_policy_packs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       institutions: {
         Row: {
           accreditation_level: string | null
+          code: string
           created_at: string
           description: string | null
           established_year: number | null
@@ -4553,6 +4974,7 @@ export type Database = {
         }
         Insert: {
           accreditation_level?: string | null
+          code: string
           created_at?: string
           description?: string | null
           established_year?: number | null
@@ -4569,6 +4991,7 @@ export type Database = {
         }
         Update: {
           accreditation_level?: string | null
+          code?: string
           created_at?: string
           description?: string | null
           established_year?: number | null
@@ -7243,6 +7666,56 @@ export type Database = {
           },
         ]
       }
+      policy_field_extractions: {
+        Row: {
+          confidence: number
+          created_at: string | null
+          extracted_value: Json | null
+          field_path: string
+          final_value: Json | null
+          id: string
+          job_id: string
+          review_status: string
+          reviewer_notes: string | null
+          source_quote: string | null
+          source_url: string | null
+        }
+        Insert: {
+          confidence?: number
+          created_at?: string | null
+          extracted_value?: Json | null
+          field_path: string
+          final_value?: Json | null
+          id?: string
+          job_id: string
+          review_status?: string
+          reviewer_notes?: string | null
+          source_quote?: string | null
+          source_url?: string | null
+        }
+        Update: {
+          confidence?: number
+          created_at?: string | null
+          extracted_value?: Json | null
+          field_path?: string
+          final_value?: Json | null
+          id?: string
+          job_id?: string
+          review_status?: string
+          reviewer_notes?: string | null
+          source_quote?: string | null
+          source_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "policy_field_extractions_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "school_scrape_jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       portfolio_projects: {
         Row: {
           block_id: string | null
@@ -8594,6 +9067,200 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_transcript_health"
             referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      school_scrape_jobs: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          error_message: string | null
+          extracted_data: Json | null
+          id: string
+          institution_code: string
+          overall_confidence: number | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          scraped_content: Json | null
+          status: string
+          target_urls: string[]
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          error_message?: string | null
+          extracted_data?: Json | null
+          id?: string
+          institution_code: string
+          overall_confidence?: number | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          scraped_content?: Json | null
+          status?: string
+          target_urls?: string[]
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          error_message?: string | null
+          extracted_data?: Json | null
+          id?: string
+          institution_code?: string
+          overall_confidence?: number | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          scraped_content?: Json | null
+          status?: string
+          target_urls?: string[]
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      scrape_jobs: {
+        Row: {
+          allowed_scrape: boolean | null
+          created_at: string | null
+          error_message: string | null
+          id: string
+          institution: string
+          job_type: string
+          last_attempt_at: string | null
+          priority: number | null
+          retry_count: number | null
+          robots_checked_at: string | null
+          scrape_method: string
+          source_authority_score: number | null
+          source_type: string
+          status: string
+          updated_at: string | null
+          url: string
+        }
+        Insert: {
+          allowed_scrape?: boolean | null
+          created_at?: string | null
+          error_message?: string | null
+          id?: string
+          institution: string
+          job_type: string
+          last_attempt_at?: string | null
+          priority?: number | null
+          retry_count?: number | null
+          robots_checked_at?: string | null
+          scrape_method?: string
+          source_authority_score?: number | null
+          source_type?: string
+          status?: string
+          updated_at?: string | null
+          url: string
+        }
+        Update: {
+          allowed_scrape?: boolean | null
+          created_at?: string | null
+          error_message?: string | null
+          id?: string
+          institution?: string
+          job_type?: string
+          last_attempt_at?: string | null
+          priority?: number | null
+          retry_count?: number | null
+          robots_checked_at?: string | null
+          scrape_method?: string
+          source_authority_score?: number | null
+          source_type?: string
+          status?: string
+          updated_at?: string | null
+          url?: string
+        }
+        Relationships: []
+      }
+      scrape_url_templates: {
+        Row: {
+          created_at: string | null
+          id: string
+          institution_code: string
+          last_scraped_at: string | null
+          page_type: string
+          priority: number
+          url: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          institution_code: string
+          last_scraped_at?: string | null
+          page_type?: string
+          priority?: number
+          url: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          institution_code?: string
+          last_scraped_at?: string | null
+          page_type?: string
+          priority?: number
+          url?: string
+        }
+        Relationships: []
+      }
+      scraped_content: {
+        Row: {
+          ai_extracted_data: Json | null
+          confidence_breakdown: Json | null
+          content_tsv: unknown
+          extracted_at: string | null
+          extracted_text: string | null
+          extraction_model: string | null
+          extraction_prompt_version: string | null
+          id: string
+          raw_html: string | null
+          scrape_job_id: string | null
+          scraped_at: string | null
+          source_type: string | null
+          total_confidence_score: number | null
+          url: string
+        }
+        Insert: {
+          ai_extracted_data?: Json | null
+          confidence_breakdown?: Json | null
+          content_tsv?: unknown
+          extracted_at?: string | null
+          extracted_text?: string | null
+          extraction_model?: string | null
+          extraction_prompt_version?: string | null
+          id?: string
+          raw_html?: string | null
+          scrape_job_id?: string | null
+          scraped_at?: string | null
+          source_type?: string | null
+          total_confidence_score?: number | null
+          url: string
+        }
+        Update: {
+          ai_extracted_data?: Json | null
+          confidence_breakdown?: Json | null
+          content_tsv?: unknown
+          extracted_at?: string | null
+          extracted_text?: string | null
+          extraction_model?: string | null
+          extraction_prompt_version?: string | null
+          id?: string
+          raw_html?: string | null
+          scrape_job_id?: string | null
+          scraped_at?: string | null
+          source_type?: string | null
+          total_confidence_score?: number | null
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scraped_content_scrape_job_id_fkey"
+            columns: ["scrape_job_id"]
+            isOneToOne: false
+            referencedRelation: "scrape_jobs"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -9966,6 +10633,66 @@ export type Database = {
             columns: ["teacher_id"]
             isOneToOne: false
             referencedRelation: "teachers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      transfer_evidence: {
+        Row: {
+          captured_at: string | null
+          captured_by: string | null
+          evidence_data: Json | null
+          evidence_text: string | null
+          evidence_type: string
+          evidence_url: string | null
+          id: string
+          policy_pack_id: string | null
+          rule_id: string | null
+          verification_notes: string | null
+          verified_at: string | null
+          verified_by: string | null
+        }
+        Insert: {
+          captured_at?: string | null
+          captured_by?: string | null
+          evidence_data?: Json | null
+          evidence_text?: string | null
+          evidence_type: string
+          evidence_url?: string | null
+          id?: string
+          policy_pack_id?: string | null
+          rule_id?: string | null
+          verification_notes?: string | null
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Update: {
+          captured_at?: string | null
+          captured_by?: string | null
+          evidence_data?: Json | null
+          evidence_text?: string | null
+          evidence_type?: string
+          evidence_url?: string | null
+          id?: string
+          policy_pack_id?: string | null
+          rule_id?: string | null
+          verification_notes?: string | null
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transfer_evidence_policy_pack_id_fkey"
+            columns: ["policy_pack_id"]
+            isOneToOne: false
+            referencedRelation: "institution_policy_packs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transfer_evidence_rule_id_fkey"
+            columns: ["rule_id"]
+            isOneToOne: false
+            referencedRelation: "credit_transfer_rules"
             referencedColumns: ["id"]
           },
         ]
@@ -11874,6 +12601,7 @@ export type Database = {
           updated_at: string
         }[]
       }
+      calculate_confidence_score: { Args: { breakdown: Json }; Returns: number }
       calculate_mentor_performance_metrics: {
         Args: { end_date: string; mentor_user_id: string; start_date: string }
         Returns: {
@@ -12002,6 +12730,7 @@ export type Database = {
           earned_count: number
         }[]
       }
+      get_confidence_action: { Args: { score: number }; Returns: string }
       get_demo_resume_profiles: {
         Args: never
         Returns: {
