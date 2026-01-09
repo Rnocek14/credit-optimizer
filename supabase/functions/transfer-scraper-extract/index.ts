@@ -153,6 +153,40 @@ function analyzeLanguageCertainty(text: string): number {
 }
 
 // -----------------------------------------------------------------------------
+// RECENCY SCORING (Enhancement 5)
+// -----------------------------------------------------------------------------
+
+function calculateRecencyScore(text: string, url: string): number {
+  const currentYear = new Date().getFullYear();
+  
+  // Check for academic year patterns in text (e.g., "2024-2025")
+  const yearMatch = text.match(/20(\d{2})-20(\d{2})/);
+  if (yearMatch) {
+    const endYear = parseInt('20' + yearMatch[2]);
+    if (endYear >= currentYear) return 15;      // Current or future year
+    if (endYear === currentYear - 1) return 12; // Last year
+    if (endYear === currentYear - 2) return 8;  // Two years ago
+    return 5;                                    // Older
+  }
+  
+  // Check URL for catalog/year indicators
+  if (url.includes('/current/')) return 15;
+  if (url.includes(`/${currentYear}-${currentYear + 1}/`) || url.includes(`/${currentYear + 1}/`)) return 15;
+  if (url.includes(`/${currentYear - 1}-${currentYear}/`) || url.includes(`/${currentYear}/`)) return 12;
+  
+  // Check for "updated" or "effective" dates in text
+  const dateMatch = text.match(/(?:updated|effective|revised).*?(january|february|march|april|may|june|july|august|september|october|november|december)\s+\d{1,2},?\s+(\d{4})/i);
+  if (dateMatch) {
+    const year = parseInt(dateMatch[2]);
+    if (year >= currentYear) return 15;
+    if (year === currentYear - 1) return 12;
+    return 8;
+  }
+  
+  return 10; // Default
+}
+
+// -----------------------------------------------------------------------------
 // OPENAI EXTRACTION PROMPT
 // -----------------------------------------------------------------------------
 
@@ -172,6 +206,23 @@ Focus on extracting:
 4. Required institutional courses (capstone, cornerstone, etc.)
 5. Upper-level credit requirements
 6. Provider-specific rules and limitations
+
+IMPORTANT - Pay special attention to alternative credit providers:
+- CLEP (College-Level Examination Program) - look for specific exams and credit limits
+- DSST (formerly DANTES) - military credit exams
+- AP (Advanced Placement) - high school exams with college credit
+- ACE (American Council on Education) - credit recommendations
+- NCCRS (National College Credit Recommendation Service) - non-traditional credit
+- TECEP (Thomas Edison Credit-by-Exam Program) - TESU-specific exams
+- Portfolio Assessment/Prior Learning Assessment (PLA)
+- StraighterLine, Sophia, Study.com - online course providers
+
+Look for phrases like:
+- "We accept credit from..."
+- "Credits may be awarded for..."
+- "Maximum credits from CLEP/DSST..."
+- "ACE-evaluated training..."
+- "Prior learning assessment available..."
 
 Be conservative - it's better to return null than to guess.`;
 
@@ -394,12 +445,26 @@ ${truncatedText}`
     const extracted = JSON.parse(toolCall.function.arguments);
     const aiConfidence = Math.min(5, Math.max(0, extracted.ai_confidence || 3));
 
+    // Get URL for recency scoring
+    let sourceUrl = '';
+    if (scrape_job_id) {
+      const { data: jobData } = await supabase
+        .from('scrape_jobs')
+        .select('url')
+        .eq('id', scrape_job_id)
+        .single();
+      sourceUrl = jobData?.url || '';
+    }
+
+    // Calculate dynamic recency score
+    const recencyScore = calculateRecencyScore(truncatedText, sourceUrl);
+
     // Build confidence breakdown
     const confidenceBreakdown: ConfidenceBreakdown = {
       source_authority: sourceAuthority,
       language_certainty: languageCertainty,
-      cross_source_agreement: 10, // Default - would need multiple sources to increase
-      recency: 12, // Default - assume recent
+      cross_source_agreement: 10, // Default - merge function will recalculate with multi-source
+      recency: recencyScore,
       structural_consistency: extracted.policy_pack ? 8 : 4,
       ai_certainty: aiConfidence,
     };

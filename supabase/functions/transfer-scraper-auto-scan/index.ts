@@ -180,12 +180,43 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Step 4: Call merge function to aggregate all extractions
+    const successfulJobIds = results
+      .filter(r => r.status === 'success' && r.scrape_job_id)
+      .map(r => r.scrape_job_id as string);
+
+    let mergeResult = null;
+    if (successfulJobIds.length > 1) {
+      console.log(`Merging ${successfulJobIds.length} successful extractions...`);
+      try {
+        const mergeResponse = await fetch(`${supabaseUrl}/functions/v1/transfer-scraper-merge`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${serviceRoleKey}`,
+          },
+          body: JSON.stringify({
+            institution,
+            scrape_job_ids: successfulJobIds,
+          }),
+        });
+
+        if (mergeResponse.ok) {
+          mergeResult = await mergeResponse.json();
+          console.log(`Merge complete: score=${mergeResult.total_score}, action=${mergeResult.action}`);
+        }
+      } catch (e) {
+        console.error('Merge failed:', e);
+      }
+    }
+
     const scanResult = {
       institution,
       total: templates.length,
       succeeded,
       failed,
       results,
+      merge: mergeResult,
     };
 
     console.log(`Auto-scan complete: ${succeeded}/${templates.length} succeeded`);
