@@ -202,12 +202,30 @@ CRITICAL EXTRACTION RULES:
    - Set to NULL if the credit type is not mentioned at all (unknown)
    - Most adult-friendly schools accept CLEP, DSST, AP - look carefully before marking false
 
-2. RESIDENCY REQUIREMENTS (min_institutional_credits):
-   - This is the number of credits students MUST complete AT the institution (not transferred)
-   - Look for: "residency requirement", "credits earned at [school]", "must complete X credits at"
-   - Common values: 6, 9, 12, 15, 24, 30 credits
-   - If you see "minimum of X credits must be earned in residence" - that's the residency requirement
-   - Do NOT confuse with "maximum transfer credits" - they are different fields
+2. RESIDENCY REQUIREMENTS (min_institutional_credits) - CRITICAL FIELD:
+   ==========================================================================
+   This is the number of credits students MUST complete AT the institution itself.
+   This is NOT maximum transfer credits - it's the OPPOSITE concept.
+   
+   CORRECT INTERPRETATION:
+   - "Students must complete at least 15 credits at TESU" → min_institutional_credits = 15
+   - "A minimum of 15 credit hours of TESU coursework" → min_institutional_credits = 15
+   - "15-credit residency requirement" → min_institutional_credits = 15
+   - "Credits earned in residence" refers to institutional credits, not home location
+   
+   DO NOT CONFUSE WITH:
+   - "Minimum 6 credits per term" → This is enrollment load, NOT residency
+   - "6-credit minimum for financial aid" → Financial aid requirement, NOT residency
+   - "Take at least 6 credits at a time" → Enrollment pace, NOT residency
+   - Maximum transfer credits → Different field entirely
+   
+   COMMON RESIDENCY VALUES BY SCHOOL TYPE:
+   - Traditional universities: 30-60 credits
+   - Adult-friendly (TESU, WGU, Excelsior): 6-24 credits
+   - If you see BOTH a small number (6) in enrollment context AND larger number (15) in residency context, use the LARGER one for residency
+   
+   When uncertain, look for phrases like "residency requirement", "institutional credits", "credits earned at [school name]"
+   ==========================================================================
 
 3. TRANSFER CREDIT LIMITS:
    - max_total_transfer_credits: Maximum credits accepted from ALL transfer sources combined

@@ -229,6 +229,36 @@ function calculateRecencyScore(text: string, url: string): number {
 }
 
 // -----------------------------------------------------------------------------
+// FIELD-SPECIFIC URL AUTHORITY BONUS
+// -----------------------------------------------------------------------------
+// Boost confidence for specific fields when URL contains relevant keywords
+
+function getFieldSpecificUrlBonus(fieldPath: string, url: string): number {
+  const urlLower = url.toLowerCase();
+  
+  // Residency-related fields get bonus from residency-specific URLs
+  if (fieldPath.includes('residency') || fieldPath.includes('institutional_credits')) {
+    if (urlLower.includes('residency')) return 25;
+    if (urlLower.includes('credit-hour')) return 20;
+    if (urlLower.includes('requirement')) return 10;
+  }
+  
+  // Transfer credit fields get bonus from transfer-specific URLs
+  if (fieldPath.includes('transfer')) {
+    if (urlLower.includes('transfer')) return 15;
+    if (urlLower.includes('credit')) return 10;
+  }
+  
+  // Credit source acceptance fields get bonus from exam/credit URLs
+  if (fieldPath.includes('clep') || fieldPath.includes('dsst') || fieldPath.includes('ap')) {
+    if (urlLower.includes('exam') || urlLower.includes('clep') || urlLower.includes('testing')) return 15;
+    if (urlLower.includes('credit')) return 10;
+  }
+  
+  return 0;
+}
+
+// -----------------------------------------------------------------------------
 // VALUE SELECTION WITH WEIGHTED VOTING
 // -----------------------------------------------------------------------------
 // When multiple sources provide different values, use weighted voting to pick
@@ -238,10 +268,12 @@ interface ValueCandidate<T> {
   value: T;
   sourceJobId: string;
   confidence: number;
+  url: string;
 }
 
 function selectBestValueWithVoting<T>(
   candidates: ValueCandidate<T>[],
+  fieldPath: string,
   valueToString: (v: T) => string = (v) => String(v)
 ): SourcedValue<T> | null {
   if (candidates.length === 0) return null;
@@ -249,20 +281,30 @@ function selectBestValueWithVoting<T>(
     return { value: candidates[0].value, sourceJobId: candidates[0].sourceJobId, confidence: candidates[0].confidence };
   }
 
-  // Group by value and sum confidence scores
-  const valueScores = new Map<string, { value: T; total: number; count: number; bestSource: string }>();
+  // Group by value and sum confidence scores with URL bonuses
+  const valueScores = new Map<string, { value: T; total: number; count: number; bestSource: string; bestConfidence: number }>();
   
   for (const c of candidates) {
     const key = valueToString(c.value);
+    const urlBonus = getFieldSpecificUrlBonus(fieldPath, c.url);
+    const adjustedConfidence = c.confidence + urlBonus;
+    
     const existing = valueScores.get(key);
     if (existing) {
-      existing.total += c.confidence;
+      existing.total += adjustedConfidence;
       existing.count += 1;
-      if (c.confidence > existing.total / existing.count) {
+      if (adjustedConfidence > existing.bestConfidence) {
         existing.bestSource = c.sourceJobId;
+        existing.bestConfidence = adjustedConfidence;
       }
     } else {
-      valueScores.set(key, { value: c.value, total: c.confidence, count: 1, bestSource: c.sourceJobId });
+      valueScores.set(key, { 
+        value: c.value, 
+        total: adjustedConfidence, 
+        count: 1, 
+        bestSource: c.sourceJobId,
+        bestConfidence: adjustedConfidence
+      });
     }
   }
 
@@ -283,23 +325,24 @@ function selectBestValueWithVoting<T>(
 }
 
 function pickBestValue<T>(
-  extractions: { jobId: string; extraction: ExtractionResult }[],
+  extractions: { jobId: string; extraction: ExtractionResult; url: string }[],
   accessor: (pack: PolicyPack) => T | null | undefined,
+  fieldPath: string,
   valueToString?: (v: T) => string
 ): SourcedValue<T> | null {
-  // Collect all candidates with their confidence scores
+  // Collect all candidates with their confidence scores and URLs
   const candidates: ValueCandidate<T>[] = [];
 
-  for (const { jobId, extraction } of extractions) {
+  for (const { jobId, extraction, url } of extractions) {
     if (!extraction.policy_pack) continue;
     const value = accessor(extraction.policy_pack);
     if (value === null || value === undefined) continue;
     
-    candidates.push({ value, sourceJobId: jobId, confidence: extraction.total_score });
+    candidates.push({ value, sourceJobId: jobId, confidence: extraction.total_score, url });
   }
 
-  // Use weighted voting to select best value
-  return selectBestValueWithVoting(candidates, valueToString);
+  // Use weighted voting to select best value with field-specific URL bonus
+  return selectBestValueWithVoting(candidates, fieldPath, valueToString);
 }
 
 // -----------------------------------------------------------------------------
@@ -308,7 +351,7 @@ function pickBestValue<T>(
 
 function mergePolicyPacks(
   institution: string,
-  extractions: { jobId: string; extraction: ExtractionResult }[]
+  extractions: { jobId: string; extraction: ExtractionResult; url: string }[]
 ): { mergedPack: PolicyPack | null; sources: string[]; notes: string[] } {
   const notes: string[] = [];
   const sources: string[] = [];
@@ -318,12 +361,12 @@ function mergePolicyPacks(
     return { mergedPack: null, sources, notes: ['No valid policy packs to merge'] };
   }
 
-  // Pick best values for each field
-  const residencyCredits = pickBestValue(validExtractions, p => p.residency_policy?.min_institutional_credits);
-  const residencyWaiver = pickBestValue(validExtractions, p => p.residency_policy?.residency_waiver_available);
-  const maxTransfer = pickBestValue(validExtractions, p => p.transfer_credit_limits?.max_total_transfer_credits);
-  const maxAceNccrs = pickBestValue(validExtractions, p => p.transfer_credit_limits?.max_ace_nccrs_credits);
-  const academicYear = pickBestValue(validExtractions, p => p.academic_year);
+  // Pick best values for each field with field-specific URL bonuses
+  const residencyCredits = pickBestValue(validExtractions, p => p.residency_policy?.min_institutional_credits, 'residency.min_institutional_credits');
+  const residencyWaiver = pickBestValue(validExtractions, p => p.residency_policy?.residency_waiver_available, 'residency.waiver');
+  const maxTransfer = pickBestValue(validExtractions, p => p.transfer_credit_limits?.max_total_transfer_credits, 'transfer.max_total');
+  const maxAceNccrs = pickBestValue(validExtractions, p => p.transfer_credit_limits?.max_ace_nccrs_credits, 'transfer.ace_nccrs');
+  const academicYear = pickBestValue(validExtractions, p => p.academic_year, 'academic_year');
   
   // Track sources used
   const usedSources = new Set<string>();
@@ -359,7 +402,7 @@ function mergePolicyPacks(
 
   notes.push(`Merged ${validExtractions.length} sources into unified policy pack`);
   if (residencyCredits) {
-    notes.push(`Residency: ${residencyCredits.value} credits (confidence: ${residencyCredits.confidence})`);
+    notes.push(`Residency: ${residencyCredits.value} credits (weighted score: ${residencyCredits.confidence})`);
   }
 
   return { mergedPack, sources, notes };
@@ -538,8 +581,44 @@ Deno.serve(async (req) => {
       ai_certainty: maxAiCertainty,
     };
 
-    const totalScore = Object.values(confidence).reduce((a, b) => a + b, 0);
-    const action = totalScore >= 85 ? 'auto_approve' : totalScore >= 60 ? 'human_review' : 'hold';
+    let totalScore = Object.values(confidence).reduce((a, b) => a + b, 0);
+    let action: 'auto_approve' | 'human_review' | 'hold' = totalScore >= 85 ? 'auto_approve' : totalScore >= 60 ? 'human_review' : 'hold';
+
+    // Validate against ground truth if available
+    if (mergedPack) {
+      const { data: groundTruth } = await supabase
+        .from('institution_policy_ground_truth')
+        .select('*')
+        .eq('institution', institution)
+        .maybeSingle();
+
+      if (groundTruth) {
+        notes.push(`Ground truth validation for ${institution}:`);
+        
+        // Check residency credits
+        const extractedResidency = mergedPack.residency_policy?.min_institutional_credits;
+        const gtResidency = groundTruth.residency_credits;
+        if (extractedResidency !== null && gtResidency !== null && extractedResidency !== gtResidency) {
+          notes.push(`⚠️ RESIDENCY MISMATCH: Extracted ${extractedResidency}, ground truth is ${gtResidency}`);
+          confidence.ai_certainty = Math.max(0, confidence.ai_certainty - 2);
+          action = 'human_review'; // Force human review on critical mismatch
+        } else if (extractedResidency === gtResidency) {
+          notes.push(`✓ Residency matches ground truth: ${gtResidency}`);
+        }
+
+        // Check max transfer credits
+        const extractedMaxTransfer = mergedPack.transfer_credit_limits?.max_total_transfer_credits;
+        const gtMaxTransfer = groundTruth.max_transfer_credits;
+        if (extractedMaxTransfer !== null && gtMaxTransfer !== null && extractedMaxTransfer !== gtMaxTransfer) {
+          notes.push(`⚠️ MAX TRANSFER MISMATCH: Extracted ${extractedMaxTransfer}, ground truth is ${gtMaxTransfer}`);
+        } else if (extractedMaxTransfer === gtMaxTransfer) {
+          notes.push(`✓ Max transfer matches ground truth: ${gtMaxTransfer}`);
+        }
+
+        // Recalculate score after validation adjustments
+        totalScore = Object.values(confidence).reduce((a, b) => a + b, 0);
+      }
+    }
 
     notes.push(`Final merged score: ${totalScore} (${action})`);
 
