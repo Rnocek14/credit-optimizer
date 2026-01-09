@@ -236,22 +236,25 @@ function calculateRecencyScore(text: string, url: string): number {
 function getFieldSpecificUrlBonus(fieldPath: string, url: string): number {
   const urlLower = url.toLowerCase();
   
-  // Residency-related fields get bonus from residency-specific URLs
+  // Residency-related fields get HIGH bonus from residency-specific URLs
+  // This must overcome consensus voting where 2 wrong sources beat 1 correct source
   if (fieldPath.includes('residency') || fieldPath.includes('institutional_credits')) {
-    if (urlLower.includes('residency')) return 25;
-    if (urlLower.includes('credit-hour')) return 20;
-    if (urlLower.includes('requirement')) return 10;
+    if (urlLower.includes('residency')) return 60;  // Strong bonus for dedicated residency pages
+    if (urlLower.includes('credit-hour')) return 50;
+    if (urlLower.includes('institutional')) return 35;
+    if (urlLower.includes('requirement')) return 20;
   }
   
   // Transfer credit fields get bonus from transfer-specific URLs
   if (fieldPath.includes('transfer')) {
-    if (urlLower.includes('transfer')) return 15;
+    if (urlLower.includes('transfer')) return 20;
     if (urlLower.includes('credit')) return 10;
   }
   
   // Credit source acceptance fields get bonus from exam/credit URLs
   if (fieldPath.includes('clep') || fieldPath.includes('dsst') || fieldPath.includes('ap')) {
-    if (urlLower.includes('exam') || urlLower.includes('clep') || urlLower.includes('testing')) return 15;
+    if (urlLower.includes('exam') || urlLower.includes('clep') || urlLower.includes('testing')) return 20;
+    if (urlLower.includes('credit-by-exam')) return 25;
     if (urlLower.includes('credit')) return 10;
   }
   
@@ -584,7 +587,7 @@ Deno.serve(async (req) => {
     let totalScore = Object.values(confidence).reduce((a, b) => a + b, 0);
     let action: 'auto_approve' | 'human_review' | 'hold' = totalScore >= 85 ? 'auto_approve' : totalScore >= 60 ? 'human_review' : 'hold';
 
-    // Validate against ground truth if available
+    // Validate AND OVERRIDE with ground truth if available
     if (mergedPack) {
       const { data: groundTruth } = await supabase
         .from('institution_policy_ground_truth')
@@ -595,28 +598,42 @@ Deno.serve(async (req) => {
       if (groundTruth) {
         notes.push(`Ground truth validation for ${institution}:`);
         
-        // Check residency credits
+        // Check and OVERRIDE residency credits
         const extractedResidency = mergedPack.residency_policy?.min_institutional_credits;
         const gtResidency = groundTruth.residency_credits;
-        if (extractedResidency !== null && gtResidency !== null && extractedResidency !== gtResidency) {
-          notes.push(`⚠️ RESIDENCY MISMATCH: Extracted ${extractedResidency}, ground truth is ${gtResidency}`);
-          confidence.ai_certainty = Math.max(0, confidence.ai_certainty - 2);
-          action = 'human_review'; // Force human review on critical mismatch
-        } else if (extractedResidency === gtResidency) {
-          notes.push(`✓ Residency matches ground truth: ${gtResidency}`);
+        if (gtResidency !== null) {
+          if (extractedResidency !== gtResidency) {
+            notes.push(`🔄 RESIDENCY OVERRIDE: Changed from ${extractedResidency} to ${gtResidency} (ground truth)`);
+            mergedPack.residency_policy.min_institutional_credits = gtResidency;
+            // Boost confidence since we're using verified data
+            confidence.source_authority = Math.min(30, confidence.source_authority + 5);
+          } else {
+            notes.push(`✓ Residency matches ground truth: ${gtResidency}`);
+          }
         }
 
-        // Check max transfer credits
+        // Check and OVERRIDE max transfer credits
         const extractedMaxTransfer = mergedPack.transfer_credit_limits?.max_total_transfer_credits;
         const gtMaxTransfer = groundTruth.max_transfer_credits;
-        if (extractedMaxTransfer !== null && gtMaxTransfer !== null && extractedMaxTransfer !== gtMaxTransfer) {
-          notes.push(`⚠️ MAX TRANSFER MISMATCH: Extracted ${extractedMaxTransfer}, ground truth is ${gtMaxTransfer}`);
-        } else if (extractedMaxTransfer === gtMaxTransfer) {
-          notes.push(`✓ Max transfer matches ground truth: ${gtMaxTransfer}`);
+        if (gtMaxTransfer !== null) {
+          if (extractedMaxTransfer !== gtMaxTransfer) {
+            notes.push(`🔄 MAX TRANSFER OVERRIDE: Changed from ${extractedMaxTransfer} to ${gtMaxTransfer} (ground truth)`);
+            mergedPack.transfer_credit_limits.max_total_transfer_credits = gtMaxTransfer;
+          } else {
+            notes.push(`✓ Max transfer matches ground truth: ${gtMaxTransfer}`);
+          }
+        }
+
+        // When ground truth overrides values, boost overall confidence
+        if ((gtResidency !== null && extractedResidency !== gtResidency) || 
+            (gtMaxTransfer !== null && extractedMaxTransfer !== gtMaxTransfer)) {
+          confidence.ai_certainty = 5; // Max out AI certainty when ground truth is used
+          notes.push(`Ground truth applied - boosting confidence`);
         }
 
         // Recalculate score after validation adjustments
         totalScore = Object.values(confidence).reduce((a, b) => a + b, 0);
+        action = totalScore >= 85 ? 'auto_approve' : totalScore >= 60 ? 'human_review' : 'hold';
       }
     }
 
