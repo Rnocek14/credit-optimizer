@@ -888,6 +888,12 @@ Deno.serve(async (req) => {
           };
         }
 
+        // Only set requires_verification if we have at least one extractable value
+        // Otherwise it's a pure "skip" and shouldn't clutter the verification queue
+        const hasAnyCandidate = 
+          policyData.residency_credits != null || 
+          policyData.max_transfer_credits != null;
+
         // Log to policy_scan_findings for auditability with verification fields
         await supabase.from('policy_scan_findings').insert({
           institution,
@@ -896,7 +902,7 @@ Deno.serve(async (req) => {
           reason: 'program_scoped_no_institution_wide_numeric_caps',
           urls_scanned: scrapeJobs.map(j => j.url),
           confidence_score: totalScore,
-          requires_verification: true,
+          requires_verification: hasAnyCandidate,
           extracted_values: extractedValues,
           details: {
             extracted_policy_data: policyData,

@@ -153,15 +153,17 @@ function FindingCard({
   const extractedValues = finding.extracted_values || {};
   const fields = Object.entries(extractedValues);
   
-  // Check if all fields have evidence
-  const allHaveEvidence = fields.every(([_, field]) => 
-    field.evidence_text && field.evidence_url
-  );
+  // Only check evidence for the two REQUIRED fields, not all fields
+  const residency = extractedValues.residency_credits;
+  const maxTransfer = extractedValues.max_transfer_credits;
   
-  // Check if required numeric fields exist
-  const hasResidency = extractedValues.residency_credits?.value != null;
-  const hasMaxTransfer = extractedValues.max_transfer_credits?.value != null;
-  const canVerify = hasResidency && hasMaxTransfer && allHaveEvidence;
+  const hasResidency = residency?.value != null;
+  const hasMaxTransfer = maxTransfer?.value != null;
+  const residencyEvidenceOk = !!(residency?.evidence_text && residency?.evidence_url);
+  const maxTransferEvidenceOk = !!(maxTransfer?.evidence_text && maxTransfer?.evidence_url);
+  
+  // Can verify only if both required fields have values AND evidence
+  const canVerify = hasResidency && hasMaxTransfer && residencyEvidenceOk && maxTransferEvidenceOk;
   
   const handleFieldEdit = (fieldName: string) => {
     const currentValue = extractedValues[fieldName]?.value?.toString() || '';
@@ -380,7 +382,39 @@ export function VerificationQueuePanel() {
   const handleVerify = async (id: string, verifiedValues: Record<string, ExtractedField>) => {
     setLoading(true);
     try {
-      // Update the finding with verified values - cast to Json type
+      const finding = findings.find(f => f.id === id);
+      if (!finding) throw new Error('Finding not found');
+      
+      if (!verifiedValues.residency_credits || !verifiedValues.max_transfer_credits) {
+        throw new Error('Missing required fields: residency_credits and max_transfer_credits');
+      }
+
+      // ATOMIC: Create GT first, then mark finding verified only if GT succeeds
+      const { error: gtError } = await supabase
+        .from('institution_policy_ground_truth')
+        .upsert({
+          institution: finding.institution,
+          academic_year: finding.academic_year || '2024-25',
+          residency_credits: Number(verifiedValues.residency_credits.value),
+          max_transfer_credits: Number(verifiedValues.max_transfer_credits.value),
+          verified_by: 'admin',
+          last_verified_at: new Date().toISOString(),
+          notes: `Verified from policy scan finding ${id}`,
+        }, { onConflict: 'institution,academic_year' });
+
+      if (gtError) {
+        // Mark finding with GT failure status so we can retry
+        await supabase
+          .from('policy_scan_findings')
+          .update({
+            status: 'verified_gt_failed',
+            reason: `GT upsert failed: ${gtError.message}`,
+          })
+          .eq('id', id);
+        throw new Error(`GT creation failed: ${gtError.message}`);
+      }
+
+      // GT succeeded - now mark finding as verified
       const { error: updateError } = await supabase
         .from('policy_scan_findings')
         .update({
@@ -392,37 +426,16 @@ export function VerificationQueuePanel() {
         })
         .eq('id', id);
 
-      if (updateError) throw updateError;
-
-      // Get the finding to create GT
-      const finding = findings.find(f => f.id === id);
-      if (finding && verifiedValues.residency_credits && verifiedValues.max_transfer_credits) {
-        // Create ground truth entry - use upsert pattern
-        // Column is 'institution' not 'institution_code'
-        const { error: gtError } = await supabase
-          .from('institution_policy_ground_truth')
-          .upsert({
-            institution: finding.institution,
-            academic_year: finding.academic_year || '2024-25',
-            residency_credits: Number(verifiedValues.residency_credits.value),
-            max_transfer_credits: Number(verifiedValues.max_transfer_credits.value),
-            verified_by: 'admin',
-            last_verified_at: new Date().toISOString(),
-            notes: `Verified from policy scan finding ${id}`,
-          }, { onConflict: 'institution,academic_year' });
-
-        if (gtError) {
-          console.error('GT creation error:', gtError);
-          toast({ title: 'Verified but GT creation failed', description: gtError.message, variant: 'destructive' });
-        } else {
-          toast({ title: 'Verified & GT Created', description: `Ground truth created for ${finding.institution}` });
-        }
+      if (updateError) {
+        console.error('Finding update error (GT already created):', updateError);
       }
 
+      toast({ title: 'Verified & GT Created', description: `Ground truth created for ${finding.institution}` });
       await loadFindings();
-    } catch (e) {
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : 'Unknown error';
       console.error('Error verifying:', e);
-      toast({ title: 'Verification failed', variant: 'destructive' });
+      toast({ title: 'Verification failed', description: message, variant: 'destructive' });
     } finally {
       setLoading(false);
     }
