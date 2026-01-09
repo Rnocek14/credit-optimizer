@@ -1,33 +1,21 @@
-// =============================================================================
-// TRANSFER-SCRAPER-AUTO-SCAN - One-Click Full Pipeline Orchestration
-// =============================================================================
+// TRANSFER-SCRAPER-AUTO-SCAN - Minimal version for debugging
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-};
+Deno.serve(async (req: Request) => {
+  const corsHeaders = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  };
 
-interface UrlResult {
-  url: string;
-  page_type: string;
-  status: 'success' | 'crawl_failed' | 'extract_failed' | 'validate_failed';
-  scrape_job_id: string | null;
-  confidence_score: number | null;
-  action: string | null;
-  error: string | null;
-}
-
-Deno.serve(async (req) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
-  const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-  const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-
   try {
+    const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
+    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+
     const body = await req.json();
     const institution = body?.institution;
 
@@ -40,7 +28,7 @@ Deno.serve(async (req) => {
 
     console.log(`Auto-scan starting for: ${institution}`);
 
-    // Load URL templates using fetch (avoiding esm.sh import issues)
+    // Load URL templates using fetch
     const templatesResponse = await fetch(
       `${supabaseUrl}/rest/v1/scrape_url_templates?institution_code=eq.${institution}&order=priority.asc`,
       {
@@ -76,20 +64,28 @@ Deno.serve(async (req) => {
 
     console.log(`Found ${templates.length} templates for ${institution}`);
 
-    const results: UrlResult[] = [];
+    const results: Array<{
+      url: string;
+      page_type: string;
+      status: string;
+      scrape_job_id: string | null;
+      confidence_score: number | null;
+      action: string | null;
+      error: string | null;
+    }> = [];
     let succeeded = 0;
     let failed = 0;
 
     // Process each URL sequentially
     for (const template of templates) {
-      const result: UrlResult = {
+      const result = {
         url: template.url,
         page_type: template.page_type,
         status: 'success',
-        scrape_job_id: null,
-        confidence_score: null,
-        action: null,
-        error: null,
+        scrape_job_id: null as string | null,
+        confidence_score: null as number | null,
+        action: null as string | null,
+        error: null as string | null,
       };
 
       try {
@@ -204,6 +200,11 @@ Deno.serve(async (req) => {
     );
 
   } catch (error) {
+    const corsHeaders = {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+      'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    };
     console.error('Auto-scan error:', error);
     return new Response(
       JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
