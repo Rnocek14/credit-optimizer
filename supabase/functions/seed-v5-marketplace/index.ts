@@ -95,7 +95,7 @@ Deno.serve(async (req) => {
 
     const { data: marketplaceCourses, error: courseError } = await supabase
       .from('marketplace_courses')
-      .upsert(coursesWithProviderIds, { onConflict: 'code,provider_id' })
+      .upsert(coursesWithProviderIds, { onConflict: 'provider_id,title' })
       .select();
 
     if (courseError) throw courseError;
