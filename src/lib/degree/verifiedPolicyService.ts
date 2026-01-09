@@ -116,10 +116,11 @@ export async function getVerifiedPolicy(
     const policyData = packData.policy_data || {};
     const parsed = parsePolicyData(policyData);
 
-    // Only mark as verified if we have the critical values
+    // Only mark as verified if we have BOTH critical transfer cap values
+    // This is the trust gate - partial data should NOT be treated as verified
     const hasRequiredValues = 
-      parsed.residencyCredits !== null || 
-      parsed.maxNoncollegiateCredits !== null;
+      parsed.residencyCredits !== null && 
+      parsed.maxTransferCredits !== null;
 
     return {
       verified: hasRequiredValues,
