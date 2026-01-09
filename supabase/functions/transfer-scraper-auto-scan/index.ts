@@ -1,17 +1,6 @@
 // =============================================================================
 // TRANSFER-SCRAPER-AUTO-SCAN - One-Click Full Pipeline Orchestration
 // =============================================================================
-// This Edge Function runs the complete Crawl → Extract → Validate pipeline
-// for all URLs in an institution's scrape_url_templates.
-//
-// Key behaviors:
-// - Accepts { institution: 'TESU' }
-// - Loads all URL templates for that institution
-// - Calls existing pipeline functions sequentially
-// - Returns summary with per-URL results
-// =============================================================================
-
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.56.0?target=deno';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -30,6 +19,7 @@ interface UrlResult {
 }
 
 Deno.serve(async (req) => {
+  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -38,10 +28,6 @@ Deno.serve(async (req) => {
   const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
   try {
-    const supabase = createClient(supabaseUrl, serviceRoleKey, { 
-      auth: { persistSession: false } 
-    });
-
     const body = await req.json();
     const institution = body?.institution;
 
@@ -54,20 +40,28 @@ Deno.serve(async (req) => {
 
     console.log(`Auto-scan starting for: ${institution}`);
 
-    // Load URL templates for this institution
-    const { data: templates, error: templatesError } = await supabase
-      .from('scrape_url_templates')
-      .select('*')
-      .eq('institution_code', institution)
-      .order('priority', { ascending: true });
+    // Load URL templates using fetch (avoiding esm.sh import issues)
+    const templatesResponse = await fetch(
+      `${supabaseUrl}/rest/v1/scrape_url_templates?institution_code=eq.${institution}&order=priority.asc`,
+      {
+        headers: {
+          'apikey': serviceRoleKey,
+          'Authorization': `Bearer ${serviceRoleKey}`,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
 
-    if (templatesError) {
-      console.error('Templates query error:', templatesError);
+    if (!templatesResponse.ok) {
+      const errorText = await templatesResponse.text();
+      console.error('Templates query error:', errorText);
       return new Response(
-        JSON.stringify({ error: 'Failed to load templates', details: templatesError.message }),
+        JSON.stringify({ error: 'Failed to load templates', details: errorText }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    const templates = await templatesResponse.json();
 
     if (!templates || templates.length === 0) {
       return new Response(
@@ -111,7 +105,7 @@ Deno.serve(async (req) => {
           body: JSON.stringify({
             url: template.url,
             institution: institution,
-            job_type: template.page_type === 'transfer_policy' ? 'policy' : 'policy',
+            job_type: 'policy',
             priority: template.priority || 5,
           }),
         });
@@ -181,7 +175,7 @@ Deno.serve(async (req) => {
         succeeded++;
         results.push(result);
 
-        // Small delay between URLs to be respectful
+        // Small delay between URLs
         await new Promise(resolve => setTimeout(resolve, 300));
 
       } catch (e) {
