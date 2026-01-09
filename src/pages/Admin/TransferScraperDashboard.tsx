@@ -9,11 +9,12 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { RefreshCw, Play, Sparkles, CheckCircle, XCircle, Plus, ExternalLink, Copy, Database, Brain, RotateCcw, Zap, AlertTriangle, FlaskConical, ClipboardList } from 'lucide-react';
+import { RefreshCw, Play, Sparkles, CheckCircle, XCircle, Plus, ExternalLink, Copy, Database, Brain, RotateCcw, Zap, AlertTriangle, FlaskConical, ClipboardList, ShieldCheck } from 'lucide-react';
 import { useTransferScraper, ScrapeJob, ScrapedContent, ExtractionResult, AutoScanProgress, AutoScanUrlResult } from '@/hooks/useTransferScraper';
 import { Progress } from '@/components/ui/progress';
 import { supabase } from '@/integrations/supabase/client';
 import { ReviewQueuePanel } from '@/components/admin/ReviewQueuePanel';
+import { VerificationQueuePanel } from '@/components/admin/VerificationQueuePanel';
 
 // -----------------------------------------------------------------------------
 // Status Badge Component
@@ -116,6 +117,22 @@ function TransferScraperDashboardContent() {
   const [isAutoScanning, setIsAutoScanning] = useState(false);
   const [isTestingFirecrawl, setIsTestingFirecrawl] = useState(false);
   const [firecrawlTestResult, setFirecrawlTestResult] = useState<{ success: boolean; message: string; preview?: string } | null>(null);
+
+  // Dynamic institutions list
+  const [institutions, setInstitutions] = useState<{ code: string; name: string; institution_tier: string }[]>([]);
+
+  // Load institutions on mount
+  useEffect(() => {
+    const loadInstitutions = async () => {
+      const { data } = await supabase
+        .from('institutions')
+        .select('code, name, institution_tier')
+        .order('institution_tier')
+        .order('name');
+      if (data) setInstitutions(data as { code: string; name: string; institution_tier: string }[]);
+    };
+    loadInstitutions();
+  }, []);
 
   // Load jobs on mount and filter change
   useEffect(() => {
@@ -376,14 +393,34 @@ function TransferScraperDashboardContent() {
           </div>
           <div className="flex items-center gap-3">
             <Select value={filters.institution} onValueChange={(v) => setFilters(f => ({ ...f, institution: v }))}>
-              <SelectTrigger className="w-32">
+              <SelectTrigger className="w-40">
                 <SelectValue placeholder="Institution" />
               </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="TESU">TESU</SelectItem>
-                <SelectItem value="COSC">COSC</SelectItem>
-                <SelectItem value="WGU">WGU</SelectItem>
-                <SelectItem value="SNHU">SNHU</SelectItem>
+              <SelectContent className="max-h-64">
+                {institutions.filter(i => i.institution_tier === 'tier_a').length > 0 && (
+                  <>
+                    <div className="px-2 py-1 text-xs font-semibold text-muted-foreground">Tier A</div>
+                    {institutions.filter(i => i.institution_tier === 'tier_a').map(inst => (
+                      <SelectItem key={inst.code} value={inst.code}>{inst.code}</SelectItem>
+                    ))}
+                  </>
+                )}
+                {institutions.filter(i => i.institution_tier === 'tier_b').length > 0 && (
+                  <>
+                    <div className="px-2 py-1 text-xs font-semibold text-muted-foreground mt-1">Tier B</div>
+                    {institutions.filter(i => i.institution_tier === 'tier_b').map(inst => (
+                      <SelectItem key={inst.code} value={inst.code}>{inst.code}</SelectItem>
+                    ))}
+                  </>
+                )}
+                {institutions.filter(i => i.institution_tier === 'tier_c').length > 0 && (
+                  <>
+                    <div className="px-2 py-1 text-xs font-semibold text-muted-foreground mt-1">Tier C</div>
+                    {institutions.filter(i => i.institution_tier === 'tier_c').map(inst => (
+                      <SelectItem key={inst.code} value={inst.code}>{inst.code}</SelectItem>
+                    ))}
+                  </>
+                )}
               </SelectContent>
             </Select>
             <Button 
@@ -530,18 +567,26 @@ function TransferScraperDashboardContent() {
           </Card>
         )}
 
-        {/* Main Tabs: Scraper vs Review Queue */}
+        {/* Main Tabs: Scraper vs Review Queue vs Verification */}
         <Tabs defaultValue="scraper" className="w-full">
           <TabsList className="mb-4">
             <TabsTrigger value="scraper" className="gap-2">
               <Database className="h-4 w-4" />
               Scraper
             </TabsTrigger>
+            <TabsTrigger value="verification" className="gap-2">
+              <ShieldCheck className="h-4 w-4" />
+              Verification
+            </TabsTrigger>
             <TabsTrigger value="review" className="gap-2">
               <ClipboardList className="h-4 w-4" />
               Review Queue
             </TabsTrigger>
           </TabsList>
+
+          <TabsContent value="verification">
+            <VerificationQueuePanel />
+          </TabsContent>
 
           <TabsContent value="review">
             <ReviewQueuePanel institution={filters.institution} />
