@@ -8,7 +8,8 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
-import { RefreshCw, Play, Sparkles, CheckCircle, XCircle, Plus, ExternalLink, Copy, Database, Brain } from 'lucide-react';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { RefreshCw, Play, Sparkles, CheckCircle, XCircle, Plus, ExternalLink, Copy, Database, Brain, RotateCcw } from 'lucide-react';
 import { useTransferScraper, ScrapeJob, ScrapedContent, ExtractionResult } from '@/hooks/useTransferScraper';
 
 // -----------------------------------------------------------------------------
@@ -175,6 +176,29 @@ function TransferScraperDashboardContent() {
       }
     } catch (e) {
       toast({ title: 'Crawl failed', description: scraper.error || 'Unknown error', variant: 'destructive' });
+    }
+  };
+
+  // Re-crawl - explicit action to overwrite existing content
+  const handleRecrawl = async (job: ScrapeJob) => {
+    try {
+      await scraper.crawl({
+        url: job.url,
+        institution: job.institution,
+        job_type: job.job_type as 'policy' | 'provider' | 'degree',
+        priority: job.priority,
+        scrape_job_id: job.id,
+      });
+      toast({ 
+        title: 'Re-crawl complete', 
+        description: 'Content updated. Previous extraction data cleared - run Extract again.' 
+      });
+      await loadJobs();
+      if (selectedJob?.id === job.id) {
+        await loadContent(job.id);
+      }
+    } catch (e) {
+      toast({ title: 'Re-crawl failed', description: scraper.error || 'Unknown error', variant: 'destructive' });
     }
   };
 
@@ -408,16 +432,52 @@ function TransferScraperDashboardContent() {
                 )}
               </div>
               {selectedJob && (
-                <div className="flex gap-2 mt-2">
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {/* Crawl - only for uncrawled jobs */}
                   <Button 
                     size="sm" 
                     variant="outline"
                     onClick={() => handleCrawl(selectedJob)}
                     disabled={scraper.loading || selectedJob.status === 'processing' || hasContent}
-                    title={hasContent ? 'Already crawled' : 'Crawl this URL'}
+                    title={hasContent ? 'Already crawled - use Re-crawl to update' : 'Crawl this URL'}
                   >
-                    <Play className="h-3 w-3 mr-1" /> {hasContent ? 'Crawled' : 'Crawl'}
+                    <Play className="h-3 w-3 mr-1" /> {hasContent ? 'Crawled ✓' : 'Crawl'}
                   </Button>
+                  
+                  {/* Re-crawl - explicit destructive action with confirmation */}
+                  {hasContent && (
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          disabled={scraper.loading || selectedJob.status === 'processing'}
+                          title="Re-fetch and overwrite existing content"
+                        >
+                          <RotateCcw className="h-3 w-3 mr-1" /> Re-crawl
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Re-crawl this URL?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            This will overwrite the stored HTML and extracted text for this job.
+                            <br /><br />
+                            <strong>AI extraction data will be cleared</strong> — you'll need to run Extract again.
+                            <br /><br />
+                            Evidence from previous validations will remain unchanged.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction onClick={() => handleRecrawl(selectedJob)}>
+                            Re-crawl
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  )}
+                  
                   <Button 
                     size="sm" 
                     variant="outline"

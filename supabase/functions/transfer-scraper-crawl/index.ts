@@ -314,7 +314,7 @@ Deno.serve(async (req) => {
         .maybeSingle();
 
       if (existingContent?.id) {
-        // Update existing content
+        // Update existing content - CLEAR stale extraction data on recrawl
         const { error: updateContentError } = await supabase
           .from('scraped_content')
           .update({
@@ -323,6 +323,13 @@ Deno.serve(async (req) => {
             extracted_text: extractedText,
             source_type: sourceType,
             scraped_at: new Date().toISOString(),
+            // Clear extraction data to force re-extraction
+            ai_extracted_data: null,
+            confidence_breakdown: null,
+            total_confidence_score: null,
+            extracted_at: null,
+            extraction_model: null,
+            extraction_prompt_version: null,
           })
           .eq('id', existingContent.id);
 
