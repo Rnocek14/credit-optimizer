@@ -1,20 +1,10 @@
 // =============================================================================
-// TRANSFER-SCRAPER-CRAWL - URL Fetching & Text Extraction
+// TRANSFER-SCRAPER-CRAWL - URL Fetching via Firecrawl
 // =============================================================================
-// This Edge Function fetches HTML from university transfer pages and stores
-// the raw content for later AI extraction.
-//
-// Key behaviors:
-// - Accepts URL + institution + job_type
-// - Checks robots.txt compliance (advisory)
-// - Fetches with browser-like headers
-// - Extracts clean text from HTML
-// - Stores in scraped_content table
-// - Respects rate limiting (caller's responsibility)
+// Uses Firecrawl API for reliable scraping with JS rendering support.
 // =============================================================================
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.56.0?target=deno';
-import { DOMParser } from 'https://deno.land/x/deno_dom@v0.1.38/deno-dom-wasm.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -27,13 +17,12 @@ const corsHeaders = {
 // -----------------------------------------------------------------------------
 
 interface CrawlRequest {
-  scrape_job_id?: string; // If provided, update existing job instead of creating new one
+  scrape_job_id?: string;
   url: string;
   institution: string;
   job_type: 'policy' | 'provider' | 'degree' | 'articulation';
   source_type?: 'catalog' | 'policy' | 'degree' | 'partner' | 'faq' | 'marketing';
   priority?: number;
-  skip_robots_check?: boolean;
 }
 
 interface CrawlResult {
@@ -44,54 +33,6 @@ interface CrawlResult {
   extracted_text_length: number;
   source_type: string;
   message: string;
-}
-
-// -----------------------------------------------------------------------------
-// ROBOTS.TXT CHECKING (Advisory)
-// -----------------------------------------------------------------------------
-
-async function checkRobotsTxt(url: string): Promise<{ allowed: boolean; checked_at: string }> {
-  try {
-    const urlObj = new URL(url);
-    const robotsUrl = `${urlObj.protocol}//${urlObj.host}/robots.txt`;
-    
-    const response = await fetch(robotsUrl, {
-      headers: { 'User-Agent': 'LifePath-TransferBot/1.0 (Educational Research)' },
-    });
-    
-    if (!response.ok) {
-      // No robots.txt = allowed
-      return { allowed: true, checked_at: new Date().toISOString() };
-    }
-    
-    const text = await response.text();
-    const path = urlObj.pathname;
-    
-    // Simple check - look for Disallow rules that match our path
-    const lines = text.split('\n');
-    let inUserAgentBlock = false;
-    
-    for (const line of lines) {
-      const trimmed = line.trim().toLowerCase();
-      
-      if (trimmed.startsWith('user-agent:')) {
-        const agent = trimmed.replace('user-agent:', '').trim();
-        inUserAgentBlock = agent === '*' || agent.includes('bot');
-      }
-      
-      if (inUserAgentBlock && trimmed.startsWith('disallow:')) {
-        const disallowed = trimmed.replace('disallow:', '').trim();
-        if (disallowed && path.startsWith(disallowed)) {
-          return { allowed: false, checked_at: new Date().toISOString() };
-        }
-      }
-    }
-    
-    return { allowed: true, checked_at: new Date().toISOString() };
-  } catch (error) {
-    console.warn('Robots.txt check failed:', error);
-    return { allowed: true, checked_at: new Date().toISOString() };
-  }
 }
 
 // -----------------------------------------------------------------------------
@@ -107,46 +48,44 @@ function detectSourceType(url: string): 'catalog' | 'policy' | 'degree' | 'partn
   if (urlLower.includes('partner') || urlLower.includes('articulation')) return 'partner';
   if (urlLower.includes('faq') || urlLower.includes('help') || urlLower.includes('questions')) return 'faq';
   
-  return 'marketing'; // Default to lowest authority
+  return 'marketing';
 }
 
 // -----------------------------------------------------------------------------
-// HTML TEXT EXTRACTION
+// FIRECRAWL SCRAPE
 // -----------------------------------------------------------------------------
 
-function extractTextFromHtml(html: string): string {
-  try {
-    const doc = new DOMParser().parseFromString(html, 'text/html');
-    if (!doc) return '';
-    
-    // Remove script, style, nav, footer, header elements
-    const removeSelectors = ['script', 'style', 'nav', 'footer', 'header', 'aside', 'form', 'noscript'];
-    for (const selector of removeSelectors) {
-      const elements = doc.querySelectorAll(selector);
-      elements.forEach((el: any) => el.parentNode?.removeChild(el));
-    }
-    
-    // Get main content if available
-    const main = doc.querySelector('main') || doc.querySelector('article') || doc.querySelector('.content') || doc.body;
-    if (!main) return '';
-    
-    // Extract text
-    let text = main.textContent || '';
-    
-    // Clean up whitespace
-    text = text
-      .replace(/\s+/g, ' ')
-      .replace(/\n\s*\n/g, '\n')
-      .trim();
-    
-    // Remove very short lines (likely navigation artifacts)
-    const lines = text.split('\n').filter(line => line.trim().length > 20);
-    
-    return lines.join('\n');
-  } catch (error) {
-    console.error('HTML parsing error:', error);
-    return '';
+async function scrapeWithFirecrawl(url: string): Promise<{ markdown: string; html: string }> {
+  const apiKey = Deno.env.get('FIRECRAWL_API_KEY');
+  if (!apiKey) {
+    throw new Error('FIRECRAWL_API_KEY not configured');
   }
+
+  const response = await fetch('https://api.firecrawl.dev/v1/scrape', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      url,
+      formats: ['markdown', 'html'],
+      onlyMainContent: true,
+      waitFor: 2000, // Wait for JS to render
+    }),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.error || `Firecrawl failed: ${response.status}`);
+  }
+
+  // Handle nested data structure
+  const markdown = data.data?.markdown || data.markdown || '';
+  const html = data.data?.html || data.html || '';
+
+  return { markdown, html };
 }
 
 // -----------------------------------------------------------------------------
@@ -173,13 +112,11 @@ Deno.serve(async (req) => {
       job_type, 
       source_type: providedSourceType,
       priority = 5,
-      skip_robots_check = false 
     } = body;
 
     // Validate URL
-    let parsedUrl: URL;
     try {
-      parsedUrl = new URL(url);
+      new URL(url);
     } catch {
       return new Response(
         JSON.stringify({ error: 'Invalid URL format' }),
@@ -189,15 +126,6 @@ Deno.serve(async (req) => {
 
     // Detect source type
     const sourceType = providedSourceType || detectSourceType(url);
-
-    // Check robots.txt (advisory, don't block)
-    let robotsCheck = { allowed: true, checked_at: new Date().toISOString() };
-    if (!skip_robots_check) {
-      robotsCheck = await checkRobotsTxt(url);
-      if (!robotsCheck.allowed) {
-        console.warn(`Robots.txt disallows ${url}, proceeding anyway (educational use)`);
-      }
-    }
 
     // ---------------------------------------------------------------------------
     // UPSERT JOB: Update existing or create new
@@ -234,9 +162,7 @@ Deno.serve(async (req) => {
           institution,
           job_type,
           source_type: sourceType,
-          allowed_scrape: robotsCheck.allowed,
-          scrape_method: 'html',
-          robots_checked_at: robotsCheck.checked_at,
+          scrape_method: 'firecrawl',
           status: 'processing',
           priority,
           last_attempt_at: new Date().toISOString(),
@@ -253,7 +179,7 @@ Deno.serve(async (req) => {
 
       scrapeJobId = providedJobId;
     } else {
-      // Create new scrape job (existing behavior)
+      // Create new scrape job
       const { data: job, error: jobError } = await supabase
         .from('scrape_jobs')
         .insert({
@@ -261,9 +187,7 @@ Deno.serve(async (req) => {
           institution,
           job_type,
           source_type: sourceType,
-          allowed_scrape: robotsCheck.allowed,
-          scrape_method: 'html',
-          robots_checked_at: robotsCheck.checked_at,
+          scrape_method: 'firecrawl',
           status: 'processing',
           priority,
         })
@@ -281,27 +205,12 @@ Deno.serve(async (req) => {
     }
 
     try {
-      // Fetch the page
-      const response = await fetch(url, {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-          'Accept-Language': 'en-US,en;q=0.5',
-          'Accept-Encoding': 'gzip, deflate, br',
-          'Connection': 'keep-alive',
-          'Upgrade-Insecure-Requests': '1',
-        },
-      });
+      // Use Firecrawl to scrape the page
+      console.log(`Scraping with Firecrawl: ${url}`);
+      const { markdown, html } = await scrapeWithFirecrawl(url);
 
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-
-      const html = await response.text();
-      const extractedText = extractTextFromHtml(html);
-
-      if (extractedText.length < 100) {
-        throw new Error(`Extracted text too short (${extractedText.length} chars). Possible scraping block.`);
+      if (markdown.length < 50) {
+        throw new Error(`Extracted text too short (${markdown.length} chars). Page may be blocked.`);
       }
 
       // ---------------------------------------------------------------------------
@@ -320,10 +229,9 @@ Deno.serve(async (req) => {
           .update({
             url,
             raw_html: html.length > 500000 ? html.slice(0, 500000) : html,
-            extracted_text: extractedText,
+            extracted_text: markdown,
             source_type: sourceType,
             scraped_at: new Date().toISOString(),
-            // Clear extraction data to force re-extraction
             ai_extracted_data: null,
             confidence_breakdown: null,
             total_confidence_score: null,
@@ -344,7 +252,7 @@ Deno.serve(async (req) => {
             scrape_job_id: scrapeJobId,
             url,
             raw_html: html.length > 500000 ? html.slice(0, 500000) : html,
-            extracted_text: extractedText,
+            extracted_text: markdown,
             source_type: sourceType,
           });
 
@@ -367,9 +275,9 @@ Deno.serve(async (req) => {
         scrape_job_id: scrapeJobId,
         url,
         content_length: html.length,
-        extracted_text_length: extractedText.length,
+        extracted_text_length: markdown.length,
         source_type: sourceType,
-        message: `Successfully crawled and extracted ${extractedText.length} chars from ${url}`,
+        message: `Successfully crawled and extracted ${markdown.length} chars from ${url}`,
       };
 
       return new Response(
