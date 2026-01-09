@@ -20,18 +20,18 @@ Deno.serve(async (req) => {
   try {
     const body = await req.json();
     const tier = body?.tier ?? 'tier_a';
-    const maxPriority = body?.maxPriority ?? 2; // Default to priority 1-2 only
-    const concurrency = Math.min(body?.concurrency ?? 1, 3); // Max 3 concurrent
-    const delayMs = body?.delayMs ?? 500; // Delay between institutions
+    const maxPriority = body?.maxPriority ?? 2;
+    const concurrency = Math.min(body?.concurrency ?? 1, 3);
+    const delayMs = body?.delayMs ?? 500;
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
     const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
 
     console.log(`Batch scan starting: tier=${tier}, maxPriority=${maxPriority}, concurrency=${concurrency}`);
 
-    // Get Tier-A institution codes from scrape_url_templates
+    // Get institutions by tier from institutions table
     const institutionsResponse = await fetch(
-      `${supabaseUrl}/rest/v1/scrape_url_templates?select=institution_code&order=institution_code.asc`,
+      `${supabaseUrl}/rest/v1/institutions?select=code&institution_tier=eq.${tier}&order=code.asc`,
       {
         headers: {
           'apikey': serviceRoleKey,
@@ -47,9 +47,20 @@ Deno.serve(async (req) => {
     }
 
     const institutionsData = await institutionsResponse.json();
-    const institutions = [...new Set(institutionsData.map((r: { institution_code: string }) => r.institution_code))];
+    const institutions: string[] = institutionsData.map((r: { code: string }) => r.code);
 
-    console.log(`Found ${institutions.length} institutions to scan`);
+    if (institutions.length === 0) {
+      return new Response(
+        JSON.stringify({ 
+          error: 'No institutions found for tier',
+          tier,
+          hint: 'Check that institutions have institution_tier set correctly'
+        }),
+        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log(`Found ${institutions.length} ${tier} institutions to scan`);
 
     const results: BatchScanResult[] = [];
     let totalSucceeded = 0;
@@ -76,6 +87,7 @@ Deno.serve(async (req) => {
             headers: {
               'Content-Type': 'application/json',
               'Authorization': `Bearer ${serviceRoleKey}`,
+              'apikey': serviceRoleKey, // Required for Edge Function auth
             },
             body: JSON.stringify({
               institution,
