@@ -5090,6 +5090,13 @@ export type Database = {
             referencedRelation: "institution_policy_packs"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "institution_policy_packs_superseded_by_fkey"
+            columns: ["superseded_by"]
+            isOneToOne: false
+            referencedRelation: "institution_policy_packs_live"
+            referencedColumns: ["id"]
+          },
         ]
       }
       institutions: {
@@ -7921,6 +7928,13 @@ export type Database = {
             columns: ["policy_pack_id"]
             isOneToOne: false
             referencedRelation: "institution_policy_packs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "policy_merge_audit_log_policy_pack_id_fkey"
+            columns: ["policy_pack_id"]
+            isOneToOne: false
+            referencedRelation: "institution_policy_packs_live"
             referencedColumns: ["id"]
           },
         ]
@@ -10952,6 +10966,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "transfer_evidence_policy_pack_id_fkey"
+            columns: ["policy_pack_id"]
+            isOneToOne: false
+            referencedRelation: "institution_policy_packs_live"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "transfer_evidence_rule_id_fkey"
             columns: ["rule_id"]
             isOneToOne: false
@@ -12695,6 +12716,93 @@ export type Database = {
       }
     }
     Views: {
+      institution_policy_packs_live: {
+        Row: {
+          academic_year: string | null
+          confidence_score: number | null
+          created_at: string | null
+          degree_level: string | null
+          effective_end: string | null
+          effective_start: string | null
+          field_provenance: Json | null
+          id: string | null
+          institution: string | null
+          last_verified_at: string | null
+          merged_from_job_ids: string[] | null
+          pack_scope: string | null
+          policy_data: Json | null
+          policy_json: Json | null
+          provenance_url: string | null
+          source_scrape_ids: string[] | null
+          status: string | null
+          superseded_by: string | null
+          updated_at: string | null
+          verification_source: string | null
+          verified_by: string | null
+        }
+        Insert: {
+          academic_year?: string | null
+          confidence_score?: number | null
+          created_at?: string | null
+          degree_level?: string | null
+          effective_end?: string | null
+          effective_start?: string | null
+          field_provenance?: Json | null
+          id?: string | null
+          institution?: string | null
+          last_verified_at?: string | null
+          merged_from_job_ids?: string[] | null
+          pack_scope?: string | null
+          policy_data?: Json | null
+          policy_json?: Json | null
+          provenance_url?: string | null
+          source_scrape_ids?: string[] | null
+          status?: string | null
+          superseded_by?: string | null
+          updated_at?: string | null
+          verification_source?: string | null
+          verified_by?: string | null
+        }
+        Update: {
+          academic_year?: string | null
+          confidence_score?: number | null
+          created_at?: string | null
+          degree_level?: string | null
+          effective_end?: string | null
+          effective_start?: string | null
+          field_provenance?: Json | null
+          id?: string | null
+          institution?: string | null
+          last_verified_at?: string | null
+          merged_from_job_ids?: string[] | null
+          pack_scope?: string | null
+          policy_data?: Json | null
+          policy_json?: Json | null
+          provenance_url?: string | null
+          source_scrape_ids?: string[] | null
+          status?: string | null
+          superseded_by?: string | null
+          updated_at?: string | null
+          verification_source?: string | null
+          verified_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "institution_policy_packs_superseded_by_fkey"
+            columns: ["superseded_by"]
+            isOneToOne: false
+            referencedRelation: "institution_policy_packs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "institution_policy_packs_superseded_by_fkey"
+            columns: ["superseded_by"]
+            isOneToOne: false
+            referencedRelation: "institution_policy_packs_live"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       requirement_option_counts: {
         Row: {
           has_ace_credit: boolean | null
