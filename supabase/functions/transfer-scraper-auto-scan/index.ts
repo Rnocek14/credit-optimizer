@@ -108,6 +108,19 @@ Deno.serve(async (req) => {
       return 'ok';
     }
 
+    // Policy keyword detection - count how many policy-relevant terms appear
+    const POLICY_KEYWORDS = [
+      'transfer', 'residency', 'maximum', 'minimum', 'credits', 
+      'must complete', 'in residence', 'institutional credit',
+      'credit limit', 'total credits', 'semester hours', 'credit hours',
+      'may be transferred', 'accepted for transfer', 'credit policy'
+    ];
+    
+    function countPolicyKeywords(text: string): number {
+      const lowerText = text.toLowerCase();
+      return POLICY_KEYWORDS.filter(kw => lowerText.includes(kw.toLowerCase())).length;
+    }
+
     const results: Array<{
       url: string;
       page_type: string;
@@ -268,27 +281,53 @@ Deno.serve(async (req) => {
             
             // Store sample in result for diagnostics (will be added to urlDiagnostics)
             (r as any).sample = sample.slice(0, 300);
+            
+            // Count policy keywords for relevance scoring
+            (r as any).keyword_hits = countPolicyKeywords(extractedText.slice(0, 2000));
           } else {
             // Fallback to length-only classification
             r.content_class = (r.text_length || 0) < 200 ? 'too_short' : 'ok';
+            (r as any).keyword_hits = 0;
           }
         } catch {
           // Fallback classification
           r.content_class = (r.text_length || 0) < 200 ? 'too_short' : 'ok';
+          (r as any).keyword_hits = 0;
         }
       }
     }
 
-    // Build URL diagnostics for merge (with samples)
+    // Find best policy URL (highest keyword hits among 'ok' content)
+    const okResults = results.filter(r => r.content_class === 'ok');
+    const bestPolicyUrl = okResults.length > 0 
+      ? okResults.reduce((best, r) => 
+          ((r as any).keyword_hits || 0) > ((best as any).keyword_hits || 0) ? r : best
+        ).url
+      : null;
+
+    // Build URL diagnostics for merge (with samples and keyword hits)
     const urlDiagnostics = results.map(r => ({
       url: r.url,
       page_type: r.page_type,
       text_length: r.text_length,
       content_class: r.content_class,
+      keyword_hits: (r as any).keyword_hits || 0,
       status: r.status,
       scrape_job_id: r.scrape_job_id,
       sample: (r as any).sample || null,
     }));
+    
+    // Add diagnostic summary with best policy URL
+    const diagnosticSummary = {
+      total: results.length,
+      ok_count: results.filter(r => r.content_class === 'ok').length,
+      too_short_count: results.filter(r => r.content_class === 'too_short').length,
+      js_junk_count: results.filter(r => r.content_class === 'js_junk').length,
+      error_page_count: results.filter(r => r.content_class === 'error_page').length,
+      max_text_length: Math.max(...results.map(r => r.text_length || 0)),
+      max_keyword_hits: Math.max(...results.map(r => (r as any).keyword_hits || 0)),
+      best_policy_url: bestPolicyUrl,
+    };
 
     // Step 4: Call merge function to aggregate extractions (>= 1 job)
     const successfulJobIds = results
@@ -309,6 +348,7 @@ Deno.serve(async (req) => {
             institution,
             scrape_job_ids: successfulJobIds,
             url_diagnostics: urlDiagnostics,
+            diagnostic_summary: diagnosticSummary,
           }),
         });
 
