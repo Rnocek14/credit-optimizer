@@ -163,19 +163,34 @@ export async function getVerifiedPolicy(
       const extractedValues = finding.extracted_values || {};
       const capsFound = details.caps_found || {};
       
-      // Extract max_transfer if it has evidence
+      // Extract max_transfer - use parseNumber for robustness
       const maxTransferVal = extractedValues.max_transfer_credits;
-      const hasMaxTransferEvidence = maxTransferVal?.evidence_url || details.has_max_transfer_evidence;
+      const maxTransferFromCaps = capsFound.max_transfer_credits;
+      
+      // Parse max_transfer from either extracted_values.value or caps_found
+      const parseNum = (val: unknown): number | null => {
+        if (val === null || val === undefined) return null;
+        const num = typeof val === 'string' ? parseInt(val, 10) : Number(val);
+        return isNaN(num) ? null : num;
+      };
+      const parsedMaxTransfer = maxTransferVal?.value 
+        ? parseNum(maxTransferVal.value)
+        : parseNum(maxTransferFromCaps);
+      
+      // Strict evidence check: must be an actual URL string
+      const evidenceUrl = maxTransferVal?.evidence_url;
+      const hasMaxTransferEvidence = 
+        typeof evidenceUrl === 'string' && 
+        evidenceUrl.startsWith('http');
       
       return {
         verified: false,
         confidence: finding.confidence_score || 60,
         institutionCode,
         institutionName: centralPolicy.name,
-        residencyCredits: getCentralResidency(institutionCode),
-        maxTransferCredits: capsFound.max_transfer_credits 
-          ? parseInt(capsFound.max_transfer_credits, 10) 
-          : (centralPolicy.maxTransferTotal ?? 90),
+        // HARDENING: For program-scoped, set residency to 0 (sentinel) - UI must not show as meaningful
+        residencyCredits: 0,
+        maxTransferCredits: parsedMaxTransfer ?? (centralPolicy.maxTransferTotal ?? 90),
         maxNoncollegiateCredits: getCentralNoncollegiateCap(institutionCode),
         upperDivisionMin: centralPolicy.upperDivisionAreaOfStudyMin,
         source: 'partial_finding',
@@ -183,7 +198,7 @@ export async function getVerifiedPolicy(
         isProgramScoped: true,
         programScopedReason: finding.reason as 'likely_program_scoped' | 'partial_caps_need_verification',
         maxTransferVerified: hasMaxTransferEvidence,
-        maxTransferEvidenceUrl: maxTransferVal?.evidence_url,
+        maxTransferEvidenceUrl: hasMaxTransferEvidence ? evidenceUrl : undefined,
         residencyVerified: false,
       };
     }

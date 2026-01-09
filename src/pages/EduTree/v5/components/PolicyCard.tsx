@@ -141,35 +141,48 @@ export function PolicyCard() {
           )}
         </div>
 
-        {/* Residency */}
-        <div className={!isVerified ? 'opacity-60' : ''}>
-          <div className="flex items-center justify-between text-sm mb-1">
-            <span>In-Residence Credits</span>
-            <span className={`font-mono ${isVerified && residencyMet ? 'text-green-600' : ''}`}>
-              {residencyCredits}/{isVerified ? residencyRequiredVerified : `~${residencyRequiredVerified}`}
-            </span>
-          </div>
-          <Progress 
-            value={resPct} 
-            className={`${isVerified && residencyMet ? '[&>div]:bg-green-500' : isVerified ? '[&>div]:bg-yellow-500' : '[&>div]:bg-muted-foreground/30'}`} 
-          />
-          {isVerified ? (
-            residencyMet ? (
-              <div className="flex items-center gap-2 text-xs text-green-600 mt-1">
-                <CheckCircle2 className="h-3 w-3" /> Residency requirement met
-              </div>
-            ) : (
-              <div className="flex items-center gap-2 text-xs text-yellow-700 mt-1">
-                <AlertCircle className="h-3 w-3" /> 
-                Need {residencyRequiredVerified - residencyCredits} more in-residence credits
-              </div>
-            )
-          ) : (
-            <div className="text-xs text-muted-foreground mt-1 italic">
-              Verification required for accurate limit
+        {/* Residency - HIDE for program-scoped (residency varies by program) */}
+        {isProgramScoped ? (
+          <div className="opacity-40">
+            <div className="flex items-center justify-between text-sm mb-1">
+              <span>In-Residence Credits</span>
+              <span className="font-mono text-muted-foreground">—</span>
             </div>
-          )}
-        </div>
+            <Progress value={0} className="[&>div]:bg-muted-foreground/20" />
+            <div className="text-xs text-muted-foreground mt-1 italic">
+              Select a program to see residency requirement
+            </div>
+          </div>
+        ) : (
+          <div className={!isVerified ? 'opacity-60' : ''}>
+            <div className="flex items-center justify-between text-sm mb-1">
+              <span>In-Residence Credits</span>
+              <span className={`font-mono ${isVerified && residencyMet ? 'text-green-600' : ''}`}>
+                {residencyCredits}/{isVerified ? residencyRequiredVerified : `~${residencyRequiredVerified}`}
+              </span>
+            </div>
+            <Progress 
+              value={resPct} 
+              className={`${isVerified && residencyMet ? '[&>div]:bg-green-500' : isVerified ? '[&>div]:bg-yellow-500' : '[&>div]:bg-muted-foreground/30'}`} 
+            />
+            {isVerified ? (
+              residencyMet ? (
+                <div className="flex items-center gap-2 text-xs text-green-600 mt-1">
+                  <CheckCircle2 className="h-3 w-3" /> Residency requirement met
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 text-xs text-yellow-700 mt-1">
+                  <AlertCircle className="h-3 w-3" /> 
+                  Need {residencyRequiredVerified - residencyCredits} more in-residence credits
+                </div>
+              )
+            ) : (
+              <div className="text-xs text-muted-foreground mt-1 italic">
+                Verification required for accurate limit
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Upper Division */}
         <div className={!isVerified ? 'opacity-60' : ''}>
