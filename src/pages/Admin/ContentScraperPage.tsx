@@ -17,7 +17,7 @@ export default function ContentScraperPage() {
   const testConnection = async () => {
     setConnectionStatus('testing');
     try {
-      const { data, error } = await supabase.functions.invoke('run-seeds', {
+      const { data, error } = await supabase.functions.invoke('web-scraper', {
         body: { action: 'ping' }
       });
       if (error) throw error;
@@ -38,8 +38,8 @@ export default function ContentScraperPage() {
     setScrapeError('');
 
     try {
-      const { data, error } = await supabase.functions.invoke('run-seeds', {
-        body: { action: 'scrape', url }
+      const { data, error } = await supabase.functions.invoke('web-scraper', {
+        body: { url }
       });
 
       if (error) throw error;
