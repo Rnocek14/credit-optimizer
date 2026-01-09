@@ -27,11 +27,15 @@ Deno.serve(async (req) => {
     // Resume parameters for chunked processing (avoid timeout)
     const startAfter = body?.startAfter as string | undefined;
     const limit = Math.min(body?.limit ?? 5, 10); // Default 5, max 10 per run
+    
+    // Early-stop: exit cleanly before edge timeout (default 25s, max 28s to stay under 30s limit)
+    const maxRuntimeMs = Math.min(body?.maxRuntimeMs ?? 25000, 28000);
+    const startedAt = Date.now();
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
     const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
 
-    console.log(`Batch scan starting: tier=${tier}, maxPriority=${maxPriority}, concurrency=${concurrency}, limit=${limit}, startAfter=${startAfter || 'beginning'}`);
+    console.log(`Batch scan starting: tier=${tier}, maxPriority=${maxPriority}, concurrency=${concurrency}, limit=${limit}, maxRuntimeMs=${maxRuntimeMs}, startAfter=${startAfter || 'beginning'}`);
 
     // Get institutions by tier from institutions table
     const institutionsResponse = await fetch(
@@ -99,9 +103,20 @@ Deno.serve(async (req) => {
     const results: BatchScanResult[] = [];
     let totalSucceeded = 0;
     let totalFailed = 0;
+    let stoppedEarly = false;
 
     // Process institutions with controlled concurrency
     for (let i = 0; i < institutions.length; i += concurrency) {
+      // Early-stop check: exit cleanly before edge timeout
+      const elapsed = Date.now() - startedAt;
+      if (elapsed > maxRuntimeMs) {
+        console.log(`Stopping early at ${elapsed}ms to avoid edge timeout (processed ${results.length} institutions)`);
+        stoppedEarly = true;
+        // Trim institutions to only those processed
+        institutions = institutions.slice(0, i);
+        break;
+      }
+      
       const batch = institutions.slice(i, i + concurrency);
       
       const batchPromises = batch.map(async (institution: string) => {
@@ -177,8 +192,10 @@ Deno.serve(async (req) => {
       // Resume support
       startAfter: startAfter ?? null,
       lastProcessed,
-      hasMore,
-      nextStartAfter: hasMore ? lastProcessed : null,
+      hasMore: hasMore || stoppedEarly, // If stopped early, there's definitely more
+      nextStartAfter: (hasMore || stoppedEarly) ? lastProcessed : null,
+      stoppedEarly,
+      elapsedMs: Date.now() - startedAt,
       total_in_tier: totalInTier,
       processed_this_run: institutions.length,
       // Batch stats
