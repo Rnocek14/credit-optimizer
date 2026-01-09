@@ -253,18 +253,27 @@ function FindingCard({
               <div>
                 <p className="text-xs font-medium mb-1">URLs Scanned:</p>
                 <div className="flex flex-wrap gap-1">
-                  {finding.urls_scanned.map((url, i) => (
-                    <a 
-                      key={i}
-                      href={url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-xs text-primary hover:underline flex items-center gap-1"
-                    >
-                      <ExternalLink className="h-3 w-3" />
-                      {new URL(url).pathname.slice(0, 30)}...
-                    </a>
-                  ))}
+                  {finding.urls_scanned.map((url, i) => {
+                    let label = url;
+                    try {
+                      const parsed = new URL(url);
+                      label = `${parsed.hostname}${parsed.pathname}`.slice(0, 48);
+                    } catch {
+                      label = url.slice(0, 48);
+                    }
+                    return (
+                      <a 
+                        key={i}
+                        href={url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs text-primary hover:underline flex items-center gap-1"
+                      >
+                        <ExternalLink className="h-3 w-3" />
+                        {label}{label.length >= 48 ? '…' : ''}
+                      </a>
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -345,7 +354,7 @@ export function VerificationQueuePanel() {
     setLoading(true);
     try {
       // Load findings that require verification
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from('policy_scan_findings')
         .select('*')
         .eq('requires_verification', true)
@@ -353,10 +362,11 @@ export function VerificationQueuePanel() {
         .limit(50);
 
       if (error) throw error;
-      setFindings(data || []);
-    } catch (e) {
+      setFindings((data || []) as unknown as PolicyFinding[]);
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : 'Unknown error';
       console.error('Error loading findings:', e);
-      toast({ title: 'Failed to load verification queue', variant: 'destructive' });
+      toast({ title: 'Failed to load verification queue', description: message, variant: 'destructive' });
     } finally {
       setLoading(false);
     }
@@ -370,12 +380,12 @@ export function VerificationQueuePanel() {
   const handleVerify = async (id: string, verifiedValues: Record<string, ExtractedField>) => {
     setLoading(true);
     try {
-      // Update the finding with verified values
-      const { error: updateError } = await (supabase as any)
+      // Update the finding with verified values - cast to Json type
+      const { error: updateError } = await supabase
         .from('policy_scan_findings')
         .update({
           requires_verification: false,
-          verified_values: verifiedValues,
+          verified_values: JSON.parse(JSON.stringify(verifiedValues)),
           verified_by: 'admin',
           verified_at: new Date().toISOString(),
           status: 'verified'
@@ -387,17 +397,19 @@ export function VerificationQueuePanel() {
       // Get the finding to create GT
       const finding = findings.find(f => f.id === id);
       if (finding && verifiedValues.residency_credits && verifiedValues.max_transfer_credits) {
-        // Create ground truth entry
-        const { error: gtError } = await (supabase as any)
+        // Create ground truth entry - use upsert pattern
+        // Column is 'institution' not 'institution_code'
+        const { error: gtError } = await supabase
           .from('institution_policy_ground_truth')
-          .insert({
-            institution_code: finding.institution,
+          .upsert({
+            institution: finding.institution,
             academic_year: finding.academic_year || '2024-25',
             residency_credits: Number(verifiedValues.residency_credits.value),
             max_transfer_credits: Number(verifiedValues.max_transfer_credits.value),
-            verification_source: 'human_verified',
+            verified_by: 'admin',
+            last_verified_at: new Date().toISOString(),
             notes: `Verified from policy scan finding ${id}`,
-          });
+          }, { onConflict: 'institution,academic_year' });
 
         if (gtError) {
           console.error('GT creation error:', gtError);
@@ -419,7 +431,7 @@ export function VerificationQueuePanel() {
   const handleSkip = async (id: string, reason: string) => {
     setLoading(true);
     try {
-      const { error } = await (supabase as any)
+      const { error } = await supabase
         .from('policy_scan_findings')
         .update({
           requires_verification: false,
