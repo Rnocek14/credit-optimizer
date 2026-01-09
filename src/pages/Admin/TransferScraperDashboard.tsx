@@ -8,8 +8,9 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
-import { RefreshCw, Play, Sparkles, CheckCircle, XCircle, Plus, ExternalLink } from 'lucide-react';
+import { RefreshCw, Play, Sparkles, CheckCircle, XCircle, Plus, ExternalLink, Copy, Database, Brain } from 'lucide-react';
 import { useTransferScraper, ScrapeJob, ScrapedContent, ExtractionResult } from '@/hooks/useTransferScraper';
+import { StakeholderProtectedRoute } from '@/components/StakeholderProtectedRoute';
 
 // -----------------------------------------------------------------------------
 // Status Badge Component
@@ -61,9 +62,35 @@ function ConfidenceDisplay({ score, action }: { score: number; action: string })
 }
 
 // -----------------------------------------------------------------------------
+// Pipeline Status Indicators
+// -----------------------------------------------------------------------------
+function PipelineStatusBadges({ hasContent, hasExtraction }: { hasContent: boolean; hasExtraction: boolean }) {
+  return (
+    <div className="flex gap-1">
+      <span 
+        className={`flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] ${
+          hasContent ? 'bg-blue-500/20 text-blue-600' : 'bg-muted text-muted-foreground'
+        }`}
+        title={hasContent ? 'Content scraped' : 'Not crawled yet'}
+      >
+        <Database className="h-2.5 w-2.5" />
+      </span>
+      <span 
+        className={`flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] ${
+          hasExtraction ? 'bg-purple-500/20 text-purple-600' : 'bg-muted text-muted-foreground'
+        }`}
+        title={hasExtraction ? 'AI extracted' : 'Not extracted yet'}
+      >
+        <Brain className="h-2.5 w-2.5" />
+      </span>
+    </div>
+  );
+}
+
+// -----------------------------------------------------------------------------
 // Main Dashboard Component
 // -----------------------------------------------------------------------------
-export default function TransferScraperDashboard() {
+function TransferScraperDashboardContent() {
   const { toast } = useToast();
   const scraper = useTransferScraper();
   
@@ -109,7 +136,30 @@ export default function TransferScraperDashboard() {
     setContent(data);
   };
 
-  // Actions
+  // Track content status per job for pipeline indicators
+  const [jobContentStatus, setJobContentStatus] = useState<Record<string, { hasContent: boolean; hasExtraction: boolean }>>({});
+
+  // Load content status for visible jobs
+  useEffect(() => {
+    const loadContentStatus = async () => {
+      const status: Record<string, { hasContent: boolean; hasExtraction: boolean }> = {};
+      for (const job of jobs.slice(0, 20)) { // Limit to first 20 for performance
+        try {
+          const c = await scraper.getContentForJob(job.id);
+          status[job.id] = {
+            hasContent: !!c?.extracted_text && c.extracted_text.length > 100,
+            hasExtraction: !!(c?.ai_extracted_data?.policy_pack || c?.ai_extracted_data?.provider_rules?.length),
+          };
+        } catch {
+          status[job.id] = { hasContent: false, hasExtraction: false };
+        }
+      }
+      setJobContentStatus(status);
+    };
+    if (jobs.length > 0) loadContentStatus();
+  }, [jobs]);
+
+  // Actions - crawl now uses scrape_job_id to update existing job
   const handleCrawl = async (job: ScrapeJob) => {
     try {
       await scraper.crawl({
@@ -117,6 +167,7 @@ export default function TransferScraperDashboard() {
         institution: job.institution,
         job_type: job.job_type as 'policy' | 'provider' | 'degree',
         priority: job.priority,
+        scrape_job_id: job.id, // Pass existing job ID to prevent duplication
       });
       toast({ title: 'Crawl started', description: `Crawling ${job.url}` });
       await loadJobs();
@@ -190,8 +241,14 @@ export default function TransferScraperDashboard() {
     }
   };
 
-  const hasContent = !!content?.extracted_text;
-  const hasExtraction = !!content?.ai_extracted_data;
+  const copyToClipboard = (text: string, label: string) => {
+    navigator.clipboard.writeText(text);
+    toast({ title: `Copied ${label}`, duration: 1500 });
+  };
+
+  // Better guards for content/extraction existence
+  const hasContent = !!content?.extracted_text && content.extracted_text.length > 100;
+  const hasExtraction = !!(content?.ai_extracted_data?.policy_pack || (content?.ai_extracted_data?.provider_rules?.length ?? 0) > 0);
   const extraction = content?.ai_extracted_data as ExtractionResult | null;
 
   return (
@@ -270,31 +327,59 @@ export default function TransferScraperDashboard() {
               </CardHeader>
               <CardContent className="overflow-y-auto h-[calc(100%-80px)]">
                 <div className="space-y-2">
-                  {jobs.map((job) => (
-                    <div
-                      key={job.id}
-                      className={`p-3 rounded-lg border cursor-pointer transition-colors ${
-                        selectedJob?.id === job.id 
-                          ? 'border-primary bg-primary/5' 
-                          : 'border-border hover:border-primary/50'
-                      }`}
-                      onClick={() => setSelectedJob(job)}
-                    >
-                      <div className="flex items-start justify-between gap-2 mb-2">
-                        <StatusBadge status={job.status} />
-                        <SourceTypeBadge type={job.source_type} />
+                  {jobs.map((job) => {
+                    const jobStatus = jobContentStatus[job.id] || { hasContent: false, hasExtraction: false };
+                    return (
+                      <div
+                        key={job.id}
+                        className={`p-3 rounded-lg border cursor-pointer transition-colors ${
+                          selectedJob?.id === job.id 
+                            ? 'border-primary bg-primary/5' 
+                            : 'border-border hover:border-primary/50'
+                        }`}
+                        onClick={() => setSelectedJob(job)}
+                      >
+                        <div className="flex items-start justify-between gap-2 mb-2">
+                          <div className="flex items-center gap-2">
+                            <StatusBadge status={job.status} />
+                            <PipelineStatusBadges hasContent={jobStatus.hasContent} hasExtraction={jobStatus.hasExtraction} />
+                          </div>
+                          <SourceTypeBadge type={job.source_type} />
+                        </div>
+                        <p className="text-sm font-medium truncate mb-1">{truncateUrl(job.url)}</p>
+                        <div className="flex items-center justify-between text-xs text-muted-foreground">
+                          <div className="flex items-center gap-2">
+                            <span>P{job.priority}</span>
+                            <span>•</span>
+                            <span>{new Date(job.created_at).toLocaleDateString()}</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-5 w-5"
+                              onClick={(e) => { e.stopPropagation(); copyToClipboard(job.id, 'Job ID'); }}
+                              title="Copy Job ID"
+                            >
+                              <Copy className="h-3 w-3" />
+                            </Button>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-5 w-5"
+                              onClick={(e) => { e.stopPropagation(); window.open(job.url, '_blank'); }}
+                              title="Open URL"
+                            >
+                              <ExternalLink className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        </div>
+                        {job.error_message && (
+                          <p className="text-xs text-red-500 mt-1 truncate">{job.error_message}</p>
+                        )}
                       </div>
-                      <p className="text-sm font-medium truncate mb-1">{truncateUrl(job.url)}</p>
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <span>P{job.priority}</span>
-                        <span>•</span>
-                        <span>{new Date(job.created_at).toLocaleDateString()}</span>
-                      </div>
-                      {job.error_message && (
-                        <p className="text-xs text-red-500 mt-1 truncate">{job.error_message}</p>
-                      )}
-                    </div>
-                  ))}
+                    );
+                  })}
                   {jobs.length === 0 && (
                     <p className="text-center text-muted-foreground py-8">No jobs found</p>
                   )}
@@ -307,36 +392,50 @@ export default function TransferScraperDashboard() {
           <div className="col-span-5">
             <Card className="h-[calc(100vh-200px)]">
               <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
                 <CardTitle className="text-lg">
                   {selectedJob ? 'Content Inspector' : 'Select a Job'}
                 </CardTitle>
                 {selectedJob && (
-                  <div className="flex gap-2 mt-2">
-                    <Button 
-                      size="sm" 
-                      variant="outline"
-                      onClick={() => handleCrawl(selectedJob)}
-                      disabled={scraper.loading || selectedJob.status === 'processing'}
-                    >
-                      <Play className="h-3 w-3 mr-1" /> Crawl
-                    </Button>
-                    <Button 
-                      size="sm" 
-                      variant="outline"
-                      onClick={() => handleExtract(selectedJob.id)}
-                      disabled={scraper.loading || !hasContent}
-                    >
-                      <Sparkles className="h-3 w-3 mr-1" /> Extract
-                    </Button>
-                    <Button 
-                      size="sm"
-                      onClick={() => handleValidate(selectedJob.id)}
-                      disabled={scraper.loading || !hasExtraction}
-                    >
-                      <CheckCircle className="h-3 w-3 mr-1" /> Validate
-                    </Button>
-                  </div>
+                  <Button 
+                    size="sm" 
+                    variant="ghost"
+                    onClick={() => loadContent(selectedJob.id)}
+                    disabled={scraper.loading}
+                    title="Refresh content"
+                  >
+                    <RefreshCw className={`h-3 w-3 ${scraper.loading ? 'animate-spin' : ''}`} />
+                  </Button>
                 )}
+              </div>
+              {selectedJob && (
+                <div className="flex gap-2 mt-2">
+                  <Button 
+                    size="sm" 
+                    variant="outline"
+                    onClick={() => handleCrawl(selectedJob)}
+                    disabled={scraper.loading || selectedJob.status === 'processing' || hasContent}
+                    title={hasContent ? 'Already crawled' : 'Crawl this URL'}
+                  >
+                    <Play className="h-3 w-3 mr-1" /> {hasContent ? 'Crawled' : 'Crawl'}
+                  </Button>
+                  <Button 
+                    size="sm" 
+                    variant="outline"
+                    onClick={() => handleExtract(selectedJob.id)}
+                    disabled={scraper.loading || !hasContent}
+                  >
+                    <Sparkles className="h-3 w-3 mr-1" /> Extract
+                  </Button>
+                  <Button 
+                    size="sm"
+                    onClick={() => handleValidate(selectedJob.id)}
+                    disabled={scraper.loading || !hasExtraction}
+                  >
+                    <CheckCircle className="h-3 w-3 mr-1" /> Validate
+                  </Button>
+                </div>
+              )}
               </CardHeader>
               <CardContent className="overflow-hidden h-[calc(100%-100px)]">
                 {!selectedJob ? (
@@ -374,20 +473,20 @@ export default function TransferScraperDashboard() {
                     </TabsContent>
                     
                     <TabsContent value="extraction" className="flex-1 overflow-auto">
-                      {extraction && (
+                      {extraction && extraction.confidence && (
                         <div className="space-y-4">
                           {/* Confidence */}
                           <div className="p-4 bg-muted rounded-lg">
                             <p className="text-sm font-medium mb-2">Confidence Score</p>
-                            <ConfidenceDisplay score={extraction.total_score} action={extraction.action} />
+                            <ConfidenceDisplay score={extraction.total_score ?? 0} action={extraction.action ?? 'hold'} />
                             
                             <div className="grid grid-cols-3 gap-2 mt-4 text-xs">
-                              <div>Source: {extraction.confidence.source_authority}/30</div>
-                              <div>Language: {extraction.confidence.language_certainty}/20</div>
-                              <div>Agreement: {extraction.confidence.cross_source_agreement}/20</div>
-                              <div>Recency: {extraction.confidence.recency}/15</div>
-                              <div>Structure: {extraction.confidence.structural_consistency}/10</div>
-                              <div>AI: {extraction.confidence.ai_certainty}/5</div>
+                              <div>Source: {extraction.confidence.source_authority ?? 0}/30</div>
+                              <div>Language: {extraction.confidence.language_certainty ?? 0}/20</div>
+                              <div>Agreement: {extraction.confidence.cross_source_agreement ?? 0}/20</div>
+                              <div>Recency: {extraction.confidence.recency ?? 0}/15</div>
+                              <div>Structure: {extraction.confidence.structural_consistency ?? 0}/10</div>
+                              <div>AI: {extraction.confidence.ai_certainty ?? 0}/5</div>
                             </div>
                           </div>
                           
@@ -527,5 +626,16 @@ export default function TransferScraperDashboard() {
         </div>
       </div>
     </div>
+  );
+}
+
+// -----------------------------------------------------------------------------
+// Wrapped with Admin Protection
+// -----------------------------------------------------------------------------
+export default function TransferScraperDashboard() {
+  return (
+    <StakeholderProtectedRoute requiredRole="admin">
+      <TransferScraperDashboardContent />
+    </StakeholderProtectedRoute>
   );
 }
