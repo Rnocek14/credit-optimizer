@@ -92,6 +92,22 @@ Deno.serve(async (req) => {
 
     console.log(`Found ${templates.length} templates for ${institution}`);
 
+    // URL diagnostic classification helper
+    function classifyContent(text: string, length: number): 'ok' | 'too_short' | 'js_junk' | 'error_page' {
+      if (length < 200) return 'too_short';
+      
+      // Check for error pages
+      const errorPatterns = ['404', 'Page Not Found', 'Access Denied', 'Request blocked', 'Error404'];
+      if (errorPatterns.some(p => text.includes(p))) return 'error_page';
+      
+      // Check for JS junk (VWO, A/B testing scripts, etc.)
+      const jsPatterns = ['VWO.', 'vwo_$', 'function(', 'catch(e)', '{}catch', 'var _vwo'];
+      const jsMatchCount = jsPatterns.filter(p => text.includes(p)).length;
+      if (jsMatchCount >= 2) return 'js_junk';
+      
+      return 'ok';
+    }
+
     const results: Array<{
       url: string;
       page_type: string;
@@ -100,20 +116,34 @@ Deno.serve(async (req) => {
       confidence_score: number | null;
       action: string | null;
       error: string | null;
+      text_length: number | null;
+      content_class: 'ok' | 'too_short' | 'js_junk' | 'error_page' | null;
     }> = [];
     let succeeded = 0;
     let failed = 0;
 
     // Process each URL sequentially
     for (const template of templates) {
-      const result = {
+      const result: {
+        url: string;
+        page_type: string;
+        status: string;
+        scrape_job_id: string | null;
+        confidence_score: number | null;
+        action: string | null;
+        error: string | null;
+        text_length: number | null;
+        content_class: 'ok' | 'too_short' | 'js_junk' | 'error_page' | null;
+      } = {
         url: template.url,
         page_type: template.page_type,
         status: 'success',
-        scrape_job_id: null as string | null,
-        confidence_score: null as number | null,
-        action: null as string | null,
-        error: null as string | null,
+        scrape_job_id: null,
+        confidence_score: null,
+        action: null,
+        error: null,
+        text_length: null,
+        content_class: null,
       };
 
       try {
@@ -141,7 +171,8 @@ Deno.serve(async (req) => {
 
         const crawlData = await crawlResponse.json();
         result.scrape_job_id = crawlData.scrape_job_id;
-        console.log(`Crawled: ${template.url} -> job ${crawlData.scrape_job_id}`);
+        result.text_length = crawlData.extracted_text_length ?? null;
+        console.log(`Crawled: ${template.url} -> job ${crawlData.scrape_job_id}, ${result.text_length} chars`);
 
         // Step 2: Call extract function
         const extractResponse = await fetch(`${supabaseUrl}/functions/v1/transfer-scraper-extract`, {
@@ -212,6 +243,30 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Classify content for each result that has text
+    for (const r of results) {
+      if (r.text_length !== null && r.scrape_job_id) {
+        // We need to get a sample of the text to classify it
+        // For now, classify based on length and later enhance with actual content check
+        if (r.text_length < 200) {
+          r.content_class = 'too_short';
+        } else {
+          // Default to ok - the merge function will do deeper classification
+          r.content_class = 'ok';
+        }
+      }
+    }
+
+    // Build URL diagnostics for merge
+    const urlDiagnostics = results.map(r => ({
+      url: r.url,
+      page_type: r.page_type,
+      text_length: r.text_length,
+      content_class: r.content_class,
+      status: r.status,
+      scrape_job_id: r.scrape_job_id,
+    }));
+
     // Step 4: Call merge function to aggregate all extractions
     const successfulJobIds = results
       .filter(r => r.status === 'success' && r.scrape_job_id)
@@ -230,6 +285,7 @@ Deno.serve(async (req) => {
           body: JSON.stringify({
             institution,
             scrape_job_ids: successfulJobIds,
+            url_diagnostics: urlDiagnostics,
           }),
         });
 

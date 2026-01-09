@@ -24,9 +24,19 @@ const corsHeaders = {
 // TYPE DEFINITIONS
 // -----------------------------------------------------------------------------
 
+interface UrlDiagnostic {
+  url: string;
+  page_type: string;
+  text_length: number | null;
+  content_class: 'ok' | 'too_short' | 'js_junk' | 'error_page' | null;
+  status: string;
+  scrape_job_id: string | null;
+}
+
 interface MergeRequest {
   institution: string;
   scrape_job_ids: string[];
+  url_diagnostics?: UrlDiagnostic[];
 }
 
 interface ExtractionResult {
@@ -552,7 +562,7 @@ Deno.serve(async (req) => {
     );
 
     const body: MergeRequest = await req.json();
-    const { institution, scrape_job_ids } = body;
+    const { institution, scrape_job_ids, url_diagnostics } = body;
 
     if (!institution || !scrape_job_ids?.length) {
       return new Response(
@@ -1031,6 +1041,22 @@ Deno.serve(async (req) => {
               ...(residencyOk ? [] : ['residency_credits']),
               ...(maxTransferOk ? [] : ['max_transfer_credits']),
             ],
+            // URL diagnostics for triage
+            url_diagnostics: url_diagnostics || extractions.map(e => ({
+              url: e.url,
+              text_length: null,
+              content_class: null,
+              status: 'unknown',
+            })),
+            diagnostic_summary: url_diagnostics ? {
+              total_urls: url_diagnostics.length,
+              ok_count: url_diagnostics.filter(d => d.content_class === 'ok').length,
+              too_short_count: url_diagnostics.filter(d => d.content_class === 'too_short').length,
+              js_junk_count: url_diagnostics.filter(d => d.content_class === 'js_junk').length,
+              error_page_count: url_diagnostics.filter(d => d.content_class === 'error_page').length,
+              max_text_length: Math.max(...url_diagnostics.filter(d => d.text_length).map(d => d.text_length || 0)),
+              min_text_length: Math.min(...url_diagnostics.filter(d => d.text_length).map(d => d.text_length || Infinity)),
+            } : null,
           },
         });
 
