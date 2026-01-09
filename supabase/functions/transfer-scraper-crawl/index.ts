@@ -24,41 +24,80 @@ function detectSourceType(url: string): 'catalog' | 'policy' | 'degree' | 'partn
   return 'marketing';
 }
 
-async function scrapeWithFirecrawl(url: string): Promise<{ markdown: string; html: string }> {
+async function sleep(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function scrapeWithFirecrawl(
+  url: string, 
+  maxRetries = 3
+): Promise<{ markdown: string; html: string; attempts: number }> {
   const apiKey = Deno.env.get('FIRECRAWL_API_KEY');
   if (!apiKey) {
     throw new Error('FIRECRAWL_API_KEY not configured');
   }
 
-  console.log(`Calling Firecrawl for: ${url}`);
+  const delays = [0, 1000, 3000]; // Exponential backoff: immediate, 1s, 3s
+  let lastError: Error | null = null;
 
-  const response = await fetch('https://api.firecrawl.dev/v1/scrape', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      url,
-      formats: ['markdown', 'html'],
-      onlyMainContent: true,
-      waitFor: 2000,
-    }),
-  });
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    if (attempt > 0) {
+      console.log(`Retry attempt ${attempt + 1}/${maxRetries} after ${delays[attempt]}ms delay`);
+      await sleep(delays[attempt]);
+    }
 
-  const data = await response.json();
+    try {
+      console.log(`Calling Firecrawl for: ${url} (attempt ${attempt + 1})`);
 
-  if (!response.ok) {
-    console.error('Firecrawl error:', data);
-    throw new Error(data.error || `Firecrawl failed: ${response.status}`);
+      const response = await fetch('https://api.firecrawl.dev/v1/scrape', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          url,
+          formats: ['markdown', 'html'],
+          onlyMainContent: true,
+          waitFor: 2000,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        // Don't retry on 4xx errors (client errors) except 429 (rate limit)
+        if (response.status >= 400 && response.status < 500 && response.status !== 429) {
+          throw new Error(data.error || `Firecrawl failed: ${response.status}`);
+        }
+        // Retry on 5xx errors or rate limiting
+        lastError = new Error(data.error || `Firecrawl failed: ${response.status}`);
+        console.error(`Firecrawl error (attempt ${attempt + 1}):`, data);
+        continue;
+      }
+
+      const markdown = data.data?.markdown || data.markdown || '';
+      const html = data.data?.html || data.html || '';
+
+      console.log(`Firecrawl success: ${markdown.length} chars markdown, ${html.length} chars html`);
+
+      return { markdown, html, attempts: attempt + 1 };
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+      
+      // Network errors are retryable
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        console.error(`Network error (attempt ${attempt + 1}):`, error.message);
+        continue;
+      }
+      
+      // Other errors: don't retry
+      throw lastError;
+    }
   }
 
-  const markdown = data.data?.markdown || data.markdown || '';
-  const html = data.data?.html || data.html || '';
-
-  console.log(`Firecrawl success: ${markdown.length} chars markdown, ${html.length} chars html`);
-
-  return { markdown, html };
+  // All retries exhausted
+  throw new Error(`failed_transient: ${lastError?.message || 'Max retries exceeded'}`);
 }
 
 Deno.serve(async (req) => {
@@ -166,7 +205,8 @@ Deno.serve(async (req) => {
     }
 
     try {
-      const { markdown, html } = await scrapeWithFirecrawl(url);
+      const { markdown, html, attempts } = await scrapeWithFirecrawl(url);
+      console.log(`Crawl completed in ${attempts} attempt(s)`);
 
       if (markdown.length < 50) {
         throw new Error(`Extracted text too short (${markdown.length} chars). Page may be blocked.`);

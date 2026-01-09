@@ -4940,10 +4940,15 @@ export type Database = {
           max_ace_nccrs_credits: number | null
           max_portfolio_credits: number | null
           max_transfer_credits: number | null
+          max_transfer_rule: string | null
           min_upper_level_credits: number | null
           notes: string | null
           residency_credits: number | null
+          residency_credits_associate: number | null
+          residency_credits_bachelors: number | null
           source_url: string | null
+          total_credits_required_associate: number | null
+          total_credits_required_bachelors: number | null
           updated_at: string | null
           verified_by: string | null
         }
@@ -4964,10 +4969,15 @@ export type Database = {
           max_ace_nccrs_credits?: number | null
           max_portfolio_credits?: number | null
           max_transfer_credits?: number | null
+          max_transfer_rule?: string | null
           min_upper_level_credits?: number | null
           notes?: string | null
           residency_credits?: number | null
+          residency_credits_associate?: number | null
+          residency_credits_bachelors?: number | null
           source_url?: string | null
+          total_credits_required_associate?: number | null
+          total_credits_required_bachelors?: number | null
           updated_at?: string | null
           verified_by?: string | null
         }
@@ -4988,10 +4998,15 @@ export type Database = {
           max_ace_nccrs_credits?: number | null
           max_portfolio_credits?: number | null
           max_transfer_credits?: number | null
+          max_transfer_rule?: string | null
           min_upper_level_credits?: number | null
           notes?: string | null
           residency_credits?: number | null
+          residency_credits_associate?: number | null
+          residency_credits_bachelors?: number | null
           source_url?: string | null
+          total_credits_required_associate?: number | null
+          total_credits_required_bachelors?: number | null
           updated_at?: string | null
           verified_by?: string | null
         }
