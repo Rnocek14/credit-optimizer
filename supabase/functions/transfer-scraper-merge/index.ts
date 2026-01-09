@@ -229,26 +229,77 @@ function calculateRecencyScore(text: string, url: string): number {
 }
 
 // -----------------------------------------------------------------------------
-// VALUE SELECTION (pick highest confidence)
+// VALUE SELECTION WITH WEIGHTED VOTING
 // -----------------------------------------------------------------------------
+// When multiple sources provide different values, use weighted voting to pick
+// the best value based on confidence scores and consensus bonuses.
+
+interface ValueCandidate<T> {
+  value: T;
+  sourceJobId: string;
+  confidence: number;
+}
+
+function selectBestValueWithVoting<T>(
+  candidates: ValueCandidate<T>[],
+  valueToString: (v: T) => string = (v) => String(v)
+): SourcedValue<T> | null {
+  if (candidates.length === 0) return null;
+  if (candidates.length === 1) {
+    return { value: candidates[0].value, sourceJobId: candidates[0].sourceJobId, confidence: candidates[0].confidence };
+  }
+
+  // Group by value and sum confidence scores
+  const valueScores = new Map<string, { value: T; total: number; count: number; bestSource: string }>();
+  
+  for (const c of candidates) {
+    const key = valueToString(c.value);
+    const existing = valueScores.get(key);
+    if (existing) {
+      existing.total += c.confidence;
+      existing.count += 1;
+      if (c.confidence > existing.total / existing.count) {
+        existing.bestSource = c.sourceJobId;
+      }
+    } else {
+      valueScores.set(key, { value: c.value, total: c.confidence, count: 1, bestSource: c.sourceJobId });
+    }
+  }
+
+  // Pick value with highest weighted score (including consensus bonus)
+  let best: { value: T; score: number; source: string } | null = null;
+  
+  for (const [, data] of valueScores) {
+    // Consensus bonus: +15 per additional source agreeing (up to +45)
+    const consensusBonus = Math.min(45, (data.count - 1) * 15);
+    const finalScore = data.total + consensusBonus;
+    
+    if (!best || finalScore > best.score) {
+      best = { value: data.value, score: finalScore, source: data.bestSource };
+    }
+  }
+
+  return best ? { value: best.value, sourceJobId: best.source, confidence: best.score } : null;
+}
 
 function pickBestValue<T>(
   extractions: { jobId: string; extraction: ExtractionResult }[],
-  accessor: (pack: PolicyPack) => T | null | undefined
+  accessor: (pack: PolicyPack) => T | null | undefined,
+  valueToString?: (v: T) => string
 ): SourcedValue<T> | null {
-  let best: SourcedValue<T> | null = null;
+  // Collect all candidates with their confidence scores
+  const candidates: ValueCandidate<T>[] = [];
 
   for (const { jobId, extraction } of extractions) {
     if (!extraction.policy_pack) continue;
     const value = accessor(extraction.policy_pack);
     if (value === null || value === undefined) continue;
     
-    if (!best || extraction.total_score > best.confidence) {
-      best = { value, sourceJobId: jobId, confidence: extraction.total_score };
-    }
+    candidates.push({ value, sourceJobId: jobId, confidence: extraction.total_score });
   }
 
-  return best;
+  // Use weighted voting to select best value
+  return selectBestValueWithVoting(candidates, valueToString);
 }
 
 // -----------------------------------------------------------------------------
