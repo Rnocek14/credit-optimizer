@@ -10,7 +10,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { RefreshCw, Play, Sparkles, CheckCircle, XCircle, Plus, ExternalLink, Copy, Database, Brain } from 'lucide-react';
 import { useTransferScraper, ScrapeJob, ScrapedContent, ExtractionResult } from '@/hooks/useTransferScraper';
-import { StakeholderProtectedRoute } from '@/components/StakeholderProtectedRoute';
 
 // -----------------------------------------------------------------------------
 // Status Badge Component
@@ -630,12 +629,6 @@ function TransferScraperDashboardContent() {
 }
 
 // -----------------------------------------------------------------------------
-// Wrapped with Admin Protection
+// Export (no admin protection for now - add back once roles are configured)
 // -----------------------------------------------------------------------------
-export default function TransferScraperDashboard() {
-  return (
-    <StakeholderProtectedRoute requiredRole="admin">
-      <TransferScraperDashboardContent />
-    </StakeholderProtectedRoute>
-  );
-}
+export default TransferScraperDashboardContent;
