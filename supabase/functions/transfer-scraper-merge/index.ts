@@ -455,27 +455,36 @@ Deno.serve(async (req) => {
       bestExtraction.url
     );
 
-    // Build final confidence breakdown using best values
-    const avgSourceAuthority = Math.round(
-      extractions.reduce((sum, e) => sum + (e.extraction.confidence?.source_authority || 0), 0) / extractions.length
+    // Build final confidence breakdown using MAX values from quality sources + multi-source bonus
+    // Filter to quality sources only (score >= 60) for confidence calculation
+    const qualitySources = extractions.filter(e => e.extraction.total_score >= 60);
+    const sourcesForConfidence = qualitySources.length > 0 ? qualitySources : extractions;
+
+    // Use MAX for each confidence component (not average!)
+    const maxSourceAuthority = Math.max(
+      ...sourcesForConfidence.map(e => e.extraction.confidence?.source_authority || 0)
     );
-    const avgLanguageCertainty = Math.round(
-      extractions.reduce((sum, e) => sum + (e.extraction.confidence?.language_certainty || 0), 0) / extractions.length
+    const maxLanguageCertainty = Math.max(
+      ...sourcesForConfidence.map(e => e.extraction.confidence?.language_certainty || 0)
     );
-    const avgStructural = Math.round(
-      extractions.reduce((sum, e) => sum + (e.extraction.confidence?.structural_consistency || 0), 0) / extractions.length
+    const maxStructural = Math.max(
+      ...sourcesForConfidence.map(e => e.extraction.confidence?.structural_consistency || 0)
     );
-    const avgAiCertainty = Math.round(
-      extractions.reduce((sum, e) => sum + (e.extraction.confidence?.ai_certainty || 0), 0) / extractions.length
+    const maxAiCertainty = Math.max(
+      ...sourcesForConfidence.map(e => e.extraction.confidence?.ai_certainty || 0)
     );
 
+    // Apply multi-source bonus: +1 per additional quality source (max +3)
+    const multiSourceBonus = Math.min(3, Math.max(0, qualitySources.length - 1));
+    notes.push(`Multi-source bonus: +${multiSourceBonus} (${qualitySources.length} quality sources)`);
+
     const confidence: ConfidenceBreakdown = {
-      source_authority: avgSourceAuthority,
-      language_certainty: avgLanguageCertainty,
+      source_authority: maxSourceAuthority,
+      language_certainty: maxLanguageCertainty,
       cross_source_agreement: agreement.score,
       recency: recencyScore,
-      structural_consistency: avgStructural,
-      ai_certainty: avgAiCertainty,
+      structural_consistency: Math.min(10, maxStructural + multiSourceBonus), // Cap at 10
+      ai_certainty: maxAiCertainty,
     };
 
     const totalScore = Object.values(confidence).reduce((a, b) => a + b, 0);
