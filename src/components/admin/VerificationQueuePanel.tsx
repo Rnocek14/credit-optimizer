@@ -389,14 +389,22 @@ export function VerificationQueuePanel() {
         throw new Error('Missing required fields: residency_credits and max_transfer_credits');
       }
 
+      // Validate numeric values before GT upsert
+      const residencyVal = Number(verifiedValues.residency_credits.value);
+      const maxTransferVal = Number(verifiedValues.max_transfer_credits.value);
+      
+      if (!Number.isFinite(residencyVal) || !Number.isFinite(maxTransferVal)) {
+        throw new Error('Residency and max transfer must be numeric values');
+      }
+
       // ATOMIC: Create GT first, then mark finding verified only if GT succeeds
       const { error: gtError } = await supabase
         .from('institution_policy_ground_truth')
         .upsert({
           institution: finding.institution,
           academic_year: finding.academic_year || '2024-25',
-          residency_credits: Number(verifiedValues.residency_credits.value),
-          max_transfer_credits: Number(verifiedValues.max_transfer_credits.value),
+          residency_credits: residencyVal,
+          max_transfer_credits: maxTransferVal,
           verified_by: 'admin',
           last_verified_at: new Date().toISOString(),
           notes: `Verified from policy scan finding ${id}`,
@@ -427,7 +435,14 @@ export function VerificationQueuePanel() {
         .eq('id', id);
 
       if (updateError) {
-        console.error('Finding update error (GT already created):', updateError);
+        // GT created but finding update failed - warn user
+        toast({
+          title: 'GT created, but queue update failed',
+          description: 'Ground truth is saved. This finding may still show as pending - refresh to verify.',
+          variant: 'destructive',
+        });
+        await loadFindings();
+        return;
       }
 
       toast({ title: 'Verified & GT Created', description: `Ground truth created for ${finding.institution}` });
