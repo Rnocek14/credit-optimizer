@@ -76,11 +76,11 @@ export interface ConfidenceBreakdown {
 
 export interface ExtractionResult {
   policy_pack: Record<string, unknown> | null;
-  provider_rules: Array<Record<string, unknown>>;
+  provider_rules: Record<string, unknown>[];
   confidence: ConfidenceBreakdown;
   total_score: number;
   action: 'auto_approve' | 'human_review' | 'hold';
-  extraction_notes: string[];
+  extraction_notes?: string[];
 }
 
 export interface JobFilters {
@@ -95,6 +95,7 @@ export interface CrawlParams {
   job_type: 'policy' | 'provider' | 'degree';
   priority?: number;
   source_type?: string;
+  scrape_job_id?: string; // Pass existing job ID to update instead of create
 }
 
 export interface ValidateParams {
@@ -211,7 +212,8 @@ export function useTransferScraper() {
         .eq('target_institution', institution)
         .eq('rule_type', 'provider_acceptance')
         .in('status', ['active', 'draft'])
-        .order('last_verified_at', { ascending: false, nullsFirst: false });
+        .order('last_verified_at', { ascending: false })
+        .order('created_at', { ascending: false });
 
       if (err) throw err;
       return data || [];
