@@ -211,7 +211,32 @@ async function publishPolicyPack(
   totalScore: number,
   scrapeJobId: string | null,
   status: 'draft' | 'active'
-): Promise<string> {
+): Promise<string | undefined> {
+  // HARD GUARDRAIL: Never create packs without BOTH numeric caps
+  // Extract values from nested structure
+  const residency = policyPack.residency_policy?.min_institutional_credits;
+  const maxTransfer = policyPack.transfer_credit_limits?.max_total_transfer_credits;
+  
+  const residencyOk = typeof residency === 'number' && !isNaN(residency);
+  const maxTransferOk = typeof maxTransfer === 'number' && !isNaN(maxTransfer);
+  
+  if (!residencyOk || !maxTransferOk) {
+    console.log(`[validate] Blocking nil pack for ${policyPack.institution}: residency=${residency} (${residencyOk}), maxTransfer=${maxTransfer} (${maxTransferOk})`);
+    
+    // Log skip finding instead
+    await supabase.from('policy_scan_findings').insert({
+      institution: policyPack.institution,
+      academic_year: policyPack.academic_year,
+      status: 'skipped',
+      reason: 'missing_numeric_caps',
+      confidence_score: totalScore,
+      requires_verification: false,
+      details: { source: 'transfer-scraper-validate', residency, maxTransfer },
+    });
+    
+    return undefined; // Signal that pack was not created
+  }
+
   // First, supersede any existing active policy
   await supabase
     .from('institution_policy_packs')
@@ -452,7 +477,7 @@ Deno.serve(async (req) => {
           'draft'  // Always draft
         );
 
-        await createEvidence(supabase, policyPackId, providerRuleIds, scrape_job_id || null);
+        await createEvidence(supabase, policyPackId ?? null, providerRuleIds, scrape_job_id || null);
 
         validationResult = {
           success: true,
@@ -494,7 +519,7 @@ Deno.serve(async (req) => {
           'draft'
         );
 
-        await createEvidence(supabase, policyPackId, providerRuleIds, scrape_job_id || null);
+        await createEvidence(supabase, policyPackId ?? null, providerRuleIds, scrape_job_id || null);
 
         validationResult = {
           success: true,

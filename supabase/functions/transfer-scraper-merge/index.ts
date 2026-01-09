@@ -864,11 +864,17 @@ Deno.serve(async (req) => {
       const scope = instData?.transfer_policy_scope ?? 'institution';
 
       // Check if we have required numeric fields (BOTH required for any pack)
+      // CRITICAL: Must check for actual numeric values, not just non-null
+      // The policyData fields are strings from .toString(), so we need strict validation
       const residency = policyData.residency_credits;
       const maxTransfer = policyData.max_transfer_credits;
-      const residencyOk = residency != null && /^\d+$/.test(residency);
-      const maxTransferOk = maxTransfer != null && /^\d+$/.test(maxTransfer);
+      
+      // Strict validation: must be non-null, non-empty, and contain only digits
+      const residencyOk = typeof residency === 'string' && residency.length > 0 && /^\d+$/.test(residency);
+      const maxTransferOk = typeof maxTransfer === 'string' && maxTransfer.length > 0 && /^\d+$/.test(maxTransfer);
       const hasBothNumericCaps = residencyOk && maxTransferOk;
+      
+      console.log(`[merge] Caps validation: residency='${residency}' (${residencyOk}), maxTransfer='${maxTransfer}' (${maxTransferOk}), hasBoth=${hasBothNumericCaps}`);
 
       // HARD GUARDRAIL: Never create packs without BOTH numeric caps
       // This prevents "nil packs" that pollute data and confuse verification
