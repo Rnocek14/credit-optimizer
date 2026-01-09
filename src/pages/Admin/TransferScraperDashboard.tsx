@@ -431,6 +431,34 @@ function TransferScraperDashboardContent() {
                   </Button>
                 )}
               </div>
+              {/* Pipeline Status Chips */}
+              {selectedJob && (
+                <div className="flex items-center gap-3 mt-2 text-xs">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-muted-foreground">Pipeline:</span>
+                    <span className={`flex items-center gap-1 px-2 py-0.5 rounded-full ${
+                      hasContent ? 'bg-green-500/20 text-green-600' : 'bg-muted text-muted-foreground'
+                    }`}>
+                      <Database className="h-3 w-3" />
+                      {hasContent ? 'Crawled' : 'Not crawled'}
+                    </span>
+                    <span className={`flex items-center gap-1 px-2 py-0.5 rounded-full ${
+                      hasExtraction ? 'bg-purple-500/20 text-purple-600' : 'bg-muted text-muted-foreground'
+                    }`}>
+                      <Brain className="h-3 w-3" />
+                      {hasExtraction ? 'Extracted' : 'Not extracted'}
+                    </span>
+                    <span className={`flex items-center gap-1 px-2 py-0.5 rounded-full ${
+                      content?.total_confidence_score && content.total_confidence_score >= 60 
+                        ? 'bg-blue-500/20 text-blue-600' 
+                        : 'bg-muted text-muted-foreground'
+                    }`}>
+                      <CheckCircle className="h-3 w-3" />
+                      {content?.total_confidence_score && content.total_confidence_score >= 60 ? 'Ready' : 'Pending'}
+                    </span>
+                  </div>
+                </div>
+              )}
               {selectedJob && (
                 <div className="flex flex-wrap gap-2 mt-2">
                   {/* Crawl - only for uncrawled jobs */}
