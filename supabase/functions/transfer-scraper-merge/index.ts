@@ -872,7 +872,7 @@ Deno.serve(async (req) => {
       }
 
       // Determine canonical provenance URL (GT source > first scrape URL)
-      const canonicalProvenanceUrl = gtRow?.source_url || scrapeJobs[0]?.url || null;
+      const canonicalProvenanceUrl = gt?.source_url || scrapeJobs[0]?.url || null;
 
       const { data: packData, error: policyError } = await supabase
         .from('institution_policy_packs')
