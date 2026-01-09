@@ -12,9 +12,9 @@
 // - Returns summary with per-URL results
 // =============================================================================
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.56.0?target=deno';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.56.0';
 import { DOMParser } from 'https://deno.land/x/deno_dom@v0.1.38/deno-dom-wasm.ts';
-import OpenAI from 'https://esm.sh/openai@4.67.3?target=deno';
+import OpenAI from 'https://esm.sh/openai@4.67.3';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
