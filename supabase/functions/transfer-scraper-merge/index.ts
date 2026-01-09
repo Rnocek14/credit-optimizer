@@ -832,20 +832,60 @@ Deno.serve(async (req) => {
     // Create merged policy pack in database with provenance tracking
     let policyPackId: string | null = null;
     if (mergedPack) {
-      const { data: policyData, error: policyError } = await supabase
+      // Build flat policy_data structure that trigger expects
+      const policyData = {
+        residency_credits: mergedPack.residency_policy?.min_institutional_credits?.toString() ?? null,
+        max_transfer_credits: mergedPack.transfer_credit_limits?.max_total_transfer_credits?.toString() ?? null,
+        max_ace_nccrs_credits: mergedPack.transfer_credit_limits?.max_ace_nccrs_credits?.toString() ?? null,
+        accepts_clep: mergedPack.credit_sources_accepted?.clep ?? null,
+        accepts_dsst: mergedPack.credit_sources_accepted?.dsst ?? null,
+        accepts_ap: mergedPack.credit_sources_accepted?.ap ?? null,
+        accepts_tecep: mergedPack.credit_sources_accepted?.tecep ?? null,
+        accepts_portfolio: mergedPack.credit_sources_accepted?.portfolio_assessment ?? null,
+        capstone_required: mergedPack.institutional_course_requirements?.capstone_required ?? null,
+        cornerstone_required: mergedPack.institutional_course_requirements?.cornerstone_required ?? null,
+        min_upper_level_credits: mergedPack.upper_level_requirements?.min_upper_level_credits?.toString() ?? null,
+      };
+
+      // Build field_provenance with flat keys to match policy_data structure
+      const flatProvenance: Record<string, unknown> = {};
+      if (fieldProvenance['residency_policy.min_institutional_credits']) {
+        flatProvenance['residency_credits'] = fieldProvenance['residency_policy.min_institutional_credits'];
+      }
+      if (fieldProvenance['transfer_credit_limits.max_total_transfer_credits']) {
+        flatProvenance['max_transfer_credits'] = fieldProvenance['transfer_credit_limits.max_total_transfer_credits'];
+      }
+      // Copy other provenance entries with flattened keys
+      for (const [key, value] of Object.entries(fieldProvenance)) {
+        if (!key.includes('.')) {
+          flatProvenance[key] = value;
+        } else {
+          // Flatten nested paths: credit_sources_accepted.clep -> accepts_clep
+          const flatKey = key.replace('credit_sources_accepted.', 'accepts_')
+                             .replace('institutional_course_requirements.', '')
+                             .replace('transfer_credit_limits.max_ace_nccrs_credits', 'max_ace_nccrs_credits')
+                             .replace('upper_level_requirements.min_upper_level_credits', 'min_upper_level_credits');
+          if (!flatProvenance[flatKey]) {
+            flatProvenance[flatKey] = value;
+          }
+        }
+      }
+
+      const { data: packData, error: policyError } = await supabase
         .from('institution_policy_packs')
         .insert({
           institution,
           academic_year: mergedPack.academic_year,
           degree_level: 'undergraduate',
-          policy_json: mergedPack,
+          policy_json: mergedPack,  // Keep for back-compat / full structure
+          policy_data: policyData,  // NEW: flat structure for trigger
           confidence_score: totalScore,
           last_verified_at: new Date().toISOString(),
           verification_source: 'transfer-scraper-merge',
-          status: action === 'auto_approve' ? 'active' : 'draft',
+          status: 'draft',  // ALWAYS draft - GATE -1 compliance
           effective_start: mergedPack.policy_effective_dates?.effective_start,
           merged_from_job_ids: scrape_job_ids,
-          field_provenance: fieldProvenance, // NEW: per-field provenance tracking
+          field_provenance: flatProvenance, // Flat keys for trigger
         })
         .select('id')
         .single();
@@ -853,8 +893,8 @@ Deno.serve(async (req) => {
       if (policyError) {
         console.error('[merge] Error creating policy pack:', policyError);
       } else {
-        policyPackId = policyData.id;
-        notes.push(`Created merged policy pack: ${policyData.id}`);
+        policyPackId = packData.id;
+        notes.push(`Created merged policy pack: ${packData.id}`);
 
         // Log merge audit for bulletproof provenance trail
         const { error: auditError } = await supabase

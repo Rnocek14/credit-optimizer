@@ -5025,7 +5025,9 @@ export type Database = {
           institution: string
           last_verified_at: string | null
           merged_from_job_ids: string[] | null
+          policy_data: Json | null
           policy_json: Json
+          provenance_url: string | null
           source_scrape_ids: string[] | null
           status: string
           superseded_by: string | null
@@ -5045,7 +5047,9 @@ export type Database = {
           institution: string
           last_verified_at?: string | null
           merged_from_job_ids?: string[] | null
+          policy_data?: Json | null
           policy_json: Json
+          provenance_url?: string | null
           source_scrape_ids?: string[] | null
           status?: string
           superseded_by?: string | null
@@ -5065,7 +5069,9 @@ export type Database = {
           institution?: string
           last_verified_at?: string | null
           merged_from_job_ids?: string[] | null
+          policy_data?: Json | null
           policy_json?: Json
+          provenance_url?: string | null
           source_scrape_ids?: string[] | null
           status?: string
           superseded_by?: string | null
