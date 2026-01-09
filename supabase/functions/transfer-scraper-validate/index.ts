@@ -432,14 +432,15 @@ Deno.serve(async (req) => {
           break;
         }
 
-        // Publish with active status
+        // Always insert as draft first (GATE -1 blocks INSERT-as-active)
+        // High-confidence packs are marked for quick human promotion
         const policyPackId = await publishPolicyPack(
           supabase,
           result.policy_pack,
           result.confidence,
           result.total_score,
           scrape_job_id || null,
-          'active'
+          'draft'  // Always draft - activation requires human/GT validation
         );
 
         const providerRuleIds = await publishProviderRules(
@@ -448,7 +449,7 @@ Deno.serve(async (req) => {
           result.provider_rules,
           result.confidence,
           result.total_score,
-          'active'
+          'draft'  // Always draft
         );
 
         await createEvidence(supabase, policyPackId, providerRuleIds, scrape_job_id || null);
