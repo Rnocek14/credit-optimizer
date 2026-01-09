@@ -116,9 +116,18 @@ Deno.serve(async (req) => {
       'may be transferred', 'accepted for transfer', 'credit policy'
     ];
     
+    // High-signal phrases that strongly indicate policy content
+    const HIGH_SIGNAL_PHRASES = [
+      'maximum number of credits', 'may be transferred', 'must complete at',
+      'residency requirement', 'in residence', 'institutional credits',
+      'transfer credit limit', 'credits accepted', 'semester hours required'
+    ];
+    
     function countPolicyKeywords(text: string): number {
-      const lowerText = text.toLowerCase();
-      return POLICY_KEYWORDS.filter(kw => lowerText.includes(kw.toLowerCase())).length;
+      const t = text.toLowerCase();
+      const baseHits = POLICY_KEYWORDS.filter(kw => t.includes(kw.toLowerCase())).length;
+      const highSignalHits = HIGH_SIGNAL_PHRASES.filter(phrase => t.includes(phrase.toLowerCase())).length;
+      return baseHits + (highSignalHits * 2); // Weight high-signal phrases 2x
     }
 
     const results: Array<{
@@ -274,16 +283,17 @@ Deno.serve(async (req) => {
           if (sampleResponse.ok) {
             const sampleData = await sampleResponse.json();
             const extractedText = sampleData?.[0]?.extracted_text || '';
-            const sample = extractedText.slice(0, 500);
             
-            // Classify with actual content
-            r.content_class = classifyContent(sample, r.text_length || 0);
+            // Use larger slice for classification (first 8k chars) to avoid misclassifying
+            // based on nav boilerplate or late-appearing JS junk
+            const headContent = extractedText.slice(0, 8000);
+            r.content_class = classifyContent(headContent, r.text_length || 0);
             
-            // Store sample in result for diagnostics (will be added to urlDiagnostics)
-            (r as any).sample = sample.slice(0, 300);
+            // Store shorter sample for diagnostics display
+            (r as any).sample = headContent.slice(0, 300);
             
-            // Count policy keywords for relevance scoring
-            (r as any).keyword_hits = countPolicyKeywords(extractedText.slice(0, 2000));
+            // Count policy keywords on head content for relevance scoring
+            (r as any).keyword_hits = countPolicyKeywords(headContent);
           } else {
             // Fallback to length-only classification
             r.content_class = (r.text_length || 0) < 200 ? 'too_short' : 'ok';
