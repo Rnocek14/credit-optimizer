@@ -112,6 +112,7 @@ interface SourcedValue<T> {
   value: T;
   sourceJobId: string;
   confidence: number;
+  sourceUrl?: string;  // For evidence capture
 }
 
 interface MergeResult {
@@ -132,9 +133,12 @@ interface FieldProvenance {
   [fieldPath: string]: {
     source: 'ground_truth' | 'ai_extraction' | 'human_override';
     source_ref?: string;
+    source_url?: string;     // Evidence URL for verification
+    source_text?: string;    // Evidence text snippet
     final_value: unknown;
     overrode_value?: unknown;
     overrode_at?: string;
+    confidence?: number;     // For verification queue
   };
 }
 
@@ -322,11 +326,16 @@ function selectBestValueWithVoting<T>(
 ): SourcedValue<T> | null {
   if (candidates.length === 0) return null;
   if (candidates.length === 1) {
-    return { value: candidates[0].value, sourceJobId: candidates[0].sourceJobId, confidence: candidates[0].confidence };
+    return { 
+      value: candidates[0].value, 
+      sourceJobId: candidates[0].sourceJobId, 
+      confidence: candidates[0].confidence,
+      sourceUrl: candidates[0].url  // Capture URL for evidence
+    };
   }
 
   // Group by value and sum confidence scores with URL bonuses
-  const valueScores = new Map<string, { value: T; total: number; count: number; bestSource: string; bestConfidence: number }>();
+  const valueScores = new Map<string, { value: T; total: number; count: number; bestSource: string; bestConfidence: number; bestUrl: string }>();
   
   for (const c of candidates) {
     const key = valueToString(c.value);
@@ -340,6 +349,7 @@ function selectBestValueWithVoting<T>(
       if (adjustedConfidence > existing.bestConfidence) {
         existing.bestSource = c.sourceJobId;
         existing.bestConfidence = adjustedConfidence;
+        existing.bestUrl = c.url;  // Track best URL
       }
     } else {
       valueScores.set(key, { 
@@ -347,13 +357,14 @@ function selectBestValueWithVoting<T>(
         total: adjustedConfidence, 
         count: 1, 
         bestSource: c.sourceJobId,
-        bestConfidence: adjustedConfidence
+        bestConfidence: adjustedConfidence,
+        bestUrl: c.url  // Capture URL
       });
     }
   }
 
   // Pick value with highest weighted score (including consensus bonus)
-  let best: { value: T; score: number; source: string } | null = null;
+  let best: { value: T; score: number; source: string; url: string } | null = null;
   
   for (const [, data] of valueScores) {
     // Consensus bonus: +15 per additional source agreeing (up to +45)
@@ -361,11 +372,11 @@ function selectBestValueWithVoting<T>(
     const finalScore = data.total + consensusBonus;
     
     if (!best || finalScore > best.score) {
-      best = { value: data.value, score: finalScore, source: data.bestSource };
+      best = { value: data.value, score: finalScore, source: data.bestSource, url: data.bestUrl };
     }
   }
 
-  return best ? { value: best.value, sourceJobId: best.source, confidence: best.score } : null;
+  return best ? { value: best.value, sourceJobId: best.source, confidence: best.score, sourceUrl: best.url } : null;
 }
 
 function pickBestValue<T>(
@@ -396,13 +407,27 @@ function pickBestValue<T>(
 function mergePolicyPacks(
   institution: string,
   extractions: { jobId: string; extraction: ExtractionResult; url: string }[]
-): { mergedPack: PolicyPack | null; sources: string[]; notes: string[] } {
+): { 
+  mergedPack: PolicyPack | null; 
+  sources: string[]; 
+  notes: string[]; 
+  pickedValues: {
+    residencyCredits: SourcedValue<number> | null;
+    maxTransfer: SourcedValue<number> | null;
+    maxAceNccrs: SourcedValue<number> | null;
+  };
+} {
   const notes: string[] = [];
   const sources: string[] = [];
   
   const validExtractions = extractions.filter(e => e.extraction.policy_pack);
   if (validExtractions.length === 0) {
-    return { mergedPack: null, sources, notes: ['No valid policy packs to merge'] };
+    return { 
+      mergedPack: null, 
+      sources, 
+      notes: ['No valid policy packs to merge'],
+      pickedValues: { residencyCredits: null, maxTransfer: null, maxAceNccrs: null }
+    };
   }
 
   // Pick best values for each field with field-specific URL bonuses
@@ -446,10 +471,18 @@ function mergePolicyPacks(
 
   notes.push(`Merged ${validExtractions.length} sources into unified policy pack`);
   if (residencyCredits) {
-    notes.push(`Residency: ${residencyCredits.value} credits (weighted score: ${residencyCredits.confidence})`);
+    notes.push(`Residency: ${residencyCredits.value} credits (from ${residencyCredits.sourceUrl || 'unknown'})`);
+  }
+  if (maxTransfer) {
+    notes.push(`Max transfer: ${maxTransfer.value} credits (from ${maxTransfer.sourceUrl || 'unknown'})`);
   }
 
-  return { mergedPack, sources, notes };
+  return { 
+    mergedPack, 
+    sources, 
+    notes,
+    pickedValues: { residencyCredits, maxTransfer, maxAceNccrs }
+  };
 }
 
 function mergeCreditSources(
@@ -574,7 +607,7 @@ Deno.serve(async (req) => {
     console.log(`[merge] Found ${extractions.length} valid extractions`);
 
     // Merge policy packs
-    const { mergedPack, sources, notes } = mergePolicyPacks(institution, extractions);
+    const { mergedPack, sources, notes, pickedValues } = mergePolicyPacks(institution, extractions);
     
     // Merge provider rules
     const mergedRules = mergeProviderRules(extractions);
@@ -806,14 +839,24 @@ Deno.serve(async (req) => {
         criticalFieldsVerified = false;
         notes.push(`⚠️ No ground truth found for ${institution} - critical fields unverified`);
         
-        // Mark all fields as AI extraction
+        // Mark all fields as AI extraction with source URLs for evidence
         fieldProvenance['residency_policy.min_institutional_credits'] = {
           source: 'ai_extraction',
           final_value: mergedPack.residency_policy?.min_institutional_credits,
+          source_url: pickedValues.residencyCredits?.sourceUrl || null,
+          confidence: pickedValues.residencyCredits?.confidence || 0,
         };
         fieldProvenance['transfer_credit_limits.max_total_transfer_credits'] = {
           source: 'ai_extraction',
           final_value: mergedPack.transfer_credit_limits?.max_total_transfer_credits,
+          source_url: pickedValues.maxTransfer?.sourceUrl || null,
+          confidence: pickedValues.maxTransfer?.confidence || 0,
+        };
+        fieldProvenance['transfer_credit_limits.max_ace_nccrs_credits'] = {
+          source: 'ai_extraction',
+          final_value: mergedPack.transfer_credit_limits?.max_ace_nccrs_credits,
+          source_url: pickedValues.maxAceNccrs?.sourceUrl || null,
+          confidence: pickedValues.maxAceNccrs?.confidence || 0,
         };
       }
 
