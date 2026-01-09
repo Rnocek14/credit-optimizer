@@ -12742,6 +12742,7 @@ export type Database = {
       }
     }
     Functions: {
+      activate_policy_pack: { Args: { new_pack_id: string }; Returns: boolean }
       after_maya_analysis_increment_quota: { Args: never; Returns: undefined }
       award_xp: {
         Args: {
