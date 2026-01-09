@@ -11,6 +11,7 @@ Deno.serve(async (req) => {
   try {
     const body = await req.json();
     const institution = body?.institution;
+    const maxPriority = body?.maxPriority ?? null; // Optional priority filter
 
     if (!institution) {
       return new Response(
@@ -22,19 +23,21 @@ Deno.serve(async (req) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
     const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
 
-    console.log(`Auto-scan starting for: ${institution}`);
+    console.log(`Auto-scan starting for: ${institution}${maxPriority ? ` (priority <= ${maxPriority})` : ''}`);
 
-    // Load URL templates
-    const templatesResponse = await fetch(
-      `${supabaseUrl}/rest/v1/scrape_url_templates?institution_code=eq.${institution}&order=priority.asc`,
-      {
-        headers: {
-          'apikey': serviceRoleKey,
-          'Authorization': `Bearer ${serviceRoleKey}`,
-          'Content-Type': 'application/json',
-        },
-      }
-    );
+    // Load URL templates with optional priority filter
+    let templateUrl = `${supabaseUrl}/rest/v1/scrape_url_templates?institution_code=eq.${institution}&order=priority.asc`;
+    if (maxPriority !== null) {
+      templateUrl += `&priority=lte.${maxPriority}`;
+    }
+
+    const templatesResponse = await fetch(templateUrl, {
+      headers: {
+        'apikey': serviceRoleKey,
+        'Authorization': `Bearer ${serviceRoleKey}`,
+        'Content-Type': 'application/json',
+      },
+    });
 
     if (!templatesResponse.ok) {
       const errorText = await templatesResponse.text();
@@ -52,6 +55,7 @@ Deno.serve(async (req) => {
         JSON.stringify({ 
           error: 'No URL templates found for institution',
           institution,
+          maxPriority,
           hint: 'Run the run-migrations function first to seed URL templates'
         }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

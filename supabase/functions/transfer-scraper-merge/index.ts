@@ -637,6 +637,7 @@ Deno.serve(async (req) => {
     let fieldsOverridden = 0;
     let fieldsMatched = 0;
     let fieldsMissingGroundTruth = 0;
+    let gt: GroundTruth | null = null; // Declare at higher scope to avoid ReferenceError
 
     if (mergedPack) {
       const { data: groundTruth } = await supabase
@@ -645,7 +646,7 @@ Deno.serve(async (req) => {
         .eq('institution', institution)
         .maybeSingle();
 
-      const gt = groundTruth as GroundTruth | null;
+      gt = groundTruth as GroundTruth | null;
       notes.push(`Ground truth validation for ${institution}:`);
 
       // Helper to track field override
