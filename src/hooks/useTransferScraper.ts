@@ -348,14 +348,22 @@ export function useTransferScraper() {
     setLoading(true);
     setError(null);
     try {
+      console.log('[autoScan] Starting auto-scan for:', institution);
+      
       const { data, error: err } = await supabase.functions.invoke('transfer-scraper-auto-scan', {
         body: { institution },
       });
 
-      if (err) throw err;
+      console.log('[autoScan] Response:', { data, error: err });
+
+      if (err) {
+        console.error('[autoScan] Error details:', err);
+        throw err;
+      }
       return data as AutoScanProgress;
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Auto-scan failed';
+      console.error('[autoScan] Caught error:', e);
       setError(msg);
       return null;
     } finally {
