@@ -3657,6 +3657,39 @@ export type Database = {
           },
         ]
       }
+      critical_field_definitions: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          field_name: string
+          field_path: string
+          id: string
+          required_for_auto_approve: boolean | null
+          validation_range_max: number | null
+          validation_range_min: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          field_name: string
+          field_path: string
+          id?: string
+          required_for_auto_approve?: boolean | null
+          validation_range_max?: number | null
+          validation_range_min?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          field_name?: string
+          field_path?: string
+          id?: string
+          required_for_auto_approve?: boolean | null
+          validation_range_max?: number | null
+          validation_range_min?: number | null
+        }
+        Relationships: []
+      }
       cross_institution_equivalencies: {
         Row: {
           alt_credit_id: string
@@ -4905,7 +4938,9 @@ export type Database = {
           institution: string
           last_verified_at: string | null
           max_ace_nccrs_credits: number | null
+          max_portfolio_credits: number | null
           max_transfer_credits: number | null
+          min_upper_level_credits: number | null
           notes: string | null
           residency_credits: number | null
           source_url: string | null
@@ -4927,7 +4962,9 @@ export type Database = {
           institution: string
           last_verified_at?: string | null
           max_ace_nccrs_credits?: number | null
+          max_portfolio_credits?: number | null
           max_transfer_credits?: number | null
+          min_upper_level_credits?: number | null
           notes?: string | null
           residency_credits?: number | null
           source_url?: string | null
@@ -4949,7 +4986,9 @@ export type Database = {
           institution?: string
           last_verified_at?: string | null
           max_ace_nccrs_credits?: number | null
+          max_portfolio_credits?: number | null
           max_transfer_credits?: number | null
+          min_upper_level_credits?: number | null
           notes?: string | null
           residency_credits?: number | null
           source_url?: string | null
@@ -4966,6 +5005,7 @@ export type Database = {
           degree_level: string
           effective_end: string | null
           effective_start: string | null
+          field_provenance: Json | null
           id: string
           institution: string
           last_verified_at: string | null
@@ -4985,6 +5025,7 @@ export type Database = {
           degree_level?: string
           effective_end?: string | null
           effective_start?: string | null
+          field_provenance?: Json | null
           id?: string
           institution: string
           last_verified_at?: string | null
@@ -5004,6 +5045,7 @@ export type Database = {
           degree_level?: string
           effective_end?: string | null
           effective_start?: string | null
+          field_provenance?: Json | null
           id?: string
           institution?: string
           last_verified_at?: string | null
@@ -7784,6 +7826,62 @@ export type Database = {
             columns: ["job_id"]
             isOneToOne: false
             referencedRelation: "school_scrape_jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      policy_merge_audit_log: {
+        Row: {
+          created_at: string | null
+          critical_fields_verified: boolean | null
+          field_diffs: Json
+          fields_matched: number | null
+          fields_missing_ground_truth: number | null
+          fields_overridden: number | null
+          id: string
+          institution: string
+          merge_timestamp: string
+          policy_pack_id: string | null
+          source_job_ids: string[]
+          total_fields_checked: number | null
+          trust_tier: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          critical_fields_verified?: boolean | null
+          field_diffs?: Json
+          fields_matched?: number | null
+          fields_missing_ground_truth?: number | null
+          fields_overridden?: number | null
+          id?: string
+          institution: string
+          merge_timestamp?: string
+          policy_pack_id?: string | null
+          source_job_ids: string[]
+          total_fields_checked?: number | null
+          trust_tier?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          critical_fields_verified?: boolean | null
+          field_diffs?: Json
+          fields_matched?: number | null
+          fields_missing_ground_truth?: number | null
+          fields_overridden?: number | null
+          id?: string
+          institution?: string
+          merge_timestamp?: string
+          policy_pack_id?: string | null
+          source_job_ids?: string[]
+          total_fields_checked?: number | null
+          trust_tier?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "policy_merge_audit_log_policy_pack_id_fkey"
+            columns: ["policy_pack_id"]
+            isOneToOne: false
+            referencedRelation: "institution_policy_packs"
             referencedColumns: ["id"]
           },
         ]
