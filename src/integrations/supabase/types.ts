@@ -10914,6 +10914,51 @@ export type Database = {
           },
         ]
       }
+      transfer_batch_runs: {
+        Row: {
+          created_at: string | null
+          failed_count: number | null
+          finished_at: string | null
+          id: string
+          last_processed: string | null
+          processed_count: number | null
+          skipped_count: number | null
+          started_at: string | null
+          status: string
+          successful_count: number | null
+          summary: Json | null
+          tier: string
+        }
+        Insert: {
+          created_at?: string | null
+          failed_count?: number | null
+          finished_at?: string | null
+          id?: string
+          last_processed?: string | null
+          processed_count?: number | null
+          skipped_count?: number | null
+          started_at?: string | null
+          status?: string
+          successful_count?: number | null
+          summary?: Json | null
+          tier: string
+        }
+        Update: {
+          created_at?: string | null
+          failed_count?: number | null
+          finished_at?: string | null
+          id?: string
+          last_processed?: string | null
+          processed_count?: number | null
+          skipped_count?: number | null
+          started_at?: string | null
+          status?: string
+          successful_count?: number | null
+          summary?: Json | null
+          tier?: string
+        }
+        Relationships: []
+      }
       transfer_evidence: {
         Row: {
           captured_at: string | null

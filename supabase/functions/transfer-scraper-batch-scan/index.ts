@@ -1,3 +1,5 @@
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.56.0?target=deno';
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -17,6 +19,12 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
+  const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+  const supabase = createClient(supabaseUrl, serviceRoleKey);
+
+  let runId: string | null = null;
+
   try {
     const body = await req.json();
     const tier = body?.tier ?? 'tier_a';
@@ -32,10 +40,21 @@ Deno.serve(async (req) => {
     const maxRuntimeMs = Math.min(body?.maxRuntimeMs ?? 25000, 28000);
     const startedAt = Date.now();
 
-    const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
-    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
-
     console.log(`Batch scan starting: tier=${tier}, maxPriority=${maxPriority}, concurrency=${concurrency}, limit=${limit}, maxRuntimeMs=${maxRuntimeMs}, startAfter=${startAfter || 'beginning'}`);
+
+    // Create batch run record for persistence
+    const { data: runData } = await supabase
+      .from('transfer_batch_runs')
+      .insert({
+        tier,
+        status: 'running',
+        summary: { startAfter, limit, maxPriority, concurrency }
+      })
+      .select('id')
+      .single();
+    
+    runId = runData?.id ?? null;
+    console.log(`Created batch run: ${runId}`);
 
     // Get institutions by tier from institutions table
     const institutionsResponse = await fetch(
@@ -55,10 +74,11 @@ Deno.serve(async (req) => {
     }
 
     const institutionsData = await institutionsResponse.json();
-    let institutions: string[] = institutionsData.map((r: { code: string }) => r.code);
-    const totalInTier = institutions.length;
+    const allInstitutions: string[] = institutionsData.map((r: { code: string }) => r.code);
+    const totalInTier = allInstitutions.length;
 
-    if (institutions.length === 0) {
+    if (allInstitutions.length === 0) {
+      await updateRunStatus(supabase, runId, 'completed', null, 0, { error: 'No institutions found' });
       return new Response(
         JSON.stringify({ 
           error: 'No institutions found for tier',
@@ -69,20 +89,24 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Build list of institutions to process (immutable from here)
+    let institutionsToProcess: string[] = allInstitutions;
+    
     // Apply resume filter: start after specified institution
     if (startAfter) {
-      const idx = institutions.findIndex(c => c === startAfter);
+      const idx = institutionsToProcess.findIndex(c => c === startAfter);
       if (idx >= 0) {
-        institutions = institutions.slice(idx + 1);
+        institutionsToProcess = institutionsToProcess.slice(idx + 1);
       } else {
         console.log(`Warning: startAfter='${startAfter}' not found in tier, starting from beginning`);
       }
     }
 
     // Apply limit for chunked processing
-    institutions = institutions.slice(0, limit);
+    institutionsToProcess = institutionsToProcess.slice(0, limit);
 
-    if (institutions.length === 0) {
+    if (institutionsToProcess.length === 0) {
+      await updateRunStatus(supabase, runId, 'completed', null, 0, { message: 'No more institutions' });
       return new Response(
         JSON.stringify({ 
           tier,
@@ -98,26 +122,26 @@ Deno.serve(async (req) => {
       );
     }
 
-    console.log(`Processing ${institutions.length} of ${totalInTier} ${tier} institutions (startAfter=${startAfter || 'beginning'})`);
+    console.log(`Processing ${institutionsToProcess.length} of ${totalInTier} ${tier} institutions (startAfter=${startAfter || 'beginning'})`);
 
     const results: BatchScanResult[] = [];
     let totalSucceeded = 0;
     let totalFailed = 0;
     let stoppedEarly = false;
+    let lastProcessed: string | null = null;
+    let processedCount = 0;
 
-    // Process institutions with controlled concurrency
-    for (let i = 0; i < institutions.length; i += concurrency) {
+    // Process institutions with controlled concurrency (no mutation of institutionsToProcess)
+    for (let i = 0; i < institutionsToProcess.length; i += concurrency) {
       // Early-stop check: exit cleanly before edge timeout
       const elapsed = Date.now() - startedAt;
       if (elapsed > maxRuntimeMs) {
         console.log(`Stopping early at ${elapsed}ms to avoid edge timeout (processed ${results.length} institutions)`);
         stoppedEarly = true;
-        // Trim institutions to only those processed
-        institutions = institutions.slice(0, i);
         break;
       }
       
-      const batch = institutions.slice(i, i + concurrency);
+      const batch = institutionsToProcess.slice(i, i + concurrency);
       
       const batchPromises = batch.map(async (institution: string) => {
         const result: BatchScanResult = {
@@ -136,7 +160,7 @@ Deno.serve(async (req) => {
             headers: {
               'Content-Type': 'application/json',
               'Authorization': `Bearer ${serviceRoleKey}`,
-              'apikey': serviceRoleKey, // Required for Edge Function auth
+              'apikey': serviceRoleKey,
             },
             body: JSON.stringify({
               institution,
@@ -169,37 +193,42 @@ Deno.serve(async (req) => {
       const batchResults = await Promise.all(batchPromises);
       results.push(...batchResults);
       
-      batchResults.forEach(r => {
+      // Track progress after each batch
+      batchResults.forEach((r, idx) => {
+        lastProcessed = batch[idx];
+        processedCount++;
         if (r.status === 'success') totalSucceeded += r.succeeded;
         totalFailed += r.failed;
       });
 
-      // Delay between batches
-      if (i + concurrency < institutions.length) {
+      // Update run progress in DB (fire and forget for speed)
+      updateRunStatus(supabase, runId, 'running', lastProcessed, processedCount, null);
+
+      // Delay between batches (only if more to process and not stopping)
+      if (!stoppedEarly && i + concurrency < institutionsToProcess.length) {
         await new Promise(resolve => setTimeout(resolve, delayMs));
       }
     }
 
     // Determine if there are more institutions to process
-    const lastProcessed = institutions[institutions.length - 1] ?? null;
-    const allInstitutions: string[] = institutionsData.map((r: { code: string }) => r.code);
     const lastIdx = lastProcessed ? allInstitutions.indexOf(lastProcessed) : -1;
     const hasMore = lastIdx >= 0 && lastIdx < allInstitutions.length - 1;
 
     const summary = {
+      run_id: runId,
       tier,
       maxPriority,
       // Resume support
       startAfter: startAfter ?? null,
       lastProcessed,
-      hasMore: hasMore || stoppedEarly, // If stopped early, there's definitely more
+      hasMore: hasMore || stoppedEarly,
       nextStartAfter: (hasMore || stoppedEarly) ? lastProcessed : null,
       stoppedEarly,
       elapsedMs: Date.now() - startedAt,
       total_in_tier: totalInTier,
-      processed_this_run: institutions.length,
+      processed_this_run: processedCount,
       // Batch stats
-      institutions_attempted: institutions.length,
+      institutions_attempted: processedCount,
       institutions_completed: results.length,
       successful_institutions: results.filter(r => r.status === 'success').length,
       failed_institutions: results.filter(r => r.status === 'failed').length,
@@ -209,7 +238,11 @@ Deno.serve(async (req) => {
       results,
     };
 
-    console.log(`Batch scan complete: ${summary.successful_institutions}/${summary.processed_this_run} institutions succeeded, hasMore=${hasMore}`);
+    // Finalize run record
+    const finalStatus = stoppedEarly ? 'stopped_early' : (hasMore ? 'completed' : 'completed');
+    await updateRunStatus(supabase, runId, finalStatus, lastProcessed, processedCount, summary);
+
+    console.log(`Batch scan complete: ${summary.successful_institutions}/${summary.processed_this_run} institutions succeeded, hasMore=${hasMore}, stoppedEarly=${stoppedEarly}`);
 
     return new Response(
       JSON.stringify(summary),
@@ -218,9 +251,47 @@ Deno.serve(async (req) => {
 
   } catch (error) {
     console.error('Batch scan error:', error);
+    
+    // Mark run as failed
+    if (runId) {
+      await updateRunStatus(supabase, runId, 'failed', null, 0, { error: error instanceof Error ? error.message : 'Unknown error' });
+    }
+    
     return new Response(
       JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 });
+
+// Helper to update batch run status
+// deno-lint-ignore no-explicit-any
+async function updateRunStatus(
+  supabase: any,
+  runId: string | null,
+  status: string,
+  lastProcessed: string | null,
+  processedCount: number,
+  summary: Record<string, unknown> | null
+) {
+  if (!runId) return;
+  
+  const update: Record<string, unknown> = {
+    status,
+    last_processed: lastProcessed,
+    processed_count: processedCount,
+  };
+  
+  if (status === 'completed' || status === 'stopped_early' || status === 'failed') {
+    update.finished_at = new Date().toISOString();
+  }
+  
+  if (summary) {
+    update.summary = summary;
+    update.successful_count = summary.successful_institutions ?? 0;
+    update.failed_count = summary.failed_institutions ?? 0;
+    update.skipped_count = summary.skipped_institutions ?? 0;
+  }
+  
+  await supabase.from('transfer_batch_runs').update(update).eq('id', runId);
+}
