@@ -9,9 +9,10 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { RefreshCw, Play, Sparkles, CheckCircle, XCircle, Plus, ExternalLink, Copy, Database, Brain, RotateCcw, Zap, AlertTriangle } from 'lucide-react';
+import { RefreshCw, Play, Sparkles, CheckCircle, XCircle, Plus, ExternalLink, Copy, Database, Brain, RotateCcw, Zap, AlertTriangle, FlaskConical } from 'lucide-react';
 import { useTransferScraper, ScrapeJob, ScrapedContent, ExtractionResult, AutoScanProgress, AutoScanUrlResult } from '@/hooks/useTransferScraper';
 import { Progress } from '@/components/ui/progress';
+import { supabase } from '@/integrations/supabase/client';
 
 // -----------------------------------------------------------------------------
 // Status Badge Component
@@ -112,6 +113,8 @@ function TransferScraperDashboardContent() {
   // Auto-scan state
   const [autoScanResult, setAutoScanResult] = useState<AutoScanProgress | null>(null);
   const [isAutoScanning, setIsAutoScanning] = useState(false);
+  const [isTestingFirecrawl, setIsTestingFirecrawl] = useState(false);
+  const [firecrawlTestResult, setFirecrawlTestResult] = useState<{ success: boolean; message: string; preview?: string } | null>(null);
 
   // Load jobs on mount and filter change
   useEffect(() => {
@@ -304,6 +307,48 @@ function TransferScraperDashboardContent() {
     }
   };
 
+  // Test Firecrawl handler
+  const handleTestFirecrawl = async () => {
+    setIsTestingFirecrawl(true);
+    setFirecrawlTestResult(null);
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('firecrawl-test');
+      
+      if (error) {
+        setFirecrawlTestResult({ success: false, message: error.message });
+        toast({ 
+          title: 'Firecrawl Test Failed', 
+          description: error.message, 
+          variant: 'destructive' 
+        });
+      } else if (data?.success) {
+        setFirecrawlTestResult({ 
+          success: true, 
+          message: `✓ Scraped ${data.content_length} chars from ${data.url}`,
+          preview: data.preview
+        });
+        toast({ 
+          title: 'Firecrawl Working!', 
+          description: `Successfully scraped ${data.content_length} characters` 
+        });
+      } else {
+        setFirecrawlTestResult({ success: false, message: data?.error || 'Unknown error' });
+        toast({ 
+          title: 'Firecrawl Test Failed', 
+          description: data?.error, 
+          variant: 'destructive' 
+        });
+      }
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Test failed';
+      setFirecrawlTestResult({ success: false, message: msg });
+      toast({ title: 'Firecrawl Test Failed', description: msg, variant: 'destructive' });
+    } finally {
+      setIsTestingFirecrawl(false);
+    }
+  };
+
   // Better guards for content/extraction existence
   const hasContent = !!content?.extracted_text && content.extracted_text.length > 100;
   const hasExtraction = !!(content?.ai_extracted_data?.policy_pack || (content?.ai_extracted_data?.provider_rules?.length ?? 0) > 0);
@@ -354,6 +399,24 @@ function TransferScraperDashboardContent() {
                 <>
                   <Zap className="h-4 w-4" />
                   Auto-Scan {filters.institution}
+                </>
+              )}
+            </Button>
+            <Button 
+              variant="outline"
+              onClick={handleTestFirecrawl}
+              disabled={isTestingFirecrawl}
+              className="gap-2"
+            >
+              {isTestingFirecrawl ? (
+                <>
+                  <LoadingSpinner size="sm" />
+                  Testing...
+                </>
+              ) : (
+                <>
+                  <FlaskConical className="h-4 w-4" />
+                  Test Firecrawl
                 </>
               )}
             </Button>
