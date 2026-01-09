@@ -85,10 +85,13 @@ Deno.serve(async (req) => {
       { code: 'EDX-DATA-SCI', title: 'Introduction to Data Science', credits: 3, cost_usd: 99, duration_weeks: 10, cri_score: 0.70, level: 200, subject_area: 'computer_science', provider_code: 'EDX' },
     ];
 
-    const coursesWithProviderIds = courses.map(c => ({
-      ...c,
-      provider_id: providerMap.get(c.provider_code),
-    })).filter(c => c.provider_id);
+    const coursesWithProviderIds = courses.map(c => {
+      const { provider_code, ...courseWithoutProviderCode } = c;
+      return {
+        ...courseWithoutProviderCode,
+        provider_id: providerMap.get(provider_code),
+      };
+    }).filter(c => c.provider_id);
 
     const { data: marketplaceCourses, error: courseError } = await supabase
       .from('marketplace_courses')
