@@ -51,11 +51,39 @@ Deno.serve(async (req) => {
     const templates = await templatesResponse.json();
 
     if (!templates || templates.length === 0) {
+      // Guardrail A: Log skip reason to policy_scan_findings for auditability
+      const currentYear = `${new Date().getFullYear()}-${new Date().getFullYear() + 1}`;
+      await fetch(`${supabaseUrl}/rest/v1/policy_scan_findings`, {
+        method: 'POST',
+        headers: {
+          'apikey': serviceRoleKey,
+          'Authorization': `Bearer ${serviceRoleKey}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=minimal',
+        },
+        body: JSON.stringify({
+          institution,
+          academic_year: currentYear,
+          status: 'skipped',
+          reason: 'no_templates',
+          confidence_score: 0,
+          requires_verification: false,
+          urls_scanned: [],
+          details: {
+            skip_reason: 'no_templates',
+            max_priority_filter: maxPriority,
+            hint: 'Add URL templates for this institution',
+          },
+        }),
+      });
+
       return new Response(
         JSON.stringify({ 
           error: 'No URL templates found for institution',
           institution,
           maxPriority,
+          status: 'skipped',
+          skip_reason: 'no_templates',
           hint: 'Run the run-migrations function first to seed URL templates'
         }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

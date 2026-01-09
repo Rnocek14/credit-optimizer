@@ -980,12 +980,17 @@ Deno.serve(async (req) => {
       // Determine canonical provenance URL (GT source > first scrape URL)
       const canonicalProvenanceUrl = gt?.source_url || scrapeJobs[0]?.url || null;
 
+      // Guardrail B: Explicit pack_scope based on institution scope
+      // If institution is program-scoped, force pack_scope='program' to prevent false coverage
+      const packScope = scope === 'program' ? 'program' : 'institution';
+
       const { data: packData, error: policyError } = await supabase
         .from('institution_policy_packs')
         .insert({
           institution,
           academic_year: mergedPack.academic_year,
           degree_level: 'undergraduate',
+          pack_scope: packScope, // Guardrail B: explicit scope prevents WGU-style false coverage
           policy_json: mergedPack,  // Keep for back-compat / full structure
           policy_data: policyData,  // NEW: flat structure for trigger
           confidence_score: totalScore,
