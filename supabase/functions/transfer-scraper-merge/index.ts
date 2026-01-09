@@ -856,16 +856,16 @@ Deno.serve(async (req) => {
 
       const scope = instData?.transfer_policy_scope ?? 'institution';
 
-      // Check if we have required numeric fields
+      // Check if we have required numeric fields (both required for program-scoped)
       const residency = policyData.residency_credits;
       const maxTransfer = policyData.max_transfer_credits;
-      const hasNumericCaps = 
-        (residency != null && /^\d+$/.test(residency)) ||
-        (maxTransfer != null && /^\d+$/.test(maxTransfer));
+      const residencyOk = residency != null && /^\d+$/.test(residency);
+      const maxTransferOk = maxTransfer != null && /^\d+$/.test(maxTransfer);
+      const hasBothNumericCaps = residencyOk && maxTransferOk;
 
-      // Skip pack creation for program-scoped institutions without numeric caps
-      if (scope === 'program' && !hasNumericCaps) {
-        console.log(`[merge] Skipping pack creation for program-scoped institution ${institution} (no numeric caps)`);
+      // Skip pack creation for program-scoped institutions without BOTH numeric caps
+      if (scope === 'program' && !hasBothNumericCaps) {
+        console.log(`[merge] Skipping pack creation for program-scoped institution ${institution} (missing numeric caps)`);
         
         // Log to policy_scan_findings for auditability
         await supabase.from('policy_scan_findings').insert({
@@ -877,6 +877,8 @@ Deno.serve(async (req) => {
           confidence_score: totalScore,
           details: {
             extracted_policy_data: policyData,
+            residency_ok: residencyOk,
+            max_transfer_ok: maxTransferOk,
             trust_tier: trustTier,
             action,
           },
