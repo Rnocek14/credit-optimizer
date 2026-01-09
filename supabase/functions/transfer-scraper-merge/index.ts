@@ -712,6 +712,12 @@ Deno.serve(async (req) => {
 
       // CRITICAL FIELDS - these block auto-approve if not ground-truth verified
       if (gt) {
+        // Ensure nested objects exist before writing to them
+        mergedPack.residency_policy ??= {};
+        mergedPack.transfer_credit_limits ??= {};
+        mergedPack.credit_sources_accepted ??= {};
+        mergedPack.institutional_course_requirements ??= {};
+
         // Residency credits (CRITICAL)
         const residencyResult = trackField(
           'residency_policy.min_institutional_credits',
