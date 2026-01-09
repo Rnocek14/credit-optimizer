@@ -7,6 +7,16 @@ verify_jwt = false
 [functions.run-seeds]
 verify_jwt = false
 
+# Transfer Scraper Pipeline
+[functions.transfer-scraper-crawl]
+verify_jwt = false
+
+[functions.transfer-scraper-extract]
+verify_jwt = false
+
+[functions.transfer-scraper-validate]
+verify_jwt = false
+
 
 [functions.seed-data-2025]
 verify_jwt = false
