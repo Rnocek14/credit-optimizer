@@ -47,42 +47,42 @@ Deno.serve(async (req) => {
     // Phase 2: Seed Marketplace Courses
     console.log('📚 Phase 2: Seeding marketplace courses...');
     const courses = [
-      // SOPHIA courses
-      { code: 'SOPH-ENG-COMP', title: 'English Composition I', credits: 3, cost_usd: 99, duration_weeks: 4, cri_score: 0.85, level: 100, subject_area: 'english', provider_code: 'SOPHIA' },
-      { code: 'SOPH-COLLEGE-ALG', title: 'College Algebra', credits: 3, cost_usd: 99, duration_weeks: 4, cri_score: 0.82, level: 100, subject_area: 'mathematics', provider_code: 'SOPHIA' },
-      { code: 'SOPH-INTRO-STATS', title: 'Introduction to Statistics', credits: 3, cost_usd: 99, duration_weeks: 4, cri_score: 0.80, level: 100, subject_area: 'mathematics', provider_code: 'SOPHIA' },
-      { code: 'SOPH-INTRO-PYTHON', title: 'Introduction to Python Programming', credits: 3, cost_usd: 99, duration_weeks: 4, cri_score: 0.79, level: 100, subject_area: 'computer_science', provider_code: 'SOPHIA' },
+      // SOPHIA courses (cri_score as integer 0-100)
+      { code: 'SOPH-ENG-COMP', title: 'English Composition I', credits: 3, cost_usd: 99, duration_weeks: 4, cri_score: 85, level: 100, subject_area: 'english', provider_code: 'SOPHIA' },
+      { code: 'SOPH-COLLEGE-ALG', title: 'College Algebra', credits: 3, cost_usd: 99, duration_weeks: 4, cri_score: 82, level: 100, subject_area: 'mathematics', provider_code: 'SOPHIA' },
+      { code: 'SOPH-INTRO-STATS', title: 'Introduction to Statistics', credits: 3, cost_usd: 99, duration_weeks: 4, cri_score: 80, level: 100, subject_area: 'mathematics', provider_code: 'SOPHIA' },
+      { code: 'SOPH-INTRO-PYTHON', title: 'Introduction to Python Programming', credits: 3, cost_usd: 99, duration_weeks: 4, cri_score: 79, level: 100, subject_area: 'computer_science', provider_code: 'SOPHIA' },
       
       // Study.com courses
-      { code: 'STUDY-COLLEGE-ALG', title: 'College Algebra', credits: 3, cost_usd: 199, duration_weeks: 6, cri_score: 0.78, level: 100, subject_area: 'mathematics', provider_code: 'STUDY' },
-      { code: 'STUDY-ENG-COMP', title: 'English Composition I', credits: 3, cost_usd: 199, duration_weeks: 6, cri_score: 0.76, level: 100, subject_area: 'english', provider_code: 'STUDY' },
-      { code: 'STUDY-INTRO-CS', title: 'Introduction to Computer Science', credits: 3, cost_usd: 199, duration_weeks: 6, cri_score: 0.75, level: 100, subject_area: 'computer_science', provider_code: 'STUDY' },
-      { code: 'STUDY-INTRO-PROG', title: 'Introduction to Programming', credits: 3, cost_usd: 199, duration_weeks: 6, cri_score: 0.77, level: 100, subject_area: 'computer_science', provider_code: 'STUDY' },
-      { code: 'STUDY-DATA-STRUCT', title: 'Data Structures', credits: 3, cost_usd: 199, duration_weeks: 8, cri_score: 0.74, level: 200, subject_area: 'computer_science', provider_code: 'STUDY' },
-      { code: 'STUDY-ALGORITHMS', title: 'Algorithms', credits: 3, cost_usd: 199, duration_weeks: 8, cri_score: 0.76, level: 200, subject_area: 'computer_science', provider_code: 'STUDY' },
+      { code: 'STUDY-COLLEGE-ALG', title: 'College Algebra', credits: 3, cost_usd: 199, duration_weeks: 6, cri_score: 78, level: 100, subject_area: 'mathematics', provider_code: 'STUDY' },
+      { code: 'STUDY-ENG-COMP', title: 'English Composition I', credits: 3, cost_usd: 199, duration_weeks: 6, cri_score: 76, level: 100, subject_area: 'english', provider_code: 'STUDY' },
+      { code: 'STUDY-INTRO-CS', title: 'Introduction to Computer Science', credits: 3, cost_usd: 199, duration_weeks: 6, cri_score: 75, level: 100, subject_area: 'computer_science', provider_code: 'STUDY' },
+      { code: 'STUDY-INTRO-PROG', title: 'Introduction to Programming', credits: 3, cost_usd: 199, duration_weeks: 6, cri_score: 77, level: 100, subject_area: 'computer_science', provider_code: 'STUDY' },
+      { code: 'STUDY-DATA-STRUCT', title: 'Data Structures', credits: 3, cost_usd: 199, duration_weeks: 8, cri_score: 74, level: 200, subject_area: 'computer_science', provider_code: 'STUDY' },
+      { code: 'STUDY-ALGORITHMS', title: 'Algorithms', credits: 3, cost_usd: 199, duration_weeks: 8, cri_score: 76, level: 200, subject_area: 'computer_science', provider_code: 'STUDY' },
       
       // CLEP exams
-      { code: 'CLEP-COLLEGE-ALG', title: 'College Algebra CLEP', credits: 3, cost_usd: 89, duration_weeks: 0, cri_score: 0.92, level: 100, subject_area: 'mathematics', provider_code: 'CLEP' },
-      { code: 'CLEP-ENG-COMP', title: 'College Composition CLEP', credits: 6, cost_usd: 89, duration_weeks: 0, cri_score: 0.94, level: 100, subject_area: 'english', provider_code: 'CLEP' },
+      { code: 'CLEP-COLLEGE-ALG', title: 'College Algebra CLEP', credits: 3, cost_usd: 89, duration_weeks: 0, cri_score: 92, level: 100, subject_area: 'mathematics', provider_code: 'CLEP' },
+      { code: 'CLEP-ENG-COMP', title: 'College Composition CLEP', credits: 6, cost_usd: 89, duration_weeks: 0, cri_score: 94, level: 100, subject_area: 'english', provider_code: 'CLEP' },
       
       // TESU institutional
-      { code: 'ENG-101', title: 'English Composition I', credits: 3, cost_usd: 1800, duration_weeks: 15, cri_score: 1.0, level: 100, subject_area: 'english', provider_code: 'TESU' },
-      { code: 'MAT-121', title: 'College Algebra', credits: 3, cost_usd: 1800, duration_weeks: 15, cri_score: 1.0, level: 100, subject_area: 'mathematics', provider_code: 'TESU' },
-      { code: 'CMP-101', title: 'Introduction to Computer Science', credits: 3, cost_usd: 1800, duration_weeks: 15, cri_score: 1.0, level: 100, subject_area: 'computer_science', provider_code: 'TESU' },
-      { code: 'CMP-221', title: 'Data Structures & Algorithms', credits: 3, cost_usd: 1800, duration_weeks: 15, cri_score: 1.0, level: 200, subject_area: 'computer_science', provider_code: 'TESU' },
+      { code: 'ENG-101', title: 'English Composition I', credits: 3, cost_usd: 1800, duration_weeks: 15, cri_score: 100, level: 100, subject_area: 'english', provider_code: 'TESU' },
+      { code: 'MAT-121', title: 'College Algebra', credits: 3, cost_usd: 1800, duration_weeks: 15, cri_score: 100, level: 100, subject_area: 'mathematics', provider_code: 'TESU' },
+      { code: 'CMP-101', title: 'Introduction to Computer Science', credits: 3, cost_usd: 1800, duration_weeks: 15, cri_score: 100, level: 100, subject_area: 'computer_science', provider_code: 'TESU' },
+      { code: 'CMP-221', title: 'Data Structures & Algorithms', credits: 3, cost_usd: 1800, duration_weeks: 15, cri_score: 100, level: 200, subject_area: 'computer_science', provider_code: 'TESU' },
       
       // WGU institutional
-      { code: 'C191', title: 'Operating Systems for Programmers', credits: 3, cost_usd: 3625, duration_weeks: 12, cri_score: 1.0, level: 200, subject_area: 'computer_science', provider_code: 'WGU' },
-      { code: 'C949', title: 'Data Structures and Algorithms I', credits: 4, cost_usd: 3625, duration_weeks: 12, cri_score: 1.0, level: 200, subject_area: 'computer_science', provider_code: 'WGU' },
+      { code: 'C191', title: 'Operating Systems for Programmers', credits: 3, cost_usd: 3625, duration_weeks: 12, cri_score: 100, level: 200, subject_area: 'computer_science', provider_code: 'WGU' },
+      { code: 'C949', title: 'Data Structures and Algorithms I', credits: 4, cost_usd: 3625, duration_weeks: 12, cri_score: 100, level: 200, subject_area: 'computer_science', provider_code: 'WGU' },
       
       // EXCU institutional
-      { code: 'ENG-105', title: 'English Composition', credits: 3, cost_usd: 1200, duration_weeks: 15, cri_score: 1.0, level: 100, subject_area: 'english', provider_code: 'EXCU' },
-      { code: 'MAT-1105', title: 'College Algebra', credits: 3, cost_usd: 1200, duration_weeks: 15, cri_score: 1.0, level: 100, subject_area: 'mathematics', provider_code: 'EXCU' },
-      { code: 'CIS-101', title: 'Introduction to Computing', credits: 3, cost_usd: 1200, duration_weeks: 15, cri_score: 1.0, level: 100, subject_area: 'computer_science', provider_code: 'EXCU' },
+      { code: 'ENG-105', title: 'English Composition', credits: 3, cost_usd: 1200, duration_weeks: 15, cri_score: 100, level: 100, subject_area: 'english', provider_code: 'EXCU' },
+      { code: 'MAT-1105', title: 'College Algebra', credits: 3, cost_usd: 1200, duration_weeks: 15, cri_score: 100, level: 100, subject_area: 'mathematics', provider_code: 'EXCU' },
+      { code: 'CIS-101', title: 'Introduction to Computing', credits: 3, cost_usd: 1200, duration_weeks: 15, cri_score: 100, level: 100, subject_area: 'computer_science', provider_code: 'EXCU' },
       
       // MOOCs
-      { code: 'COURSERA-PYTHON', title: 'Python for Everybody', credits: 3, cost_usd: 49, duration_weeks: 8, cri_score: 0.68, level: 100, subject_area: 'computer_science', provider_code: 'COURSERA' },
-      { code: 'EDX-DATA-SCI', title: 'Introduction to Data Science', credits: 3, cost_usd: 99, duration_weeks: 10, cri_score: 0.70, level: 200, subject_area: 'computer_science', provider_code: 'EDX' },
+      { code: 'COURSERA-PYTHON', title: 'Python for Everybody', credits: 3, cost_usd: 49, duration_weeks: 8, cri_score: 68, level: 100, subject_area: 'computer_science', provider_code: 'COURSERA' },
+      { code: 'EDX-DATA-SCI', title: 'Introduction to Data Science', credits: 3, cost_usd: 99, duration_weeks: 10, cri_score: 70, level: 200, subject_area: 'computer_science', provider_code: 'EDX' },
     ];
 
     const coursesWithProviderIds = courses.map(c => {
