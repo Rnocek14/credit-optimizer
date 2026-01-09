@@ -126,16 +126,14 @@ export default function TemplateRefinementDashboard() {
     },
   });
 
-  // Rescan institution mutation
+  // Rescan institution mutation - calls auto-scan directly for a single institution
   const rescanMutation = useMutation({
     mutationFn: async (institution: string) => {
-      const response = await supabase.functions.invoke('transfer-scraper-batch-scan', {
+      // Use auto-scan for direct single-institution scanning
+      const response = await supabase.functions.invoke('transfer-scraper-auto-scan', {
         body: {
-          tier: 'tier_a',
-          maxPriority: 1,
-          concurrency: 1,
-          limit: 1,
-          startAfter: String.fromCharCode(institution.charCodeAt(0) - 1), // Start just before this institution
+          institution,
+          maxPriority: 3, // Try all priority levels
         },
       });
       
@@ -143,7 +141,8 @@ export default function TemplateRefinementDashboard() {
       return response.data;
     },
     onSuccess: (data) => {
-      toast.success(`Rescan triggered: ${data?.summary?.processed || 0} processed`);
+      const status = data?.packCreated ? 'Pack created!' : 'Scan complete';
+      toast.success(`${status} for ${data?.institution || 'institution'}`);
       queryClient.invalidateQueries({ queryKey: ['template-refinement-findings'] });
     },
     onError: (error) => {

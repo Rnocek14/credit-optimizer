@@ -1,10 +1,18 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { AlertCircle, CheckCircle2 } from 'lucide-react';
+import { AlertCircle, CheckCircle2, HelpCircle } from 'lucide-react';
 import { usePlanBasket } from '../state/usePlanBasket';
 import { useVerifiedPolicy } from '../hooks/useVerifiedPolicy';
 import { PolicyVerificationBadge, getVerificationStatus } from './PolicyVerificationBadge';
 
+/**
+ * PolicyCard displays institution transfer policy limits and progress.
+ * 
+ * TRUST RULES:
+ * - Only show authoritative calculations when isVerified=true
+ * - When unverified, show disabled meters with "Verification required" messaging
+ * - Never display "exceeded" or "need X more" as if certain when unverified
+ */
 export function PolicyCard() {
   const { items, constraints } = usePlanBasket();
   const anchor = constraints.target_school;
@@ -14,7 +22,7 @@ export function PolicyCard() {
 
   if (!anchor || !policy) return null;
 
-  // Get values from verified policy (uses live pack or falls back to central service)
+  // Get values from policy (verified or estimated)
   const aceCapVerified = policy.maxNoncollegiateCredits;
   const residencyRequiredVerified = policy.residencyCredits;
   const upperDivRequiredVerified = policy.upperDivisionMin;
@@ -33,15 +41,15 @@ export function PolicyCard() {
     .filter(i => (i.level || 0) >= 300)
     .reduce((s, i) => s + (i.credits || 0), 0);
 
-  // Calculate percentages using verified values
-  const acePct = Math.min(100, (aceCredits / aceCapVerified) * 100 || 0);
-  const aceExceeded = aceCredits > aceCapVerified;
+  // Only calculate percentages/states when verified
+  const acePct = isVerified ? Math.min(100, (aceCredits / aceCapVerified) * 100 || 0) : 0;
+  const aceExceeded = isVerified && aceCredits > aceCapVerified;
   
-  const resPct = Math.min(100, (residencyCredits / residencyRequiredVerified) * 100 || 0);
-  const residencyMet = residencyCredits >= residencyRequiredVerified;
+  const resPct = isVerified ? Math.min(100, (residencyCredits / residencyRequiredVerified) * 100 || 0) : 0;
+  const residencyMet = isVerified && residencyCredits >= residencyRequiredVerified;
   
-  const udPct = Math.min(100, (upperDivCredits / upperDivRequiredVerified) * 100 || 0);
-  const upperDivMet = upperDivCredits >= upperDivRequiredVerified;
+  const udPct = isVerified ? Math.min(100, (upperDivCredits / upperDivRequiredVerified) * 100 || 0) : 0;
+  const upperDivMet = isVerified && upperDivCredits >= upperDivRequiredVerified;
 
   const verificationStatus = getVerificationStatus(isVerified, isLoading, policy.confidence);
 
@@ -61,83 +69,103 @@ export function PolicyCard() {
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Unverified warning */}
+        {/* Unverified warning - prominent when not verified */}
         {!isVerified && !isLoading && (
-          <div className="p-2 rounded-md bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800">
-            <div className="flex items-start gap-2 text-xs text-yellow-800 dark:text-yellow-200">
-              <AlertCircle className="h-3 w-3 mt-0.5 flex-shrink-0" />
-              <span>
-                Policy values are estimated. Official verification pending.
-                {policy.notes && ` ${policy.notes}`}
-              </span>
+          <div className="p-3 rounded-md bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800">
+            <div className="flex items-start gap-2 text-sm text-yellow-800 dark:text-yellow-200">
+              <HelpCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+              <div>
+                <span className="font-medium">Policy not verified</span>
+                <p className="text-xs mt-1 opacity-80">
+                  Transfer limits shown below are estimates. Official verification is pending.
+                  Calculations will be enabled once policy is confirmed.
+                </p>
+              </div>
             </div>
           </div>
         )}
 
         {/* ACE/Noncollegiate Credits - COMBINED POOL */}
-        <div>
+        <div className={!isVerified ? 'opacity-60' : ''}>
           <div className="flex items-center justify-between text-sm mb-1">
             <span>Noncollegiate Credits</span>
-            <span className={`font-mono ${aceExceeded ? 'text-red-600 font-bold' : ''}`}>
-              {aceCredits}/{aceCapVerified}
+            <span className={`font-mono ${isVerified && aceExceeded ? 'text-red-600 font-bold' : ''}`}>
+              {aceCredits}/{isVerified ? aceCapVerified : `~${aceCapVerified}`}
             </span>
           </div>
           <Progress 
             value={acePct} 
-            className={`${aceExceeded ? '[&>div]:bg-red-500' : acePct >= 80 ? '[&>div]:bg-yellow-500' : ''}`} 
+            className={`${isVerified && aceExceeded ? '[&>div]:bg-red-500' : isVerified && acePct >= 80 ? '[&>div]:bg-yellow-500' : !isVerified ? '[&>div]:bg-muted-foreground/30' : ''}`} 
           />
-          {aceExceeded && (
+          {isVerified && aceExceeded && (
             <div className="flex items-center gap-2 text-xs text-red-600 mt-1">
               <AlertCircle className="h-3 w-3" /> 
               Exceeds {aceCapVerified}-credit noncollegiate cap by {aceCredits - aceCapVerified}
             </div>
           )}
+          {!isVerified && (
+            <div className="text-xs text-muted-foreground mt-1 italic">
+              Verification required for accurate limit
+            </div>
+          )}
         </div>
 
         {/* Residency */}
-        <div>
+        <div className={!isVerified ? 'opacity-60' : ''}>
           <div className="flex items-center justify-between text-sm mb-1">
             <span>In-Residence Credits</span>
-            <span className={`font-mono ${residencyMet ? 'text-green-600' : ''}`}>
-              {residencyCredits}/{residencyRequiredVerified}
+            <span className={`font-mono ${isVerified && residencyMet ? 'text-green-600' : ''}`}>
+              {residencyCredits}/{isVerified ? residencyRequiredVerified : `~${residencyRequiredVerified}`}
             </span>
           </div>
           <Progress 
             value={resPct} 
-            className={`${residencyMet ? '[&>div]:bg-green-500' : '[&>div]:bg-yellow-500'}`} 
+            className={`${isVerified && residencyMet ? '[&>div]:bg-green-500' : isVerified ? '[&>div]:bg-yellow-500' : '[&>div]:bg-muted-foreground/30'}`} 
           />
-          {residencyMet ? (
-            <div className="flex items-center gap-2 text-xs text-green-600 mt-1">
-              <CheckCircle2 className="h-3 w-3" /> Residency requirement met
-            </div>
+          {isVerified ? (
+            residencyMet ? (
+              <div className="flex items-center gap-2 text-xs text-green-600 mt-1">
+                <CheckCircle2 className="h-3 w-3" /> Residency requirement met
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 text-xs text-yellow-700 mt-1">
+                <AlertCircle className="h-3 w-3" /> 
+                Need {residencyRequiredVerified - residencyCredits} more in-residence credits
+              </div>
+            )
           ) : (
-            <div className="flex items-center gap-2 text-xs text-yellow-700 mt-1">
-              <AlertCircle className="h-3 w-3" /> 
-              Need {residencyRequiredVerified - residencyCredits} more in-residence credits
+            <div className="text-xs text-muted-foreground mt-1 italic">
+              Verification required for accurate limit
             </div>
           )}
         </div>
 
         {/* Upper Division */}
-        <div>
+        <div className={!isVerified ? 'opacity-60' : ''}>
           <div className="flex items-center justify-between text-sm mb-1">
             <span>Upper Division (300+)</span>
-            <span className={`font-mono ${upperDivMet ? 'text-green-600' : ''}`}>
-              {upperDivCredits}/{upperDivRequiredVerified}
+            <span className={`font-mono ${isVerified && upperDivMet ? 'text-green-600' : ''}`}>
+              {upperDivCredits}/{isVerified ? upperDivRequiredVerified : `~${upperDivRequiredVerified}`}
             </span>
           </div>
           <Progress 
             value={udPct} 
-            className={`${upperDivMet ? '[&>div]:bg-green-500' : '[&>div]:bg-yellow-500'}`} 
+            className={`${isVerified && upperDivMet ? '[&>div]:bg-green-500' : isVerified ? '[&>div]:bg-yellow-500' : '[&>div]:bg-muted-foreground/30'}`} 
           />
-          {upperDivMet ? (
-            <div className="flex items-center gap-2 text-xs text-green-600 mt-1">
-              <CheckCircle2 className="h-3 w-3" /> Upper-division requirement met
-            </div>
+          {isVerified ? (
+            upperDivMet ? (
+              <div className="flex items-center gap-2 text-xs text-green-600 mt-1">
+                <CheckCircle2 className="h-3 w-3" /> Upper-division requirement met
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 text-xs text-yellow-700 mt-1">
+                <AlertCircle className="h-3 w-3" /> 
+                Need {upperDivRequiredVerified - upperDivCredits} more upper-division credits
+              </div>
+            )
           ) : (
-            <div className="flex items-center gap-2 text-xs text-yellow-700 mt-1">
-              <AlertCircle className="h-3 w-3" /> 
-              Need {upperDivRequiredVerified - upperDivCredits} more upper-division credits
+            <div className="text-xs text-muted-foreground mt-1 italic">
+              Verification required for accurate limit
             </div>
           )}
         </div>
