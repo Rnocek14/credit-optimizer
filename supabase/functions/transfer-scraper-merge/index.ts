@@ -847,6 +847,55 @@ Deno.serve(async (req) => {
         min_upper_level_credits: mergedPack.upper_level_requirements?.min_upper_level_credits?.toString() ?? null,
       };
 
+      // Check institution scope to determine if we should skip pack creation
+      const { data: instData } = await supabase
+        .from('institutions')
+        .select('transfer_policy_scope')
+        .eq('code', institution)
+        .maybeSingle();
+
+      const scope = instData?.transfer_policy_scope ?? 'institution';
+
+      // Check if we have required numeric fields
+      const residency = policyData.residency_credits;
+      const maxTransfer = policyData.max_transfer_credits;
+      const hasNumericCaps = 
+        (residency != null && /^\d+$/.test(residency)) ||
+        (maxTransfer != null && /^\d+$/.test(maxTransfer));
+
+      // Skip pack creation for program-scoped institutions without numeric caps
+      if (scope === 'program' && !hasNumericCaps) {
+        console.log(`[merge] Skipping pack creation for program-scoped institution ${institution} (no numeric caps)`);
+        
+        // Log to policy_scan_findings for auditability
+        await supabase.from('policy_scan_findings').insert({
+          institution,
+          academic_year: mergedPack.academic_year,
+          status: 'insufficient_institution_level_policy',
+          reason: 'program_scoped_no_institution_wide_numeric_caps',
+          urls_scanned: scrapeJobs.map(j => j.url),
+          confidence_score: totalScore,
+          details: {
+            extracted_policy_data: policyData,
+            trust_tier: trustTier,
+            action,
+          },
+        });
+
+        return new Response(
+          JSON.stringify({
+            ok: true,
+            skipped_pack_creation: true,
+            reason: 'program_scoped_no_institution_wide_numeric_caps',
+            institution,
+            academic_year: mergedPack.academic_year,
+            confidence_score: totalScore,
+            notes: [...notes, 'Pack creation skipped: program-scoped institution requires program-level URLs'],
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
       // Build field_provenance with flat keys to match policy_data structure
       const flatProvenance: Record<string, unknown> = {};
       if (fieldProvenance['residency_policy.min_institutional_credits']) {

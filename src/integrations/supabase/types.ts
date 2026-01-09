@@ -5102,6 +5102,7 @@ export type Database = {
           metadata: Json | null
           name: string
           reputation_score: number | null
+          transfer_policy_scope: string
           type: string
           updated_at: string
           verification_status: string | null
@@ -5119,6 +5120,7 @@ export type Database = {
           metadata?: Json | null
           name: string
           reputation_score?: number | null
+          transfer_policy_scope?: string
           type: string
           updated_at?: string
           verification_status?: string | null
@@ -5136,6 +5138,7 @@ export type Database = {
           metadata?: Json | null
           name?: string
           reputation_score?: number | null
+          transfer_policy_scope?: string
           type?: string
           updated_at?: string
           verification_status?: string | null
@@ -7906,6 +7909,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      policy_scan_findings: {
+        Row: {
+          academic_year: string | null
+          confidence_score: number | null
+          created_at: string
+          details: Json | null
+          id: string
+          institution: string
+          reason: string
+          status: string
+          urls_scanned: Json | null
+        }
+        Insert: {
+          academic_year?: string | null
+          confidence_score?: number | null
+          created_at?: string
+          details?: Json | null
+          id?: string
+          institution: string
+          reason: string
+          status: string
+          urls_scanned?: Json | null
+        }
+        Update: {
+          academic_year?: string | null
+          confidence_score?: number | null
+          created_at?: string
+          details?: Json | null
+          id?: string
+          institution?: string
+          reason?: string
+          status?: string
+          urls_scanned?: Json | null
+        }
+        Relationships: []
       }
       portfolio_projects: {
         Row: {
