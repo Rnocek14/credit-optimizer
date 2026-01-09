@@ -4900,6 +4900,7 @@ export type Database = {
           id: string
           institution: string
           last_verified_at: string | null
+          merged_from_job_ids: string[] | null
           policy_json: Json
           source_scrape_ids: string[] | null
           status: string
@@ -4918,6 +4919,7 @@ export type Database = {
           id?: string
           institution: string
           last_verified_at?: string | null
+          merged_from_job_ids?: string[] | null
           policy_json: Json
           source_scrape_ids?: string[] | null
           status?: string
@@ -4936,6 +4938,7 @@ export type Database = {
           id?: string
           institution?: string
           last_verified_at?: string | null
+          merged_from_job_ids?: string[] | null
           policy_json?: Json
           source_scrape_ids?: string[] | null
           status?: string
@@ -9127,6 +9130,7 @@ export type Database = {
           institution: string
           job_type: string
           last_attempt_at: string | null
+          merge_group_id: string | null
           priority: number | null
           retry_count: number | null
           robots_checked_at: string | null
@@ -9145,6 +9149,7 @@ export type Database = {
           institution: string
           job_type: string
           last_attempt_at?: string | null
+          merge_group_id?: string | null
           priority?: number | null
           retry_count?: number | null
           robots_checked_at?: string | null
@@ -9163,6 +9168,7 @@ export type Database = {
           institution?: string
           job_type?: string
           last_attempt_at?: string | null
+          merge_group_id?: string | null
           priority?: number | null
           retry_count?: number | null
           robots_checked_at?: string | null

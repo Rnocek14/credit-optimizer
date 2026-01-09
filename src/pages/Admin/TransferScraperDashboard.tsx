@@ -9,10 +9,11 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { RefreshCw, Play, Sparkles, CheckCircle, XCircle, Plus, ExternalLink, Copy, Database, Brain, RotateCcw, Zap, AlertTriangle, FlaskConical } from 'lucide-react';
+import { RefreshCw, Play, Sparkles, CheckCircle, XCircle, Plus, ExternalLink, Copy, Database, Brain, RotateCcw, Zap, AlertTriangle, FlaskConical, ClipboardList } from 'lucide-react';
 import { useTransferScraper, ScrapeJob, ScrapedContent, ExtractionResult, AutoScanProgress, AutoScanUrlResult } from '@/hooks/useTransferScraper';
 import { Progress } from '@/components/ui/progress';
 import { supabase } from '@/integrations/supabase/client';
+import { ReviewQueuePanel } from '@/components/admin/ReviewQueuePanel';
 
 // -----------------------------------------------------------------------------
 // Status Badge Component
@@ -529,6 +530,24 @@ function TransferScraperDashboardContent() {
           </Card>
         )}
 
+        {/* Main Tabs: Scraper vs Review Queue */}
+        <Tabs defaultValue="scraper" className="w-full">
+          <TabsList className="mb-4">
+            <TabsTrigger value="scraper" className="gap-2">
+              <Database className="h-4 w-4" />
+              Scraper
+            </TabsTrigger>
+            <TabsTrigger value="review" className="gap-2">
+              <ClipboardList className="h-4 w-4" />
+              Review Queue
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="review">
+            <ReviewQueuePanel institution={filters.institution} />
+          </TabsContent>
+
+          <TabsContent value="scraper">
         {/* 3-Column Layout */}
         <div className="grid grid-cols-12 gap-6">
           {/* LEFT: Job Queue */}
@@ -928,6 +947,8 @@ function TransferScraperDashboardContent() {
             </Card>
           </div>
         </div>
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );
