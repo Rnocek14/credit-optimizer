@@ -17,17 +17,17 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     const templates = [
-      // WCU templates
+      // WCU templates - using distinct URLs to avoid dedup conflicts
       { institution_code: 'WCU', url: 'https://catalog.wcu.edu/', page_type: 'catalog', priority: 1 },
       { institution_code: 'WCU', url: 'https://www.wcu.edu/learn/admissions/undergraduate/transfer-students.aspx', page_type: 'transfer_info', priority: 1 },
-      { institution_code: 'WCU', url: 'https://www.wcu.edu/learn/admissions/undergraduate/transfer-students.aspx', page_type: 'transfer_policy', priority: 2 },
-      { institution_code: 'WCU', url: 'https://www.wcu.edu/learn/admissions/undergraduate/transfer-students.aspx', page_type: 'transfer_faq', priority: 3 },
+      { institution_code: 'WCU', url: 'https://www.wcu.edu/learn/registrar/transfer-credits.aspx', page_type: 'transfer_policy', priority: 1 },
+      { institution_code: 'WCU', url: 'https://www.wcu.edu/learn/registrar/faq.aspx', page_type: 'transfer_faq', priority: 3 },
       { institution_code: 'WCU', url: 'https://www.wcu.edu/learn/registrar/', page_type: 'residency', priority: 3 },
       // EMPIRE templates
       { institution_code: 'EMPIRE', url: 'https://catalog.esc.edu/', page_type: 'catalog', priority: 1 },
       { institution_code: 'EMPIRE', url: 'https://www.esc.edu/admissions/transfer-credit/', page_type: 'transfer_policy', priority: 1 },
       { institution_code: 'EMPIRE', url: 'https://www.esc.edu/admissions/', page_type: 'transfer_info', priority: 2 },
-      { institution_code: 'EMPIRE', url: 'https://www.esc.edu/admissions/transfer-credit/', page_type: 'transfer_faq', priority: 3 },
+      { institution_code: 'EMPIRE', url: 'https://www.esc.edu/admissions/faq/', page_type: 'transfer_faq', priority: 3 },
       { institution_code: 'EMPIRE', url: 'https://www.esc.edu/registrar/', page_type: 'residency', priority: 3 },
       { institution_code: 'EMPIRE', url: 'https://www.esc.edu/tuition-financial-aid/tuition/', page_type: 'tuition', priority: 4 },
     ];
