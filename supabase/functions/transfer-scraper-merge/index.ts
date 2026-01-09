@@ -123,6 +123,47 @@ interface MergeResult {
   action: 'auto_approve' | 'human_review' | 'hold';
   merge_notes: string[];
   sources_used: string[];
+  field_provenance: FieldProvenance;
+  trust_tier: 'verified' | 'partial' | 'unverified';
+}
+
+// Per-field provenance tracking
+interface FieldProvenance {
+  [fieldPath: string]: {
+    source: 'ground_truth' | 'ai_extraction' | 'human_override';
+    source_ref?: string;
+    final_value: unknown;
+    overrode_value?: unknown;
+    overrode_at?: string;
+  };
+}
+
+// Diff record for audit logging
+interface FieldDiff {
+  field: string;
+  extracted_value: unknown;
+  ground_truth_value: unknown;
+  final_value: unknown;
+  did_override: boolean;
+}
+
+// Ground truth row type
+interface GroundTruth {
+  id: string;
+  institution: string;
+  residency_credits: number | null;
+  max_transfer_credits: number | null;
+  max_ace_nccrs_credits: number | null;
+  accepts_clep: boolean | null;
+  accepts_dsst: boolean | null;
+  accepts_ap: boolean | null;
+  accepts_tecep: boolean | null;
+  accepts_portfolio: boolean | null;
+  capstone_required: boolean | null;
+  cornerstone_required: boolean | null;
+  info_literacy_required: boolean | null;
+  min_upper_level_credits: number | null;
+  source_url: string | null;
 }
 
 // -----------------------------------------------------------------------------
@@ -587,7 +628,16 @@ Deno.serve(async (req) => {
     let totalScore = Object.values(confidence).reduce((a, b) => a + b, 0);
     let action: 'auto_approve' | 'human_review' | 'hold' = totalScore >= 85 ? 'auto_approve' : totalScore >= 60 ? 'human_review' : 'hold';
 
-    // Validate AND OVERRIDE with ground truth if available
+    // ==========================================================================
+    // BULLETPROOF GROUND TRUTH OVERRIDE WITH PROVENANCE TRACKING
+    // ==========================================================================
+    const fieldProvenance: FieldProvenance = {};
+    const fieldDiffs: FieldDiff[] = [];
+    let criticalFieldsVerified = true;
+    let fieldsOverridden = 0;
+    let fieldsMatched = 0;
+    let fieldsMissingGroundTruth = 0;
+
     if (mergedPack) {
       const { data: groundTruth } = await supabase
         .from('institution_policy_ground_truth')
@@ -595,51 +645,192 @@ Deno.serve(async (req) => {
         .eq('institution', institution)
         .maybeSingle();
 
-      if (groundTruth) {
-        notes.push(`Ground truth validation for ${institution}:`);
+      const gt = groundTruth as GroundTruth | null;
+      notes.push(`Ground truth validation for ${institution}:`);
+
+      // Helper to track field override
+      const trackField = (
+        fieldPath: string,
+        extractedValue: unknown,
+        gtValue: unknown,
+        isCritical: boolean
+      ): { finalValue: unknown; wasOverridden: boolean } => {
+        const hasGroundTruth = gtValue !== null && gtValue !== undefined;
         
-        // Check and OVERRIDE residency credits
-        const extractedResidency = mergedPack.residency_policy?.min_institutional_credits;
-        const gtResidency = groundTruth.residency_credits;
-        if (gtResidency !== null) {
-          if (extractedResidency !== gtResidency) {
-            notes.push(`🔄 RESIDENCY OVERRIDE: Changed from ${extractedResidency} to ${gtResidency} (ground truth)`);
-            mergedPack.residency_policy.min_institutional_credits = gtResidency;
-            // Boost confidence since we're using verified data
-            confidence.source_authority = Math.min(30, confidence.source_authority + 5);
-          } else {
-            notes.push(`✓ Residency matches ground truth: ${gtResidency}`);
+        if (!hasGroundTruth) {
+          fieldsMissingGroundTruth++;
+          if (isCritical) {
+            criticalFieldsVerified = false;
+            notes.push(`⚠️ ${fieldPath}: No ground truth (critical field - blocking auto-approve)`);
+          }
+          fieldProvenance[fieldPath] = {
+            source: 'ai_extraction',
+            final_value: extractedValue,
+          };
+          fieldDiffs.push({
+            field: fieldPath,
+            extracted_value: extractedValue,
+            ground_truth_value: null,
+            final_value: extractedValue,
+            did_override: false,
+          });
+          return { finalValue: extractedValue, wasOverridden: false };
+        }
+
+        const wasOverridden = extractedValue !== gtValue;
+        if (wasOverridden) {
+          fieldsOverridden++;
+          notes.push(`🔄 ${fieldPath}: ${extractedValue} → ${gtValue} (ground truth override)`);
+          fieldProvenance[fieldPath] = {
+            source: 'ground_truth',
+            source_ref: gt?.source_url || gt?.id,
+            final_value: gtValue,
+            overrode_value: extractedValue,
+            overrode_at: new Date().toISOString(),
+          };
+        } else {
+          fieldsMatched++;
+          notes.push(`✓ ${fieldPath}: ${gtValue} (matches ground truth)`);
+          fieldProvenance[fieldPath] = {
+            source: 'ground_truth',
+            source_ref: gt?.source_url || gt?.id,
+            final_value: gtValue,
+          };
+        }
+
+        fieldDiffs.push({
+          field: fieldPath,
+          extracted_value: extractedValue,
+          ground_truth_value: gtValue,
+          final_value: gtValue,
+          did_override: wasOverridden,
+        });
+
+        return { finalValue: gtValue, wasOverridden };
+      };
+
+      // CRITICAL FIELDS - these block auto-approve if not ground-truth verified
+      if (gt) {
+        // Residency credits (CRITICAL)
+        const residencyResult = trackField(
+          'residency_policy.min_institutional_credits',
+          mergedPack.residency_policy?.min_institutional_credits,
+          gt.residency_credits,
+          true
+        );
+        if (residencyResult.finalValue !== undefined) {
+          mergedPack.residency_policy.min_institutional_credits = residencyResult.finalValue as number;
+        }
+
+        // Max transfer credits (CRITICAL)
+        const maxTransferResult = trackField(
+          'transfer_credit_limits.max_total_transfer_credits',
+          mergedPack.transfer_credit_limits?.max_total_transfer_credits,
+          gt.max_transfer_credits,
+          true
+        );
+        if (maxTransferResult.finalValue !== undefined) {
+          mergedPack.transfer_credit_limits.max_total_transfer_credits = maxTransferResult.finalValue as number;
+        }
+
+        // ACE/NCCRS limit (important but not critical)
+        const aceResult = trackField(
+          'transfer_credit_limits.max_ace_nccrs_credits',
+          mergedPack.transfer_credit_limits?.max_ace_nccrs_credits,
+          gt.max_ace_nccrs_credits,
+          false
+        );
+        if (aceResult.finalValue !== undefined) {
+          mergedPack.transfer_credit_limits.max_ace_nccrs_credits = aceResult.finalValue as number;
+        }
+
+        // Credit source acceptance fields
+        const creditSources = [
+          { path: 'credit_sources_accepted.clep', key: 'clep' as const, gtKey: 'accepts_clep' as const },
+          { path: 'credit_sources_accepted.dsst', key: 'dsst' as const, gtKey: 'accepts_dsst' as const },
+          { path: 'credit_sources_accepted.ap', key: 'ap' as const, gtKey: 'accepts_ap' as const },
+          { path: 'credit_sources_accepted.tecep', key: 'tecep' as const, gtKey: 'accepts_tecep' as const },
+          { path: 'credit_sources_accepted.portfolio_assessment', key: 'portfolio_assessment' as const, gtKey: 'accepts_portfolio' as const },
+        ] as const;
+
+        for (const { path, key, gtKey } of creditSources) {
+          const gtVal = gt[gtKey];
+          if (gtVal !== null) {
+            const result = trackField(path, mergedPack.credit_sources_accepted[key], gtVal, false);
+            if (result.finalValue !== undefined) {
+              mergedPack.credit_sources_accepted[key] = result.finalValue as boolean;
+            }
           }
         }
 
-        // Check and OVERRIDE max transfer credits
-        const extractedMaxTransfer = mergedPack.transfer_credit_limits?.max_total_transfer_credits;
-        const gtMaxTransfer = groundTruth.max_transfer_credits;
-        if (gtMaxTransfer !== null) {
-          if (extractedMaxTransfer !== gtMaxTransfer) {
-            notes.push(`🔄 MAX TRANSFER OVERRIDE: Changed from ${extractedMaxTransfer} to ${gtMaxTransfer} (ground truth)`);
-            mergedPack.transfer_credit_limits.max_total_transfer_credits = gtMaxTransfer;
-          } else {
-            notes.push(`✓ Max transfer matches ground truth: ${gtMaxTransfer}`);
+        // Institutional requirements
+        if (gt.capstone_required !== null) {
+          const result = trackField(
+            'institutional_course_requirements.capstone_required',
+            mergedPack.institutional_course_requirements?.capstone_required,
+            gt.capstone_required,
+            false
+          );
+          if (result.finalValue !== undefined && mergedPack.institutional_course_requirements) {
+            mergedPack.institutional_course_requirements.capstone_required = result.finalValue as boolean;
           }
         }
 
-        // When ground truth overrides values, boost overall confidence
-        if ((gtResidency !== null && extractedResidency !== gtResidency) || 
-            (gtMaxTransfer !== null && extractedMaxTransfer !== gtMaxTransfer)) {
-          confidence.ai_certainty = 5; // Max out AI certainty when ground truth is used
-          notes.push(`Ground truth applied - boosting confidence`);
+        if (gt.cornerstone_required !== null) {
+          const result = trackField(
+            'institutional_course_requirements.cornerstone_required',
+            mergedPack.institutional_course_requirements?.cornerstone_required,
+            gt.cornerstone_required,
+            false
+          );
+          if (result.finalValue !== undefined && mergedPack.institutional_course_requirements) {
+            mergedPack.institutional_course_requirements.cornerstone_required = result.finalValue as boolean;
+          }
         }
 
-        // Recalculate score after validation adjustments
-        totalScore = Object.values(confidence).reduce((a, b) => a + b, 0);
+        // Boost confidence when ground truth is used
+        if (fieldsOverridden > 0) {
+          confidence.source_authority = Math.min(30, confidence.source_authority + 5);
+          confidence.ai_certainty = 5; // Max when ground truth applied
+          notes.push(`Ground truth applied to ${fieldsOverridden} field(s) - boosting confidence`);
+        }
+      } else {
+        // No ground truth exists - all critical fields are unverified
+        criticalFieldsVerified = false;
+        notes.push(`⚠️ No ground truth found for ${institution} - critical fields unverified`);
+        
+        // Mark all fields as AI extraction
+        fieldProvenance['residency_policy.min_institutional_credits'] = {
+          source: 'ai_extraction',
+          final_value: mergedPack.residency_policy?.min_institutional_credits,
+        };
+        fieldProvenance['transfer_credit_limits.max_total_transfer_credits'] = {
+          source: 'ai_extraction',
+          final_value: mergedPack.transfer_credit_limits?.max_total_transfer_credits,
+        };
+      }
+
+      // Recalculate score
+      totalScore = Object.values(confidence).reduce((a, b) => a + b, 0);
+
+      // TRUST TIER SCORING - block auto-approve if critical fields not verified
+      if (!criticalFieldsVerified) {
+        action = totalScore >= 60 ? 'human_review' : 'hold';
+        notes.push(`🔒 Auto-approve blocked: critical fields not ground-truth verified`);
+      } else {
         action = totalScore >= 85 ? 'auto_approve' : totalScore >= 60 ? 'human_review' : 'hold';
       }
     }
 
-    notes.push(`Final merged score: ${totalScore} (${action})`);
+    // Determine trust tier
+    const trustTier: 'verified' | 'partial' | 'unverified' = 
+      criticalFieldsVerified ? 'verified' : 
+      fieldsMatched + fieldsOverridden > 0 ? 'partial' : 'unverified';
 
-    // Create merged policy pack in database
+    notes.push(`Final merged score: ${totalScore} (${action}) [trust: ${trustTier}]`);
+
+    // Create merged policy pack in database with provenance tracking
+    let policyPackId: string | null = null;
     if (mergedPack) {
       const { data: policyData, error: policyError } = await supabase
         .from('institution_policy_packs')
@@ -654,6 +845,7 @@ Deno.serve(async (req) => {
           status: action === 'auto_approve' ? 'active' : 'draft',
           effective_start: mergedPack.policy_effective_dates?.effective_start,
           merged_from_job_ids: scrape_job_ids,
+          field_provenance: fieldProvenance, // NEW: per-field provenance tracking
         })
         .select('id')
         .single();
@@ -661,7 +853,30 @@ Deno.serve(async (req) => {
       if (policyError) {
         console.error('[merge] Error creating policy pack:', policyError);
       } else {
+        policyPackId = policyData.id;
         notes.push(`Created merged policy pack: ${policyData.id}`);
+
+        // Log merge audit for bulletproof provenance trail
+        const { error: auditError } = await supabase
+          .from('policy_merge_audit_log')
+          .insert({
+            policy_pack_id: policyData.id,
+            institution,
+            source_job_ids: scrape_job_ids,
+            field_diffs: fieldDiffs,
+            total_fields_checked: fieldDiffs.length,
+            fields_overridden: fieldsOverridden,
+            fields_matched: fieldsMatched,
+            fields_missing_ground_truth: fieldsMissingGroundTruth,
+            trust_tier: trustTier,
+            critical_fields_verified: criticalFieldsVerified,
+          });
+
+        if (auditError) {
+          console.error('[merge] Error logging audit:', auditError);
+        } else {
+          notes.push(`Audit log created: ${fieldsOverridden} overrides, ${fieldsMatched} matches`);
+        }
       }
     }
 
@@ -674,9 +889,11 @@ Deno.serve(async (req) => {
       action,
       merge_notes: notes,
       sources_used: sources,
+      field_provenance: fieldProvenance,
+      trust_tier: trustTier,
     };
 
-    console.log(`[merge] Complete: score=${totalScore}, action=${action}, rules=${mergedRules.length}`);
+    console.log(`[merge] Complete: score=${totalScore}, action=${action}, trust=${trustTier}, overrides=${fieldsOverridden}`);
 
     return new Response(
       JSON.stringify(result),
