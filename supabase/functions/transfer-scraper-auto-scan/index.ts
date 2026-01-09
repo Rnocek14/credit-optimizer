@@ -243,21 +243,43 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Classify content for each result that has text
+    // Fetch content samples and classify each result
     for (const r of results) {
-      if (r.text_length !== null && r.scrape_job_id) {
-        // We need to get a sample of the text to classify it
-        // For now, classify based on length and later enhance with actual content check
-        if (r.text_length < 200) {
-          r.content_class = 'too_short';
-        } else {
-          // Default to ok - the merge function will do deeper classification
-          r.content_class = 'ok';
+      if (r.scrape_job_id) {
+        try {
+          // Fetch the extracted text sample from scraped_content
+          const sampleResponse = await fetch(
+            `${supabaseUrl}/rest/v1/scraped_content?scrape_job_id=eq.${r.scrape_job_id}&select=extracted_text`,
+            {
+              headers: {
+                'apikey': serviceRoleKey,
+                'Authorization': `Bearer ${serviceRoleKey}`,
+              },
+            }
+          );
+          
+          if (sampleResponse.ok) {
+            const sampleData = await sampleResponse.json();
+            const extractedText = sampleData?.[0]?.extracted_text || '';
+            const sample = extractedText.slice(0, 500);
+            
+            // Classify with actual content
+            r.content_class = classifyContent(sample, r.text_length || 0);
+            
+            // Store sample in result for diagnostics (will be added to urlDiagnostics)
+            (r as any).sample = sample.slice(0, 300);
+          } else {
+            // Fallback to length-only classification
+            r.content_class = (r.text_length || 0) < 200 ? 'too_short' : 'ok';
+          }
+        } catch {
+          // Fallback classification
+          r.content_class = (r.text_length || 0) < 200 ? 'too_short' : 'ok';
         }
       }
     }
 
-    // Build URL diagnostics for merge
+    // Build URL diagnostics for merge (with samples)
     const urlDiagnostics = results.map(r => ({
       url: r.url,
       page_type: r.page_type,
@@ -265,16 +287,17 @@ Deno.serve(async (req) => {
       content_class: r.content_class,
       status: r.status,
       scrape_job_id: r.scrape_job_id,
+      sample: (r as any).sample || null,
     }));
 
-    // Step 4: Call merge function to aggregate all extractions
+    // Step 4: Call merge function to aggregate extractions (>= 1 job)
     const successfulJobIds = results
       .filter(r => r.status === 'success' && r.scrape_job_id)
       .map(r => r.scrape_job_id as string);
 
     let mergeResult = null;
-    if (successfulJobIds.length > 1) {
-      console.log(`Merging ${successfulJobIds.length} successful extractions...`);
+    if (successfulJobIds.length >= 1) {
+      console.log(`Merging ${successfulJobIds.length} successful extraction(s)...`);
       try {
         const mergeResponse = await fetch(`${supabaseUrl}/functions/v1/transfer-scraper-merge`, {
           method: 'POST',
