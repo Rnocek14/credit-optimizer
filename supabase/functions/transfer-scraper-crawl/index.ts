@@ -37,13 +37,16 @@ async function scrapeWithFirecrawl(
     throw new Error('FIRECRAWL_API_KEY not configured');
   }
 
-  const delays = [0, 1000, 3000]; // Exponential backoff: immediate, 1s, 3s
+  // Clamp maxRetries to 3 to match delay array
+  const effectiveMaxRetries = Math.min(maxRetries, 3);
   let lastError: Error | null = null;
 
-  for (let attempt = 0; attempt < maxRetries; attempt++) {
+  for (let attempt = 0; attempt < effectiveMaxRetries; attempt++) {
+    // Exponential backoff: 0ms, 1000ms, 3000ms (capped at 8s for safety)
+    const delay = attempt === 0 ? 0 : Math.min(8000, 1000 * Math.pow(2, attempt - 1));
     if (attempt > 0) {
-      console.log(`Retry attempt ${attempt + 1}/${maxRetries} after ${delays[attempt]}ms delay`);
-      await sleep(delays[attempt]);
+      console.log(`Retry attempt ${attempt + 1}/${effectiveMaxRetries} after ${delay}ms delay`);
+      await sleep(delay);
     }
 
     try {
