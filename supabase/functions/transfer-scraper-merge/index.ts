@@ -863,15 +863,16 @@ Deno.serve(async (req) => {
 
       const scope = instData?.transfer_policy_scope ?? 'institution';
 
-      // Check if we have required numeric fields (both required for program-scoped)
+      // Check if we have required numeric fields (BOTH required for any pack)
       const residency = policyData.residency_credits;
       const maxTransfer = policyData.max_transfer_credits;
       const residencyOk = residency != null && /^\d+$/.test(residency);
       const maxTransferOk = maxTransfer != null && /^\d+$/.test(maxTransfer);
       const hasBothNumericCaps = residencyOk && maxTransferOk;
 
-      // Skip pack creation for program-scoped institutions without BOTH numeric caps
-      if (scope === 'program' && !hasBothNumericCaps) {
+      // HARD GUARDRAIL: Never create packs without BOTH numeric caps
+      // This prevents "nil packs" that pollute data and confuse verification
+      if (!hasBothNumericCaps) {
         console.log(`[merge] Skipping pack creation for program-scoped institution ${institution} (missing numeric caps)`);
         
         // Build extracted_values with evidence structure for verification queue
@@ -910,13 +911,24 @@ Deno.serve(async (req) => {
           !!maxTransferEvidence?.evidence_url ||
           !!maxTransferEvidence?.evidence_text;
 
-        // Determine status based on what we have
-        const findingStatus = hasAnyCandidate && !hasAnyEvidence 
-          ? 'missing_evidence' 
-          : 'insufficient_institution_level_policy';
-        const findingReason = hasAnyCandidate && !hasAnyEvidence
-          ? 'evidence_not_captured'
-          : 'program_scoped_no_institution_wide_numeric_caps';
+        // Determine status and reason based on what we have
+        let findingStatus: string;
+        let findingReason: string;
+        
+        if (!hasAnyCandidate) {
+          findingStatus = 'skipped';
+          findingReason = 'missing_numeric_caps';
+        } else if (!hasAnyEvidence) {
+          findingStatus = 'missing_evidence';
+          findingReason = 'evidence_not_captured';
+        } else {
+          findingStatus = scope === 'program' 
+            ? 'insufficient_institution_level_policy' 
+            : 'pending_verification';
+          findingReason = scope === 'program' 
+            ? 'program_scoped_no_institution_wide_numeric_caps' 
+            : 'partial_caps_need_verification';
+        }
 
         // Log to policy_scan_findings for auditability with verification fields
         await supabase.from('policy_scan_findings').insert({
@@ -924,7 +936,7 @@ Deno.serve(async (req) => {
           academic_year: mergedPack.academic_year,
           status: findingStatus,
           reason: findingReason,
-          urls_scanned: scrapeJobs.map(j => j.url),
+          urls_scanned: extractions.map(e => e.url),
           confidence_score: totalScore,
           requires_verification: hasAnyCandidate && hasAnyEvidence,
           extracted_values: extractedValues,
@@ -943,11 +955,14 @@ Deno.serve(async (req) => {
           JSON.stringify({
             ok: true,
             skipped_pack_creation: true,
-            reason: 'program_scoped_no_institution_wide_numeric_caps',
+            reason: findingReason,
+            status: findingStatus,
             institution,
             academic_year: mergedPack.academic_year,
             confidence_score: totalScore,
-            notes: [...notes, 'Pack creation skipped: program-scoped institution requires program-level URLs'],
+            scope,
+            caps_found: { residency: residencyOk, max_transfer: maxTransferOk },
+            notes: [...notes, `Pack creation skipped: ${findingReason}`],
           }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
@@ -978,7 +993,7 @@ Deno.serve(async (req) => {
       }
 
       // Determine canonical provenance URL (GT source > first scrape URL)
-      const canonicalProvenanceUrl = gt?.source_url || scrapeJobs[0]?.url || null;
+      const canonicalProvenanceUrl = gt?.source_url || extractions[0]?.url || null;
 
       // Guardrail B: Explicit pack_scope based on institution scope
       // If institution is program-scoped, force pack_scope='program' to prevent false coverage

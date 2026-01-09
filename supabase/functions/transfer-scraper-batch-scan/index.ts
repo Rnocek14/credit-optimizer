@@ -23,11 +23,15 @@ Deno.serve(async (req) => {
     const maxPriority = body?.maxPriority ?? 2;
     const concurrency = Math.min(body?.concurrency ?? 1, 3);
     const delayMs = body?.delayMs ?? 500;
+    
+    // Resume parameters for chunked processing (avoid timeout)
+    const startAfter = body?.startAfter as string | undefined;
+    const limit = Math.min(body?.limit ?? 5, 10); // Default 5, max 10 per run
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
     const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
 
-    console.log(`Batch scan starting: tier=${tier}, maxPriority=${maxPriority}, concurrency=${concurrency}`);
+    console.log(`Batch scan starting: tier=${tier}, maxPriority=${maxPriority}, concurrency=${concurrency}, limit=${limit}, startAfter=${startAfter || 'beginning'}`);
 
     // Get institutions by tier from institutions table
     const institutionsResponse = await fetch(
@@ -47,7 +51,8 @@ Deno.serve(async (req) => {
     }
 
     const institutionsData = await institutionsResponse.json();
-    const institutions: string[] = institutionsData.map((r: { code: string }) => r.code);
+    let institutions: string[] = institutionsData.map((r: { code: string }) => r.code);
+    const totalInTier = institutions.length;
 
     if (institutions.length === 0) {
       return new Response(
@@ -60,7 +65,36 @@ Deno.serve(async (req) => {
       );
     }
 
-    console.log(`Found ${institutions.length} ${tier} institutions to scan`);
+    // Apply resume filter: start after specified institution
+    if (startAfter) {
+      const idx = institutions.findIndex(c => c === startAfter);
+      if (idx >= 0) {
+        institutions = institutions.slice(idx + 1);
+      } else {
+        console.log(`Warning: startAfter='${startAfter}' not found in tier, starting from beginning`);
+      }
+    }
+
+    // Apply limit for chunked processing
+    institutions = institutions.slice(0, limit);
+
+    if (institutions.length === 0) {
+      return new Response(
+        JSON.stringify({ 
+          tier,
+          maxPriority,
+          startAfter,
+          limit,
+          total_in_tier: totalInTier,
+          processed_this_run: 0,
+          hasMore: false,
+          message: 'No more institutions to process after startAfter position'
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log(`Processing ${institutions.length} of ${totalInTier} ${tier} institutions (startAfter=${startAfter || 'beginning'})`);
 
     const results: BatchScanResult[] = [];
     let totalSucceeded = 0;
@@ -131,9 +165,23 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Determine if there are more institutions to process
+    const lastProcessed = institutions[institutions.length - 1] ?? null;
+    const allInstitutions: string[] = institutionsData.map((r: { code: string }) => r.code);
+    const lastIdx = lastProcessed ? allInstitutions.indexOf(lastProcessed) : -1;
+    const hasMore = lastIdx >= 0 && lastIdx < allInstitutions.length - 1;
+
     const summary = {
       tier,
       maxPriority,
+      // Resume support
+      startAfter: startAfter ?? null,
+      lastProcessed,
+      hasMore,
+      nextStartAfter: hasMore ? lastProcessed : null,
+      total_in_tier: totalInTier,
+      processed_this_run: institutions.length,
+      // Batch stats
       institutions_attempted: institutions.length,
       institutions_completed: results.length,
       successful_institutions: results.filter(r => r.status === 'success').length,
@@ -144,7 +192,7 @@ Deno.serve(async (req) => {
       results,
     };
 
-    console.log(`Batch scan complete: ${summary.successful_institutions}/${summary.total_institutions} institutions succeeded`);
+    console.log(`Batch scan complete: ${summary.successful_institutions}/${summary.processed_this_run} institutions succeeded, hasMore=${hasMore}`);
 
     return new Response(
       JSON.stringify(summary),
