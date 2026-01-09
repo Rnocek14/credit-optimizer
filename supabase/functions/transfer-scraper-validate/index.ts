@@ -370,7 +370,7 @@ Deno.serve(async (req) => {
         .from('scraped_content')
         .select('ai_extracted_data')
         .eq('scrape_job_id', scrape_job_id)
-        .single();
+        .maybeSingle();
 
       if (error || !content?.ai_extracted_data) {
         return new Response(

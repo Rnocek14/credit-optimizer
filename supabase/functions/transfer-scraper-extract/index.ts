@@ -317,12 +317,12 @@ Deno.serve(async (req) => {
     let jobInstitution = institution;
 
     if (scrape_job_id) {
-      // Load from scraped_content
+      // Load from scraped_content with proper relationship syntax
       const { data: content, error } = await supabase
         .from('scraped_content')
-        .select('*, scrape_jobs(*)')
+        .select('id, extracted_text, source_type, scrape_jobs: scrape_job_id ( institution, url )')
         .eq('scrape_job_id', scrape_job_id)
-        .single();
+        .maybeSingle();
 
       if (error || !content) {
         return new Response(
@@ -333,7 +333,9 @@ Deno.serve(async (req) => {
 
       textToExtract = content.extracted_text || '';
       jobSourceType = content.source_type || source_type;
-      jobInstitution = content.scrape_jobs?.institution || institution;
+      // Access the joined scrape_jobs data
+      const scrapeJob = content.scrape_jobs as { institution?: string; url?: string } | null;
+      jobInstitution = scrapeJob?.institution || institution;
     } else if (raw_text) {
       textToExtract = raw_text;
     } else {
@@ -416,6 +418,7 @@ ${truncatedText}`
     };
 
     // Update scraped_content with extraction results if we have a job ID
+    // NOTE: Don't change scrape_jobs.status here - crawl already set it to 'completed'
     if (scrape_job_id) {
       await supabase
         .from('scraped_content')
@@ -429,12 +432,12 @@ ${truncatedText}`
         })
         .eq('scrape_job_id', scrape_job_id);
 
-      // Update job status
+      // Only update source_authority_score, don't overwrite status (crawl set it)
       await supabase
         .from('scrape_jobs')
         .update({ 
-          status: 'completed',
           source_authority_score: sourceAuthority,
+          last_attempt_at: new Date().toISOString(),
         })
         .eq('id', scrape_job_id);
     }
