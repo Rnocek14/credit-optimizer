@@ -964,22 +964,42 @@ Deno.serve(async (req) => {
         let findingStatus: string;
         let findingReason: string;
         
+        // Check for partial caps scenario: max_transfer found with evidence, residency missing
+        // This is the "likely_program_scoped" case - residency varies by program
+        const hasMaxTransferWithEvidence = maxTransferOk && hasAnyEvidence && 
+          !!(extractedValues['max_transfer_credits'] as { evidence_url?: string } | undefined)?.evidence_url;
+        const hasResidencyWithEvidence = residencyOk && hasAnyEvidence &&
+          !!(extractedValues['residency_credits'] as { evidence_url?: string } | undefined)?.evidence_url;
+        
         if (!hasAnyCandidate) {
           findingStatus = 'skipped';
           findingReason = 'missing_numeric_caps';
         } else if (!hasAnyEvidence) {
           findingStatus = 'missing_evidence';
           findingReason = 'evidence_not_captured';
+        } else if (hasMaxTransferWithEvidence && !residencyOk) {
+          // Max transfer found + evidence, but no residency → likely program-scoped residency
+          findingStatus = 'partial_verified';
+          findingReason = 'likely_program_scoped';
+        } else if (hasResidencyWithEvidence && !maxTransferOk) {
+          // Residency found + evidence, but no max transfer → partial, needs template refinement
+          findingStatus = 'partial_verified';
+          findingReason = 'partial_caps_need_verification';
+        } else if (scope === 'program') {
+          findingStatus = 'insufficient_institution_level_policy';
+          findingReason = 'program_scoped_no_institution_wide_numeric_caps';
         } else {
-          findingStatus = scope === 'program' 
-            ? 'insufficient_institution_level_policy' 
-            : 'pending_verification';
-          findingReason = scope === 'program' 
-            ? 'program_scoped_no_institution_wide_numeric_caps' 
-            : 'partial_caps_need_verification';
+          findingStatus = 'pending_verification';
+          findingReason = 'partial_caps_need_verification';
         }
 
         // Log to policy_scan_findings for auditability with verification fields
+        const recommendation = findingReason === 'likely_program_scoped'
+          ? 'residency_program_scoped'
+          : findingReason === 'partial_caps_need_verification' && hasResidencyWithEvidence
+            ? 'needs_transfer_template_refinement'
+            : 'needs_catalog_or_program_selection';
+
         await supabase.from('policy_scan_findings').insert({
           institution,
           academic_year: mergedPack.academic_year,
@@ -993,12 +1013,28 @@ Deno.serve(async (req) => {
             extracted_policy_data: policyData,
             residency_ok: residencyOk,
             max_transfer_ok: maxTransferOk,
+            has_max_transfer_evidence: hasMaxTransferWithEvidence,
+            has_residency_evidence: hasResidencyWithEvidence,
             trust_tier: trustTier,
             action,
             has_candidate: hasAnyCandidate,
             has_evidence: hasAnyEvidence,
+            recommendation,
+            next_step: findingReason === 'likely_program_scoped'
+              ? 'select_program_or_degree_catalog'
+              : 'add_residency_specific_templates',
+            caps_found: {
+              max_transfer_credits: maxTransferOk ? policyData.max_transfer_credits : null,
+              residency_credits: residencyOk ? policyData.residency_credits : null,
+            },
+            caps_missing: [
+              ...(residencyOk ? [] : ['residency_credits']),
+              ...(maxTransferOk ? [] : ['max_transfer_credits']),
+            ],
           },
         });
+
+        console.log(`[merge] ${institution}: ${findingReason} - recommendation: ${recommendation}`);
 
         return new Response(
           JSON.stringify({
@@ -1011,7 +1047,8 @@ Deno.serve(async (req) => {
             confidence_score: totalScore,
             scope,
             caps_found: { residency: residencyOk, max_transfer: maxTransferOk },
-            notes: [...notes, `Pack creation skipped: ${findingReason}`],
+            recommendation,
+            notes: [...notes, `Pack creation skipped: ${findingReason} (${recommendation})`],
           }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
