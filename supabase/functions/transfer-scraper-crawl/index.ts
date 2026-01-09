@@ -27,6 +27,7 @@ const corsHeaders = {
 // -----------------------------------------------------------------------------
 
 interface CrawlRequest {
+  scrape_job_id?: string; // If provided, update existing job instead of creating new one
   url: string;
   institution: string;
   job_type: 'policy' | 'provider' | 'degree' | 'articulation';
@@ -166,6 +167,7 @@ Deno.serve(async (req) => {
 
     const body: CrawlRequest = await req.json();
     const { 
+      scrape_job_id: providedJobId,
       url, 
       institution, 
       job_type, 
@@ -197,31 +199,86 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Create scrape job
-    const { data: job, error: jobError } = await supabase
-      .from('scrape_jobs')
-      .insert({
-        url,
-        institution,
-        job_type,
-        source_type: sourceType,
-        allowed_scrape: robotsCheck.allowed,
-        scrape_method: 'html',
-        robots_checked_at: robotsCheck.checked_at,
-        status: 'processing',
-        priority,
-      })
-      .select('id')
-      .single();
+    // ---------------------------------------------------------------------------
+    // UPSERT JOB: Update existing or create new
+    // ---------------------------------------------------------------------------
+    let scrapeJobId: string;
 
-    if (jobError) {
-      return new Response(
-        JSON.stringify({ error: 'Failed to create scrape job', details: jobError }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    if (providedJobId) {
+      // Verify job exists
+      const { data: existing, error: existErr } = await supabase
+        .from('scrape_jobs')
+        .select('id, url')
+        .eq('id', providedJobId)
+        .maybeSingle();
+
+      if (existErr) {
+        return new Response(
+          JSON.stringify({ error: 'Failed to verify job', details: existErr }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      if (!existing) {
+        return new Response(
+          JSON.stringify({ error: 'scrape_job_id not found' }),
+          { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Update existing job instead of creating new one
+      const { error: updErr } = await supabase
+        .from('scrape_jobs')
+        .update({
+          url,
+          institution,
+          job_type,
+          source_type: sourceType,
+          allowed_scrape: robotsCheck.allowed,
+          scrape_method: 'html',
+          robots_checked_at: robotsCheck.checked_at,
+          status: 'processing',
+          priority,
+          last_attempt_at: new Date().toISOString(),
+          error_message: null,
+        })
+        .eq('id', providedJobId);
+
+      if (updErr) {
+        return new Response(
+          JSON.stringify({ error: 'Failed to update scrape job', details: updErr }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      scrapeJobId = providedJobId;
+    } else {
+      // Create new scrape job (existing behavior)
+      const { data: job, error: jobError } = await supabase
+        .from('scrape_jobs')
+        .insert({
+          url,
+          institution,
+          job_type,
+          source_type: sourceType,
+          allowed_scrape: robotsCheck.allowed,
+          scrape_method: 'html',
+          robots_checked_at: robotsCheck.checked_at,
+          status: 'processing',
+          priority,
+        })
+        .select('id')
+        .single();
+
+      if (jobError) {
+        return new Response(
+          JSON.stringify({ error: 'Failed to create scrape job', details: jobError }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      scrapeJobId = job.id;
     }
-
-    const scrapeJobId = job.id;
 
     try {
       // Fetch the page
@@ -247,19 +304,46 @@ Deno.serve(async (req) => {
         throw new Error(`Extracted text too short (${extractedText.length} chars). Possible scraping block.`);
       }
 
-      // Store scraped content
-      const { error: contentError } = await supabase
+      // ---------------------------------------------------------------------------
+      // UPSERT SCRAPED CONTENT: Update existing or insert new
+      // ---------------------------------------------------------------------------
+      const { data: existingContent } = await supabase
         .from('scraped_content')
-        .insert({
-          scrape_job_id: scrapeJobId,
-          url,
-          raw_html: html.length > 500000 ? html.slice(0, 500000) : html, // Limit storage
-          extracted_text: extractedText,
-          source_type: sourceType,
-        });
+        .select('id')
+        .eq('scrape_job_id', scrapeJobId)
+        .maybeSingle();
 
-      if (contentError) {
-        throw new Error(`Failed to store content: ${contentError.message}`);
+      if (existingContent?.id) {
+        // Update existing content
+        const { error: updateContentError } = await supabase
+          .from('scraped_content')
+          .update({
+            url,
+            raw_html: html.length > 500000 ? html.slice(0, 500000) : html,
+            extracted_text: extractedText,
+            source_type: sourceType,
+            scraped_at: new Date().toISOString(),
+          })
+          .eq('id', existingContent.id);
+
+        if (updateContentError) {
+          throw new Error(`Failed to update content: ${updateContentError.message}`);
+        }
+      } else {
+        // Insert new content
+        const { error: contentError } = await supabase
+          .from('scraped_content')
+          .insert({
+            scrape_job_id: scrapeJobId,
+            url,
+            raw_html: html.length > 500000 ? html.slice(0, 500000) : html,
+            extracted_text: extractedText,
+            source_type: sourceType,
+          });
+
+        if (contentError) {
+          throw new Error(`Failed to store content: ${contentError.message}`);
+        }
       }
 
       // Update job status to completed
