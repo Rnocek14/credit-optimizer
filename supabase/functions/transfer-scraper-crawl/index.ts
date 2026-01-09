@@ -1,20 +1,11 @@
-// =============================================================================
-// TRANSFER-SCRAPER-CRAWL - URL Fetching via Firecrawl
-// =============================================================================
-// Uses Firecrawl API for reliable scraping with JS rendering support.
-// =============================================================================
-
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.56.0?target=deno';
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
-
-// -----------------------------------------------------------------------------
-// TYPE DEFINITIONS
-// -----------------------------------------------------------------------------
 
 interface CrawlRequest {
   scrape_job_id?: string;
@@ -25,41 +16,23 @@ interface CrawlRequest {
   priority?: number;
 }
 
-interface CrawlResult {
-  success: boolean;
-  scrape_job_id: string;
-  url: string;
-  content_length: number;
-  extracted_text_length: number;
-  source_type: string;
-  message: string;
-}
-
-// -----------------------------------------------------------------------------
-// SOURCE TYPE DETECTION
-// -----------------------------------------------------------------------------
-
 function detectSourceType(url: string): 'catalog' | 'policy' | 'degree' | 'partner' | 'faq' | 'marketing' {
   const urlLower = url.toLowerCase();
-  
   if (urlLower.includes('smartcatalog') || urlLower.includes('catalog')) return 'catalog';
   if (urlLower.includes('policy') || urlLower.includes('transfer-credit') || urlLower.includes('admissions')) return 'policy';
   if (urlLower.includes('program') || urlLower.includes('degree') || urlLower.includes('major')) return 'degree';
   if (urlLower.includes('partner') || urlLower.includes('articulation')) return 'partner';
   if (urlLower.includes('faq') || urlLower.includes('help') || urlLower.includes('questions')) return 'faq';
-  
   return 'marketing';
 }
-
-// -----------------------------------------------------------------------------
-// FIRECRAWL SCRAPE
-// -----------------------------------------------------------------------------
 
 async function scrapeWithFirecrawl(url: string): Promise<{ markdown: string; html: string }> {
   const apiKey = Deno.env.get('FIRECRAWL_API_KEY');
   if (!apiKey) {
     throw new Error('FIRECRAWL_API_KEY not configured');
   }
+
+  console.log(`Calling Firecrawl for: ${url}`);
 
   const response = await fetch('https://api.firecrawl.dev/v1/scrape', {
     method: 'POST',
@@ -71,28 +44,26 @@ async function scrapeWithFirecrawl(url: string): Promise<{ markdown: string; htm
       url,
       formats: ['markdown', 'html'],
       onlyMainContent: true,
-      waitFor: 2000, // Wait for JS to render
+      waitFor: 2000,
     }),
   });
 
   const data = await response.json();
 
   if (!response.ok) {
+    console.error('Firecrawl error:', data);
     throw new Error(data.error || `Firecrawl failed: ${response.status}`);
   }
 
-  // Handle nested data structure
   const markdown = data.data?.markdown || data.markdown || '';
   const html = data.data?.html || data.html || '';
+
+  console.log(`Firecrawl success: ${markdown.length} chars markdown, ${html.length} chars html`);
 
   return { markdown, html };
 }
 
-// -----------------------------------------------------------------------------
-// MAIN HANDLER
-// -----------------------------------------------------------------------------
-
-Deno.serve(async (req) => {
+serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -124,16 +95,10 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Detect source type
     const sourceType = providedSourceType || detectSourceType(url);
-
-    // ---------------------------------------------------------------------------
-    // UPSERT JOB: Update existing or create new
-    // ---------------------------------------------------------------------------
     let scrapeJobId: string;
 
     if (providedJobId) {
-      // Verify job exists
       const { data: existing, error: existErr } = await supabase
         .from('scrape_jobs')
         .select('id, url')
@@ -154,7 +119,6 @@ Deno.serve(async (req) => {
         );
       }
 
-      // Update existing job instead of creating new one
       const { error: updErr } = await supabase
         .from('scrape_jobs')
         .update({
@@ -179,7 +143,6 @@ Deno.serve(async (req) => {
 
       scrapeJobId = providedJobId;
     } else {
-      // Create new scrape job
       const { data: job, error: jobError } = await supabase
         .from('scrape_jobs')
         .insert({
@@ -205,17 +168,12 @@ Deno.serve(async (req) => {
     }
 
     try {
-      // Use Firecrawl to scrape the page
-      console.log(`Scraping with Firecrawl: ${url}`);
       const { markdown, html } = await scrapeWithFirecrawl(url);
 
       if (markdown.length < 50) {
         throw new Error(`Extracted text too short (${markdown.length} chars). Page may be blocked.`);
       }
 
-      // ---------------------------------------------------------------------------
-      // UPSERT SCRAPED CONTENT: Update existing or insert new
-      // ---------------------------------------------------------------------------
       const { data: existingContent } = await supabase
         .from('scraped_content')
         .select('id')
@@ -223,7 +181,6 @@ Deno.serve(async (req) => {
         .maybeSingle();
 
       if (existingContent?.id) {
-        // Update existing content - CLEAR stale extraction data on recrawl
         const { error: updateContentError } = await supabase
           .from('scraped_content')
           .update({
@@ -245,7 +202,6 @@ Deno.serve(async (req) => {
           throw new Error(`Failed to update content: ${updateContentError.message}`);
         }
       } else {
-        // Insert new content
         const { error: contentError } = await supabase
           .from('scraped_content')
           .insert({
@@ -261,7 +217,6 @@ Deno.serve(async (req) => {
         }
       }
 
-      // Update job status to completed
       await supabase
         .from('scrape_jobs')
         .update({ 
@@ -270,23 +225,20 @@ Deno.serve(async (req) => {
         })
         .eq('id', scrapeJobId);
 
-      const result: CrawlResult = {
-        success: true,
-        scrape_job_id: scrapeJobId,
-        url,
-        content_length: html.length,
-        extracted_text_length: markdown.length,
-        source_type: sourceType,
-        message: `Successfully crawled and extracted ${markdown.length} chars from ${url}`,
-      };
-
       return new Response(
-        JSON.stringify(result),
+        JSON.stringify({
+          success: true,
+          scrape_job_id: scrapeJobId,
+          url,
+          content_length: html.length,
+          extracted_text_length: markdown.length,
+          source_type: sourceType,
+          message: `Successfully crawled ${markdown.length} chars from ${url}`,
+        }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
 
     } catch (fetchError) {
-      // Update job status to failed
       const errorMessage = fetchError instanceof Error ? fetchError.message : 'Unknown fetch error';
       
       await supabase
@@ -295,7 +247,7 @@ Deno.serve(async (req) => {
           status: 'failed',
           error_message: errorMessage,
           last_attempt_at: new Date().toISOString(),
-          retry_count: 1, // Will be incremented on retry
+          retry_count: 1,
         })
         .eq('id', scrapeJobId);
 
