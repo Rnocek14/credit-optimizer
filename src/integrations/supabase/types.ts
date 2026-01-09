@@ -4889,6 +4889,75 @@ export type Database = {
           },
         ]
       }
+      institution_policy_ground_truth: {
+        Row: {
+          academic_year: string | null
+          accepts_ap: boolean | null
+          accepts_clep: boolean | null
+          accepts_dsst: boolean | null
+          accepts_portfolio: boolean | null
+          accepts_tecep: boolean | null
+          capstone_required: boolean | null
+          cornerstone_required: boolean | null
+          created_at: string | null
+          id: string
+          info_literacy_required: boolean | null
+          institution: string
+          last_verified_at: string | null
+          max_ace_nccrs_credits: number | null
+          max_transfer_credits: number | null
+          notes: string | null
+          residency_credits: number | null
+          source_url: string | null
+          updated_at: string | null
+          verified_by: string | null
+        }
+        Insert: {
+          academic_year?: string | null
+          accepts_ap?: boolean | null
+          accepts_clep?: boolean | null
+          accepts_dsst?: boolean | null
+          accepts_portfolio?: boolean | null
+          accepts_tecep?: boolean | null
+          capstone_required?: boolean | null
+          cornerstone_required?: boolean | null
+          created_at?: string | null
+          id?: string
+          info_literacy_required?: boolean | null
+          institution: string
+          last_verified_at?: string | null
+          max_ace_nccrs_credits?: number | null
+          max_transfer_credits?: number | null
+          notes?: string | null
+          residency_credits?: number | null
+          source_url?: string | null
+          updated_at?: string | null
+          verified_by?: string | null
+        }
+        Update: {
+          academic_year?: string | null
+          accepts_ap?: boolean | null
+          accepts_clep?: boolean | null
+          accepts_dsst?: boolean | null
+          accepts_portfolio?: boolean | null
+          accepts_tecep?: boolean | null
+          capstone_required?: boolean | null
+          cornerstone_required?: boolean | null
+          created_at?: string | null
+          id?: string
+          info_literacy_required?: boolean | null
+          institution?: string
+          last_verified_at?: string | null
+          max_ace_nccrs_credits?: number | null
+          max_transfer_credits?: number | null
+          notes?: string | null
+          residency_credits?: number | null
+          source_url?: string | null
+          updated_at?: string | null
+          verified_by?: string | null
+        }
+        Relationships: []
+      }
       institution_policy_packs: {
         Row: {
           academic_year: string

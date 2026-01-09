@@ -194,37 +194,43 @@ const EXTRACTION_SYSTEM_PROMPT = `You are an expert at extracting structured tra
 
 Your task is to extract ONLY information that is EXPLICITLY stated in the text. Do NOT infer or assume values.
 
-For each field:
-- If the information is clearly stated, extract it
-- If the information is ambiguous or not present, use null
-- Note any conditions or exceptions in the conditions array
+CRITICAL EXTRACTION RULES:
 
-Focus on extracting:
-1. Residency requirements (minimum credits from the institution)
-2. Transfer credit limits (maximum transfer, ACE/NCCRS caps)
-3. Accepted credit sources (CLEP, DSST, ACE, etc.)
-4. Required institutional courses (capstone, cornerstone, etc.)
-5. Upper-level credit requirements
-6. Provider-specific rules and limitations
+1. CREDIT SOURCES (credit_sources_accepted):
+   - Set to TRUE if the page mentions accepting that credit type
+   - Set to FALSE ONLY if the text explicitly says they do NOT accept it (e.g., "CLEP is not accepted")
+   - Set to NULL if the credit type is not mentioned at all (unknown)
+   - Most adult-friendly schools accept CLEP, DSST, AP - look carefully before marking false
 
-IMPORTANT - Pay special attention to alternative credit providers:
-- CLEP (College-Level Examination Program) - look for specific exams and credit limits
-- DSST (formerly DANTES) - military credit exams
-- AP (Advanced Placement) - high school exams with college credit
-- ACE (American Council on Education) - credit recommendations
-- NCCRS (National College Credit Recommendation Service) - non-traditional credit
-- TECEP (Thomas Edison Credit-by-Exam Program) - TESU-specific exams
-- Portfolio Assessment/Prior Learning Assessment (PLA)
-- StraighterLine, Sophia, Study.com - online course providers
+2. RESIDENCY REQUIREMENTS (min_institutional_credits):
+   - This is the number of credits students MUST complete AT the institution (not transferred)
+   - Look for: "residency requirement", "credits earned at [school]", "must complete X credits at"
+   - Common values: 6, 9, 12, 15, 24, 30 credits
+   - If you see "minimum of X credits must be earned in residence" - that's the residency requirement
+   - Do NOT confuse with "maximum transfer credits" - they are different fields
 
-Look for phrases like:
-- "We accept credit from..."
-- "Credits may be awarded for..."
-- "Maximum credits from CLEP/DSST..."
-- "ACE-evaluated training..."
-- "Prior learning assessment available..."
+3. TRANSFER CREDIT LIMITS:
+   - max_total_transfer_credits: Maximum credits accepted from ALL transfer sources combined
+   - max_ace_nccrs_credits: Maximum credits from ACE/NCCRS specifically (often 90 credits)
+   - These are SEPARATE limits - read carefully
 
-Be conservative - it's better to return null than to guess.`;
+4. EXAM CREDIT RECOGNITION - Look for these phrases:
+   - "CLEP", "College-Level Examination Program"
+   - "DSST", "DANTES", "Defense Activity for Non-Traditional Education Support"
+   - "AP", "Advanced Placement"
+   - "TECEP", "Thomas Edison Credit-by-Exam"
+   - "examination credit", "credit by exam", "standardized exams"
+   - "prior learning assessment", "portfolio assessment"
+
+5. PROVIDER-SPECIFIC MENTIONS:
+   - ACE (American Council on Education) - "ACE-evaluated", "ACE credit recommendations"
+   - NCCRS (National College Credit Recommendation Service) - often mentioned with ACE
+   - StraighterLine, Sophia, Study.com, Coursera - online course providers
+
+IMPORTANT: It is better to return NULL for unknown values than to guess FALSE. A false value means "explicitly rejected", which is different from "not mentioned".
+
+Extract conservatively but thoroughly.`;
+
 
 const EXTRACTION_TOOLS = [
   {
