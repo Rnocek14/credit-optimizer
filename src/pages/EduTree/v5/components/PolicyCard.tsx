@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { AlertCircle, CheckCircle2, HelpCircle } from 'lucide-react';
+import { AlertCircle, CheckCircle2, HelpCircle, GraduationCap, ExternalLink } from 'lucide-react';
 import { usePlanBasket } from '../state/usePlanBasket';
 import { useVerifiedPolicy } from '../hooks/useVerifiedPolicy';
 import { PolicyVerificationBadge, getVerificationStatus } from './PolicyVerificationBadge';
@@ -11,14 +11,15 @@ import { PolicyVerificationBadge, getVerificationStatus } from './PolicyVerifica
  * TRUST RULES:
  * - Only show authoritative calculations when isVerified=true
  * - When unverified, show disabled meters with "Verification required" messaging
+ * - When program-scoped, show "Select a program" prompt for residency
  * - Never display "exceeded" or "need X more" as if certain when unverified
  */
 export function PolicyCard() {
   const { items, constraints } = usePlanBasket();
   const anchor = constraints.target_school;
 
-  // Use verified policy service (reads from institution_policy_packs_live)
-  const { policy, isVerified, isLoading } = useVerifiedPolicy();
+  // Use verified policy service (reads from institution_policy_packs_live + partial findings)
+  const { policy, isVerified, isProgramScoped, maxTransferVerified, isLoading } = useVerifiedPolicy();
 
   if (!anchor || !policy) return null;
 
@@ -69,8 +70,38 @@ export function PolicyCard() {
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Unverified warning - prominent when not verified */}
-        {!isVerified && !isLoading && (
+        {/* Program-scoped banner - takes precedence over unverified */}
+        {isProgramScoped && !isVerified && !isLoading && (
+          <div className="p-3 rounded-md bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
+            <div className="flex items-start gap-2 text-sm text-blue-800 dark:text-blue-200">
+              <GraduationCap className="h-4 w-4 mt-0.5 flex-shrink-0" />
+              <div>
+                <span className="font-medium">Residency varies by program</span>
+                <p className="text-xs mt-1 opacity-80">
+                  {maxTransferVerified 
+                    ? `Max transfer verified: ${policy.maxTransferCredits} credits. `
+                    : ''}
+                  Residency requirement depends on your specific degree program.
+                  Select a program to calculate residency.
+                </p>
+                {policy.maxTransferEvidenceUrl && (
+                  <a 
+                    href={policy.maxTransferEvidenceUrl} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-xs mt-1.5 text-blue-600 dark:text-blue-400 hover:underline"
+                  >
+                    <ExternalLink className="h-3 w-3" />
+                    View source
+                  </a>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Unverified warning - only show when NOT program-scoped */}
+        {!isVerified && !isLoading && !isProgramScoped && (
           <div className="p-3 rounded-md bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800">
             <div className="flex items-start gap-2 text-sm text-yellow-800 dark:text-yellow-200">
               <HelpCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
