@@ -888,21 +888,38 @@ Deno.serve(async (req) => {
           };
         }
 
-        // Only set requires_verification if we have at least one extractable value
-        // Otherwise it's a pure "skip" and shouldn't clutter the verification queue
+        // Only set requires_verification if we have at least one extractable value WITH evidence
+        // Otherwise it's not actionable and shouldn't clutter the verification queue
         const hasAnyCandidate = 
           policyData.residency_credits != null || 
           policyData.max_transfer_credits != null;
+
+        const residencyEvidence = extractedValues['residency_credits'] as { evidence_url?: string; evidence_text?: string } | undefined;
+        const maxTransferEvidence = extractedValues['max_transfer_credits'] as { evidence_url?: string; evidence_text?: string } | undefined;
+        
+        const hasAnyEvidence =
+          !!residencyEvidence?.evidence_url ||
+          !!residencyEvidence?.evidence_text ||
+          !!maxTransferEvidence?.evidence_url ||
+          !!maxTransferEvidence?.evidence_text;
+
+        // Determine status based on what we have
+        const findingStatus = hasAnyCandidate && !hasAnyEvidence 
+          ? 'missing_evidence' 
+          : 'insufficient_institution_level_policy';
+        const findingReason = hasAnyCandidate && !hasAnyEvidence
+          ? 'evidence_not_captured'
+          : 'program_scoped_no_institution_wide_numeric_caps';
 
         // Log to policy_scan_findings for auditability with verification fields
         await supabase.from('policy_scan_findings').insert({
           institution,
           academic_year: mergedPack.academic_year,
-          status: 'insufficient_institution_level_policy',
-          reason: 'program_scoped_no_institution_wide_numeric_caps',
+          status: findingStatus,
+          reason: findingReason,
           urls_scanned: scrapeJobs.map(j => j.url),
           confidence_score: totalScore,
-          requires_verification: hasAnyCandidate,
+          requires_verification: hasAnyCandidate && hasAnyEvidence,
           extracted_values: extractedValues,
           details: {
             extracted_policy_data: policyData,
@@ -910,6 +927,8 @@ Deno.serve(async (req) => {
             max_transfer_ok: maxTransferOk,
             trust_tier: trustTier,
             action,
+            has_candidate: hasAnyCandidate,
+            has_evidence: hasAnyEvidence,
           },
         });
 
