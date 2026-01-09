@@ -188,8 +188,8 @@ export async function getVerifiedPolicy(
         confidence: finding.confidence_score || 60,
         institutionCode,
         institutionName: centralPolicy.name,
-        // HARDENING: For program-scoped, set residency to 0 (sentinel) - UI must not show as meaningful
-        residencyCredits: 0,
+        // HARDENING: For program-scoped, use NaN sentinel - UI gates on isProgramScoped, not value
+        residencyCredits: NaN,
         maxTransferCredits: parsedMaxTransfer ?? (centralPolicy.maxTransferTotal ?? 90),
         maxNoncollegiateCredits: getCentralNoncollegiateCap(institutionCode),
         upperDivisionMin: centralPolicy.upperDivisionAreaOfStudyMin,
