@@ -867,7 +867,28 @@ Deno.serve(async (req) => {
       if (scope === 'program' && !hasBothNumericCaps) {
         console.log(`[merge] Skipping pack creation for program-scoped institution ${institution} (missing numeric caps)`);
         
-        // Log to policy_scan_findings for auditability
+        // Build extracted_values with evidence structure for verification queue
+        const extractedValues: Record<string, unknown> = {};
+        if (policyData.residency_credits) {
+          extractedValues['residency_credits'] = {
+            value: policyData.residency_credits,
+            unit: 'credits',
+            evidence_text: fieldProvenance['residency_policy.min_institutional_credits']?.source_text || null,
+            evidence_url: fieldProvenance['residency_policy.min_institutional_credits']?.source_url || null,
+            confidence: (fieldProvenance['residency_policy.min_institutional_credits']?.confidence || 0) / 100,
+          };
+        }
+        if (policyData.max_transfer_credits) {
+          extractedValues['max_transfer_credits'] = {
+            value: policyData.max_transfer_credits,
+            unit: 'credits',
+            evidence_text: fieldProvenance['transfer_credit_limits.max_total_transfer_credits']?.source_text || null,
+            evidence_url: fieldProvenance['transfer_credit_limits.max_total_transfer_credits']?.source_url || null,
+            confidence: (fieldProvenance['transfer_credit_limits.max_total_transfer_credits']?.confidence || 0) / 100,
+          };
+        }
+
+        // Log to policy_scan_findings for auditability with verification fields
         await supabase.from('policy_scan_findings').insert({
           institution,
           academic_year: mergedPack.academic_year,
@@ -875,6 +896,8 @@ Deno.serve(async (req) => {
           reason: 'program_scoped_no_institution_wide_numeric_caps',
           urls_scanned: scrapeJobs.map(j => j.url),
           confidence_score: totalScore,
+          requires_verification: true,
+          extracted_values: extractedValues,
           details: {
             extracted_policy_data: policyData,
             residency_ok: residencyOk,

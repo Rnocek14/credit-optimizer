@@ -5025,6 +5025,7 @@ export type Database = {
           institution: string
           last_verified_at: string | null
           merged_from_job_ids: string[] | null
+          pack_scope: string | null
           policy_data: Json | null
           policy_json: Json
           provenance_url: string | null
@@ -5047,6 +5048,7 @@ export type Database = {
           institution: string
           last_verified_at?: string | null
           merged_from_job_ids?: string[] | null
+          pack_scope?: string | null
           policy_data?: Json | null
           policy_json: Json
           provenance_url?: string | null
@@ -5069,6 +5071,7 @@ export type Database = {
           institution?: string
           last_verified_at?: string | null
           merged_from_job_ids?: string[] | null
+          pack_scope?: string | null
           policy_data?: Json | null
           policy_json?: Json
           provenance_url?: string | null
@@ -5092,11 +5095,15 @@ export type Database = {
       institutions: {
         Row: {
           accreditation_level: string | null
+          admin_notes: string | null
+          catalog_base_url: string | null
           code: string
           created_at: string
           description: string | null
+          discovery_status: string | null
           established_year: number | null
           id: string
+          institution_tier: string | null
           location: string | null
           logo_url: string | null
           metadata: Json | null
@@ -5110,11 +5117,15 @@ export type Database = {
         }
         Insert: {
           accreditation_level?: string | null
+          admin_notes?: string | null
+          catalog_base_url?: string | null
           code: string
           created_at?: string
           description?: string | null
+          discovery_status?: string | null
           established_year?: number | null
           id?: string
+          institution_tier?: string | null
           location?: string | null
           logo_url?: string | null
           metadata?: Json | null
@@ -5128,11 +5139,15 @@ export type Database = {
         }
         Update: {
           accreditation_level?: string | null
+          admin_notes?: string | null
+          catalog_base_url?: string | null
           code?: string
           created_at?: string
           description?: string | null
+          discovery_status?: string | null
           established_year?: number | null
           id?: string
+          institution_tier?: string | null
           location?: string | null
           logo_url?: string | null
           metadata?: Json | null
@@ -7916,33 +7931,48 @@ export type Database = {
           confidence_score: number | null
           created_at: string
           details: Json | null
+          extracted_values: Json | null
           id: string
           institution: string
           reason: string
+          requires_verification: boolean | null
           status: string
           urls_scanned: Json | null
+          verified_at: string | null
+          verified_by: string | null
+          verified_values: Json | null
         }
         Insert: {
           academic_year?: string | null
           confidence_score?: number | null
           created_at?: string
           details?: Json | null
+          extracted_values?: Json | null
           id?: string
           institution: string
           reason: string
+          requires_verification?: boolean | null
           status: string
           urls_scanned?: Json | null
+          verified_at?: string | null
+          verified_by?: string | null
+          verified_values?: Json | null
         }
         Update: {
           academic_year?: string | null
           confidence_score?: number | null
           created_at?: string
           details?: Json | null
+          extracted_values?: Json | null
           id?: string
           institution?: string
           reason?: string
+          requires_verification?: boolean | null
           status?: string
           urls_scanned?: Json | null
+          verified_at?: string | null
+          verified_by?: string | null
+          verified_values?: Json | null
         }
         Relationships: []
       }
