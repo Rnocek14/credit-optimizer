@@ -199,60 +199,10 @@ Deno.serve(async (req) => {
       console.log(`✅ Linked ${optionsToInsert.length} requirement options`);
     }
 
-    // Phase 4: Seed Transfer Rules
-    console.log('🔄 Phase 4: Seeding transfer rules...');
-    const transferRules = [
-      // Same-institution (confidence 1.0)
-      { source_institution: 'TESU', source_course_code: 'ENG-101', target_institution: 'TESU', target_course_code: 'ENG-101', acceptance_status: 'accepted', confidence: 1.0, requirement_type: 'genED', notes: 'Institutional course' },
-      { source_institution: 'TESU', source_course_code: 'MAT-121', target_institution: 'TESU', target_course_code: 'MAT-121', acceptance_status: 'accepted', confidence: 1.0, requirement_type: 'major', notes: 'Institutional course' },
-      { source_institution: 'TESU', source_course_code: 'CMP-101', target_institution: 'TESU', target_course_code: 'CMP-101', acceptance_status: 'accepted', confidence: 1.0, requirement_type: 'major', notes: 'Institutional course' },
-      { source_institution: 'TESU', source_course_code: 'CMP-221', target_institution: 'TESU', target_course_code: 'CMP-221', acceptance_status: 'accepted', confidence: 1.0, requirement_type: 'major', notes: 'Institutional course' },
-      
-      { source_institution: 'EXCU', source_course_code: 'ENG-105', target_institution: 'EXCU', target_course_code: 'ENG-105', acceptance_status: 'accepted', confidence: 1.0, requirement_type: 'genED', notes: 'Institutional course' },
-      { source_institution: 'EXCU', source_course_code: 'MAT-1105', target_institution: 'EXCU', target_course_code: 'MAT-1105', acceptance_status: 'accepted', confidence: 1.0, requirement_type: 'major', notes: 'Institutional course' },
-      { source_institution: 'EXCU', source_course_code: 'CIS-101', target_institution: 'EXCU', target_course_code: 'CIS-101', acceptance_status: 'accepted', confidence: 1.0, requirement_type: 'major', notes: 'Institutional course' },
-      
-      { source_institution: 'WGU', source_course_code: 'C191', target_institution: 'WGU', target_course_code: 'C191', acceptance_status: 'accepted', confidence: 1.0, requirement_type: 'major', notes: 'Institutional course' },
-      { source_institution: 'WGU', source_course_code: 'C949', target_institution: 'WGU', target_course_code: 'C949', acceptance_status: 'accepted', confidence: 1.0, requirement_type: 'major', notes: 'Institutional course' },
-      
-      // ACE-approved transfers
-      { source_institution: 'SOPHIA', source_course_code: 'SOPH-COLLEGE-ALG', target_institution: 'TESU', target_course_code: 'MAT-121', acceptance_status: 'accepted', confidence: 0.90, requirement_type: 'major', notes: 'ACE-approved transfer' },
-      { source_institution: 'SOPHIA', source_course_code: 'SOPH-COLLEGE-ALG', target_institution: 'EXCU', target_course_code: 'MAT-1105', acceptance_status: 'accepted', confidence: 0.90, requirement_type: 'major', notes: 'ACE-approved transfer' },
-      { source_institution: 'SOPHIA', source_course_code: 'SOPH-ENG-COMP', target_institution: 'TESU', target_course_code: 'ENG-101', acceptance_status: 'accepted', confidence: 0.92, requirement_type: 'genED', notes: 'ACE-approved composition' },
-      { source_institution: 'SOPHIA', source_course_code: 'SOPH-ENG-COMP', target_institution: 'EXCU', target_course_code: 'ENG-105', acceptance_status: 'accepted', confidence: 0.90, requirement_type: 'genED', notes: 'ACE-approved composition' },
-      { source_institution: 'SOPHIA', source_course_code: 'SOPH-INTRO-PYTHON', target_institution: 'TESU', target_course_code: 'ELEC-CS', acceptance_status: 'elective', confidence: 0.82, requirement_type: 'elective', notes: 'Transfers as CS elective only' },
-      
-      { source_institution: 'STUDY', source_course_code: 'STUDY-COLLEGE-ALG', target_institution: 'TESU', target_course_code: 'MAT-121', acceptance_status: 'accepted', confidence: 0.88, requirement_type: 'major', notes: 'ACE-approved transfer' },
-      { source_institution: 'STUDY', source_course_code: 'STUDY-COLLEGE-ALG', target_institution: 'EXCU', target_course_code: 'MAT-1105', acceptance_status: 'accepted', confidence: 0.87, requirement_type: 'major', notes: 'ACE-approved transfer' },
-      { source_institution: 'STUDY', source_course_code: 'STUDY-ENG-COMP', target_institution: 'TESU', target_course_code: 'ENG-101', acceptance_status: 'accepted', confidence: 0.86, requirement_type: 'genED', notes: 'ACE-approved composition' },
-      { source_institution: 'STUDY', source_course_code: 'STUDY-ENG-COMP', target_institution: 'EXCU', target_course_code: 'ENG-105', acceptance_status: 'accepted', confidence: 0.85, requirement_type: 'genED', notes: 'ACE-approved composition' },
-      { source_institution: 'STUDY', source_course_code: 'STUDY-INTRO-CS', target_institution: 'TESU', target_course_code: 'CMP-101', acceptance_status: 'accepted', confidence: 0.85, requirement_type: 'major', notes: 'ACE-approved CS fundamentals' },
-      { source_institution: 'STUDY', source_course_code: 'STUDY-INTRO-CS', target_institution: 'EXCU', target_course_code: 'CIS-101', acceptance_status: 'accepted', confidence: 0.84, requirement_type: 'major', notes: 'ACE-approved CS fundamentals' },
-      { source_institution: 'STUDY', source_course_code: 'STUDY-INTRO-CS', target_institution: 'WGU', target_course_code: 'C191', acceptance_status: 'accepted', confidence: 0.85, requirement_type: 'major', notes: 'Competency alignment' },
-      { source_institution: 'STUDY', source_course_code: 'STUDY-DATA-STRUCT', target_institution: 'TESU', target_course_code: 'CMP-221', acceptance_status: 'accepted', confidence: 0.82, requirement_type: 'major', notes: 'ACE-approved upper-level CS' },
-      { source_institution: 'STUDY', source_course_code: 'STUDY-DATA-STRUCT', target_institution: 'WGU', target_course_code: 'C949', acceptance_status: 'accepted', confidence: 0.80, requirement_type: 'major', notes: 'Competency alignment verified' },
-      
-      { source_institution: 'CLEP', source_course_code: 'CLEP-COLLEGE-ALG', target_institution: 'TESU', target_course_code: 'MAT-121', acceptance_status: 'accepted', confidence: 0.95, requirement_type: 'major', notes: 'CLEP accepted' },
-      { source_institution: 'CLEP', source_course_code: 'CLEP-COLLEGE-ALG', target_institution: 'EXCU', target_course_code: 'MAT-1105', acceptance_status: 'accepted', confidence: 0.95, requirement_type: 'major', notes: 'CLEP accepted' },
-      { source_institution: 'CLEP', source_course_code: 'CLEP-COLLEGE-ALG', target_institution: 'WGU', target_course_code: 'C191', acceptance_status: 'accepted', confidence: 0.92, requirement_type: 'major', notes: 'CLEP fulfills competency' },
-      { source_institution: 'CLEP', source_course_code: 'CLEP-ENG-COMP', target_institution: 'TESU', target_course_code: 'ENG-101', acceptance_status: 'accepted', confidence: 0.95, requirement_type: 'genED', notes: 'CLEP accepted for composition' },
-      { source_institution: 'CLEP', source_course_code: 'CLEP-ENG-COMP', target_institution: 'EXCU', target_course_code: 'ENG-105', acceptance_status: 'accepted', confidence: 0.95, requirement_type: 'genED', notes: 'CLEP accepted for composition' },
-      
-      // Cross-RA transfers (lower confidence)
-      { source_institution: 'COURSERA', source_course_code: 'COURSERA-PYTHON', target_institution: 'TESU', target_course_code: 'ELEC-GEN', acceptance_status: 'elective', confidence: 0.65, requirement_type: 'elective', notes: 'May transfer as elective only; not ACE-approved' },
-      { source_institution: 'COURSERA', source_course_code: 'COURSERA-PYTHON', target_institution: 'EXCU', target_course_code: 'ELEC-GEN', acceptance_status: 'elective', confidence: 0.60, requirement_type: 'elective', notes: 'May transfer as elective only; not ACE-approved' },
-      { source_institution: 'EDX', source_course_code: 'EDX-DATA-SCI', target_institution: 'TESU', target_course_code: 'ELEC-GEN', acceptance_status: 'elective', confidence: 0.65, requirement_type: 'elective', notes: 'May transfer as elective only; requires review' },
-    ];
-
-    const { data: seededRules, error: rulesError } = await supabase
-      .from('transfer_rules')
-      .upsert(transferRules, { 
-        onConflict: 'source_institution,source_course_code,target_institution,target_course_code' 
-      })
-      .select();
-
-    if (rulesError) throw rulesError;
-    console.log(`✅ Seeded ${seededRules?.length || 0} transfer rules`);
+    // Phase 4: Skipped - transfer_rules table has different schema
+    // The table uses: to_program_id, rule_kind, block_id, course_id, transfer_state
+    // Not: source_institution, source_course_code, acceptance_status, etc.
+    console.log('⏭️ Phase 4: Skipping transfer rules (schema mismatch)');
 
     return new Response(
       JSON.stringify({
@@ -262,7 +212,6 @@ Deno.serve(async (req) => {
           providers: providers?.length || 0,
           courses: marketplaceCourses?.length || 0,
           requirementOptions: optionsToInsert.length,
-          transferRules: seededRules?.length || 0,
         },
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
