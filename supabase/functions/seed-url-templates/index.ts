@@ -23,13 +23,25 @@ serve(async (req) => {
       { institution_code: 'WCU', url: 'https://www.wcu.edu/learn/registrar/transfer-credits.aspx', page_type: 'transfer_policy', priority: 1 },
       { institution_code: 'WCU', url: 'https://www.wcu.edu/learn/registrar/faq.aspx', page_type: 'transfer_faq', priority: 3 },
       { institution_code: 'WCU', url: 'https://www.wcu.edu/learn/registrar/', page_type: 'residency', priority: 3 },
-      // EMPIRE templates
-      { institution_code: 'EMPIRE', url: 'https://catalog.esc.edu/', page_type: 'catalog', priority: 1 },
-      { institution_code: 'EMPIRE', url: 'https://www.esc.edu/admissions/transfer-credit/', page_type: 'transfer_policy', priority: 1 },
-      { institution_code: 'EMPIRE', url: 'https://www.esc.edu/admissions/', page_type: 'transfer_info', priority: 2 },
-      { institution_code: 'EMPIRE', url: 'https://www.esc.edu/admissions/faq/', page_type: 'transfer_faq', priority: 3 },
-      { institution_code: 'EMPIRE', url: 'https://www.esc.edu/registrar/', page_type: 'residency', priority: 3 },
-      { institution_code: 'EMPIRE', url: 'https://www.esc.edu/tuition-financial-aid/tuition/', page_type: 'tuition', priority: 4 },
+      
+      // CAPELLA templates - SmartCatalog deep-links for transfer/residency policies
+      { institution_code: 'CAPELLA', url: 'https://capella.smartcatalogiq.com/current/academic-catalog/university-policies/credit-for-prior-learning', page_type: 'transfer_policy', priority: 1 },
+      { institution_code: 'CAPELLA', url: 'https://capella.smartcatalogiq.com/current/academic-catalog/university-policies/academic-residency', page_type: 'residency_policy', priority: 1 },
+      { institution_code: 'CAPELLA', url: 'https://capella.smartcatalogiq.com/current/academic-catalog/university-policies/transfer-credit', page_type: 'transfer_policy', priority: 1 },
+      { institution_code: 'CAPELLA', url: 'https://capella.smartcatalogiq.com/current/academic-catalog/general-academic-policies', page_type: 'catalog', priority: 2 },
+      { institution_code: 'CAPELLA', url: 'https://www.capella.edu/admissions/transfer-credits/', page_type: 'transfer_info', priority: 2 },
+      
+      // EMPIRE templates - SUNY Empire State deep-links  
+      { institution_code: 'EMPIRE', url: 'https://catalog.sunyempire.edu/undergraduate/transfer-credits/', page_type: 'transfer_policy', priority: 1 },
+      { institution_code: 'EMPIRE', url: 'https://catalog.sunyempire.edu/undergraduate/residency-requirements/', page_type: 'residency_policy', priority: 1 },
+      { institution_code: 'EMPIRE', url: 'https://catalog.sunyempire.edu/undergraduate/academic-policies/', page_type: 'catalog', priority: 1 },
+      { institution_code: 'EMPIRE', url: 'https://www.sunyempire.edu/admissions/transfer-credit/', page_type: 'transfer_info', priority: 2 },
+      { institution_code: 'EMPIRE', url: 'https://www.sunyempire.edu/degrees-programs/degree-requirements/', page_type: 'residency', priority: 2 },
+      
+      // WALDEN templates - deep-links for transfer/residency
+      { institution_code: 'WALDEN', url: 'https://catalog.waldenu.edu/content.php?catoid=179&navoid=71377', page_type: 'transfer_policy', priority: 1 },
+      { institution_code: 'WALDEN', url: 'https://catalog.waldenu.edu/content.php?catoid=179&navoid=71378', page_type: 'residency_policy', priority: 1 },
+      { institution_code: 'WALDEN', url: 'https://www.waldenu.edu/admissions/transfer-of-credit', page_type: 'transfer_info', priority: 2 },
     ];
 
     const { data, error } = await supabase
