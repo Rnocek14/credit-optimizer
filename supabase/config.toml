@@ -17,6 +17,10 @@ verify_jwt = false
 [functions.transfer-scraper-validate]
 verify_jwt = false
 
+[functions.transfer-scraper-auto-scan]
+verify_jwt = false
+
+
 
 [functions.seed-data-2025]
 verify_jwt = false
