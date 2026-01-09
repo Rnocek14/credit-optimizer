@@ -871,6 +871,9 @@ Deno.serve(async (req) => {
         }
       }
 
+      // Determine canonical provenance URL (GT source > first scrape URL)
+      const canonicalProvenanceUrl = gtRow?.source_url || scrapeJobs[0]?.url || null;
+
       const { data: packData, error: policyError } = await supabase
         .from('institution_policy_packs')
         .insert({
@@ -886,6 +889,7 @@ Deno.serve(async (req) => {
           effective_start: mergedPack.policy_effective_dates?.effective_start,
           merged_from_job_ids: scrape_job_ids,
           field_provenance: flatProvenance, // Flat keys for trigger
+          provenance_url: canonicalProvenanceUrl, // NEW: canonical source URL
         })
         .select('id')
         .single();
