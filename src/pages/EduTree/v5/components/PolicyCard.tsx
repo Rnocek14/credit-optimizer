@@ -1,48 +1,24 @@
-import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { AlertCircle, CheckCircle2 } from 'lucide-react';
 import { usePlanBasket } from '../state/usePlanBasket';
-// NOTE: Policy values come from src/lib/degree/institutionPolicies.ts (single source of truth)
-// DB values are used as fallback only - verified values in central service take precedence
-import { 
-  getPolicyOrDefault, 
-  getResidencyCredits, 
-  getNoncollegiateCap,
-  type InstitutionCode 
-} from '@/lib/degree/institutionPolicies';
+import { useVerifiedPolicy } from '../hooks/useVerifiedPolicy';
+import { PolicyVerificationBadge, getVerificationStatus } from './PolicyVerificationBadge';
 
 export function PolicyCard() {
   const { items, constraints } = usePlanBasket();
   const anchor = constraints.target_school;
 
-  // Fetch DB policy for display name (optional)
-  const { data: dbPolicy } = useQuery({
-    queryKey: ['partner-policy', anchor],
-    queryFn: async () => {
-      if (!anchor) return null;
-      const { data, error } = await supabase
-        .from('partner_policies' as any)
-        .select('*')
-        .eq('partner_code', anchor)
-        .maybeSingle();
-      if (error) throw error;
-      return data as any;
-    },
-    enabled: !!anchor,
-  });
+  // Use verified policy service (reads from institution_policy_packs_live)
+  const { policy, isVerified, isLoading } = useVerifiedPolicy();
 
-  if (!anchor) return null;
+  if (!anchor || !policy) return null;
 
-  // Get VERIFIED policy values from central service (single source of truth)
-  const verifiedPolicy = getPolicyOrDefault(anchor);
-  const aceCapVerified = getNoncollegiateCap(anchor);
-  const residencyRequiredVerified = getResidencyCredits(anchor);
-  const upperDivRequiredVerified = verifiedPolicy.upperDivisionAreaOfStudyMin;
-  
-  // Display name from DB or central service
-  const displayName = dbPolicy?.partner_name || verifiedPolicy.name;
+  // Get values from verified policy (uses live pack or falls back to central service)
+  const aceCapVerified = policy.maxNoncollegiateCredits;
+  const residencyRequiredVerified = policy.residencyCredits;
+  const upperDivRequiredVerified = policy.upperDivisionMin;
+  const displayName = policy.institutionName;
 
   // Calculate credits from basket
   const aceCredits = items
@@ -57,7 +33,7 @@ export function PolicyCard() {
     .filter(i => (i.level || 0) >= 300)
     .reduce((s, i) => s + (i.credits || 0), 0);
 
-  // Calculate percentages using VERIFIED values
+  // Calculate percentages using verified values
   const acePct = Math.min(100, (aceCredits / aceCapVerified) * 100 || 0);
   const aceExceeded = aceCredits > aceCapVerified;
   
@@ -67,12 +43,37 @@ export function PolicyCard() {
   const udPct = Math.min(100, (upperDivCredits / upperDivRequiredVerified) * 100 || 0);
   const upperDivMet = upperDivCredits >= upperDivRequiredVerified;
 
+  const verificationStatus = getVerificationStatus(isVerified, isLoading, policy.confidence);
+
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle className="text-base">Policy: {displayName}</CardTitle>
+        <div className="flex items-center justify-between gap-2">
+          <CardTitle className="text-base">Policy: {displayName}</CardTitle>
+          <PolicyVerificationBadge 
+            status={verificationStatus}
+            confidence={policy.confidence}
+            source={policy.source}
+            evidenceUrl={policy.evidenceUrl}
+            verifiedAt={policy.verifiedAt}
+            compact
+          />
+        </div>
       </CardHeader>
       <CardContent className="space-y-4">
+        {/* Unverified warning */}
+        {!isVerified && !isLoading && (
+          <div className="p-2 rounded-md bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800">
+            <div className="flex items-start gap-2 text-xs text-yellow-800 dark:text-yellow-200">
+              <AlertCircle className="h-3 w-3 mt-0.5 flex-shrink-0" />
+              <span>
+                Policy values are estimated. Official verification pending.
+                {policy.notes && ` ${policy.notes}`}
+              </span>
+            </div>
+          </div>
+        )}
+
         {/* ACE/Noncollegiate Credits - COMBINED POOL */}
         <div>
           <div className="flex items-center justify-between text-sm mb-1">
