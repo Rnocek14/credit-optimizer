@@ -348,65 +348,89 @@ interface ValueCandidate<T> {
   contextSnippet?: string;   // Text context around the value for debugging
 }
 
-// Scope detection tokens that indicate a cap applies to a specific pathway/degree/program
-const SCOPE_TOKENS = [
-  // Degree-specific
+// Two-tier scope detection tokens
+// HARD tokens: always indicate scoped cap if near the number
+const SCOPE_TOKENS_HARD = [
   'associate degree', 'aa degree', 'as degree', 'aas degree',
-  'bachelor', 'undergraduate', 'graduate', 'master', 'doctoral', 'phd',
-  // Program/pathway-specific
-  'pathway', 'program', 'major', 'concentration', 'specialization',
-  'for students in', 'for the', 'toward the', 'applies to',
-  'in this program', 'for this degree', 'degree-seeking',
-  // Transfer-specific scopes
-  'transfer guarantee', 'articulation', 'partner', 'community college',
+  'pathway', 'articulation', 'transfer guarantee', 
+  'community college', 'partner college', 'partner institution',
   'two-year', '2-year', 'from accredited',
+];
+
+// SOFT tokens: only indicate scoped if paired with qualifier phrases
+const SCOPE_TOKENS_SOFT = [
+  'graduate', 'master', 'doctoral', 'phd',
+  'major', 'concentration', 'specialization', 'program',
+];
+
+// Qualifier phrases that make SOFT tokens become scoped
+const SCOPE_QUALIFIERS = [
+  'for students in', 'applies to', 'in this program', 
+  'for the', 'toward the', 'for this degree',
+  'students enrolled in', 'students pursuing',
 ];
 
 /**
  * Detects if a numeric value appears near scope-limiting language
- * Returns { isScoped, scopeReason } based on context analysis
+ * Uses two-tier detection: HARD tokens always scope, SOFT tokens only with qualifiers
+ * Anchors to credit-phrase patterns (not raw number matching)
  */
 function detectValueScope(
   value: number | string,
   extractedText: string,
-  url: string
+  _url: string
 ): { isScoped: boolean; scopeReason: string | null; contextSnippet: string | null } {
   const valueStr = String(value);
   const textLower = extractedText.toLowerCase();
   
-  // Find position of value in text
-  const valuePos = textLower.indexOf(valueStr);
-  if (valuePos === -1) {
+  // Anchor to credit phrases to avoid false matches (years, phone numbers, etc.)
+  // Build regex: \b79\b\s*(credits|credit hours|semester hours)
+  const creditPhraseRegex = new RegExp(
+    `\\b${valueStr}\\b\\s*(credits|credit hours|semester hours|credit)`,
+    'gi'
+  );
+  
+  const match = creditPhraseRegex.exec(textLower);
+  if (!match) {
+    // No credit-anchored match found - can't determine scope reliably
     return { isScoped: false, scopeReason: null, contextSnippet: null };
   }
   
-  // Extract context window around the value (±300 chars)
-  const contextStart = Math.max(0, valuePos - 300);
-  const contextEnd = Math.min(textLower.length, valuePos + valueStr.length + 300);
+  // Extract context window around the credit phrase match (±300 chars)
+  const matchPos = match.index;
+  const contextStart = Math.max(0, matchPos - 300);
+  const contextEnd = Math.min(textLower.length, matchPos + match[0].length + 300);
   const context = textLower.slice(contextStart, contextEnd);
   const contextSnippet = extractedText.slice(contextStart, contextEnd);
   
-  // Check for scope tokens in context
-  for (const token of SCOPE_TOKENS) {
+  // Check HARD tokens first - always indicate scope
+  for (const token of SCOPE_TOKENS_HARD) {
     if (context.includes(token.toLowerCase())) {
-      // Found scope token - but check if it's institution-wide language
-      // "bachelor's degree requirements" at institution level is OK
-      // "associate degree pathway" is scoped
-      const isScopedPattern = 
-        context.includes('associate degree') ||
-        context.includes('pathway') ||
-        context.includes('program-specific') ||
-        context.includes('for students in') ||
-        context.includes('transfer guarantee') ||
-        context.includes('community college') ||
-        (context.includes('graduate') && !context.includes('undergraduate'));
+      return {
+        isScoped: true,
+        scopeReason: `Hard scope token: "${token}"`,
+        contextSnippet: contextSnippet.slice(0, 250) + '...',
+      };
+    }
+  }
+  
+  // Check SOFT tokens - only scoped if qualifier present
+  for (const softToken of SCOPE_TOKENS_SOFT) {
+    if (context.includes(softToken.toLowerCase())) {
+      // Special case: "graduate" is only scoped if NOT paired with "undergraduate"
+      if (softToken === 'graduate' && context.includes('undergraduate')) {
+        continue; // Skip - this is likely a general policy covering both
+      }
       
-      if (isScopedPattern) {
-        return {
-          isScoped: true,
-          scopeReason: `Found scope token: "${token}"`,
-          contextSnippet: contextSnippet.slice(0, 200) + '...',
-        };
+      // Check if any qualifier phrase is present
+      for (const qualifier of SCOPE_QUALIFIERS) {
+        if (context.includes(qualifier.toLowerCase())) {
+          return {
+            isScoped: true,
+            scopeReason: `Soft scope "${softToken}" + qualifier "${qualifier}"`,
+            contextSnippet: contextSnippet.slice(0, 250) + '...',
+          };
+        }
       }
     }
   }
@@ -498,6 +522,7 @@ function selectBestValueWithVoting<T>(
 }
 
 // Extended pickBestValue that also loads extracted_text for scope detection
+// Performance: only loads text for jobs that produced numeric candidates
 async function pickBestValueWithScopeDetection<T>(
   supabase: ReturnType<typeof createClient>,
   extractions: { jobId: string; extraction: ExtractionResult; url: string }[],
@@ -505,32 +530,55 @@ async function pickBestValueWithScopeDetection<T>(
   fieldPath: string,
   valueToString?: (v: T) => string
 ): Promise<{ selected: SourcedValue<T> | null; scopedCaps: ValueCandidate<T>[] }> {
-  // Collect all candidates with their confidence scores and URLs
-  const candidates: ValueCandidate<T>[] = [];
-  const jobIds = extractions.map(e => e.jobId);
+  // First pass: identify which jobs have numeric candidates worth checking
+  const candidateJobIds: string[] = [];
+  const candidatesByJob = new Map<string, { value: T; extraction: ExtractionResult; url: string }>();
   
-  // Load extracted text for scope detection
-  const { data: contents } = await supabase
-    .from('scraped_content')
-    .select('scrape_job_id, extracted_text')
-    .in('scrape_job_id', jobIds);
-  
-  const textByJob = new Map<string, string>();
-  for (const c of contents || []) {
-    if (c.extracted_text) {
-      textByJob.set(c.scrape_job_id, c.extracted_text);
-    }
-  }
-
   for (const { jobId, extraction, url } of extractions) {
     if (!extraction.policy_pack) continue;
     const value = accessor(extraction.policy_pack);
     if (value === null || value === undefined) continue;
     
-    // Detect if this value is scoped
+    // Only need scope detection for numeric values
+    const numeric = typeof value === 'number' ? value : Number(value);
+    if (!Number.isNaN(numeric)) {
+      candidateJobIds.push(jobId);
+      candidatesByJob.set(jobId, { value, extraction, url });
+    }
+  }
+  
+  // Performance guardrail: only load extracted_text for jobs with candidates (max 10)
+  const jobsToLoad = candidateJobIds.slice(0, 10);
+  const textByJob = new Map<string, string>();
+  
+  if (jobsToLoad.length > 0) {
+    const { data: contents } = await supabase
+      .from('scraped_content')
+      .select('scrape_job_id, extracted_text')
+      .in('scrape_job_id', jobsToLoad);
+    
+    for (const c of contents || []) {
+      if (c.extracted_text) {
+        textByJob.set(c.scrape_job_id, c.extracted_text);
+      }
+    }
+  }
+
+  // Build candidates with scope detection
+  const candidates: ValueCandidate<T>[] = [];
+  
+  for (const { jobId, extraction, url } of extractions) {
+    if (!extraction.policy_pack) continue;
+    const value = accessor(extraction.policy_pack);
+    if (value === null || value === undefined) continue;
+    
+    // Detect scope for numeric values (handle both number and numeric string)
+    const numeric = typeof value === 'number' ? value : Number(value);
+    const isNumeric = !Number.isNaN(numeric);
     const text = textByJob.get(jobId) || '';
-    const scopeResult = typeof value === 'number' 
-      ? detectValueScope(value, text, url)
+    
+    const scopeResult = isNumeric && text
+      ? detectValueScope(numeric, text, url)
       : { isScoped: false, scopeReason: null, contextSnippet: null };
     
     candidates.push({ 
@@ -663,18 +711,25 @@ async function mergePolicyPacks(
   // Get first valid pack as base
   const basePack = validExtractions[0].extraction.policy_pack!;
 
+  // CRITICAL: When scoped caps exist but no unscoped selection, DON'T fall back to basePack
+  // because basePack values may be scoped. Only use null to indicate "no institution-wide cap found"
+  const maxTransferScopedOnly = maxTransferResult.scopedCaps.length > 0 && !maxTransfer;
+  const residencyScopedOnly = residencyResult.scopedCaps.length > 0 && !residencyCredits;
+
   // Build merged pack
   const mergedPack: PolicyPack = {
     institution,
     academic_year: academicYear?.value || basePack.academic_year,
     residency_policy: {
-      min_institutional_credits: residencyCredits?.value ?? basePack.residency_policy?.min_institutional_credits ?? null,
+      // Don't fallback to basePack if we only found scoped values
+      min_institutional_credits: residencyCredits?.value ?? (residencyScopedOnly ? null : basePack.residency_policy?.min_institutional_credits ?? null),
       residency_waiver_available: residencyWaiver?.value ?? basePack.residency_policy?.residency_waiver_available ?? false,
       waiver_name: basePack.residency_policy?.waiver_name,
       waiver_notes: basePack.residency_policy?.waiver_notes,
     },
     transfer_credit_limits: {
-      max_total_transfer_credits: maxTransfer?.value ?? basePack.transfer_credit_limits?.max_total_transfer_credits ?? null,
+      // Don't fallback to basePack if we only found scoped values
+      max_total_transfer_credits: maxTransfer?.value ?? (maxTransferScopedOnly ? null : basePack.transfer_credit_limits?.max_total_transfer_credits ?? null),
       max_ace_nccrs_credits: maxAceNccrs?.value ?? basePack.transfer_credit_limits?.max_ace_nccrs_credits ?? null,
       min_regionally_accredited_credits: basePack.transfer_credit_limits?.min_regionally_accredited_credits ?? null,
     },
@@ -1301,6 +1356,12 @@ Deno.serve(async (req) => {
             // Scoped caps detection (caps that apply to specific programs/pathways, not institution-wide)
             scoped_caps_detected: scopedCapsDetected,
             scoped_caps: scopedCaps,
+            // Quick-access fields for debugging
+            best_scoped_cap: scopedCaps.length > 0 ? scopedCaps[0] : null,
+            scoped_caps_by_field: {
+              max_transfer_credits: scopedCaps.filter(sc => sc.field === 'max_transfer_credits'),
+              residency_credits: scopedCaps.filter(sc => sc.field === 'residency_credits'),
+            },
             caps_found: {
               max_transfer_credits: maxTransferOk ? policyData.max_transfer_credits : null,
               residency_credits: residencyOk ? policyData.residency_credits : null,
