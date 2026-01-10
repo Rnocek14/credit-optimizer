@@ -30,6 +30,14 @@ export interface PolicyPackRow {
   created_at: string;
 }
 
+export type PolicySource = 'pack' | 'static' | 'none';
+
+export interface PolicyWithSource {
+  policy: LegacyAnchorPolicy | undefined;
+  source: PolicySource;
+  confidence?: number;
+}
+
 /**
  * Convert scraped policy pack to legacy anchor policy format
  */
@@ -48,12 +56,13 @@ function packToLegacyPolicy(pack: PolicyPackRow): LegacyAnchorPolicy {
 /**
  * Hook to fetch active policy pack for an institution
  * Falls back to static policy if no active pack exists
+ * Returns both policy and source for debugging
  */
 export function useInstitutionPolicyPack(institutionCode?: string) {
   return useQuery({
     queryKey: ['institution-policy-pack', institutionCode],
-    queryFn: async (): Promise<LegacyAnchorPolicy | undefined> => {
-      if (!institutionCode) return undefined;
+    queryFn: async (): Promise<PolicyWithSource> => {
+      if (!institutionCode) return { policy: undefined, source: 'none' };
 
       // Try to fetch active pack from DB
       // @ts-ignore - table exists after scraper runs
@@ -70,20 +79,28 @@ export function useInstitutionPolicyPack(institutionCode?: string) {
       if (error) {
         if ((error as any)?.code === '42P01') {
           console.log('[useInstitutionPolicyPack] Table not found, using static policy');
-          return getAnchorPolicy(institutionCode);
+          return { policy: getAnchorPolicy(institutionCode), source: 'static' };
         }
         console.warn('[useInstitutionPolicyPack] Query error:', error);
-        return getAnchorPolicy(institutionCode);
+        return { policy: getAnchorPolicy(institutionCode), source: 'static' };
       }
 
       if (data) {
-        console.log('[useInstitutionPolicyPack] Using scraped policy pack:', institutionCode);
-        return packToLegacyPolicy(data as unknown as PolicyPackRow);
+        const pack = data as unknown as PolicyPackRow;
+        console.log('[useInstitutionPolicyPack] ✅ USING_PACK:', institutionCode, {
+          residency: pack.policy_json?.residency_policy?.min_institutional_credits,
+          confidence: pack.confidence_score,
+        });
+        return { 
+          policy: packToLegacyPolicy(pack), 
+          source: 'pack',
+          confidence: pack.confidence_score,
+        };
       }
 
       // Fallback to static
-      console.log('[useInstitutionPolicyPack] No active pack, using static policy:', institutionCode);
-      return getAnchorPolicy(institutionCode);
+      console.log('[useInstitutionPolicyPack] USING_STATIC:', institutionCode);
+      return { policy: getAnchorPolicy(institutionCode), source: 'static' };
     },
     enabled: !!institutionCode,
     staleTime: 10 * 60 * 1000, // 10 minutes
@@ -92,11 +109,12 @@ export function useInstitutionPolicyPack(institutionCode?: string) {
 
 /**
  * Non-hook async function for use in queryFn contexts
+ * Returns both policy and source for debugging
  */
 export async function fetchPolicyPackOrStatic(
   institutionCode: string
-): Promise<LegacyAnchorPolicy | undefined> {
-  if (!institutionCode) return undefined;
+): Promise<PolicyWithSource> {
+  if (!institutionCode) return { policy: undefined, source: 'none' };
 
   try {
     // @ts-ignore
@@ -114,13 +132,34 @@ export async function fetchPolicyPackOrStatic(
     }
 
     if (data) {
-      console.log('[fetchPolicyPackOrStatic] Using scraped pack:', institutionCode);
-      return packToLegacyPolicy(data as unknown as PolicyPackRow);
+      const pack = data as unknown as PolicyPackRow;
+      console.log('[fetchPolicyPackOrStatic] ✅ USING_PACK:', institutionCode, {
+        residency: pack.policy_json?.residency_policy?.min_institutional_credits,
+        maxAlt: pack.policy_json?.transfer_limits?.max_noncollegiate,
+        confidence: pack.confidence_score,
+      });
+      return { 
+        policy: packToLegacyPolicy(pack), 
+        source: 'pack',
+        confidence: pack.confidence_score,
+      };
     }
   } catch (err) {
     console.warn('[fetchPolicyPackOrStatic] Exception:', err);
   }
 
   // Fallback to static
-  return getAnchorPolicy(institutionCode);
+  console.log('[fetchPolicyPackOrStatic] USING_STATIC:', institutionCode);
+  return { policy: getAnchorPolicy(institutionCode), source: 'static' };
+}
+
+/**
+ * Legacy wrapper for backward compatibility
+ * @deprecated Use fetchPolicyPackOrStatic for source tracking
+ */
+export async function fetchPolicyOrStaticLegacy(
+  institutionCode: string
+): Promise<LegacyAnchorPolicy | undefined> {
+  const result = await fetchPolicyPackOrStatic(institutionCode);
+  return result.policy;
 }

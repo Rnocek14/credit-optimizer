@@ -1570,13 +1570,20 @@ export default function EduTreeV5Page() {
           blockCount: requirementBlocks.length,
           optionCount: [1,2,3,4].flatMap(y => moduleProvider?.getModulesForYear?.(y) ?? []).reduce((sum, m) => sum + (m.marketplaceOptions?.length ?? 0), 0),
           coverage: (() => {
+            // Proper coverage: modules covered by options via requirementId linkage
             const mods = [1,2,3,4].flatMap(y => moduleProvider?.getModulesForYear?.(y) ?? []);
             if (mods.length === 0) return 0;
-            const withOptions = mods.filter(m => (m.marketplaceOptions?.length ?? 0) > 0).length;
-            return (withOptions / mods.length) * 100;
+            // Collect all requirementIds from options
+            const coveredRequirementIds = new Set(
+              mods.flatMap(m => (m.marketplaceOptions ?? []).map((o: any) => o.requirementId)).filter(Boolean)
+            );
+            // Count modules whose id exists in the covered set
+            const coverCount = mods.filter(m => coveredRequirementIds.has(m.id)).length;
+            return (coverCount / mods.length) * 100;
           })(),
           totalCredits: moduleProvider?.getSummary?.()?.totalCredits ?? 0,
           planSource: USE_DATABASE ? 'real' : (templateId ? 'mock' : 'fixture'),
+          // Policy source detection will show 'static' until we wire up the actual source from query
           policySource: constraints.target_school ? 'static' : 'none',
           anchorSchool: constraints.target_school,
         }}
