@@ -70,15 +70,10 @@ function enrichOption(opt: any): any {
   const credits = opt.credits || 3;
   return {
     ...opt,
-    // Cost defaults: typical ACE course pricing
     cost_usd: opt.cost_usd ?? 89,
-    // Duration defaults: typical self-paced course
     duration_weeks: opt.duration_weeks ?? 6,
-    // Workload estimate if missing
     workload_weekly_hours: opt.workload_weekly_hours ?? credits * 2.5,
-    // Provider type fallback
     providerType: opt.providerType ?? (opt.provider?.type || 'mooc'),
-    // CRI score fallback (moderate quality)
     cri_score: opt.cri_score ?? 70,
   };
 }
@@ -103,7 +98,6 @@ export function transformToModuleData(
     4: [],
   };
   
-  // Track warned providers to prevent duplicate logs
   const warnedProviders = new Set<string>();
 
   requirements.forEach((req) => {
@@ -114,7 +108,6 @@ export function transformToModuleData(
         const course = opt.marketplace_courses || opt.edu_courses;
         if (!course) return null;
 
-        // For edu courses without a provider, use a default university provider
         const provider = opt.provider || (opt.edu_courses ? {
           id: 'edu',
           name: 'University',
@@ -123,18 +116,14 @@ export function transformToModuleData(
           provider_code: 'EDU'
         } : null);
         
-        // Look up provider defaults for CRI signals (normalized to kebab-case)
         const providerId = normalizeProviderId(provider?.id);
         const pDefaults = providerId ? PROVIDER_DEFAULTS[providerId] : undefined;
         
-        // Log when provider not found (helps grow coverage) - ONCE per provider
         if (provider?.id && !pDefaults && !warnedProviders.has(provider.id)) {
           warnedProviders.add(provider.id);
           if (!ENV.PROD) {
             console.warn(`[CRI] Provider not in registry: "${provider.id}" (normalized: "${providerId}")`);
           }
-          // TODO: Track missing providers for registry growth
-          // trackTelemetryEvent({ task: 'marketplace_provider_missing_defaults', complexity: { providerId, providerIdNormalized: providerId } });
         }
 
         return {
@@ -146,21 +135,23 @@ export function transformToModuleData(
           provider: provider?.name || 'University',
           providerType: provider?.type?.toLowerCase() || null,
           providerCode: provider?.provider_code || null,
-          level: 100, // Default level - can be enriched from DB later
+          level: 100,
           cost_usd: opt.marketplace_courses?.cost_usd ?? null,
           duration_weeks: opt.marketplace_courses?.duration_weeks ?? null,
-          // Inject CRI signals from provider registry
+          // CRITICAL: Preserve requirement_id for coverage calculation
+          requirementId: opt.requirement_id,
+          // CRI signals from provider registry
           aceNccrs: pDefaults?.aceNccrs,
           proctored: pDefaults?.proctored,
           providerRep: pDefaults?.rep,
           // Phase 1 additions
-          pace_type: 'self_paced', // Default - can be enriched from DB later
-          start_windows: [], // Placeholder - will be enriched from DB
-          workload_weekly_hours: course.credits * 2.5, // Estimate: 2.5 hrs/week per credit
-          satisfies_requirements: [], // Placeholder - will be enriched from requirement_options
-          prereq_course_ids: [], // Placeholder - will be enriched from course_prereqs
-          unlocks_count: 0, // Placeholder - will be calculated
-          equivalency_key: undefined, // Placeholder - will be enriched from equivalence tables
+          pace_type: 'self_paced',
+          start_windows: [],
+          workload_weekly_hours: course.credits * 2.5,
+          satisfies_requirements: [],
+          prereq_course_ids: [],
+          unlocks_count: 0,
+          equivalency_key: undefined,
         };
       })
       .filter((opt): opt is NonNullable<typeof opt> => opt !== null);
@@ -173,7 +164,6 @@ export function transformToModuleData(
           null
         );
 
-    // Compute selection summary from basket
     const selectedSummary = computeModuleSummary(
       req.id,
       req.credits_required ?? 0,
@@ -185,17 +175,15 @@ export function transformToModuleData(
       label: req.name,
       icon: mapCategoryToIcon(req.category),
       description: req.description ?? '',
-      courses: [], // Empty for now - would come from user's selected courses
-      creditsEarned: selectedSummary.credits, // Real progress from basket
+      courses: [],
+      creditsEarned: selectedSummary.credits,
       creditsRequired: req.credits_required ?? 0,
       isCollapsed: false,
-      optionsCount: 0, // Will be populated with marketplace options below
-      selectedSummary, // Attach progress summary
+      optionsCount: 0,
+      selectedSummary,
     };
 
-    // Add marketplace metadata if available
     if (marketplaceOptions.length > 0) {
-      // Enrich options with defaults before attaching to module
       const enrichedOptions = marketplaceOptions.map(enrichOption);
       (module as any).optionsCount = enrichedOptions.length;
       (module as any).cheapestOption = cheapestOption;

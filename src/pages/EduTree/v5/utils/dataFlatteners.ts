@@ -51,7 +51,9 @@ export function flattenModules(
         credits_required: module.creditsRequired,
         marketplaceOptions: (module.marketplaceOptions ?? []).map(opt => ({
           id: opt.id,
-          requirementId: module.requirement_block_id ?? module.id,
+          // Use the option's actual requirementId from DB (set in transformDbToV5)
+          // Falls back to module.id for legacy data
+          requirementId: (opt as any).requirementId ?? module.id,
           moduleId: module.id,
           optionKind: opt.providerType ?? 'course',
           courseId: opt.courseId,
@@ -89,16 +91,17 @@ export function getCoveredRequirements(options: FlatMarketplaceOption[]): Set<st
 
 /**
  * Calculate coverage percentage
+ * Uses module.id as the identity key (matches requirement_id in options)
  */
 export function calculateCoverage(
   modules: FlattenedModule[],
   options: FlatMarketplaceOption[]
 ): number {
   if (modules.length === 0) return 0;
-  const covered = getCoveredRequirements(options);
-  const total = modules.length;
-  const coverCount = modules.filter(m => covered.has(m.id)).length;
-  return (coverCount / total) * 100;
+  const coveredRequirementIds = getCoveredRequirements(options);
+  // Compare module.id against requirementId (they should match after DB transform)
+  const coverCount = modules.filter(m => coveredRequirementIds.has(m.id)).length;
+  return (coverCount / modules.length) * 100;
 }
 
 /**

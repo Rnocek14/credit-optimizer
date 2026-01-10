@@ -25,6 +25,7 @@ import { CreditOptimizerSuggestionBanner } from './components/CreditOptimizerSug
 import { CreditOptimizerModal } from './components/CreditOptimizerModal';
 import { CreditOptimizerDevTools } from './components/CreditOptimizerDevTools';
 import { ProvenanceWarning } from './components/ProvenanceWarning';
+import { V5DataHealthPanel } from './components/V5DataHealthPanel';
 import { TemplateValidationBanner } from './components/TemplateValidationBanner';
 import { useMarketplaceTemplate } from '@/hooks/useMarketplaceTemplates';
 import { useDegreeTemplates } from '@/hooks/useDegreeTemplates';
@@ -1561,6 +1562,26 @@ export default function EduTreeV5Page() {
       {ENABLE_CREDIT_OPTIMIZER && (
         <CreditOptimizerDevTools />
       )}
+      
+      {/* V5 Data Health Debug Panel */}
+      <V5DataHealthPanel 
+        diagnostics={{
+          moduleCount: moduleProvider?.getSummary?.()?.totalModules ?? 0,
+          blockCount: requirementBlocks.length,
+          optionCount: [1,2,3,4].flatMap(y => moduleProvider?.getModulesForYear?.(y) ?? []).reduce((sum, m) => sum + (m.marketplaceOptions?.length ?? 0), 0),
+          coverage: (() => {
+            const mods = [1,2,3,4].flatMap(y => moduleProvider?.getModulesForYear?.(y) ?? []);
+            if (mods.length === 0) return 0;
+            const withOptions = mods.filter(m => (m.marketplaceOptions?.length ?? 0) > 0).length;
+            return (withOptions / mods.length) * 100;
+          })(),
+          totalCredits: moduleProvider?.getSummary?.()?.totalCredits ?? 0,
+          planSource: USE_DATABASE ? 'real' : (templateId ? 'mock' : 'fixture'),
+          policySource: constraints.target_school ? 'static' : 'none',
+          anchorSchool: constraints.target_school,
+        }}
+        visible={USE_DATABASE || searchParams.get('debug') === '1'}
+      />
       </div>
     </DragProvider>
   );
