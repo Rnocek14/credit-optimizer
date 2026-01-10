@@ -29,14 +29,29 @@ interface UrlDiagnostic {
   page_type: string;
   text_length: number | null;
   content_class: 'ok' | 'too_short' | 'js_junk' | 'error_page' | null;
+  keyword_hits?: number;  // Policy keyword hit count
   status: string;
   scrape_job_id: string | null;
+  sample?: string | null;  // Content sample for debugging
+}
+
+interface DiagnosticSummary {
+  total_urls: number;
+  ok_count: number;
+  too_short_count: number;
+  js_junk_count: number;
+  error_page_count: number;
+  max_text_length: number;
+  min_text_length: number;
+  max_keyword_hits: number;
+  best_policy_url: string | null;
 }
 
 interface MergeRequest {
   institution: string;
   scrape_job_ids: string[];
   url_diagnostics?: UrlDiagnostic[];
+  diagnostic_summary?: DiagnosticSummary;  // Pre-computed summary from auto-scan
 }
 
 interface ExtractionResult {
@@ -562,7 +577,7 @@ Deno.serve(async (req) => {
     );
 
     const body: MergeRequest = await req.json();
-    const { institution, scrape_job_ids, url_diagnostics } = body;
+    const { institution, scrape_job_ids, url_diagnostics, diagnostic_summary: precomputedSummary } = body;
 
     if (!institution || !scrape_job_ids?.length) {
       return new Response(
@@ -1048,15 +1063,20 @@ Deno.serve(async (req) => {
               content_class: null,
               status: 'unknown',
             })),
-            diagnostic_summary: url_diagnostics ? {
+            // Use precomputed summary if provided, otherwise compute from url_diagnostics
+            diagnostic_summary: precomputedSummary || (url_diagnostics ? {
               total_urls: url_diagnostics.length,
               ok_count: url_diagnostics.filter(d => d.content_class === 'ok').length,
               too_short_count: url_diagnostics.filter(d => d.content_class === 'too_short').length,
               js_junk_count: url_diagnostics.filter(d => d.content_class === 'js_junk').length,
               error_page_count: url_diagnostics.filter(d => d.content_class === 'error_page').length,
-              max_text_length: Math.max(...url_diagnostics.filter(d => d.text_length).map(d => d.text_length || 0)),
-              min_text_length: Math.min(...url_diagnostics.filter(d => d.text_length).map(d => d.text_length || Infinity)),
-            } : null,
+              max_text_length: Math.max(0, ...url_diagnostics.filter(d => d.text_length).map(d => d.text_length || 0)),
+              min_text_length: Math.min(...url_diagnostics.filter(d => d.text_length && d.text_length > 0).map(d => d.text_length || Infinity)) || 0,
+              max_keyword_hits: Math.max(0, ...url_diagnostics.map(d => d.keyword_hits || 0)),
+              best_policy_url: url_diagnostics
+                .filter(d => d.content_class === 'ok' && (d.keyword_hits ?? 0) > 0)
+                .sort((a, b) => (b.keyword_hits ?? 0) - (a.keyword_hits ?? 0))[0]?.url || null,
+            } : null),
           },
         });
 
