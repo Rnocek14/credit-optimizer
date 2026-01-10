@@ -72,6 +72,19 @@ export async function generateModuleTemplates(
     console.log('[TemplateGenerator] 🔍 Exploration mode: generating alternatives for satisfied module:', module.id);
   }
   
+  // === V5_GATING LOG: Single source of truth for mock vs real decision ===
+  const totalCredits = module.creditsRequired ?? 0;
+  const optionsCount = module.marketplaceOptions?.length ?? 0;
+  const planSource = optionsCount > 0 ? 'real' : 'mock';
+  
+  console.log('[V5_GATING] credits=%d blocks=1 coverage=%d modules=1 options=%d planSource=%s moduleId=%s',
+    totalCredits,
+    optionsCount > 0 ? Math.round((optionsCount / Math.max(1, totalCredits / 3)) * 100) : 0,
+    optionsCount,
+    planSource,
+    module.id
+  );
+  
   console.log('[TemplateGenerator] 🎯 Generating templates:', {
     moduleId: module.id,
     moduleLabel: module.label,

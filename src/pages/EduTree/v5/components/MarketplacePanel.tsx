@@ -1,11 +1,14 @@
 import { useMemo, useState } from 'react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { usePlanStore } from '../state/usePlanStore';
 import { usePlanBasket } from '../state/usePlanBasket';
-import { calculateOptionScore, type ScoreBreakdown, type ProviderType } from '../utils/optionScoring';
+import { calculateOptionScore, getRecommendedReason, type ScoreBreakdown, type ProviderType } from '../utils/optionScoring';
+import { groupOptionsByEquivalency, type ScoredOption, type OptionGroup } from '../utils/optionGrouping';
+import { PolicyBadges, RecommendedBadge } from './PolicyBadges';
 import { useScoringPrefs } from '../state/useScoringPrefs';
 import { validatePlan } from '../engine/constraints';
 import { autoCompletePlan } from '../engine/autoComplete';
@@ -104,38 +107,74 @@ export function MarketplacePanel({
     // Example: trackTelemetryEvent({ task: event, complexity: payload });
   };
 
-  // Enrich options with scores
-  const enriched = useMemo(() => {
+  // Enrich options with scores (Guardrail #1: decorate, don't mutate)
+  const scoredOptions: ScoredOption[] = useMemo(() => {
     return options.map(o => {
       const breakdown = calculateOptionScore(o, options, weights);
-      return { ...o, score: breakdown.total, scoreBreakdown: breakdown };
+      const reason = getRecommendedReason(o, breakdown);
+      return { 
+        option: o, 
+        score: breakdown.total, 
+        breakdown,
+        reason
+      };
     });
   }, [options, weights]);
-
-  // Sort enriched options
-  const sortedOptions = useMemo(() => {
-    const opts = [...enriched];
+  
+  // Group by equivalency (Guardrail #2: opt-in only when key exists + multiple options)
+  const groupingResult = useMemo(() => {
+    return groupOptionsByEquivalency(scoredOptions);
+  }, [scoredOptions]);
+  
+  // Sort enriched options (uses grouped or ungrouped based on preference)
+  const sortedScoredOptions = useMemo(() => {
+    // Flatten to single list for sorting (preserves grouping info but sorts uniformly)
+    const allScored = [...groupingResult.ungrouped];
+    for (const group of groupingResult.groups) {
+      allScored.push(group.bestOption);
+      allScored.push(...group.alternatives);
+    }
     
     if (sortBy === 'best-match') {
-      return opts.sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
+      return allScored.sort((a, b) => b.score - a.score);
     }
     if (sortBy === 'cheapest') {
-      return opts.sort((a, b) => {
-        if (a.cost_usd === null) return 1;
-        if (b.cost_usd === null) return -1;
-        return a.cost_usd - b.cost_usd;
+      return allScored.sort((a, b) => {
+        if (a.option.cost_usd === null) return 1;
+        if (b.option.cost_usd === null) return -1;
+        return a.option.cost_usd - b.option.cost_usd;
       });
     }
     if (sortBy === 'shortest') {
-      return opts.sort((a, b) => {
-        if (a.duration_weeks === null) return 1;
-        if (b.duration_weeks === null) return -1;
-        return a.duration_weeks - b.duration_weeks;
+      return allScored.sort((a, b) => {
+        if (a.option.duration_weeks === null) return 1;
+        if (b.option.duration_weeks === null) return -1;
+        return a.option.duration_weeks - b.option.duration_weeks;
       });
     }
     // credits
-    return opts.sort((a, b) => (b.credits ?? 0) - (a.credits ?? 0));
-  }, [enriched, sortBy]);
+    return allScored.sort((a, b) => (b.option.credits ?? 0) - (a.option.credits ?? 0));
+  }, [groupingResult, sortBy]);
+  
+  // For backwards compatibility - extract options for validators
+  const sortedOptions = useMemo(() => 
+    sortedScoredOptions.map(s => ({ ...s.option, score: s.score, scoreBreakdown: s.breakdown })),
+    [sortedScoredOptions]
+  );
+  
+  // Get anchor policy from constraints for PolicyBadges
+  const anchorPolicy = useMemo(() => ({
+    partner_name: constraints.target_school ?? undefined,
+    max_alt_credits: constraints.max_ace_credits,
+    min_residency_credits: undefined // Not in current Constraints type
+  }), [constraints]);
+  
+  // Calculate current ACE credits in basket for policy warnings
+  const currentAceCredits = useMemo(() => {
+    return basket
+      .filter(b => b.providerType === 'mooc' || b.providerType === 'testing_center')
+      .reduce((sum, b) => sum + b.credits, 0);
+  }, [basket]);
   
   // Validate plan and get violations
   const violations = useMemo(() => 
@@ -360,19 +399,30 @@ export function MarketplacePanel({
 
         {/* Options list */}
         <div className="space-y-2">
-          {sortedOptions.map(option => {
+          {sortedScoredOptions.map((scored, index) => {
+            const option = scored.option;
             const isSelected = selected.includes(option.courseId);
             const isInBasket = basket.some(b => b.courseId === option.courseId);
             const optionCredits = Number(option.credits) || 0;
             const wouldExceedYearCap = !isSelected && yearEarned + optionCredits > yearCap;
             const disabled = (isAtMax && !isSelected) || wouldExceedYearCap;
+            const isTopOption = index === 0;
 
             return (
               <div
                 key={option.id}
-                className="border rounded-lg p-3 flex items-center justify-between hover:bg-accent/50 transition-colors"
+                className={`border rounded-lg p-3 flex items-center justify-between hover:bg-accent/50 transition-colors relative ${
+                  isTopOption && sortBy === 'best-match' ? 'border-primary/50 bg-primary/5' : ''
+                }`}
               >
                 <div className="min-w-0 flex-1">
+                  {/* Recommended Badge for top option */}
+                  <RecommendedBadge 
+                    reason={scored.reason}
+                    isTopOption={isTopOption}
+                    sortBy={sortBy}
+                  />
+                  
                   <div className="font-medium text-sm truncate">
                     {option.courseId}: {option.title}
                   </div>
@@ -386,6 +436,15 @@ export function MarketplacePanel({
                       </div>
                     );
                   })()}
+                  
+                  {/* Policy-Aware Badges */}
+                  <div className="mt-1">
+                    <PolicyBadges 
+                      option={option}
+                      anchorPolicy={anchorPolicy}
+                      currentAceCredits={currentAceCredits}
+                    />
+                  </div>
                   
                   <div className="text-xs text-muted-foreground mt-1 flex items-center gap-2 flex-wrap">
                     <span>{option.credits} cr</span>
@@ -435,16 +494,16 @@ export function MarketplacePanel({
                     />
                     
                     {/* CRI Badge */}
-                    {option.scoreBreakdown && (
+                    {scored.breakdown && (
                       <span 
                         className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
-                          option.scoreBreakdown.cri >= 80 ? 'bg-green-100 text-green-700' :
-                          option.scoreBreakdown.cri >= 60 ? 'bg-yellow-100 text-yellow-700' :
+                          scored.breakdown.cri >= 80 ? 'bg-green-100 text-green-700' :
+                          scored.breakdown.cri >= 60 ? 'bg-yellow-100 text-yellow-700' :
                           'bg-red-100 text-red-700'
                         }`}
                         title="Credit Recognition Index – likelihood to transfer"
                       >
-                        🛡️ CRI {option.scoreBreakdown.cri}
+                        🛡️ CRI {scored.breakdown.cri}
                       </span>
                     )}
                     
@@ -459,7 +518,7 @@ export function MarketplacePanel({
                     {option.duration_weeks && <span>• {option.duration_weeks}w</span>}
                     
                     {/* Why This? Popover */}
-                    {option.scoreBreakdown && (
+                    {scored.breakdown && (
                       <Popover>
                         <PopoverTrigger asChild>
                           <button 
@@ -469,8 +528,8 @@ export function MarketplacePanel({
                               moduleId,
                               courseId: option.courseId,
                               courseTitle: option.title,
-                              score: option.score,
-                              cri: option.scoreBreakdown?.cri,
+                              score: scored.score,
+                              cri: scored.breakdown?.cri,
                               weights,
                               sortBy
                             })}
@@ -486,7 +545,7 @@ export function MarketplacePanel({
                         >
                           <div className="space-y-2">
                             <div className="text-sm font-semibold">
-                              Match Score: {option.score}/100
+                              Match Score: {scored.score}/100
                             </div>
                             
                             <div className="space-y-1.5 text-xs">
@@ -496,10 +555,10 @@ export function MarketplacePanel({
                                   <div className="w-20 h-2 bg-muted rounded-full overflow-hidden">
                                     <div 
                                       className="h-full bg-green-500"
-                                      style={{ width: `${option.scoreBreakdown.cost}%` }}
+                                      style={{ width: `${scored.breakdown.cost}%` }}
                                     />
                                   </div>
-                                  <span className="font-medium w-12 text-right">{option.scoreBreakdown.cost}/100</span>
+                                  <span className="font-medium w-12 text-right">{scored.breakdown.cost}/100</span>
                                 </div>
                               </div>
                               
@@ -509,10 +568,10 @@ export function MarketplacePanel({
                                   <div className="w-20 h-2 bg-muted rounded-full overflow-hidden">
                                     <div 
                                       className="h-full bg-blue-500"
-                                      style={{ width: `${option.scoreBreakdown.time}%` }}
+                                      style={{ width: `${scored.breakdown.time}%` }}
                                     />
                                   </div>
-                                  <span className="font-medium w-12 text-right">{option.scoreBreakdown.time}/100</span>
+                                  <span className="font-medium w-12 text-right">{scored.breakdown.time}/100</span>
                                 </div>
                               </div>
                               
@@ -522,10 +581,10 @@ export function MarketplacePanel({
                                   <div className="w-20 h-2 bg-muted rounded-full overflow-hidden">
                                     <div 
                                       className="h-full bg-purple-500"
-                                      style={{ width: `${option.scoreBreakdown.quality}%` }}
+                                      style={{ width: `${scored.breakdown.quality}%` }}
                                     />
                                   </div>
-                                  <span className="font-medium w-12 text-right">{option.scoreBreakdown.quality}/100</span>
+                                  <span className="font-medium w-12 text-right">{scored.breakdown.quality}/100</span>
                                 </div>
                               </div>
                               
@@ -533,18 +592,18 @@ export function MarketplacePanel({
                                 <div className="flex items-center justify-between">
                                   <span className="text-muted-foreground">🛡️ Credit Recognition (CRI)</span>
                                   <span className={`font-semibold ${
-                                    option.scoreBreakdown.cri >= 80 ? 'text-green-600' :
-                                    option.scoreBreakdown.cri >= 60 ? 'text-yellow-600' :
+                                    scored.breakdown.cri >= 80 ? 'text-green-600' :
+                                    scored.breakdown.cri >= 60 ? 'text-yellow-600' :
                                     'text-red-600'
                                   }`}>
-                                    {option.scoreBreakdown.cri}/100
+                                    {scored.breakdown.cri}/100
                                   </span>
                                 </div>
                                 <p className="text-[10px] text-muted-foreground mt-1">
                                   Estimated likelihood this option transfers for degree credit at most schools. Based on provider type, ACE/NCCRS status, and assessment rigor.
                                 </p>
                                 
-                                {option.scoreBreakdown.cri < 50 && (
+                                {scored.breakdown.cri < 50 && (
                                   <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-[10px] text-yellow-800">
                                     ⚠️ <strong>Transfer risk:</strong> Low likelihood of transfer. Check your school's transfer policy before enrolling.
                                   </div>
@@ -573,7 +632,7 @@ export function MarketplacePanel({
                           cost_usd: option.cost_usd,
                           duration_weeks: option.duration_weeks,
                           workload_weekly_hours: option.workload_weekly_hours ?? option.credits * 2.5,
-                          cri_score: option.scoreBreakdown?.cri ?? 0,
+                          cri_score: scored.breakdown?.cri ?? 0,
                           status: 'pinned',
                           providerType: option.providerType,
                           providerCode: option.providerCode,
