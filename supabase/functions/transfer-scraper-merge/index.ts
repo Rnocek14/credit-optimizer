@@ -660,9 +660,18 @@ function selectBestValueWithVoting<T>(
     }
   }
 
+  // Detect cross-source conflicts: if multiple DIFFERENT unscoped values exist
+  const conflicts: Array<{ value: T; url: string; confidence: number }> = [];
+  if (valueScores.size > 1) {
+    for (const [, data] of valueScores) {
+      conflicts.push({ value: data.value, url: data.bestUrl, confidence: data.bestConfidence });
+    }
+  }
+
   return { 
     selected: best ? { value: best.value, sourceJobId: best.source, confidence: best.score, sourceUrl: best.url } : null,
-    scopedCaps
+    scopedCaps,
+    conflicts, // NEW: track when multiple sources disagree on unscoped values
   };
 }
 
@@ -738,7 +747,15 @@ async function pickBestValueWithScopeDetection<T>(
   }
 
   // Use weighted voting to select best value, filtering out scoped candidates
+  // Now also returns conflicts if multiple sources disagree
   return selectBestValueWithVoting(candidates, fieldPath, valueToString);
+}
+
+// Track conflicts detected during value selection
+interface ValueSelectionResult<T> {
+  selected: SourcedValue<T> | null;
+  scopedCaps: ValueCandidate<T>[];
+  conflicts?: Array<{ value: T; url: string; confidence: number }>;
 }
 
 // Original sync version for non-numeric fields (no scope detection needed)
@@ -787,6 +804,7 @@ async function mergePolicyPacks(
   const notes: string[] = [];
   const sources: string[] = [];
   const allScopedCaps: Array<{ field: string; value: number; url: string; scopeReason: string; contextSnippet?: string }> = [];
+  const allConflicts: Array<{ field: string; values: Array<{ value: unknown; url: string; confidence: number }> }> = [];
   
   const validExtractions = extractions.filter(e => e.extraction.policy_pack);
   if (validExtractions.length === 0) {
@@ -797,6 +815,7 @@ async function mergePolicyPacks(
       pickedValues: { residencyCredits: null, maxTransfer: null, maxAceNccrs: null },
       scopedCapsDetected: false,
       scopedCaps: [],
+      conflicts: [],
     };
   }
 
@@ -835,6 +854,16 @@ async function mergePolicyPacks(
       scopeReason: sc.scopeReason || 'unknown scope',
       contextSnippet: sc.contextSnippet,
     });
+  }
+  
+  // Track cross-source conflicts (different unscoped values from different sources)
+  if (residencyResult.conflicts && residencyResult.conflicts.length > 1) {
+    allConflicts.push({ field: 'residency_credits', values: residencyResult.conflicts });
+    notes.push(`⚠️ Cross-source conflict: residency_credits has ${residencyResult.conflicts.length} different values (${residencyResult.conflicts.map(c => c.value).join(' vs ')})`);
+  }
+  if (maxTransferResult.conflicts && maxTransferResult.conflicts.length > 1) {
+    allConflicts.push({ field: 'max_transfer_credits', values: maxTransferResult.conflicts });
+    notes.push(`⚠️ Cross-source conflict: max_transfer_credits has ${maxTransferResult.conflicts.length} different values (${maxTransferResult.conflicts.map(c => c.value).join(' vs ')})`);
   }
   
   let residencyCredits = residencyResult.selected;
@@ -958,6 +987,7 @@ async function mergePolicyPacks(
     pickedValues: { residencyCredits, maxTransfer, maxAceNccrs },
     scopedCapsDetected: allScopedCaps.length > 0,
     scopedCaps: allScopedCaps,
+    conflicts: allConflicts, // NEW: cross-source disagreements
   };
 }
 
@@ -1094,7 +1124,8 @@ Deno.serve(async (req) => {
     console.log(`[merge] Found ${extractions.length} valid extractions`);
 
     // Merge policy packs (with best_policy_job_id as first for priority)
-    const { mergedPack, sources, notes, pickedValues, scopedCapsDetected, scopedCaps } = await mergePolicyPacks(supabase, institution, extractions);
+    const mergeResult = await mergePolicyPacks(supabase, institution, extractions);
+    const { mergedPack, sources, notes, pickedValues, scopedCapsDetected, scopedCaps, conflicts } = mergeResult;
     
     // Merge provider rules
     const mergedRules = mergeProviderRules(extractions);
@@ -1690,6 +1721,58 @@ Deno.serve(async (req) => {
         } else {
           notes.push(`Audit log created: ${fieldsOverridden} overrides, ${fieldsMatched} matches`);
         }
+        
+        // === TERMINAL FINDING ON SUCCESS ===
+        // Write terminal policy_scan_findings record for dashboard consistency
+        const hasConflicts = (mergeResult.conflicts?.length ?? 0) > 0;
+        const successStatus = hasConflicts ? 'partial_verified' : 'verified';
+        const successReason = hasConflicts ? 'cross_source_disagreement' : 'caps_verified';
+        
+        const extractedValues: Record<string, unknown> = {
+          max_transfer_credits: {
+            value: policyData.max_transfer_credits,
+            unit: 'credits',
+            evidence_url: fieldProvenance['transfer_credit_limits.max_total_transfer_credits']?.source_url || null,
+            confidence: (fieldProvenance['transfer_credit_limits.max_total_transfer_credits']?.confidence || 0) / 100,
+          },
+          residency_credits: {
+            value: policyData.residency_credits,
+            unit: 'credits',
+            evidence_url: fieldProvenance['residency_policy.min_institutional_credits']?.source_url || null,
+            confidence: (fieldProvenance['residency_policy.min_institutional_credits']?.confidence || 0) / 100,
+          },
+        };
+        
+        await supabase.from('policy_scan_findings').insert({
+          institution,
+          academic_year: mergedPack.academic_year,
+          status: successStatus,
+          reason: successReason,
+          urls_scanned: extractions.map(e => e.url),
+          confidence_score: totalScore,
+          requires_verification: hasConflicts,
+          extracted_values: extractedValues,
+          details: {
+            is_final: true, // CRITICAL: terminal finding
+            policy_pack_id: packData.id,
+            extracted_policy_data: policyData,
+            residency_ok: true,
+            max_transfer_ok: true,
+            trust_tier: trustTier,
+            action,
+            // Conflicts for disagreement handling
+            conflicts: mergeResult.conflicts || [],
+            has_conflicts: hasConflicts,
+            // Scoped caps (pathway-specific numbers)
+            scoped_caps_detected: mergeResult.scopedCapsDetected,
+            scoped_caps: mergeResult.scopedCaps,
+            // URL diagnostics for triage
+            url_diagnostics: url_diagnostics,
+            diagnostic_summary: precomputedSummary,
+          },
+        });
+        
+        console.log(`[merge] Terminal finding written: ${successStatus}/${successReason}, conflicts=${hasConflicts}`);
       }
     }
 
