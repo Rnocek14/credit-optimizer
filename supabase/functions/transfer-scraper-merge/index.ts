@@ -996,7 +996,24 @@ Deno.serve(async (req) => {
         const hasResidencyWithEvidence = residencyOk && hasAnyEvidence &&
           !!(extractedValues['residency_credits'] as { evidence_url?: string } | undefined)?.evidence_url;
         
-        if (!hasAnyCandidate) {
+        // NEW: Check for policy-dense content (high keyword hits) without numeric caps
+        // This indicates we're hitting the right pages but caps simply don't exist (program-scoped)
+        const maxKeywordHits = precomputedSummary?.max_keyword_hits ?? 
+          (url_diagnostics ? Math.max(0, ...url_diagnostics.map(d => d.keyword_hits || 0)) : 0);
+        const okUrlsWithHighHits = (url_diagnostics || []).filter(
+          d => d.content_class === 'ok' && (d.keyword_hits ?? 0) >= 10
+        ).length;
+        // Either: 2+ URLs with moderate hits (>=10) OR 1 URL with very high hits (>=20)
+        const isPolicyDenseButNoCaps = !hasAnyCandidate && (
+          (maxKeywordHits >= 10 && okUrlsWithHighHits >= 2) ||
+          (maxKeywordHits >= 20)
+        );
+        
+        if (isPolicyDenseButNoCaps) {
+          // High keyword density on 2+ OK pages, but no caps extracted = confirmed program-scoped
+          findingStatus = 'partial_verified';
+          findingReason = 'likely_program_scoped';
+        } else if (!hasAnyCandidate) {
           findingStatus = 'skipped';
           findingReason = 'missing_numeric_caps';
         } else if (!hasAnyEvidence) {
@@ -1020,10 +1037,17 @@ Deno.serve(async (req) => {
 
         // Log to policy_scan_findings for auditability with verification fields
         const recommendation = findingReason === 'likely_program_scoped'
-          ? 'residency_program_scoped'
+          ? (isPolicyDenseButNoCaps ? 'confirmed_program_scoped_no_institutional_caps' : 'residency_program_scoped')
           : findingReason === 'partial_caps_need_verification' && hasResidencyWithEvidence
             ? 'needs_transfer_template_refinement'
             : 'needs_catalog_or_program_selection';
+        
+        // Determine next step based on scenario
+        const nextStep = isPolicyDenseButNoCaps
+          ? 'none_required_program_scoped_confirmed'
+          : findingReason === 'likely_program_scoped'
+            ? 'select_program_or_degree_catalog'
+            : 'add_residency_specific_templates';
 
         await supabase.from('policy_scan_findings').insert({
           institution,
@@ -1045,9 +1069,13 @@ Deno.serve(async (req) => {
             has_candidate: hasAnyCandidate,
             has_evidence: hasAnyEvidence,
             recommendation,
-            next_step: findingReason === 'likely_program_scoped'
-              ? 'select_program_or_degree_catalog'
-              : 'add_residency_specific_templates',
+            next_step: nextStep,
+            // Policy-dense detection metrics
+            policy_dense_detection: {
+              max_keyword_hits: maxKeywordHits,
+              ok_urls_with_high_hits: okUrlsWithHighHits,
+              is_policy_dense_but_no_caps: isPolicyDenseButNoCaps,
+            },
             caps_found: {
               max_transfer_credits: maxTransferOk ? policyData.max_transfer_credits : null,
               residency_credits: residencyOk ? policyData.residency_credits : null,

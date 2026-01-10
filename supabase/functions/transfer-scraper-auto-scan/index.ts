@@ -142,7 +142,24 @@ Deno.serve(async (req) => {
       'must complete a minimum of', 'minimum number of'
     ];
     
-    function countPolicyKeywords(text: string): number {
+    // URL-based scoring modifiers for undergrad vs grad preference
+    function getUrlScoringModifier(url: string): number {
+      const u = url.toLowerCase();
+      
+      // Boost undergrad-focused pages
+      if (u.includes('/undergraduate') || u.includes('transfer-students') || u.includes('/undergrad')) {
+        return 8;
+      }
+      
+      // Penalize grad-focused pages (still useful as fallback but shouldn't win)
+      if (u.includes('/graduate') || u.includes('/grad') || u.includes('graduate-')) {
+        return -10;
+      }
+      
+      return 0;
+    }
+    
+    function countPolicyKeywords(text: string, url?: string): number {
       const t = text.toLowerCase();
       const baseHits = POLICY_KEYWORDS.filter(kw => t.includes(kw.toLowerCase())).length;
       const highSignalHits = HIGH_SIGNAL_PHRASES.filter(phrase => t.includes(phrase.toLowerCase())).length;
@@ -151,7 +168,14 @@ Deno.serve(async (req) => {
       const numericCreditMatches = (t.match(/\b\d{1,3}\b\s*(credit|credits|semester hours|credit hours)\b/g) || []).length;
       
       // Base + high-signal (2x weight) + numeric patterns (capped at 10)
-      return baseHits + (highSignalHits * 2) + Math.min(10, numericCreditMatches);
+      let score = baseHits + (highSignalHits * 2) + Math.min(10, numericCreditMatches);
+      
+      // Apply URL-based modifier for undergrad preference
+      if (url) {
+        score += getUrlScoringModifier(url);
+      }
+      
+      return Math.max(0, score); // Never go negative
     }
 
     const results: Array<{
@@ -316,8 +340,8 @@ Deno.serve(async (req) => {
             // Store shorter sample for diagnostics display
             (r as any).sample = headContent.slice(0, 300);
             
-            // Count policy keywords on head content for relevance scoring
-            (r as any).keyword_hits = countPolicyKeywords(headContent);
+            // Count policy keywords on head content for relevance scoring (include URL for undergrad boost)
+            (r as any).keyword_hits = countPolicyKeywords(headContent, r.url);
           } else {
             // Fallback to length-only classification
             r.content_class = (r.text_length || 0) < 200 ? 'too_short' : 'ok';
