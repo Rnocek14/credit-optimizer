@@ -5,6 +5,8 @@ import type { OptimizerMode } from '@/types/optimizer';
 import { OptimizerModeSelector, PolicyStatusBanner } from '@/components/edu-tree';
 import { validateInstitutionPolicies, type Violation } from './engine/constraints';
 import { useInstitutionLimits } from '@/hooks/useInstitutionLimits';
+import { useInstitutionPolicyPack } from '@/lib/degree/useInstitutionPolicyPack';
+import { flattenModules, extractAllOptions, calculateCoverage } from './utils/dataFlatteners';
 import { useGenEdCategories } from '@/hooks/useGenEdCategories';
 import { Button } from '@/components/ui/button';
 import { YearCard } from './components/YearCard';
@@ -231,6 +233,9 @@ export default function EduTreeV5Page() {
   const constraints = usePlanBasket(s => s.constraints);
   const showDeadEndReasons = usePlanBasket(s => s.showDeadEndReasons);
   const setShowDeadEndReasons = usePlanBasket(s => s.setShowDeadEndReasons);
+  
+  // Fetch policy pack with actual source tracking (must be after constraints is declared)
+  const { data: policyData } = useInstitutionPolicyPack(constraints.target_school);
   
   // Auto-set anchor from marketplace navigation
   useEffect(() => {
@@ -1565,28 +1570,30 @@ export default function EduTreeV5Page() {
       
       {/* V5 Data Health Debug Panel */}
       <V5DataHealthPanel 
-        diagnostics={{
-          moduleCount: moduleProvider?.getSummary?.()?.totalModules ?? 0,
-          blockCount: requirementBlocks.length,
-          optionCount: [1,2,3,4].flatMap(y => moduleProvider?.getModulesForYear?.(y) ?? []).reduce((sum, m) => sum + (m.marketplaceOptions?.length ?? 0), 0),
-          coverage: (() => {
-            // Proper coverage: modules covered by options via requirementId linkage
-            const mods = [1,2,3,4].flatMap(y => moduleProvider?.getModulesForYear?.(y) ?? []);
-            if (mods.length === 0) return 0;
-            // Collect all requirementIds from options
-            const coveredRequirementIds = new Set(
-              mods.flatMap(m => (m.marketplaceOptions ?? []).map((o: any) => o.requirementId)).filter(Boolean)
-            );
-            // Count modules whose id exists in the covered set
-            const coverCount = mods.filter(m => coveredRequirementIds.has(m.id)).length;
-            return (coverCount / mods.length) * 100;
-          })(),
-          totalCredits: moduleProvider?.getSummary?.()?.totalCredits ?? 0,
-          planSource: USE_DATABASE ? 'real' : (templateId ? 'mock' : 'fixture'),
-          // Policy source detection will show 'static' until we wire up the actual source from query
-          policySource: constraints.target_school ? 'static' : 'none',
-          anchorSchool: constraints.target_school,
-        }}
+        diagnostics={(() => {
+          // Build modulesByYear for shared coverage calculation
+          const modulesByYear: Record<number, any[]> = {};
+          [1, 2, 3, 4].forEach(y => {
+            modulesByYear[y] = moduleProvider?.getModulesForYear?.(y) ?? [];
+          });
+          
+          // Use shared flatteners for consistent coverage calculation
+          const flatModules = flattenModules(modulesByYear);
+          const allOptions = extractAllOptions(flatModules);
+          const coverage = calculateCoverage(flatModules, allOptions);
+          
+          return {
+            moduleCount: moduleProvider?.getSummary?.()?.totalModules ?? 0,
+            blockCount: requirementBlocks.length,
+            optionCount: allOptions.length,
+            coverage,
+            totalCredits: moduleProvider?.getSummary?.()?.totalCredits ?? 0,
+            planSource: USE_DATABASE ? 'real' : (templateId ? 'mock' : 'fixture'),
+            // Use actual policy source from hook - map 'pack' to 'scraped' for display
+            policySource: policyData?.source === 'pack' ? 'scraped' : (policyData?.source ?? (constraints.target_school ? 'static' : 'none')),
+            anchorSchool: constraints.target_school,
+          };
+        })()}
         visible={USE_DATABASE || searchParams.get('debug') === '1'}
       />
       </div>
