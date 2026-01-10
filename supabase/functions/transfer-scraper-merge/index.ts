@@ -606,7 +606,7 @@ function selectBestValueWithVoting<T>(
   // If ALL candidates are scoped, don't select any as institution-wide
   if (activeCandidates.length === 0) {
     console.log(`[merge] All ${candidates.length} candidates for ${fieldPath} are scoped - not selecting as institution-wide`);
-    return { selected: null, scopedCaps };
+    return { selected: null, scopedCaps, conflicts: [] };
   }
   
   if (activeCandidates.length === 1) {
@@ -617,7 +617,8 @@ function selectBestValueWithVoting<T>(
         confidence: activeCandidates[0].confidence,
         sourceUrl: activeCandidates[0].url
       },
-      scopedCaps
+      scopedCaps,
+      conflicts: []  // Single candidate = no conflict possible
     };
   }
 
