@@ -683,7 +683,7 @@ async function pickBestValueWithScopeDetection<T>(
   accessor: (pack: PolicyPack) => T | null | undefined,
   fieldPath: string,
   valueToString?: (v: T) => string
-): Promise<{ selected: SourcedValue<T> | null; scopedCaps: ValueCandidate<T>[] }> {
+): Promise<{ selected: SourcedValue<T> | null; scopedCaps: ValueCandidate<T>[]; conflicts: Array<{ value: T; url: string; confidence: number }> }> {
   // First pass: identify which jobs have numeric candidates worth checking
   const candidateJobIds: string[] = [];
   const candidatesByJob = new Map<string, { value: T; extraction: ExtractionResult; url: string }>();
@@ -800,6 +800,7 @@ async function mergePolicyPacks(
   };
   scopedCapsDetected: boolean;
   scopedCaps: Array<{ field: string; value: number; url: string; scopeReason: string; contextSnippet?: string }>;
+  conflicts: Array<{ field: string; values: Array<{ value: unknown; url: string; confidence: number }> }>;
 }> {
   const notes: string[] = [];
   const sources: string[] = [];
@@ -857,13 +858,16 @@ async function mergePolicyPacks(
   }
   
   // Track cross-source conflicts (different unscoped values from different sources)
+  console.log(`[merge] Conflict check - residency conflicts: ${residencyResult.conflicts?.length || 0}, maxTransfer conflicts: ${maxTransferResult.conflicts?.length || 0}`);
   if (residencyResult.conflicts && residencyResult.conflicts.length > 1) {
     allConflicts.push({ field: 'residency_credits', values: residencyResult.conflicts });
     notes.push(`⚠️ Cross-source conflict: residency_credits has ${residencyResult.conflicts.length} different values (${residencyResult.conflicts.map(c => c.value).join(' vs ')})`);
+    console.log(`[merge] CONFLICT DETECTED: residency ${JSON.stringify(residencyResult.conflicts)}`);
   }
   if (maxTransferResult.conflicts && maxTransferResult.conflicts.length > 1) {
     allConflicts.push({ field: 'max_transfer_credits', values: maxTransferResult.conflicts });
     notes.push(`⚠️ Cross-source conflict: max_transfer_credits has ${maxTransferResult.conflicts.length} different values (${maxTransferResult.conflicts.map(c => c.value).join(' vs ')})`);
+    console.log(`[merge] CONFLICT DETECTED: maxTransfer ${JSON.stringify(maxTransferResult.conflicts)}`);
   }
   
   let residencyCredits = residencyResult.selected;
