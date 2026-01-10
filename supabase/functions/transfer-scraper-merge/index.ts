@@ -343,27 +343,116 @@ interface ValueCandidate<T> {
   sourceJobId: string;
   confidence: number;
   url: string;
+  isScoped?: boolean;        // True if value appears near scope-limiting language
+  scopeReason?: string;      // What scope phrase was detected
+  contextSnippet?: string;   // Text context around the value for debugging
+}
+
+// Scope detection tokens that indicate a cap applies to a specific pathway/degree/program
+const SCOPE_TOKENS = [
+  // Degree-specific
+  'associate degree', 'aa degree', 'as degree', 'aas degree',
+  'bachelor', 'undergraduate', 'graduate', 'master', 'doctoral', 'phd',
+  // Program/pathway-specific
+  'pathway', 'program', 'major', 'concentration', 'specialization',
+  'for students in', 'for the', 'toward the', 'applies to',
+  'in this program', 'for this degree', 'degree-seeking',
+  // Transfer-specific scopes
+  'transfer guarantee', 'articulation', 'partner', 'community college',
+  'two-year', '2-year', 'from accredited',
+];
+
+/**
+ * Detects if a numeric value appears near scope-limiting language
+ * Returns { isScoped, scopeReason } based on context analysis
+ */
+function detectValueScope(
+  value: number | string,
+  extractedText: string,
+  url: string
+): { isScoped: boolean; scopeReason: string | null; contextSnippet: string | null } {
+  const valueStr = String(value);
+  const textLower = extractedText.toLowerCase();
+  
+  // Find position of value in text
+  const valuePos = textLower.indexOf(valueStr);
+  if (valuePos === -1) {
+    return { isScoped: false, scopeReason: null, contextSnippet: null };
+  }
+  
+  // Extract context window around the value (±300 chars)
+  const contextStart = Math.max(0, valuePos - 300);
+  const contextEnd = Math.min(textLower.length, valuePos + valueStr.length + 300);
+  const context = textLower.slice(contextStart, contextEnd);
+  const contextSnippet = extractedText.slice(contextStart, contextEnd);
+  
+  // Check for scope tokens in context
+  for (const token of SCOPE_TOKENS) {
+    if (context.includes(token.toLowerCase())) {
+      // Found scope token - but check if it's institution-wide language
+      // "bachelor's degree requirements" at institution level is OK
+      // "associate degree pathway" is scoped
+      const isScopedPattern = 
+        context.includes('associate degree') ||
+        context.includes('pathway') ||
+        context.includes('program-specific') ||
+        context.includes('for students in') ||
+        context.includes('transfer guarantee') ||
+        context.includes('community college') ||
+        (context.includes('graduate') && !context.includes('undergraduate'));
+      
+      if (isScopedPattern) {
+        return {
+          isScoped: true,
+          scopeReason: `Found scope token: "${token}"`,
+          contextSnippet: contextSnippet.slice(0, 200) + '...',
+        };
+      }
+    }
+  }
+  
+  return { isScoped: false, scopeReason: null, contextSnippet };
 }
 
 function selectBestValueWithVoting<T>(
   candidates: ValueCandidate<T>[],
   fieldPath: string,
   valueToString: (v: T) => string = (v) => String(v)
-): SourcedValue<T> | null {
-  if (candidates.length === 0) return null;
-  if (candidates.length === 1) {
+): { selected: SourcedValue<T> | null; scopedCaps: ValueCandidate<T>[] } {
+  const scopedCaps: ValueCandidate<T>[] = [];
+  
+  if (candidates.length === 0) return { selected: null, scopedCaps };
+  
+  // Separate scoped vs unscoped candidates
+  const unscopedCandidates = candidates.filter(c => !c.isScoped);
+  const scopedOnly = candidates.filter(c => c.isScoped);
+  scopedCaps.push(...scopedOnly);
+  
+  // If we have unscoped candidates, use only those
+  const activeCandidates = unscopedCandidates.length > 0 ? unscopedCandidates : [];
+  
+  // If ALL candidates are scoped, don't select any as institution-wide
+  if (activeCandidates.length === 0) {
+    console.log(`[merge] All ${candidates.length} candidates for ${fieldPath} are scoped - not selecting as institution-wide`);
+    return { selected: null, scopedCaps };
+  }
+  
+  if (activeCandidates.length === 1) {
     return { 
-      value: candidates[0].value, 
-      sourceJobId: candidates[0].sourceJobId, 
-      confidence: candidates[0].confidence,
-      sourceUrl: candidates[0].url  // Capture URL for evidence
+      selected: { 
+        value: activeCandidates[0].value, 
+        sourceJobId: activeCandidates[0].sourceJobId, 
+        confidence: activeCandidates[0].confidence,
+        sourceUrl: activeCandidates[0].url
+      },
+      scopedCaps
     };
   }
 
   // Group by value and sum confidence scores with URL bonuses
   const valueScores = new Map<string, { value: T; total: number; count: number; bestSource: string; bestConfidence: number; bestUrl: string }>();
   
-  for (const c of candidates) {
+  for (const c of activeCandidates) {
     const key = valueToString(c.value);
     const urlBonus = getFieldSpecificUrlBonus(fieldPath, c.url);
     const adjustedConfidence = c.confidence + urlBonus;
@@ -375,7 +464,7 @@ function selectBestValueWithVoting<T>(
       if (adjustedConfidence > existing.bestConfidence) {
         existing.bestSource = c.sourceJobId;
         existing.bestConfidence = adjustedConfidence;
-        existing.bestUrl = c.url;  // Track best URL
+        existing.bestUrl = c.url;
       }
     } else {
       valueScores.set(key, { 
@@ -384,7 +473,7 @@ function selectBestValueWithVoting<T>(
         count: 1, 
         bestSource: c.sourceJobId,
         bestConfidence: adjustedConfidence,
-        bestUrl: c.url  // Capture URL
+        bestUrl: c.url
       });
     }
   }
@@ -402,9 +491,64 @@ function selectBestValueWithVoting<T>(
     }
   }
 
-  return best ? { value: best.value, sourceJobId: best.source, confidence: best.score, sourceUrl: best.url } : null;
+  return { 
+    selected: best ? { value: best.value, sourceJobId: best.source, confidence: best.score, sourceUrl: best.url } : null,
+    scopedCaps
+  };
 }
 
+// Extended pickBestValue that also loads extracted_text for scope detection
+async function pickBestValueWithScopeDetection<T>(
+  supabase: ReturnType<typeof createClient>,
+  extractions: { jobId: string; extraction: ExtractionResult; url: string }[],
+  accessor: (pack: PolicyPack) => T | null | undefined,
+  fieldPath: string,
+  valueToString?: (v: T) => string
+): Promise<{ selected: SourcedValue<T> | null; scopedCaps: ValueCandidate<T>[] }> {
+  // Collect all candidates with their confidence scores and URLs
+  const candidates: ValueCandidate<T>[] = [];
+  const jobIds = extractions.map(e => e.jobId);
+  
+  // Load extracted text for scope detection
+  const { data: contents } = await supabase
+    .from('scraped_content')
+    .select('scrape_job_id, extracted_text')
+    .in('scrape_job_id', jobIds);
+  
+  const textByJob = new Map<string, string>();
+  for (const c of contents || []) {
+    if (c.extracted_text) {
+      textByJob.set(c.scrape_job_id, c.extracted_text);
+    }
+  }
+
+  for (const { jobId, extraction, url } of extractions) {
+    if (!extraction.policy_pack) continue;
+    const value = accessor(extraction.policy_pack);
+    if (value === null || value === undefined) continue;
+    
+    // Detect if this value is scoped
+    const text = textByJob.get(jobId) || '';
+    const scopeResult = typeof value === 'number' 
+      ? detectValueScope(value, text, url)
+      : { isScoped: false, scopeReason: null, contextSnippet: null };
+    
+    candidates.push({ 
+      value, 
+      sourceJobId: jobId, 
+      confidence: extraction.total_score, 
+      url,
+      isScoped: scopeResult.isScoped,
+      scopeReason: scopeResult.scopeReason || undefined,
+      contextSnippet: scopeResult.contextSnippet || undefined,
+    });
+  }
+
+  // Use weighted voting to select best value, filtering out scoped candidates
+  return selectBestValueWithVoting(candidates, fieldPath, valueToString);
+}
+
+// Original sync version for non-numeric fields (no scope detection needed)
 function pickBestValue<T>(
   extractions: { jobId: string; extraction: ExtractionResult; url: string }[],
   accessor: (pack: PolicyPack) => T | null | undefined,
@@ -423,17 +567,19 @@ function pickBestValue<T>(
   }
 
   // Use weighted voting to select best value with field-specific URL bonus
-  return selectBestValueWithVoting(candidates, fieldPath, valueToString);
+  const { selected } = selectBestValueWithVoting(candidates, fieldPath, valueToString);
+  return selected;
 }
 
 // -----------------------------------------------------------------------------
 // MERGE POLICY PACKS
 // -----------------------------------------------------------------------------
 
-function mergePolicyPacks(
+async function mergePolicyPacks(
+  supabase: ReturnType<typeof createClient>,
   institution: string,
   extractions: { jobId: string; extraction: ExtractionResult; url: string }[]
-): { 
+): Promise<{ 
   mergedPack: PolicyPack | null; 
   sources: string[]; 
   notes: string[]; 
@@ -442,9 +588,12 @@ function mergePolicyPacks(
     maxTransfer: SourcedValue<number> | null;
     maxAceNccrs: SourcedValue<number> | null;
   };
-} {
+  scopedCapsDetected: boolean;
+  scopedCaps: Array<{ field: string; value: number; url: string; scopeReason: string; contextSnippet?: string }>;
+}> {
   const notes: string[] = [];
   const sources: string[] = [];
+  const allScopedCaps: Array<{ field: string; value: number; url: string; scopeReason: string; contextSnippet?: string }> = [];
   
   const validExtractions = extractions.filter(e => e.extraction.policy_pack);
   if (validExtractions.length === 0) {
@@ -452,15 +601,55 @@ function mergePolicyPacks(
       mergedPack: null, 
       sources, 
       notes: ['No valid policy packs to merge'],
-      pickedValues: { residencyCredits: null, maxTransfer: null, maxAceNccrs: null }
+      pickedValues: { residencyCredits: null, maxTransfer: null, maxAceNccrs: null },
+      scopedCapsDetected: false,
+      scopedCaps: [],
     };
   }
 
-  // Pick best values for each field with field-specific URL bonuses
-  const residencyCredits = pickBestValue(validExtractions, p => p.residency_policy?.min_institutional_credits, 'residency.min_institutional_credits');
+  // Pick best values for NUMERIC fields with SCOPE DETECTION
+  const residencyResult = await pickBestValueWithScopeDetection(
+    supabase, validExtractions, 
+    p => p.residency_policy?.min_institutional_credits, 
+    'residency.min_institutional_credits'
+  );
+  const maxTransferResult = await pickBestValueWithScopeDetection(
+    supabase, validExtractions, 
+    p => p.transfer_credit_limits?.max_total_transfer_credits, 
+    'transfer.max_total'
+  );
+  const maxAceNccrsResult = await pickBestValueWithScopeDetection(
+    supabase, validExtractions, 
+    p => p.transfer_credit_limits?.max_ace_nccrs_credits, 
+    'transfer.ace_nccrs'
+  );
+  
+  // Track scoped caps for diagnostics
+  for (const sc of residencyResult.scopedCaps) {
+    allScopedCaps.push({
+      field: 'residency_credits',
+      value: sc.value as number,
+      url: sc.url,
+      scopeReason: sc.scopeReason || 'unknown scope',
+      contextSnippet: sc.contextSnippet,
+    });
+  }
+  for (const sc of maxTransferResult.scopedCaps) {
+    allScopedCaps.push({
+      field: 'max_transfer_credits',
+      value: sc.value as number,
+      url: sc.url,
+      scopeReason: sc.scopeReason || 'unknown scope',
+      contextSnippet: sc.contextSnippet,
+    });
+  }
+  
+  const residencyCredits = residencyResult.selected;
+  const maxTransfer = maxTransferResult.selected;
+  const maxAceNccrs = maxAceNccrsResult.selected;
+  
+  // Non-numeric fields don't need scope detection
   const residencyWaiver = pickBestValue(validExtractions, p => p.residency_policy?.residency_waiver_available, 'residency.waiver');
-  const maxTransfer = pickBestValue(validExtractions, p => p.transfer_credit_limits?.max_total_transfer_credits, 'transfer.max_total');
-  const maxAceNccrs = pickBestValue(validExtractions, p => p.transfer_credit_limits?.max_ace_nccrs_credits, 'transfer.ace_nccrs');
   const academicYear = pickBestValue(validExtractions, p => p.academic_year, 'academic_year');
   
   // Track sources used
@@ -502,12 +691,22 @@ function mergePolicyPacks(
   if (maxTransfer) {
     notes.push(`Max transfer: ${maxTransfer.value} credits (from ${maxTransfer.sourceUrl || 'unknown'})`);
   }
+  
+  // Log scoped caps that were excluded
+  if (allScopedCaps.length > 0) {
+    notes.push(`⚠️ Found ${allScopedCaps.length} scoped cap(s) excluded from institution-wide selection`);
+    for (const sc of allScopedCaps) {
+      notes.push(`  - ${sc.field}: ${sc.value} (${sc.scopeReason})`);
+    }
+  }
 
   return { 
     mergedPack, 
     sources, 
     notes,
-    pickedValues: { residencyCredits, maxTransfer, maxAceNccrs }
+    pickedValues: { residencyCredits, maxTransfer, maxAceNccrs },
+    scopedCapsDetected: allScopedCaps.length > 0,
+    scopedCaps: allScopedCaps,
   };
 }
 
@@ -644,7 +843,7 @@ Deno.serve(async (req) => {
     console.log(`[merge] Found ${extractions.length} valid extractions`);
 
     // Merge policy packs (with best_policy_job_id as first for priority)
-    const { mergedPack, sources, notes, pickedValues } = mergePolicyPacks(institution, extractions);
+    const { mergedPack, sources, notes, pickedValues, scopedCapsDetected, scopedCaps } = await mergePolicyPacks(supabase, institution, extractions);
     
     // Merge provider rules
     const mergedRules = mergeProviderRules(extractions);
@@ -1020,7 +1219,15 @@ Deno.serve(async (req) => {
           (maxKeywordHits >= 20)
         );
         
-        if (isPolicyDenseButNoCaps) {
+        // NEW: Check if we found scoped caps but no institution-wide caps
+        // This is a distinct case: we DID extract numbers, but they're pathway/program-specific
+        const hasOnlyScopedCaps = scopedCapsDetected && scopedCaps.length > 0 && !hasCapsCandidate;
+        
+        if (hasOnlyScopedCaps) {
+          // Found numeric caps but they're all scoped (e.g., "79 credits for associate degree pathway")
+          findingStatus = 'partial_verified';
+          findingReason = 'only_scoped_caps_found';
+        } else if (isPolicyDenseButNoCaps) {
           // High keyword density on 2+ OK pages, but no caps extracted = confirmed program-scoped
           findingStatus = 'partial_verified';
           findingReason = 'likely_program_scoped';
@@ -1047,18 +1254,22 @@ Deno.serve(async (req) => {
         }
 
         // Log to policy_scan_findings for auditability with verification fields
-        const recommendation = findingReason === 'likely_program_scoped'
-          ? (isPolicyDenseButNoCaps ? 'confirmed_program_scoped_no_institutional_caps' : 'residency_program_scoped')
-          : findingReason === 'partial_caps_need_verification' && hasResidencyWithEvidence
-            ? 'needs_transfer_template_refinement'
-            : 'needs_catalog_or_program_selection';
+        const recommendation = findingReason === 'only_scoped_caps_found'
+          ? 'scoped_caps_only_need_institution_wide_source'
+          : findingReason === 'likely_program_scoped'
+            ? (isPolicyDenseButNoCaps ? 'confirmed_program_scoped_no_institutional_caps' : 'residency_program_scoped')
+            : findingReason === 'partial_caps_need_verification' && hasResidencyWithEvidence
+              ? 'needs_transfer_template_refinement'
+              : 'needs_catalog_or_program_selection';
         
         // Determine next step based on scenario
-        const nextStep = isPolicyDenseButNoCaps
-          ? 'none_required_program_scoped_confirmed'
-          : findingReason === 'likely_program_scoped'
-            ? 'select_program_or_degree_catalog'
-            : 'add_residency_specific_templates';
+        const nextStep = findingReason === 'only_scoped_caps_found'
+          ? 'add_institution_wide_policy_templates'
+          : isPolicyDenseButNoCaps
+            ? 'none_required_program_scoped_confirmed'
+            : findingReason === 'likely_program_scoped'
+              ? 'select_program_or_degree_catalog'
+              : 'add_residency_specific_templates';
 
         await supabase.from('policy_scan_findings').insert({
           institution,
@@ -1087,6 +1298,9 @@ Deno.serve(async (req) => {
               ok_urls_with_high_hits: okUrlsWithHighHits,
               is_policy_dense_but_no_caps: isPolicyDenseButNoCaps,
             },
+            // Scoped caps detection (caps that apply to specific programs/pathways, not institution-wide)
+            scoped_caps_detected: scopedCapsDetected,
+            scoped_caps: scopedCaps,
             caps_found: {
               max_transfer_credits: maxTransferOk ? policyData.max_transfer_credits : null,
               residency_credits: residencyOk ? policyData.residency_credits : null,
