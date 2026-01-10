@@ -52,6 +52,7 @@ interface MergeRequest {
   scrape_job_ids: string[];
   url_diagnostics?: UrlDiagnostic[];
   diagnostic_summary?: DiagnosticSummary;  // Pre-computed summary from auto-scan
+  best_policy_job_id?: string;  // Job ID of the best policy URL for extraction prioritization
 }
 
 interface ExtractionResult {
@@ -577,7 +578,7 @@ Deno.serve(async (req) => {
     );
 
     const body: MergeRequest = await req.json();
-    const { institution, scrape_job_ids, url_diagnostics, diagnostic_summary: precomputedSummary } = body;
+    const { institution, scrape_job_ids, url_diagnostics, diagnostic_summary: precomputedSummary, best_policy_job_id } = body;
 
     if (!institution || !scrape_job_ids?.length) {
       return new Response(
@@ -586,7 +587,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    console.log(`[merge] Starting merge for ${institution} with ${scrape_job_ids.length} jobs`);
+    console.log(`[merge] Starting merge for ${institution} with ${scrape_job_ids.length} jobs${best_policy_job_id ? ` (prioritizing ${best_policy_job_id})` : ''}`);
 
     // Load all extraction results
     const { data: contents, error } = await supabase
@@ -629,9 +630,20 @@ Deno.serve(async (req) => {
       );
     }
 
+    // PRIORITIZE best_policy_job_id: reorder extractions so best policy comes first
+    // This gives it preference in merge logic (first valid value wins for ties)
+    if (best_policy_job_id) {
+      const bestIdx = extractions.findIndex(e => e.jobId === best_policy_job_id);
+      if (bestIdx > 0) {
+        const [best] = extractions.splice(bestIdx, 1);
+        extractions.unshift(best);
+        console.log(`[merge] Reordered extractions to prioritize best_policy_job_id: ${best.url}`);
+      }
+    }
+
     console.log(`[merge] Found ${extractions.length} valid extractions`);
 
-    // Merge policy packs
+    // Merge policy packs (with best_policy_job_id as first for priority)
     const { mergedPack, sources, notes, pickedValues } = mergePolicyPacks(institution, extractions);
     
     // Merge provider rules
@@ -970,11 +982,10 @@ Deno.serve(async (req) => {
           };
         }
 
-        // Only set requires_verification if we have at least one extractable value WITH evidence
-        // Otherwise it's not actionable and shouldn't clutter the verification queue
-        const hasAnyCandidate = 
-          policyData.residency_credits != null || 
-          policyData.max_transfer_credits != null;
+        // Only set requires_verification if we have at least one VALID numeric cap
+        // Use the stricter residencyOk/maxTransferOk which validate numeric format
+        // This prevents junk like "2024" or "1-800" from triggering false candidates
+        const hasCapsCandidate = residencyOk || maxTransferOk;
 
         const residencyEvidence = extractedValues['residency_credits'] as { evidence_url?: string; evidence_text?: string } | undefined;
         const maxTransferEvidence = extractedValues['max_transfer_credits'] as { evidence_url?: string; evidence_text?: string } | undefined;
@@ -1004,7 +1015,7 @@ Deno.serve(async (req) => {
           d => d.content_class === 'ok' && (d.keyword_hits ?? 0) >= 10
         ).length;
         // Either: 2+ URLs with moderate hits (>=10) OR 1 URL with very high hits (>=20)
-        const isPolicyDenseButNoCaps = !hasAnyCandidate && (
+        const isPolicyDenseButNoCaps = !hasCapsCandidate && (
           (maxKeywordHits >= 10 && okUrlsWithHighHits >= 2) ||
           (maxKeywordHits >= 20)
         );
@@ -1013,7 +1024,7 @@ Deno.serve(async (req) => {
           // High keyword density on 2+ OK pages, but no caps extracted = confirmed program-scoped
           findingStatus = 'partial_verified';
           findingReason = 'likely_program_scoped';
-        } else if (!hasAnyCandidate) {
+        } else if (!hasCapsCandidate) {
           findingStatus = 'skipped';
           findingReason = 'missing_numeric_caps';
         } else if (!hasAnyEvidence) {
@@ -1056,7 +1067,7 @@ Deno.serve(async (req) => {
           reason: findingReason,
           urls_scanned: extractions.map(e => e.url),
           confidence_score: totalScore,
-          requires_verification: hasAnyCandidate && hasAnyEvidence,
+          requires_verification: hasCapsCandidate && hasAnyEvidence,
           extracted_values: extractedValues,
           details: {
             extracted_policy_data: policyData,
@@ -1066,7 +1077,7 @@ Deno.serve(async (req) => {
             has_residency_evidence: hasResidencyWithEvidence,
             trust_tier: trustTier,
             action,
-            has_candidate: hasAnyCandidate,
+            has_caps_candidate: hasCapsCandidate,
             has_evidence: hasAnyEvidence,
             recommendation,
             next_step: nextStep,

@@ -402,13 +402,34 @@ Deno.serve(async (req) => {
     };
 
     // Step 4: Call merge function to aggregate extractions (>= 1 job)
-    const successfulJobIds = results
-      .filter(r => r.status === 'success' && r.scrape_job_id)
-      .map(r => r.scrape_job_id as string);
+    // IMPORTANT: Prioritize best_policy_url to avoid grad pages "winning" extraction
+    const successfulResults = results.filter(r => r.status === 'success' && r.scrape_job_id);
+    
+    // Find the best result's scrape_job_id
+    const bestResultJobId = bestResult?.scrape_job_id;
+    
+    // Strategy: If we have a clear best_policy_url, prioritize it for extraction
+    // Pass it first in the array so merge gives it preference
+    let orderedJobIds: string[];
+    if (bestResultJobId) {
+      // Best URL first, then others (excluding grad-focused URLs for undergrad-focused institutions)
+      const otherResults = successfulResults.filter(r => 
+        r.scrape_job_id !== bestResultJobId &&
+        !r.url.toLowerCase().includes('/graduate') &&
+        !r.url.toLowerCase().includes('graduate-')
+      );
+      orderedJobIds = [
+        bestResultJobId,
+        ...otherResults.map(r => r.scrape_job_id as string)
+      ];
+      console.log(`Prioritizing best_policy_url: ${bestPolicyUrl} (job: ${bestResultJobId})`);
+    } else {
+      orderedJobIds = successfulResults.map(r => r.scrape_job_id as string);
+    }
 
     let mergeResult = null;
-    if (successfulJobIds.length >= 1) {
-      console.log(`Merging ${successfulJobIds.length} successful extraction(s)...`);
+    if (orderedJobIds.length >= 1) {
+      console.log(`Merging ${orderedJobIds.length} extraction(s), best first...`);
       try {
         const mergeResponse = await fetch(`${supabaseUrl}/functions/v1/transfer-scraper-merge`, {
           method: 'POST',
@@ -418,9 +439,10 @@ Deno.serve(async (req) => {
           },
           body: JSON.stringify({
             institution,
-            scrape_job_ids: successfulJobIds,
+            scrape_job_ids: orderedJobIds,
             url_diagnostics: urlDiagnostics,
             diagnostic_summary: diagnosticSummary,
+            best_policy_job_id: bestResultJobId, // Pass this so merge can prioritize
           }),
         });
 
