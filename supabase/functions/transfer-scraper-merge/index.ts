@@ -395,10 +395,14 @@ function extractResidencyFromText(text: string): ResidencyExtractionResult | nul
   // High-confidence patterns for residency credits
   // Ordered by specificity (most specific first)
   const residencyPatterns = [
-    // EMPIRE-style: "at least X earned at [university]" / "with at least X earned at"
-    /(?:at least|a minimum of|with at least)\s+(\d{1,3})\s+(?:credits?\s+)?(?:earned|completed)\s+at\s+(?:suny empire|empire state|the university|the institution)/gi,
+    // EMPIRE exact: "Bachelor's degree requires a minimum of 124 credits, with at least 31 earned at SUNY Empire"
+    /(?:requires|require|requiring)\s+(?:a\s+minimum\s+of\s+)?\d{1,3}\s+(?:credits?|credit hours?)[^.]{0,60}?(?:with\s+at\s+least|at\s+least)\s+(\d{1,3})\s+(?:credits?\s+)?(?:earned|completed)\s+at\s+(?:suny\s*empire|empire\s*state|the\s+university|the\s+institution)/gi,
+    // General: "with at least X earned/completed at [university]"
+    /with\s+at\s+least\s+(\d{1,3})\s+(?:credits?\s+)?(?:earned|completed)\s+at\s+(?:suny\s*empire|empire\s*state|the\s+university|the\s+institution)/gi,
+    // EMPIRE-style: "at least X earned at [university]" / "a minimum of X earned at"
+    /(?:at least|a minimum of)\s+(\d{1,3})\s+(?:credits?\s+)?(?:earned|completed)\s+at\s+(?:suny\s*empire|empire\s*state|the\s+university|the\s+institution)/gi,
     // "X credits must be earned/completed at [university]"
-    /(\d{1,3})\s*(?:credits?|credit hours?)\s+(?:must be\s+)?(?:earned|completed)\s+at\s+(?:suny empire|empire state|the university|the institution)/gi,
+    /(\d{1,3})\s*(?:credits?|credit hours?)\s+(?:must be\s+)?(?:earned|completed)\s+at\s+(?:suny\s*empire|empire\s*state|the\s+university|the\s+institution)/gi,
     // "must complete X credits at [university/in residence]"
     /must\s+(?:successfully\s+)?complete\s+(?:at least\s+|a minimum of\s+)?(\d{1,3})\s*(?:credits?|credit hours?|semester hours?)\s+(?:at|in)\s+(?:the university|empire|suny|in residence|residence)/gi,
     // "minimum of X credits must be completed in residence"
@@ -1528,6 +1532,7 @@ Deno.serve(async (req) => {
           requires_verification: hasCapsCandidate && hasAnyEvidence,
           extracted_values: extractedValues,
           details: {
+            is_final: true, // CRITICAL: marks this as terminal merged finding, not intermediate
             extracted_policy_data: policyData,
             residency_ok: residencyOk,
             max_transfer_ok: maxTransferOk,

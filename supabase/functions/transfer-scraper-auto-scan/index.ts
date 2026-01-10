@@ -70,6 +70,7 @@ Deno.serve(async (req) => {
           requires_verification: false,
           urls_scanned: [],
           details: {
+            is_final: true, // Terminal finding - no templates available
             skip_reason: 'no_templates',
             max_priority_filter: maxPriority,
             hint: 'Add URL templates for this institution',
