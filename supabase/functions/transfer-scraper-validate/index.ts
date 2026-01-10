@@ -223,16 +223,8 @@ async function publishPolicyPack(
   if (!residencyOk || !maxTransferOk) {
     console.log(`[validate] Blocking nil pack for ${policyPack.institution}: residency=${residency} (${residencyOk}), maxTransfer=${maxTransfer} (${maxTransferOk})`);
     
-    // Log skip finding instead
-    await supabase.from('policy_scan_findings').insert({
-      institution: policyPack.institution,
-      academic_year: policyPack.academic_year,
-      status: 'skipped',
-      reason: 'missing_numeric_caps',
-      confidence_score: totalScore,
-      requires_verification: false,
-      details: { source: 'transfer-scraper-validate', residency, maxTransfer },
-    });
+    // DO NOT insert findings here - merge is responsible for the final terminal finding
+    // Per-URL validation findings were causing "skipped" spam before merge completes
     
     return undefined; // Signal that pack was not created
   }
