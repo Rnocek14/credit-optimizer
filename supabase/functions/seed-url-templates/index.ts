@@ -33,16 +33,14 @@ serve(async (req) => {
       { institution_code: 'CAPELLA', url: 'https://capella.smartcatalogiq.com/current/academic-catalog/general-academic-policies', page_type: 'catalog', priority: 9 },
       { institution_code: 'CAPELLA', url: 'https://www.capella.edu/admissions/transfer-credits/', page_type: 'transfer_info', priority: 9 },
       
-      // EMPIRE templates - main domain static pages (catalog.sunyempire.edu JS-blocked, demoted)
-      { institution_code: 'EMPIRE', url: 'https://www.sunyempire.edu/admissions/transfer-credit/', page_type: 'transfer_policy', priority: 1 },
-      { institution_code: 'EMPIRE', url: 'https://www.sunyempire.edu/degrees-programs/degree-requirements/', page_type: 'residency_policy', priority: 1 },
-      // NEW: FAQ page with explicit global caps (93 bachelor / 40 associate)
-      { institution_code: 'EMPIRE', url: 'https://www.sunyempire.edu/admissions/transfer-credit/transfer-credit-faqs/', page_type: 'transfer_caps', priority: 1 },
-      // NEW: Pathways Transfer Agreement PDF with degree requirements table (93 max / 31 residency)
-      { institution_code: 'EMPIRE', url: 'https://www.sunyempire.edu/media/suny-empire/content-assets/documents/PathwaysTransferAgreement.pdf', page_type: 'degree_requirements_pdf', priority: 1 },
-      // Keep catalog subdomain as fallbacks at priority 9 (already demoted via migration)
-      { institution_code: 'EMPIRE', url: 'https://catalog.sunyempire.edu/undergraduate/transfer-credits/', page_type: 'transfer_policy', priority: 9 },
-      { institution_code: 'EMPIRE', url: 'https://catalog.sunyempire.edu/undergraduate/residency-requirements/', page_type: 'residency_policy', priority: 9 },
+      // EMPIRE templates - verified working URLs with global caps (93 transfer / 31 residency)
+      { institution_code: 'EMPIRE', url: 'https://sunyempire.edu/admissions-and-aid/undergraduate-admissions/transfer-admissions.html', page_type: 'transfer_caps', priority: 1 },
+      { institution_code: 'EMPIRE', url: 'https://catalog.sunyempire.edu/undergraduate/transfer-credit/', page_type: 'transfer_policy', priority: 1 },
+      { institution_code: 'EMPIRE', url: 'https://lit.sunyempire.edu/degrees-programs/undergraduate-aos/degree-requirements/', page_type: 'degree_requirements', priority: 1 },
+      { institution_code: 'EMPIRE', url: 'https://catalog.sunyempire.edu/pdf/Full%20Catalog%202024-2025.pdf', page_type: 'catalog_pdf', priority: 1 },
+      // Fallback pages
+      { institution_code: 'EMPIRE', url: 'https://www.sunyempire.edu/media/13661/bachelors-degree-bulletin.pdf', page_type: 'bulletin_pdf', priority: 2 },
+      { institution_code: 'EMPIRE', url: 'https://catalog.sunyempire.edu/undergraduate/residency-requirements/', page_type: 'residency_policy', priority: 2 },
       { institution_code: 'EMPIRE', url: 'https://catalog.sunyempire.edu/undergraduate/academic-policies/', page_type: 'catalog', priority: 9 },
       
       // WALDEN templates - handbook + catalog (program-scoped but policy-dense)
