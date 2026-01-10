@@ -71,12 +71,14 @@ export async function fetchCareerV5DataFor(programId: string, anchorSchool: stri
   console.log('[fetchCareerV5DataFor] Options fetched:', allOptions?.length || 0);
 
   // 4) Anchor policy - try scraped DB pack first, fallback to static
-  const anchorPolicy = await fetchPolicyPackOrStatic(anchorSchool);
+  const policyResult = await fetchPolicyPackOrStatic(anchorSchool);
+  const anchorPolicy = policyResult.policy;
 
   if (!anchorPolicy) {
     console.warn('[fetchCareerV5DataFor] No anchor policy found for:', anchorSchool);
   } else {
     console.log('[fetchCareerV5DataFor] Policy loaded:', anchorSchool, {
+      source: policyResult.source,
       residency: anchorPolicy.min_residency_credits,
       maxAlt: anchorPolicy.max_alt_credits,
     });
@@ -87,6 +89,7 @@ export async function fetchCareerV5DataFor(programId: string, anchorSchool: stri
     blocks: blocks ?? [],
     allOptions: allOptions ?? [],
     anchorPolicy,
+    policySource: policyResult.source,
     constraints: {
       target_school: anchorSchool,
       target_program_id: programId,
@@ -100,6 +103,7 @@ export async function fetchCareerV5DataFor(programId: string, anchorSchool: stri
     blocksCount: result.blocks.length,
     optionsCount: result.allOptions.length,
     hasAnchorPolicy: !!result.anchorPolicy,
+    policySource: result.policySource,
   });
 
   return result;

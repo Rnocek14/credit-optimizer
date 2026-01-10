@@ -127,7 +127,9 @@ export function transformToModuleData(
         }
 
         return {
-          id: course.id,
+          // Use requirement_option.id for stable selection identity
+          // This prevents collision when same course satisfies multiple requirements
+          id: opt.id,
           courseId: course.code,
           title: course.title,
           credits: course.credits,
