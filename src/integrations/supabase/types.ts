@@ -1596,10 +1596,64 @@ export type Database = {
         }
         Relationships: []
       }
+      career_path_programs: {
+        Row: {
+          anchor_school: string
+          career_path_id: string
+          created_at: string | null
+          id: string
+          notes: string | null
+          path_type: string | null
+          program_id: string
+          region_code: string | null
+          strength: number | null
+          updated_at: string | null
+          valid_from: string | null
+          valid_until: string | null
+        }
+        Insert: {
+          anchor_school: string
+          career_path_id: string
+          created_at?: string | null
+          id?: string
+          notes?: string | null
+          path_type?: string | null
+          program_id: string
+          region_code?: string | null
+          strength?: number | null
+          updated_at?: string | null
+          valid_from?: string | null
+          valid_until?: string | null
+        }
+        Update: {
+          anchor_school?: string
+          career_path_id?: string
+          created_at?: string | null
+          id?: string
+          notes?: string | null
+          path_type?: string | null
+          program_id?: string
+          region_code?: string | null
+          strength?: number | null
+          updated_at?: string | null
+          valid_from?: string | null
+          valid_until?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "career_path_programs_career_path_id_fkey"
+            columns: ["career_path_id"]
+            isOneToOne: false
+            referencedRelation: "career_paths"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       career_paths: {
         Row: {
           advanced_roles: string[] | null
           average_salary: number | null
+          baseline_salary: number | null
           certifications: string[] | null
           checkpoint_skill_id: string | null
           common_entry_roles: string[] | null
@@ -1613,6 +1667,7 @@ export type Database = {
           optional_skill_ids: string[] | null
           required_skill_ids: string[] | null
           roi_score: number | null
+          slug: string | null
           summary: string | null
           title: string
           track: string | null
@@ -1621,6 +1676,7 @@ export type Database = {
         Insert: {
           advanced_roles?: string[] | null
           average_salary?: number | null
+          baseline_salary?: number | null
           certifications?: string[] | null
           checkpoint_skill_id?: string | null
           common_entry_roles?: string[] | null
@@ -1634,6 +1690,7 @@ export type Database = {
           optional_skill_ids?: string[] | null
           required_skill_ids?: string[] | null
           roi_score?: number | null
+          slug?: string | null
           summary?: string | null
           title: string
           track?: string | null
@@ -1642,6 +1699,7 @@ export type Database = {
         Update: {
           advanced_roles?: string[] | null
           average_salary?: number | null
+          baseline_salary?: number | null
           certifications?: string[] | null
           checkpoint_skill_id?: string | null
           common_entry_roles?: string[] | null
@@ -1655,6 +1713,7 @@ export type Database = {
           optional_skill_ids?: string[] | null
           required_skill_ids?: string[] | null
           roi_score?: number | null
+          slug?: string | null
           summary?: string | null
           title?: string
           track?: string | null

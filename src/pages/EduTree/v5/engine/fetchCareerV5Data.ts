@@ -1,5 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
-import { getAnchorPolicy } from '@/lib/degree/institutionPolicies';
+import { fetchPolicyPackOrStatic } from '@/lib/degree/useInstitutionPolicyPack';
 
 /**
  * Non-hook helper to fetch V5 data for a specific program + anchor school
@@ -34,13 +34,35 @@ export async function fetchCareerV5DataFor(programId: string, anchorSchool: stri
 
   console.log('[fetchCareerV5DataFor] Blocks fetched:', blocks?.length || 0);
 
-  // 3) All marketplace options (requirement_options + educational_courses joined)
-  const { data: allOptions, error: optionsError } = await supabase
+  // 3) All marketplace options with course details
+  // Note: Fetch options, then enrich with courses from edu_courses + marketplace_courses
+  const { data: rawOptions, error: optionsError } = await supabase
     .from('requirement_options')
-    .select(`
-      *,
-      educational_courses (*)
-    `);
+    .select('id, requirement_id, option_kind, option_ref_id, credits_awarded');
+
+  // 3.5) Enrich options with actual course data from correct tables
+  const optionRefIds = rawOptions?.map(o => o.option_ref_id).filter(Boolean) ?? [];
+  
+  const { data: eduCourses } = await supabase
+    .from('edu_courses')
+    .select('id, code, title, credits')
+    .in('id', optionRefIds.length > 0 ? optionRefIds : ['']);
+
+  const { data: marketplaceCourses } = await supabase
+    .from('marketplace_courses')
+    .select('id, code, title, credits, cost_usd, duration_weeks, provider_id')
+    .in('id', optionRefIds.length > 0 ? optionRefIds : ['']);
+
+  // Merge course data into options
+  const allOptions = (rawOptions ?? []).map(opt => {
+    const eduCourse = eduCourses?.find(c => c.id === opt.option_ref_id);
+    const mkCourse = marketplaceCourses?.find(c => c.id === opt.option_ref_id);
+    return {
+      ...opt,
+      edu_courses: eduCourse ?? null,
+      marketplace_courses: mkCourse ?? null,
+    };
+  });
 
   if (optionsError) {
     console.warn('[fetchCareerV5DataFor] requirement_options error, continuing with empty options:', optionsError);
@@ -48,11 +70,16 @@ export async function fetchCareerV5DataFor(programId: string, anchorSchool: stri
 
   console.log('[fetchCareerV5DataFor] Options fetched:', allOptions?.length || 0);
 
-  // 4) Anchor policy from constants
-  const anchorPolicy = getAnchorPolicy(anchorSchool);
+  // 4) Anchor policy - try scraped DB pack first, fallback to static
+  const anchorPolicy = await fetchPolicyPackOrStatic(anchorSchool);
 
   if (!anchorPolicy) {
     console.warn('[fetchCareerV5DataFor] No anchor policy found for:', anchorSchool);
+  } else {
+    console.log('[fetchCareerV5DataFor] Policy loaded:', anchorSchool, {
+      residency: anchorPolicy.min_residency_credits,
+      maxAlt: anchorPolicy.max_alt_credits,
+    });
   }
 
   const result = {
