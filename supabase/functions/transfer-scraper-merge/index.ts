@@ -372,70 +372,115 @@ const SCOPE_QUALIFIERS = [
 
 /**
  * Detects if a numeric value appears near scope-limiting language
- * Uses two-tier detection: HARD tokens always scope, SOFT tokens only with qualifiers
- * Anchors to credit-phrase patterns (not raw number matching)
+ * Uses TIGHT credit-phrase anchored detection with degree-level overrides
+ * 
+ * Key improvements:
+ * - ±100 char window around the SPECIFIC credit phrase (not wide paragraph)
+ * - Degree-level override: bachelor/baccalaureate context makes it unscoped
+ * - Prevents false positives from multi-cap paragraphs (40 associate vs 93 bachelor)
  */
 function detectValueScope(
   value: number | string,
   extractedText: string,
   _url: string
-): { isScoped: boolean; scopeReason: string | null; contextSnippet: string | null } {
+): { isScoped: boolean; scopeReason: string | null; contextSnippet: string | null; matchedPhrase?: string } {
   const valueStr = String(value);
   const textLower = extractedText.toLowerCase();
   
+  // Escape regex special characters in value
+  const escapedValue = valueStr.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  
   // Anchor to credit phrases to avoid false matches (years, phone numbers, etc.)
-  // Build regex: \b79\b\s*(credits|credit hours|semester hours)
+  // Patterns: "93 credits", "up to 93 credits", "93 credit hours", "93 semester hours"
   const creditPhraseRegex = new RegExp(
-    `\\b${valueStr}\\b\\s*(credits|credit hours|semester hours|credit)`,
+    `\\b${escapedValue}\\b\\s*(credits|credit hours|semester hours|credit(?!s))`,
     'gi'
   );
   
-  const match = creditPhraseRegex.exec(textLower);
-  if (!match) {
+  // Find ALL occurrences of this value as a credit phrase
+  const matches = [...textLower.matchAll(creditPhraseRegex)];
+  if (matches.length === 0) {
     // No credit-anchored match found - can't determine scope reliably
     return { isScoped: false, scopeReason: null, contextSnippet: null };
   }
   
-  // Extract context window around the credit phrase match (±300 chars)
-  const matchPos = match.index;
-  const contextStart = Math.max(0, matchPos - 300);
-  const contextEnd = Math.min(textLower.length, matchPos + match[0].length + 300);
-  const context = textLower.slice(contextStart, contextEnd);
-  const contextSnippet = extractedText.slice(contextStart, contextEnd);
-  
-  // Check HARD tokens first - always indicate scope
-  for (const token of SCOPE_TOKENS_HARD) {
-    if (context.includes(token.toLowerCase())) {
-      return {
-        isScoped: true,
-        scopeReason: `Hard scope token: "${token}"`,
-        contextSnippet: contextSnippet.slice(0, 250) + '...',
+  // Evaluate each occurrence - check TIGHT window around each specific phrase
+  for (const match of matches) {
+    const matchPos = match.index ?? 0;
+    const matchedPhrase = match[0];
+    
+    // TIGHT window: ±100 chars around this specific credit phrase
+    const contextStart = Math.max(0, matchPos - 100);
+    const contextEnd = Math.min(textLower.length, matchPos + matchedPhrase.length + 100);
+    const tightContext = textLower.slice(contextStart, contextEnd);
+    const tightSnippet = extractedText.slice(contextStart, contextEnd);
+    
+    // DEGREE-LEVEL OVERRIDE: bachelor/baccalaureate context = unscoped (institution-wide)
+    const hasBachelorContext = 
+      tightContext.includes('baccalaureate') || 
+      tightContext.includes('bachelor') ||
+      tightContext.includes('undergraduate') ||
+      tightContext.includes('four-year') ||
+      tightContext.includes('4-year');
+    
+    const hasAssociateContext = 
+      tightContext.includes('associate degree') ||
+      tightContext.includes('aa degree') ||
+      tightContext.includes('as degree') ||
+      tightContext.includes('aas degree') ||
+      tightContext.includes('two-year') ||
+      tightContext.includes('2-year');
+    
+    // If bachelor context present WITHOUT associate in tight window, this is unscoped
+    if (hasBachelorContext && !hasAssociateContext) {
+      console.log(`[scope] Value ${valueStr}: Bachelor context detected, marking as UNSCOPED`);
+      return { 
+        isScoped: false, 
+        scopeReason: null, 
+        contextSnippet: tightSnippet,
+        matchedPhrase 
       };
     }
-  }
-  
-  // Check SOFT tokens - only scoped if qualifier present
-  for (const softToken of SCOPE_TOKENS_SOFT) {
-    if (context.includes(softToken.toLowerCase())) {
-      // Special case: "graduate" is only scoped if NOT paired with "undergraduate"
-      if (softToken === 'graduate' && context.includes('undergraduate')) {
-        continue; // Skip - this is likely a general policy covering both
+    
+    // Check HARD tokens in TIGHT window only
+    for (const token of SCOPE_TOKENS_HARD) {
+      if (tightContext.includes(token.toLowerCase())) {
+        console.log(`[scope] Value ${valueStr}: Hard scope token "${token}" in tight window`);
+        return {
+          isScoped: true,
+          scopeReason: `Hard scope near value: "${token}"`,
+          contextSnippet: tightSnippet.slice(0, 200) + '...',
+          matchedPhrase
+        };
       }
-      
-      // Check if any qualifier phrase is present
-      for (const qualifier of SCOPE_QUALIFIERS) {
-        if (context.includes(qualifier.toLowerCase())) {
-          return {
-            isScoped: true,
-            scopeReason: `Soft scope "${softToken}" + qualifier "${qualifier}"`,
-            contextSnippet: contextSnippet.slice(0, 250) + '...',
-          };
+    }
+    
+    // Check SOFT tokens in TIGHT window - only scoped if qualifier present
+    for (const softToken of SCOPE_TOKENS_SOFT) {
+      if (tightContext.includes(softToken.toLowerCase())) {
+        // Special case: "graduate" is only scoped if NOT paired with "undergraduate"
+        if (softToken === 'graduate' && tightContext.includes('undergraduate')) {
+          continue;
+        }
+        
+        // Check if any qualifier phrase is present in tight window
+        for (const qualifier of SCOPE_QUALIFIERS) {
+          if (tightContext.includes(qualifier.toLowerCase())) {
+            console.log(`[scope] Value ${valueStr}: Soft scope "${softToken}" + qualifier "${qualifier}"`);
+            return {
+              isScoped: true,
+              scopeReason: `Soft scope near value: "${softToken}" + "${qualifier}"`,
+              contextSnippet: tightSnippet.slice(0, 200) + '...',
+              matchedPhrase
+            };
+          }
         }
       }
     }
   }
   
-  return { isScoped: false, scopeReason: null, contextSnippet };
+  // No scope tokens found in any tight window around credit phrase matches
+  return { isScoped: false, scopeReason: null, contextSnippet: null };
 }
 
 function selectBestValueWithVoting<T>(
