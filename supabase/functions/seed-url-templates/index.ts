@@ -37,13 +37,12 @@ serve(async (req) => {
       // Priority 1: Core catalog pages for transfer credits
       { institution_code: 'EMPIRE', url: 'https://sunyempire.edu/admissions-and-aid/undergraduate-admissions/transfer-admissions.html', page_type: 'transfer_caps', priority: 1 },
       { institution_code: 'EMPIRE', url: 'https://catalog.sunyempire.edu/undergraduate/transfer-credit/', page_type: 'transfer_policy', priority: 1 },
-      // Priority 1: Residency-focused pages (31 credits)
-      { institution_code: 'EMPIRE', url: 'https://catalog.sunyempire.edu/undergraduate/residency-requirements/', page_type: 'residency_policy', priority: 1 },
-      { institution_code: 'EMPIRE', url: 'https://catalog.sunyempire.edu/undergraduate/degree-requirements/', page_type: 'degree_requirements', priority: 1 },
-      { institution_code: 'EMPIRE', url: 'https://catalog.sunyempire.edu/undergraduate/academic-policies/', page_type: 'academic_policies', priority: 1 },
+      // Priority 1: Residency-focused pages (31 credits) - VERIFIED WORKING URLs
+      { institution_code: 'EMPIRE', url: 'https://lit.sunyempire.edu/degrees-programs/undergraduate-aos/degree-requirements/', page_type: 'degree_requirements', priority: 1 },
+      { institution_code: 'EMPIRE', url: 'https://catalog.sunyempire.edu/undergraduate/academic-policies-procedures/degree-credit-residency-policy/', page_type: 'residency_policy', priority: 1 },
       // Priority 2: Fallback pages
+      { institution_code: 'EMPIRE', url: 'https://catalog.sunyempire.edu/undergraduate/earning-undergraduate-degree/', page_type: 'degree_info', priority: 2 },
       { institution_code: 'EMPIRE', url: 'https://catalog.sunyempire.edu/pdf/Full%20Catalog%202024-2025.pdf', page_type: 'catalog_pdf', priority: 2 },
-      { institution_code: 'EMPIRE', url: 'https://lit.sunyempire.edu/degrees-programs/undergraduate-aos/degree-requirements/', page_type: 'degree_requirements', priority: 2 },
       { institution_code: 'EMPIRE', url: 'https://www.sunyempire.edu/media/13661/bachelors-degree-bulletin.pdf', page_type: 'bulletin_pdf', priority: 3 },
       
       // WALDEN templates - handbook + catalog (program-scoped but policy-dense)

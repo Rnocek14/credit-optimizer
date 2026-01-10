@@ -393,9 +393,14 @@ function extractResidencyFromText(text: string): ResidencyExtractionResult | nul
   const textLower = text.toLowerCase();
   
   // High-confidence patterns for residency credits
+  // Ordered by specificity (most specific first)
   const residencyPatterns = [
+    // EMPIRE-style: "at least X earned at [university]" / "with at least X earned at"
+    /(?:at least|a minimum of|with at least)\s+(\d{1,3})\s+(?:credits?\s+)?(?:earned|completed)\s+at\s+(?:suny empire|empire state|the university|the institution)/gi,
+    // "X credits must be earned/completed at [university]"
+    /(\d{1,3})\s*(?:credits?|credit hours?)\s+(?:must be\s+)?(?:earned|completed)\s+at\s+(?:suny empire|empire state|the university|the institution)/gi,
     // "must complete X credits at [university/in residence]"
-    /must complete\s+(?:at least\s+|a minimum of\s+)?(\d{1,3})\s*(?:credits?|credit hours?|semester hours?)\s+(?:at|in)\s+(?:the university|empire|in residence|residence)/gi,
+    /must\s+(?:successfully\s+)?complete\s+(?:at least\s+|a minimum of\s+)?(\d{1,3})\s*(?:credits?|credit hours?|semester hours?)\s+(?:at|in)\s+(?:the university|empire|suny|in residence|residence)/gi,
     // "minimum of X credits must be completed in residence"
     /(?:minimum of|at least)\s+(\d{1,3})\s*(?:credits?|credit hours?|semester hours?)\s+must be completed\s+(?:at|in)\s*(?:residence|the university)/gi,
     // "X credits in residence" / "in residence...X credits"
@@ -431,13 +436,15 @@ function extractResidencyFromText(text: string): ResidencyExtractionResult | nul
       const matchEnd = Math.min(text.length, match.index + match[0].length + 50);
       const snippet = text.slice(matchStart, matchEnd);
       
-      // Higher confidence if specific "in residence" or "institutional" language
+      // Higher confidence if specific "earned at" / "in residence" / "institutional" language
       const isHighConfidence = 
+        match[0].includes('earned at') ||
+        match[0].includes('completed at') ||
         match[0].includes('in residence') || 
         match[0].includes('institutional') ||
         match[0].includes('must complete');
       
-      const confidence = isHighConfidence ? 85 : 70;
+      const confidence = isHighConfidence ? 90 : 70;
       
       // Keep best (highest confidence, or first if tie)
       if (!bestMatch || confidence > bestMatch.confidence) {
