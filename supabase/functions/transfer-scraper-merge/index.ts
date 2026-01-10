@@ -370,6 +370,95 @@ const SCOPE_QUALIFIERS = [
   'students enrolled in', 'students pursuing',
 ];
 
+// -----------------------------------------------------------------------------
+// RESIDENCY CREDITS FALLBACK EXTRACTOR
+// -----------------------------------------------------------------------------
+// Residency is often expressed differently than transfer caps:
+// - "Students must complete 31 credits at Empire State University"
+// - "Minimum of 31 credits must be completed in residence"
+// - "Credits in Residence: 31"
+
+interface ResidencyExtractionResult {
+  value: number;
+  confidence: number;
+  contextSnippet: string;
+  matchedPattern: string;
+}
+
+/**
+ * Extracts residency credits using phrase-anchored patterns.
+ * Returns the best match if found, null otherwise.
+ */
+function extractResidencyFromText(text: string): ResidencyExtractionResult | null {
+  const textLower = text.toLowerCase();
+  
+  // High-confidence patterns for residency credits
+  const residencyPatterns = [
+    // "must complete X credits at [university/in residence]"
+    /must complete\s+(?:at least\s+|a minimum of\s+)?(\d{1,3})\s*(?:credits?|credit hours?|semester hours?)\s+(?:at|in)\s+(?:the university|empire|in residence|residence)/gi,
+    // "minimum of X credits must be completed in residence"
+    /(?:minimum of|at least)\s+(\d{1,3})\s*(?:credits?|credit hours?|semester hours?)\s+must be completed\s+(?:at|in)\s*(?:residence|the university)/gi,
+    // "X credits in residence" / "in residence...X credits"
+    /in residence[^.]{0,80}?(\d{1,3})\s*(?:credits?|credit hours?|semester hours?)/gi,
+    /(\d{1,3})\s*(?:credits?|credit hours?|semester hours?)[^.]{0,40}in residence/gi,
+    // "institutional credits: X" / "X institutional credits"
+    /institutional\s*(?:credit|credits)[^.]{0,60}?(\d{1,3})\s*(?:credits?|credit hours?)?/gi,
+    /(\d{1,3})\s*institutional\s*(?:credits?|credit hours?)/gi,
+    // Table-style: "Credits in Residence" header followed by number
+    /credits?\s+in\s+residence[:\s]*(\d{1,3})/gi,
+    /residence\s+(?:credits?|requirements?)[:\s]*(\d{1,3})/gi,
+    // "residency requirement of X credits"
+    /residency\s+requirement[^.]{0,40}?(\d{1,3})\s*(?:credits?|credit hours?)/gi,
+    // "minimum residency: X credits"
+    /minimum\s+residency[:\s]*(\d{1,3})\s*(?:credits?|credit hours?)?/gi,
+  ];
+  
+  let bestMatch: ResidencyExtractionResult | null = null;
+  
+  for (const pattern of residencyPatterns) {
+    // Reset regex state
+    pattern.lastIndex = 0;
+    
+    let match;
+    while ((match = pattern.exec(textLower)) !== null) {
+      const creditValue = parseInt(match[1], 10);
+      
+      // Sanity check: residency is typically 20-50 credits (allow 10-80 range)
+      if (creditValue < 10 || creditValue > 80) continue;
+      
+      // Get context around match
+      const matchStart = Math.max(0, match.index - 50);
+      const matchEnd = Math.min(text.length, match.index + match[0].length + 50);
+      const snippet = text.slice(matchStart, matchEnd);
+      
+      // Higher confidence if specific "in residence" or "institutional" language
+      const isHighConfidence = 
+        match[0].includes('in residence') || 
+        match[0].includes('institutional') ||
+        match[0].includes('must complete');
+      
+      const confidence = isHighConfidence ? 85 : 70;
+      
+      // Keep best (highest confidence, or first if tie)
+      if (!bestMatch || confidence > bestMatch.confidence) {
+        bestMatch = {
+          value: creditValue,
+          confidence,
+          contextSnippet: snippet,
+          matchedPattern: pattern.source,
+        };
+      }
+    }
+  }
+  
+  if (bestMatch) {
+    console.log(`[residency-fallback] Found residency: ${bestMatch.value} credits (confidence: ${bestMatch.confidence})`);
+    console.log(`[residency-fallback] Context: ${bestMatch.contextSnippet}`);
+  }
+  
+  return bestMatch;
+}
+
 /**
  * Detects if a numeric value appears near scope-limiting language
  * Uses TIGHT credit-phrase anchored detection with degree-level overrides
@@ -737,9 +826,60 @@ async function mergePolicyPacks(
     });
   }
   
-  const residencyCredits = residencyResult.selected;
+  let residencyCredits = residencyResult.selected;
   const maxTransfer = maxTransferResult.selected;
   const maxAceNccrs = maxAceNccrsResult.selected;
+  
+  // ==========================================================================
+  // RESIDENCY FALLBACK: If AI extraction didn't find residency, try pattern matching
+  // ==========================================================================
+  if (!residencyCredits) {
+    console.log('[merge] No AI-extracted residency found, attempting fallback extraction...');
+    
+    // Load extracted text from all job IDs (limit to 5 for performance)
+    const jobIdsToCheck = validExtractions.slice(0, 5).map(e => e.jobId);
+    const { data: textContents } = await supabase
+      .from('scraped_content')
+      .select('scrape_job_id, extracted_text, url')
+      .in('scrape_job_id', jobIdsToCheck)
+      .not('extracted_text', 'is', null);
+    
+    let bestFallback: { value: number; jobId: string; url: string; confidence: number; contextSnippet: string } | null = null;
+    
+    for (const content of textContents || []) {
+      if (!content.extracted_text) continue;
+      
+      // Prioritize residency-specific URLs
+      const urlBonus = content.url?.toLowerCase().includes('residency') ? 20 : 0;
+      
+      const result = extractResidencyFromText(content.extracted_text);
+      if (result) {
+        const adjustedConfidence = result.confidence + urlBonus;
+        if (!bestFallback || adjustedConfidence > bestFallback.confidence) {
+          bestFallback = {
+            value: result.value,
+            jobId: content.scrape_job_id,
+            url: content.url || '',
+            confidence: adjustedConfidence,
+            contextSnippet: result.contextSnippet,
+          };
+        }
+      }
+    }
+    
+    if (bestFallback) {
+      notes.push(`🔍 Residency fallback: found ${bestFallback.value} credits via pattern matching (confidence: ${bestFallback.confidence})`);
+      notes.push(`   Context: "${bestFallback.contextSnippet}"`);
+      residencyCredits = {
+        value: bestFallback.value,
+        sourceJobId: bestFallback.jobId,
+        confidence: bestFallback.confidence,
+        sourceUrl: bestFallback.url,
+      };
+    } else {
+      notes.push('⚠️ Residency fallback: no patterns matched in available text');
+    }
+  }
   
   // Non-numeric fields don't need scope detection
   const residencyWaiver = pickBestValue(validExtractions, p => p.residency_policy?.residency_waiver_available, 'residency.waiver');
