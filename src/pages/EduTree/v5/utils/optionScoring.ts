@@ -143,3 +143,36 @@ export function calculateOptionScore(
     total
   };
 }
+
+/**
+ * Generate a 1-line human-readable reason for why an option is recommended.
+ * Used for "⭐ Recommended" badge tooltip/explanation.
+ */
+export function getRecommendedReason(
+  option: ScoringOption, 
+  breakdown: ScoreBreakdown
+): string {
+  const factors: string[] = [];
+  
+  // Top cost performer
+  if (breakdown.cost >= 90) factors.push('Lowest cost');
+  else if (breakdown.cost >= 75) factors.push('Budget-friendly');
+  
+  // Speed factor
+  if (breakdown.time >= 90) factors.push('Fastest completion');
+  else if (breakdown.time >= 75) factors.push('Quick turnaround');
+  
+  // Quality/CRI factor
+  if (breakdown.cri >= 80) factors.push('High transfer confidence');
+  else if (breakdown.cri >= 70 && option.aceNccrs) factors.push('ACE-recommended');
+  
+  // Proctored bonus
+  if (option.proctored) factors.push('Proctored');
+  
+  // Provider trust
+  if (option.providerType === 'university') factors.push('University credit');
+  else if (option.providerType === 'testing_center') factors.push('Standardized exam');
+  
+  // Return top 2 factors for conciseness
+  return factors.slice(0, 2).join(' + ') || 'Best overall match';
+}
