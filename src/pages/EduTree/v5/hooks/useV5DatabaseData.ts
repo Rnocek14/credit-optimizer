@@ -96,7 +96,17 @@ export function useV5DatabaseData(options: UseV5DatabaseDataOptions = {}) {
         }))
       );
 
-      return { modulesByYear };
+      // 6. Fetch requirement blocks for GE/Core/Elective gating
+      const { data: blocks } = await supabase
+        .from('requirement_blocks')
+        .select('id, title, rule_type, k, credits_needed, level_year, area, slug')
+        .or(`program_id.eq.${programId},program_id.is.null`);
+
+      return { 
+        modulesByYear,
+        blocks: blocks ?? [],
+        requirements: requirements ?? [],
+      };
     },
     enabled,
     staleTime: 0,
