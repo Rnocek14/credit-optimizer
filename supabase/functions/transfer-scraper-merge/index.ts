@@ -501,8 +501,11 @@ function detectValueScope(
   const matches = [...textLower.matchAll(creditPhraseRegex)];
   if (matches.length === 0) {
     // No credit-anchored match found - can't determine scope reliably
+    console.log(`[scope] Value ${valueStr}: No credit-phrase match found in text - returning unscoped`);
     return { isScoped: false, scopeReason: null, contextSnippet: null };
   }
+  console.log(`[scope] Value ${valueStr}: Found ${matches.length} credit-phrase matches`);
+
   
   // Evaluate each occurrence - check TIGHT window around each specific phrase
   for (const match of matches) {
@@ -721,6 +724,8 @@ async function pickBestValueWithScopeDetection<T>(
   // Build candidates with scope detection
   const candidates: ValueCandidate<T>[] = [];
   
+  console.log(`[merge] Building candidates for scope detection, ${extractions.length} extractions`);
+  
   for (const { jobId, extraction, url } of extractions) {
     if (!extraction.policy_pack) continue;
     const value = accessor(extraction.policy_pack);
@@ -731,9 +736,13 @@ async function pickBestValueWithScopeDetection<T>(
     const isNumeric = !Number.isNaN(numeric);
     const text = textByJob.get(jobId) || '';
     
+    console.log(`[merge] Candidate: value=${value}, url=${url}, hasText=${text.length > 0}`);
+    
     const scopeResult = isNumeric && text
       ? detectValueScope(numeric, text, url)
       : { isScoped: false, scopeReason: null, contextSnippet: null };
+    
+    console.log(`[merge] Scope result: isScoped=${scopeResult.isScoped}, reason=${scopeResult.scopeReason}`);
     
     candidates.push({ 
       value, 
