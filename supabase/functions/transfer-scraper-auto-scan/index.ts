@@ -357,7 +357,12 @@ Deno.serve(async (req) => {
       sample: (r as any).sample || null,
     }));
     
-    // Add diagnostic summary with best policy URL
+    // Find best policy result details
+    const bestResult = okResultsWithKeywords.length > 0
+      ? [...okResultsWithKeywords].sort((a, b) => ((b as any).keyword_hits ?? 0) - ((a as any).keyword_hits ?? 0))[0]
+      : null;
+
+    // Add diagnostic summary with best policy URL and enhanced metrics
     const diagnosticSummary = {
       total_urls: results.length,
       ok_count: results.filter(r => r.content_class === 'ok').length,
@@ -368,6 +373,8 @@ Deno.serve(async (req) => {
       min_text_length: Math.min(...results.filter(r => (r.text_length || 0) > 0).map(r => r.text_length || 0)) || 0,
       max_keyword_hits: Math.max(0, ...results.map(r => (r as any).keyword_hits || 0)),
       best_policy_url: bestPolicyUrl,
+      best_policy_keyword_hits: bestResult ? ((bestResult as any).keyword_hits ?? 0) : 0,
+      best_policy_text_length: bestResult ? (bestResult.text_length ?? 0) : 0,
     };
 
     // Step 4: Call merge function to aggregate extractions (>= 1 job)
