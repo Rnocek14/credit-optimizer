@@ -87,20 +87,29 @@ export function useInstitutionPolicyPack(institutionCode?: string) {
 
       if (data) {
         const pack = data as unknown as PolicyPackRow;
-        console.log('[useInstitutionPolicyPack] ✅ USING_PACK:', institutionCode, {
-          residency: pack.policy_json?.residency_policy?.min_institutional_credits,
-          confidence: pack.confidence_score,
-        });
+        const policy = packToLegacyPolicy(pack);
+        // Standardized log for debugging - single source of truth
+        console.log('[ANCHOR_POLICY] source=pack institution=%s residency=%d max_alt=%d confidence=%d',
+          pack.institution,
+          policy.min_residency_credits,
+          policy.max_alt_credits,
+          pack.confidence_score
+        );
         return { 
-          policy: packToLegacyPolicy(pack), 
+          policy, 
           source: 'pack',
           confidence: pack.confidence_score,
         };
       }
 
       // Fallback to static
-      console.log('[useInstitutionPolicyPack] USING_STATIC:', institutionCode);
-      return { policy: getAnchorPolicy(institutionCode), source: 'static' };
+      const staticPolicy = getAnchorPolicy(institutionCode);
+      console.log('[ANCHOR_POLICY] source=static institution=%s residency=%d max_alt=%d',
+        institutionCode,
+        staticPolicy?.min_residency_credits ?? 0,
+        staticPolicy?.max_alt_credits ?? 0
+      );
+      return { policy: staticPolicy, source: 'static' };
     },
     enabled: !!institutionCode,
     staleTime: 10 * 60 * 1000, // 10 minutes
@@ -133,13 +142,16 @@ export async function fetchPolicyPackOrStatic(
 
     if (data) {
       const pack = data as unknown as PolicyPackRow;
-      console.log('[fetchPolicyPackOrStatic] ✅ USING_PACK:', institutionCode, {
-        residency: pack.policy_json?.residency_policy?.min_institutional_credits,
-        maxAlt: pack.policy_json?.transfer_limits?.max_noncollegiate,
-        confidence: pack.confidence_score,
-      });
+      const policy = packToLegacyPolicy(pack);
+      // Standardized log for debugging - single source of truth
+      console.log('[ANCHOR_POLICY] source=pack institution=%s residency=%d max_alt=%d confidence=%d',
+        pack.institution,
+        policy.min_residency_credits,
+        policy.max_alt_credits,
+        pack.confidence_score
+      );
       return { 
-        policy: packToLegacyPolicy(pack), 
+        policy, 
         source: 'pack',
         confidence: pack.confidence_score,
       };
@@ -149,8 +161,13 @@ export async function fetchPolicyPackOrStatic(
   }
 
   // Fallback to static
-  console.log('[fetchPolicyPackOrStatic] USING_STATIC:', institutionCode);
-  return { policy: getAnchorPolicy(institutionCode), source: 'static' };
+  const staticPolicy = getAnchorPolicy(institutionCode);
+  console.log('[ANCHOR_POLICY] source=static institution=%s residency=%d max_alt=%d',
+    institutionCode,
+    staticPolicy?.min_residency_credits ?? 0,
+    staticPolicy?.max_alt_credits ?? 0
+  );
+  return { policy: staticPolicy, source: 'static' };
 }
 
 /**
