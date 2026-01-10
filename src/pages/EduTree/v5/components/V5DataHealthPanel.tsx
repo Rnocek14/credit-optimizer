@@ -24,7 +24,8 @@ interface V5DataHealthPanelProps {
     coverage: number;
     totalCredits: number;
     planSource: 'real' | 'mock' | 'fixture';
-    policySource: 'scraped' | 'static' | 'none';
+    // Accept canonical source types from hook ('pack' | 'static' | 'none')
+    policySource: 'pack' | 'static' | 'none';
     anchorSchool?: string;
   };
   visible?: boolean;
@@ -92,10 +93,11 @@ export function V5DataHealthPanel({ diagnostics, visible = true }: V5DataHealthP
             policySource
           </span>
           <Badge 
-            variant={policySource === 'scraped' ? 'default' : 'secondary'}
+            variant={policySource === 'pack' ? 'default' : 'secondary'}
             className="text-xs"
           >
-            {policySource}{anchorSchool ? ` (${anchorSchool})` : ''}
+            {/* Map canonical 'pack' to 'scraped' for display */}
+            {policySource === 'pack' ? 'scraped' : policySource}{anchorSchool ? ` (${anchorSchool})` : ''}
           </Badge>
         </div>
 

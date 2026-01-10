@@ -1589,8 +1589,8 @@ export default function EduTreeV5Page() {
             coverage,
             totalCredits: moduleProvider?.getSummary?.()?.totalCredits ?? 0,
             planSource: USE_DATABASE ? 'real' : (templateId ? 'mock' : 'fixture'),
-            // Use actual policy source from hook - map 'pack' to 'scraped' for display
-            policySource: policyData?.source === 'pack' ? 'scraped' : (policyData?.source ?? (constraints.target_school ? 'static' : 'none')),
+            // Pass canonical source from hook - panel handles display mapping
+            policySource: policyData?.source ?? (constraints.target_school ? 'static' : 'none'),
             anchorSchool: constraints.target_school,
           };
         })()}
