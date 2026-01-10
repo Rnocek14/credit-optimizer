@@ -92,13 +92,30 @@ Deno.serve(async (req) => {
 
     console.log(`Found ${templates.length} templates for ${institution}`);
 
-    // URL diagnostic classification helper
+    // URL diagnostic classification helper - tightened to avoid false error_page
     function classifyContent(text: string, length: number): 'ok' | 'too_short' | 'js_junk' | 'error_page' {
       if (length < 200) return 'too_short';
       
-      // Check for error pages
-      const errorPatterns = ['404', 'Page Not Found', 'Access Denied', 'Request blocked', 'Error404'];
-      if (errorPatterns.some(p => text.includes(p))) return 'error_page';
+      const t = text.toLowerCase();
+      
+      // Check for error pages - require STRONG evidence (not just "404" substring)
+      // Must have 404 AND explicit "not found" language, or explicit denial phrases
+      const is404Error = t.includes('404') && (
+        t.includes('page not found') || 
+        t.includes('not found') ||
+        t.includes('error 404') ||
+        t.includes('404 error')
+      );
+      
+      const isAccessDenied = 
+        t.includes('access denied') ||
+        t.includes('request blocked') ||
+        t.includes('you have been blocked') ||
+        t.includes('permission denied') ||
+        (t.includes('403') && t.includes('forbidden'));
+      
+      // Only classify as error_page if we have strong evidence
+      if (is404Error || isAccessDenied) return 'error_page';
       
       // Check for JS junk (VWO, A/B testing scripts, etc.)
       const jsPatterns = ['VWO.', 'vwo_$', 'function(', 'catch(e)', '{}catch', 'var _vwo'];
@@ -120,14 +137,21 @@ Deno.serve(async (req) => {
     const HIGH_SIGNAL_PHRASES = [
       'maximum number of credits', 'may be transferred', 'must complete at',
       'residency requirement', 'in residence', 'institutional credits',
-      'transfer credit limit', 'credits accepted', 'semester hours required'
+      'transfer credit limit', 'credits accepted', 'semester hours required',
+      'up to', 'no more than', 'maximum of', 'may transfer up to',
+      'must complete a minimum of', 'minimum number of'
     ];
     
     function countPolicyKeywords(text: string): number {
       const t = text.toLowerCase();
       const baseHits = POLICY_KEYWORDS.filter(kw => t.includes(kw.toLowerCase())).length;
       const highSignalHits = HIGH_SIGNAL_PHRASES.filter(phrase => t.includes(phrase.toLowerCase())).length;
-      return baseHits + (highSignalHits * 2); // Weight high-signal phrases 2x
+      
+      // Add numeric pattern detection: "XX credits" or "XX semester hours"
+      const numericCreditMatches = (t.match(/\b\d{1,3}\b\s*(credit|credits|semester hours|credit hours)\b/g) || []).length;
+      
+      // Base + high-signal (2x weight) + numeric patterns (capped at 10)
+      return baseHits + (highSignalHits * 2) + Math.min(10, numericCreditMatches);
     }
 
     const results: Array<{
@@ -307,13 +331,19 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Find best policy URL (highest keyword hits among 'ok' content)
-    const okResults = results.filter(r => r.content_class === 'ok');
-    const bestPolicyUrl = okResults.length > 0 
-      ? okResults.reduce((best, r) => 
-          ((r as any).keyword_hits || 0) > ((best as any).keyword_hits || 0) ? r : best
-        ).url
-      : null;
+    // Find best policy URL (highest keyword hits among 'ok' content with keyword_hits > 0)
+    const okResultsWithKeywords = results.filter(
+      r => r.content_class === 'ok' && ((r as any).keyword_hits ?? 0) > 0
+    );
+    
+    let bestPolicyUrl: string | null = null;
+    if (okResultsWithKeywords.length > 0) {
+      // Sort by keyword_hits descending and pick the best
+      const sorted = [...okResultsWithKeywords].sort(
+        (a, b) => ((b as any).keyword_hits ?? 0) - ((a as any).keyword_hits ?? 0)
+      );
+      bestPolicyUrl = sorted[0].url;
+    }
 
     // Build URL diagnostics for merge (with samples and keyword hits)
     const urlDiagnostics = results.map(r => ({
@@ -329,13 +359,14 @@ Deno.serve(async (req) => {
     
     // Add diagnostic summary with best policy URL
     const diagnosticSummary = {
-      total: results.length,
+      total_urls: results.length,
       ok_count: results.filter(r => r.content_class === 'ok').length,
       too_short_count: results.filter(r => r.content_class === 'too_short').length,
       js_junk_count: results.filter(r => r.content_class === 'js_junk').length,
       error_page_count: results.filter(r => r.content_class === 'error_page').length,
-      max_text_length: Math.max(...results.map(r => r.text_length || 0)),
-      max_keyword_hits: Math.max(...results.map(r => (r as any).keyword_hits || 0)),
+      max_text_length: Math.max(0, ...results.map(r => r.text_length || 0)),
+      min_text_length: Math.min(...results.filter(r => (r.text_length || 0) > 0).map(r => r.text_length || 0)) || 0,
+      max_keyword_hits: Math.max(0, ...results.map(r => (r as any).keyword_hits || 0)),
       best_policy_url: bestPolicyUrl,
     };
 
