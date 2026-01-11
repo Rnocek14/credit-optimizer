@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import type { MarketplaceDegreeTemplate, MarketplaceFilters } from '@/pages/EduTree/v5/types/templates';
-import marketplaceTemplates from '@/fixtures/templates/marketplace-v1-templates.json';
+import marketplaceTemplates from '@/fixtures/templates/marketplace-v2-templates.json';
 
 /**
  * Hook to fetch and filter marketplace templates
