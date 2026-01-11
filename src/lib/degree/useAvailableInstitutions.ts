@@ -12,7 +12,7 @@ export interface AvailableInstitution {
   name: string;
   status: 'active' | 'draft' | 'static';
   confidence: number;
-  source: 'pack' | 'static';
+  source: 'pack' | 'static' | 'template';
 }
 
 // Mapping from DB institution codes to display names
@@ -36,6 +36,16 @@ const INSTITUTION_NAMES: Record<string, string> = {
   PURDUE: 'Purdue University Global',
   WALDENU: 'Walden University',
   UMass: 'UMass Lowell',
+  // Additional schools from scrape_url_templates
+  NU: 'National University',
+  PHOENIX: 'University of Phoenix',
+  PSUWC: 'Penn State World Campus',
+  PURDUEG: 'Purdue University Global',
+  STRAYER: 'Strayer University',
+  UPEOPLE: 'University of the People',
+  UWFO: 'University of Wisconsin Flexible Option',
+  WALDEN: 'Walden University',
+  WCU: 'Western Carolina University',
 };
 
 function getInstitutionName(code: string): string {
@@ -106,6 +116,32 @@ export function useAvailableInstitutions() {
           confidence: 75, // Static policies have moderate confidence
           source: 'static',
         });
+      }
+
+      // Add institutions from scrape_url_templates not already in results
+      try {
+        const { data: templateData } = await supabase
+          .from('scrape_url_templates')
+          .select('institution_code')
+          .order('institution_code');
+
+        if (templateData && Array.isArray(templateData)) {
+          for (const row of templateData) {
+            const code = (row as { institution_code: string }).institution_code;
+            if (seenCodes.has(code)) continue;
+            seenCodes.add(code);
+
+            results.push({
+              code,
+              name: getInstitutionName(code),
+              status: 'draft', // Template-only = needs policy scraping
+              confidence: 50,  // Low confidence - no policy data yet
+              source: 'template',
+            });
+          }
+        }
+      } catch (err) {
+        console.warn('[useAvailableInstitutions] Failed to fetch templates:', err);
       }
 
       // Sort: active first, then draft, then static; within each, by confidence desc
