@@ -93,6 +93,8 @@ export interface AnchorContractReport {
   };
   blockedByReason: Record<string, number>;
   policyContractViolations: PolicyContractViolation[];
+  // Draft eligibility preview: what drafts need to become eligible
+  draftEligibilityPreview: AnchorEligibility[];
 }
 
 export interface PolicyContractViolation {
@@ -770,9 +772,26 @@ export function checkUpperDivisionVerified(policyData: any): { verified: boolean
   };
 }
 
+// Severity mapping: Contract violations (SEV0) vs Eligibility failures (SEV1)
+// SEV0: Violates hard contract rules (things DB trigger should guarantee)
+// SEV1: Valid contract, but not currently eligible (staleness)
+// SEV2: Informational / truth completeness gaps
+const REASON_TO_SEVERITY: Record<NonNullable<AnchorEligibility['reason']>, PolicyContractViolation['severity']> = {
+  missing_fields: 'SEV0',
+  unknown_bucket_mode: 'SEV0',
+  missing_mode_caps: 'SEV0',
+  missing_provenance: 'SEV0',
+  missing_provenance_verified_at: 'SEV0', // Required for active packs
+  stale_provenance: 'SEV1', // Valid contract, just needs re-verification
+};
+
 /**
  * Build Anchor Contract Report from list of policy packs
  * This is the single source of truth for what's selectable
+ * 
+ * Includes:
+ * - activeReport: selectable/blocked active packs with violations
+ * - draftEligibilityPreview: what drafts are missing to become eligible
  */
 export function buildAnchorContractReport(
   policyPacks: Array<{ institution: string; status: string; policy_data: any }>
@@ -781,13 +800,18 @@ export function buildAnchorContractReport(
   const blockedAnchors: AnchorEligibility[] = [];
   const blockedByReason: Record<string, number> = {};
   const policyContractViolations: PolicyContractViolation[] = [];
+  const draftEligibilityPreview: AnchorEligibility[] = [];
   
   for (const pack of policyPacks) {
-    // Only check active packs for anchor eligibility
-    if (pack.status !== 'active') continue;
-    
     const eligibility = checkAnchorEligibility(pack.policy_data, pack.institution);
     
+    // Handle drafts separately (no violations, just preview)
+    if (pack.status !== 'active') {
+      draftEligibilityPreview.push(eligibility);
+      continue;
+    }
+    
+    // Active pack processing
     if (eligibility.selectable) {
       selectableAnchors.push(eligibility);
     } else {
@@ -795,16 +819,20 @@ export function buildAnchorContractReport(
       const reason = eligibility.reason || 'unknown';
       blockedByReason[reason] = (blockedByReason[reason] || 0) + 1;
       
-      // Active pack that's blocked = policy contract violation (SEV0)
+      // Map reason to appropriate severity
+      const severity = REASON_TO_SEVERITY[reason as keyof typeof REASON_TO_SEVERITY] || 'SEV0';
+      
       policyContractViolations.push({
         institution: pack.institution,
-        severity: 'SEV0',
-        violation: `Active pack blocked: ${reason}`,
+        severity,
+        violation: severity === 'SEV1' 
+          ? `Active pack needs re-verification: ${reason}`
+          : `Active pack violates contract: ${reason}`,
         details: eligibility,
       });
     }
     
-    // Check upper-division verification status
+    // Check upper-division verification status (SEV2 for all active packs)
     const ulCheck = checkUpperDivisionVerified(pack.policy_data);
     if (!ulCheck.verified) {
       policyContractViolations.push({
@@ -824,6 +852,7 @@ export function buildAnchorContractReport(
     },
     blockedByReason,
     policyContractViolations,
+    draftEligibilityPreview,
   };
 }
 
