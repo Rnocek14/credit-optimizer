@@ -5,6 +5,14 @@ import { checkForDeadEnd, type RemainingModule } from "../engine/deadEndDetector
 import type { MarketplaceOption } from "../types/v5";
 
 /**
+ * Helper: Get unique identity key for a basket item
+ * Uses optionId if available, otherwise falls back to providerCode:courseId
+ */
+export function getBasketItemKey(item: { optionId?: string; providerCode?: string; courseId: string }): string {
+  return item.optionId || `${item.providerCode || 'unknown'}:${item.courseId}`;
+}
+
+/**
  * Centralized wrapper for plan basket operations with toast notifications, undo, and dead-end guarding
  */
 export function usePlanBasketWithToasts() {
@@ -16,21 +24,24 @@ export function usePlanBasketWithToasts() {
   const addItemWithToast = (item: BasketItem) => {
     addItem(item);
     
+    const itemKey = getBasketItemKey(item);
+    
     toast.success("Added to plan", {
       description: `${item.courseId} (${item.credits}cr)`,
       action: {
         label: "Undo",
         onClick: () => {
-          removeItem(item.courseId);
+          removeItem(itemKey);
           toast.message("Removed");
-          logEvent("plan_basket_undo_add", { courseId: item.courseId });
+          logEvent("plan_basket_undo_add", { courseId: item.courseId, optionId: item.optionId });
         },
       },
       duration: 5000,
     });
     
     logEvent("plan_basket_add", { 
-      courseId: item.courseId, 
+      courseId: item.courseId,
+      optionId: item.optionId,
       credits: item.credits,
       status: item.status 
     });
@@ -71,9 +82,10 @@ export function usePlanBasketWithToasts() {
       return false;
     }
     
-    // Selection allowed - create and add item
+    // Selection allowed - create and add item with optionId
     const item: BasketItem = {
       moduleId,
+      optionId: option.id, // Use requirement_option.id for unique identity
       courseId: option.courseId,
       title: option.title ?? option.courseId,
       credits: option.credits ?? 0,
@@ -82,6 +94,8 @@ export function usePlanBasketWithToasts() {
       workload_weekly_hours: option.workload_weekly_hours ?? (option.credits ? option.credits * 2.5 : 0),
       cri_score: option.cri_score ?? 0,
       providerType: option.providerType,
+      providerCode: option.providerCode,
+      equivalency_key: option.equivalency_key,
       status: 'pinned',
     };
     
@@ -89,9 +103,22 @@ export function usePlanBasketWithToasts() {
     return true;
   };
 
-  const removeItemWithToast = (courseId: string) => {
-    const item = basket.find(i => i.courseId === courseId);
-    removeItem(courseId);
+  /**
+   * Remove item by optionId or fallback courseId
+   */
+  const removeItemWithToast = (optionIdOrCourseId: string) => {
+    // Find by optionId first, then by courseId
+    const item = basket.find(i => 
+      i.optionId === optionIdOrCourseId || 
+      getBasketItemKey(i) === optionIdOrCourseId ||
+      i.courseId === optionIdOrCourseId
+    );
+    
+    if (item) {
+      removeItem(getBasketItemKey(item));
+    } else {
+      removeItem(optionIdOrCourseId);
+    }
     
     toast.message("Removed from plan", {
       action: item
@@ -100,18 +127,18 @@ export function usePlanBasketWithToasts() {
             onClick: () => {
               addItem(item);
               toast.success("Restored");
-              logEvent("plan_basket_undo_remove", { courseId });
+              logEvent("plan_basket_undo_remove", { courseId: item.courseId, optionId: item.optionId });
             },
           }
         : undefined,
       duration: 5000,
     });
     
-    logEvent("plan_basket_remove", { courseId });
+    logEvent("plan_basket_remove", { courseId: item?.courseId, optionId: item?.optionId });
     
     // Track if auto-filled item was removed
     if (item?.status === 'auto-filled') {
-      logEvent("auto_fill_removed", { courseId });
+      logEvent("auto_fill_removed", { courseId: item.courseId });
     }
   };
 
@@ -119,5 +146,6 @@ export function usePlanBasketWithToasts() {
     addItemWithToast,
     addItemGuarded,
     removeItemWithToast,
+    getBasketItemKey,
   };
 }

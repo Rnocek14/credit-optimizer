@@ -191,6 +191,18 @@ export function useCareerDegreeOptions(
               passedGating: totalCredits >= 110 && hasBlocks && coverage >= 80,
             };
 
+            // === V5_GATING LOG: Single source of truth for mock vs real decision ===
+            console.log('[V5_GATING] credits=%d blocks=%d coverage=%d modules=%d options=%d planSource=%s program=%s anchor=%s',
+              totalCredits,
+              v5Data.blocks.length,
+              Math.round(coverage),
+              v5Data.modules.length,
+              v5Data.allOptions.length,
+              diagnostics.passedGating ? 'real' : 'mock',
+              mapping.program_id,
+              mapping.anchor_school
+            );
+            
             console.log('[CareerDegreeOptions] 📊 Diagnostic results:', {
               ...diagnostics,
               mapping,
