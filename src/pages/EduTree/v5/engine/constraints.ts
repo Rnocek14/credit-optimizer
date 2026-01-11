@@ -8,9 +8,23 @@ import {
   formatCreditLossReport,
 } from './creditLoss';
 import { countsTowardAltCap } from '../utils/altCredit';
+import { isTransferCredit, isAltCredit, isResidentCredit } from '../utils/creditClassification';
+
+// Bucket mode types for transfer/alt credit policy
+export type BucketMode = 'separate' | 'combined' | 'unknown';
+
+export interface PolicyData {
+  transfer_alt_bucket_mode?: BucketMode;
+  max_alt_credit?: number;
+  max_transfer_credits?: number;
+  max_transfer_alt_combined_credits?: number;
+  degree_credit_total?: number;
+  residency_credits?: number;
+  capstone_in_residence?: boolean;
+}
 
 export interface Violation {
-  type: 'budget' | 'workload' | 'deadline' | 'prerequisite' | 'transfer_cap' | 'conflict' | 'residency' | 'upper_division' | 'provider_cap' | 'gened_incomplete' | 'total_transfer' | 'capstone_substitution';
+  type: 'budget' | 'workload' | 'deadline' | 'prerequisite' | 'transfer_cap' | 'conflict' | 'residency' | 'upper_division' | 'provider_cap' | 'gened_incomplete' | 'total_transfer' | 'capstone_substitution' | 'combined_cap';
   severity: 'error' | 'warning' | 'info';
   message: string;
   affectedCourses: string[];
@@ -23,6 +37,7 @@ export interface Violation {
     category?: string;
     creditLoss?: number;
     lostItems?: CreditLossItem[];
+    bucketMode?: BucketMode;
   };
 }
 
@@ -123,19 +138,104 @@ export function validatePlan(
     }
   }
   
-  // 4. Transfer cap (ACE/NCCRS credits) - Phase 1a: use providerType from basket directly
-  const aceCredits = basket
-    .filter(i => i.providerType === 'mooc' || i.providerType === 'testing_center')
-    .reduce((sum, i) => sum + i.credits, 0);
+  // 4. Transfer/Alt cap enforcement - bucket-mode-aware
+  // Uses canonical classification from creditClassification.ts
+  const institutionCode = constraints.target_school || '';
+  
+  // Calculate credits using canonical classification
+  let transferCredits = 0;
+  let altCredits = 0;
+  
+  for (const item of basket) {
+    const classifiableItem = {
+      providerType: item.providerType,
+      providerCode: (item as any).providerCode,
+      isAltCredit: (item as any).isAltCredit,
+      aceNccrs: (item as any).aceNccrs,
+      credits: item.credits,
+    };
     
-  if (constraints.max_ace_credits && aceCredits > constraints.max_ace_credits) {
-    violations.push({
-      type: 'transfer_cap',
-      severity: 'error',
-      message: `${aceCredits} ACE/alt credits exceeds ${constraints.max_ace_credits} transfer limit`,
-      affectedCourses: basket.map(i => i.courseId),
-      suggestedFix: 'Replace some alt-credit courses with university courses'
-    });
+    if (isTransferCredit(classifiableItem, institutionCode)) {
+      transferCredits += item.credits;
+    }
+    if (isAltCredit(classifiableItem)) {
+      altCredits += item.credits;
+    }
+  }
+  
+  // Get bucket mode from constraints (passed from policy data)
+  const bucketMode = (constraints as any).transfer_alt_bucket_mode as BucketMode | undefined;
+  const maxAltCredit = (constraints as any).max_alt_credit as number | undefined;
+  const maxTransferAltCombined = (constraints as any).max_transfer_alt_combined_credits as number | undefined;
+  
+  if (bucketMode === 'combined' && maxTransferAltCombined != null) {
+    // Combined bucket: (transfer + alt) must be <= combined cap
+    // Note: alt is a subset of transfer, so just check transfer total
+    const combinedTotal = transferCredits; // alt credits are already counted in transfer
+    if (combinedTotal > maxTransferAltCombined) {
+      violations.push({
+        type: 'combined_cap',
+        severity: 'error',
+        message: `${combinedTotal} combined transfer+alt credits exceeds ${maxTransferAltCombined} limit`,
+        affectedCourses: basket.filter(i => {
+          const c = { providerType: i.providerType, providerCode: (i as any).providerCode, credits: i.credits };
+          return isTransferCredit(c, institutionCode);
+        }).map(i => i.courseId),
+        suggestedFix: 'Replace some transfer/alt credits with resident courses',
+        metadata: { current: combinedTotal, limit: maxTransferAltCombined, bucketMode: 'combined' },
+      });
+    }
+  } else if (bucketMode === 'separate') {
+    // Separate buckets: enforce each cap independently
+    if (constraints.max_ace_credits && altCredits > constraints.max_ace_credits) {
+      violations.push({
+        type: 'transfer_cap',
+        severity: 'error',
+        message: `${altCredits} alt credits exceeds ${constraints.max_ace_credits} alt credit limit`,
+        affectedCourses: basket.filter(i => isAltCredit({
+          providerType: i.providerType,
+          providerCode: (i as any).providerCode,
+          isAltCredit: (i as any).isAltCredit,
+          aceNccrs: (i as any).aceNccrs,
+          credits: i.credits,
+        })).map(i => i.courseId),
+        suggestedFix: 'Replace some alt-credit courses with university courses',
+        metadata: { current: altCredits, limit: constraints.max_ace_credits, bucketMode: 'separate' },
+      });
+    }
+    
+    // Also check max_alt_credit from policy if different from constraints
+    if (maxAltCredit != null && altCredits > maxAltCredit) {
+      violations.push({
+        type: 'transfer_cap',
+        severity: 'error',
+        message: `${altCredits} alt credits exceeds ${maxAltCredit} noncollegiate limit`,
+        affectedCourses: basket.filter(i => isAltCredit({
+          providerType: i.providerType,
+          providerCode: (i as any).providerCode,
+          isAltCredit: (i as any).isAltCredit,
+          aceNccrs: (i as any).aceNccrs,
+          credits: i.credits,
+        })).map(i => i.courseId),
+        suggestedFix: 'Replace some alt-credit courses with RA transfer or resident courses',
+        metadata: { current: altCredits, limit: maxAltCredit, bucketMode: 'separate' },
+      });
+    }
+  } else {
+    // Legacy fallback: use original providerType-based check
+    const aceCredits = basket
+      .filter(i => i.providerType === 'mooc' || i.providerType === 'testing_center')
+      .reduce((sum, i) => sum + i.credits, 0);
+      
+    if (constraints.max_ace_credits && aceCredits > constraints.max_ace_credits) {
+      violations.push({
+        type: 'transfer_cap',
+        severity: 'error',
+        message: `${aceCredits} ACE/alt credits exceeds ${constraints.max_ace_credits} transfer limit`,
+        affectedCourses: basket.map(i => i.courseId),
+        suggestedFix: 'Replace some alt-credit courses with university courses',
+      });
+    }
   }
   
   // 5. Prerequisite check

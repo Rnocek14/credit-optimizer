@@ -360,8 +360,9 @@ function runTest(
       return isResidentCredit(classifiableItem, institutionCode);
     });
     
-    // Determine expected vs actual
+    // Determine expected vs actual based on bucket mode
     let passed = true;
+    const bucketMode = policyData.transfer_alt_bucket_mode as BucketMode;
     
     switch (testType) {
       case 'clean_transfer':
@@ -371,12 +372,22 @@ function runTest(
         
       case 'over_transfer_cap':
         // Should correctly detect over-cap (test passes if violation detected)
-        passed = violations.some(v => v.type === 'transfer_cap' || v.type === 'total_transfer');
+        // For combined mode, this triggers the combined_cap violation
+        if (bucketMode === 'combined') {
+          passed = violations.some(v => v.type === 'combined_cap' || v.type === 'transfer_cap' || v.type === 'total_transfer');
+        } else {
+          passed = violations.some(v => v.type === 'transfer_cap' || v.type === 'total_transfer');
+        }
         break;
         
       case 'over_alt_cap':
-        // Should correctly detect over-cap (test passes if violation detected)
-        passed = violations.some(v => v.type === 'transfer_cap' || v.type === 'provider_cap');
+        // Should correctly detect alt cap violation
+        // For combined mode, this also triggers the combined_cap (since alt is part of combined)
+        if (bucketMode === 'combined') {
+          passed = violations.some(v => v.type === 'combined_cap' || v.type === 'transfer_cap');
+        } else {
+          passed = violations.some(v => v.type === 'transfer_cap' || v.type === 'provider_cap');
+        }
         break;
         
       case 'capstone_substitution':
