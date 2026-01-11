@@ -8,7 +8,7 @@ import { usePlanStore } from '../state/usePlanStore';
 import { usePlanBasket } from '../state/usePlanBasket';
 import { calculateOptionScore, getRecommendedReason, compareOptionsStable, type ScoreBreakdown, type ProviderType } from '../utils/optionScoring';
 import { groupOptionsByEquivalency, type ScoredOption, type OptionGroup } from '../utils/optionGrouping';
-import { countsTowardAltCap, calculateAltCreditsTotal } from '../utils/altCredit';
+import { countsTowardAltCap, calculateAltCreditsTotal, getAltCreditBreakdown } from '../utils/altCredit';
 import { PolicyBadges, RecommendedBadge } from './PolicyBadges';
 import { OptionGroupRow } from './OptionGroupRow';
 import { useScoringPrefs } from '../state/useScoringPrefs';
@@ -178,17 +178,24 @@ export function MarketplacePanel({
     upper_division_min: policyData?.policy?.upper_division_min,
   }), [policyData, targetSchool, constraints.max_ace_credits]);
   
-  // Helper: Determine if an option counts as alt credit at add-time
-  // Uses shared helper for consistency across add-time, badges, and totals
-  const computeIsAltCredit = (opt: { aceNccrs?: boolean; providerType?: ProviderType }) => {
-    return countsTowardAltCap(opt);
-  };
-  
   // Calculate current alt credits in basket for policy warnings
   // Uses shared helper for consistency
   const currentAceCredits = useMemo(() => {
-    return calculateAltCreditsTotal(basket);
-  }, [basket]);
+    const total = calculateAltCreditsTotal(basket);
+    
+    // Debug log for alt credit verification (only in dev with debug=1)
+    if (!ENV.PROD && new URLSearchParams(window.location.search).get('debug') === '1') {
+      const breakdown = getAltCreditBreakdown(basket);
+      console.log('[ALT_CAP] current=%d cap=%d counted=%d items', 
+        breakdown.counted, 
+        anchorPolicy.max_alt_credits,
+        breakdown.items.filter(i => i.countsAsAlt).length,
+        breakdown.items
+      );
+    }
+    
+    return total;
+  }, [basket, anchorPolicy.max_alt_credits]);
   
   // Helper: check if option is in basket (uses optionId for identity, fallback to providerCode:courseId)
   const isOptionInBasket = (optionId: string, courseId: string, providerCode?: string) => {
@@ -492,7 +499,7 @@ export function MarketplacePanel({
                   level: option.level ?? 100,
                   aceNccrs: option.aceNccrs ?? false, // Store ACE/NCCRS flag
                   proctored: option.proctored ?? false, // Store proctored flag
-                  isAltCredit: computeIsAltCredit(option), // Explicit alt credit flag
+                  isAltCredit: countsTowardAltCap(option), // Explicit alt credit flag
                 });
               }}
               onRemoveFromBasket={(optionId) => removeItemWithToast(optionId)}
@@ -765,7 +772,7 @@ export function MarketplacePanel({
                           level: option.level ?? 100,
                           aceNccrs: option.aceNccrs ?? false, // Store ACE/NCCRS flag
                           proctored: option.proctored ?? false, // Store proctored flag
-                          isAltCredit: computeIsAltCredit(option), // Explicit alt credit flag
+                          isAltCredit: countsTowardAltCap(option), // Explicit alt credit flag
                         });
                       }
                     }}
