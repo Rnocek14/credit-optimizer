@@ -7,6 +7,7 @@ import {
   calculateCapExceedance,
   formatCreditLossReport,
 } from './creditLoss';
+import { countsTowardAltCap } from '../utils/altCredit';
 
 export interface Violation {
   type: 'budget' | 'workload' | 'deadline' | 'prerequisite' | 'transfer_cap' | 'conflict' | 'residency' | 'upper_division' | 'provider_cap' | 'gened_incomplete' | 'total_transfer' | 'capstone_substitution';
@@ -219,7 +220,7 @@ export function validateInstitutionPolicies(
       .filter(i => (i.level ?? 0) >= 300)
       .reduce((sum, i) => sum + i.credits, 0),
     altCredits: basket
-      .filter(i => i.providerType === 'mooc' || i.providerType === 'testing_center')
+      .filter(i => countsTowardAltCap({ isAltCredit: (i as any).isAltCredit, aceNccrs: (i as any).aceNccrs, providerType: i.providerType as any }))
       .reduce((sum, i) => sum + i.credits, 0),
     transfer: basket
       .filter(i => i.providerType !== 'university' || i.providerCode !== institutionCode)
