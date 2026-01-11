@@ -8,6 +8,7 @@ import { usePlanStore } from '../state/usePlanStore';
 import { usePlanBasket } from '../state/usePlanBasket';
 import { calculateOptionScore, getRecommendedReason, compareOptionsStable, type ScoreBreakdown, type ProviderType } from '../utils/optionScoring';
 import { groupOptionsByEquivalency, type ScoredOption, type OptionGroup } from '../utils/optionGrouping';
+import { countsTowardAltCap, calculateAltCreditsTotal } from '../utils/altCredit';
 import { PolicyBadges, RecommendedBadge } from './PolicyBadges';
 import { OptionGroupRow } from './OptionGroupRow';
 import { useScoringPrefs } from '../state/useScoringPrefs';
@@ -178,28 +179,15 @@ export function MarketplacePanel({
   }), [policyData, targetSchool, constraints.max_ace_credits]);
   
   // Helper: Determine if an option counts as alt credit at add-time
-  // Priority: 1) Explicit ACE/NCCRS tag → alt credit
-  //           2) Non-university providerType → alt credit
+  // Uses shared helper for consistency across add-time, badges, and totals
   const computeIsAltCredit = (opt: { aceNccrs?: boolean; providerType?: ProviderType }) => {
-    // ACE/NCCRS always counts as alt credit
-    if (opt.aceNccrs === true) return true;
-    // University credits don't count toward alt cap
-    return opt.providerType !== 'university';
+    return countsTowardAltCap(opt);
   };
   
   // Calculate current alt credits in basket for policy warnings
-  // Uses explicit isAltCredit flag when available, falls back to refined heuristic
+  // Uses shared helper for consistency
   const currentAceCredits = useMemo(() => {
-    return basket
-      .filter(b => {
-        // 1) Prefer explicit flag if set
-        if (typeof b.isAltCredit === 'boolean') return b.isAltCredit;
-        // 2) Check stored aceNccrs (if available) → alt credit
-        if (b.aceNccrs === true) return true;
-        // 3) Fallback: non-university = alt credit
-        return b.providerType !== 'university';
-      })
-      .reduce((sum, b) => sum + b.credits, 0);
+    return calculateAltCreditsTotal(basket);
   }, [basket]);
   
   // Helper: check if option is in basket (uses optionId for identity, fallback to providerCode:courseId)
