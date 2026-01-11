@@ -169,6 +169,11 @@ CREATE POLICY "Anyone can view degree templates"
 -- ============================================================================
 -- SEED TESU BSBA POLICY DATA
 -- ============================================================================
+-- ⚠️ LEGACY SEED DATA - For testing only
+-- The authoritative policy data lives in institution_policy_packs table.
+-- These seeds may conflict with verified policy pack values.
+-- See: institution_policy_packs.policy_data for verified caps.
+-- ============================================================================
 
 -- Ensure TESU institution exists
 INSERT INTO public.institutions (code, name, type, website_url, accreditation_level, reputation_score, verification_status, metadata)
@@ -186,6 +191,8 @@ ON CONFLICT (code) DO UPDATE SET updated_at = now()
 RETURNING id;
 
 -- Seed TESU credit limits
+-- ⚠️ NOTE: alt_credit_max here (80) may differ from policy_pack value.
+-- Policy pack is authoritative for runtime enforcement.
 INSERT INTO public.institution_credit_limits (institution_id, limit_type, credit_value, provider_code, notes)
 SELECT 
   (SELECT id FROM public.institutions WHERE code = 'TESU'),
@@ -196,15 +203,15 @@ SELECT
 FROM (VALUES
   ('total_credits', 120, NULL, 'Standard bachelor degree requirement'),
   ('min_residency', 15, NULL, 'Can be satisfied with cornerstone + capstone + 9 other credits'),
-  ('upper_division_min', 30, NULL, 'Minimum 300/400 level credits required'),
+  ('upper_division_min', 30, NULL, 'Minimum 300/400 level credits required - VERIFY from catalog before using'),
   ('total_transfer', 113, NULL, 'Max credits that can transfer (120 - 15 residency + waivers)'),
-  ('alt_credit_max', 80, NULL, 'Max ACE/NCCRS alternative credits combined'),
+  ('alt_credit_max', 80, NULL, 'LEGACY: Max ACE/NCCRS - see policy_pack for verified value'),
   ('min_ra_credit', 40, NULL, 'Minimum regionally-accredited credits'),
-  ('clep_max', 40, NULL, 'Maximum CLEP exam credits'),
-  ('dsst_max', 30, NULL, 'Maximum DSST exam credits'),
-  ('per_provider_max', 30, 'STUDY_COM', 'Max Study.com credits'),
-  ('per_provider_max', 90, 'SOPHIA', 'Max Sophia Learning credits'),
-  ('per_provider_max', 30, 'STRAIGHTERLINE', 'Max StraighterLine credits')
+  ('clep_max', 40, NULL, 'LEGACY: Per-provider cap - verify provenance before enforcing'),
+  ('dsst_max', 30, NULL, 'LEGACY: Per-provider cap - verify provenance before enforcing'),
+  ('per_provider_max', 30, 'STUDY_COM', 'LEGACY: Per-provider cap - verify provenance before enforcing'),
+  ('per_provider_max', 90, 'SOPHIA', 'LEGACY: Per-provider cap - verify provenance before enforcing'),
+  ('per_provider_max', 30, 'STRAIGHTERLINE', 'LEGACY: Per-provider cap - verify provenance before enforcing')
 ) AS v(limit_type, credit_value, provider_code, notes)
 ON CONFLICT (institution_id, limit_type, provider_code) DO NOTHING;
 

@@ -20,18 +20,24 @@ The `validateTESUPolicies()` function enforces Thomas Edison State University (T
 - **Severity**: Error
 - **Fix Suggestion**: Add more 300/400 level courses
 
-### 3. Per-Provider Caps
+### 3. Per-Provider Caps (Legacy / Requires Provenance)
+
+> ⚠️ **IMPORTANT**: Per-provider caps are **only enforced when explicitly verified with provenance**.
+> The authoritative policy source is `institution_policy_packs.policy_data`.
+> These legacy values exist in `institution_credit_limits` but should NOT be used
+> without `provenance_verified_at` confirmation.
+
 **Rule**: Each alternative credit provider has a maximum transfer limit
 
-| Provider | Limit Type | Default Cap |
-|----------|-----------|-------------|
-| CLEP | `clep_max` | 40 credits |
-| DSST | `dsst_max` | 30 credits |
-| Sophia Learning | `sophia_max` | 90 credits |
-| Study.com | `study_com_max` | 30 credits |
+| Provider | Limit Type | Legacy Cap | Status |
+|----------|-----------|-------------|--------|
+| CLEP | `clep_max` | 40 credits | ⚠️ Verify before enforcing |
+| DSST | `dsst_max` | 30 credits | ⚠️ Verify before enforcing |
+| Sophia Learning | `sophia_max` | 90 credits | ⚠️ Verify before enforcing |
+| Study.com | `study_com_max` | 30 credits | ⚠️ Verify before enforcing |
 
 - **Basket Filter**: `providerCode === [PROVIDER]`
-- **Severity**: Error
+- **Severity**: Error (only when provenance-verified)
 - **Fix Suggestion**: Remove excess credits from provider or replace with other providers
 
 ### 4. Total Transfer Cap
@@ -167,3 +173,17 @@ To test the validator:
 - [ ] Add prerequisite chain validation
 - [ ] Check minimum grade requirements for gen-ed courses
 - [ ] Validate course-level restrictions (e.g., "max 2 courses from same provider in major")
+
+## Truth & Trust Layer Integration
+
+This validator is part of the **verified-only truth model**:
+
+1. **Policy Packs are authoritative** - `institution_policy_packs` holds verified data
+2. **Provenance required** - Each cap requires `provenance_url` and `provenance_verified_at`
+3. **Staleness gating** - Packs older than 180 days trigger SEV1 warnings
+4. **Bucket mode awareness** - Enforcement differs for `separate` vs `combined` modes
+
+For more details, see:
+- `docs/TRUTH_TRUST_LAYER_SPEC.md`
+- `docs/ops-dashboard-queries.sql`
+- `src/pages/EduTree/v5/engine/integrityScanner.ts`

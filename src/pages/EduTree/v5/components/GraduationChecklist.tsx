@@ -96,7 +96,12 @@ export function GraduationChecklist({ basket, policy, compact = false }: Graduat
       {/* Header with status */}
       <div className="flex items-center justify-between">
         <h4 className="font-medium text-sm">Graduation Readiness</h4>
-        <Badge variant={statusLabel.variant}>{statusLabel.label}</Badge>
+        <div className="flex items-center gap-2">
+          <Badge variant={statusLabel.variant}>{statusLabel.label}</Badge>
+          {statusLabel.caveat && (
+            <span className="text-xs text-muted-foreground" title={statusLabel.caveat}>ⓘ</span>
+          )}
+        </div>
       </div>
 
       {/* Requirements list */}
@@ -143,11 +148,21 @@ export function GraduationChecklist({ basket, policy, compact = false }: Graduat
         </Collapsible>
       )}
 
-      {/* Success state */}
-      {readiness.isGraduationReady && (
+      {/* Success state - with truth guard for unverified upper-division */}
+      {readiness.isGraduationReady && !readiness.isUpperDivisionVerified && (
+        <div className="flex items-center gap-2 text-sm text-yellow-600 dark:text-yellow-400 bg-yellow-500/10 rounded-md px-3 py-2">
+          <Info className="h-4 w-4" />
+          <div>
+            <span className="font-medium">Requirements met*</span>
+            <span className="block text-xs opacity-80">Upper-division requirement unverified for this institution</span>
+          </div>
+        </div>
+      )}
+      
+      {readiness.isGraduationReady && readiness.isUpperDivisionVerified && (
         <div className="flex items-center gap-2 text-sm text-green-600 dark:text-green-400 bg-green-500/10 rounded-md px-3 py-2">
           <CheckCircle className="h-4 w-4" />
-          All graduation requirements met!
+          All graduation requirements verified!
         </div>
       )}
     </div>

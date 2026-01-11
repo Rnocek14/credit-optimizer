@@ -14,18 +14,18 @@ export interface GraduationRequirement {
   shortfall: number;
   severity: 'ok' | 'warning' | 'error';
 }
-
 export interface GraduationReadiness {
   totalCredits: GraduationRequirement;
   residency: GraduationRequirement;
   upperDivision: GraduationRequirement;
   transferCap: GraduationRequirement;
   isGraduationReady: boolean;
+  /** True when upper-division requirement is verifiable (policy has min_upper_division_credits) */
+  isUpperDivisionVerified: boolean;
   blockers: string[];
   warnings: string[];
   progressPercent: number;
 }
-
 const REQUIRED_CREDITS = 120;
 
 /**
@@ -136,6 +136,9 @@ export function validateGraduationReadiness(
     blockers.push(`Exceeds transfer cap by ${overTransfer} credits - replace ACE courses with institutional`);
   }
 
+  // Upper-division is only verified if the policy explicitly sets the requirement
+  const isUpperDivisionVerified = (policy.upper_division_min ?? null) !== null;
+
   const isGraduationReady = blockers.length === 0 && 
     totalCredits.met && 
     residency.met && 
@@ -153,6 +156,7 @@ export function validateGraduationReadiness(
     upperDivision,
     transferCap,
     isGraduationReady,
+    isUpperDivisionVerified,
     blockers,
     warnings,
     progressPercent,
@@ -165,7 +169,18 @@ export function validateGraduationReadiness(
 export function getGraduationStatusLabel(readiness: GraduationReadiness): {
   label: string;
   variant: 'default' | 'secondary' | 'destructive' | 'outline';
+  /** Additional context when completion cannot be fully verified */
+  caveat?: string;
 } {
+  // Truth guard: if upper-division is not verified, we cannot claim "Ready to Graduate"
+  if (readiness.isGraduationReady && !readiness.isUpperDivisionVerified) {
+    return { 
+      label: '⚠ Requirements Met*', 
+      variant: 'secondary',
+      caveat: 'Upper-division requirement unverified'
+    };
+  }
+
   if (readiness.isGraduationReady) {
     return { label: '✓ Ready to Graduate', variant: 'default' };
   }
