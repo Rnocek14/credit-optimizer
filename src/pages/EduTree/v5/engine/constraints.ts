@@ -138,7 +138,7 @@ export function validatePlan(
     }
   }
   
-  // 4. Transfer/Alt cap enforcement - bucket-mode-aware
+  // 4. Transfer/Alt cap enforcement (bucket-mode aware, NO heuristics)
   // Uses canonical classification from creditClassification.ts
   const institutionCode = constraints.target_school || '';
   
@@ -151,56 +151,58 @@ export function validatePlan(
     credits: item.credits,
   });
   
+  // Classification predicates (reusable, no double-counting)
+  const countsAsTransfer = (i: BasketItem) => isTransferCredit(toClassifiable(i), institutionCode);
+  const countsAsAlt = (i: BasketItem) => isAltCredit(toClassifiable(i));
+  // Combined = transfer OR alt (items satisfying both count ONCE)
+  const countsTowardCombined = (i: BasketItem) => countsAsTransfer(i) || countsAsAlt(i);
+  
   // Calculate credits using canonical classification
-  let transferCredits = 0;
-  let altCredits = 0;
+  const transferCredits = basket.filter(countsAsTransfer).reduce((s, i) => s + i.credits, 0);
+  const altCredits = basket.filter(countsAsAlt).reduce((s, i) => s + i.credits, 0);
   
-  for (const item of basket) {
-    const classifiableItem = toClassifiable(item);
-    if (isTransferCredit(classifiableItem, institutionCode)) {
-      transferCredits += item.credits;
-    }
-    if (isAltCredit(classifiableItem)) {
-      altCredits += item.credits;
-    }
-  }
-  
-  // Get bucket mode from constraints (passed from policy data)
+  // Get bucket mode and caps from constraints (passed from policy data)
   const bucketMode = (constraints as any).transfer_alt_bucket_mode as BucketMode | undefined;
   const policyAltCap = (constraints as any).max_alt_credit as number | undefined;
   const constraintsAltCap = constraints.max_ace_credits;
   const maxTransferAltCombined = (constraints as any).max_transfer_alt_combined_credits as number | undefined;
+  const maxTransferCredits = (constraints as any).max_transfer_credits as number | undefined;
   
-  // Pick single effective alt cap (policy takes precedence)
+  // Pick single effective alt cap (policy takes precedence, no duplicates)
   const effectiveAltCap = policyAltCap ?? constraintsAltCap ?? null;
   
-  // Helper: get affected course IDs for transfer OR alt credits
-  const getTransferOrAltCourseIds = () => basket
-    .filter(i => {
-      const c = toClassifiable(i);
-      return isTransferCredit(c, institutionCode) || isAltCredit(c);
-    })
-    .map(i => i.courseId);
+  // Helper: get affected course IDs by predicate
+  const getCourseIds = (pred: (i: BasketItem) => boolean) =>
+    basket.filter(pred).map(i => i.courseId);
   
-  // Helper: get affected course IDs for alt credits only
-  const getAltCourseIds = () => basket
-    .filter(i => isAltCredit(toClassifiable(i)))
-    .map(i => i.courseId);
-  
-  if (bucketMode === 'combined' && maxTransferAltCombined != null) {
-    // Combined bucket: (transfer + alt) counted together
-    // Note: For combined schools, alt credits are WITHIN transfer total, not additive
-    // So the combined total is simply transferCredits (which includes alt)
-    const combinedTotal = transferCredits;
-    if (combinedTotal > maxTransferAltCombined) {
+  if (bucketMode === 'combined') {
+    if (maxTransferAltCombined == null) {
+      // Combined mode but missing combined cap = policy invalid
       violations.push({
-        type: 'combined_cap',
+        type: 'policy_unverified',
         severity: 'error',
-        message: `${combinedTotal} combined transfer+alt credits exceeds ${maxTransferAltCombined} limit`,
-        affectedCourses: getTransferOrAltCourseIds(),
-        suggestedFix: 'Replace some transfer/alt credits with resident courses',
-        metadata: { current: combinedTotal, limit: maxTransferAltCombined, bucketMode: 'combined' },
+        message: `bucketMode=combined but max_transfer_alt_combined_credits is missing.`,
+        affectedCourses: [],
+        suggestedFix: 'Verify policy source and populate max_transfer_alt_combined_credits',
+        metadata: { bucketMode: 'combined' },
       });
+    } else {
+      // Combined bucket: all non-resident credit sources share one cap
+      // Use countsTowardCombined to avoid double-counting items that are both transfer AND alt
+      const combinedTotal = basket
+        .filter(countsTowardCombined)
+        .reduce((s, i) => s + i.credits, 0);
+
+      if (combinedTotal > maxTransferAltCombined) {
+        violations.push({
+          type: 'combined_cap',
+          severity: 'error',
+          message: `${combinedTotal} combined transfer+alt credits exceeds ${maxTransferAltCombined} limit`,
+          affectedCourses: getCourseIds(countsTowardCombined),
+          suggestedFix: 'Replace some transfer/alt credits with resident courses',
+          metadata: { current: combinedTotal, limit: maxTransferAltCombined, bucketMode: 'combined' },
+        });
+      }
     }
   } else if (bucketMode === 'separate') {
     // Separate buckets: enforce each cap independently
@@ -210,22 +212,19 @@ export function validatePlan(
         type: 'alt_cap',
         severity: 'error',
         message: `${altCredits} alt credits exceeds ${effectiveAltCap} noncollegiate limit`,
-        affectedCourses: getAltCourseIds(),
+        affectedCourses: getCourseIds(countsAsAlt),
         suggestedFix: 'Replace some alt-credit courses with RA transfer or resident courses',
         metadata: { current: altCredits, limit: effectiveAltCap, bucketMode: 'separate' },
       });
     }
     
-    // 2. Transfer cap (if school has one separate from alt)
-    const maxTransferCredits = (constraints as any).max_transfer_credits as number | undefined;
+    // 2. Transfer cap (if school has one)
     if (maxTransferCredits != null && transferCredits > maxTransferCredits) {
       violations.push({
         type: 'transfer_cap',
         severity: 'error',
         message: `${transferCredits} transfer credits exceeds ${maxTransferCredits} limit`,
-        affectedCourses: basket
-          .filter(i => isTransferCredit(toClassifiable(i), institutionCode))
-          .map(i => i.courseId),
+        affectedCourses: getCourseIds(countsAsTransfer),
         suggestedFix: 'Replace some transfer credits with resident courses',
         metadata: { current: transferCredits, limit: maxTransferCredits, bucketMode: 'separate' },
       });
@@ -238,7 +237,7 @@ export function validatePlan(
       message: `transfer_alt_bucket_mode is '${bucketMode ?? 'undefined'}'. Cannot enforce transfer/alt caps without verified bucket mode.`,
       affectedCourses: [],
       suggestedFix: 'Verify policy source and set transfer_alt_bucket_mode to separate or combined',
-      metadata: { bucketMode: bucketMode ?? 'unknown' as BucketMode },
+      metadata: { bucketMode: (bucketMode ?? 'unknown') as BucketMode },
     });
   }
   
