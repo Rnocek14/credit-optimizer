@@ -114,12 +114,13 @@ export function useAvailableInstitutions() {
               .filter(([_, v]) => v == null)
               .map(([k]) => k);
             
-            // Also check for provenance (no unverified values)
-            const hasProvenance = pd.provenance_verified_at != null || pd.provenance_excerpt != null;
+            // Check provenance_verified_at (required for staleness calculation)
+            // Note: excerpt alone is not sufficient - we need a timestamp for staleness
+            const verifiedAt = pd.provenance_verified_at ? new Date(pd.provenance_verified_at) : null;
+            const hasExcerptOnly = !verifiedAt && pd.provenance_excerpt != null;
             
             // Check staleness: policies verified > 180 days ago are blocked
             const STALENESS_THRESHOLD_DAYS = 180;
-            const verifiedAt = pd.provenance_verified_at ? new Date(pd.provenance_verified_at) : null;
             const daysSinceVerified = verifiedAt 
               ? Math.floor((Date.now() - verifiedAt.getTime()) / (1000 * 60 * 60 * 24))
               : Infinity;
@@ -134,9 +135,14 @@ export function useAvailableInstitutions() {
               continue;
             }
             
-            if (!hasProvenance) {
-              console.warn('[useAvailableInstitutions] Skipping %s: missing provenance verification', 
-                row.institution);
+            if (!verifiedAt) {
+              if (hasExcerptOnly) {
+                console.warn('[useAvailableInstitutions] Skipping %s: has provenance_excerpt but missing provenance_verified_at (required for staleness)', 
+                  row.institution);
+              } else {
+                console.warn('[useAvailableInstitutions] Skipping %s: missing provenance verification', 
+                  row.institution);
+              }
               continue;
             }
             

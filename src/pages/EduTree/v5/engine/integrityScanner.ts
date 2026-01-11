@@ -77,6 +77,39 @@ export interface IntegrityScanSummary {
   failedSimulations: number;
   failureCodes: Record<string, number>;
   driftFindings: Array<{ file: string; issue: string }>;
+  // NEW: Anchor Contract Report
+  anchorContractReport?: AnchorContractReport;
+  // NEW: Remediation queue
+  remediationQueue?: RemediationItem[];
+}
+
+// Anchor Contract Report - single source of truth for what's selectable
+export interface AnchorContractReport {
+  selectableAnchors: AnchorEligibility[];
+  blockedAnchors: AnchorEligibility[];
+  totals: {
+    selectableCount: number;
+    blockedCount: number;
+  };
+  blockedByReason: Record<string, number>;
+  policyContractViolations: PolicyContractViolation[];
+}
+
+export interface PolicyContractViolation {
+  institution: string;
+  severity: 'SEV0' | 'SEV1' | 'SEV2';
+  violation: string;
+  details?: any;
+}
+
+// Remediation queue item - actionable operator tasks
+export interface RemediationItem {
+  severity: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
+  file: string;
+  issue: string;
+  action: string;
+  owner: 'human' | 'automated';
+  suggestedSQL?: string;
 }
 
 // ============================================================================
@@ -599,7 +632,7 @@ async function scanTemplate(
 export interface AnchorEligibility {
   institution: string;
   selectable: boolean;
-  reason?: 'missing_fields' | 'unknown_bucket_mode' | 'missing_provenance' | 'stale_provenance' | 'missing_mode_caps';
+  reason?: 'missing_fields' | 'unknown_bucket_mode' | 'missing_provenance' | 'missing_provenance_verified_at' | 'stale_provenance' | 'missing_mode_caps';
   missingFields?: string[];
   bucketMode?: string;
   daysSinceVerified?: number;
@@ -610,28 +643,62 @@ const STALENESS_THRESHOLD_DAYS = 180;
 /**
  * Check if a policy pack meets all anchor selection requirements
  * Must exactly mirror useAvailableInstitutions logic
+ * 
+ * ORDERING (critical for clean analytics):
+ * 1. Check bucket mode first → unknown_bucket_mode
+ * 2. Check mode-specific caps → missing_mode_caps  
+ * 3. Check base required fields → missing_fields
+ * 4. Check provenance_verified_at exists → missing_provenance_verified_at
+ * 5. Check staleness → stale_provenance
  */
 export function checkAnchorEligibility(policyData: any, institution: string): AnchorEligibility {
   const pd = policyData || {};
   const gradeRules = pd.grade_rules || {};
   const bucketMode = pd.transfer_alt_bucket_mode as string | undefined;
   
-  // Base required fields (always needed)
+  // GATE 1: Bucket mode must be known FIRST (before checking mode-specific fields)
+  const hasKnownBucketMode = bucketMode === 'separate' || bucketMode === 'combined';
+  if (!hasKnownBucketMode) {
+    return {
+      institution,
+      selectable: false,
+      reason: 'unknown_bucket_mode',
+      bucketMode: bucketMode ?? 'undefined',
+    };
+  }
+  
+  // GATE 2: Mode-specific caps must exist
+  if (bucketMode === 'separate') {
+    const maxAltCredit = pd.max_alt_credit ?? pd.transfer_credit_policy?.max_alt_credit;
+    if (maxAltCredit == null) {
+      return {
+        institution,
+        selectable: false,
+        reason: 'missing_mode_caps',
+        missingFields: ['max_alt_credit'],
+        bucketMode,
+      };
+    }
+  } else if (bucketMode === 'combined') {
+    if (pd.max_transfer_alt_combined_credits == null) {
+      return {
+        institution,
+        selectable: false,
+        reason: 'missing_mode_caps',
+        missingFields: ['max_transfer_alt_combined_credits'],
+        bucketMode,
+      };
+    }
+  }
+  
+  // GATE 3: Base required fields (bucket mode already validated)
   const baseRequiredFields: Record<string, unknown> = {
     residency_credits: pd.residency_credits,
     max_transfer_credits: pd.max_transfer_credits,
     capstone_in_residence: pd.capstone_in_residence,
     degree_credit_total: pd.degree_credit_total,
     min_transfer_grade: gradeRules.min_transfer_grade,
-    transfer_alt_bucket_mode: bucketMode,
   };
-  
-  // Additional required fields based on bucket mode
-  if (bucketMode === 'separate') {
-    baseRequiredFields.max_alt_credit = pd.max_alt_credit ?? pd.transfer_credit_policy?.max_alt_credit;
-  } else if (bucketMode === 'combined') {
-    baseRequiredFields.max_transfer_alt_combined_credits = pd.max_transfer_alt_combined_credits;
-  }
   
   const missingFields = Object.entries(baseRequiredFields)
     .filter(([_, v]) => v == null)
@@ -647,9 +714,20 @@ export function checkAnchorEligibility(policyData: any, institution: string): An
     };
   }
   
-  // Check provenance
-  const hasProvenance = pd.provenance_verified_at != null || pd.provenance_excerpt != null;
-  if (!hasProvenance) {
+  // GATE 4: Provenance verified_at must exist (excerpt alone is not sufficient for staleness)
+  // excerpt-only policies are treated as missing provenance_verified_at
+  const verifiedAt = pd.provenance_verified_at ? new Date(pd.provenance_verified_at) : null;
+  
+  if (!verifiedAt) {
+    // Check if they have excerpt but no verified_at (legacy state)
+    if (pd.provenance_excerpt) {
+      return {
+        institution,
+        selectable: false,
+        reason: 'missing_provenance_verified_at',
+        bucketMode,
+      };
+    }
     return {
       institution,
       selectable: false,
@@ -658,22 +736,8 @@ export function checkAnchorEligibility(policyData: any, institution: string): An
     };
   }
   
-  // Check bucket mode is known
-  const hasKnownBucketMode = bucketMode === 'separate' || bucketMode === 'combined';
-  if (!hasKnownBucketMode) {
-    return {
-      institution,
-      selectable: false,
-      reason: 'unknown_bucket_mode',
-      bucketMode: bucketMode ?? 'undefined',
-    };
-  }
-  
-  // Check staleness
-  const verifiedAt = pd.provenance_verified_at ? new Date(pd.provenance_verified_at) : null;
-  const daysSinceVerified = verifiedAt 
-    ? Math.floor((Date.now() - verifiedAt.getTime()) / (1000 * 60 * 60 * 24))
-    : Infinity;
+  // GATE 5: Staleness check (verified_at is the anchor, not excerpt)
+  const daysSinceVerified = Math.floor((Date.now() - verifiedAt.getTime()) / (1000 * 60 * 60 * 24));
   
   if (daysSinceVerified > STALENESS_THRESHOLD_DAYS) {
     return {
@@ -685,6 +749,7 @@ export function checkAnchorEligibility(policyData: any, institution: string): An
     };
   }
   
+  // All gates passed
   return {
     institution,
     selectable: true,
@@ -693,21 +758,122 @@ export function checkAnchorEligibility(policyData: any, institution: string): An
   };
 }
 
+/**
+ * Check if a policy pack has the min_upper_division_credits field
+ * If null, degree completion claims are "unverified"
+ */
+export function checkUpperDivisionVerified(policyData: any): { verified: boolean; value?: number } {
+  const minUL = policyData?.min_upper_division_credits;
+  return {
+    verified: minUL != null,
+    value: minUL ?? undefined,
+  };
+}
+
+/**
+ * Build Anchor Contract Report from list of policy packs
+ * This is the single source of truth for what's selectable
+ */
+export function buildAnchorContractReport(
+  policyPacks: Array<{ institution: string; status: string; policy_data: any }>
+): AnchorContractReport {
+  const selectableAnchors: AnchorEligibility[] = [];
+  const blockedAnchors: AnchorEligibility[] = [];
+  const blockedByReason: Record<string, number> = {};
+  const policyContractViolations: PolicyContractViolation[] = [];
+  
+  for (const pack of policyPacks) {
+    // Only check active packs for anchor eligibility
+    if (pack.status !== 'active') continue;
+    
+    const eligibility = checkAnchorEligibility(pack.policy_data, pack.institution);
+    
+    if (eligibility.selectable) {
+      selectableAnchors.push(eligibility);
+    } else {
+      blockedAnchors.push(eligibility);
+      const reason = eligibility.reason || 'unknown';
+      blockedByReason[reason] = (blockedByReason[reason] || 0) + 1;
+      
+      // Active pack that's blocked = policy contract violation (SEV0)
+      policyContractViolations.push({
+        institution: pack.institution,
+        severity: 'SEV0',
+        violation: `Active pack blocked: ${reason}`,
+        details: eligibility,
+      });
+    }
+    
+    // Check upper-division verification status
+    const ulCheck = checkUpperDivisionVerified(pack.policy_data);
+    if (!ulCheck.verified) {
+      policyContractViolations.push({
+        institution: pack.institution,
+        severity: 'SEV2',
+        violation: 'min_upper_division_credits not set - degree completion claims unverified',
+      });
+    }
+  }
+  
+  return {
+    selectableAnchors,
+    blockedAnchors,
+    totals: {
+      selectableCount: selectableAnchors.length,
+      blockedCount: blockedAnchors.length,
+    },
+    blockedByReason,
+    policyContractViolations,
+  };
+}
+
 // ============================================================================
-// Known Policy Drift Locations (static audit results)
+// Remediation Queue (actionable operator tasks)
+// ============================================================================
+
+function buildRemediationQueue(): RemediationItem[] {
+  return [
+    {
+      severity: 'MEDIUM',
+      file: 'src/hooks/useInstitutionLimits.ts:5-19',
+      issue: 'Interface includes legacy per-provider cap keys',
+      action: 'Keep for backward compat; deprecation comment added',
+      owner: 'human',
+    },
+    {
+      severity: 'HIGH',
+      file: 'scripts/optimizer-tables-setup.sql:197-206',
+      issue: 'Seeds upper_division_min: 30, alt_credit_max: 80 that conflict with verified-only policy',
+      action: 'Remove these seeds OR mark as legacy/test-only; policy comes from institution_policy_packs only',
+      owner: 'human',
+      suggestedSQL: `-- Remove hardcoded seeds or add comment
+-- DELETE FROM institution_credit_limits WHERE limit_type IN ('upper_division_min', 'alt_credit_max') AND notes LIKE '%seed%';`,
+    },
+    {
+      severity: 'MEDIUM',
+      file: 'institution_policy_packs',
+      issue: 'min_upper_division_credits not populated for active packs',
+      action: 'Add min_upper_division_credits to policy_data with provenance for each active institution',
+      owner: 'human',
+      suggestedSQL: `-- Example: Add UL requirement to TESU (verify from catalog first!)
+-- UPDATE institution_policy_packs 
+-- SET policy_data = policy_data || '{"min_upper_division_credits": 30}'::jsonb
+-- WHERE institution = 'TESU' AND status = 'active';`,
+    },
+  ];
+}
+
+// ============================================================================
+// Known Policy Drift Locations (legacy - replaced by remediation queue)
 // ============================================================================
 
 function getKnownDriftFindings(): IntegrityScanSummary['driftFindings'] {
-  // Policy drift findings as of 2026-01-11
-  // FIXED: Legacy provider caps now only enforce if explicitly in policy
-  // FIXED: constraints.ts and creditOptimizer.ts use policy-derived caps
-  // FIXED: SNHU demoted, unknown bucket mode blocked by DB trigger
-  // FIXED: Staleness gating added (180 days)
-  return [
-    // Remaining items (backward compat or needs data update)
-    { file: 'src/hooks/useInstitutionLimits.ts:5-19', issue: 'Interface includes legacy per-provider cap keys (backward compat only)' },
-    { file: 'scripts/optimizer-tables-setup.sql:197-206', issue: 'Seeds wrong upper_division_min: 30, alt_credit_max: 80 (needs update)' },
-  ];
+  // DEPRECATED: Use remediationQueue instead
+  // Keeping for backward compat with existing report consumers
+  return buildRemediationQueue().map(item => ({
+    file: item.file,
+    issue: item.issue,
+  }));
 }
 
 // ============================================================================
@@ -716,11 +882,14 @@ function getKnownDriftFindings(): IntegrityScanSummary['driftFindings'] {
 
 /**
  * Run integrity scan on all templates
+ * 
+ * Optionally accepts policyPacks to generate Anchor Contract Report
  */
 export async function runIntegrityScan(
   templates: any[],
   config?: IntegrityScanConfig,
-  allOptions?: MarketplaceOption[]
+  allOptions?: MarketplaceOption[],
+  policyPacks?: Array<{ institution: string; status: string; policy_data: any }>
 ): Promise<{ summary: IntegrityScanSummary; results: IntegrityScanResult[] }> {
   const results: IntegrityScanResult[] = [];
   const failureCodes: Record<string, number> = {};
@@ -749,10 +918,24 @@ export async function runIntegrityScan(
   );
   
   const driftFindings = getKnownDriftFindings();
+  const remediationQueue = buildRemediationQueue();
   
-  // Add drift to failure codes if found
+  // Build Anchor Contract Report if policy packs provided
+  const anchorContractReport = policyPacks 
+    ? buildAnchorContractReport(policyPacks) 
+    : undefined;
+  
+  // Add drift/remediation to failure codes
   if (driftFindings.length > 0) {
     failureCodes['POLICY_DRIFT_REFERENCE_FOUND'] = driftFindings.length;
+  }
+  
+  // Add anchor contract violations to failure codes
+  if (anchorContractReport?.policyContractViolations.length) {
+    const sev0Count = anchorContractReport.policyContractViolations.filter(v => v.severity === 'SEV0').length;
+    if (sev0Count > 0) {
+      failureCodes['ANCHOR_CONTRACT_VIOLATION_SEV0'] = sev0Count;
+    }
   }
   
   const summary: IntegrityScanSummary = {
@@ -764,6 +947,8 @@ export async function runIntegrityScan(
     failedSimulations: totalSimulations - passedSimulations,
     failureCodes,
     driftFindings,
+    anchorContractReport,
+    remediationQueue,
   };
   
   return { summary, results };
