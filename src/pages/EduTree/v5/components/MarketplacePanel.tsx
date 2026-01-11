@@ -188,13 +188,15 @@ export function MarketplacePanel({
   };
   
   // Calculate current alt credits in basket for policy warnings
-  // Uses explicit isAltCredit flag when available, falls back to providerType heuristic
+  // Uses explicit isAltCredit flag when available, falls back to refined heuristic
   const currentAceCredits = useMemo(() => {
     return basket
       .filter(b => {
-        // Prefer explicit flag if set
+        // 1) Prefer explicit flag if set
         if (typeof b.isAltCredit === 'boolean') return b.isAltCredit;
-        // Fallback: non-university = alt credit
+        // 2) Check stored aceNccrs (if available) → alt credit
+        if (b.aceNccrs === true) return true;
+        // 3) Fallback: non-university = alt credit
         return b.providerType !== 'university';
       })
       .reduce((sum, b) => sum + b.credits, 0);
@@ -500,6 +502,8 @@ export function MarketplacePanel({
                   providerCode: option.providerCode,
                   equivalency_key: option.equivalency_key,
                   level: option.level ?? 100,
+                  aceNccrs: option.aceNccrs ?? false, // Store ACE/NCCRS flag
+                  proctored: option.proctored ?? false, // Store proctored flag
                   isAltCredit: computeIsAltCredit(option), // Explicit alt credit flag
                 });
               }}
@@ -771,6 +775,8 @@ export function MarketplacePanel({
                           providerCode: option.providerCode,
                           equivalency_key: option.equivalency_key,
                           level: option.level ?? 100,
+                          aceNccrs: option.aceNccrs ?? false, // Store ACE/NCCRS flag
+                          proctored: option.proctored ?? false, // Store proctored flag
                           isAltCredit: computeIsAltCredit(option), // Explicit alt credit flag
                         });
                       }
