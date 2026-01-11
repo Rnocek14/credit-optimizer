@@ -85,6 +85,7 @@ export function useAvailableInstitutions() {
             if (seenCodes.has(row.institution)) continue;
             
             // GATE: Only include if ALL required fields are present for degree buildability
+            // AND provenance is verified (no silent assumptions)
             const pd = row.policy_data || {};
             const gradeRules = pd.grade_rules || {};
             
@@ -101,9 +102,18 @@ export function useAvailableInstitutions() {
               .filter(([_, v]) => v == null)
               .map(([k]) => k);
             
+            // Also check for provenance (no unverified values)
+            const hasProvenance = pd.provenance_verified_at != null || pd.provenance_excerpt != null;
+            
             if (missingFields.length > 0) {
               console.warn('[useAvailableInstitutions] Skipping %s: missing required fields: %s', 
                 row.institution, missingFields.join(', '));
+              continue;
+            }
+            
+            if (!hasProvenance) {
+              console.warn('[useAvailableInstitutions] Skipping %s: missing provenance verification', 
+                row.institution);
               continue;
             }
             
