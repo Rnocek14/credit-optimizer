@@ -15,6 +15,7 @@ export interface PolicyBadgesProps {
     providerCode?: string;
     aceNccrs?: boolean;
     proctored?: boolean;
+    isAltCredit?: boolean; // Explicit flag if already computed
   };
   anchorPolicy: {
     partner_name?: string;
@@ -34,10 +35,13 @@ export function PolicyBadges({
   
   const badges: React.ReactNode[] = [];
   
-  // Alt credit detection: Priority-based logic matching computeIsAltCredit()
-  // 1) Explicit ACE/NCCRS tag → alt credit
-  // 2) Non-university providerType → alt credit
-  const isAltCredit = option.aceNccrs === true || option.providerType !== 'university';
+  // Alt credit detection: prefer explicit flag, then priority-based fallback
+  // 1) Explicit isAltCredit flag (already computed at add-time)
+  // 2) Explicit ACE/NCCRS tag → alt credit
+  // 3) Non-university providerType → alt credit
+  const isAltCredit = typeof option.isAltCredit === 'boolean' 
+    ? option.isAltCredit 
+    : (option.aceNccrs === true || option.providerType !== 'university');
   
   // Check if this is from the anchor institution (residency)
   // Normalize both codes to uppercase for comparison
