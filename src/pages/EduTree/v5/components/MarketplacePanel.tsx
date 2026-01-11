@@ -181,20 +181,21 @@ export function MarketplacePanel({
   // Calculate current alt credits in basket for policy warnings
   // Uses shared helper for consistency
   const currentAceCredits = useMemo(() => {
-    const total = calculateAltCreditsTotal(basket);
+    const altCredits = calculateAltCreditsTotal(basket);
     
     // Debug log for alt credit verification (only in dev with debug=1)
     if (!ENV.PROD && new URLSearchParams(window.location.search).get('debug') === '1') {
       const breakdown = getAltCreditBreakdown(basket);
-      console.log('[ALT_CAP] current=%d cap=%d counted=%d items', 
-        breakdown.counted, 
+      console.log(
+        '[ALT_CAP] altCredits=%d cap=%d countedItems=%d breakdown=%o',
+        breakdown.altCredits,
         anchorPolicy.max_alt_credits,
         breakdown.items.filter(i => i.countsAsAlt).length,
         breakdown.items
       );
     }
     
-    return total;
+    return altCredits;
   }, [basket, anchorPolicy.max_alt_credits]);
   
   // Helper: check if option is in basket (uses optionId for identity, fallback to providerCode:courseId)
