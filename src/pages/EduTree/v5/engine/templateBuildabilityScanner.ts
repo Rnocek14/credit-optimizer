@@ -515,28 +515,35 @@ export async function runBuildabilityScan(): Promise<ScanReport> {
       console.error('[BuildabilityScan] ❌ SKIP %s: %s', template.id, policyResult.error);
       skippedInstitutions.push(`${template.anchorSchool}: ${policyResult.error}`);
       
-      // Add a failed result for missing policy
+      // Add failed results for ALL 4 tests (not just 1) to keep summary consistent
+      const blockedTestResult = (testType: ScanTestType): ScanTestResult => ({
+        testType,
+        passed: false,
+        expectedPass: testType === 'clean_transfer',
+        details: {
+          totalCredits: 0,
+          transferCredits: 0,
+          altCredits: 0,
+          residentCredits: 0,
+          violationCount: 0,
+          violations: [],
+          capstoneSatisfied: false,
+          capstoneBlocked: false,
+        },
+        errors: [`BLOCKED: ${policyResult.error}`],
+      });
+      
       results.push({
         templateId: template.id,
         institution: template.anchorSchool,
         programId: template.programId,
         optimization: template.optimization || 'standard',
-        tests: [{
-          testType: 'clean_transfer',
-          passed: false,
-          expectedPass: true,
-          details: {
-            totalCredits: 0,
-            transferCredits: 0,
-            altCredits: 0,
-            residentCredits: 0,
-            violationCount: 0,
-            violations: [],
-            capstoneSatisfied: false,
-            capstoneBlocked: false,
-          },
-          errors: [`Missing active policy pack: ${policyResult.error}`],
-        }],
+        tests: [
+          blockedTestResult('clean_transfer'),
+          blockedTestResult('over_transfer_cap'),
+          blockedTestResult('over_alt_cap'),
+          blockedTestResult('capstone_substitution'),
+        ],
         overallPass: false,
         summary: `BLOCKED: No active policy pack - ${policyResult.error}`,
       });
