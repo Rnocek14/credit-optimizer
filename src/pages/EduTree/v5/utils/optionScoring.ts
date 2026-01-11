@@ -176,3 +176,33 @@ export function getRecommendedReason(
   // Return top 2 factors for conciseness
   return factors.slice(0, 2).join(' + ') || 'Best overall match';
 }
+
+/**
+ * Deterministic comparison for sorting options.
+ * Prevents "jumping" between refreshes by using stable tiebreakers.
+ * 
+ * Tiebreaker order: score → CRI → cost (ascending) → duration (ascending) → courseId (stable)
+ */
+export function compareOptionsStable(
+  a: { score: number; breakdown: ScoreBreakdown; option: { cost_usd: number | null; duration_weeks: number | null; courseId: string } },
+  b: { score: number; breakdown: ScoreBreakdown; option: { cost_usd: number | null; duration_weeks: number | null; courseId: string } }
+): number {
+  // Primary: score descending
+  if (b.score !== a.score) return b.score - a.score;
+  
+  // Tiebreaker 1: CRI descending
+  if (b.breakdown.cri !== a.breakdown.cri) return b.breakdown.cri - a.breakdown.cri;
+  
+  // Tiebreaker 2: cost ascending (cheaper first)
+  const aCost = a.option.cost_usd ?? Infinity;
+  const bCost = b.option.cost_usd ?? Infinity;
+  if (aCost !== bCost) return aCost - bCost;
+  
+  // Tiebreaker 3: duration ascending (shorter first)
+  const aDur = a.option.duration_weeks ?? Infinity;
+  const bDur = b.option.duration_weeks ?? Infinity;
+  if (aDur !== bDur) return aDur - bDur;
+  
+  // Final tiebreaker: courseId alphabetically (stable)
+  return a.option.courseId.localeCompare(b.option.courseId);
+}
