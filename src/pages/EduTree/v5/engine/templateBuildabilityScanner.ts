@@ -15,10 +15,20 @@ import type { MarketplaceDegreeTemplate } from '../types/templates';
 import type { Constraints, BasketItem, MarketplaceOption } from '../types/exports';
 import { applyTemplate } from './applyTemplate';
 import { validatePlan, type Violation } from './constraints';
-import { isAltCredit, isTransferCredit } from '../utils/creditClassification';
+import { isAltCredit, isTransferCredit, isResidentCredit } from '../utils/creditClassification';
+import { supabase } from '@/integrations/supabase/client';
 
 // Import fixture templates
 import marketplaceV2Templates from '@/fixtures/templates/marketplace-v2-templates.json';
+
+// Required policy fields for a pack to be considered complete
+const REQUIRED_POLICY_FIELDS = [
+  'degree_credit_total',
+  'residency_credits', 
+  'max_transfer_credits',
+  'max_alt_credit',
+  'capstone_in_residence',
+] as const;
 
 export type ScanTestType = 
   | 'clean_transfer' 
@@ -168,7 +178,8 @@ function runTest(
         basket = result.added;
         applyConflicts = result.conflicts;
         
-        // Add synthetic over-cap items
+        // Add synthetic over-cap transfer item
+        // MUST include providerCode to ensure isTransferCredit() returns true
         const syntheticTransfer: BasketItem = {
           moduleId: 'SYNTHETIC_TRANSFER',
           courseId: 'SYNTH-TRANSFER-EXCESS',
@@ -180,7 +191,8 @@ function runTest(
           cri_score: 50,
           status: 'auto-filled',
           providerType: 'university',
-        };
+          providerCode: 'OTHER_UNIVERSITY', // Explicit: NOT target institution
+        } as BasketItem & { providerCode: string };
         basket.push(syntheticTransfer);
         break;
       }
@@ -199,6 +211,7 @@ function runTest(
         applyConflicts = result.conflicts;
         
         // Add synthetic over-cap alt credit
+        // MUST include providerCode + isAltCredit to guarantee countsTowardAltCap() returns true
         const syntheticAlt: BasketItem = {
           moduleId: 'SYNTHETIC_ALT',
           courseId: 'SYNTH-ALT-EXCESS',
@@ -210,7 +223,10 @@ function runTest(
           cri_score: 50,
           status: 'auto-filled',
           providerType: 'mooc',
-        };
+          providerCode: 'SOPHIA', // Known alt provider
+          isAltCredit: true, // Explicit flag for canonical classification
+          aceNccrs: true, // Belt and suspenders
+        } as BasketItem & { providerCode: string; isAltCredit: boolean; aceNccrs: boolean };
         basket.push(syntheticAlt);
         break;
       }
@@ -218,6 +234,7 @@ function runTest(
       case 'capstone_substitution': {
         // Try to satisfy capstone with non-institutional credit
         // Create modified options with forced non-institutional capstone
+        // MUST use providerType != university AND providerCode != institutionCode
         const modifiedOptions = options.map(opt => {
           const isCapstone = (opt as any).requirementArea === 'CAPSTONE' ||
                             opt.title?.toLowerCase().includes('capstone');
@@ -225,6 +242,8 @@ function runTest(
             return {
               ...opt,
               providerType: 'mooc' as const,
+              providerCode: 'SOPHIA', // Explicit non-institutional provider
+              isAltCredit: true,
             };
           }
           return opt;
@@ -280,12 +299,21 @@ function runTest(
       c.reason.includes('BLOCKED') && c.reason.toLowerCase().includes('capstone')
     );
     
-    // Check if capstone is satisfied with resident credits
-    const capstoneSatisfied = basket.some(item => 
-      ((item as any).requirementArea === 'CAPSTONE' || 
-       item.title?.toLowerCase().includes('capstone')) &&
-      item.providerType === 'university'
-    );
+    // Check if capstone is satisfied with RESIDENT credits (not just any university)
+    // Must be providerType === 'university' AND providerCode === institutionCode
+    const capstoneSatisfied = basket.some(item => {
+      const isCapstoneModule = (item as any).requirementArea === 'CAPSTONE' || 
+                               item.title?.toLowerCase().includes('capstone');
+      if (!isCapstoneModule) return false;
+      
+      // Use canonical isResidentCredit check
+      const classifiableItem = {
+        providerType: item.providerType,
+        providerCode: (item as any).providerCode,
+        credits: item.credits,
+      };
+      return isResidentCredit(classifiableItem, institutionCode);
+    });
     
     // Determine expected vs actual
     let passed = true;
@@ -383,73 +411,149 @@ function scanTemplate(
 }
 
 /**
- * Get mock policy data for testing (would normally come from DB)
+ * Fetch REAL policy data from institution_policy_packs table.
+ * NO DEFAULTS - missing data is a hard failure.
  */
-function getMockPolicyData(institutionCode: string): Record<string, any> {
-  const policies: Record<string, Record<string, any>> = {
-    TESU: {
-      degree_credit_total: 120,
-      residency_credits: 15,
-      max_transfer_credits: 105,
-      max_alt_credit: 90,
-      capstone_in_residence: true,
-      grade_rules: { min_transfer_grade: 'C' },
-    },
-    COSC: {
-      degree_credit_total: 120,
-      residency_credits: 6,
-      max_transfer_credits: 114,
-      max_alt_credit: 90,
-      capstone_in_residence: true,
-      grade_rules: { min_transfer_grade: 'C' },
-    },
-    SNHU: {
-      degree_credit_total: 120,
-      residency_credits: 30,
-      max_transfer_credits: 90,
-      max_alt_credit: 60,
-      capstone_in_residence: true,
-      grade_rules: { min_transfer_grade: 'C' },
-    },
-    WGU: {
-      degree_credit_total: 120,
-      residency_credits: 24,
-      max_transfer_credits: 90,
-      max_alt_credit: 45,
-      capstone_in_residence: true,
-      grade_rules: { min_transfer_grade: 'C' },
-    },
-  };
+async function fetchPolicyDataFromDb(institutionCode: string): Promise<{
+  success: boolean;
+  data?: Record<string, any>;
+  error?: string;
+  missingFields?: string[];
+}> {
+  try {
+    const { data, error } = await supabase
+      .from('institution_policy_packs')
+      .select('policy_data, policy_json, status')
+      .eq('institution', institutionCode)
+      .eq('status', 'active')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (error) {
+      return { success: false, error: `DB error: ${error.message}` };
+    }
+
+    if (!data) {
+      return { success: false, error: `No active policy pack for ${institutionCode}` };
+    }
+
+    // Merge policy_data (flat) with policy_json (nested) - prefer flat fields
+    const policyJson = typeof data.policy_json === 'object' && data.policy_json !== null 
+      ? (data.policy_json as Record<string, unknown>) 
+      : {};
+    const policyDataFlat = typeof data.policy_data === 'object' && data.policy_data !== null
+      ? (data.policy_data as Record<string, unknown>)
+      : {};
+    const policyData: Record<string, unknown> = {
+      ...policyJson,
+      ...policyDataFlat,
+    };
+
+    // Validate required fields are present (NO DEFAULTS)
+    const missingFields: string[] = [];
+    for (const field of REQUIRED_POLICY_FIELDS) {
+      if (policyData[field] === undefined || policyData[field] === null) {
+        missingFields.push(field);
+      }
+    }
+
+    if (missingFields.length > 0) {
+      return { 
+        success: false, 
+        error: `Missing required fields: ${missingFields.join(', ')}`,
+        missingFields,
+      };
+    }
+
+    return { success: true, data: policyData };
+  } catch (err) {
+    return { success: false, error: `Exception: ${err instanceof Error ? err.message : String(err)}` };
+  }
+}
+
+// Cache for policy data to avoid repeated DB calls during scan
+const policyCache = new Map<string, { success: boolean; data?: Record<string, any>; error?: string }>();
+
+/**
+ * Get policy data with caching for scan performance
+ */
+async function getPolicyData(institutionCode: string): Promise<{
+  success: boolean;
+  data?: Record<string, any>;
+  error?: string;
+}> {
+  if (policyCache.has(institutionCode)) {
+    return policyCache.get(institutionCode)!;
+  }
   
-  return policies[institutionCode] ?? {
-    degree_credit_total: 120,
-    residency_credits: 30,
-    max_transfer_credits: 90,
-    max_alt_credit: 60,
-    capstone_in_residence: true,
-    grade_rules: { min_transfer_grade: 'C' },
-  };
+  const result = await fetchPolicyDataFromDb(institutionCode);
+  policyCache.set(institutionCode, result);
+  return result;
 }
 
 /**
  * Run the full buildability scan on all fixture templates
+ * Uses REAL policy packs from DB - no defaults or mocks
  */
-export function runBuildabilityScan(): ScanReport {
+export async function runBuildabilityScan(): Promise<ScanReport> {
+  // Clear policy cache for fresh scan
+  policyCache.clear();
+  
   // Cast with unknown to avoid strict type checking on fixture structure
   const templates = (marketplaceV2Templates as unknown) as MarketplaceDegreeTemplate[];
   const results: TemplateScanResult[] = [];
+  const skippedInstitutions: string[] = [];
   
-  console.log('[BuildabilityScan] Starting scan of %d templates', templates.length);
+  console.log('[BuildabilityScan] Starting scan of %d templates (using REAL DB policies)', templates.length);
   
   for (const template of templates) {
-    const policyData = getMockPolicyData(template.anchorSchool);
-    const result = scanTemplate(template, policyData);
+    // Fetch REAL policy data from DB
+    const policyResult = await getPolicyData(template.anchorSchool);
+    
+    if (!policyResult.success || !policyResult.data) {
+      console.error('[BuildabilityScan] ❌ SKIP %s: %s', template.id, policyResult.error);
+      skippedInstitutions.push(`${template.anchorSchool}: ${policyResult.error}`);
+      
+      // Add a failed result for missing policy
+      results.push({
+        templateId: template.id,
+        institution: template.anchorSchool,
+        programId: template.programId,
+        optimization: template.optimization || 'standard',
+        tests: [{
+          testType: 'clean_transfer',
+          passed: false,
+          expectedPass: true,
+          details: {
+            totalCredits: 0,
+            transferCredits: 0,
+            altCredits: 0,
+            residentCredits: 0,
+            violationCount: 0,
+            violations: [],
+            capstoneSatisfied: false,
+            capstoneBlocked: false,
+          },
+          errors: [`Missing active policy pack: ${policyResult.error}`],
+        }],
+        overallPass: false,
+        summary: `BLOCKED: No active policy pack - ${policyResult.error}`,
+      });
+      continue;
+    }
+    
+    const result = scanTemplate(template, policyResult.data);
     results.push(result);
     
     console.log('[BuildabilityScan] %s: %s', 
       template.id, 
       result.overallPass ? '✅ PASS' : `❌ FAIL (${result.summary})`
     );
+  }
+  
+  if (skippedInstitutions.length > 0) {
+    console.warn('[BuildabilityScan] ⚠️ Skipped templates due to missing policies:', skippedInstitutions);
   }
   
   // Build summary table
