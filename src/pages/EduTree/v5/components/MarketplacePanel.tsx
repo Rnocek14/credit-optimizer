@@ -177,13 +177,22 @@ export function MarketplacePanel({
     upper_division_min: policyData?.policy?.upper_division_min,
   }), [policyData, targetSchool, constraints.max_ace_credits]);
   
+  // Helper: Determine if an option counts as alt credit at add-time
+  // University credits don't count toward alt cap; everything else does
+  const computeIsAltCredit = (opt: { providerType?: ProviderType }) => {
+    return opt.providerType !== 'university';
+  };
+  
   // Calculate current alt credits in basket for policy warnings
-  // Must match PolicyBadges isAltCredit logic: mooc, bootcamp, testing_center
+  // Uses explicit isAltCredit flag when available, falls back to providerType heuristic
   const currentAceCredits = useMemo(() => {
     return basket
-      .filter(b => b.providerType === 'mooc' || 
-                   b.providerType === 'bootcamp' || 
-                   b.providerType === 'testing_center')
+      .filter(b => {
+        // Prefer explicit flag if set
+        if (typeof b.isAltCredit === 'boolean') return b.isAltCredit;
+        // Fallback: non-university = alt credit
+        return b.providerType !== 'university';
+      })
       .reduce((sum, b) => sum + b.credits, 0);
   }, [basket]);
   
@@ -422,22 +431,32 @@ export function MarketplacePanel({
 
         {/* Options list - Grouped view when equivalency grouping active */}
         <div className="space-y-2">
-          {/* Render grouped options first (sorted by sortBy) */}
+          {/* Render grouped options first (sorted by sortBy using group-min for cost/duration) */}
           {[...groupingResult.groups]
             .sort((a, b) => {
-              // Sort groups by the same criteria as ungrouped
-              if (sortBy === 'best-match') return b.bestOption.score - a.bestOption.score;
+              // Helper: get min value across all options in a group
+              const allOptions = (g: OptionGroup) => [g.bestOption, ...g.alternatives];
+              
+              if (sortBy === 'best-match') {
+                // Best-match uses highest score (bestOption is already the best)
+                return b.bestOption.score - a.bestOption.score;
+              }
               if (sortBy === 'cheapest') {
-                const aCost = a.bestOption.option.cost_usd ?? Infinity;
-                const bCost = b.bestOption.option.cost_usd ?? Infinity;
-                return aCost - bCost;
+                // Use minimum cost across entire group, not just bestOption
+                const minCost = (g: OptionGroup) => 
+                  Math.min(...allOptions(g).map(x => x.option.cost_usd ?? Infinity));
+                return minCost(a) - minCost(b);
               }
               if (sortBy === 'shortest') {
-                const aDur = a.bestOption.option.duration_weeks ?? Infinity;
-                const bDur = b.bestOption.option.duration_weeks ?? Infinity;
-                return aDur - bDur;
+                // Use minimum duration across entire group
+                const minDur = (g: OptionGroup) => 
+                  Math.min(...allOptions(g).map(x => x.option.duration_weeks ?? Infinity));
+                return minDur(a) - minDur(b);
               }
-              return (b.bestOption.option.credits ?? 0) - (a.bestOption.option.credits ?? 0);
+              // Credits: use max credits in group
+              const maxCredits = (g: OptionGroup) => 
+                Math.max(...allOptions(g).map(x => x.option.credits ?? 0));
+              return maxCredits(b) - maxCredits(a);
             })
             .map((group, groupIndex) => (
             <OptionGroupRow
@@ -463,7 +482,8 @@ export function MarketplacePanel({
                   providerType: option.providerType,
                   providerCode: option.providerCode,
                   equivalency_key: option.equivalency_key,
-                  level: option.level ?? 100
+                  level: option.level ?? 100,
+                  isAltCredit: computeIsAltCredit(option), // Explicit alt credit flag
                 });
               }}
               onRemoveFromBasket={(optionId) => removeItemWithToast(optionId)}
@@ -733,7 +753,8 @@ export function MarketplacePanel({
                           providerType: option.providerType,
                           providerCode: option.providerCode,
                           equivalency_key: option.equivalency_key,
-                          level: option.level ?? 100
+                          level: option.level ?? 100,
+                          isAltCredit: computeIsAltCredit(option), // Explicit alt credit flag
                         });
                       }
                     }}
