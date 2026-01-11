@@ -1,7 +1,15 @@
 import type { BasketItem, Constraints } from '../state/usePlanBasket';
+import {
+  type CreditLossReport,
+  type CreditLossItem,
+  createEmptyCreditLossReport,
+  addLostItem,
+  calculateCapExceedance,
+  formatCreditLossReport,
+} from './creditLoss';
 
 export interface Violation {
-  type: 'budget' | 'workload' | 'deadline' | 'prerequisite' | 'transfer_cap' | 'conflict' | 'residency' | 'upper_division' | 'provider_cap' | 'gened_incomplete' | 'total_transfer';
+  type: 'budget' | 'workload' | 'deadline' | 'prerequisite' | 'transfer_cap' | 'conflict' | 'residency' | 'upper_division' | 'provider_cap' | 'gened_incomplete' | 'total_transfer' | 'capstone_substitution';
   severity: 'error' | 'warning' | 'info';
   message: string;
   affectedCourses: string[];
@@ -12,6 +20,8 @@ export interface Violation {
     limit?: number;
     provider?: string;
     category?: string;
+    creditLoss?: number;
+    lostItems?: CreditLossItem[];
   };
 }
 
@@ -261,40 +271,74 @@ export function validateInstitutionPolicies(
     const limit = getLimit(limitType);
     const credits = summary.byProvider[code] ?? 0;
     if (limit != null && credits > limit) {
+      const creditLoss = credits - limit;
+      const providerItems = basket
+        .filter(i => i.providerCode?.toUpperCase() === code)
+        .map(i => ({ courseId: i.courseId, credits: i.credits, providerCode: i.providerCode }));
+      const lostItems = calculateCapExceedance(providerItems, credits, limit, 'provider', code);
+      
       violations.push({
         type: 'provider_cap',
         severity: 'error',
-        message: `${code} credits (${credits}) exceed ${limit}-credit limit by ${credits - limit}`,
-        affectedCourses: basket.filter(i => i.providerCode?.toUpperCase() === code).map(i => i.courseId),
-        suggestedFix: `Remove ${credits - limit} credits from ${code} or replace with other providers`,
-        metadata: { current: credits, limit, provider: code },
+        message: `${code} credits (${credits}) exceed ${limit}-credit limit. Credit loss: ${creditLoss}`,
+        affectedCourses: lostItems.map(i => i.courseId),
+        suggestedFix: `Remove ${creditLoss} credits from ${code} or replace with other providers`,
+        metadata: { 
+          current: credits, 
+          limit, 
+          provider: code,
+          creditLoss,
+          lostItems,
+        },
       });
     }
   });
 
-  // 4. TOTAL TRANSFER CAP
+  // 4. TOTAL TRANSFER CAP - with explicit creditLoss tracking
   const totalTransferMax = getLimit('total_transfer');
   if (totalTransferMax != null && summary.transfer > totalTransferMax) {
+    const creditLoss = summary.transfer - totalTransferMax;
+    const transferItems = basket
+      .filter(i => i.providerType !== 'university' || i.providerCode !== institutionCode)
+      .map(i => ({ courseId: i.courseId, credits: i.credits, providerCode: i.providerCode }));
+    const lostItems = calculateCapExceedance(transferItems, summary.transfer, totalTransferMax, 'transfer');
+    
     violations.push({
       type: 'total_transfer',
       severity: 'error',
-      message: `Total transfer credits (${summary.transfer}) exceed ${totalTransferMax}-credit limit`,
-      affectedCourses: [],
-      suggestedFix: `Replace ${summary.transfer - totalTransferMax} transfer credits with ${institutionCode} courses`,
-      metadata: { current: summary.transfer, limit: totalTransferMax },
+      message: `Total transfer credits (${summary.transfer}) exceed ${totalTransferMax}-credit limit. Credit loss: ${creditLoss}`,
+      affectedCourses: lostItems.map(i => i.courseId),
+      suggestedFix: `Replace ${creditLoss} transfer credits with ${institutionCode} courses`,
+      metadata: { 
+        current: summary.transfer, 
+        limit: totalTransferMax,
+        creditLoss,
+        lostItems,
+      },
     });
   }
 
-  // 5. ALT CREDIT CAP
+  // 5. ALT CREDIT CAP - with explicit creditLoss tracking
   const altCreditMax = getLimit('alt_credit_max');
   if (altCreditMax != null && summary.altCredits > altCreditMax) {
+    const creditLoss = summary.altCredits - altCreditMax;
+    const altItems = basket
+      .filter(i => i.providerType === 'mooc' || i.providerType === 'testing_center')
+      .map(i => ({ courseId: i.courseId, credits: i.credits, providerCode: i.providerCode }));
+    const lostItems = calculateCapExceedance(altItems, summary.altCredits, altCreditMax, 'alt');
+    
     violations.push({
       type: 'transfer_cap',
       severity: 'error',
-      message: `Alternative credits (${summary.altCredits}) exceed ${altCreditMax}-credit limit`,
-      affectedCourses: [],
+      message: `Alternative credits (${summary.altCredits}) exceed ${altCreditMax}-credit limit. Credit loss: ${creditLoss}`,
+      affectedCourses: lostItems.map(i => i.courseId),
       suggestedFix: 'Replace some alt-credit courses with university courses',
-      metadata: { current: summary.altCredits, limit: altCreditMax },
+      metadata: { 
+        current: summary.altCredits, 
+        limit: altCreditMax,
+        creditLoss,
+        lostItems,
+      },
     });
   }
 
