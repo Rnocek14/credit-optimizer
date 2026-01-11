@@ -191,7 +191,7 @@ export function MarketplacePanel({
         breakdown.altCredits,
         anchorPolicy.max_alt_credits,
         breakdown.items.filter(i => i.countsAsAlt).length,
-        breakdown.items
+        breakdown
       );
     }
     
