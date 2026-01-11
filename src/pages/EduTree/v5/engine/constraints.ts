@@ -21,6 +21,10 @@ export interface PolicyData {
   degree_credit_total?: number;
   residency_credits?: number;
   capstone_in_residence?: boolean;
+  // Upper-division enforcement
+  min_upper_division_credits?: number;
+  // Per-provider caps (optional - only enforce if present in policy pack)
+  provider_caps?: Record<string, number>; // e.g. { CLEP: 60, DSST: 60 }
 }
 
 export interface Violation {
@@ -246,7 +250,30 @@ export function validatePlan(
     });
   }
   
-  // 5. Prerequisite check
+  // 5. UPPER-DIVISION REQUIREMENT (blocks "degree complete" claims if unmet)
+  // Level >= 300 is considered upper-division
+  const minUpperDivCredits = (constraints as any).min_upper_division_credits as number | undefined;
+  if (minUpperDivCredits != null) {
+    const upperDivisionCredits = basket
+      .filter(item => {
+        const level = (item as any).level ?? 0;
+        return level >= 300;
+      })
+      .reduce((sum, item) => sum + item.credits, 0);
+    
+    if (upperDivisionCredits < minUpperDivCredits) {
+      violations.push({
+        type: 'upper_division',
+        severity: 'error',
+        message: `${upperDivisionCredits} upper-division credits is below required ${minUpperDivCredits}`,
+        affectedCourses: basket.map(i => i.courseId),
+        suggestedFix: 'Add more 300/400 level courses or swap in upper-division equivalents',
+        metadata: { current: upperDivisionCredits, required: minUpperDivCredits },
+      });
+    }
+  }
+  
+  // 6. Prerequisite check
   const courseIds = new Set(basket.map(i => i.courseId));
   basket.forEach(item => {
     const opt = allOptions.find(o => o.courseId === item.courseId);
@@ -368,18 +395,27 @@ export function validateInstitutionPolicies(
     });
   }
 
-  // 3. PER-PROVIDER CAPS
-  const providerLimits: Record<string, string> = {
+  // 3. PER-PROVIDER CAPS (ONLY from policy pack, no hardcoded legacy keys)
+  // NOTE: Legacy keys like clep_max, dsst_max are deprecated.
+  // Provider caps should come from policy_data.provider_caps or institution_credit_limits
+  // with explicit provenance. We still check the legacy keys in limits for backward
+  // compatibility, but DO NOT hardcode new caps here.
+  const legacyProviderLimitKeys: Record<string, string> = {
     CLEP: 'clep_max',
     DSST: 'dsst_max',
     SOPHIA: 'sophia_max',
     STUDY_COM: 'study_com_max',
   };
 
-  Object.entries(providerLimits).forEach(([code, limitType]) => {
+  // Only enforce if the limit actually exists in the data (not assumed)
+  Object.entries(legacyProviderLimitKeys).forEach(([code, limitType]) => {
     const limit = getLimit(limitType);
+    // CRITICAL: Only enforce if limit is explicitly set (not null/undefined)
+    // This prevents hardcoded assumptions about provider caps
+    if (limit == null) return;
+    
     const credits = summary.byProvider[code] ?? 0;
-    if (limit != null && credits > limit) {
+    if (credits > limit) {
       const creditLoss = credits - limit;
       const providerItems = basket
         .filter(i => i.providerCode?.toUpperCase() === code)

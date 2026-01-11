@@ -117,6 +117,14 @@ export function useAvailableInstitutions() {
             // Also check for provenance (no unverified values)
             const hasProvenance = pd.provenance_verified_at != null || pd.provenance_excerpt != null;
             
+            // Check staleness: policies verified > 180 days ago are blocked
+            const STALENESS_THRESHOLD_DAYS = 180;
+            const verifiedAt = pd.provenance_verified_at ? new Date(pd.provenance_verified_at) : null;
+            const daysSinceVerified = verifiedAt 
+              ? Math.floor((Date.now() - verifiedAt.getTime()) / (1000 * 60 * 60 * 24))
+              : Infinity;
+            const isStale = daysSinceVerified > STALENESS_THRESHOLD_DAYS;
+            
             // Check bucket mode is known (not 'unknown')
             const hasKnownBucketMode = bucketMode === 'separate' || bucketMode === 'combined';
             
@@ -135,6 +143,12 @@ export function useAvailableInstitutions() {
             if (!hasKnownBucketMode) {
               console.warn('[useAvailableInstitutions] Skipping %s: unknown transfer_alt_bucket_mode (policy shape unverified)', 
                 row.institution);
+              continue;
+            }
+            
+            if (isStale) {
+              console.warn('[useAvailableInstitutions] Skipping %s: policy stale (%d days since verification, max %d)', 
+                row.institution, daysSinceVerified, STALENESS_THRESHOLD_DAYS);
               continue;
             }
             
