@@ -84,15 +84,26 @@ export function useAvailableInstitutions() {
             const row = rawRow as unknown as PolicyPackRow & { policy_data: any };
             if (seenCodes.has(row.institution)) continue;
             
-            // GATE: Only include if required fields are present
+            // GATE: Only include if ALL required fields are present for degree buildability
             const pd = row.policy_data || {};
-            const hasRequiredFields = 
-              pd.residency_credits != null &&
-              pd.max_transfer_credits != null &&
-              pd.capstone_in_residence != null;
+            const gradeRules = pd.grade_rules || {};
             
-            if (!hasRequiredFields) {
-              console.warn('[useAvailableInstitutions] Skipping %s: missing required fields', row.institution);
+            const requiredFields = {
+              residency_credits: pd.residency_credits,
+              max_transfer_credits: pd.max_transfer_credits,
+              capstone_in_residence: pd.capstone_in_residence,
+              degree_credit_total: pd.degree_credit_total,
+              max_alt_credit: pd.max_alt_credit ?? pd.transfer_credit_policy?.max_alt_credit,
+              min_transfer_grade: gradeRules.min_transfer_grade,
+            };
+            
+            const missingFields = Object.entries(requiredFields)
+              .filter(([_, v]) => v == null)
+              .map(([k]) => k);
+            
+            if (missingFields.length > 0) {
+              console.warn('[useAvailableInstitutions] Skipping %s: missing required fields: %s', 
+                row.institution, missingFields.join(', '));
               continue;
             }
             
