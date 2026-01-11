@@ -152,10 +152,15 @@ export function validatePlan(
   });
   
   // Classification predicates (reusable, no double-counting)
+  const countsAsResident = (i: BasketItem) => isResidentCredit(toClassifiable(i), institutionCode);
   const countsAsTransfer = (i: BasketItem) => isTransferCredit(toClassifiable(i), institutionCode);
   const countsAsAlt = (i: BasketItem) => isAltCredit(toClassifiable(i));
-  // Combined = transfer OR alt (items satisfying both count ONCE)
-  const countsTowardCombined = (i: BasketItem) => countsAsTransfer(i) || countsAsAlt(i);
+  // Combined = (transfer OR alt) AND NOT resident
+  // Defensive: even if bad data marks resident course as alt, exclude it from combined bucket
+  const countsTowardCombined = (i: BasketItem) => {
+    if (countsAsResident(i)) return false; // Resident credits never count toward combined cap
+    return countsAsTransfer(i) || countsAsAlt(i);
+  };
   
   // Calculate credits using canonical classification
   const transferCredits = basket.filter(countsAsTransfer).reduce((s, i) => s + i.credits, 0);
