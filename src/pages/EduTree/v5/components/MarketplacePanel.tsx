@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { usePlanStore } from '../state/usePlanStore';
 import { usePlanBasket } from '../state/usePlanBasket';
-import { calculateOptionScore, getRecommendedReason, type ScoreBreakdown, type ProviderType } from '../utils/optionScoring';
+import { calculateOptionScore, getRecommendedReason, compareOptionsStable, type ScoreBreakdown, type ProviderType } from '../utils/optionScoring';
 import { groupOptionsByEquivalency, type ScoredOption, type OptionGroup } from '../utils/optionGrouping';
 import { PolicyBadges, RecommendedBadge } from './PolicyBadges';
 import { OptionGroupRow } from './OptionGroupRow';
@@ -177,10 +177,13 @@ export function MarketplacePanel({
     upper_division_min: policyData?.policy?.upper_division_min,
   }), [policyData, targetSchool, constraints.max_ace_credits]);
   
-  // Calculate current ACE credits in basket for policy warnings
+  // Calculate current alt credits in basket for policy warnings
+  // Must match PolicyBadges isAltCredit logic: mooc, bootcamp, testing_center
   const currentAceCredits = useMemo(() => {
     return basket
-      .filter(b => b.providerType === 'mooc' || b.providerType === 'testing_center')
+      .filter(b => b.providerType === 'mooc' || 
+                   b.providerType === 'bootcamp' || 
+                   b.providerType === 'testing_center')
       .reduce((sum, b) => sum + b.credits, 0);
   }, [basket]);
   
@@ -419,8 +422,24 @@ export function MarketplacePanel({
 
         {/* Options list - Grouped view when equivalency grouping active */}
         <div className="space-y-2">
-          {/* Render grouped options first (if any) */}
-          {groupingResult.groups.map((group, groupIndex) => (
+          {/* Render grouped options first (sorted by sortBy) */}
+          {[...groupingResult.groups]
+            .sort((a, b) => {
+              // Sort groups by the same criteria as ungrouped
+              if (sortBy === 'best-match') return b.bestOption.score - a.bestOption.score;
+              if (sortBy === 'cheapest') {
+                const aCost = a.bestOption.option.cost_usd ?? Infinity;
+                const bCost = b.bestOption.option.cost_usd ?? Infinity;
+                return aCost - bCost;
+              }
+              if (sortBy === 'shortest') {
+                const aDur = a.bestOption.option.duration_weeks ?? Infinity;
+                const bDur = b.bestOption.option.duration_weeks ?? Infinity;
+                return aDur - bDur;
+              }
+              return (b.bestOption.option.credits ?? 0) - (a.bestOption.option.credits ?? 0);
+            })
+            .map((group, groupIndex) => (
             <OptionGroupRow
               key={group.key}
               group={group}
@@ -452,20 +471,26 @@ export function MarketplacePanel({
           ))}
           
           {/* Render ungrouped options */}
-          {groupingResult.ungrouped
+          {[...groupingResult.ungrouped]
             .sort((a, b) => {
-              if (sortBy === 'best-match') return b.score - a.score;
+              // Use stable tiebreakers for best-match to prevent jumping
+              if (sortBy === 'best-match') return compareOptionsStable(a, b);
               if (sortBy === 'cheapest') {
-                if (a.option.cost_usd === null) return 1;
-                if (b.option.cost_usd === null) return -1;
-                return a.option.cost_usd - b.option.cost_usd;
+                const aCost = a.option.cost_usd ?? Infinity;
+                const bCost = b.option.cost_usd ?? Infinity;
+                if (aCost !== bCost) return aCost - bCost;
+                return a.option.courseId.localeCompare(b.option.courseId); // tiebreaker
               }
               if (sortBy === 'shortest') {
-                if (a.option.duration_weeks === null) return 1;
-                if (b.option.duration_weeks === null) return -1;
-                return a.option.duration_weeks - b.option.duration_weeks;
+                const aDur = a.option.duration_weeks ?? Infinity;
+                const bDur = b.option.duration_weeks ?? Infinity;
+                if (aDur !== bDur) return aDur - bDur;
+                return a.option.courseId.localeCompare(b.option.courseId); // tiebreaker
               }
-              return (b.option.credits ?? 0) - (a.option.credits ?? 0);
+              // credits: higher first, then courseId tiebreaker
+              const creditDiff = (b.option.credits ?? 0) - (a.option.credits ?? 0);
+              if (creditDiff !== 0) return creditDiff;
+              return a.option.courseId.localeCompare(b.option.courseId);
             })
             .map((scored, index) => {
             const option = scored.option;

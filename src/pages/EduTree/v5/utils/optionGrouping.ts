@@ -8,6 +8,7 @@
  */
 
 import type { ScoreBreakdown, ProviderType } from './optionScoring';
+import { compareOptionsStable } from './optionScoring';
 
 export interface ScoredOption {
   option: {
@@ -89,8 +90,8 @@ export function groupOptionsByEquivalency(
       continue;
     }
     
-    // Sort by score descending (best first)
-    const sorted = [...options].sort((a, b) => b.score - a.score);
+    // Sort by score descending with deterministic tiebreakers
+    const sorted = [...options].sort(compareOptionsStable);
     const bestOption = sorted[0];
     
     groups.push({

@@ -34,12 +34,18 @@ export function PolicyBadges({
   
   const badges: React.ReactNode[] = [];
   
-  // Alt credit detection: MOOCs and bootcamps typically count as alt credits
-  const isAltCredit = option.providerType === 'mooc' || option.providerType === 'bootcamp';
+  // Alt credit detection: MOOCs and bootcamps count toward alt credit cap
+  // Note: testing_center (exams like CLEP, DSST) also count as alt credits at most schools
+  const isAltCredit = option.providerType === 'mooc' || 
+                      option.providerType === 'bootcamp' ||
+                      option.providerType === 'testing_center';
   
   // Check if this is from the anchor institution (residency)
-  const isResidency = anchorPolicy?.partner_name && 
-    option.providerCode?.toUpperCase() === anchorPolicy.partner_name.toUpperCase();
+  // Normalize both codes to uppercase for comparison
+  const normalizedProviderCode = option.providerCode?.toUpperCase().trim();
+  const normalizedPartnerCode = anchorPolicy?.partner_name?.toUpperCase().trim();
+  const isResidency = normalizedPartnerCode && normalizedProviderCode && 
+    normalizedProviderCode === normalizedPartnerCode;
   
   // ===== Positive Badges =====
   
