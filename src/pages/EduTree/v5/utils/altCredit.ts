@@ -28,8 +28,9 @@ export interface AltCreditSignals {
  * Priority order:
  * 1) Explicit isAltCredit flag (already computed, highest priority)
  * 2) ACE/NCCRS tag → alt credit (these are transfer-evaluated courses)
- * 3) Non-university providerType → alt credit (MOOCs, bootcamps, testing centers)
- * 4) Missing providerType → CONSERVATIVE: treat as alt credit (safer for warnings)
+ * 3) University providerType → NOT alt credit
+ * 4) Non-university providerType → alt credit (MOOCs, bootcamps, testing centers)
+ * 5) Missing providerType → CONSERVATIVE: treat as alt credit (safer for warnings)
  * 
  * @returns true if credits count toward max_alt_credits cap
  */
@@ -49,7 +50,12 @@ export function countsTowardAltCap(signals: AltCreditSignals): boolean {
     return false;
   }
   
-  // 4) Everything else (including missing providerType) → alt credit (conservative)
+  // 4) Missing providerType → treat as alt credit (conservative default)
+  if (!signals.providerType) {
+    return true;
+  }
+  
+  // 5) Non-university providerType → alt credit
   return true;
 }
 
@@ -75,14 +81,15 @@ export function calculateAltCreditsTotal(
 export function getAltCreditBreakdown(
   items: Array<AltCreditSignals & { credits: number; courseId?: string; optionId?: string }>
 ): {
-  total: number;
-  counted: number;
+  totalCredits: number;
+  altCredits: number;
   items: Array<{
     courseId?: string;
     optionId?: string;
     credits: number;
     countsAsAlt: boolean;
     reason: 'explicit' | 'aceNccrs' | 'providerType' | 'missing';
+    providerType?: ProviderType;
   }>;
 } {
   const breakdown = items.map(item => {
@@ -93,12 +100,10 @@ export function getAltCreditBreakdown(
       reason = 'explicit';
     } else if (item.aceNccrs === true) {
       reason = 'aceNccrs';
-    } else if (item.providerType === 'university') {
-      reason = 'providerType';
-    } else if (item.providerType) {
-      reason = 'providerType';
-    } else {
+    } else if (!item.providerType) {
       reason = 'missing';
+    } else {
+      reason = 'providerType';
     }
     
     return {
@@ -107,12 +112,13 @@ export function getAltCreditBreakdown(
       credits: item.credits,
       countsAsAlt,
       reason,
+      providerType: item.providerType,
     };
   });
   
   return {
-    total: items.reduce((sum, i) => sum + i.credits, 0),
-    counted: breakdown.filter(i => i.countsAsAlt).reduce((sum, i) => sum + i.credits, 0),
+    totalCredits: items.reduce((sum, i) => sum + i.credits, 0),
+    altCredits: breakdown.filter(i => i.countsAsAlt).reduce((sum, i) => sum + i.credits, 0),
     items: breakdown,
   };
 }
