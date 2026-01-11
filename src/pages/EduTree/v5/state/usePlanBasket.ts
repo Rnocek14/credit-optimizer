@@ -30,10 +30,22 @@ export interface BasketItem {
   equivalency_key?: string; // For grouping equivalent courses
   
   /**
+   * ACE/NCCRS evaluation flag - stored at add-time for accurate alt-credit calculations.
+   * True = course is ACE/NCCRS evaluated (high transfer confidence)
+   * False/undefined = not explicitly ACE evaluated
+   */
+  aceNccrs?: boolean;
+  
+  /**
+   * Proctored exam flag - stored at add-time for policy/quality tracking.
+   */
+  proctored?: boolean;
+  
+  /**
    * Explicit alt credit flag - set at add-time based on policy rules.
    * True = counts toward max_alt_credits cap (e.g., MOOC, bootcamp, ACE-evaluated courses)
    * False = institutional/university credit, doesn't count toward cap
-   * When undefined, falls back to providerType-based heuristic for backward compat
+   * When undefined, falls back to aceNccrs → providerType heuristic for backward compat
    */
   isAltCredit?: boolean;
   
