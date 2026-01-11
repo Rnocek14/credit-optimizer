@@ -93,9 +93,12 @@ export interface AnchorContractReport {
   };
   blockedByReason: Record<string, number>;
   policyContractViolations: PolicyContractViolation[];
-  // Draft eligibility preview: what drafts need to become eligible
-  draftEligibilityPreview: AnchorEligibility[];
+  // Draft eligibility preview: what drafts need to become eligible (includes status)
+  draftEligibilityPreview: DraftEligibilityPreviewItem[];
 }
+
+// Draft preview item with status for operator workflow
+export type DraftEligibilityPreviewItem = AnchorEligibility & { status: string };
 
 export interface PolicyContractViolation {
   institution: string;
@@ -776,13 +779,14 @@ export function checkUpperDivisionVerified(policyData: any): { verified: boolean
 // SEV0: Violates hard contract rules (things DB trigger should guarantee)
 // SEV1: Valid contract, but not currently eligible (staleness)
 // SEV2: Informational / truth completeness gaps
-const REASON_TO_SEVERITY: Record<NonNullable<AnchorEligibility['reason']>, PolicyContractViolation['severity']> = {
+const REASON_TO_SEVERITY: Record<string, PolicyContractViolation['severity']> = {
   missing_fields: 'SEV0',
   unknown_bucket_mode: 'SEV0',
   missing_mode_caps: 'SEV0',
   missing_provenance: 'SEV0',
   missing_provenance_verified_at: 'SEV0', // Required for active packs
   stale_provenance: 'SEV1', // Valid contract, just needs re-verification
+  unknown: 'SEV0', // Unmapped reasons default to SEV0 (should never happen)
 };
 
 /**
@@ -800,14 +804,14 @@ export function buildAnchorContractReport(
   const blockedAnchors: AnchorEligibility[] = [];
   const blockedByReason: Record<string, number> = {};
   const policyContractViolations: PolicyContractViolation[] = [];
-  const draftEligibilityPreview: AnchorEligibility[] = [];
+  const draftEligibilityPreview: DraftEligibilityPreviewItem[] = [];
   
   for (const pack of policyPacks) {
     const eligibility = checkAnchorEligibility(pack.policy_data, pack.institution);
     
-    // Handle drafts separately (no violations, just preview)
+    // Handle drafts separately (no violations, just preview with status)
     if (pack.status !== 'active') {
-      draftEligibilityPreview.push(eligibility);
+      draftEligibilityPreview.push({ ...eligibility, status: pack.status });
       continue;
     }
     
