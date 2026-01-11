@@ -283,22 +283,25 @@ function wouldViolateLimits(
 ): boolean {
   const credits = resolved.credits;
 
-  // Per-provider caps
+  // Per-provider caps - ONLY enforce if explicitly present in limitMap
+  // NOTE: Legacy hardcoded caps removed. Provider caps should come from policy pack.
   if (option.type === 'alt_credit') {
     const provider = option.sourceCode;
     const currentProviderCredits = runningMetrics.perProviderCredits[provider as keyof typeof runningMetrics.perProviderCredits] ?? 0;
     
-    // Check provider-specific limits
-    const providerLimitMap: Record<string, string> = {
+    // Map provider codes to limit keys (these should exist in policy if applicable)
+    const providerLimitKeys: Record<string, string> = {
       'CLEP': 'clep_max',
       'DSST': 'dsst_max',
       'SOPHIA': 'sophia_max',
       'STUDY_COM': 'study_com_max',
     };
 
-    const limitKey = providerLimitMap[provider];
+    const limitKey = providerLimitKeys[provider];
     if (limitKey) {
       const limit = limitMap[limitKey];
+      // CRITICAL: Only enforce if limit is explicitly set (not null/undefined)
+      // This prevents hardcoded assumptions about provider caps
       if (limit != null && currentProviderCredits + credits > limit) {
         console.log(`[Credit Optimizer] Rejecting ${provider} option - would exceed ${limit} credit cap (current: ${currentProviderCredits}, adding: ${credits})`);
         return true;

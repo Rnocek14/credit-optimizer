@@ -597,13 +597,13 @@ async function scanTemplate(
 // ============================================================================
 
 function getKnownDriftFindings(): IntegrityScanSummary['driftFindings'] {
-  // These are known drift locations from manual audit
-  // A real CI/CD check would grep the codebase
+  // These were known drift locations from manual audit
+  // FIXED 2026-01-11: Legacy provider caps now only enforce if explicitly in policy
+  // FIXED 2026-01-11: constraints.ts and creditOptimizer.ts updated to use policy-derived caps
   return [
-    { file: 'src/pages/EduTree/v5/engine/constraints.ts:253-270', issue: 'Hardcoded providerLimits for CLEP/DSST/Sophia/Study.com' },
-    { file: 'src/lib/creditOptimizer.ts:292-306', issue: 'providerLimitMap uses legacy clep_max, dsst_max keys' },
-    { file: 'src/hooks/useInstitutionLimits.ts:5-19', issue: 'Interface includes legacy per-provider cap keys' },
-    { file: 'scripts/optimizer-tables-setup.sql:197-206', issue: 'Seeds wrong upper_division_min: 30, alt_credit_max: 80' },
+    // Remaining drift findings (interface definition still has legacy keys for backward compat)
+    { file: 'src/hooks/useInstitutionLimits.ts:5-19', issue: 'Interface includes legacy per-provider cap keys (backward compat only)' },
+    { file: 'scripts/optimizer-tables-setup.sql:197-206', issue: 'Seeds wrong upper_division_min: 30, alt_credit_max: 80 (needs update)' },
   ];
 }
 
