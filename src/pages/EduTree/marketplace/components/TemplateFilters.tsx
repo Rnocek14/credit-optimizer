@@ -4,9 +4,10 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { GraduationCap, BookOpen, Building2, TrendingUp } from 'lucide-react';
+import { GraduationCap, BookOpen, Building2, TrendingUp, Loader2 } from 'lucide-react';
 import { usePlanBasket } from '@/pages/EduTree/v5/state/usePlanBasket';
 import { getAnchorPolicy } from '@/lib/degree/institutionPolicies';
+import { useAvailableInstitutions } from '@/lib/degree/useAvailableInstitutions';
 import {
   Select,
   SelectContent,
@@ -30,11 +31,10 @@ const CAREER_OPTIONS = [
   { id: 'registered-nurse', label: 'Registered Nurse' },
 ];
 
-const ANCHOR_SCHOOLS = ['TESU', 'WGU', 'UMGC', 'Community College'];
-
 export function TemplateFilters({ filters, onFiltersChange }: TemplateFiltersProps) {
   const { constraints } = usePlanBasket();
   const anchorPolicy = constraints.target_school ? getAnchorPolicy(constraints.target_school) : null;
+  const { data: institutions, isLoading: institutionsLoading } = useAvailableInstitutions();
   
   const handleBudgetChange = (value: number[]) => {
     onFiltersChange({ ...filters, budgetRange: [value[0], value[1]] });
@@ -233,19 +233,40 @@ export function TemplateFilters({ filters, onFiltersChange }: TemplateFiltersPro
       {/* Anchor Schools */}
       <div className="space-y-3">
         <Label>Schools</Label>
-        <div className="space-y-2">
-          {ANCHOR_SCHOOLS.map(school => (
-            <div key={school} className="flex items-center space-x-2">
-              <Checkbox
-                id={school}
-                checked={filters.anchorSchools.includes(school)}
-                onCheckedChange={(checked) => handleSchoolToggle(school, checked as boolean)}
-              />
-              <Label htmlFor={school} className="font-normal cursor-pointer">
-                {school}
-              </Label>
+        <div className="space-y-2 max-h-64 overflow-y-auto">
+          {institutionsLoading ? (
+            <div className="flex items-center gap-2 text-muted-foreground text-sm">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Loading schools...
             </div>
-          ))}
+          ) : (
+            institutions?.map((inst) => (
+              <div key={inst.code} className="flex items-center space-x-2">
+                <Checkbox
+                  id={`school-${inst.code}`}
+                  checked={filters.anchorSchools.includes(inst.code)}
+                  onCheckedChange={(checked) => handleSchoolToggle(inst.code, checked as boolean)}
+                />
+                <Label htmlFor={`school-${inst.code}`} className="font-normal cursor-pointer flex items-center gap-1">
+                  {inst.name}
+                  {inst.status === 'draft' && (
+                    <Badge variant="outline" className="ml-1 text-xs py-0 px-1">Draft</Badge>
+                  )}
+                </Label>
+              </div>
+            ))
+          )}
+          {/* Community College as special option */}
+          <div className="flex items-center space-x-2 pt-2 border-t">
+            <Checkbox
+              id="school-community"
+              checked={filters.anchorSchools.includes('Community College')}
+              onCheckedChange={(checked) => handleSchoolToggle('Community College', checked as boolean)}
+            />
+            <Label htmlFor="school-community" className="font-normal cursor-pointer">
+              Community College
+            </Label>
+          </div>
         </div>
       </div>
     </div>
