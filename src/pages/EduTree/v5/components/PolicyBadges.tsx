@@ -7,6 +7,7 @@
 
 import { Badge } from "@/components/ui/badge";
 import type { ProviderType } from '../utils/optionScoring';
+import { countsTowardAltCap } from '../utils/altCredit';
 
 export interface PolicyBadgesProps {
   option: {
@@ -35,13 +36,8 @@ export function PolicyBadges({
   
   const badges: React.ReactNode[] = [];
   
-  // Alt credit detection: prefer explicit flag, then priority-based fallback
-  // 1) Explicit isAltCredit flag (already computed at add-time)
-  // 2) Explicit ACE/NCCRS tag → alt credit
-  // 3) Non-university providerType → alt credit
-  const isAltCredit = typeof option.isAltCredit === 'boolean' 
-    ? option.isAltCredit 
-    : (option.aceNccrs === true || option.providerType !== 'university');
+  // Alt credit detection: use shared helper for consistency
+  const isAltCredit = countsTowardAltCap(option);
   
   // Check if this is from the anchor institution (residency)
   // Normalize both codes to uppercase for comparison
