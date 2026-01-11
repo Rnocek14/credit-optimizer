@@ -29,6 +29,14 @@ export interface BasketItem {
   semester?: 'fall' | 'spring' | 'summer'; // Week 1.5: Track semester assignment for DnD
   equivalency_key?: string; // For grouping equivalent courses
   
+  /**
+   * Explicit alt credit flag - set at add-time based on policy rules.
+   * True = counts toward max_alt_credits cap (e.g., MOOC, bootcamp, ACE-evaluated courses)
+   * False = institutional/university credit, doesn't count toward cap
+   * When undefined, falls back to providerType-based heuristic for backward compat
+   */
+  isAltCredit?: boolean;
+  
   // Transfer verification status - core for decentralized degrees
   transferStatus?: {
     verified: boolean;
