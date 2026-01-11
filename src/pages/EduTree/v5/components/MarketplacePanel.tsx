@@ -9,19 +9,21 @@ import { usePlanBasket } from '../state/usePlanBasket';
 import { calculateOptionScore, getRecommendedReason, type ScoreBreakdown, type ProviderType } from '../utils/optionScoring';
 import { groupOptionsByEquivalency, type ScoredOption, type OptionGroup } from '../utils/optionGrouping';
 import { PolicyBadges, RecommendedBadge } from './PolicyBadges';
+import { OptionGroupRow } from './OptionGroupRow';
 import { useScoringPrefs } from '../state/useScoringPrefs';
 import { validatePlan } from '../engine/constraints';
 import { autoCompletePlan } from '../engine/autoComplete';
 import { getAutoCompleteMessage } from '../engine/autoCompleteStatus';
 import { ENV } from '@/config/env';
 import ConstraintsPanel from './ConstraintsPanel';
-import { usePlanBasketWithToasts } from '../hooks/usePlanBasketWithToasts';
+import { usePlanBasketWithToasts, getBasketItemKey } from '../hooks/usePlanBasketWithToasts';
 import { AutoFillPlanButton } from './AutoFillDialog';
 import { FEATURE_FLAGS } from '../config/featureFlags';
 import { mapWeightsForEngine } from '../utils/weightMapping';
 import type { ModuleData } from '../types/v5';
 import { ScenarioManager } from './ScenarioManager';
 import { TransferBadge } from './TransferBadge';
+import { useInstitutionPolicyPack } from '@/lib/degree/useInstitutionPolicyPack';
 
 interface MarketplaceOption {
   id: string;
@@ -162,12 +164,18 @@ export function MarketplacePanel({
     [sortedScoredOptions]
   );
   
-  // Get anchor policy from constraints for PolicyBadges
+  // Get resolved anchor policy from institution policy pack (Issue #4 fix)
+  const targetSchool = constraints.target_school;
+  const { data: policyData } = useInstitutionPolicyPack(
+    typeof targetSchool === 'string' ? targetSchool : undefined
+  );
+  
   const anchorPolicy = useMemo(() => ({
-    partner_name: constraints.target_school ?? undefined,
-    max_alt_credits: constraints.max_ace_credits,
-    min_residency_credits: undefined // Not in current Constraints type
-  }), [constraints]);
+    partner_name: policyData?.policy?.partner_name ?? (typeof targetSchool === 'string' ? targetSchool : undefined),
+    max_alt_credits: policyData?.policy?.max_alt_credits ?? constraints.max_ace_credits ?? 90,
+    min_residency_credits: policyData?.policy?.min_residency_credits,
+    upper_division_min: policyData?.policy?.upper_division_min,
+  }), [policyData, targetSchool, constraints.max_ace_credits]);
   
   // Calculate current ACE credits in basket for policy warnings
   const currentAceCredits = useMemo(() => {
@@ -175,6 +183,18 @@ export function MarketplacePanel({
       .filter(b => b.providerType === 'mooc' || b.providerType === 'testing_center')
       .reduce((sum, b) => sum + b.credits, 0);
   }, [basket]);
+  
+  // Helper: check if option is in basket (uses optionId for identity, fallback to providerCode:courseId)
+  const isOptionInBasket = (optionId: string, courseId: string, providerCode?: string) => {
+    return basket.some(b => {
+      // Check by optionId first (preferred)
+      if (b.optionId && b.optionId === optionId) return true;
+      // Fallback to providerCode:courseId composite key
+      const bKey = getBasketItemKey(b);
+      const optKey = `${providerCode || 'unknown'}:${courseId}`;
+      return bKey === optKey;
+    });
+  };
   
   // Validate plan and get violations
   const violations = useMemo(() => 
@@ -397,16 +417,65 @@ export function MarketplacePanel({
           )}
         </div>
 
-        {/* Options list */}
+        {/* Options list - Grouped view when equivalency grouping active */}
         <div className="space-y-2">
-          {sortedScoredOptions.map((scored, index) => {
+          {/* Render grouped options first (if any) */}
+          {groupingResult.groups.map((group, groupIndex) => (
+            <OptionGroupRow
+              key={group.key}
+              group={group}
+              isTopGroup={groupIndex === 0 && sortBy === 'best-match'}
+              sortBy={sortBy}
+              anchorPolicy={anchorPolicy}
+              currentAceCredits={currentAceCredits}
+              isInBasket={(optionId, courseId) => isOptionInBasket(optionId, courseId, group.bestOption.option.providerCode)}
+              onAddToBasket={(option) => {
+                addItemWithToast({
+                  moduleId,
+                  optionId: option.id,
+                  courseId: option.courseId,
+                  title: option.title,
+                  credits: option.credits,
+                  cost_usd: option.cost_usd,
+                  duration_weeks: option.duration_weeks,
+                  workload_weekly_hours: option.workload_weekly_hours ?? option.credits * 2.5,
+                  cri_score: 0,
+                  status: 'pinned',
+                  providerType: option.providerType,
+                  providerCode: option.providerCode,
+                  equivalency_key: option.equivalency_key,
+                  level: option.level ?? 100
+                });
+              }}
+              onRemoveFromBasket={(optionId) => removeItemWithToast(optionId)}
+            />
+          ))}
+          
+          {/* Render ungrouped options */}
+          {groupingResult.ungrouped
+            .sort((a, b) => {
+              if (sortBy === 'best-match') return b.score - a.score;
+              if (sortBy === 'cheapest') {
+                if (a.option.cost_usd === null) return 1;
+                if (b.option.cost_usd === null) return -1;
+                return a.option.cost_usd - b.option.cost_usd;
+              }
+              if (sortBy === 'shortest') {
+                if (a.option.duration_weeks === null) return 1;
+                if (b.option.duration_weeks === null) return -1;
+                return a.option.duration_weeks - b.option.duration_weeks;
+              }
+              return (b.option.credits ?? 0) - (a.option.credits ?? 0);
+            })
+            .map((scored, index) => {
             const option = scored.option;
             const isSelected = selected.includes(option.courseId);
-            const isInBasket = basket.some(b => b.courseId === option.courseId);
+            const isInBasket = isOptionInBasket(option.id, option.courseId, option.providerCode);
             const optionCredits = Number(option.credits) || 0;
             const wouldExceedYearCap = !isSelected && yearEarned + optionCredits > yearCap;
             const disabled = (isAtMax && !isSelected) || wouldExceedYearCap;
-            const isTopOption = index === 0;
+            // Top option only if no groups and first ungrouped
+            const isTopOption = groupingResult.groups.length === 0 && index === 0;
 
             return (
               <div
@@ -622,10 +691,12 @@ export function MarketplacePanel({
                   <Button
                     onClick={() => {
                       if (isInBasket) {
-                        removeItemWithToast(option.courseId);
+                        // Use optionId for removal (fixes identity issue #2)
+                        removeItemWithToast(option.id);
                       } else {
                         addItemWithToast({
                           moduleId,
+                          optionId: option.id, // Use requirement_option.id for identity
                           courseId: option.courseId,
                           title: option.title,
                           credits: option.credits,
@@ -636,6 +707,7 @@ export function MarketplacePanel({
                           status: 'pinned',
                           providerType: option.providerType,
                           providerCode: option.providerCode,
+                          equivalency_key: option.equivalency_key,
                           level: option.level ?? 100
                         });
                       }

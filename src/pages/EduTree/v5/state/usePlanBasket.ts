@@ -14,7 +14,8 @@ import { checkTransferRule } from '../engine/transferEngine';
 export interface BasketItem {
   moduleId: string;
   requirementArea?: string; // NEW: For cross-compatibility between structured and template-based IDs
-  courseId: string;
+  optionId?: string; // Unique requirement_option.id for selection identity (optional for backward compat)
+  courseId: string; // Display course code (may be shared across providers)
   title?: string;
   credits: number;
   cost_usd: number | null;
@@ -26,6 +27,7 @@ export interface BasketItem {
   providerCode?: string;
   level?: number;
   semester?: 'fall' | 'spring' | 'summer'; // Week 1.5: Track semester assignment for DnD
+  equivalency_key?: string; // For grouping equivalent courses
   
   // Transfer verification status - core for decentralized degrees
   transferStatus?: {
@@ -190,21 +192,29 @@ export const usePlanBasket = create<PlanBasketState>()(
       
       addItem: (item) => {
         const items = get().items;
-        // Prevent duplicates within same module + semester (allow course to satisfy different modules)
-        const isDuplicate = items.some(i => 
-          i.courseId === item.courseId && 
-          i.moduleId === item.moduleId &&
-          (!item.semester || !i.semester || i.semester === item.semester)
-        );
+        // Use optionId for identity (unique per provider+course), fallback to providerCode:courseId
+        const itemKey = item.optionId || `${item.providerCode || 'unknown'}:${item.courseId}`;
+        
+        // Prevent duplicates by optionId within same module
+        const isDuplicate = items.some(i => {
+          const existingKey = i.optionId || `${i.providerCode || 'unknown'}:${i.courseId}`;
+          return existingKey === itemKey && 
+            i.moduleId === item.moduleId &&
+            (!item.semester || !i.semester || i.semester === item.semester);
+        });
         if (isDuplicate) {
-          console.warn('[Basket] Duplicate prevented:', item.courseId, item.moduleId, item.semester);
+          console.warn('[Basket] Duplicate prevented:', itemKey, item.moduleId, item.semester);
           return;
         }
         set({ items: [...items, item] });
       },
       
-      removeItem: (courseId) => {
-        set({ items: get().items.filter(i => i.courseId !== courseId) });
+      removeItem: (optionIdOrCourseId) => {
+        // Support both optionId (preferred) and legacy courseId removal
+        set({ items: get().items.filter(i => {
+          const itemKey = i.optionId || i.courseId;
+          return itemKey !== optionIdOrCourseId && i.courseId !== optionIdOrCourseId;
+        })});
       },
       
       removeItemByModuleAndCourse: (moduleId, courseId) => {
