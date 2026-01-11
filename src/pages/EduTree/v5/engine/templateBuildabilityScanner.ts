@@ -366,27 +366,35 @@ function runTest(
     
     switch (testType) {
       case 'clean_transfer':
-        // Should pass with no errors
+        // Should pass with no errors (policy_unverified is also an error)
         passed = violations.filter(v => v.severity === 'error').length === 0;
         break;
         
       case 'over_transfer_cap':
         // Should correctly detect over-cap (test passes if violation detected)
-        // For combined mode, this triggers the combined_cap violation
         if (bucketMode === 'combined') {
-          passed = violations.some(v => v.type === 'combined_cap' || v.type === 'transfer_cap' || v.type === 'total_transfer');
-        } else {
+          // Combined mode: expect combined_cap
+          passed = violations.some(v => v.type === 'combined_cap');
+        } else if (bucketMode === 'separate') {
+          // Separate mode: expect transfer_cap or total_transfer
           passed = violations.some(v => v.type === 'transfer_cap' || v.type === 'total_transfer');
+        } else {
+          // Unknown mode: expect policy_unverified error
+          passed = violations.some(v => v.type === 'policy_unverified');
         }
         break;
         
       case 'over_alt_cap':
         // Should correctly detect alt cap violation
-        // For combined mode, this also triggers the combined_cap (since alt is part of combined)
         if (bucketMode === 'combined') {
-          passed = violations.some(v => v.type === 'combined_cap' || v.type === 'transfer_cap');
+          // Combined mode: alt contributes to combined_cap
+          passed = violations.some(v => v.type === 'combined_cap');
+        } else if (bucketMode === 'separate') {
+          // Separate mode: expect alt_cap (distinct from transfer_cap)
+          passed = violations.some(v => v.type === 'alt_cap');
         } else {
-          passed = violations.some(v => v.type === 'transfer_cap' || v.type === 'provider_cap');
+          // Unknown mode: expect policy_unverified error
+          passed = violations.some(v => v.type === 'policy_unverified');
         }
         break;
         

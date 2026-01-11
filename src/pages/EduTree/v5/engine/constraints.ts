@@ -24,7 +24,7 @@ export interface PolicyData {
 }
 
 export interface Violation {
-  type: 'budget' | 'workload' | 'deadline' | 'prerequisite' | 'transfer_cap' | 'conflict' | 'residency' | 'upper_division' | 'provider_cap' | 'gened_incomplete' | 'total_transfer' | 'capstone_substitution' | 'combined_cap';
+  type: 'budget' | 'workload' | 'deadline' | 'prerequisite' | 'transfer_cap' | 'alt_cap' | 'conflict' | 'residency' | 'upper_division' | 'provider_cap' | 'gened_incomplete' | 'total_transfer' | 'capstone_substitution' | 'combined_cap' | 'policy_unverified';
   severity: 'error' | 'warning' | 'info';
   message: string;
   affectedCourses: string[];
@@ -142,19 +142,21 @@ export function validatePlan(
   // Uses canonical classification from creditClassification.ts
   const institutionCode = constraints.target_school || '';
   
+  // Helper to build classifiable item from basket item
+  const toClassifiable = (item: BasketItem) => ({
+    providerType: item.providerType,
+    providerCode: (item as any).providerCode,
+    isAltCredit: (item as any).isAltCredit,
+    aceNccrs: (item as any).aceNccrs,
+    credits: item.credits,
+  });
+  
   // Calculate credits using canonical classification
   let transferCredits = 0;
   let altCredits = 0;
   
   for (const item of basket) {
-    const classifiableItem = {
-      providerType: item.providerType,
-      providerCode: (item as any).providerCode,
-      isAltCredit: (item as any).isAltCredit,
-      aceNccrs: (item as any).aceNccrs,
-      credits: item.credits,
-    };
-    
+    const classifiableItem = toClassifiable(item);
     if (isTransferCredit(classifiableItem, institutionCode)) {
       transferCredits += item.credits;
     }
@@ -165,77 +167,79 @@ export function validatePlan(
   
   // Get bucket mode from constraints (passed from policy data)
   const bucketMode = (constraints as any).transfer_alt_bucket_mode as BucketMode | undefined;
-  const maxAltCredit = (constraints as any).max_alt_credit as number | undefined;
+  const policyAltCap = (constraints as any).max_alt_credit as number | undefined;
+  const constraintsAltCap = constraints.max_ace_credits;
   const maxTransferAltCombined = (constraints as any).max_transfer_alt_combined_credits as number | undefined;
   
+  // Pick single effective alt cap (policy takes precedence)
+  const effectiveAltCap = policyAltCap ?? constraintsAltCap ?? null;
+  
+  // Helper: get affected course IDs for transfer OR alt credits
+  const getTransferOrAltCourseIds = () => basket
+    .filter(i => {
+      const c = toClassifiable(i);
+      return isTransferCredit(c, institutionCode) || isAltCredit(c);
+    })
+    .map(i => i.courseId);
+  
+  // Helper: get affected course IDs for alt credits only
+  const getAltCourseIds = () => basket
+    .filter(i => isAltCredit(toClassifiable(i)))
+    .map(i => i.courseId);
+  
   if (bucketMode === 'combined' && maxTransferAltCombined != null) {
-    // Combined bucket: (transfer + alt) must be <= combined cap
-    // Note: alt is a subset of transfer, so just check transfer total
-    const combinedTotal = transferCredits; // alt credits are already counted in transfer
+    // Combined bucket: (transfer + alt) counted together
+    // Note: For combined schools, alt credits are WITHIN transfer total, not additive
+    // So the combined total is simply transferCredits (which includes alt)
+    const combinedTotal = transferCredits;
     if (combinedTotal > maxTransferAltCombined) {
       violations.push({
         type: 'combined_cap',
         severity: 'error',
         message: `${combinedTotal} combined transfer+alt credits exceeds ${maxTransferAltCombined} limit`,
-        affectedCourses: basket.filter(i => {
-          const c = { providerType: i.providerType, providerCode: (i as any).providerCode, credits: i.credits };
-          return isTransferCredit(c, institutionCode);
-        }).map(i => i.courseId),
+        affectedCourses: getTransferOrAltCourseIds(),
         suggestedFix: 'Replace some transfer/alt credits with resident courses',
         metadata: { current: combinedTotal, limit: maxTransferAltCombined, bucketMode: 'combined' },
       });
     }
   } else if (bucketMode === 'separate') {
     // Separate buckets: enforce each cap independently
-    if (constraints.max_ace_credits && altCredits > constraints.max_ace_credits) {
+    // 1. Alt credit cap (single effective cap, no duplicates)
+    if (effectiveAltCap != null && altCredits > effectiveAltCap) {
       violations.push({
-        type: 'transfer_cap',
+        type: 'alt_cap',
         severity: 'error',
-        message: `${altCredits} alt credits exceeds ${constraints.max_ace_credits} alt credit limit`,
-        affectedCourses: basket.filter(i => isAltCredit({
-          providerType: i.providerType,
-          providerCode: (i as any).providerCode,
-          isAltCredit: (i as any).isAltCredit,
-          aceNccrs: (i as any).aceNccrs,
-          credits: i.credits,
-        })).map(i => i.courseId),
-        suggestedFix: 'Replace some alt-credit courses with university courses',
-        metadata: { current: altCredits, limit: constraints.max_ace_credits, bucketMode: 'separate' },
+        message: `${altCredits} alt credits exceeds ${effectiveAltCap} noncollegiate limit`,
+        affectedCourses: getAltCourseIds(),
+        suggestedFix: 'Replace some alt-credit courses with RA transfer or resident courses',
+        metadata: { current: altCredits, limit: effectiveAltCap, bucketMode: 'separate' },
       });
     }
     
-    // Also check max_alt_credit from policy if different from constraints
-    if (maxAltCredit != null && altCredits > maxAltCredit) {
+    // 2. Transfer cap (if school has one separate from alt)
+    const maxTransferCredits = (constraints as any).max_transfer_credits as number | undefined;
+    if (maxTransferCredits != null && transferCredits > maxTransferCredits) {
       violations.push({
         type: 'transfer_cap',
         severity: 'error',
-        message: `${altCredits} alt credits exceeds ${maxAltCredit} noncollegiate limit`,
-        affectedCourses: basket.filter(i => isAltCredit({
-          providerType: i.providerType,
-          providerCode: (i as any).providerCode,
-          isAltCredit: (i as any).isAltCredit,
-          aceNccrs: (i as any).aceNccrs,
-          credits: i.credits,
-        })).map(i => i.courseId),
-        suggestedFix: 'Replace some alt-credit courses with RA transfer or resident courses',
-        metadata: { current: altCredits, limit: maxAltCredit, bucketMode: 'separate' },
+        message: `${transferCredits} transfer credits exceeds ${maxTransferCredits} limit`,
+        affectedCourses: basket
+          .filter(i => isTransferCredit(toClassifiable(i), institutionCode))
+          .map(i => i.courseId),
+        suggestedFix: 'Replace some transfer credits with resident courses',
+        metadata: { current: transferCredits, limit: maxTransferCredits, bucketMode: 'separate' },
       });
     }
   } else {
-    // Legacy fallback: use original providerType-based check
-    const aceCredits = basket
-      .filter(i => i.providerType === 'mooc' || i.providerType === 'testing_center')
-      .reduce((sum, i) => sum + i.credits, 0);
-      
-    if (constraints.max_ace_credits && aceCredits > constraints.max_ace_credits) {
-      violations.push({
-        type: 'transfer_cap',
-        severity: 'error',
-        message: `${aceCredits} ACE/alt credits exceeds ${constraints.max_ace_credits} transfer limit`,
-        affectedCourses: basket.map(i => i.courseId),
-        suggestedFix: 'Replace some alt-credit courses with university courses',
-      });
-    }
+    // Unknown bucket mode = policy unverified, emit error (no heuristic fallback)
+    violations.push({
+      type: 'policy_unverified',
+      severity: 'error',
+      message: `transfer_alt_bucket_mode is '${bucketMode ?? 'undefined'}'. Cannot enforce transfer/alt caps without verified bucket mode.`,
+      affectedCourses: [],
+      suggestedFix: 'Verify policy source and set transfer_alt_bucket_mode to separate or combined',
+      metadata: { bucketMode: bucketMode ?? 'unknown' as BucketMode },
+    });
   }
   
   // 5. Prerequisite check
