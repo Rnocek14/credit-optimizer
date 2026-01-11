@@ -22,13 +22,58 @@ import { supabase } from '@/integrations/supabase/client';
 import marketplaceV2Templates from '@/fixtures/templates/marketplace-v2-templates.json';
 
 // Required policy fields for a pack to be considered complete
-const REQUIRED_POLICY_FIELDS = [
+// Note: max_alt_credit is only required for 'separate' bucket mode
+const BASE_REQUIRED_FIELDS = [
   'degree_credit_total',
   'residency_credits', 
   'max_transfer_credits',
-  'max_alt_credit',
   'capstone_in_residence',
+  'transfer_alt_bucket_mode',
 ] as const;
+
+type BucketMode = 'separate' | 'combined' | 'unknown';
+
+/**
+ * Validate policy completeness based on bucket mode
+ */
+function validatePolicyCompleteness(policyData: Record<string, unknown>): {
+  valid: boolean;
+  missingFields: string[];
+  bucketMode: BucketMode;
+} {
+  const missingFields: string[] = [];
+  
+  // Check base required fields
+  for (const field of BASE_REQUIRED_FIELDS) {
+    if (policyData[field] === undefined || policyData[field] === null) {
+      missingFields.push(field);
+    }
+  }
+  
+  const bucketMode = (policyData.transfer_alt_bucket_mode as BucketMode) || 'unknown';
+  
+  // Bucket mode must be known
+  if (bucketMode === 'unknown') {
+    missingFields.push('transfer_alt_bucket_mode (must be separate or combined)');
+  }
+  
+  // Additional validation based on bucket mode
+  if (bucketMode === 'separate') {
+    if (policyData.max_alt_credit === undefined || policyData.max_alt_credit === null) {
+      missingFields.push('max_alt_credit (required for separate bucket mode)');
+    }
+  } else if (bucketMode === 'combined') {
+    if (policyData.max_transfer_alt_combined_credits === undefined || policyData.max_transfer_alt_combined_credits === null) {
+      missingFields.push('max_transfer_alt_combined_credits (required for combined bucket mode)');
+    }
+  }
+  
+  return {
+    valid: missingFields.length === 0,
+    missingFields,
+    bucketMode,
+  };
+}
 
 export type ScanTestType = 
   | 'clean_transfer' 
@@ -450,19 +495,14 @@ async function fetchPolicyDataFromDb(institutionCode: string): Promise<{
       ...policyDataFlat,
     };
 
-    // Validate required fields are present (NO DEFAULTS)
-    const missingFields: string[] = [];
-    for (const field of REQUIRED_POLICY_FIELDS) {
-      if (policyData[field] === undefined || policyData[field] === null) {
-        missingFields.push(field);
-      }
-    }
+    // Validate required fields using bucket-mode-aware validation
+    const validation = validatePolicyCompleteness(policyData);
 
-    if (missingFields.length > 0) {
+    if (!validation.valid) {
       return { 
         success: false, 
-        error: `Missing required fields: ${missingFields.join(', ')}`,
-        missingFields,
+        error: `Missing required fields: ${validation.missingFields.join(', ')}`,
+        missingFields: validation.missingFields,
       };
     }
 
