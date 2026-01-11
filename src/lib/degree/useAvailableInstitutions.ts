@@ -85,25 +85,40 @@ export function useAvailableInstitutions() {
             if (seenCodes.has(row.institution)) continue;
             
             // GATE: Only include if ALL required fields are present for degree buildability
-            // AND provenance is verified (no silent assumptions)
+            // AND provenance is verified AND bucket mode is known
             const pd = row.policy_data || {};
             const gradeRules = pd.grade_rules || {};
+            const bucketMode = pd.transfer_alt_bucket_mode as string | undefined;
             
-            const requiredFields = {
+            // Base required fields (always needed)
+            const baseRequiredFields: Record<string, unknown> = {
               residency_credits: pd.residency_credits,
               max_transfer_credits: pd.max_transfer_credits,
               capstone_in_residence: pd.capstone_in_residence,
               degree_credit_total: pd.degree_credit_total,
-              max_alt_credit: pd.max_alt_credit ?? pd.transfer_credit_policy?.max_alt_credit,
               min_transfer_grade: gradeRules.min_transfer_grade,
+              transfer_alt_bucket_mode: bucketMode,
             };
             
-            const missingFields = Object.entries(requiredFields)
+            // Additional required fields based on bucket mode
+            if (bucketMode === 'separate') {
+              // Separate bucket mode requires explicit max_alt_credit
+              baseRequiredFields.max_alt_credit = pd.max_alt_credit ?? pd.transfer_credit_policy?.max_alt_credit;
+            } else if (bucketMode === 'combined') {
+              // Combined bucket mode requires the combined limit
+              baseRequiredFields.max_transfer_alt_combined_credits = pd.max_transfer_alt_combined_credits;
+            }
+            // 'unknown' bucket mode = not selectable (will fail on bucket_mode check)
+            
+            const missingFields = Object.entries(baseRequiredFields)
               .filter(([_, v]) => v == null)
               .map(([k]) => k);
             
             // Also check for provenance (no unverified values)
             const hasProvenance = pd.provenance_verified_at != null || pd.provenance_excerpt != null;
+            
+            // Check bucket mode is known (not 'unknown')
+            const hasKnownBucketMode = bucketMode === 'separate' || bucketMode === 'combined';
             
             if (missingFields.length > 0) {
               console.warn('[useAvailableInstitutions] Skipping %s: missing required fields: %s', 
@@ -113,6 +128,12 @@ export function useAvailableInstitutions() {
             
             if (!hasProvenance) {
               console.warn('[useAvailableInstitutions] Skipping %s: missing provenance verification', 
+                row.institution);
+              continue;
+            }
+            
+            if (!hasKnownBucketMode) {
+              console.warn('[useAvailableInstitutions] Skipping %s: unknown transfer_alt_bucket_mode (policy shape unverified)', 
                 row.institution);
               continue;
             }
