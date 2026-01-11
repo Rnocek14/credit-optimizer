@@ -593,15 +593,118 @@ async function scanTemplate(
 }
 
 // ============================================================================
+// Policy Contract Checks (mirrors useAvailableInstitutions gating)
+// ============================================================================
+
+export interface AnchorEligibility {
+  institution: string;
+  selectable: boolean;
+  reason?: 'missing_fields' | 'unknown_bucket_mode' | 'missing_provenance' | 'stale_provenance' | 'missing_mode_caps';
+  missingFields?: string[];
+  bucketMode?: string;
+  daysSinceVerified?: number;
+}
+
+const STALENESS_THRESHOLD_DAYS = 180;
+
+/**
+ * Check if a policy pack meets all anchor selection requirements
+ * Must exactly mirror useAvailableInstitutions logic
+ */
+export function checkAnchorEligibility(policyData: any, institution: string): AnchorEligibility {
+  const pd = policyData || {};
+  const gradeRules = pd.grade_rules || {};
+  const bucketMode = pd.transfer_alt_bucket_mode as string | undefined;
+  
+  // Base required fields (always needed)
+  const baseRequiredFields: Record<string, unknown> = {
+    residency_credits: pd.residency_credits,
+    max_transfer_credits: pd.max_transfer_credits,
+    capstone_in_residence: pd.capstone_in_residence,
+    degree_credit_total: pd.degree_credit_total,
+    min_transfer_grade: gradeRules.min_transfer_grade,
+    transfer_alt_bucket_mode: bucketMode,
+  };
+  
+  // Additional required fields based on bucket mode
+  if (bucketMode === 'separate') {
+    baseRequiredFields.max_alt_credit = pd.max_alt_credit ?? pd.transfer_credit_policy?.max_alt_credit;
+  } else if (bucketMode === 'combined') {
+    baseRequiredFields.max_transfer_alt_combined_credits = pd.max_transfer_alt_combined_credits;
+  }
+  
+  const missingFields = Object.entries(baseRequiredFields)
+    .filter(([_, v]) => v == null)
+    .map(([k]) => k);
+  
+  if (missingFields.length > 0) {
+    return {
+      institution,
+      selectable: false,
+      reason: 'missing_fields',
+      missingFields,
+      bucketMode,
+    };
+  }
+  
+  // Check provenance
+  const hasProvenance = pd.provenance_verified_at != null || pd.provenance_excerpt != null;
+  if (!hasProvenance) {
+    return {
+      institution,
+      selectable: false,
+      reason: 'missing_provenance',
+      bucketMode,
+    };
+  }
+  
+  // Check bucket mode is known
+  const hasKnownBucketMode = bucketMode === 'separate' || bucketMode === 'combined';
+  if (!hasKnownBucketMode) {
+    return {
+      institution,
+      selectable: false,
+      reason: 'unknown_bucket_mode',
+      bucketMode: bucketMode ?? 'undefined',
+    };
+  }
+  
+  // Check staleness
+  const verifiedAt = pd.provenance_verified_at ? new Date(pd.provenance_verified_at) : null;
+  const daysSinceVerified = verifiedAt 
+    ? Math.floor((Date.now() - verifiedAt.getTime()) / (1000 * 60 * 60 * 24))
+    : Infinity;
+  
+  if (daysSinceVerified > STALENESS_THRESHOLD_DAYS) {
+    return {
+      institution,
+      selectable: false,
+      reason: 'stale_provenance',
+      bucketMode,
+      daysSinceVerified,
+    };
+  }
+  
+  return {
+    institution,
+    selectable: true,
+    bucketMode,
+    daysSinceVerified,
+  };
+}
+
+// ============================================================================
 // Known Policy Drift Locations (static audit results)
 // ============================================================================
 
 function getKnownDriftFindings(): IntegrityScanSummary['driftFindings'] {
-  // These were known drift locations from manual audit
-  // FIXED 2026-01-11: Legacy provider caps now only enforce if explicitly in policy
-  // FIXED 2026-01-11: constraints.ts and creditOptimizer.ts updated to use policy-derived caps
+  // Policy drift findings as of 2026-01-11
+  // FIXED: Legacy provider caps now only enforce if explicitly in policy
+  // FIXED: constraints.ts and creditOptimizer.ts use policy-derived caps
+  // FIXED: SNHU demoted, unknown bucket mode blocked by DB trigger
+  // FIXED: Staleness gating added (180 days)
   return [
-    // Remaining drift findings (interface definition still has legacy keys for backward compat)
+    // Remaining items (backward compat or needs data update)
     { file: 'src/hooks/useInstitutionLimits.ts:5-19', issue: 'Interface includes legacy per-provider cap keys (backward compat only)' },
     { file: 'scripts/optimizer-tables-setup.sql:197-206', issue: 'Seeds wrong upper_division_min: 30, alt_credit_max: 80 (needs update)' },
   ];
