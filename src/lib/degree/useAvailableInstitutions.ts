@@ -60,12 +60,12 @@ export function useAvailableInstitutions() {
       const seenCodes = new Set<string>();
 
       try {
-        // Fetch institutions with active or draft packs (highest confidence first)
+        // Fetch ALL institutions, ordered by confidence (we'll pick the best per institution)
+        // Include deprecated as fallback - better to show all scraped schools
         // @ts-ignore - table exists after scraper runs
         const { data, error } = await supabase
           .from('institution_policy_packs' as any)
           .select('institution, status, confidence_score')
-          .in('status', ['active', 'draft'])
           .order('confidence_score', { ascending: false });
 
         if (!error && data && Array.isArray(data)) {
@@ -75,10 +75,15 @@ export function useAvailableInstitutions() {
             if (seenCodes.has(row.institution)) continue;
             seenCodes.add(row.institution);
 
+            // Map status: active/draft stay as-is, deprecated/superseded shown as 'draft' (needs review)
+            const displayStatus = (row.status === 'active') ? 'active' 
+              : (row.status === 'draft') ? 'draft' 
+              : 'draft'; // deprecated/superseded shown as needing review
+
             results.push({
               code: row.institution,
               name: getInstitutionName(row.institution),
-              status: row.status as 'active' | 'draft',
+              status: displayStatus,
               confidence: row.confidence_score,
               source: 'pack',
             });
