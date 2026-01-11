@@ -34,9 +34,10 @@ export function PolicyBadges({
   
   const badges: React.ReactNode[] = [];
   
-  // Alt credit detection: Anything NOT from a university counts toward alt credit cap
-  // This is the canonical definition - simpler and more inclusive than providerType enumeration
-  const isAltCredit = option.providerType !== 'university';
+  // Alt credit detection: Priority-based logic matching computeIsAltCredit()
+  // 1) Explicit ACE/NCCRS tag → alt credit
+  // 2) Non-university providerType → alt credit
+  const isAltCredit = option.aceNccrs === true || option.providerType !== 'university';
   
   // Check if this is from the anchor institution (residency)
   // Normalize both codes to uppercase for comparison

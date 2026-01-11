@@ -178,8 +178,12 @@ export function MarketplacePanel({
   }), [policyData, targetSchool, constraints.max_ace_credits]);
   
   // Helper: Determine if an option counts as alt credit at add-time
-  // University credits don't count toward alt cap; everything else does
-  const computeIsAltCredit = (opt: { providerType?: ProviderType }) => {
+  // Priority: 1) Explicit ACE/NCCRS tag → alt credit
+  //           2) Non-university providerType → alt credit
+  const computeIsAltCredit = (opt: { aceNccrs?: boolean; providerType?: ProviderType }) => {
+    // ACE/NCCRS always counts as alt credit
+    if (opt.aceNccrs === true) return true;
+    // University credits don't count toward alt cap
     return opt.providerType !== 'university';
   };
   
@@ -434,29 +438,42 @@ export function MarketplacePanel({
           {/* Render grouped options first (sorted by sortBy using group-min for cost/duration) */}
           {[...groupingResult.groups]
             .sort((a, b) => {
-              // Helper: get min value across all options in a group
+              // Helper: get min/max value across all options in a group
               const allOptions = (g: OptionGroup) => [g.bestOption, ...g.alternatives];
-              
-              if (sortBy === 'best-match') {
-                // Best-match uses highest score (bestOption is already the best)
-                return b.bestOption.score - a.bestOption.score;
-              }
-              if (sortBy === 'cheapest') {
-                // Use minimum cost across entire group, not just bestOption
-                const minCost = (g: OptionGroup) => 
-                  Math.min(...allOptions(g).map(x => x.option.cost_usd ?? Infinity));
-                return minCost(a) - minCost(b);
-              }
-              if (sortBy === 'shortest') {
-                // Use minimum duration across entire group
-                const minDur = (g: OptionGroup) => 
-                  Math.min(...allOptions(g).map(x => x.option.duration_weeks ?? Infinity));
-                return minDur(a) - minDur(b);
-              }
-              // Credits: use max credits in group
+              const minCost = (g: OptionGroup) => 
+                Math.min(...allOptions(g).map(x => x.option.cost_usd ?? Infinity));
+              const minDur = (g: OptionGroup) => 
+                Math.min(...allOptions(g).map(x => x.option.duration_weeks ?? Infinity));
               const maxCredits = (g: OptionGroup) => 
                 Math.max(...allOptions(g).map(x => x.option.credits ?? 0));
-              return maxCredits(b) - maxCredits(a);
+              
+              if (sortBy === 'best-match') {
+                // Best-match uses highest score, with stable tie-breakers
+                const scoreDiff = b.bestOption.score - a.bestOption.score;
+                if (scoreDiff !== 0) return scoreDiff;
+                return a.key.localeCompare(b.key); // stable tie-breaker
+              }
+              if (sortBy === 'cheapest') {
+                const costDiff = minCost(a) - minCost(b);
+                if (costDiff !== 0) return costDiff;
+                // Tie-breakers: score (desc), then key
+                const scoreDiff = b.bestOption.score - a.bestOption.score;
+                if (scoreDiff !== 0) return scoreDiff;
+                return a.key.localeCompare(b.key);
+              }
+              if (sortBy === 'shortest') {
+                const durDiff = minDur(a) - minDur(b);
+                if (durDiff !== 0) return durDiff;
+                const scoreDiff = b.bestOption.score - a.bestOption.score;
+                if (scoreDiff !== 0) return scoreDiff;
+                return a.key.localeCompare(b.key);
+              }
+              // Credits: max credits in group, with tie-breakers
+              const creditDiff = maxCredits(b) - maxCredits(a);
+              if (creditDiff !== 0) return creditDiff;
+              const scoreDiff = b.bestOption.score - a.bestOption.score;
+              if (scoreDiff !== 0) return scoreDiff;
+              return a.key.localeCompare(b.key);
             })
             .map((group, groupIndex) => (
             <OptionGroupRow
