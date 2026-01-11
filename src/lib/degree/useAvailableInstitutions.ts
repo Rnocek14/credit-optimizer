@@ -70,30 +70,38 @@ export function useAvailableInstitutions() {
       const seenCodes = new Set<string>();
 
       try {
-        // Fetch ALL institutions, ordered by confidence (we'll pick the best per institution)
-        // Include deprecated as fallback - better to show all scraped schools
+        // ONLY fetch ACTIVE packs with COMPLETE required fields
+        // This gates the selector to only show institutions that can build valid degrees
         // @ts-ignore - table exists after scraper runs
         const { data, error } = await supabase
           .from('institution_policy_packs' as any)
-          .select('institution, status, confidence_score')
+          .select('institution, status, confidence_score, policy_data')
+          .eq('status', 'active')
           .order('confidence_score', { ascending: false });
 
         if (!error && data && Array.isArray(data)) {
-          // Group by institution, take highest confidence per institution
           for (const rawRow of data) {
-            const row = rawRow as unknown as PolicyPackRow;
+            const row = rawRow as unknown as PolicyPackRow & { policy_data: any };
             if (seenCodes.has(row.institution)) continue;
+            
+            // GATE: Only include if required fields are present
+            const pd = row.policy_data || {};
+            const hasRequiredFields = 
+              pd.residency_credits != null &&
+              pd.max_transfer_credits != null &&
+              pd.capstone_in_residence != null;
+            
+            if (!hasRequiredFields) {
+              console.warn('[useAvailableInstitutions] Skipping %s: missing required fields', row.institution);
+              continue;
+            }
+            
             seenCodes.add(row.institution);
-
-            // Map status: active/draft stay as-is, deprecated/superseded shown as 'draft' (needs review)
-            const displayStatus = (row.status === 'active') ? 'active' 
-              : (row.status === 'draft') ? 'draft' 
-              : 'draft'; // deprecated/superseded shown as needing review
 
             results.push({
               code: row.institution,
               name: getInstitutionName(row.institution),
-              status: displayStatus,
+              status: 'active',
               confidence: row.confidence_score,
               source: 'pack',
             });
