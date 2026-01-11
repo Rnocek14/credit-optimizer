@@ -63,6 +63,22 @@ export function applyTemplate(params: ApplyTemplateParams): ApplyResult {
   const conflicts: ApplyResult['conflicts'] = [];
 
   for (const option of options) {
+    // PHASE A: Hard block capstone substitution via non-institutional credit
+    const isCapstoneModule = (option as any).requirementArea === 'CAPSTONE' || 
+                              (option as any).moduleId?.toLowerCase().includes('capstone') ||
+                              option.title?.toLowerCase().includes('capstone');
+    const isNonInstitutional = option.providerType !== 'university';
+    
+    if (isCapstoneModule && isNonInstitutional) {
+      conflicts.push({
+        courseId: option.courseId,
+        reason: `BLOCKED: Capstone must be completed in-residence. Cannot satisfy with ${option.providerType} credit.`,
+        severity: 'error',
+      });
+      console.error(`[Apply] ❌ CAPSTONE SUBSTITUTION BLOCKED: ${option.courseId} (${option.providerType})`);
+      continue; // Skip this option entirely - do not add to basket
+    }
+
     const chain = resolveChain(option.courseId, allOptions, currentBasket);
 
     // Warn about unsatisfiable prereqs (non-blocking)
