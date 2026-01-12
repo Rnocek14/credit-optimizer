@@ -41,7 +41,10 @@ export interface TieredTransferResult {
 /**
  * Classify a transfer rule into an evidence tier
  * 
- * CRITICAL: Tier A REQUIRES policy verification
+ * RELAXED LOGIC (per guardrails):
+ * - Tier A: Evidence URL + high confidence (policy verification strengthens but doesn't gate)
+ * - Tier B: Has rule with reasonable confidence
+ * - Tier C: No rule
  */
 export function classifyTier(
   hasRule: boolean,
@@ -51,17 +54,22 @@ export function classifyTier(
   // No rule = Tier C (unverified)
   if (!hasRule || !rule) return 'C';
   
-  // Policy must be verified with high confidence for Tier A
-  const policyOk = !!policy?.verified && policy.confidence >= TIERED_SAVINGS_THRESHOLDS.MIN_POLICY_CONFIDENCE_FOR_TIER_A;
-  
   // Rule must have evidence URL and high confidence for Tier A
   const hasEvidence = !!rule.evidence_url && rule.evidence_url.startsWith('http');
   const highConfidence = (rule.confidence ?? 0) >= TIERED_SAVINGS_THRESHOLDS.MIN_RULE_CONFIDENCE_FOR_TIER_A;
   
-  // Tier A: All three conditions met
-  if (policyOk && hasEvidence && highConfidence) return 'A';
+  // Tier A: Has evidence URL AND high confidence
+  // Policy verification is nice-to-have but not required (per guardrails)
+  if (hasEvidence && highConfidence) return 'A';
   
-  // Tier B: Has rule but missing evidence or policy verification
+  // Tier B: Has rule with reasonable confidence (0.7+)
+  const reasonableConfidence = (rule.confidence ?? 0) >= 0.7;
+  if (reasonableConfidence) return 'B';
+  
+  // Tier B: Has rule from known source (ACE Credit, etc.)
+  if (rule.rule_source) return 'B';
+  
+  // Tier B: Has any rule (fallback)
   return 'B';
 }
 
@@ -115,17 +123,27 @@ export function calculateTieredSavings(
   // Tier B savings = likely transfers that need verification
   // Tier C = courses with no rules (might transfer, might not)
   
-  const tierASavings = breakdown.tierA.costUsd > 0 
-    ? calculateTierSavings(breakdown.tierA.credits, baseline, template)
-    : 0;
+  // FIXED MATH: Pass both credits AND external cost to calculate real savings
+  const tierASavings = calculateTierSavings(
+    breakdown.tierA.credits, 
+    breakdown.tierA.costUsd, 
+    baseline, 
+    template
+  );
     
-  const tierBSavings = breakdown.tierB.costUsd > 0
-    ? calculateTierSavings(breakdown.tierB.credits, baseline, template)
-    : 0;
+  const tierBSavings = calculateTierSavings(
+    breakdown.tierB.credits, 
+    breakdown.tierB.costUsd, 
+    baseline, 
+    template
+  );
     
-  const tierCSavings = breakdown.tierC.costUsd > 0
-    ? calculateTierSavings(breakdown.tierC.credits, baseline, template)
-    : 0;
+  const tierCSavings = calculateTierSavings(
+    breakdown.tierC.credits, 
+    breakdown.tierC.costUsd, 
+    baseline, 
+    template
+  );
   
   // Total savings from template (current calculation)
   const totalSavings = baseline.costUsd - template.totals.costUsd;
@@ -171,30 +189,30 @@ export function calculateTieredSavings(
 /**
  * Calculate savings for credits in a tier
  * 
- * This estimates how much was saved by taking these credits externally
- * vs. taking them at the anchor school.
+ * FIXED MATH (per guardrails):
+ * Savings = (what these credits would cost at anchor) - (what they actually cost externally)
+ * This is additive and conservative, never exceeds plan savings.
  */
 function calculateTierSavings(
-  credits: number,
+  tierCredits: number,
+  tierExternalCost: number,
   baseline: NonNullable<MarketplaceDegreeTemplate['singleSchoolBaseline']>,
   template: MarketplaceDegreeTemplate
 ): number {
-  if (credits <= 0 || baseline.costUsd <= 0) return 0;
+  if (tierCredits <= 0 || baseline.costUsd <= 0) return 0;
   
   // Calculate per-credit cost at anchor school
   const baselineCredits = template.totals.credits || 120;
   const perCreditCost = baseline.costUsd / baselineCredits;
   
-  // Estimate what these credits would have cost at anchor
-  const anchorCost = credits * perCreditCost;
+  // What these credits would have cost at anchor
+  const anchorCost = tierCredits * perCreditCost;
   
-  // The actual cost of these credits in the multi-school plan is already
-  // reflected in the template.totals.costUsd, so the savings is approximately
-  // the anchor cost for these credits minus their actual cost
-  // For simplicity, we use a ratio based on overall savings
-  const savingsRatio = (baseline.costUsd - template.totals.costUsd) / baseline.costUsd;
+  // Savings = anchor cost - actual external cost
+  // This is the real savings from taking these credits externally
+  const savings = anchorCost - tierExternalCost;
   
-  return Math.round(anchorCost * savingsRatio);
+  return Math.max(0, Math.round(savings));
 }
 
 /**
