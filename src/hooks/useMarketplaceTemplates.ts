@@ -2,6 +2,12 @@ import { useQuery } from '@tanstack/react-query';
 import type { MarketplaceDegreeTemplate, MarketplaceFilters } from '@/pages/EduTree/v5/types/templates';
 import marketplaceTemplates from '@/fixtures/templates/marketplace-v2-templates.json';
 
+// Debug: Log template data on load to verify yearBreakdown
+console.log('[MarketplaceTemplates] Loaded templates:', marketplaceTemplates.length);
+console.log('[MarketplaceTemplates] First template yearBreakdown length:', 
+  (marketplaceTemplates as any)[0]?.singleSchoolBaseline?.yearBreakdown?.length);
+console.log('[MarketplaceTemplates] First template yearTemplates length:', 
+  (marketplaceTemplates as any)[0]?.yearTemplates?.length);
 /**
  * Hook to fetch and filter marketplace templates
  * V1: Uses static fixtures, V2+ will query database
