@@ -84,6 +84,7 @@ export function PreApprovalEmailModal({
   useEffect(() => {
     if (open) {
       setActiveTab('generate');
+      setCopiedField(null);
       setAdvisorResult('');
       setResponseText('');
       setResponseDate(new Date().toISOString().split('T')[0]);
