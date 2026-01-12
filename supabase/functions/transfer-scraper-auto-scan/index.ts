@@ -71,6 +71,29 @@ Deno.serve(async (req) => {
     const templates = await templatesResponse.json();
 
     if (!templates || templates.length === 0) {
+      // P0 FIX: Update task status to 'failed' BEFORE returning 404
+      // This prevents tasks from being stuck in 'running' state forever
+      if (runId) {
+        await supabase
+          .from('policy_refresh_tasks')
+          .update({ 
+            status: 'failed', 
+            reason: 'No URL templates found for institution',
+            completed_at: new Date().toISOString(),
+            metrics: {
+              templates_scanned: 0,
+              succeeded: 0,
+              failed: 0,
+              elapsed_ms: Date.now() - taskStartTime,
+              skip_reason: 'no_templates',
+            },
+          })
+          .eq('run_id', runId)
+          .eq('institution', institution);
+        
+        console.log(`Task failed early: ${institution} - no templates found`);
+      }
+      
       // Guardrail A: Log skip reason to policy_scan_findings for auditability
       const currentYear = `${new Date().getFullYear()}-${new Date().getFullYear() + 1}`;
       await fetch(`${supabaseUrl}/rest/v1/policy_scan_findings`, {

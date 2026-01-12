@@ -229,13 +229,9 @@ async function publishPolicyPack(
     return undefined; // Signal that pack was not created
   }
 
-  // First, supersede any existing active policy
-  await supabase
-    .from('institution_policy_packs')
-    .update({ status: 'superseded' })
-    .eq('institution', policyPack.institution)
-    .eq('academic_year', policyPack.academic_year)
-    .eq('status', 'active');
+  // REMOVED: Auto-supersede logic - promotion is now admin-only
+  // Existing active packs remain until explicitly promoted via admin UI
+  // This prevents "behavior leak" where automation can silently mutate truth
 
   // Insert new policy pack
   const { data, error } = await supabase
