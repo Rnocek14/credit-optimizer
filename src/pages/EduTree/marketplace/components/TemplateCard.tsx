@@ -378,7 +378,7 @@ export function TemplateCard({ template, isSelected, onToggleSelect }: TemplateC
                   <dataQuality.icon className="h-3.5 w-3.5" />
                   <span>{dataQuality.label}</span>
                   <span className="text-muted-foreground">
-                    ({dataQuality.rulesFoundPercent}% verified)
+                    ({dataQuality.rulesFoundPercent}% have rules{dataQuality.evidenceLinkedPercent > 0 ? ` • ${dataQuality.evidenceLinkedPercent}% evidence-linked` : ''})
                   </span>
                 </div>
               </TooltipTrigger>
