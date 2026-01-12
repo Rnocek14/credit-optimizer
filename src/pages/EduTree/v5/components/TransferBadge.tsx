@@ -97,7 +97,16 @@ export function TransferBadge({
     <>
       <Popover>
         <PopoverTrigger asChild>
-          <Badge className={`gap-1 border cursor-pointer ${status.cls}`}>{status.icon}{status.label}</Badge>
+          <Badge className={`gap-1 border cursor-pointer relative ${status.cls}`}>
+            {status.icon}{status.label}
+            {/* Tier 4 evidence indicator dot */}
+            {preapproval && (
+              <span 
+                className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-green-500 rounded-full border border-white dark:border-gray-900"
+                title="Advisor pre-approval on file"
+              />
+            )}
+          </Badge>
         </PopoverTrigger>
         <PopoverContent className="w-80">
           <div className="space-y-3">
