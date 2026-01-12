@@ -124,8 +124,8 @@ export function normalizeCourseCode(code: string): string {
   const upper = code.toUpperCase();
   const canonical = COURSE_CODE_ALIAS_MAP[upper];
   
-  // Return the alias if found, otherwise return original unchanged
-  return canonical || code;
+  // Return the alias if found, otherwise return uppercase for consistent matching
+  return canonical || upper;
 }
 
 /**
