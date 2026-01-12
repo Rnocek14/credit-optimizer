@@ -450,5 +450,71 @@
       { "year": 4, "label": "Year 4 – Capstone", "recommendedPace": "full_time", "moduleTemplates": [{ "moduleId": "CYBER_Y4", "label": "Capstone", "creditsRequired": 30, "requirementArea": "CAPSTONE", "options": [{ "id": "wgu-cyber-y4", "courseId": "WGU-CYBER-YEAR4", "title": "WGU Cybersecurity Capstone", "credits": 30, "cost_usd": 4195, "duration_weeks": 26, "provider": "WGU", "providerType": "institutional", "providerCode": "WGU", "level": 400, "cri_score": 90, "workload_weekly_hours": 18, "subject": "Cybersecurity" }], "recommendedCourseId": "WGU-CYBER-YEAR4" }] }
     ],
     "totals": { "credits": 120, "costUsd": 16780, "weeks": 104, "avgCri": 86 }
+  },
+  {
+    "id": "it-bachelor-wgu-multischool-2025",
+    "kind": "degree",
+    "programId": "it-bachelor",
+    "anchorSchool": "WGU",
+    "optimization": "multi-school-cheapest",
+    "label": "BS Information Technology @ WGU • Multi-School Strategy",
+    "summary": "Complete your IT degree by transferring Sophia/Study.com credits to WGU. Save thousands compared to full WGU pricing.",
+    "badge": "Cheapest",
+    "catalogYear": "2025",
+    "policyVersion": "WGU-2025-v1",
+    "generatedAt": "2025-01-11T00:00:00Z",
+    "lastVerified": "2025-01-11T00:00:00Z",
+    "marketplace": { "title": "Budget IT via Multi-School", "tagline": "Sophia + Study.com → WGU graduation", "badge": "Cheapest", "isPremium": false },
+    "lifestyle": { "avgWeeklyHours": 12, "paceType": "flexible", "workCompatible": true },
+    "primaryCareerIds": ["it-manager", "systems-admin", "network-engineer"],
+    "deliveryMode": "fully_online",
+    "inPersonWeeks": 0,
+    "socialProof": { "popularityScore": 4.8, "dataSource": "generated" },
+    "singleSchoolBaseline": {
+      "costUsd": 15980,
+      "weeks": 104,
+      "source": "WGU direct enrollment (4 terms × $3,995)",
+      "notes": "All 120 credits at WGU flat-rate terms"
+    },
+    "yearTemplates": [
+      { "year": 1, "label": "Year 1 – Gen Ed via Sophia (30cr)", "recommendedPace": "part_time", "moduleTemplates": [{ "moduleId": "GENED_SOPHIA", "label": "Gen Ed Bundle", "creditsRequired": 30, "requirementArea": "GENED", "options": [{ "id": "sophia-gened-it", "courseId": "SOPHIA-GENED-IT", "title": "Sophia Gen Ed Bundle", "credits": 30, "cost_usd": 990, "duration_weeks": 16, "provider": "Sophia Learning", "providerType": "mooc", "providerCode": "SOPHIA", "level": 100, "cri_score": 72, "workload_weekly_hours": 12, "subject": "General Education" }], "recommendedCourseId": "SOPHIA-GENED-IT" }] },
+      { "year": 2, "label": "Year 2 – IT Core via Study.com (30cr)", "recommendedPace": "part_time", "moduleTemplates": [{ "moduleId": "IT_CORE_SDC", "label": "IT Core Bundle", "creditsRequired": 30, "requirementArea": "IT_CORE", "options": [{ "id": "sdc-it-core", "courseId": "SDC-IT-CORE", "title": "Study.com IT Core Bundle", "credits": 30, "cost_usd": 1580, "duration_weeks": 16, "provider": "Study.com", "providerType": "mooc", "providerCode": "STUDYCOM", "level": 200, "cri_score": 78, "workload_weekly_hours": 12, "subject": "IT" }], "recommendedCourseId": "SDC-IT-CORE" }] },
+      { "year": 3, "label": "Year 3 – Advanced IT via Sophia/Study.com (30cr)", "recommendedPace": "full_time", "moduleTemplates": [{ "moduleId": "IT_ADV_MIX", "label": "Advanced IT Mix", "creditsRequired": 30, "requirementArea": "IT_CORE", "options": [{ "id": "sophia-sdc-adv-it", "courseId": "SOPHIA-SDC-ADV-IT", "title": "Sophia + Study.com Advanced IT", "credits": 30, "cost_usd": 1285, "duration_weeks": 16, "provider": "Mixed", "providerType": "mooc", "providerCode": "SOPHIA", "level": 300, "cri_score": 76, "workload_weekly_hours": 14, "subject": "IT" }], "recommendedCourseId": "SOPHIA-SDC-ADV-IT" }] },
+      { "year": 4, "label": "Year 4 – WGU Residency & Capstone (30cr)", "recommendedPace": "full_time", "moduleTemplates": [{ "moduleId": "WGU_RESIDENCY", "label": "WGU Residency + Capstone", "creditsRequired": 30, "requirementArea": "CAPSTONE", "options": [{ "id": "wgu-residency-cap", "courseId": "WGU-RES-CAP", "title": "WGU Final Term + Capstone", "credits": 30, "cost_usd": 3995, "duration_weeks": 26, "provider": "WGU", "providerType": "institutional", "providerCode": "WGU", "level": 400, "cri_score": 88, "workload_weekly_hours": 16, "subject": "IT" }], "recommendedCourseId": "WGU-RES-CAP" }] }
+    ],
+    "totals": { "credits": 120, "costUsd": 7850, "weeks": 74, "avgCri": 78 }
+  },
+  {
+    "id": "cs-bachelor-tesu-multischool-2025",
+    "kind": "degree",
+    "programId": "cs-bachelor",
+    "anchorSchool": "TESU",
+    "optimization": "multi-school-cheapest",
+    "label": "BS Computer Science @ TESU • Multi-School Strategy",
+    "summary": "Complete your CS degree by transferring Sophia/Study.com credits to TESU. Save thousands compared to traditional university pricing.",
+    "badge": "Cheapest",
+    "catalogYear": "2025",
+    "policyVersion": "TESU-2025-v1",
+    "generatedAt": "2025-01-11T00:00:00Z",
+    "lastVerified": "2025-01-11T00:00:00Z",
+    "marketplace": { "title": "Budget CS via Multi-School", "tagline": "Sophia + Study.com → TESU graduation", "badge": "Cheapest", "isPremium": false },
+    "lifestyle": { "avgWeeklyHours": 10, "paceType": "flexible", "workCompatible": true },
+    "primaryCareerIds": ["software-engineer", "web-developer", "full-stack-developer"],
+    "deliveryMode": "fully_online",
+    "inPersonWeeks": 0,
+    "socialProof": { "popularityScore": 4.7, "dataSource": "generated" },
+    "singleSchoolBaseline": {
+      "costUsd": 38400,
+      "weeks": 192,
+      "source": "Traditional 4-year university (avg. $9,600/year tuition)",
+      "notes": "Compared to average public university in-state tuition"
+    },
+    "yearTemplates": [
+      { "year": 1, "label": "Year 1 – Gen Ed via Sophia (30cr)", "recommendedPace": "part_time", "moduleTemplates": [{ "moduleId": "GENED_SOPHIA_CS", "label": "Gen Ed Bundle", "creditsRequired": 30, "requirementArea": "GENED", "options": [{ "id": "sophia-gened-cs", "courseId": "SOPHIA-GENED-CS", "title": "Sophia Gen Ed Bundle", "credits": 30, "cost_usd": 990, "duration_weeks": 16, "provider": "Sophia Learning", "providerType": "mooc", "providerCode": "SOPHIA", "level": 100, "cri_score": 72, "workload_weekly_hours": 10, "subject": "General Education" }], "recommendedCourseId": "SOPHIA-GENED-CS" }] },
+      { "year": 2, "label": "Year 2 – CS Core via Study.com (30cr)", "recommendedPace": "part_time", "moduleTemplates": [{ "moduleId": "CS_CORE_SDC", "label": "CS Core Bundle", "creditsRequired": 30, "requirementArea": "CS_CORE", "options": [{ "id": "sdc-cs-core", "courseId": "SDC-CS-CORE", "title": "Study.com CS Core Bundle", "credits": 30, "cost_usd": 1580, "duration_weeks": 16, "provider": "Study.com", "providerType": "mooc", "providerCode": "STUDYCOM", "level": 200, "cri_score": 80, "workload_weekly_hours": 10, "subject": "Computer Science" }], "recommendedCourseId": "SDC-CS-CORE" }] },
+      { "year": 3, "label": "Year 3 – Advanced CS via Study.com (30cr)", "recommendedPace": "full_time", "moduleTemplates": [{ "moduleId": "CS_ADV_SDC", "label": "Advanced CS Bundle", "creditsRequired": 30, "requirementArea": "CS_CORE", "options": [{ "id": "sdc-cs-adv", "courseId": "SDC-CS-ADV", "title": "Study.com Advanced CS", "credits": 30, "cost_usd": 1580, "duration_weeks": 16, "provider": "Study.com", "providerType": "mooc", "providerCode": "STUDYCOM", "level": 300, "cri_score": 82, "workload_weekly_hours": 12, "subject": "Computer Science" }], "recommendedCourseId": "SDC-CS-ADV" }] },
+      { "year": 4, "label": "Year 4 – TESU Residency & Capstone (30cr)", "recommendedPace": "full_time", "moduleTemplates": [{ "moduleId": "TESU_RESIDENCY_CS", "label": "TESU Residency + Capstone", "creditsRequired": 30, "requirementArea": "CAPSTONE", "options": [{ "id": "tesu-residency-cs", "courseId": "TESU-RES-CS", "title": "TESU Final Courses + Capstone", "credits": 30, "cost_usd": 4500, "duration_weeks": 32, "provider": "TESU", "providerType": "institutional", "providerCode": "TESU", "level": 400, "cri_score": 88, "workload_weekly_hours": 12, "subject": "Computer Science" }], "recommendedCourseId": "TESU-RES-CS" }] }
+    ],
+    "totals": { "credits": 120, "costUsd": 8650, "weeks": 80, "avgCri": 80 }
   }
 ]

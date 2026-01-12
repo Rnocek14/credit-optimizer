@@ -197,6 +197,15 @@ export interface MarketplaceDegreeTemplate extends DegreeTemplate {
     weeks: number;
     avgCri?: number | null;
   };
+  
+  // Single-school baseline for savings comparison
+  // Shows what the degree would cost if done entirely at the anchor school
+  singleSchoolBaseline?: {
+    costUsd: number;      // Full cost if all credits at anchor school
+    weeks: number;        // Duration if all at anchor school
+    source: string;       // "WGU 6-month term pricing" or "TESU per-credit rate"
+    notes?: string;       // "Based on 4 terms @ $3,995"
+  };
 }
 
 /**
