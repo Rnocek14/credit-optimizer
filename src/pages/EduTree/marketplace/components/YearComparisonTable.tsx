@@ -1,11 +1,71 @@
 import { Badge } from '@/components/ui/badge';
 import { ProviderBadge } from './ProviderBadge';
-import type { MarketplaceDegreeTemplate } from '@/pages/EduTree/v5/types/templates';
+import type { MarketplaceDegreeTemplate, YearTemplate } from '@/pages/EduTree/v5/types/templates';
 import { ArrowRight, TrendingDown, Clock, DollarSign, GraduationCap } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useMemo } from 'react';
 
 interface YearComparisonTableProps {
   template: MarketplaceDegreeTemplate;
+}
+
+interface YearTotals {
+  cost: number;
+  weeks: number;
+  credits: number;
+  providers: string[];
+  courseLabels: string[];
+}
+
+/**
+ * Computes aggregated totals for a year by summing all modules.
+ * Uses recommendedCourseId to select the option, falls back to first option.
+ * Uses ADDITIVE weeks model to match template.totals semantics.
+ */
+function computeYearTotals(yearTemplate: YearTemplate | undefined): YearTotals {
+  if (!yearTemplate?.moduleTemplates) {
+    return { cost: 0, weeks: 0, credits: 0, providers: [], courseLabels: [] };
+  }
+
+  let totalCost = 0;
+  let totalWeeks = 0; // Additive model for consistency with template.totals
+  let totalCredits = 0;
+  const providers: string[] = [];
+  const courseLabels: string[] = [];
+
+  for (const module of yearTemplate.moduleTemplates) {
+    // Select option via recommendedCourseId, fallback to first
+    const option = module.options?.find(
+      o => o.courseId === module.recommendedCourseId
+    ) || module.options?.[0];
+
+    if (!option) continue;
+
+    totalCost += option.cost_usd || 0;
+    totalWeeks += option.duration_weeks || 0; // Additive weeks
+    totalCredits += option.credits || 0;
+
+    if (option.providerCode && !providers.includes(option.providerCode)) {
+      providers.push(option.providerCode);
+    }
+    if (option.title) {
+      courseLabels.push(option.title);
+    }
+  }
+
+  return { cost: totalCost, weeks: totalWeeks, credits: totalCredits, providers, courseLabels };
+}
+
+/**
+ * Extracts a clean baseline source label from the source string.
+ * Falls back to "{anchorSchool} Direct" if no source provided.
+ */
+function getBaselineLabel(source: string | undefined, anchorSchool: string): string {
+  if (!source) return `${anchorSchool} Direct`;
+  
+  // Extract the main part before parentheses if present
+  const mainPart = source.split('(')[0]?.trim();
+  return mainPart || `${anchorSchool} Direct`;
 }
 
 export function YearComparisonTable({ template }: YearComparisonTableProps) {
@@ -19,7 +79,14 @@ export function YearComparisonTable({ template }: YearComparisonTableProps) {
     );
   }
 
-  // Calculate totals
+  // Precompute all year totals once (not inside render loop)
+  const multiSchoolYearTotals = useMemo(() => {
+    return baseline.yearBreakdown!.map((_, idx) => 
+      computeYearTotals(template.yearTemplates?.[idx])
+    );
+  }, [template.yearTemplates, baseline.yearBreakdown]);
+
+  // Calculate overall totals
   const baselineTotalCost = baseline.costUsd;
   const baselineTotalWeeks = baseline.weeks;
   const multiSchoolTotalCost = template.totals.costUsd;
@@ -30,18 +97,18 @@ export function YearComparisonTable({ template }: YearComparisonTableProps) {
   const weeksSaved = baselineTotalWeeks - multiSchoolTotalWeeks;
   const monthsSaved = Math.round(weeksSaved / 4.33);
 
+  // Get the baseline label from source (trust fix)
+  const baselineLabel = getBaselineLabel(baseline.source, template.anchorSchool);
+
   return (
     <div className="space-y-4">
       {/* Year by Year Comparison */}
       {baseline.yearBreakdown.map((baselineYear, idx) => {
-        const multiSchoolYear = template.yearTemplates?.[idx];
-        const multiSchoolOption = multiSchoolYear?.moduleTemplates?.[0]?.options?.[0];
+        const yearTotals = multiSchoolYearTotals[idx];
         
-        // Calculate year savings
-        const multiSchoolCost = multiSchoolOption?.cost_usd || 0;
-        const multiSchoolWeeks = multiSchoolOption?.duration_weeks || 0;
-        const yearSavings = baselineYear.costUsd - multiSchoolCost;
-        const yearWeeksSaved = baselineYear.weeks - multiSchoolWeeks;
+        // Calculate year savings using aggregated totals
+        const yearSavings = baselineYear.costUsd - yearTotals.cost;
+        const yearWeeksSaved = baselineYear.weeks - yearTotals.weeks;
         
         return (
           <div key={idx} className="rounded-lg border bg-card overflow-hidden">
@@ -54,7 +121,7 @@ export function YearComparisonTable({ template }: YearComparisonTableProps) {
               {/* Single School Column */}
               <div className="p-4 bg-muted/20">
                 <div className="text-xs text-muted-foreground mb-2 font-medium">
-                  {template.anchorSchool} Direct
+                  {baselineLabel}
                 </div>
                 <div className="space-y-2">
                   <div className="font-medium text-sm">
@@ -87,37 +154,42 @@ export function YearComparisonTable({ template }: YearComparisonTableProps) {
                 <div className="text-xs text-muted-foreground mb-2 font-medium">
                   Multi-School Strategy
                 </div>
-                {multiSchoolOption ? (
+                {yearTotals.cost > 0 || yearTotals.credits > 0 ? (
                   <div className="space-y-2">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-medium text-sm">
-                        {multiSchoolOption.title}
+                        {yearTotals.courseLabels.length === 1 
+                          ? yearTotals.courseLabels[0]
+                          : `${yearTotals.courseLabels.length} courses combined`
+                        }
                       </span>
-                      {multiSchoolOption.providerCode && (
+                      {/* Show all providers involved in this year */}
+                      {yearTotals.providers.map(code => (
                         <ProviderBadge 
-                          providerCode={multiSchoolOption.providerCode as any}
+                          key={code}
+                          providerCode={code as any}
                           className="text-[10px]"
                         />
-                      )}
+                      ))}
                     </div>
                     <div className="flex items-center gap-3 text-sm text-muted-foreground">
                       <span className="flex items-center gap-1">
                         <GraduationCap className="h-3 w-3" />
-                        {multiSchoolOption.credits}cr
+                        {yearTotals.credits}cr
                       </span>
                       <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-medium">
                         <DollarSign className="h-3 w-3" />
-                        ${multiSchoolCost.toLocaleString()}
+                        ${yearTotals.cost.toLocaleString()}
                       </span>
                       <span className="flex items-center gap-1">
                         <Clock className="h-3 w-3" />
-                        {multiSchoolWeeks}wk
+                        {yearTotals.weeks}wk
                       </span>
                     </div>
                     
                     {/* Year Savings */}
                     {yearSavings > 0 && (
-                      <div className="flex items-center gap-2 mt-2">
+                      <div className="flex items-center gap-2 mt-2 flex-wrap">
                         <Badge 
                           variant="outline" 
                           className="text-xs bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-400 dark:border-emerald-800"
@@ -158,7 +230,7 @@ export function YearComparisonTable({ template }: YearComparisonTableProps) {
           
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div>
-              <div className="text-muted-foreground">{template.anchorSchool} Direct</div>
+              <div className="text-muted-foreground">{baselineLabel}</div>
               <div className="font-semibold text-lg">${baselineTotalCost.toLocaleString()}</div>
               <div className="text-xs text-muted-foreground">{Math.round(baselineTotalWeeks / 4.33)} months</div>
             </div>
