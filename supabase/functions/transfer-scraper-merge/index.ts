@@ -1452,6 +1452,87 @@ Deno.serve(async (req) => {
       
       console.log(`[merge] Caps validation: residency='${residency}' (${residencyOk}), maxTransfer='${maxTransfer}' (${maxTransferOk}), hasBoth=${hasBothNumericCaps}`);
 
+      // === P1 FIX: WRITE DIFFS EARLY (before any early returns) ===
+      // This ensures we always answer "What changed?" even if pack creation is skipped
+      let earlyDiffsWritten = 0;
+      if (run_id) {
+        // Get current active pack for comparison
+        const { data: currentPack } = await supabase
+          .from('institution_policy_packs')
+          .select('policy_data, confidence_score')
+          .eq('institution', institution)
+          .eq('status', 'active')
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .single();
+        
+        const oldData = currentPack?.policy_data as Record<string, unknown> || {};
+        const oldConfidence = currentPack?.confidence_score || 0;
+        
+        // Compare key fields and write diffs
+        const fieldsToCompare = [
+          'residency_credits',
+          'max_transfer_credits', 
+          'max_ace_nccrs_credits',
+          'accepts_clep',
+          'accepts_dsst',
+          'accepts_ap',
+          'accepts_ace',
+          'accepts_nccrs',
+        ];
+        
+        const earlyDiffRows: Array<{
+          run_id: string;
+          institution: string;
+          field_name: string;
+          old_value: unknown;
+          new_value: unknown;
+          old_confidence: number | null;
+          new_confidence: number | null;
+          action: string;
+        }> = [];
+        
+        for (const field of fieldsToCompare) {
+          const oldVal = oldData[field];
+          const newVal = policyData[field as keyof typeof policyData];
+          
+          let action: string;
+          if (oldVal === undefined && newVal !== undefined) {
+            action = 'added';
+          } else if (oldVal !== undefined && newVal === undefined) {
+            action = 'removed';
+          } else if (JSON.stringify(oldVal) !== JSON.stringify(newVal)) {
+            action = 'updated';
+          } else {
+            action = 'unchanged';
+          }
+          
+          earlyDiffRows.push({
+            run_id,
+            institution,
+            field_name: field,
+            old_value: oldVal ?? null,
+            new_value: newVal ?? null,
+            old_confidence: oldConfidence,
+            new_confidence: totalScore,
+            action,
+          });
+        }
+        
+        if (earlyDiffRows.length > 0) {
+          const { error: diffError } = await supabase
+            .from('policy_refresh_diffs')
+            .insert(earlyDiffRows);
+          
+          if (diffError) {
+            console.error('[merge] Error writing early diffs:', diffError);
+          } else {
+            earlyDiffsWritten = earlyDiffRows.length;
+            console.log(`[merge] Wrote ${earlyDiffsWritten} early diffs for run ${run_id} (before pack creation check)`);
+          }
+        }
+      }
+
       // HARD GUARDRAIL: Never create packs without BOTH numeric caps
       // This prevents "nil packs" that pollute data and confuse verification
       if (!hasBothNumericCaps) {
@@ -1651,6 +1732,7 @@ Deno.serve(async (req) => {
             scope,
             caps_found: { residency: residencyOk, max_transfer: maxTransferOk },
             recommendation,
+            diffs_written: earlyDiffsWritten, // P1 FIX: Include diffs even when pack skipped
             notes: [...notes, `Pack creation skipped: ${findingReason} (${recommendation})`],
           }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -1689,85 +1771,9 @@ Deno.serve(async (req) => {
       const packScope = scope === 'program' ? 'program' : 'institution';
       
       // === DIFF WRITING FOR POLICY REFRESH PIPELINE ===
-      // Write diffs to policy_refresh_diffs if run_id is provided
-      let diffsWritten = 0;
-      if (run_id) {
-        // Get current active pack for comparison
-        const { data: currentPack } = await supabase
-          .from('institution_policy_packs')
-          .select('policy_data, confidence_score')
-          .eq('institution', institution)
-          .eq('status', 'active')
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .single();
-        
-        const oldData = currentPack?.policy_data as Record<string, unknown> || {};
-        const oldConfidence = currentPack?.confidence_score || 0;
-        
-        // Compare key fields and write diffs
-        const fieldsToCompare = [
-          'residency_credits',
-          'max_transfer_credits', 
-          'max_ace_nccrs_credits',
-          'accepts_clep',
-          'accepts_dsst',
-          'accepts_ap',
-          'accepts_ace',
-          'accepts_nccrs',
-        ];
-        
-        const diffRows: Array<{
-          run_id: string;
-          institution: string;
-          field_name: string;
-          old_value: unknown;
-          new_value: unknown;
-          old_confidence: number | null;
-          new_confidence: number | null;
-          action: string;
-        }> = [];
-        
-        for (const field of fieldsToCompare) {
-          const oldVal = oldData[field];
-          const newVal = policyData[field as keyof typeof policyData];
-          
-          let action: string;
-          if (oldVal === undefined && newVal !== undefined) {
-            action = 'added';
-          } else if (oldVal !== undefined && newVal === undefined) {
-            action = 'removed';
-          } else if (JSON.stringify(oldVal) !== JSON.stringify(newVal)) {
-            action = 'updated';
-          } else {
-            action = 'unchanged';
-          }
-          
-          diffRows.push({
-            run_id,
-            institution,
-            field_name: field,
-            old_value: oldVal ?? null,
-            new_value: newVal ?? null,
-            old_confidence: oldConfidence,
-            new_confidence: totalScore,
-            action,
-          });
-        }
-        
-        if (diffRows.length > 0) {
-          const { error: diffError } = await supabase
-            .from('policy_refresh_diffs')
-            .insert(diffRows);
-          
-          if (diffError) {
-            console.error('[merge] Error writing diffs:', diffError);
-          } else {
-            diffsWritten = diffRows.length;
-            console.log(`[merge] Wrote ${diffsWritten} diffs for run ${run_id}`);
-          }
-        }
-      }
+      // NOTE: Diffs already written early (before hasBothNumericCaps check)
+      // Use earlyDiffsWritten for the count
+      const diffsWritten = earlyDiffsWritten;
 
       const { data: packData, error: policyError } = await supabase
         .from('institution_policy_packs')
@@ -1796,7 +1802,6 @@ Deno.serve(async (req) => {
       } else {
         policyPackId = packData.id;
         notes.push(`Created merged policy pack: ${packData.id}${diffsWritten > 0 ? ` (${diffsWritten} diffs written)` : ''}`);
-        notes.push(`Created merged policy pack: ${packData.id}`);
 
         // Log merge audit for bulletproof provenance trail
         const { error: auditError } = await supabase

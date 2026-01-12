@@ -20,6 +20,15 @@ verify_jwt = false
 [functions.transfer-scraper-auto-scan]
 verify_jwt = false
 
+[functions.transfer-scraper-merge]
+verify_jwt = false
+
+[functions.policy-refresh-start]
+verify_jwt = false
+
+[functions.policy-refresh-finalize]
+verify_jwt = false
+
 [functions.firecrawl-test]
 verify_jwt = false
 
