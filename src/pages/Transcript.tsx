@@ -10,6 +10,7 @@ import { Progress } from "@/components/ui/progress";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { TrustTranscript } from "@/components/resume/TrustTranscript";
 import { useCourseIntelligence } from "@/hooks/useCourseIntelligence";
@@ -18,6 +19,7 @@ import { useActiveTrackStore } from "@/stores/useActiveTrackStore";
 import TutorialTip from '@/tutorial/TutorialTip';
 import { TIPS } from '@/tutorial/tutorial-map';
 import { useQuery } from "@tanstack/react-query";
+import { TranscriptQuickEntry } from "@/components/transcript/TranscriptQuickEntry";
 import { 
   GraduationCap, 
   Plus, 
@@ -29,7 +31,9 @@ import {
   Sparkles,
   Brain,
   TrendingUp,
-  FileText
+  FileText,
+  Zap,
+  ClipboardList
 } from "lucide-react";
 
 interface TranscriptEntry {
@@ -327,98 +331,120 @@ export default function Transcript() {
           </p>
         </div>
 
-        {/* Add Entry Form */}
-        <Card className="mb-8 border-2 border-primary/20">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Plus className="h-5 w-5" />
-              {editingId ? 'Edit Entry' : 'Add New Transcript Entry'}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="title">Title *</Label>
-                  <Input
-                    id="title"
-                    value={formData.title}
-                    onChange={(e) => setFormData({...formData, title: e.target.value})}
-                    placeholder="Course or certification title"
-                    required
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="grade">Grade</Label>
-                  <Input
-                    id="grade"
-                    value={formData.grade}
-                    onChange={(e) => setFormData({...formData, grade: e.target.value})}
-                    placeholder="A+, 98%, Pass, etc."
-                  />
-                </div>
-              </div>
+        {/* Tabs for Quick Add vs Detailed Entry */}
+        <Tabs defaultValue="quick" className="mb-8">
+          <TabsList className="grid w-full max-w-md grid-cols-2 mx-auto">
+            <TabsTrigger value="quick" className="flex items-center gap-2">
+              <Zap className="h-4 w-4" />
+              Quick Add
+            </TabsTrigger>
+            <TabsTrigger value="detailed" className="flex items-center gap-2">
+              <ClipboardList className="h-4 w-4" />
+              Detailed Entry
+            </TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="quick" className="mt-6">
+            <TranscriptQuickEntry 
+              targetSchool="TESU"
+              onEntryAdded={fetchEntries}
+            />
+          </TabsContent>
+          
+          <TabsContent value="detailed" className="mt-6">
+            <Card className="border-2 border-primary/20">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Plus className="h-5 w-5" />
+                  {editingId ? 'Edit Entry' : 'Add New Transcript Entry'}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="title">Title *</Label>
+                      <Input
+                        id="title"
+                        value={formData.title}
+                        onChange={(e) => setFormData({...formData, title: e.target.value})}
+                        placeholder="Course or certification title"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="grade">Grade</Label>
+                      <Input
+                        id="grade"
+                        value={formData.grade}
+                        onChange={(e) => setFormData({...formData, grade: e.target.value})}
+                        placeholder="A+, 98%, Pass, etc."
+                      />
+                    </div>
+                  </div>
 
-              <div>
-                <Label htmlFor="description">Description</Label>
-                <Textarea
-                  id="description"
-                  value={formData.description}
-                  onChange={(e) => setFormData({...formData, description: e.target.value})}
-                  placeholder="What did you learn? Key skills and outcomes..."
-                  className="h-20"
-                />
-              </div>
+                  <div>
+                    <Label htmlFor="description">Description</Label>
+                    <Textarea
+                      id="description"
+                      value={formData.description}
+                      onChange={(e) => setFormData({...formData, description: e.target.value})}
+                      placeholder="What did you learn? Key skills and outcomes..."
+                      className="h-20"
+                    />
+                  </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <Label htmlFor="credits">Credits</Label>
-                  <Input
-                    id="credits"
-                    type="number"
-                    step="0.5"
-                    value={formData.credits}
-                    onChange={(e) => setFormData({...formData, credits: e.target.value})}
-                    placeholder="3.0"
-                  />
-                </div>
-                <div>
-                  <Label>Difficulty</Label>
-                  <Select value={formData.difficulty} onValueChange={(value) => setFormData({...formData, difficulty: value})}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select difficulty" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Beginner">Beginner</SelectItem>
-                      <SelectItem value="Intermediate">Intermediate</SelectItem>
-                      <SelectItem value="Advanced">Advanced</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label htmlFor="skill_tags">Skills (comma-separated)</Label>
-                  <Input
-                    id="skill_tags"
-                    value={formData.skill_tags}
-                    onChange={(e) => setFormData({...formData, skill_tags: e.target.value})}
-                    placeholder="React, JavaScript, Project Management"
-                  />
-                </div>
-              </div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <Label htmlFor="credits">Credits</Label>
+                      <Input
+                        id="credits"
+                        type="number"
+                        step="0.5"
+                        value={formData.credits}
+                        onChange={(e) => setFormData({...formData, credits: e.target.value})}
+                        placeholder="3.0"
+                      />
+                    </div>
+                    <div>
+                      <Label>Difficulty</Label>
+                      <Select value={formData.difficulty} onValueChange={(value) => setFormData({...formData, difficulty: value})}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select difficulty" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Beginner">Beginner</SelectItem>
+                          <SelectItem value="Intermediate">Intermediate</SelectItem>
+                          <SelectItem value="Advanced">Advanced</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label htmlFor="skill_tags">Skills (comma-separated)</Label>
+                      <Input
+                        id="skill_tags"
+                        value={formData.skill_tags}
+                        onChange={(e) => setFormData({...formData, skill_tags: e.target.value})}
+                        placeholder="React, JavaScript, Project Management"
+                      />
+                    </div>
+                  </div>
 
-              <div className="flex gap-2 pt-4">
-                <Button type="submit" disabled={submitting}>
-                  {submitting ? "Processing..." : editingId ? "Update Entry" : "Add Entry"}
-                </Button>
-                {editingId && (
-                  <Button type="button" variant="outline" onClick={resetForm}>
-                    Cancel Edit
-                  </Button>
-                )}
-              </div>
-            </form>
-          </CardContent>
-        </Card>
+                  <div className="flex gap-2 pt-4">
+                    <Button type="submit" disabled={submitting}>
+                      {submitting ? "Processing..." : editingId ? "Update Entry" : "Add Entry"}
+                    </Button>
+                    {editingId && (
+                      <Button type="button" variant="outline" onClick={resetForm}>
+                        Cancel Edit
+                      </Button>
+                    )}
+                  </div>
+                </form>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
 
         {/* Trust Transcript */}
         <div className="mb-8">
