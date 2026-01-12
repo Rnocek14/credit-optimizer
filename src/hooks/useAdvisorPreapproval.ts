@@ -35,6 +35,8 @@ export function useAdvisorPreapproval({
     queryFn: async () => {
       if (!target || !providerCode || !courseCode) return null;
 
+      const queryKey = ['advisor-preapproval', target, providerCode, courseCode];
+      
       const { data: result, error } = await supabase
         .from('transfer_outcomes')
         .select('id, outcome_date, evidence_notes, degree_program, credits_applied, is_public')
@@ -45,6 +47,12 @@ export function useAdvisorPreapproval({
         .order('outcome_date', { ascending: false })
         .limit(1)
         .maybeSingle();
+
+      // Instrumentation: log evidence fetch
+      console.log('[EvidenceLoop] fetch', {
+        queryKey,
+        resultCount: result ? 1 : 0,
+      });
 
       if (error) {
         console.error('Error fetching advisor preapproval:', error);
