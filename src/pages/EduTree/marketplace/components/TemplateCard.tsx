@@ -118,16 +118,25 @@ export function TemplateCard({ template, isSelected, onToggleSelect }: TemplateC
     [template]
   );
 
-  // Calculate tiered savings
+  // Calculate tiered savings - FIX: use map keyed by courseCode+providerCode to avoid index mismatch
   const tieredSavings = useMemo(() => {
     if (!transferVerifications || !strategySavings) return null;
     
-    // Map transfer verifications to TieredTransferResult format
-    const tieredResults: TieredTransferResult[] = transferVerifications.map((v, idx) => ({
-      ...v,
-      credits: allCourses[idx]?.credits || 0,
-      costUsd: allCourses[idx]?.costUsd || 0,
-    }));
+    // Build a map keyed by (courseCode + providerCode) to avoid index mismatch
+    const costMap = new Map(
+      allCourses.map(c => [`${c.code}:${c.providerCode ?? ''}`, c])
+    );
+    
+    // Map transfer verifications to TieredTransferResult format using the map
+    const tieredResults: TieredTransferResult[] = transferVerifications.map(v => {
+      const key = `${v.courseCode}:${v.providerCode ?? ''}`;
+      const c = costMap.get(key);
+      return {
+        ...v,
+        credits: c?.credits ?? 0,
+        costUsd: c?.costUsd ?? 0,
+      };
+    });
     
     return calculateTieredSavings(template, tieredResults, policy ?? null);
   }, [transferVerifications, strategySavings, template, policy, allCourses]);
