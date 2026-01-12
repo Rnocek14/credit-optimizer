@@ -2,6 +2,40 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import type { TransferStatus } from '../components/TransferStatusBadge';
 
+/**
+ * Canonical provider code mapping
+ * Maps template provider codes to database source_institution values
+ */
+const PROVIDER_ALIAS_MAP: Record<string, string> = {
+  // StraighterLine aliases
+  'SL': 'STRAIGHTERLINE',
+  'STRAIGHTERLINE': 'STRAIGHTERLINE',
+  // Study.com aliases
+  'STUDY': 'STUDYCOM',
+  'STUDYCOM': 'STUDYCOM',
+  'SDC': 'STUDYCOM',
+  // Sophia aliases
+  'SOPHIA': 'SOPHIA',
+  // CLEP stays as-is
+  'CLEP': 'CLEP',
+  // Standardized exams
+  'AP': 'AP',
+  'DSST': 'DSST',
+  // Institutions
+  'TESU': 'TESU',
+  'COSC': 'COSC',
+  'WGU': 'WGU',
+  'TECEP': 'TECEP',
+};
+
+/**
+ * Normalize a provider code to its canonical database value
+ */
+function normalizeProviderCode(code: string): string {
+  const upper = code.toUpperCase();
+  return PROVIDER_ALIAS_MAP[upper] || upper;
+}
+
 export interface TransferRule {
   id: string;
   source_institution: string;
@@ -40,12 +74,13 @@ export function useTransferVerification(
         }));
       }
 
-      // Extract unique course-provider pairs
+      // Extract unique course-provider pairs with normalized provider codes
       const pairs = courses
         .filter(c => c.providerCode)
         .map(c => ({
-          provider: c.providerCode!.toUpperCase(),
+          provider: normalizeProviderCode(c.providerCode!),
           course: c.code,
+          originalProvider: c.providerCode!,
         }));
 
       if (pairs.length === 0) {
@@ -56,7 +91,7 @@ export function useTransferVerification(
         }));
       }
 
-      // Query transfer rules for all pairs at once
+      // Query transfer rules for all pairs at once using normalized provider codes
       const { data: rules, error } = await supabase
         .from('credit_transfer_rules' as any)
         .select('*')
@@ -80,7 +115,7 @@ export function useTransferVerification(
         rulesMap.set(key, rule as TransferRule);
       });
 
-      // Map results
+      // Map results using normalized provider codes for lookup
       return courses.map(c => {
         if (!c.providerCode) {
           return {
@@ -90,7 +125,8 @@ export function useTransferVerification(
           };
         }
 
-        const key = `${c.providerCode.toUpperCase()}:${c.code}`;
+        const normalizedProvider = normalizeProviderCode(c.providerCode);
+        const key = `${normalizedProvider}:${c.code}`;
         const rule = rulesMap.get(key);
 
         if (!rule) {
@@ -128,7 +164,7 @@ export function useTransferVerification(
  * Heuristic fallback when no explicit rule exists
  */
 function getHeuristicStatus(providerCode: string): TransferStatus {
-  const code = providerCode.toUpperCase();
+  const code = normalizeProviderCode(providerCode);
   
   // Regionally accredited universities - likely to transfer
   if (code === 'TESU' || code === 'COSC' || code === 'EXCELSIOR') {
@@ -136,7 +172,7 @@ function getHeuristicStatus(providerCode: string): TransferStatus {
   }
   
   // Known ACE-recommended providers
-  if (code === 'SOPHIA' || code === 'STUDYCOM' || code === 'CLEP') {
+  if (code === 'SOPHIA' || code === 'STUDYCOM' || code === 'STRAIGHTERLINE' || code === 'CLEP') {
     return 'elective';
   }
   
