@@ -37,7 +37,11 @@ export function StrategySavingsBanner({
     ? Math.round(((tieredSavings.breakdown.tierA.count + tieredSavings.breakdown.tierB.count) / tieredSavings.totalCourses) * 100)
     : 0;
   
-  const verifiedCount = hasTieredData ? tieredSavings.breakdown.tierA.count : 0;
+  // Calculate verification counts - clearer labels for what each tier means
+  const evidenceLinkedCount = hasTieredData ? tieredSavings.breakdown.tierA.count : 0;
+  const rulesFoundCount = hasTieredData 
+    ? tieredSavings.breakdown.tierA.count + tieredSavings.breakdown.tierB.count 
+    : 0;
   const totalCourses = hasTieredData ? tieredSavings.totalCourses : 0;
   
   if (variant === 'card') {
@@ -86,14 +90,14 @@ export function StrategySavingsBanner({
             </span>
           </div>
           
-          {/* Verification status as confidence layer (not blocker) */}
+          {/* Verification status as confidence layer - clearer labels */}
           {hasTieredData && (
             <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1 pt-1 border-t border-emerald-200/50 dark:border-emerald-800/50">
               <ShieldCheck className="h-3 w-3" />
               <span>
-                {verifiedCount > 0 
-                  ? `${verifiedCount} of ${totalCourses} courses verified`
-                  : `${totalCourses} courses with transfer rules`
+                {evidenceLinkedCount > 0 
+                  ? `${evidenceLinkedCount} evidence-linked • ${rulesFoundCount} rules found`
+                  : `${rulesFoundCount} of ${totalCourses} courses have transfer rules`
                 }
               </span>
             </div>
@@ -143,15 +147,15 @@ export function StrategySavingsBanner({
             </div>
           </div>
           
-          {/* Verification status as confidence layer */}
+          {/* Verification status as confidence layer - clearer labels */}
           {hasTieredData && formattedTiered && (
             <div className="mt-3 pt-3 border-t border-emerald-200 dark:border-emerald-800">
               <div className="flex items-center gap-2 mb-2">
                 <ShieldCheck className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
                 <span className="text-sm font-medium text-emerald-700 dark:text-emerald-300">
-                  {verifiedCount > 0 
-                    ? `${verifiedCount} of ${totalCourses} courses verified`
-                    : `${totalCourses} courses with transfer rules`
+                  {evidenceLinkedCount > 0 
+                    ? `${evidenceLinkedCount} evidence-linked • ${rulesFoundCount} rules found`
+                    : `${rulesFoundCount} of ${totalCourses} courses have transfer rules`
                   }
                 </span>
                 {showVerifiedLabel && (
