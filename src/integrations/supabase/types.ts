@@ -3642,72 +3642,108 @@ export type Database = {
       credit_transfer_rules: {
         Row: {
           acceptance_status: string | null
+          catalog_year_end: string | null
+          catalog_year_start: string | null
           confidence: number | null
+          decay_after_months: number | null
+          degree_family: string | null
+          degree_program: string | null
           effective_end: string | null
           effective_from: string | null
           effective_start: string | null
           effective_to: string | null
           evidence_type: string | null
           evidence_url: string | null
+          expires_at: string | null
           id: string
+          last_confirmed_at: string | null
+          last_outcome_at: string | null
           last_verified_at: string | null
           precedence: number | null
+          provenance_notes: string | null
+          rejection_count: number | null
           rule_payload: Json | null
           rule_source: string | null
           rule_type: string | null
           source_course_code: string | null
           source_institution: string
           status: string | null
+          success_count: number | null
           superseded_by: string | null
           target_course_code: string | null
           target_institution: string
           verification_source: string | null
+          verified_at: string | null
         }
         Insert: {
           acceptance_status?: string | null
+          catalog_year_end?: string | null
+          catalog_year_start?: string | null
           confidence?: number | null
+          decay_after_months?: number | null
+          degree_family?: string | null
+          degree_program?: string | null
           effective_end?: string | null
           effective_from?: string | null
           effective_start?: string | null
           effective_to?: string | null
           evidence_type?: string | null
           evidence_url?: string | null
+          expires_at?: string | null
           id?: string
+          last_confirmed_at?: string | null
+          last_outcome_at?: string | null
           last_verified_at?: string | null
           precedence?: number | null
+          provenance_notes?: string | null
+          rejection_count?: number | null
           rule_payload?: Json | null
           rule_source?: string | null
           rule_type?: string | null
           source_course_code?: string | null
           source_institution: string
           status?: string | null
+          success_count?: number | null
           superseded_by?: string | null
           target_course_code?: string | null
           target_institution: string
           verification_source?: string | null
+          verified_at?: string | null
         }
         Update: {
           acceptance_status?: string | null
+          catalog_year_end?: string | null
+          catalog_year_start?: string | null
           confidence?: number | null
+          decay_after_months?: number | null
+          degree_family?: string | null
+          degree_program?: string | null
           effective_end?: string | null
           effective_from?: string | null
           effective_start?: string | null
           effective_to?: string | null
           evidence_type?: string | null
           evidence_url?: string | null
+          expires_at?: string | null
           id?: string
+          last_confirmed_at?: string | null
+          last_outcome_at?: string | null
           last_verified_at?: string | null
           precedence?: number | null
+          provenance_notes?: string | null
+          rejection_count?: number | null
           rule_payload?: Json | null
           rule_source?: string | null
           rule_type?: string | null
           source_course_code?: string | null
           source_institution?: string
           status?: string | null
+          success_count?: number | null
           superseded_by?: string | null
           target_course_code?: string | null
           target_institution?: string
           verification_source?: string | null
+          verified_at?: string | null
         }
         Relationships: [
           {
@@ -11085,6 +11121,99 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "credit_transfer_rules"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      transfer_outcomes: {
+        Row: {
+          catalog_year: string | null
+          created_at: string | null
+          credits_applied: number | null
+          credits_requested: number | null
+          degree_program: string | null
+          evidence_notes: string | null
+          evidence_url: string | null
+          grade_received: string | null
+          has_degree_audit_evidence: boolean | null
+          has_transcript_evidence: boolean | null
+          id: string
+          is_public: boolean | null
+          outcome_date: string | null
+          outcome_type: string
+          reported_at: string | null
+          source_course_code: string
+          source_course_title: string | null
+          source_institution: string
+          target_institution: string
+          updated_at: string | null
+          user_id: string
+          verified_at: string | null
+          verified_by: string | null
+        }
+        Insert: {
+          catalog_year?: string | null
+          created_at?: string | null
+          credits_applied?: number | null
+          credits_requested?: number | null
+          degree_program?: string | null
+          evidence_notes?: string | null
+          evidence_url?: string | null
+          grade_received?: string | null
+          has_degree_audit_evidence?: boolean | null
+          has_transcript_evidence?: boolean | null
+          id?: string
+          is_public?: boolean | null
+          outcome_date?: string | null
+          outcome_type: string
+          reported_at?: string | null
+          source_course_code: string
+          source_course_title?: string | null
+          source_institution: string
+          target_institution: string
+          updated_at?: string | null
+          user_id: string
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Update: {
+          catalog_year?: string | null
+          created_at?: string | null
+          credits_applied?: number | null
+          credits_requested?: number | null
+          degree_program?: string | null
+          evidence_notes?: string | null
+          evidence_url?: string | null
+          grade_received?: string | null
+          has_degree_audit_evidence?: boolean | null
+          has_transcript_evidence?: boolean | null
+          id?: string
+          is_public?: boolean | null
+          outcome_date?: string | null
+          outcome_type?: string
+          reported_at?: string | null
+          source_course_code?: string
+          source_course_title?: string | null
+          source_institution?: string
+          target_institution?: string
+          updated_at?: string | null
+          user_id?: string
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transfer_outcomes_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "v_transcript_health"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "transfer_outcomes_verified_by_fkey"
+            columns: ["verified_by"]
+            isOneToOne: false
+            referencedRelation: "v_transcript_health"
+            referencedColumns: ["user_id"]
           },
         ]
       }
