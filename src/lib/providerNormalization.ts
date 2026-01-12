@@ -22,13 +22,17 @@ export const PROVIDER_ALIAS_MAP: Record<string, string> = {
   // Standardized exams
   'AP': 'AP',
   'DSST': 'DSST',
-  // Institutions
+  // Institutions (used for anchor residency exclusion)
   'TESU': 'TESU',
   'COSC': 'COSC',
   'WGU': 'WGU',
   'TECEP': 'TECEP',
   'EXCELSIOR': 'EXCELSIOR',
 };
+
+// Precomputed sets for fast lookup
+const ALIAS_KEYS = new Set(Object.keys(PROVIDER_ALIAS_MAP));
+const CANONICAL_VALUES = new Set(Object.values(PROVIDER_ALIAS_MAP));
 
 // Track warned codes to avoid spamming console (one warning per code per session)
 const warnedCodes = new Set<string>();
@@ -56,15 +60,16 @@ export function normalizeProviderCode(code: string): string {
 }
 
 /**
- * Check if a provider code is a known canonical value
+ * Check if a provider code is a known alias or canonical value
  */
 export function isKnownProvider(code: string): boolean {
-  return PROVIDER_ALIAS_MAP[code.toUpperCase()] !== undefined;
+  const upper = code.toUpperCase();
+  return ALIAS_KEYS.has(upper) || CANONICAL_VALUES.has(upper);
 }
 
 /**
- * Get all canonical provider codes
+ * Get all canonical provider codes (sorted for stable output)
  */
 export function getCanonicalProviders(): string[] {
-  return [...new Set(Object.values(PROVIDER_ALIAS_MAP))];
+  return [...CANONICAL_VALUES].sort();
 }

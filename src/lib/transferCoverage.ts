@@ -5,6 +5,10 @@
 
 import { normalizeProviderCode } from './providerNormalization';
 
+// TransferStatus union from TransferStatusBadge
+// Keeping it inline to avoid circular dependency
+type TransferStatus = 'verified' | 'elective' | 'review' | 'unknown';
+
 export interface TransferCoverageBreakdown {
   totalPairs: number;           // courses with providerCode present (excludes anchor residency)
   coveredPairs: number;         // has a rule match -> status != unknown
@@ -53,7 +57,7 @@ export function getCoverageBadgeClasses(level: CoverageLevel): string {
 export function computeTransferCoverage(
   verifications: Array<{ 
     providerCode: string; 
-    status: string;
+    status: TransferStatus;
     courseCode?: string;
   }>,
   anchorSchool?: string
@@ -82,13 +86,9 @@ export function computeTransferCoverage(
     totalPairs++;
     byProvider[normalizedProvider].total++;
     
-    // Covered = explicit status (not unknown/unverified)
-    // Using explicit match to avoid accidentally counting weird values as covered
-    const isCovered = v.status === 'verified' || 
-                      v.status === 'accepted' || 
-                      v.status === 'elective' || 
-                      v.status === 'rejected' ||
-                      v.status === 'review';
+    // Covered = any status that isn't 'unknown'
+    // TransferStatus is: 'verified' | 'elective' | 'review' | 'unknown'
+    const isCovered = v.status !== 'unknown';
     
     if (isCovered) {
       coveredPairs++;
