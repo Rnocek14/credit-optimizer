@@ -102,6 +102,11 @@ export function YearComparisonTable({ template }: YearComparisonTableProps) {
   // Get the baseline label from source (trust fix)
   const baselineLabel = getBaselineLabel(baseline.source, template.anchorSchool);
 
+  // Debug logging
+  console.log('[YearComparisonTable] Template:', template.id);
+  console.log('[YearComparisonTable] yearBreakdown length:', baseline.yearBreakdown?.length);
+  console.log('[YearComparisonTable] yearTemplates length:', template.yearTemplates?.length);
+
   return (
     <div className="space-y-4">
       {/* Year by Year Comparison */}
