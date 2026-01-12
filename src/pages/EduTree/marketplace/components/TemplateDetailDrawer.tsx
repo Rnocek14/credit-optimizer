@@ -15,8 +15,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { MarketplaceDegreeTemplate } from '@/pages/EduTree/v5/types/templates';
 import { ProviderBadge } from './ProviderBadge';
 import { TransferStatusBadge } from './TransferStatusBadge';
+import { TransferCoveragePanel } from './TransferCoveragePanel';
 import { YearComparisonTable } from './YearComparisonTable';
 import { useTransferVerification } from '../hooks/useTransferVerification';
+import { computeTransferCoverage } from '@/lib/transferCoverage';
 import { useMemo } from 'react';
 import { DollarSign, Clock, BookOpen, GitCompareArrows, List } from 'lucide-react';
 
@@ -30,30 +32,33 @@ export function TemplateDetailDrawer({ template, open, onOpenChange }: TemplateD
   // Check if comparison view is available
   const hasComparison = !!template.singleSchoolBaseline?.yearBreakdown;
   
-  // Collect all courses for transfer verification
-  const allCourses = useMemo(() => {
+  // Collect SELECTED courses only (recommended or first option per module)
+  // This gives accurate coverage % without inflating from alternatives
+  const selectedCourses = useMemo(() => {
     const courses: Array<{ code: string; providerCode: string | null }> = [];
     template.yearTemplates?.forEach(year => {
       year.moduleTemplates?.forEach(module => {
-        module.options?.forEach(option => {
-          if (option?.courseId) {
-            courses.push({
-              code: option.courseId,
-              providerCode: option.providerCode || null,
-            });
-          }
-        });
+        // Only include the selected/recommended option, not all alternatives
+        const option = module.options?.find(o => o.courseId === module.recommendedCourseId) 
+          || module.options?.[0];
+        if (option?.courseId) {
+          courses.push({
+            code: option.courseId,
+            providerCode: option.providerCode || null,
+          });
+        }
       });
     });
     return courses;
   }, [template.yearTemplates]);
 
-  // Batch verify transfers
+  // Batch verify transfers for selected courses
   const { data: transferVerifications } = useTransferVerification(
-    allCourses,
+    selectedCourses,
     template.anchorSchool
   );
 
+  // Build lookup map for course display
   const transferStatusMap = useMemo(() => {
     const map = new Map();
     transferVerifications?.forEach(v => {
@@ -61,6 +66,12 @@ export function TemplateDetailDrawer({ template, open, onOpenChange }: TemplateD
     });
     return map;
   }, [transferVerifications]);
+
+  // Compute coverage breakdown
+  const coverageBreakdown = useMemo(() => {
+    if (!transferVerifications) return null;
+    return computeTransferCoverage(transferVerifications, template.anchorSchool);
+  }, [transferVerifications, template.anchorSchool]);
 
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
@@ -104,6 +115,11 @@ export function TemplateDetailDrawer({ template, open, onOpenChange }: TemplateD
                 </div>
               </div>
             </div>
+
+            {/* Transfer Coverage Panel */}
+            {coverageBreakdown && (
+              <TransferCoveragePanel coverage={coverageBreakdown} />
+            )}
 
             {/* Tabs for Comparison vs Course Details */}
             {hasComparison ? (
