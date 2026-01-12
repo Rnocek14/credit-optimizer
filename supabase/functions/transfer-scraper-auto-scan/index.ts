@@ -12,6 +12,7 @@ Deno.serve(async (req) => {
     const body = await req.json();
     const institution = body?.institution;
     const maxPriority = body?.maxPriority ?? null; // Optional priority filter
+    const runId = body?.run_id ?? null; // Optional run_id for task tracking
 
     if (!institution) {
       return new Response(
@@ -22,8 +23,27 @@ Deno.serve(async (req) => {
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
     const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+    
+    // Import supabase client for task tracking
+    const { createClient } = await import('https://esm.sh/@supabase/supabase-js@2.56.0?target=deno');
+    const supabase = createClient(supabaseUrl, serviceRoleKey);
+    
+    // Track task start time for metrics
+    const taskStartTime = Date.now();
 
-    console.log(`Auto-scan starting for: ${institution}${maxPriority ? ` (priority <= ${maxPriority})` : ''}`);
+    console.log(`Auto-scan starting for: ${institution}${maxPriority ? ` (priority <= ${maxPriority})` : ''}${runId ? ` [run: ${runId}]` : ''}`);
+    
+    // Update task status to 'running' if run_id provided
+    if (runId) {
+      await supabase
+        .from('policy_refresh_tasks')
+        .update({ 
+          status: 'running', 
+          started_at: new Date().toISOString() 
+        })
+        .eq('run_id', runId)
+        .eq('institution', institution);
+    }
 
     // Load URL templates with optional priority filter
     let templateUrl = `${supabaseUrl}/rest/v1/scrape_url_templates?institution_code=eq.${institution}&order=priority.asc`;
@@ -444,6 +464,7 @@ Deno.serve(async (req) => {
             url_diagnostics: urlDiagnostics,
             diagnostic_summary: diagnosticSummary,
             best_policy_job_id: bestResultJobId, // Pass this so merge can prioritize
+            run_id: runId, // Pass run_id for diff writing
           }),
         });
 
@@ -455,6 +476,47 @@ Deno.serve(async (req) => {
         console.error('Merge failed:', e);
       }
     }
+    
+    // Calculate task metrics
+    const taskElapsedMs = Date.now() - taskStartTime;
+    const taskMetrics = {
+      templates_scanned: templates.length,
+      succeeded,
+      failed,
+      elapsed_ms: taskElapsedMs,
+      merge_score: mergeResult?.total_score ?? null,
+      merge_action: mergeResult?.action ?? null,
+      trust_tier: mergeResult?.trust_tier ?? null,
+      diffs_written: mergeResult?.diffs_written ?? 0,
+    };
+    
+    // Determine task status based on results
+    let taskStatus: 'complete' | 'blocked' | 'failed' = 'complete';
+    let taskReason: string | null = null;
+    
+    if (failed === templates.length || (orderedJobIds.length === 0 && templates.length > 0)) {
+      taskStatus = 'failed';
+      taskReason = 'All URLs failed to process';
+    } else if (mergeResult?.action === 'hold') {
+      taskStatus = 'blocked';
+      taskReason = 'Merge action is hold - requires review';
+    }
+    
+    // Update task status if run_id provided
+    if (runId) {
+      await supabase
+        .from('policy_refresh_tasks')
+        .update({ 
+          status: taskStatus, 
+          reason: taskReason,
+          completed_at: new Date().toISOString(),
+          metrics: taskMetrics,
+        })
+        .eq('run_id', runId)
+        .eq('institution', institution);
+      
+      console.log(`Task updated: ${institution} -> ${taskStatus}${taskReason ? ` (${taskReason})` : ''}`);
+    }
 
     const scanResult = {
       institution,
@@ -463,6 +525,9 @@ Deno.serve(async (req) => {
       failed,
       results,
       merge: mergeResult,
+      task_status: taskStatus,
+      task_metrics: taskMetrics,
+      diffs_written: mergeResult?.diffs_written ?? 0,
     };
 
     console.log(`Auto-scan complete: ${succeeded}/${templates.length} succeeded`);
@@ -474,6 +539,35 @@ Deno.serve(async (req) => {
 
   } catch (error) {
     console.error('Auto-scan error:', error);
+    
+    // Update task to failed if run_id was provided
+    // Note: We need to extract run_id from the request body again since we're in catch block
+    // This is a best-effort update - body may not be available
+    try {
+      const errorBody = await req.clone().json().catch(() => null);
+      const errorRunId = errorBody?.run_id;
+      const errorInstitution = errorBody?.institution;
+      
+      if (errorRunId && errorInstitution) {
+        const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
+        const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+        const { createClient } = await import('https://esm.sh/@supabase/supabase-js@2.56.0?target=deno');
+        const errorSupabase = createClient(supabaseUrl, serviceRoleKey);
+        
+        await errorSupabase
+          .from('policy_refresh_tasks')
+          .update({ 
+            status: 'failed', 
+            reason: error instanceof Error ? error.message : 'Unknown error',
+            completed_at: new Date().toISOString(),
+          })
+          .eq('run_id', errorRunId)
+          .eq('institution', errorInstitution);
+      }
+    } catch {
+      // Best effort - ignore errors in error handler
+    }
+    
     return new Response(
       JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
