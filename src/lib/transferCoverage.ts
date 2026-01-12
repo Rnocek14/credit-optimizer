@@ -3,6 +3,8 @@
  * Computes what % of template courses have verified transfer rules
  */
 
+import { normalizeProviderCode } from './providerNormalization';
+
 export interface TransferCoverageBreakdown {
   totalPairs: number;           // courses with providerCode present (excludes anchor residency)
   coveredPairs: number;         // has a rule match -> status != unknown
@@ -57,6 +59,7 @@ export function computeTransferCoverage(
   anchorSchool?: string
 ): TransferCoverageBreakdown {
   const byProvider: Record<string, { total: number; covered: number; percent: number }> = {};
+  const normalizedAnchor = anchorSchool ? normalizeProviderCode(anchorSchool) : null;
   
   let totalPairs = 0;
   let coveredPairs = 0;
@@ -65,11 +68,13 @@ export function computeTransferCoverage(
     // Skip if no provider code
     if (!v.providerCode) continue;
     
-    // Skip anchor school residency courses (they don't need transfer verification)
-    const normalizedProvider = v.providerCode.toUpperCase();
-    if (anchorSchool && normalizedProvider === anchorSchool.toUpperCase()) continue;
+    // Normalize using shared alias map (SL → STRAIGHTERLINE, SDC → STUDYCOM, etc.)
+    const normalizedProvider = normalizeProviderCode(v.providerCode);
     
-    // Initialize provider bucket
+    // Skip anchor school residency courses (they don't need transfer verification)
+    if (normalizedAnchor && normalizedProvider === normalizedAnchor) continue;
+    
+    // Initialize provider bucket using normalized name
     if (!byProvider[normalizedProvider]) {
       byProvider[normalizedProvider] = { total: 0, covered: 0, percent: 0 };
     }
@@ -77,9 +82,13 @@ export function computeTransferCoverage(
     totalPairs++;
     byProvider[normalizedProvider].total++;
     
-    // Covered = any status that isn't 'unknown'
-    // Includes: verified, elective, review (which means we have a rule, even if conditional)
-    const isCovered = v.status !== 'unknown';
+    // Covered = explicit status (not unknown/unverified)
+    // Using explicit match to avoid accidentally counting weird values as covered
+    const isCovered = v.status === 'verified' || 
+                      v.status === 'accepted' || 
+                      v.status === 'elective' || 
+                      v.status === 'rejected' ||
+                      v.status === 'review';
     
     if (isCovered) {
       coveredPairs++;
