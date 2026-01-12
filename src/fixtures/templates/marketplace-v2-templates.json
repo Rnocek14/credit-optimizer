@@ -83,6 +83,18 @@
         ]
       }
     ],
+    "singleSchoolBaseline": {
+      "costUsd": 13320,
+      "weeks": 192,
+      "source": "TESU Direct (120cr × $111/credit)",
+      "notes": "Thomas Edison State University per-credit rate without transfer credits",
+      "yearBreakdown": [
+        { "year": 1, "label": "Year 1", "credits": 30, "costUsd": 3330, "weeks": 48, "courseLabel": "TESU Direct Year 1" },
+        { "year": 2, "label": "Year 2", "credits": 30, "costUsd": 3330, "weeks": 48, "courseLabel": "TESU Direct Year 2" },
+        { "year": 3, "label": "Year 3", "credits": 30, "costUsd": 3330, "weeks": 48, "courseLabel": "TESU Direct Year 3" },
+        { "year": 4, "label": "Year 4", "credits": 30, "costUsd": 3330, "weeks": 48, "courseLabel": "TESU Direct Year 4" }
+      ]
+    },
     "totals": { "credits": 120, "costUsd": 8500, "weeks": 156, "avgCri": 78 }
   },
   {
@@ -167,6 +179,18 @@
         ]
       }
     ],
+    "singleSchoolBaseline": {
+      "costUsd": 13320,
+      "weeks": 192,
+      "source": "TESU Direct (120cr × $111/credit)",
+      "notes": "Thomas Edison State University per-credit rate without transfer credits",
+      "yearBreakdown": [
+        { "year": 1, "label": "Year 1", "credits": 30, "costUsd": 3330, "weeks": 48, "courseLabel": "TESU Direct Year 1" },
+        { "year": 2, "label": "Year 2", "credits": 30, "costUsd": 3330, "weeks": 48, "courseLabel": "TESU Direct Year 2" },
+        { "year": 3, "label": "Year 3", "credits": 30, "costUsd": 3330, "weeks": 48, "courseLabel": "TESU Direct Year 3" },
+        { "year": 4, "label": "Year 4", "credits": 30, "costUsd": 3330, "weeks": 48, "courseLabel": "TESU Direct Year 4" }
+      ]
+    },
     "totals": { "credits": 120, "costUsd": 12200, "weeks": 78, "avgCri": 80 }
   },
   {
@@ -253,6 +277,18 @@
         ]
       }
     ],
+    "singleSchoolBaseline": {
+      "costUsd": 13320,
+      "weeks": 192,
+      "source": "TESU Direct (120cr × $111/credit)",
+      "notes": "Thomas Edison State University per-credit rate without transfer credits",
+      "yearBreakdown": [
+        { "year": 1, "label": "Year 1", "credits": 30, "costUsd": 3330, "weeks": 48, "courseLabel": "TESU Direct Year 1" },
+        { "year": 2, "label": "Year 2", "credits": 30, "costUsd": 3330, "weeks": 48, "courseLabel": "TESU Direct Year 2" },
+        { "year": 3, "label": "Year 3", "credits": 30, "costUsd": 3330, "weeks": 48, "courseLabel": "TESU Direct Year 3" },
+        { "year": 4, "label": "Year 4", "credits": 30, "costUsd": 3330, "weeks": 48, "courseLabel": "TESU Direct Year 4" }
+      ]
+    },
     "totals": { "credits": 120, "costUsd": 9800, "weeks": 104, "avgCri": 82 }
   },
   {
@@ -341,6 +377,18 @@
         ]
       }
     ],
+    "singleSchoolBaseline": {
+      "costUsd": 13320,
+      "weeks": 192,
+      "source": "TESU Direct (120cr × $111/credit)",
+      "notes": "Thomas Edison State University per-credit rate without transfer credits",
+      "yearBreakdown": [
+        { "year": 1, "label": "Year 1", "credits": 30, "costUsd": 3330, "weeks": 48, "courseLabel": "TESU Direct Year 1" },
+        { "year": 2, "label": "Year 2", "credits": 30, "costUsd": 3330, "weeks": 48, "courseLabel": "TESU Direct Year 2" },
+        { "year": 3, "label": "Year 3", "credits": 30, "costUsd": 3330, "weeks": 48, "courseLabel": "TESU Direct Year 3" },
+        { "year": 4, "label": "Year 4", "credits": 30, "costUsd": 3330, "weeks": 48, "courseLabel": "TESU Direct Year 4" }
+      ]
+    },
     "totals": { "credits": 120, "costUsd": 7800, "weeks": 156, "avgCri": 75 }
   },
   {
@@ -368,6 +416,18 @@
       { "year": 3, "label": "Year 3 – Advanced Business (30cr)", "recommendedPace": "intensive", "moduleTemplates": [{ "moduleId": "BUS_ADV_Y3", "label": "Advanced Business Bundle", "creditsRequired": 30, "requirementArea": "BUSINESS_CORE", "options": [{ "id": "sdc-bus-bundle", "courseId": "SDC-BUS-ADV-BUNDLE", "title": "Study.com Advanced Business Bundle", "credits": 30, "cost_usd": 790, "duration_weeks": 12, "provider": "Study.com", "providerType": "mooc", "providerCode": "STUDYCOM", "level": 300, "cri_score": 75, "workload_weekly_hours": 18, "subject": "Business" }], "recommendedCourseId": "SDC-BUS-ADV-BUNDLE" }] },
       { "year": 4, "label": "Year 4 – Capstone (30cr)", "recommendedPace": "intensive", "moduleTemplates": [{ "moduleId": "CAPSTONE_Y4", "label": "Capstone & Residency", "creditsRequired": 30, "requirementArea": "CAPSTONE", "options": [{ "id": "tesu-capstone-bundle", "courseId": "TESU-CAP-BUNDLE", "title": "TESU Capstone Bundle", "credits": 30, "cost_usd": 7000, "duration_weeks": 24, "provider": "TESU", "providerType": "institutional", "providerCode": "TESU", "level": 400, "cri_score": 88, "workload_weekly_hours": 15, "subject": "Capstone" }], "recommendedCourseId": "TESU-CAP-BUNDLE" }] }
     ],
+    "singleSchoolBaseline": {
+      "costUsd": 13320,
+      "weeks": 192,
+      "source": "TESU Direct (120cr × $111/credit)",
+      "notes": "Thomas Edison State University per-credit rate without transfer credits",
+      "yearBreakdown": [
+        { "year": 1, "label": "Year 1", "credits": 30, "costUsd": 3330, "weeks": 48, "courseLabel": "TESU Direct Year 1" },
+        { "year": 2, "label": "Year 2", "credits": 30, "costUsd": 3330, "weeks": 48, "courseLabel": "TESU Direct Year 2" },
+        { "year": 3, "label": "Year 3", "credits": 30, "costUsd": 3330, "weeks": 48, "courseLabel": "TESU Direct Year 3" },
+        { "year": 4, "label": "Year 4", "credits": 30, "costUsd": 3330, "weeks": 48, "courseLabel": "TESU Direct Year 4" }
+      ]
+    },
     "totals": { "credits": 120, "costUsd": 9700, "weeks": 64, "avgCri": 78 }
   },
   {
@@ -395,6 +455,18 @@
       { "year": 3, "label": "Year 3 – Advanced Business (30cr)", "recommendedPace": "full_time", "moduleTemplates": [{ "moduleId": "BUS_ADV_Y3", "label": "Advanced Business Bundle", "creditsRequired": 30, "requirementArea": "BUSINESS_CORE", "options": [{ "id": "sophia-bus-adv", "courseId": "SOPHIA-BUS-ADV", "title": "Sophia Advanced Business Bundle", "credits": 30, "cost_usd": 990, "duration_weeks": 24, "provider": "Sophia Learning", "providerType": "mooc", "providerCode": "SOPHIA", "level": 300, "cri_score": 76, "workload_weekly_hours": 12, "subject": "Business" }], "recommendedCourseId": "SOPHIA-BUS-ADV" }] },
       { "year": 4, "label": "Year 4 – Capstone (30cr)", "recommendedPace": "full_time", "moduleTemplates": [{ "moduleId": "CAPSTONE_Y4", "label": "Capstone & Residency", "creditsRequired": 30, "requirementArea": "CAPSTONE", "options": [{ "id": "tesu-capstone-bundle", "courseId": "TESU-CAP-BUNDLE", "title": "TESU Capstone Bundle", "credits": 30, "cost_usd": 7000, "duration_weeks": 32, "provider": "TESU", "providerType": "institutional", "providerCode": "TESU", "level": 400, "cri_score": 88, "workload_weekly_hours": 12, "subject": "Capstone" }], "recommendedCourseId": "TESU-CAP-BUNDLE" }] }
     ],
+    "singleSchoolBaseline": {
+      "costUsd": 13320,
+      "weeks": 192,
+      "source": "TESU Direct (120cr × $111/credit)",
+      "notes": "Thomas Edison State University per-credit rate without transfer credits",
+      "yearBreakdown": [
+        { "year": 1, "label": "Year 1", "credits": 30, "costUsd": 3330, "weeks": 48, "courseLabel": "TESU Direct Year 1" },
+        { "year": 2, "label": "Year 2", "credits": 30, "costUsd": 3330, "weeks": 48, "courseLabel": "TESU Direct Year 2" },
+        { "year": 3, "label": "Year 3", "credits": 30, "costUsd": 3330, "weeks": 48, "courseLabel": "TESU Direct Year 3" },
+        { "year": 4, "label": "Year 4", "credits": 30, "costUsd": 3330, "weeks": 48, "courseLabel": "TESU Direct Year 4" }
+      ]
+    },
     "totals": { "credits": 120, "costUsd": 9970, "weeks": 104, "avgCri": 78 }
   },
   {
@@ -422,6 +494,18 @@
       { "year": 3, "label": "Year 3 – Advanced IT", "recommendedPace": "full_time", "moduleTemplates": [{ "moduleId": "IT_ADV_Y3", "label": "Advanced IT", "creditsRequired": 30, "requirementArea": "IT_CORE", "options": [{ "id": "wgu-it-y3", "courseId": "WGU-IT-YEAR3", "title": "WGU IT Year 3 Bundle", "credits": 30, "cost_usd": 3995, "duration_weeks": 26, "provider": "WGU", "providerType": "institutional", "providerCode": "WGU", "level": 300, "cri_score": 84, "workload_weekly_hours": 18, "subject": "IT" }], "recommendedCourseId": "WGU-IT-YEAR3" }] },
       { "year": 4, "label": "Year 4 – Capstone & Certs", "recommendedPace": "full_time", "moduleTemplates": [{ "moduleId": "IT_CAP_Y4", "label": "Capstone & Certifications", "creditsRequired": 30, "requirementArea": "CAPSTONE", "options": [{ "id": "wgu-it-y4", "courseId": "WGU-IT-YEAR4", "title": "WGU IT Capstone + Certs", "credits": 30, "cost_usd": 3995, "duration_weeks": 26, "provider": "WGU", "providerType": "institutional", "providerCode": "WGU", "level": 400, "cri_score": 88, "workload_weekly_hours": 18, "subject": "IT" }], "recommendedCourseId": "WGU-IT-YEAR4" }] }
     ],
+    "singleSchoolBaseline": {
+      "costUsd": 15980,
+      "weeks": 104,
+      "source": "WGU Direct (4 terms × $3,995)",
+      "notes": "All 120 credits at WGU flat-rate terms",
+      "yearBreakdown": [
+        { "year": 1, "label": "Year 1", "credits": 30, "costUsd": 3995, "weeks": 26, "courseLabel": "WGU IT Year 1" },
+        { "year": 2, "label": "Year 2", "credits": 30, "costUsd": 3995, "weeks": 26, "courseLabel": "WGU IT Year 2" },
+        { "year": 3, "label": "Year 3", "credits": 30, "costUsd": 3995, "weeks": 26, "courseLabel": "WGU IT Year 3" },
+        { "year": 4, "label": "Year 4", "credits": 30, "costUsd": 3995, "weeks": 26, "courseLabel": "WGU IT Year 4" }
+      ]
+    },
     "totals": { "credits": 120, "costUsd": 15980, "weeks": 104, "avgCri": 84 }
   },
   {
@@ -449,6 +533,18 @@
       { "year": 3, "label": "Year 3 – CySA+ & PenTest+", "recommendedPace": "full_time", "moduleTemplates": [{ "moduleId": "CYBER_Y3", "label": "CySA+ & PenTest+", "creditsRequired": 30, "requirementArea": "CYBER_CORE", "options": [{ "id": "wgu-cyber-y3", "courseId": "WGU-CYBER-YEAR3", "title": "WGU Cybersecurity Year 3", "credits": 30, "cost_usd": 4195, "duration_weeks": 26, "provider": "WGU", "providerType": "institutional", "providerCode": "WGU", "level": 300, "cri_score": 87, "workload_weekly_hours": 18, "subject": "Cybersecurity" }], "recommendedCourseId": "WGU-CYBER-YEAR3" }] },
       { "year": 4, "label": "Year 4 – Capstone", "recommendedPace": "full_time", "moduleTemplates": [{ "moduleId": "CYBER_Y4", "label": "Capstone", "creditsRequired": 30, "requirementArea": "CAPSTONE", "options": [{ "id": "wgu-cyber-y4", "courseId": "WGU-CYBER-YEAR4", "title": "WGU Cybersecurity Capstone", "credits": 30, "cost_usd": 4195, "duration_weeks": 26, "provider": "WGU", "providerType": "institutional", "providerCode": "WGU", "level": 400, "cri_score": 90, "workload_weekly_hours": 18, "subject": "Cybersecurity" }], "recommendedCourseId": "WGU-CYBER-YEAR4" }] }
     ],
+    "singleSchoolBaseline": {
+      "costUsd": 16780,
+      "weeks": 104,
+      "source": "WGU Cybersecurity Direct (4 terms × $4,195)",
+      "notes": "All 120 credits at WGU Cybersecurity flat-rate terms",
+      "yearBreakdown": [
+        { "year": 1, "label": "Year 1", "credits": 30, "costUsd": 4195, "weeks": 26, "courseLabel": "WGU Cyber Year 1" },
+        { "year": 2, "label": "Year 2", "credits": 30, "costUsd": 4195, "weeks": 26, "courseLabel": "WGU Cyber Year 2" },
+        { "year": 3, "label": "Year 3", "credits": 30, "costUsd": 4195, "weeks": 26, "courseLabel": "WGU Cyber Year 3" },
+        { "year": 4, "label": "Year 4", "credits": 30, "costUsd": 4195, "weeks": 26, "courseLabel": "WGU Cyber Year 4" }
+      ]
+    },
     "totals": { "credits": 120, "costUsd": 16780, "weeks": 104, "avgCri": 86 }
   },
   {
