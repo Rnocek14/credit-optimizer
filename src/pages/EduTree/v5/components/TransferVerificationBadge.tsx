@@ -22,51 +22,79 @@ interface TransferVerificationBadgeProps {
   confidence?: number;
   targetEquivCode?: string;
   anchorSchool?: string;
+  evidenceUrl?: string | null;
   compact?: boolean;
   className?: string;
 }
 
+// Helper to get status-specific copy based on evidence availability
+function getStatusLabel(status: TransferStatus, hasEvidence: boolean): string {
+  switch (status) {
+    case 'verified':
+      return hasEvidence ? 'Verified (evidence linked)' : 'Rule found';
+    case 'elective-only':
+      return hasEvidence ? 'Elective (evidence linked)' : 'Elective rule found';
+    case 'unverified':
+      return 'Needs research';
+    case 'institutional':
+      return 'University Course';
+    case 'loading':
+      return 'Checking...';
+    default:
+      return 'Unknown';
+  }
+}
+
+function getStatusDescription(status: TransferStatus, hasEvidence: boolean): string {
+  switch (status) {
+    case 'verified':
+      return hasEvidence 
+        ? 'This course has a verified transfer agreement with linked evidence'
+        : 'Transfer rule found (no evidence link yet)';
+    case 'elective-only':
+      return hasEvidence
+        ? 'This course transfers as elective credit only, with linked evidence'
+        : 'Elective transfer rule found (no evidence link yet)';
+    case 'unverified':
+      return 'No verified transfer rule exists — needs research before relying on this';
+    case 'institutional':
+      return 'This is a course from the degree-granting university';
+    case 'loading':
+      return 'Verifying transfer status...';
+    default:
+      return 'Status unknown';
+  }
+}
+
 const STATUS_CONFIG: Record<TransferStatus, {
   icon: React.ElementType;
-  label: string;
   color: string;
   bgColor: string;
-  description: string;
 }> = {
   verified: {
     icon: Check,
-    label: 'Verified',
     color: 'text-green-600',
     bgColor: 'bg-green-100',
-    description: 'This course has a verified transfer agreement',
   },
   'elective-only': {
     icon: AlertTriangle,
-    label: 'Elective Only',
     color: 'text-amber-600',
     bgColor: 'bg-amber-100',
-    description: 'This course transfers as elective credit only, not toward major requirements',
   },
   unverified: {
     icon: X,
-    label: 'Unverified',
     color: 'text-red-600',
     bgColor: 'bg-red-100',
-    description: 'No verified transfer rule exists for this course',
   },
   institutional: {
     icon: Building2,
-    label: 'University Course',
     color: 'text-blue-600',
     bgColor: 'bg-blue-100',
-    description: 'This is a course from the degree-granting university',
   },
   loading: {
     icon: Check,
-    label: 'Checking...',
     color: 'text-muted-foreground',
     bgColor: 'bg-muted',
-    description: 'Verifying transfer status...',
   },
 };
 
@@ -75,18 +103,23 @@ export function TransferVerificationBadge({
   confidence,
   targetEquivCode,
   anchorSchool,
+  evidenceUrl,
   compact = false,
   className,
 }: TransferVerificationBadgeProps) {
   const config = STATUS_CONFIG[status];
   const Icon = config.icon;
+  const hasEvidence = !!evidenceUrl;
+  
+  const label = getStatusLabel(status, hasEvidence);
+  const description = getStatusDescription(status, hasEvidence);
   
   const confidencePercent = confidence ? Math.round(confidence * 100) : null;
   
   const tooltipContent = (
     <div className="space-y-1 max-w-[250px]">
-      <p className="font-medium">{config.label}</p>
-      <p className="text-sm text-muted-foreground">{config.description}</p>
+      <p className="font-medium">{label}</p>
+      <p className="text-sm text-muted-foreground">{description}</p>
       {targetEquivCode && (
         <p className="text-sm">
           <span className="text-muted-foreground">Maps to:</span>{' '}
@@ -145,7 +178,7 @@ export function TransferVerificationBadge({
             )}
           >
             <Icon className="w-3 h-3" />
-            {config.label}
+            {label}
             {confidencePercent !== null && status !== 'institutional' && (
               <span className="opacity-70">({confidencePercent}%)</span>
             )}
