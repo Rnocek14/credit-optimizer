@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
+import { ENV } from '@/config/env';
 import {
   Drawer,
   DrawerClose,
@@ -22,9 +23,12 @@ import { PreApprovalEmailModal } from '@/components/transfer/PreApprovalEmailMod
 import { useTransferVerification } from '../hooks/useTransferVerification';
 import { computeTransferCoverage } from '@/lib/transferCoverage';
 import { normalizeProviderCode } from '@/lib/providerNormalization';
-import { useMemo } from 'react';
 import { DollarSign, Clock, BookOpen, GitCompareArrows, List, Mail } from 'lucide-react';
 import type { PreApprovalCourse } from '@/lib/transfer/preApprovalEmail';
+
+// Debug flag: only log in dev or with ?debug=1
+const isDebug = () => 
+  !ENV.PROD || new URLSearchParams(window.location.search).get('debug') === '1';
 
 interface TemplateDetailDrawerProps {
   template: MarketplaceDegreeTemplate;
@@ -93,11 +97,13 @@ export function TemplateDetailDrawer({ template, open, onOpenChange }: TemplateD
           const key = `${(option.providerCode || '').toUpperCase()}:${option.courseId}`;
           if (!seen.has(key)) {
             seen.add(key);
-            // Warn when credits default to 3 for observability
-            if (!option.credits) {
+            // Warn when credits default to 3 for observability (dev only)
+            if (!option.credits && isDebug()) {
               console.warn('[TransferBatch] Missing credits, defaulting to 3', {
                 providerCode: option.providerCode,
                 courseId: option.courseId,
+                moduleId: module.moduleId,
+                anchorSchool: template.anchorSchool,
               });
             }
             courses.push({

@@ -40,6 +40,11 @@ import {
 } from '@/lib/transfer/preApprovalEmail';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { ENV } from '@/config/env';
+
+// Debug flag: only log in dev or with ?debug=1
+const isDebug = () => 
+  !ENV.PROD || new URLSearchParams(window.location.search).get('debug') === '1';
 
 type AdvisorResult = 'approved_equivalent' | 'approved_elective' | 'not_accepted' | 'conditional';
 
@@ -215,13 +220,15 @@ export function PreApprovalEmailModal({
         })
         .select();
 
-      // Instrumentation: log evidence save success
-      console.log('[EvidenceLoop] save_success', {
-        courseCount: inserts.length,
-        outcomeType: 'advisor_preapproval',
-        targetInstitution,
-        savedCount: data?.length ?? 0,
-      });
+      // Instrumentation: log evidence save success (dev only)
+      if (isDebug()) {
+        console.log('[EvidenceLoop] save_success', {
+          courseCount: inserts.length,
+          outcomeType: 'advisor_preapproval',
+          targetInstitution,
+          savedCount: data?.length ?? 0,
+        });
+      }
 
       if (error) throw error;
 

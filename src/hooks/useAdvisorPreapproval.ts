@@ -1,6 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { getEvidenceFreshnessLabel } from '@/lib/transfer/evidenceDecay';
+import { ENV } from '@/config/env';
+
+// Debug flag: only log in dev or with ?debug=1
+const isDebug = () => 
+  !ENV.PROD || new URLSearchParams(window.location.search).get('debug') === '1';
 
 interface AdvisorPreapprovalResult {
   id: string;
@@ -48,11 +53,13 @@ export function useAdvisorPreapproval({
         .limit(1)
         .maybeSingle();
 
-      // Instrumentation: log evidence fetch
-      console.log('[EvidenceLoop] fetch', {
-        queryKey,
-        resultCount: result ? 1 : 0,
-      });
+      // Instrumentation: log evidence fetch (dev only)
+      if (isDebug()) {
+        console.log('[EvidenceLoop] fetch', {
+          queryKey,
+          resultCount: result ? 1 : 0,
+        });
+      }
 
       if (error) {
         console.error('Error fetching advisor preapproval:', error);
