@@ -64,7 +64,7 @@ export function TemplateDetailDrawer({ template, open, onOpenChange }: TemplateD
 
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
-      <DrawerContent className="h-[90vh] max-h-[90vh] flex flex-col overflow-hidden">
+      <DrawerContent className="max-h-[90vh] flex flex-col">
         <DrawerHeader>
           <DrawerTitle>{template.marketplace.title}</DrawerTitle>
           <DrawerDescription>
@@ -72,7 +72,7 @@ export function TemplateDetailDrawer({ template, open, onOpenChange }: TemplateD
           </DrawerDescription>
         </DrawerHeader>
 
-        <ScrollArea className="flex-1 min-h-0 px-4 overflow-y-auto">
+        <ScrollArea className="px-4" style={{ height: 'calc(90vh - 160px)' }}>
           <div className="space-y-6 pb-6">
             {/* Summary Stats */}
             <div className="grid grid-cols-3 gap-4">
