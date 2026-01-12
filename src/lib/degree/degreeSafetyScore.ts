@@ -138,8 +138,8 @@ export function calculateDegreeSafetyScore(input: DegreeSafetyInput): DegreeSafe
     weakestLink = 'No transfer rules found';
   }
   
-  // If <50% rules, cap at 60
-  if (rulesPercent < 50 && totalCourses > 0) {
+  // If <50% rules, cap at 60 (unless single-institution)
+  if (rulesPercent < 50 && totalCourses > 0 && !isSingleInstitution) {
     rawScore = Math.min(rawScore, 60);
     weakestLink = weakestLink || `Only ${Math.round(rulesPercent)}% of courses have transfer rules`;
   }
