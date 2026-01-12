@@ -591,10 +591,10 @@ function selectBestValueWithVoting<T>(
   candidates: ValueCandidate<T>[],
   fieldPath: string,
   valueToString: (v: T) => string = (v) => String(v)
-): { selected: SourcedValue<T> | null; scopedCaps: ValueCandidate<T>[] } {
+): { selected: SourcedValue<T> | null; scopedCaps: ValueCandidate<T>[]; conflicts: Array<{ value: T; url: string; confidence: number }> } {
   const scopedCaps: ValueCandidate<T>[] = [];
   
-  if (candidates.length === 0) return { selected: null, scopedCaps };
+  if (candidates.length === 0) return { selected: null, scopedCaps, conflicts: [] };
   
   // Separate scoped vs unscoped candidates
   const unscopedCandidates = candidates.filter(c => !c.isScoped);
@@ -680,10 +680,9 @@ function selectBestValueWithVoting<T>(
   };
 }
 
-// Extended pickBestValue that also loads extracted_text for scope detection
-// Performance: only loads text for jobs that produced numeric candidates
+// deno-lint-ignore no-explicit-any
 async function pickBestValueWithScopeDetection<T>(
-  supabase: ReturnType<typeof createClient>,
+  supabase: any,
   extractions: { jobId: string; extraction: ExtractionResult; url: string }[],
   accessor: (pack: PolicyPack) => T | null | undefined,
   fieldPath: string,
@@ -716,7 +715,7 @@ async function pickBestValueWithScopeDetection<T>(
       .select('scrape_job_id, extracted_text')
       .in('scrape_job_id', jobsToLoad);
     
-    for (const c of contents || []) {
+    for (const c of (contents || []) as Array<{ scrape_job_id: string; extracted_text: string | null }>) {
       if (c.extracted_text) {
         textByJob.set(c.scrape_job_id, c.extracted_text);
       }
@@ -796,8 +795,9 @@ function pickBestValue<T>(
 // MERGE POLICY PACKS
 // -----------------------------------------------------------------------------
 
+// deno-lint-ignore no-explicit-any
 async function mergePolicyPacks(
-  supabase: ReturnType<typeof createClient>,
+  supabase: any,
   institution: string,
   extractions: { jobId: string; extraction: ExtractionResult; url: string }[]
 ): Promise<{ 
@@ -901,7 +901,7 @@ async function mergePolicyPacks(
     
     let bestFallback: { value: number; jobId: string; url: string; confidence: number; contextSnippet: string } | null = null;
     
-    for (const content of textContents || []) {
+    for (const content of ((textContents || []) as Array<{ scrape_job_id: string; extracted_text: string | null; url: string | null }>)) {
       if (!content.extracted_text) continue;
       
       // Prioritize residency-specific URLs
@@ -1279,10 +1279,14 @@ Deno.serve(async (req) => {
       // CRITICAL FIELDS - these block auto-approve if not ground-truth verified
       if (gt) {
         // Ensure nested objects exist before writing to them
-        mergedPack.residency_policy ??= {};
-        mergedPack.transfer_credit_limits ??= {};
-        mergedPack.credit_sources_accepted ??= {};
-        mergedPack.institutional_course_requirements ??= {};
+        // deno-lint-ignore no-explicit-any
+        (mergedPack as any).residency_policy ??= {};
+        // deno-lint-ignore no-explicit-any
+        (mergedPack as any).transfer_credit_limits ??= {};
+        // deno-lint-ignore no-explicit-any
+        (mergedPack as any).credit_sources_accepted ??= {};
+        // deno-lint-ignore no-explicit-any
+        (mergedPack as any).institutional_course_requirements ??= {};
 
         // Residency credits (CRITICAL)
         const residencyResult = trackField(
@@ -1376,19 +1380,19 @@ Deno.serve(async (req) => {
         fieldProvenance['residency_policy.min_institutional_credits'] = {
           source: 'ai_extraction',
           final_value: mergedPack.residency_policy?.min_institutional_credits,
-          source_url: pickedValues.residencyCredits?.sourceUrl || null,
+          source_url: pickedValues.residencyCredits?.sourceUrl || undefined,
           confidence: pickedValues.residencyCredits?.confidence || 0,
         };
         fieldProvenance['transfer_credit_limits.max_total_transfer_credits'] = {
           source: 'ai_extraction',
           final_value: mergedPack.transfer_credit_limits?.max_total_transfer_credits,
-          source_url: pickedValues.maxTransfer?.sourceUrl || null,
+          source_url: pickedValues.maxTransfer?.sourceUrl || undefined,
           confidence: pickedValues.maxTransfer?.confidence || 0,
         };
         fieldProvenance['transfer_credit_limits.max_ace_nccrs_credits'] = {
           source: 'ai_extraction',
           final_value: mergedPack.transfer_credit_limits?.max_ace_nccrs_credits,
-          source_url: pickedValues.maxAceNccrs?.sourceUrl || null,
+          source_url: pickedValues.maxAceNccrs?.sourceUrl || undefined,
           confidence: pickedValues.maxAceNccrs?.confidence || 0,
         };
       }
@@ -1807,7 +1811,7 @@ Deno.serve(async (req) => {
         const { error: auditError } = await supabase
           .from('policy_merge_audit_log')
           .insert({
-            policy_pack_id: policyData.id,
+            policy_pack_id: packData.id,
             institution,
             source_job_ids: scrape_job_ids,
             field_diffs: fieldDiffs,
