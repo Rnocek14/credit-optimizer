@@ -1,13 +1,13 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import type { TransferStatus } from '../components/TransferStatusBadge';
-import { normalizeProviderCode } from '@/lib/providerNormalization';
+import { normalizeProviderCode, normalizeCourseCode } from '@/lib/providerNormalization';
 import type { EvidenceTier } from '@/types/evidenceTiers';
 import { classifyTier } from '@/lib/tieredSavingsCalculator';
 import type { VerifiedPolicy } from '@/lib/degree/verifiedPolicyService';
 
 // Re-export for convenience
-export { normalizeProviderCode } from '@/lib/providerNormalization';
+export { normalizeProviderCode, normalizeCourseCode } from '@/lib/providerNormalization';
 
 export interface TransferRule {
   id: string;
@@ -58,12 +58,13 @@ export function useTransferVerification(
         }));
       }
 
-      // Extract unique course-provider pairs with normalized provider codes
+      // Extract unique course-provider pairs with normalized provider AND course codes
       const pairs = courses
         .filter(c => c.providerCode)
         .map(c => ({
           provider: normalizeProviderCode(c.providerCode!),
-          course: c.code,
+          course: normalizeCourseCode(c.code), // Normalize course code for DB lookup
+          originalCourse: c.code,
           originalProvider: c.providerCode!,
         }));
 
@@ -118,7 +119,8 @@ export function useTransferVerification(
         }
 
         const normalizedProvider = normalizeProviderCode(c.providerCode);
-        const key = `${normalizedProvider}:${c.code}`;
+        const normalizedCourse = normalizeCourseCode(c.code);
+        const key = `${normalizedProvider}:${normalizedCourse}`;
         const rule = rulesMap.get(key);
 
         if (!rule) {

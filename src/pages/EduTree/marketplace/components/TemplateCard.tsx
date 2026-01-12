@@ -21,7 +21,7 @@ import { StrategySavingsBanner } from './StrategySavingsBanner';
 import { useTransferVerification } from '../hooks/useTransferVerification';
 import { useVerifiedPolicyForInstitution } from '@/pages/EduTree/v5/hooks/useVerifiedPolicy';
 import { calculateTieredSavings, shouldShowSavings, type TieredTransferResult } from '@/lib/tieredSavingsCalculator';
-import { normalizeProviderCode } from '@/lib/providerNormalization';
+import { normalizeProviderCode, normalizeCourseCode } from '@/lib/providerNormalization';
 
 interface TemplateCardProps {
   template: MarketplaceDegreeTemplate;
@@ -123,9 +123,11 @@ export function TemplateCard({ template, isSelected, onToggleSelect }: TemplateC
   const tieredSavings = useMemo(() => {
     if (!transferVerifications || !strategySavings) return null;
     
-    // Helper to create canonical key - handle empty provider cleanly
+    // Helper to create canonical key - normalize both course code and provider
     const keyOf = (courseCode: string, providerCode?: string | null) =>
-      providerCode ? `${courseCode}:${normalizeProviderCode(providerCode)}` : `${courseCode}:`;
+      providerCode 
+        ? `${normalizeCourseCode(courseCode)}:${normalizeProviderCode(providerCode)}` 
+        : `${normalizeCourseCode(courseCode)}:`;
     
     // Build a map with aggregated credits/cost (handles duplicate course codes)
     const costMap = new Map<string, { credits: number; costUsd: number }>();
@@ -175,6 +177,52 @@ export function TemplateCard({ template, isSelected, onToggleSelect }: TemplateC
   // Determine what to show in savings display
   const showTieredSavings = shouldShowSavings(tieredSavings);
   const hasVerifiedSavings = tieredSavings && tieredSavings.guaranteedSavings > 0 && tieredSavings.policyVerified;
+
+  // Calculate data quality metrics for trust indicator
+  const dataQuality = useMemo(() => {
+    if (!tieredSavings) return null;
+    
+    const totalCourses = tieredSavings.totalCourses;
+    if (totalCourses === 0) return null;
+    
+    const rulesFound = tieredSavings.breakdown.tierA.count + tieredSavings.breakdown.tierB.count;
+    const evidenceLinked = tieredSavings.breakdown.tierA.count;
+    
+    const rulesFoundPercent = Math.round((rulesFound / totalCourses) * 100);
+    const evidenceLinkedPercent = rulesFound > 0 
+      ? Math.round((evidenceLinked / rulesFound) * 100) 
+      : 0;
+    
+    // Determine quality level
+    let level: 'high' | 'medium' | 'low';
+    let label: string;
+    let icon: typeof ShieldCheck | typeof Shield | typeof AlertTriangle;
+    
+    if (rulesFoundPercent >= 80 && evidenceLinkedPercent >= 50) {
+      level = 'high';
+      label = 'Strong coverage';
+      icon = ShieldCheck;
+    } else if (rulesFoundPercent >= 50) {
+      level = 'medium';
+      label = 'Partial verification';
+      icon = Shield;
+    } else {
+      level = 'low';
+      label = 'Limited data';
+      icon = AlertTriangle;
+    }
+    
+    return {
+      level,
+      label,
+      icon,
+      rulesFoundPercent,
+      evidenceLinkedPercent,
+      rulesFound,
+      evidenceLinked,
+      totalCourses,
+    };
+  }, [tieredSavings]);
 
   return (
     <Card className={cn(
@@ -313,23 +361,60 @@ export function TemplateCard({ template, isSelected, onToggleSelect }: TemplateC
           </Tooltip>
         </TooltipProvider>
 
-        {/* Transfer Coverage Hint */}
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <div 
-                className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer hover:text-foreground transition-colors"
-                onClick={() => setIsDrawerOpen(true)}
-              >
-                <Shield className="h-3.5 w-3.5" />
-                <span>Transfer verification available</span>
-              </div>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p className="text-xs">View details to see transfer coverage % by provider</p>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
+        {/* Data Quality Indicator */}
+        {dataQuality && (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div 
+                  className={cn(
+                    "flex items-center gap-1.5 text-xs cursor-pointer transition-colors",
+                    dataQuality.level === 'high' && "text-emerald-600 dark:text-emerald-400",
+                    dataQuality.level === 'medium' && "text-amber-600 dark:text-amber-400",
+                    dataQuality.level === 'low' && "text-orange-600 dark:text-orange-400"
+                  )}
+                  onClick={() => setIsDrawerOpen(true)}
+                >
+                  <dataQuality.icon className="h-3.5 w-3.5" />
+                  <span>{dataQuality.label}</span>
+                  <span className="text-muted-foreground">
+                    ({dataQuality.rulesFoundPercent}% verified)
+                  </span>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent className="max-w-xs">
+                <div className="space-y-1 text-xs">
+                  <p className="font-medium">Transfer Verification Quality</p>
+                  <p>{dataQuality.rulesFound} of {dataQuality.totalCourses} courses have transfer rules</p>
+                  {dataQuality.evidenceLinked > 0 && (
+                    <p>{dataQuality.evidenceLinked} are evidence-linked (Tier A)</p>
+                  )}
+                  <p className="text-muted-foreground pt-1">Click to view detailed breakdown</p>
+                </div>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        )}
+        
+        {/* Fallback Transfer Coverage Hint when no tiered data */}
+        {!dataQuality && (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div 
+                  className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer hover:text-foreground transition-colors"
+                  onClick={() => setIsDrawerOpen(true)}
+                >
+                  <Shield className="h-3.5 w-3.5" />
+                  <span>Transfer verification available</span>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p className="text-xs">View details to see transfer coverage % by provider</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        )}
 
         {/* Strategy Savings Banner (if baseline exists) */}
         {strategySavings && strategySavings.dollarSavings >= MIN_SAVINGS_TO_SHOW_BANNER && (

@@ -73,3 +73,71 @@ export function isKnownProvider(code: string): boolean {
 export function getCanonicalProviders(): string[] {
   return [...CANONICAL_VALUES].sort();
 }
+
+/**
+ * Course Code Normalization
+ * Maps known course code aliases to their database-normalized values
+ * Only explicitly whitelisted mappings - no aggressive string rewriting
+ */
+const COURSE_CODE_ALIAS_MAP: Record<string, string> = {
+  // SOPHIA course code aliases (template → DB format)
+  'SOPHIA-STATS': 'SOPHIA-STATISTICS',
+  'SOPHIA-ART-HIST': 'SOPHIA-ART-HIST-I',
+  'SOPHIA-INTRO-SOC': 'SOPH-SOC-101',
+  'SOPHIA-INTRO-SOCIOLOGY': 'SOPH-SOC-101',
+  'SOPHIA-MICROECON': 'SOPHIA-MICROECONOMICS',
+  'SOPHIA-MACROECON': 'SOPHIA-MACROECONOMICS',
+  'SOPHIA-ENV-SCI': 'SOPHIA-ENVIRONMENTAL-SCIENCE',
+  'SOPHIA-BUS-COMM': 'SOPHIA-BUSINESS-COMMUNICATION',
+  'SOPHIA-BUS-LAW': 'SOPHIA-BUSINESS-LAW',
+  'SOPHIA-ORG-BEH': 'SOPHIA-ORGANIZATIONAL-BEHAVIOR',
+  'SOPHIA-PROJ-MGMT': 'SOPHIA-PROJECT-MANAGEMENT',
+  'SOPHIA-PROJECT-MGMT': 'SOPHIA-PROJECT-MANAGEMENT',
+  'SOPHIA-WEB-DEV': 'SOPHIA-WEB-DEVELOPMENT',
+  'SOPHIA-INFO-SYS': 'SOPHIA-INFORMATION-SYSTEMS',
+  
+  // Study.com aliases
+  'SDC-PYTHON': 'STUDYCOM-PYTHON',
+  'SDC-OS': 'STUDYCOM-OPERATING-SYSTEMS',
+  'SDC-NETWORKS': 'STUDYCOM-COMPUTER-NETWORKS',
+  'SDC-INTRO-CS': 'STUDYCOM-INTRO-CS',
+  
+  // StraighterLine aliases
+  'SL-ENG-101': 'STRAIGHTERLINE-ENG101',
+  'SL-MATH-101': 'STRAIGHTERLINE-MATH101',
+};
+
+// Precomputed for fast lookup
+const COURSE_ALIAS_KEYS = new Set(Object.keys(COURSE_CODE_ALIAS_MAP));
+
+// Track warned course codes
+const warnedCourseCodes = new Set<string>();
+
+/**
+ * Normalize a course code to its canonical database value
+ * Only maps explicitly whitelisted aliases - does NOT do aggressive rewriting
+ * 
+ * @param code - The course code from a template
+ * @returns The canonical course code used in the database, or original if no alias
+ */
+export function normalizeCourseCode(code: string): string {
+  const upper = code.toUpperCase();
+  const canonical = COURSE_CODE_ALIAS_MAP[upper];
+  
+  // Return the alias if found, otherwise return original unchanged
+  return canonical || code;
+}
+
+/**
+ * Check if a course code has a known alias mapping
+ */
+export function hasKnownCourseAlias(code: string): boolean {
+  return COURSE_ALIAS_KEYS.has(code.toUpperCase());
+}
+
+/**
+ * Get all course code aliases (for debugging/auditing)
+ */
+export function getCourseCodeAliases(): Record<string, string> {
+  return { ...COURSE_CODE_ALIAS_MAP };
+}
