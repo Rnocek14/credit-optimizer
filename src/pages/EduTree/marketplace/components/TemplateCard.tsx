@@ -2,7 +2,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Clock, DollarSign, Laptop, MapPin, TrendingUp, Star, AlertCircle, GraduationCap, CheckCircle2, Shield } from 'lucide-react';
+import { Clock, DollarSign, Laptop, MapPin, TrendingUp, Star, AlertCircle, GraduationCap, CheckCircle2, Shield, ShieldCheck, AlertTriangle } from 'lucide-react';
 import type { MarketplaceDegreeTemplate } from '@/pages/EduTree/v5/types/templates';
 import { useNavigate } from 'react-router-dom';
 import { usePlanBasket } from '@/pages/EduTree/v5/state/usePlanBasket';
@@ -18,6 +18,9 @@ import { cn } from '@/lib/utils';
 import { TemplateDetailDrawer } from './TemplateDetailDrawer';
 import { calculateStrategySavings, MIN_SAVINGS_TO_SHOW_BANNER } from '@/lib/templateSavingsCalculator';
 import { StrategySavingsBanner } from './StrategySavingsBanner';
+import { useTransferVerification } from '../hooks/useTransferVerification';
+import { useVerifiedPolicyForInstitution } from '@/pages/EduTree/v5/hooks/useVerifiedPolicy';
+import { calculateTieredSavings, shouldShowSavings, type TieredTransferResult } from '@/lib/tieredSavingsCalculator';
 
 interface TemplateCardProps {
   template: MarketplaceDegreeTemplate;
@@ -47,6 +50,37 @@ export function TemplateCard({ template, isSelected, onToggleSelect }: TemplateC
   };
 
   const deliveryBadge = deliveryBadgeConfig[template.deliveryMode];
+
+  // Extract all courses for transfer verification
+  const allCourses = useMemo(() => {
+    const courses: Array<{ code: string; providerCode: string | null; credits: number; costUsd: number }> = [];
+    
+    template.yearTemplates?.forEach(year => {
+      year.moduleTemplates?.forEach(module => {
+        const option = module.options?.find(o => o.courseId === module.recommendedCourseId) || module.options?.[0];
+        if (option) {
+          courses.push({
+            code: option.courseId || '',
+            providerCode: option.providerCode || null,
+            credits: option.credits || 0,
+            costUsd: option.cost_usd || 0,
+          });
+        }
+      });
+    });
+    
+    return courses;
+  }, [template.yearTemplates]);
+
+  // Get verified policy for anchor school
+  const { policy } = useVerifiedPolicyForInstitution(template.anchorSchool);
+  
+  // Get transfer verifications with tier info
+  const { data: transferVerifications } = useTransferVerification(
+    allCourses,
+    template.anchorSchool,
+    policy
+  );
 
   // Calculate provider mix from yearTemplates
   const providerMix = useMemo(() => {
@@ -83,6 +117,24 @@ export function TemplateCard({ template, isSelected, onToggleSelect }: TemplateC
     calculateStrategySavings(template),
     [template]
   );
+
+  // Calculate tiered savings
+  const tieredSavings = useMemo(() => {
+    if (!transferVerifications || !strategySavings) return null;
+    
+    // Map transfer verifications to TieredTransferResult format
+    const tieredResults: TieredTransferResult[] = transferVerifications.map((v, idx) => ({
+      ...v,
+      credits: allCourses[idx]?.credits || 0,
+      costUsd: allCourses[idx]?.costUsd || 0,
+    }));
+    
+    return calculateTieredSavings(template, tieredResults, policy ?? null);
+  }, [transferVerifications, strategySavings, template, policy, allCourses]);
+
+  // Determine what to show in savings display
+  const showTieredSavings = shouldShowSavings(tieredSavings);
+  const hasVerifiedSavings = tieredSavings && tieredSavings.guaranteedSavings > 0 && tieredSavings.policyVerified;
 
   return (
     <Card className={cn(
@@ -241,7 +293,11 @@ export function TemplateCard({ template, isSelected, onToggleSelect }: TemplateC
 
         {/* Strategy Savings Banner (if baseline exists) */}
         {strategySavings && strategySavings.dollarSavings >= MIN_SAVINGS_TO_SHOW_BANNER && (
-          <StrategySavingsBanner savings={strategySavings} variant="card" />
+          <StrategySavingsBanner 
+            savings={strategySavings} 
+            tieredSavings={tieredSavings}
+            variant="card" 
+          />
         )}
 
         {/* Provider Mix - only show if no strategy savings banner */}
