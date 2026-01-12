@@ -139,7 +139,7 @@ export function TemplateCard({ template, isSelected, onToggleSelect }: TemplateC
     }
     
     // Deduplicate verifications by key, keeping the best tier to avoid double-counting
-    const tierRank = (t: string) => (t === 'A' ? 3 : t === 'B' ? 2 : 1);
+    const tierRank = (t: 'A' | 'B' | 'C') => (t === 'A' ? 3 : t === 'B' ? 2 : 1);
     const verMap = new Map<string, TieredTransferResult>();
     
     for (const v of transferVerifications) {
