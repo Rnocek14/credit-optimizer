@@ -79,8 +79,9 @@ export function TemplateDetailDrawer({ template, open, onOpenChange }: TemplateD
     return computeTransferCoverage(transferVerifications, template.anchorSchool);
   }, [transferVerifications, template.anchorSchool]);
 
-  // Build courses list for pre-approval email (external courses only)
+  // Build courses list for pre-approval email (external courses only, deduped)
   const externalCourses = useMemo((): PreApprovalCourse[] => {
+    const seen = new Set<string>();
     const courses: PreApprovalCourse[] = [];
     template.yearTemplates?.forEach(year => {
       year.moduleTemplates?.forEach(module => {
@@ -88,13 +89,18 @@ export function TemplateDetailDrawer({ template, open, onOpenChange }: TemplateD
           || module.options?.[0];
         // Only include non-anchor-school courses (actual transfers)
         if (option?.courseId && option.providerCode?.toUpperCase() !== template.anchorSchool?.toUpperCase()) {
-          courses.push({
-            sourceInstitution: option.providerCode || 'Unknown',
-            courseCode: option.courseId,
-            courseTitle: option.courseId, // Could be enhanced with title lookup
-            credits: option.credits || 3,
-            providerType: option.providerType,
-          });
+          // Dedupe by (providerCode, courseId)
+          const key = `${(option.providerCode || '').toUpperCase()}:${option.courseId}`;
+          if (!seen.has(key)) {
+            seen.add(key);
+            courses.push({
+              sourceInstitution: option.providerCode || 'Unknown',
+              courseCode: option.courseId,
+              courseTitle: option.courseId, // Could be enhanced with title lookup
+              credits: option.credits || 3,
+              providerType: option.providerType,
+            });
+          }
         }
       });
     });
