@@ -273,12 +273,12 @@ export function PreApprovalEmailModal({
                 Open in Email Client
               </Button>
             ) : (
-              <Alert className="flex-1">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription className="text-xs">
-                  Email too long for mailto — please copy and paste instead.
-                </AlertDescription>
-              </Alert>
+              <div className="flex-1 p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
+                <p className="text-xs text-amber-800 dark:text-amber-200">
+                  <strong>Email too long for one-click open.</strong> Copy the subject and body below, 
+                  then paste into Gmail/Outlook.
+                </p>
+              </div>
             )}
             <Button
               variant="outline"
