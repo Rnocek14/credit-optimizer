@@ -28,12 +28,26 @@ const PROVIDER_ALIAS_MAP: Record<string, string> = {
   'TECEP': 'TECEP',
 };
 
+// Track warned codes to avoid spamming console
+const warnedCodes = new Set<string>();
+
 /**
  * Normalize a provider code to its canonical database value
+ * Logs a dev warning if an unknown code is encountered
  */
 function normalizeProviderCode(code: string): string {
   const upper = code.toUpperCase();
-  return PROVIDER_ALIAS_MAP[upper] || upper;
+  const canonical = PROVIDER_ALIAS_MAP[upper];
+  
+  if (!canonical && !warnedCodes.has(upper)) {
+    warnedCodes.add(upper);
+    console.warn(
+      `[TransferVerification] Unknown provider code: "${code}" (normalized: "${upper}"). ` +
+      `Add to PROVIDER_ALIAS_MAP if this is a valid provider.`
+    );
+  }
+  
+  return canonical || upper;
 }
 
 export interface TransferRule {
