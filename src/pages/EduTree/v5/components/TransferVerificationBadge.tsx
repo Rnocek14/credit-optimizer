@@ -107,9 +107,9 @@ export function TransferVerificationBadge({
   compact = false,
   className,
 }: TransferVerificationBadgeProps) {
-  const config = STATUS_CONFIG[status];
+  const config = STATUS_CONFIG[status] ?? STATUS_CONFIG.unverified;
   const Icon = config.icon;
-  const hasEvidence = !!evidenceUrl;
+  const hasEvidence = Boolean(evidenceUrl && evidenceUrl.trim());
   
   const label = getStatusLabel(status, hasEvidence);
   const description = getStatusDescription(status, hasEvidence);
