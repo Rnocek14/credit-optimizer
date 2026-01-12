@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -9,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import type { MarketplaceDegreeTemplate } from '@/pages/EduTree/v5/types/templates';
 import { useNavigate } from 'react-router-dom';
-import { Check, DollarSign, Clock, TrendingUp, Laptop } from 'lucide-react';
+import { Check, DollarSign, Clock, TrendingUp, Laptop, Sparkles } from 'lucide-react';
 
 interface ComparisonModalProps {
   isOpen: boolean;
@@ -17,19 +18,39 @@ interface ComparisonModalProps {
   templates: MarketplaceDegreeTemplate[];
 }
 
+function formatCurrency(amount: number): string {
+  if (amount >= 1000) {
+    return `$${(amount / 1000).toFixed(1)}K`;
+  }
+  return `$${amount.toLocaleString()}`;
+}
+
 export function ComparisonModal({ isOpen, onClose, templates }: ComparisonModalProps) {
   const navigate = useNavigate();
 
-  if (templates.length === 0) return null;
+  // Calculate comparison metrics
+  const { cheapest, fastest, maxSavings, maxTimeSaved } = useMemo(() => {
+    if (templates.length === 0) return { cheapest: null, fastest: null, maxSavings: 0, maxTimeSaved: 0 };
+    
+    const cheap = templates.reduce((min, t) => t.totals.costUsd < min.totals.costUsd ? t : min);
+    const fast = templates.reduce((min, t) => t.totals.weeks < min.totals.weeks ? t : min);
+    const maxCost = Math.max(...templates.map(t => t.totals.costUsd));
+    const maxWeeks = Math.max(...templates.map(t => t.totals.weeks));
+    
+    return {
+      cheapest: cheap,
+      fastest: fast,
+      maxSavings: maxCost - cheap.totals.costUsd,
+      maxTimeSaved: maxWeeks - fast.totals.weeks,
+    };
+  }, [templates]);
+
+  if (templates.length === 0 || !cheapest || !fastest) return null;
 
   const handleSelect = (templateId: string) => {
     navigate(`/edu-tree-v5?templateId=${templateId}`);
     onClose();
   };
-
-  // Calculate comparison metrics
-  const cheapest = templates.reduce((min, t) => t.totals.costUsd < min.totals.costUsd ? t : min);
-  const fastest = templates.reduce((min, t) => t.totals.weeks < min.totals.weeks ? t : min);
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -41,12 +62,44 @@ export function ComparisonModal({ isOpen, onClose, templates }: ComparisonModalP
           </DialogDescription>
         </DialogHeader>
 
+        {/* Savings Summary Banner */}
+        {(maxSavings > 0 || maxTimeSaved > 4) && (
+          <div className="bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border border-primary/20 rounded-lg p-4 mb-4">
+            <div className="flex items-center gap-2 mb-2">
+              <Sparkles className="h-4 w-4 text-primary" />
+              <span className="font-semibold text-sm">Comparison Summary</span>
+            </div>
+            <div className="flex flex-wrap gap-4 text-sm">
+              {maxSavings > 0 && (
+                <div>
+                  <span className="text-muted-foreground">Cheapest: </span>
+                  <span className="font-medium">{cheapest.anchorSchool}</span>
+                  <span className="text-muted-foreground"> — saves </span>
+                  <span className="text-primary font-semibold">{formatCurrency(maxSavings)}</span>
+                </div>
+              )}
+              {maxTimeSaved > 4 && cheapest.id !== fastest.id && (
+                <div className="pl-4 border-l border-border">
+                  <span className="text-muted-foreground">Fastest: </span>
+                  <span className="font-medium">{fastest.anchorSchool}</span>
+                  <span className="text-muted-foreground"> — </span>
+                  <span className="font-semibold">{Math.round(maxTimeSaved / 4.33)}mo faster</span>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         <div className="grid gap-4" style={{ gridTemplateColumns: `repeat(${templates.length}, 1fr)` }}>
           {templates.map(template => {
             const isCheapest = template.id === cheapest.id;
             const isFastest = template.id === fastest.id;
             const timeMonths = Math.round(template.totals.weeks / 4.33);
             const roiYears = (template.totals.costUsd / 60000).toFixed(1);
+            
+            // Calculate how much more expensive this option is
+            const costDiff = template.totals.costUsd - cheapest.totals.costUsd;
+            const weeksDiff = template.totals.weeks - fastest.totals.weeks;
 
             return (
               <div key={template.id} className="border rounded-lg p-4 space-y-4">
@@ -77,10 +130,14 @@ export function ComparisonModal({ isOpen, onClose, templates }: ComparisonModalP
                     <span className="text-2xl font-bold">
                       ${(template.totals.costUsd / 1000).toFixed(1)}K
                     </span>
-                    {isCheapest && (
+                    {isCheapest ? (
                       <Badge variant="default" className="text-xs">
                         <Check className="h-3 w-3 mr-1" />
                         Cheapest
+                      </Badge>
+                    ) : costDiff > 0 && (
+                      <Badge variant="outline" className="text-xs text-amber-600 border-amber-300">
+                        +{formatCurrency(costDiff)}
                       </Badge>
                     )}
                   </div>
@@ -94,10 +151,14 @@ export function ComparisonModal({ isOpen, onClose, templates }: ComparisonModalP
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-2xl font-bold">{timeMonths}mo</span>
-                    {isFastest && (
+                    {isFastest ? (
                       <Badge variant="secondary" className="text-xs">
                         <Check className="h-3 w-3 mr-1" />
                         Fastest
+                      </Badge>
+                    ) : weeksDiff > 4 && (
+                      <Badge variant="outline" className="text-xs text-muted-foreground">
+                        +{Math.round(weeksDiff / 4.33)}mo
                       </Badge>
                     )}
                   </div>
