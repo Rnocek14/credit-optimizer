@@ -25,12 +25,21 @@ export function useTransferRule(
     queryFn: async () => {
       if (!providerCode || !courseCode || !targetSchool) return null;
 
+      const normalizedProvider = providerCode.toUpperCase();
+      const normalizedTarget = targetSchool.toUpperCase();
+
+      // Instrumentation: log transfer rule lookup normalization
+      console.log('[TransferRule] lookup', {
+        raw: { providerCode, courseCode, targetSchool },
+        normalized: { provider: normalizedProvider, target: normalizedTarget },
+      });
+
       const { data, error } = await supabase
         .from('credit_transfer_rules' as any)
         .select('*')
-        .eq('source_institution', providerCode.toUpperCase())
+        .eq('source_institution', normalizedProvider)
         .eq('source_course_code', courseCode)
-        .eq('target_institution', targetSchool.toUpperCase())
+        .eq('target_institution', normalizedTarget)
         .maybeSingle();
 
       // PostgREST no-rows code is fine

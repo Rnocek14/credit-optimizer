@@ -207,12 +207,21 @@ export function PreApprovalEmailModal({
         is_public: isPublic,
       }));
 
-      const { error } = await supabase
+      const { error, data } = await supabase
         .from('transfer_outcomes')
         .upsert(inserts, {
           onConflict: 'user_id,source_institution,source_course_code,target_institution,outcome_type',
           ignoreDuplicates: false,
-        });
+        })
+        .select();
+
+      // Instrumentation: log evidence save success
+      console.log('[EvidenceLoop] save_success', {
+        courseCount: inserts.length,
+        outcomeType: 'advisor_preapproval',
+        targetInstitution,
+        savedCount: data?.length ?? 0,
+      });
 
       if (error) throw error;
 

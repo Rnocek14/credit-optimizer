@@ -93,6 +93,13 @@ export function TemplateDetailDrawer({ template, open, onOpenChange }: TemplateD
           const key = `${(option.providerCode || '').toUpperCase()}:${option.courseId}`;
           if (!seen.has(key)) {
             seen.add(key);
+            // Warn when credits default to 3 for observability
+            if (!option.credits) {
+              console.warn('[TransferBatch] Missing credits, defaulting to 3', {
+                providerCode: option.providerCode,
+                courseId: option.courseId,
+              });
+            }
             courses.push({
               sourceInstitution: option.providerCode || 'Unknown',
               courseCode: option.courseId,
