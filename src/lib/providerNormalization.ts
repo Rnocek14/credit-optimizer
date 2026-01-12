@@ -80,34 +80,35 @@ export function getCanonicalProviders(): string[] {
  * Only explicitly whitelisted mappings - no aggressive string rewriting
  */
 const COURSE_CODE_ALIAS_MAP: Record<string, string> = {
-  // SOPHIA course code aliases (template → DB format)
+  // =============================================================
+  // SOPHIA course code aliases (template code → DB source_course_code)
+  // DB uses: SOPHIA-STATISTICS, SOPHIA-INTRO-SOC, SOPHIA-ENV-SCI, etc.
+  // =============================================================
+  
+  // Statistics: template uses SOPHIA-STATS, DB has SOPHIA-STATISTICS
   'SOPHIA-STATS': 'SOPHIA-STATISTICS',
+  
+  // Art History: template uses SOPHIA-ART-HIST, DB has SOPHIA-ART-HIST-I
   'SOPHIA-ART-HIST': 'SOPHIA-ART-HIST-I',
-  'SOPHIA-INTRO-SOC': 'SOPH-SOC-101',
-  'SOPHIA-INTRO-SOCIOLOGY': 'SOPH-SOC-101',
+  
+  // Economics: various template formats → DB format
   'SOPHIA-MICROECON': 'SOPHIA-MICROECONOMICS',
   'SOPHIA-MACROECON': 'SOPHIA-MACROECONOMICS',
-  // Fix hyphenation variants used in templates
   'SOPHIA-MICRO-ECON': 'SOPHIA-MICROECONOMICS',
   'SOPHIA-MACRO-ECON': 'SOPHIA-MACROECONOMICS',
-  'SOPHIA-ENV-SCI': 'SOPHIA-ENVIRONMENTAL-SCIENCE',
-  'SOPHIA-BUS-COMM': 'SOPHIA-BUSINESS-COMMUNICATION',
-  'SOPHIA-BUS-LAW': 'SOPHIA-BUSINESS-LAW',
-  'SOPHIA-ORG-BEH': 'SOPHIA-ORGANIZATIONAL-BEHAVIOR',
-  'SOPHIA-PROJ-MGMT': 'SOPHIA-PROJECT-MANAGEMENT',
-  'SOPHIA-PROJECT-MGMT': 'SOPHIA-PROJECT-MANAGEMENT',
-  'SOPHIA-WEB-DEV': 'SOPHIA-WEB-DEVELOPMENT',
-  'SOPHIA-INFO-SYS': 'SOPHIA-INFORMATION-SYSTEMS',
   
-  // Study.com aliases - both directions for flexibility
-  'SDC-PYTHON': 'STUDYCOM-PYTHON',
-  'SDC-OS': 'STUDYCOM-OPERATING-SYSTEMS',
-  'SDC-NETWORKS': 'STUDYCOM-COMPUTER-NETWORKS',
-  'SDC-INTRO-CS': 'STUDYCOM-INTRO-CS',
-  'STUDYCOM-CALC-I': 'SDC-CALC-I',
-  'STUDYCOM-CALC-II': 'SDC-CALC-II',
+  // NOTE: These codes ALREADY MATCH the DB - DO NOT ALIAS:
+  // - SOPHIA-INTRO-SOC (DB has this exact code)
+  // - SOPHIA-ENV-SCI (DB has this exact code)
+  // - SOPHIA-INTRO-PSYCH, SOPHIA-INTRO-ETHICS, etc. (all match)
   
-  // StraighterLine aliases
+  // =============================================================
+  // Study.com aliases
+  // DB uses: SDC-* format (SDC-CALC-I, SDC-PYTHON, SDC-OS, etc.)
+  // NOTE: Templates already use SDC-* format - no aliasing needed!
+  // =============================================================
+  
+  // StraighterLine aliases (if templates use short form)
   'SL-ENG-101': 'STRAIGHTERLINE-ENG101',
   'SL-MATH-101': 'STRAIGHTERLINE-MATH101',
 };
