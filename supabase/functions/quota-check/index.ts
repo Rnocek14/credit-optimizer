@@ -42,13 +42,46 @@ serve(async (req) => {
 
     const quotaRow = ensuredQuota as any;
     const analysesUsed: number = quotaRow?.maya_analyses_used ?? 0;
+    const planTier: string = quotaRow?.plan_tier ?? 'free';
+    const tierExpiresAt: string | null = quotaRow?.tier_expires_at ?? null;
 
-    // Define quota limits (could be made configurable)
-    const FREE_TIER_LIMIT = 5;
-    const PRO_TIER_LIMIT = 50;
+    // Tier configuration - matches src/types/subscriptionTiers.ts
+    const TIER_CONFIGS: Record<string, { 
+      limit: number; 
+      maxAnchors: number;
+      features: { canCompare: boolean; canOptimizeMulti: boolean; canExport: boolean };
+      requiresTrustTierAB: boolean;
+    }> = {
+      free: { 
+        limit: 5, 
+        maxAnchors: 1,
+        features: { canCompare: false, canOptimizeMulti: false, canExport: false },
+        requiresTrustTierAB: false,
+      },
+      single_school: { 
+        limit: 20, 
+        maxAnchors: 1,
+        features: { canCompare: false, canOptimizeMulti: false, canExport: true },
+        requiresTrustTierAB: false,
+      },
+      multi_compare: { 
+        limit: 50, 
+        maxAnchors: 5,
+        features: { canCompare: true, canOptimizeMulti: false, canExport: true },
+        requiresTrustTierAB: true,
+      },
+      multi_optimizer: { 
+        limit: 100, 
+        maxAnchors: -1,
+        features: { canCompare: true, canOptimizeMulti: true, canExport: true },
+        requiresTrustTierAB: true,
+      },
+    };
 
-    // For now, assume free tier. In the future, this could check user's subscription
-    const userLimit = FREE_TIER_LIMIT;
+    // Check if tier has expired, fall back to free if so
+    const effectiveTier = (tierExpiresAt && new Date(tierExpiresAt) < now) ? 'free' : planTier;
+    const tierConfig = TIER_CONFIGS[effectiveTier] ?? TIER_CONFIGS.free;
+    const userLimit = tierConfig.limit;
 
     const remaining = Math.max(0, userLimit - analysesUsed);
     const limitReached = analysesUsed >= userLimit;
@@ -68,6 +101,7 @@ serve(async (req) => {
         limit: userLimit,
         remaining,
         limit_reached: limitReached,
+        tier: effectiveTier,
         ensured_row: true
       }
     });
@@ -79,7 +113,16 @@ serve(async (req) => {
       used: analysesUsed,
       limit: userLimit,
       reset_date: resetDate,
-      current_period: currentPeriod
+      current_period: currentPeriod,
+      // New tier-specific fields
+      tier: effectiveTier,
+      tier_expires_at: tierExpiresAt,
+      features: tierConfig.features,
+      limits: {
+        max_anchors: tierConfig.maxAnchors,
+        max_analyses_per_month: tierConfig.limit,
+      },
+      requires_trust_tier_ab: tierConfig.requiresTrustTierAB,
     };
   });
 });
