@@ -146,7 +146,7 @@ Deno.serve(async (req) => {
       diffs_count: diffsCount ?? 0,
       packs_created: packsCount ?? 0,
       forced: force && !allTerminal,
-      completed_at: new Date().toISOString(),
+      finalized_at: new Date().toISOString(),
       duration_ms: run.started_at 
         ? new Date().getTime() - new Date(run.started_at).getTime()
         : null,
@@ -156,7 +156,7 @@ Deno.serve(async (req) => {
       .from('transfer_batch_runs')
       .update({
         status: 'complete',
-        completed_at: new Date().toISOString(),
+        finished_at: new Date().toISOString(),
         summary,
       })
       .eq('id', run_id);

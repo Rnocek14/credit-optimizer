@@ -45,16 +45,50 @@ Deno.serve(async (req) => {
 
     console.log(`Batch scan starting: tier=${tier}, maxPriority=${maxPriority}, concurrency=${concurrency}, limit=${limit}, maxRuntimeMs=${maxRuntimeMs}, startAfter=${startAfter || 'beginning'}, externalRunId=${externalRunId || 'none'}`);
 
-    // Create batch run record for persistence (or use external run_id if provided)
+    // === CRITICAL FIX: When run_id is provided, use tasks from that run ===
+    // This ensures we only process institutions that were explicitly requested
+    let institutionsToProcess: string[] = [];
+    let totalInTier = 0;
+
     if (externalRunId) {
       runId = externalRunId;
+      
       // Update existing run to running status
       await supabase
         .from('transfer_batch_runs')
         .update({ status: 'running' })
         .eq('id', runId);
-      console.log(`Using existing run: ${runId}`);
+      
+      // Get institutions from policy_refresh_tasks for this run (not from tier!)
+      const { data: tasks, error: tasksError } = await supabase
+        .from('policy_refresh_tasks')
+        .select('institution')
+        .eq('run_id', runId)
+        .in('status', ['queued', 'running']) // Only process pending tasks
+        .order('institution', { ascending: true });
+      
+      if (tasksError) {
+        throw new Error(`Failed to load tasks for run: ${tasksError.message}`);
+      }
+      
+      institutionsToProcess = (tasks || []).map((t: { institution: string }) => t.institution);
+      totalInTier = institutionsToProcess.length;
+      
+      console.log(`Using ${institutionsToProcess.length} institutions from run ${runId}: ${institutionsToProcess.join(', ')}`);
+      
+      // Apply startAfter for resume
+      if (startAfter) {
+        const idx = institutionsToProcess.findIndex(c => c === startAfter);
+        if (idx >= 0) {
+          institutionsToProcess = institutionsToProcess.slice(idx + 1);
+        }
+      }
+      
+      // Apply limit
+      institutionsToProcess = institutionsToProcess.slice(0, limit);
+      
     } else {
+      // Legacy mode: derive institutions from tier (for backward compatibility)
       const { data: runData } = await supabase
         .from('transfer_batch_runs')
         .insert({
@@ -68,59 +102,57 @@ Deno.serve(async (req) => {
       
       runId = runData?.id ?? null;
       console.log(`Created batch run: ${runId}`);
-    }
 
-    // Get institutions by tier from institutions table
-    const institutionsResponse = await fetch(
-      `${supabaseUrl}/rest/v1/institutions?select=code&institution_tier=eq.${tier}&order=code.asc`,
-      {
-        headers: {
-          'apikey': serviceRoleKey,
-          'Authorization': `Bearer ${serviceRoleKey}`,
-          'Content-Type': 'application/json',
-        },
-      }
-    );
-
-    if (!institutionsResponse.ok) {
-      const errorText = await institutionsResponse.text();
-      throw new Error(`Failed to load institutions: ${errorText}`);
-    }
-
-    const institutionsData = await institutionsResponse.json();
-    const allInstitutions: string[] = institutionsData.map((r: { code: string }) => r.code);
-    const totalInTier = allInstitutions.length;
-
-    if (allInstitutions.length === 0) {
-      await updateRunStatus(supabase, runId, 'completed', null, 0, { error: 'No institutions found' });
-      return new Response(
-        JSON.stringify({ 
-          error: 'No institutions found for tier',
-          tier,
-          hint: 'Check that institutions have institution_tier set correctly'
-        }),
-        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      // Get institutions by tier from institutions table
+      const institutionsResponse = await fetch(
+        `${supabaseUrl}/rest/v1/institutions?select=code&institution_tier=eq.${tier}&order=code.asc`,
+        {
+          headers: {
+            'apikey': serviceRoleKey,
+            'Authorization': `Bearer ${serviceRoleKey}`,
+            'Content-Type': 'application/json',
+          },
+        }
       );
-    }
 
-    // Build list of institutions to process (immutable from here)
-    let institutionsToProcess: string[] = allInstitutions;
-    
-    // Apply resume filter: start after specified institution
-    if (startAfter) {
-      const idx = institutionsToProcess.findIndex(c => c === startAfter);
-      if (idx >= 0) {
-        institutionsToProcess = institutionsToProcess.slice(idx + 1);
-      } else {
-        console.log(`Warning: startAfter='${startAfter}' not found in tier, starting from beginning`);
+      if (!institutionsResponse.ok) {
+        const errorText = await institutionsResponse.text();
+        throw new Error(`Failed to load institutions: ${errorText}`);
       }
+
+      const institutionsData = await institutionsResponse.json();
+      const allInstitutions: string[] = institutionsData.map((r: { code: string }) => r.code);
+      totalInTier = allInstitutions.length;
+
+      if (allInstitutions.length === 0) {
+        await updateRunStatus(supabase, runId, 'completed', null, 0, { error: 'No institutions found' });
+        return new Response(
+          JSON.stringify({ 
+            error: 'No institutions found for tier',
+            tier,
+            hint: 'Check that institutions have institution_tier set correctly'
+          }),
+          { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      institutionsToProcess = allInstitutions;
+      
+      // Apply resume filter
+      if (startAfter) {
+        const idx = institutionsToProcess.findIndex(c => c === startAfter);
+        if (idx >= 0) {
+          institutionsToProcess = institutionsToProcess.slice(idx + 1);
+        }
+      }
+
+      // Apply limit
+      institutionsToProcess = institutionsToProcess.slice(0, limit);
     }
 
-    // Apply limit for chunked processing
-    institutionsToProcess = institutionsToProcess.slice(0, limit);
-
+    // Common validation
     if (institutionsToProcess.length === 0) {
-      await updateRunStatus(supabase, runId, 'completed', null, 0, { message: 'No more institutions' });
+      await updateRunStatus(supabase, runId, 'completed', null, 0, { message: 'No institutions to process' });
       return new Response(
         JSON.stringify({ 
           tier,
@@ -130,7 +162,9 @@ Deno.serve(async (req) => {
           total_in_tier: totalInTier,
           processed_this_run: 0,
           hasMore: false,
-          message: 'No more institutions to process after startAfter position'
+          message: externalRunId 
+            ? 'All tasks for this run are already complete' 
+            : 'No more institutions to process after startAfter position'
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
@@ -226,8 +260,9 @@ Deno.serve(async (req) => {
     }
 
     // Determine if there are more institutions to process
-    const lastIdx = lastProcessed ? allInstitutions.indexOf(lastProcessed) : -1;
-    const hasMore = lastIdx >= 0 && lastIdx < allInstitutions.length - 1;
+    // For run_id mode: check if we processed all queued tasks
+    // For tier mode: check position in allInstitutions (legacy - allInstitutions not available here)
+    const hasMore = stoppedEarly || (processedCount < totalInTier);
 
     const summary = {
       run_id: runId,
