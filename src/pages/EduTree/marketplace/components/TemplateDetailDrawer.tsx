@@ -159,15 +159,9 @@ function CourseBreakdown({
   template: MarketplaceDegreeTemplate; 
   transferStatusMap: Map<string, any>;
 }) {
-  // Debug: log the template data
-  console.log('[CourseBreakdown] template.yearTemplates:', template.yearTemplates);
-  console.log('[CourseBreakdown] Year 1 moduleTemplates count:', template.yearTemplates?.[0]?.moduleTemplates?.length);
-  
   return (
     <div className="space-y-6">
-      {template.yearTemplates?.map((year, yearIdx) => {
-        console.log(`[CourseBreakdown] Year ${yearIdx + 1} moduleTemplates:`, year.moduleTemplates?.length);
-        return (
+      {template.yearTemplates?.map((year, yearIdx) => (
         <div key={yearIdx} className="space-y-3">
           <div className="flex items-center gap-2">
             <h3 className="text-lg font-semibold">Year {yearIdx + 1}</h3>
@@ -241,8 +235,7 @@ function CourseBreakdown({
             <Separator className="my-4" />
           )}
         </div>
-        );
-      })}
+      ))}
     </div>
   );
 }
