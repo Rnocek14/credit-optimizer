@@ -99,7 +99,7 @@ export function useTransferVerification(
       }
 
       // Debug: Log query details in development
-      if (process.env.NODE_ENV === 'development') {
+      if (import.meta.env.DEV) {
         const uniqueProviders = Array.from(new Set(pairs.map(p => p.provider)));
         const uniqueCourses = Array.from(new Set(pairs.map(p => p.course)));
         console.debug('[TransferVerification] Query:', {
