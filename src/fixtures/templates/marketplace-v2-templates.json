@@ -474,7 +474,13 @@
       "costUsd": 15980,
       "weeks": 104,
       "source": "WGU direct enrollment (4 terms × $3,995)",
-      "notes": "All 120 credits at WGU flat-rate terms"
+      "notes": "All 120 credits at WGU flat-rate terms",
+      "yearBreakdown": [
+        { "year": 1, "label": "Year 1 – Foundation", "credits": 30, "costUsd": 3995, "weeks": 26, "courseLabel": "WGU IT Year 1 Bundle" },
+        { "year": 2, "label": "Year 2 – IT Core", "credits": 30, "costUsd": 3995, "weeks": 26, "courseLabel": "WGU IT Year 2 Bundle" },
+        { "year": 3, "label": "Year 3 – Advanced IT", "credits": 30, "costUsd": 3995, "weeks": 26, "courseLabel": "WGU IT Year 3 Bundle" },
+        { "year": 4, "label": "Year 4 – Capstone", "credits": 30, "costUsd": 3995, "weeks": 26, "courseLabel": "WGU IT Capstone + Certs" }
+      ]
     },
     "yearTemplates": [
       { "year": 1, "label": "Year 1 – Gen Ed via Sophia (30cr)", "recommendedPace": "part_time", "moduleTemplates": [{ "moduleId": "GENED_SOPHIA", "label": "Gen Ed Bundle", "creditsRequired": 30, "requirementArea": "GENED", "options": [{ "id": "sophia-gened-it", "courseId": "SOPHIA-GENED-IT", "title": "Sophia Gen Ed Bundle", "credits": 30, "cost_usd": 990, "duration_weeks": 16, "provider": "Sophia Learning", "providerType": "mooc", "providerCode": "SOPHIA", "level": 100, "cri_score": 72, "workload_weekly_hours": 12, "subject": "General Education" }], "recommendedCourseId": "SOPHIA-GENED-IT" }] },
@@ -507,7 +513,13 @@
       "costUsd": 38400,
       "weeks": 192,
       "source": "Traditional 4-year university (avg. $9,600/year tuition)",
-      "notes": "Compared to average public university in-state tuition"
+      "notes": "Compared to average public university in-state tuition",
+      "yearBreakdown": [
+        { "year": 1, "label": "Year 1 – Freshman Year", "credits": 30, "costUsd": 9600, "weeks": 48, "courseLabel": "Traditional University Year 1" },
+        { "year": 2, "label": "Year 2 – Sophomore Year", "credits": 30, "costUsd": 9600, "weeks": 48, "courseLabel": "Traditional University Year 2" },
+        { "year": 3, "label": "Year 3 – Junior Year", "credits": 30, "costUsd": 9600, "weeks": 48, "courseLabel": "Traditional University Year 3" },
+        { "year": 4, "label": "Year 4 – Senior Year", "credits": 30, "costUsd": 9600, "weeks": 48, "courseLabel": "Traditional University Year 4" }
+      ]
     },
     "yearTemplates": [
       { "year": 1, "label": "Year 1 – Gen Ed via Sophia (30cr)", "recommendedPace": "part_time", "moduleTemplates": [{ "moduleId": "GENED_SOPHIA_CS", "label": "Gen Ed Bundle", "creditsRequired": 30, "requirementArea": "GENED", "options": [{ "id": "sophia-gened-cs", "courseId": "SOPHIA-GENED-CS", "title": "Sophia Gen Ed Bundle", "credits": 30, "cost_usd": 990, "duration_weeks": 16, "provider": "Sophia Learning", "providerType": "mooc", "providerCode": "SOPHIA", "level": 100, "cri_score": 72, "workload_weekly_hours": 10, "subject": "General Education" }], "recommendedCourseId": "SOPHIA-GENED-CS" }] },
