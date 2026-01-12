@@ -768,10 +768,11 @@ export function checkAnchorEligibility(policyData: any, institution: string): An
  * If null, degree completion claims are "unverified"
  */
 export function checkUpperDivisionVerified(policyData: any): { verified: boolean; value?: number } {
-  // Canonical fallback: prefer min_upper_division_credits, fall back to upper_division_min
-  const minUL = policyData?.min_upper_division_credits ?? policyData?.upper_division_min ?? null;
+  // Use canonical resolver from shared module
+  const { getMinUpperDivisionCredits } = require('../utils/policyFieldResolvers');
+  const minUL = getMinUpperDivisionCredits(policyData);
   return {
-    verified: minUL != null,
+    verified: minUL !== null,
     value: minUL ?? undefined,
   };
 }

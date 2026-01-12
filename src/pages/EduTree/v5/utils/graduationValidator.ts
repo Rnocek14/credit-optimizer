@@ -137,8 +137,9 @@ export function validateGraduationReadiness(
   }
 
   // Upper-division is only verified if the policy explicitly sets the requirement
-  // Canonical fallback: prefer min_upper_division_credits, fall back to upper_division_min
-  const minUL = (policy as any).min_upper_division_credits ?? policy.upper_division_min ?? null;
+  // Use canonical resolver from shared module for consistency
+  const { getMinUpperDivisionCredits } = require('./policyFieldResolvers');
+  const minUL = getMinUpperDivisionCredits(policy);
   const isUpperDivisionVerified = minUL !== null;
 
   const isGraduationReady = blockers.length === 0 && 
