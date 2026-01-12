@@ -1,5 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { normalizeProviderCode } from '@/lib/providerNormalization';
+import { ENV } from '@/config/env';
 
 export type Acceptance = 'accepted' | 'elective' | 'rejected';
 
@@ -15,6 +17,10 @@ export interface TransferRule {
   evidence_url?: string | null;
 }
 
+// Debug flag: only log in dev or with ?debug=1
+const isDebug = () => 
+  !ENV.PROD || new URLSearchParams(window.location.search).get('debug') === '1';
+
 export function useTransferRule(
   providerCode?: string,
   courseCode?: string,
@@ -25,14 +31,17 @@ export function useTransferRule(
     queryFn: async () => {
       if (!providerCode || !courseCode || !targetSchool) return null;
 
-      const normalizedProvider = providerCode.toUpperCase();
+      // Use canonical normalization for consistent matching
+      const normalizedProvider = normalizeProviderCode(providerCode);
       const normalizedTarget = targetSchool.toUpperCase();
 
-      // Instrumentation: log transfer rule lookup normalization
-      console.log('[TransferRule] lookup', {
-        raw: { providerCode, courseCode, targetSchool },
-        normalized: { provider: normalizedProvider, target: normalizedTarget },
-      });
+      // Instrumentation: log transfer rule lookup (dev only)
+      if (isDebug()) {
+        console.log('[TransferRule] lookup', {
+          raw: { providerCode, courseCode, targetSchool },
+          normalized: { provider: normalizedProvider, target: normalizedTarget },
+        });
+      }
 
       const { data, error } = await supabase
         .from('credit_transfer_rules' as any)
