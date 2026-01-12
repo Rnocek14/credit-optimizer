@@ -117,6 +117,22 @@ export function useTransferVerification(
         rulesMap.set(key, rule as TransferRule);
       });
 
+      // Dev-only: Log missing rules to distinguish data gaps from normalization bugs
+      if (import.meta.env.DEV) {
+        const missing = pairs
+          .map(p => `${p.provider}:${p.course}`)
+          .filter(k => !rulesMap.has(k));
+
+        if (missing.length) {
+          console.debug(
+            '[TransferVerification] Missing %d/%d rules. Sample:', 
+            missing.length, 
+            pairs.length, 
+            missing.slice(0, 10)
+          );
+        }
+      }
+
       // Map results using normalized provider codes for lookup
       return courses.map(c => {
         if (!c.providerCode) {
