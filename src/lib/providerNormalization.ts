@@ -82,7 +82,6 @@ export function getCanonicalProviders(): string[] {
 const COURSE_CODE_ALIAS_MAP: Record<string, string> = {
   // =============================================================
   // SOPHIA course code aliases (template code → DB source_course_code)
-  // DB uses: SOPHIA-STATISTICS, SOPHIA-INTRO-SOC, SOPHIA-ENV-SCI, etc.
   // =============================================================
   
   // Statistics: template uses SOPHIA-STATS, DB has SOPHIA-STATISTICS
@@ -97,18 +96,38 @@ const COURSE_CODE_ALIAS_MAP: Record<string, string> = {
   'SOPHIA-MICRO-ECON': 'SOPHIA-MICROECONOMICS',
   'SOPHIA-MACRO-ECON': 'SOPHIA-MACROECONOMICS',
   
-  // NOTE: These codes ALREADY MATCH the DB - DO NOT ALIAS:
-  // - SOPHIA-INTRO-SOC (DB has this exact code)
-  // - SOPHIA-ENV-SCI (DB has this exact code)
-  // - SOPHIA-INTRO-PSYCH, SOPHIA-INTRO-ETHICS, etc. (all match)
+  // Project Management: template uses long form, DB uses short
+  'SOPHIA-PROJECT-MGMT': 'SOPHIA-PROJ-MGMT',
   
   // =============================================================
-  // Study.com aliases
-  // DB uses: SDC-* format (SDC-CALC-I, SDC-PYTHON, SDC-OS, etc.)
-  // NOTE: Templates already use SDC-* format - no aliasing needed!
+  // Study.com (SDC) course code aliases
+  // Template codes → DB source_course_code
   // =============================================================
   
-  // StraighterLine aliases (if templates use short form)
+  // Database: template uses plural, DB uses singular
+  'SDC-DATABASES': 'SDC-DATABASE',
+  
+  // Networks: template uses SDC-NETWORKS, DB uses SDC-NET-FUND
+  'SDC-NETWORKS': 'SDC-NET-FUND',
+  
+  // Consumer Behavior: normalize to short form
+  'SDC-CONSUMER-BEHAV': 'SDC-CONSUMER-BEH',
+  
+  // Corporate Finance: normalize to short form
+  'SDC-CORP-FINANCE': 'SDC-CORP-FIN',
+  
+  // Entrepreneurship: normalize to short form
+  'SDC-ENTREPRENEURSHIP': 'SDC-ENTREPRENEUR',
+  
+  // Management Accounting: normalize to short form
+  'SDC-MGMT-ACCT': 'SDC-MGT-ACCT',
+  
+  // Network Fundamentals: normalize to short form
+  'SDC-NETWORK-FUND': 'SDC-NET-FUND',
+  
+  // =============================================================
+  // StraighterLine aliases
+  // =============================================================
   'SL-ENG-101': 'STRAIGHTERLINE-ENG101',
   'SL-MATH-101': 'STRAIGHTERLINE-MATH101',
 };
