@@ -1073,7 +1073,7 @@ Deno.serve(async (req) => {
     );
 
     const body: MergeRequest = await req.json();
-    const { institution, scrape_job_ids, url_diagnostics, diagnostic_summary: precomputedSummary, best_policy_job_id } = body;
+    const { institution, scrape_job_ids, url_diagnostics, diagnostic_summary: precomputedSummary, best_policy_job_id, run_id } = body;
 
     if (!institution || !scrape_job_ids?.length) {
       return new Response(
