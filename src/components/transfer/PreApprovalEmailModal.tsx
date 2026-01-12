@@ -159,6 +159,18 @@ export function PreApprovalEmailModal({
       return;
     }
 
+    // Require degree program for contextual evidence
+    if (!program.trim()) {
+      toast.error('Degree program is required to log evidence');
+      return;
+    }
+
+    // Quality guardrail: minimum response length
+    if (responseText.trim().length < 25) {
+      toast.error('Please paste the full advisor response (at least 25 characters)');
+      return;
+    }
+
     setIsSaving(true);
 
     try {
@@ -167,7 +179,7 @@ export function PreApprovalEmailModal({
         target_institution: targetInstitution,
         source_institution: course.sourceInstitution,
         source_course_code: course.courseCode,
-        degree_program: program.trim() || null,
+        degree_program: program.trim(),
         catalog_year: catalogYear || null,
         outcome_type: 'advisor_preapproval' as const,
         credits_applied: course.credits,
@@ -185,7 +197,7 @@ export function PreApprovalEmailModal({
 
       if (error) throw error;
 
-      toast.success(`Saved Tier 4 evidence for ${courses.length} course${courses.length > 1 ? 's' : ''}`);
+      toast.success(`Saved/updated Tier 4 evidence for ${courses.length} course${courses.length > 1 ? 's' : ''}`);
       
       setAdvisorResult('');
       setResponseText('');
