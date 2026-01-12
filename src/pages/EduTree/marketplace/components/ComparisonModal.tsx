@@ -10,7 +10,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import type { MarketplaceDegreeTemplate } from '@/pages/EduTree/v5/types/templates';
 import { useNavigate } from 'react-router-dom';
-import { Check, DollarSign, Clock, TrendingUp, Laptop, Sparkles } from 'lucide-react';
+import { Check, DollarSign, Clock, TrendingUp, Laptop, Sparkles, ArrowDown } from 'lucide-react';
+import { calculateStrategySavings, formatSavingsAmount } from '@/lib/templateSavingsCalculator';
 
 interface ComparisonModalProps {
   isOpen: boolean;
@@ -101,6 +102,9 @@ export function ComparisonModal({ isOpen, onClose, templates }: ComparisonModalP
             const costDiff = template.totals.costUsd - cheapest.totals.costUsd;
             const weeksDiff = template.totals.weeks - fastest.totals.weeks;
 
+            // Calculate strategy savings if baseline exists
+            const strategySavings = calculateStrategySavings(template);
+
             return (
               <div key={template.id} className="border rounded-lg p-4 space-y-4">
                 {/* Header */}
@@ -119,6 +123,26 @@ export function ComparisonModal({ isOpen, onClose, templates }: ComparisonModalP
                     {template.anchorSchool}
                   </p>
                 </div>
+
+                {/* Strategy Savings Banner */}
+                {strategySavings && strategySavings.dollarSavings >= 500 && (
+                  <div className="bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 rounded-md p-2.5">
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <ArrowDown className="h-3 w-3 text-emerald-600" />
+                      <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-300">
+                        Multi-School Savings
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-xs">
+                      <span className="text-muted-foreground line-through">
+                        Full {strategySavings.anchorSchool}: {formatSavingsAmount(strategySavings.baselineCost)}
+                      </span>
+                      <span className="font-medium text-emerald-600">
+                        Save {formatSavingsAmount(strategySavings.dollarSavings)}
+                      </span>
+                    </div>
+                  </div>
+                )}
 
                 {/* Cost */}
                 <div className="space-y-1">
