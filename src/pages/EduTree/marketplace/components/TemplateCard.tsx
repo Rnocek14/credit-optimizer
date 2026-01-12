@@ -123,9 +123,9 @@ export function TemplateCard({ template, isSelected, onToggleSelect }: TemplateC
   const tieredSavings = useMemo(() => {
     if (!transferVerifications || !strategySavings) return null;
     
-    // Helper to create canonical key
+    // Helper to create canonical key - handle empty provider cleanly
     const keyOf = (courseCode: string, providerCode?: string | null) =>
-      `${courseCode}:${normalizeProviderCode(providerCode ?? '')}`;
+      providerCode ? `${courseCode}:${normalizeProviderCode(providerCode)}` : `${courseCode}:`;
     
     // Build a map with aggregated credits/cost (handles duplicate course codes)
     const costMap = new Map<string, { credits: number; costUsd: number }>();
@@ -138,15 +138,26 @@ export function TemplateCard({ template, isSelected, onToggleSelect }: TemplateC
       });
     }
     
-    // Map transfer verifications to TieredTransferResult format using normalized keys
-    const tieredResults: TieredTransferResult[] = transferVerifications.map(v => {
-      const c = costMap.get(keyOf(v.courseCode, v.providerCode));
-      return {
+    // Deduplicate verifications by key, keeping the best tier to avoid double-counting
+    const tierRank = (t: string) => (t === 'A' ? 3 : t === 'B' ? 2 : 1);
+    const verMap = new Map<string, TieredTransferResult>();
+    
+    for (const v of transferVerifications) {
+      const k = keyOf(v.courseCode, v.providerCode);
+      const c = costMap.get(k);
+      const result: TieredTransferResult = {
         ...v,
         credits: c?.credits ?? 0,
         costUsd: c?.costUsd ?? 0,
       };
-    });
+      
+      const prev = verMap.get(k);
+      if (!prev || tierRank(result.tier) > tierRank(prev.tier)) {
+        verMap.set(k, result);
+      }
+    }
+    
+    const tieredResults = Array.from(verMap.values());
     
     const result = calculateTieredSavings(template, tieredResults, policy ?? null);
     
