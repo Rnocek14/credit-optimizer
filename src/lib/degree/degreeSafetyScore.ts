@@ -49,10 +49,11 @@ const POLICY_VERIFIED_SCHOOLS = new Set([
   'WGU',
 ]);
 
-// Schools with known AA/AS block transfer
+// Schools with known AA/AS block transfer or single-institution completion
 const ASSOCIATE_ANCHOR_SCHOOLS = new Set([
   'TESU',
   'COSC',
+  'WGU',  // Single-institution - no transfer needed
 ]);
 
 export interface DegreeSafetyInput {
@@ -126,8 +127,13 @@ export function calculateDegreeSafetyScore(input: DegreeSafetyInput): DegreeSafe
   // CRITICAL: Cap score by weakest link
   let weakestLink: string | undefined;
   
-  // If no rules found, cap at 40
-  if (coursesWithRules === 0 && totalCourses > 0) {
+  // Single-institution paths don't need transfer rules
+  const isSingleInstitution = ASSOCIATE_ANCHOR_SCHOOLS.has(upperSchool) && 
+    providers.length === 1 && 
+    providers[0]?.toUpperCase() === upperSchool;
+  
+  // If no rules found, cap at 40 (unless single-institution)
+  if (coursesWithRules === 0 && totalCourses > 0 && !isSingleInstitution) {
     rawScore = Math.min(rawScore, 40);
     weakestLink = 'No transfer rules found';
   }
