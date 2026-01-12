@@ -5113,6 +5113,7 @@ export type Database = {
       institution_policy_packs: {
         Row: {
           academic_year: string
+          blocked_reason: string | null
           confidence_score: number | null
           created_at: string | null
           degree_level: string
@@ -5121,6 +5122,7 @@ export type Database = {
           field_provenance: Json | null
           id: string
           institution: string
+          last_run_id: string | null
           last_verified_at: string | null
           merged_from_job_ids: string[] | null
           pack_scope: string | null
@@ -5128,6 +5130,7 @@ export type Database = {
           policy_json: Json
           provenance_url: string | null
           source_scrape_ids: string[] | null
+          stale: boolean | null
           status: string
           superseded_by: string | null
           updated_at: string | null
@@ -5136,6 +5139,7 @@ export type Database = {
         }
         Insert: {
           academic_year: string
+          blocked_reason?: string | null
           confidence_score?: number | null
           created_at?: string | null
           degree_level?: string
@@ -5144,6 +5148,7 @@ export type Database = {
           field_provenance?: Json | null
           id?: string
           institution: string
+          last_run_id?: string | null
           last_verified_at?: string | null
           merged_from_job_ids?: string[] | null
           pack_scope?: string | null
@@ -5151,6 +5156,7 @@ export type Database = {
           policy_json: Json
           provenance_url?: string | null
           source_scrape_ids?: string[] | null
+          stale?: boolean | null
           status?: string
           superseded_by?: string | null
           updated_at?: string | null
@@ -5159,6 +5165,7 @@ export type Database = {
         }
         Update: {
           academic_year?: string
+          blocked_reason?: string | null
           confidence_score?: number | null
           created_at?: string | null
           degree_level?: string
@@ -5167,6 +5174,7 @@ export type Database = {
           field_provenance?: Json | null
           id?: string
           institution?: string
+          last_run_id?: string | null
           last_verified_at?: string | null
           merged_from_job_ids?: string[] | null
           pack_scope?: string | null
@@ -5174,6 +5182,7 @@ export type Database = {
           policy_json?: Json
           provenance_url?: string | null
           source_scrape_ids?: string[] | null
+          stale?: boolean | null
           status?: string
           superseded_by?: string | null
           updated_at?: string | null
@@ -8037,6 +8046,97 @@ export type Database = {
           },
         ]
       }
+      policy_refresh_diffs: {
+        Row: {
+          action: string | null
+          created_at: string | null
+          field_name: string
+          id: string
+          institution: string
+          new_confidence: number | null
+          new_value: Json | null
+          old_confidence: number | null
+          old_value: Json | null
+          run_id: string | null
+        }
+        Insert: {
+          action?: string | null
+          created_at?: string | null
+          field_name: string
+          id?: string
+          institution: string
+          new_confidence?: number | null
+          new_value?: Json | null
+          old_confidence?: number | null
+          old_value?: Json | null
+          run_id?: string | null
+        }
+        Update: {
+          action?: string | null
+          created_at?: string | null
+          field_name?: string
+          id?: string
+          institution?: string
+          new_confidence?: number | null
+          new_value?: Json | null
+          old_confidence?: number | null
+          old_value?: Json | null
+          run_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "policy_refresh_diffs_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "transfer_batch_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      policy_refresh_tasks: {
+        Row: {
+          completed_at: string | null
+          created_at: string | null
+          id: string
+          institution: string
+          metrics: Json | null
+          reason: string | null
+          run_id: string | null
+          started_at: string | null
+          status: string | null
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string | null
+          id?: string
+          institution: string
+          metrics?: Json | null
+          reason?: string | null
+          run_id?: string | null
+          started_at?: string | null
+          status?: string | null
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string | null
+          id?: string
+          institution?: string
+          metrics?: Json | null
+          reason?: string | null
+          run_id?: string | null
+          started_at?: string | null
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "policy_refresh_tasks_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "transfer_batch_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       policy_scan_findings: {
         Row: {
           academic_year: string | null
@@ -9555,27 +9655,39 @@ export type Database = {
           created_at: string | null
           id: string
           institution_code: string
+          last_hash: string | null
           last_scraped_at: string | null
+          notes: string | null
           page_type: string
           priority: number
+          source_type: string | null
+          status: string | null
           url: string
         }
         Insert: {
           created_at?: string | null
           id?: string
           institution_code: string
+          last_hash?: string | null
           last_scraped_at?: string | null
+          notes?: string | null
           page_type?: string
           priority?: number
+          source_type?: string | null
+          status?: string | null
           url: string
         }
         Update: {
           created_at?: string | null
           id?: string
           institution_code?: string
+          last_hash?: string | null
           last_scraped_at?: string | null
+          notes?: string | null
           page_type?: string
           priority?: number
+          source_type?: string | null
+          status?: string | null
           url?: string
         }
         Relationships: []
@@ -11018,44 +11130,64 @@ export type Database = {
           failed_count: number | null
           finished_at: string | null
           id: string
+          institutions_count: number | null
           last_processed: string | null
           processed_count: number | null
+          run_type: string | null
           skipped_count: number | null
           started_at: string | null
+          started_by: string | null
           status: string
           successful_count: number | null
           summary: Json | null
           tier: string
+          urls_count: number | null
         }
         Insert: {
           created_at?: string | null
           failed_count?: number | null
           finished_at?: string | null
           id?: string
+          institutions_count?: number | null
           last_processed?: string | null
           processed_count?: number | null
+          run_type?: string | null
           skipped_count?: number | null
           started_at?: string | null
+          started_by?: string | null
           status?: string
           successful_count?: number | null
           summary?: Json | null
           tier: string
+          urls_count?: number | null
         }
         Update: {
           created_at?: string | null
           failed_count?: number | null
           finished_at?: string | null
           id?: string
+          institutions_count?: number | null
           last_processed?: string | null
           processed_count?: number | null
+          run_type?: string | null
           skipped_count?: number | null
           started_at?: string | null
+          started_by?: string | null
           status?: string
           successful_count?: number | null
           summary?: Json | null
           tier?: string
+          urls_count?: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "transfer_batch_runs_started_by_fkey"
+            columns: ["started_by"]
+            isOneToOne: false
+            referencedRelation: "v_transcript_health"
+            referencedColumns: ["user_id"]
+          },
+        ]
       }
       transfer_evidence: {
         Row: {
