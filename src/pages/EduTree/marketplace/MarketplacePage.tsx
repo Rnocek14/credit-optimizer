@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { TemplateFilters } from './components/TemplateFilters';
 import { TemplateGrid } from './components/TemplateGrid';
 import { ComparisonModal } from './components/ComparisonModal';
+import { MultiSchoolSavingsBanner } from './components/MultiSchoolSavingsBanner';
 import { useMarketplaceTemplates } from '@/hooks/useMarketplaceTemplates';
 import { usePlanBasket } from '@/pages/EduTree/v5/state/usePlanBasket';
 import { AnchorSchoolSelector } from '@/pages/EduTree/v5/components/AnchorSchoolSelector';
@@ -102,6 +103,11 @@ export default function MarketplacePage() {
 
           {/* Template Grid */}
           <main className="lg:col-span-3">
+            {/* Multi-School Savings Banner */}
+            {!constraints.target_school && (
+              <MultiSchoolSavingsBanner />
+            )}
+            
             {/* Filter Status Banner */}
             {constraints.target_school && filteredCount > 0 && (
               <div className="mb-4 rounded-lg border border-primary/20 bg-primary/5 p-3 flex items-center justify-between">
