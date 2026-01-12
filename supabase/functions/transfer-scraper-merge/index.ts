@@ -53,6 +53,7 @@ interface MergeRequest {
   url_diagnostics?: UrlDiagnostic[];
   diagnostic_summary?: DiagnosticSummary;  // Pre-computed summary from auto-scan
   best_policy_job_id?: string;  // Job ID of the best policy URL for extraction prioritization
+  run_id?: string;  // Optional run_id for diff writing
 }
 
 interface ExtractionResult {
@@ -1686,6 +1687,87 @@ Deno.serve(async (req) => {
       // Guardrail B: Explicit pack_scope based on institution scope
       // If institution is program-scoped, force pack_scope='program' to prevent false coverage
       const packScope = scope === 'program' ? 'program' : 'institution';
+      
+      // === DIFF WRITING FOR POLICY REFRESH PIPELINE ===
+      // Write diffs to policy_refresh_diffs if run_id is provided
+      let diffsWritten = 0;
+      if (run_id) {
+        // Get current active pack for comparison
+        const { data: currentPack } = await supabase
+          .from('institution_policy_packs')
+          .select('policy_data, confidence_score')
+          .eq('institution', institution)
+          .eq('status', 'active')
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .single();
+        
+        const oldData = currentPack?.policy_data as Record<string, unknown> || {};
+        const oldConfidence = currentPack?.confidence_score || 0;
+        
+        // Compare key fields and write diffs
+        const fieldsToCompare = [
+          'residency_credits',
+          'max_transfer_credits', 
+          'max_ace_nccrs_credits',
+          'accepts_clep',
+          'accepts_dsst',
+          'accepts_ap',
+          'accepts_ace',
+          'accepts_nccrs',
+        ];
+        
+        const diffRows: Array<{
+          run_id: string;
+          institution: string;
+          field_name: string;
+          old_value: unknown;
+          new_value: unknown;
+          old_confidence: number | null;
+          new_confidence: number | null;
+          action: string;
+        }> = [];
+        
+        for (const field of fieldsToCompare) {
+          const oldVal = oldData[field];
+          const newVal = policyData[field as keyof typeof policyData];
+          
+          let action: string;
+          if (oldVal === undefined && newVal !== undefined) {
+            action = 'added';
+          } else if (oldVal !== undefined && newVal === undefined) {
+            action = 'removed';
+          } else if (JSON.stringify(oldVal) !== JSON.stringify(newVal)) {
+            action = 'updated';
+          } else {
+            action = 'unchanged';
+          }
+          
+          diffRows.push({
+            run_id,
+            institution,
+            field_name: field,
+            old_value: oldVal ?? null,
+            new_value: newVal ?? null,
+            old_confidence: oldConfidence,
+            new_confidence: totalScore,
+            action,
+          });
+        }
+        
+        if (diffRows.length > 0) {
+          const { error: diffError } = await supabase
+            .from('policy_refresh_diffs')
+            .insert(diffRows);
+          
+          if (diffError) {
+            console.error('[merge] Error writing diffs:', diffError);
+          } else {
+            diffsWritten = diffRows.length;
+            console.log(`[merge] Wrote ${diffsWritten} diffs for run ${run_id}`);
+          }
+        }
+      }
 
       const { data: packData, error: policyError } = await supabase
         .from('institution_policy_packs')
@@ -1704,6 +1786,7 @@ Deno.serve(async (req) => {
           merged_from_job_ids: scrape_job_ids,
           field_provenance: flatProvenance, // Flat keys for trigger
           provenance_url: canonicalProvenanceUrl, // NEW: canonical source URL
+          last_run_id: run_id || null, // Track which run created this pack
         })
         .select('id')
         .single();
@@ -1712,6 +1795,7 @@ Deno.serve(async (req) => {
         console.error('[merge] Error creating policy pack:', policyError);
       } else {
         policyPackId = packData.id;
+        notes.push(`Created merged policy pack: ${packData.id}${diffsWritten > 0 ? ` (${diffsWritten} diffs written)` : ''}`);
         notes.push(`Created merged policy pack: ${packData.id}`);
 
         // Log merge audit for bulletproof provenance trail

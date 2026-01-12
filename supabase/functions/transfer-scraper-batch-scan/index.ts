@@ -39,22 +39,36 @@ Deno.serve(async (req) => {
     // Early-stop: exit cleanly before edge timeout (default 25s, max 28s to stay under 30s limit)
     const maxRuntimeMs = Math.min(body?.maxRuntimeMs ?? 25000, 28000);
     const startedAt = Date.now();
-
-    console.log(`Batch scan starting: tier=${tier}, maxPriority=${maxPriority}, concurrency=${concurrency}, limit=${limit}, maxRuntimeMs=${maxRuntimeMs}, startAfter=${startAfter || 'beginning'}`);
-
-    // Create batch run record for persistence
-    const { data: runData } = await supabase
-      .from('transfer_batch_runs')
-      .insert({
-        tier,
-        status: 'running',
-        summary: { startAfter, limit, maxPriority, concurrency }
-      })
-      .select('id')
-      .single();
     
-    runId = runData?.id ?? null;
-    console.log(`Created batch run: ${runId}`);
+    // Optional: accept an existing run_id for policy refresh pipeline integration
+    const externalRunId = body?.run_id as string | undefined;
+
+    console.log(`Batch scan starting: tier=${tier}, maxPriority=${maxPriority}, concurrency=${concurrency}, limit=${limit}, maxRuntimeMs=${maxRuntimeMs}, startAfter=${startAfter || 'beginning'}, externalRunId=${externalRunId || 'none'}`);
+
+    // Create batch run record for persistence (or use external run_id if provided)
+    if (externalRunId) {
+      runId = externalRunId;
+      // Update existing run to running status
+      await supabase
+        .from('transfer_batch_runs')
+        .update({ status: 'running' })
+        .eq('id', runId);
+      console.log(`Using existing run: ${runId}`);
+    } else {
+      const { data: runData } = await supabase
+        .from('transfer_batch_runs')
+        .insert({
+          tier,
+          status: 'running',
+          run_type: 'manual',
+          summary: { startAfter, limit, maxPriority, concurrency }
+        })
+        .select('id')
+        .single();
+      
+      runId = runData?.id ?? null;
+      console.log(`Created batch run: ${runId}`);
+    }
 
     // Get institutions by tier from institutions table
     const institutionsResponse = await fetch(
@@ -165,6 +179,7 @@ Deno.serve(async (req) => {
             body: JSON.stringify({
               institution,
               maxPriority,
+              run_id: runId, // Pass run_id for task tracking
             }),
           });
 
