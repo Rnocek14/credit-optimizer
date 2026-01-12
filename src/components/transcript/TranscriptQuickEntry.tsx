@@ -102,26 +102,28 @@ export function TranscriptQuickEntry({
       const { data, error } = await query;
       
       if (error) {
-        console.error('Error fetching courses:', error);
-        // Fallback: fetch without join if providers table doesn't exist
-        const { data: fallbackData } = await supabase
-          .from('marketplace_courses')
-          .select('id, code, title, credits, provider_id')
-          .eq('active', true)
-          .order('title');
-        return (fallbackData || []) as CourseOption[];
+        console.error('[TranscriptQuickEntry] Provider join failed:', error);
+        // Fallback: warn in dev and return empty to avoid showing unfiltered results
+        if (import.meta.env.DEV) {
+          console.warn('[TranscriptQuickEntry] ⚠️ Returning empty list - check providers table FK');
+        }
+        return [] as CourseOption[];
       }
       return (data || []) as CourseOption[];
     }
   });
+
+  // Normalize BEFORE calling the hook for consistent keys
+  const normalizedProvider = selectedProvider ? normalizeProviderCode(selectedProvider) : '';
+  const normalizedCourse = selectedCourse?.code ? normalizeCourseCode(selectedCourse.code) : '';
 
   // Use the REAL transfer verification hook - exact same logic as marketplace
   const { 
     data: transferResult, 
     isLoading: checkingTransfer 
   } = useSingleTransferVerification(
-    selectedCourse?.code,
-    selectedProvider,
+    normalizedCourse || undefined,
+    normalizedProvider || undefined,
     targetSchool
   );
 
@@ -134,6 +136,7 @@ export function TranscriptQuickEntry({
   }, [grade]);
 
   // Classify risk based on transfer result
+  // NOTE: We don't have evidenceType yet - use undefined to avoid false upgrades
   const riskClass = useMemo(() => {
     if (!transferResult) return null;
     // Rule exists if status is verified/elective/review (not unknown)
@@ -142,7 +145,7 @@ export function TranscriptQuickEntry({
       hasRule,
       transferResult.confidence,
       transferResult.evidenceUrl,
-      transferResult.ruleSource,
+      undefined, // evidenceType - not available yet, prevents false "Guaranteed" labels
       transferResult.status === 'verified' ? 'accepted' : 
         transferResult.status === 'elective' ? 'elective' : undefined
     );
@@ -155,9 +158,7 @@ export function TranscriptQuickEntry({
       if (!user) throw new Error('Not authenticated');
       if (!selectedCourse || !grade || !selectedProvider) throw new Error('Missing required fields');
 
-      const normalizedProvider = normalizeProviderCode(selectedProvider);
-      const normalizedCourse = normalizeCourseCode(selectedCourse.code);
-
+      // Use already-normalized values (computed above)
       // Insert into user_completed_courses (canonical completion table)
       const { error } = await supabase.from('user_completed_courses').insert({
         user_id: user.id,
