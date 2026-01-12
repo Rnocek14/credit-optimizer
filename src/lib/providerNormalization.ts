@@ -133,13 +133,11 @@ export function normalizeCourseCode(code: string): string {
   // Dev-only: Log when an alias is applied (helps catch drift)
   if (canonical && import.meta.env.DEV && !warnedCourseCodes.has(upper)) {
     warnedCourseCodes.add(upper);
-    console.debug(
-      `[CourseNormalization] Aliased: "${upper}" → "${canonical}"`
-    );
+    console.debug('[CourseAlias] %s -> %s', upper, canonical);
   }
   
-  // Return the alias if found, otherwise return uppercase for consistent matching
-  return canonical || upper;
+  // Return alias if found, otherwise uppercase for stable keys
+  return canonical ?? upper;
 }
 
 /**
