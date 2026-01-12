@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import type { MarketplaceDegreeTemplate } from '@/pages/EduTree/v5/types/templates';
 import { useNavigate } from 'react-router-dom';
 import { Check, DollarSign, Clock, TrendingUp, Laptop, Sparkles, ArrowDown } from 'lucide-react';
-import { calculateStrategySavings, formatSavingsAmount } from '@/lib/templateSavingsCalculator';
+import { calculateStrategySavings, formatSavingsAmount, MIN_SAVINGS_TO_SHOW_BANNER } from '@/lib/templateSavingsCalculator';
 
 interface ComparisonModalProps {
   isOpen: boolean;
@@ -125,7 +125,7 @@ export function ComparisonModal({ isOpen, onClose, templates }: ComparisonModalP
                 </div>
 
                 {/* Strategy Savings Banner */}
-                {strategySavings && strategySavings.dollarSavings >= 500 && (
+                {strategySavings && strategySavings.dollarSavings >= MIN_SAVINGS_TO_SHOW_BANNER && (
                   <div className="bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 rounded-md p-2.5">
                     <div className="flex items-center gap-1.5 mb-1">
                       <ArrowDown className="h-3 w-3 text-emerald-600" />

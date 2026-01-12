@@ -16,7 +16,7 @@ import { ProviderBadge, type ProviderCode, PROVIDER_CONFIG } from './ProviderBad
 import { useMemo, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { TemplateDetailDrawer } from './TemplateDetailDrawer';
-import { calculateStrategySavings } from '@/lib/templateSavingsCalculator';
+import { calculateStrategySavings, MIN_SAVINGS_TO_SHOW_BANNER } from '@/lib/templateSavingsCalculator';
 import { StrategySavingsBanner } from './StrategySavingsBanner';
 
 interface TemplateCardProps {
@@ -222,12 +222,12 @@ export function TemplateCard({ template, isSelected, onToggleSelect }: TemplateC
         </TooltipProvider>
 
         {/* Strategy Savings Banner (if baseline exists) */}
-        {strategySavings && strategySavings.dollarSavings >= 500 && (
+        {strategySavings && strategySavings.dollarSavings >= MIN_SAVINGS_TO_SHOW_BANNER && (
           <StrategySavingsBanner savings={strategySavings} variant="card" />
         )}
 
         {/* Provider Mix - only show if no strategy savings banner */}
-        {providerMix.length > 0 && (!strategySavings || strategySavings.dollarSavings < 500) && (
+        {providerMix.length > 0 && (!strategySavings || strategySavings.dollarSavings < MIN_SAVINGS_TO_SHOW_BANNER) && (
           <div className="rounded-md bg-muted/60 px-3 py-2.5">
             <div className="mb-2 flex items-center justify-between gap-2">
               <span className="text-xs font-medium text-muted-foreground">

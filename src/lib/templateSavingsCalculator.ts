@@ -1,6 +1,17 @@
 import type { MarketplaceDegreeTemplate } from '@/pages/EduTree/v5/types/templates';
 
 /**
+ * Minimum dollar savings required to show the savings banner.
+ * Centralized so card + modal stay in sync.
+ */
+export const MIN_SAVINGS_TO_SHOW_BANNER = 500;
+
+/**
+ * Minimum weeks saved to show time-saved text (avoids "1 month faster" noise).
+ */
+export const MIN_WEEKS_TO_SHOW_TIME_SAVED = 8;
+
+/**
  * Represents the savings from using a multi-school strategy
  * vs completing the degree entirely at the anchor school
  */
@@ -36,14 +47,16 @@ export function calculateStrategySavings(
   if (!template.singleSchoolBaseline) return null;
   
   const baseline = template.singleSchoolBaseline;
+  
+  // Guard: invalid baseline cost (0 or negative) → treat as no baseline
+  if (baseline.costUsd <= 0) return null;
+  
   const dollarSavings = baseline.costUsd - template.totals.costUsd;
   
   // Guard: don't surface negative savings (multi-school costs more than baseline)
   if (dollarSavings <= 0) return null;
   
-  const percentSavings = baseline.costUsd > 0 
-    ? Math.round((dollarSavings / baseline.costUsd) * 100) 
-    : 0;
+  const percentSavings = Math.round((dollarSavings / baseline.costUsd) * 100);
   const weeksSaved = baseline.weeks - template.totals.weeks;
   
   return {
