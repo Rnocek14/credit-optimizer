@@ -37,6 +37,10 @@ export function calculateStrategySavings(
   
   const baseline = template.singleSchoolBaseline;
   const dollarSavings = baseline.costUsd - template.totals.costUsd;
+  
+  // Guard: don't surface negative savings (multi-school costs more than baseline)
+  if (dollarSavings <= 0) return null;
+  
   const percentSavings = baseline.costUsd > 0 
     ? Math.round((dollarSavings / baseline.costUsd) * 100) 
     : 0;
