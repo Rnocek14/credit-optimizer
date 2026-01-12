@@ -5,15 +5,22 @@
  * This is a core UI component for building trust in decentralized degrees.
  */
 
-import React from 'react';
-import { Check, AlertTriangle, X, Building2 } from 'lucide-react';
+import React, { useState } from 'react';
+import { Check, AlertTriangle, X, Building2, Mail } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import { PreApprovalEmailModal } from '@/components/transfer/PreApprovalEmailModal';
 
 export type TransferStatus = 'verified' | 'elective-only' | 'unverified' | 'institutional' | 'loading';
 
@@ -25,6 +32,13 @@ interface TransferVerificationBadgeProps {
   evidenceUrl?: string | null;
   compact?: boolean;
   className?: string;
+  // For pre-approval email
+  courseCode?: string;
+  courseTitle?: string;
+  sourceProvider?: string;
+  credits?: number;
+  degreeProgram?: string;
+  catalogYear?: string;
 }
 
 // Helper to get status-specific copy based on evidence availability
@@ -106,7 +120,14 @@ export function TransferVerificationBadge({
   evidenceUrl,
   compact = false,
   className,
+  courseCode,
+  courseTitle,
+  sourceProvider,
+  credits,
+  degreeProgram,
+  catalogYear,
 }: TransferVerificationBadgeProps) {
+  const [emailModalOpen, setEmailModalOpen] = useState(false);
   const config = STATUS_CONFIG[status] ?? STATUS_CONFIG.unverified;
   const Icon = config.icon;
   const hasEvidence = Boolean(evidenceUrl && evidenceUrl.trim());
@@ -115,6 +136,9 @@ export function TransferVerificationBadge({
   const description = getStatusDescription(status, hasEvidence);
   
   const confidencePercent = confidence ? Math.round(confidence * 100) : null;
+
+  // Check if pre-approval email can be shown (not institutional, has course info)
+  const canShowPreApproval = status !== 'institutional' && status !== 'loading' && courseCode && anchorSchool;
   
   const tooltipContent = (
     <div className="space-y-1 max-w-[250px]">

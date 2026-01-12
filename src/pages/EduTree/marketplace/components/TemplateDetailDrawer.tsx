@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import {
   Drawer,
   DrawerClose,
@@ -17,11 +18,13 @@ import { ProviderBadge } from './ProviderBadge';
 import { TransferStatusBadge } from './TransferStatusBadge';
 import { TransferCoveragePanel } from './TransferCoveragePanel';
 import { YearComparisonTable } from './YearComparisonTable';
+import { PreApprovalEmailModal } from '@/components/transfer/PreApprovalEmailModal';
 import { useTransferVerification } from '../hooks/useTransferVerification';
 import { computeTransferCoverage } from '@/lib/transferCoverage';
 import { normalizeProviderCode } from '@/lib/providerNormalization';
 import { useMemo } from 'react';
-import { DollarSign, Clock, BookOpen, GitCompareArrows, List } from 'lucide-react';
+import { DollarSign, Clock, BookOpen, GitCompareArrows, List, Mail } from 'lucide-react';
+import type { PreApprovalCourse } from '@/lib/transfer/preApprovalEmail';
 
 interface TemplateDetailDrawerProps {
   template: MarketplaceDegreeTemplate;
@@ -32,6 +35,7 @@ interface TemplateDetailDrawerProps {
 export function TemplateDetailDrawer({ template, open, onOpenChange }: TemplateDetailDrawerProps) {
   // Check if comparison view is available
   const hasComparison = !!template.singleSchoolBaseline?.yearBreakdown;
+  const [emailModalOpen, setEmailModalOpen] = useState(false);
   
   // Collect SELECTED courses only (recommended or first option per module)
   // This gives accurate coverage % without inflating from alternatives
@@ -74,6 +78,28 @@ export function TemplateDetailDrawer({ template, open, onOpenChange }: TemplateD
     if (!transferVerifications) return null;
     return computeTransferCoverage(transferVerifications, template.anchorSchool);
   }, [transferVerifications, template.anchorSchool]);
+
+  // Build courses list for pre-approval email (external courses only)
+  const externalCourses = useMemo((): PreApprovalCourse[] => {
+    const courses: PreApprovalCourse[] = [];
+    template.yearTemplates?.forEach(year => {
+      year.moduleTemplates?.forEach(module => {
+        const option = module.options?.find(o => o.courseId === module.recommendedCourseId) 
+          || module.options?.[0];
+        // Only include non-anchor-school courses (actual transfers)
+        if (option?.courseId && option.providerCode?.toUpperCase() !== template.anchorSchool?.toUpperCase()) {
+          courses.push({
+            sourceInstitution: option.providerCode || 'Unknown',
+            courseCode: option.courseId,
+            courseTitle: option.courseId, // Could be enhanced with title lookup
+            credits: option.credits || 3,
+            providerType: option.providerType,
+          });
+        }
+      });
+    });
+    return courses;
+  }, [template.yearTemplates, template.anchorSchool]);
 
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
@@ -159,11 +185,31 @@ export function TemplateDetailDrawer({ template, open, onOpenChange }: TemplateD
           </div>
         </ScrollArea>
 
-        <DrawerFooter>
+        <DrawerFooter className="flex-row gap-2">
+          {externalCourses.length > 0 && (
+            <Button
+              variant="outline"
+              onClick={() => setEmailModalOpen(true)}
+              className="gap-2"
+            >
+              <Mail className="h-4 w-4" />
+              Request Pre-Approval ({externalCourses.length})
+            </Button>
+          )}
           <DrawerClose asChild>
             <Button variant="outline">Close</Button>
           </DrawerClose>
         </DrawerFooter>
+
+        {/* Pre-Approval Email Modal */}
+        <PreApprovalEmailModal
+          open={emailModalOpen}
+          onOpenChange={setEmailModalOpen}
+          targetInstitution={template.anchorSchool}
+          degreeProgram={template.marketplace.title}
+          catalogYear={template.catalogYear}
+          courses={externalCourses}
+        />
       </DrawerContent>
     </Drawer>
   );
