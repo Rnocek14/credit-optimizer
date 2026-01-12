@@ -98,6 +98,19 @@ export function useTransferVerification(
         console.error('Transfer verification error:', error);
       }
 
+      // Debug: Log query details in development
+      if (process.env.NODE_ENV === 'development') {
+        const uniqueProviders = Array.from(new Set(pairs.map(p => p.provider)));
+        const uniqueCourses = Array.from(new Set(pairs.map(p => p.course)));
+        console.debug('[TransferVerification] Query:', {
+          targetSchool: targetSchool.toUpperCase(),
+          providers: uniqueProviders,
+          courseCodes: uniqueCourses.slice(0, 10), // First 10 for brevity
+          totalPairs: pairs.length,
+          rulesFound: (rules || []).length,
+        });
+      }
+
       const rulesMap = new Map<string, TransferRule>();
       (rules || []).forEach((rule: any) => {
         const key = `${rule.source_institution}:${rule.source_course_code}`;
