@@ -4,6 +4,8 @@ import { CheckCircle2, AlertCircle, HelpCircle, ExternalLink } from 'lucide-reac
 
 export type TransferStatus = 'verified' | 'elective' | 'review' | 'unknown';
 
+export type EvidenceType = 'policy_provider_acceptance' | 'equivalency_table' | 'catalog_statement' | 'other_official';
+
 export interface TransferStatusBadgeProps {
   status: TransferStatus;
   sourceCourse?: string;
@@ -13,8 +15,24 @@ export interface TransferStatusBadgeProps {
   confidence?: number | null;
   evidenceUrl?: string | null;
   ruleSource?: string | null;
+  evidenceType?: EvidenceType | null;
   className?: string;
 }
+
+const getEvidenceLinkLabel = (evidenceType?: EvidenceType | null): string => {
+  switch (evidenceType) {
+    case 'policy_provider_acceptance':
+      return 'Policy source (provider acceptance)';
+    case 'equivalency_table':
+      return 'Equivalency table (course mapping)';
+    case 'catalog_statement':
+      return 'Catalog statement';
+    case 'other_official':
+      return 'Official source';
+    default:
+      return 'View evidence';
+  }
+};
 
 const STATUS_CONFIG: Record<TransferStatus, {
   label: string;
@@ -52,6 +70,7 @@ export function TransferStatusBadge({
   confidence,
   evidenceUrl,
   ruleSource,
+  evidenceType,
   className,
 }: TransferStatusBadgeProps) {
   const config = STATUS_CONFIG[status];
@@ -137,7 +156,7 @@ export function TransferStatusBadge({
               className="inline-flex items-center gap-1 text-primary hover:underline"
             >
               <ExternalLink className="h-3 w-3" />
-              View evidence
+              {getEvidenceLinkLabel(evidenceType)}
             </a>
           )}
         </div>
