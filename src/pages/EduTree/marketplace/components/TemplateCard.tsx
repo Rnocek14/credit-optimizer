@@ -2,7 +2,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Clock, DollarSign, Laptop, MapPin, TrendingUp, Star, AlertCircle, GraduationCap, CheckCircle2 } from 'lucide-react';
+import { Clock, DollarSign, Laptop, MapPin, TrendingUp, Star, AlertCircle, GraduationCap, CheckCircle2, Shield } from 'lucide-react';
 import type { MarketplaceDegreeTemplate } from '@/pages/EduTree/v5/types/templates';
 import { useNavigate } from 'react-router-dom';
 import { usePlanBasket } from '@/pages/EduTree/v5/state/usePlanBasket';
@@ -217,6 +217,24 @@ export function TemplateCard({ template, isSelected, onToggleSelect }: TemplateC
             </TooltipTrigger>
             <TooltipContent>
               <p className="text-xs">⚠️ Modeled estimate (not actual student data)</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+
+        {/* Transfer Coverage Hint */}
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div 
+                className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer hover:text-foreground transition-colors"
+                onClick={() => setIsDrawerOpen(true)}
+              >
+                <Shield className="h-3.5 w-3.5" />
+                <span>Transfer verification available</span>
+              </div>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p className="text-xs">View details to see transfer coverage % by provider</p>
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
