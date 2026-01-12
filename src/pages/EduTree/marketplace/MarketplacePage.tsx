@@ -96,7 +96,7 @@ export default function MarketplacePage() {
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           {/* Filters Sidebar */}
           <aside className="lg:col-span-1">
-            <div className="sticky top-6 border rounded-lg p-4 bg-card">
+            <div className="sticky top-6 border rounded-lg p-4 bg-card max-h-[calc(100vh-4rem)] overflow-y-auto">
               <TemplateFilters filters={filters} onFiltersChange={setFilters} />
             </div>
           </aside>
