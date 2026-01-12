@@ -1,54 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import type { TransferStatus } from '../components/TransferStatusBadge';
+import { normalizeProviderCode } from '@/lib/providerNormalization';
 
-/**
- * Canonical provider code mapping
- * Maps template provider codes to database source_institution values
- */
-const PROVIDER_ALIAS_MAP: Record<string, string> = {
-  // StraighterLine aliases
-  'SL': 'STRAIGHTERLINE',
-  'STRAIGHTERLINE': 'STRAIGHTERLINE',
-  // Study.com aliases
-  'STUDY': 'STUDYCOM',
-  'STUDYCOM': 'STUDYCOM',
-  'SDC': 'STUDYCOM',
-  // Sophia aliases
-  'SOPHIA': 'SOPHIA',
-  // CLEP stays as-is
-  'CLEP': 'CLEP',
-  // Standardized exams
-  'AP': 'AP',
-  'DSST': 'DSST',
-  // Institutions
-  'TESU': 'TESU',
-  'COSC': 'COSC',
-  'WGU': 'WGU',
-  'TECEP': 'TECEP',
-};
-
-// Track warned codes to avoid spamming console
-const warnedCodes = new Set<string>();
-
-/**
- * Normalize a provider code to its canonical database value
- * Logs a dev warning if an unknown code is encountered
- */
-function normalizeProviderCode(code: string): string {
-  const upper = code.toUpperCase();
-  const canonical = PROVIDER_ALIAS_MAP[upper];
-  
-  if (!canonical && !warnedCodes.has(upper)) {
-    warnedCodes.add(upper);
-    console.warn(
-      `[TransferVerification] Unknown provider code: "${code}" (normalized: "${upper}"). ` +
-      `Add to PROVIDER_ALIAS_MAP if this is a valid provider.`
-    );
-  }
-  
-  return canonical || upper;
-}
+// Re-export for convenience
+export { normalizeProviderCode } from '@/lib/providerNormalization';
 
 export interface TransferRule {
   id: string;
