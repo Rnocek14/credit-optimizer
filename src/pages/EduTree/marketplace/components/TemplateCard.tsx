@@ -22,7 +22,10 @@ import { useTransferVerification } from '../hooks/useTransferVerification';
 import { useVerifiedPolicyForInstitution } from '@/pages/EduTree/v5/hooks/useVerifiedPolicy';
 import { calculateTieredSavings, shouldShowSavings, type TieredTransferResult } from '@/lib/tieredSavingsCalculator';
 import { normalizeProviderCode, normalizeCourseCode } from '@/lib/providerNormalization';
-
+import { calculateDegreeSafetyScore, type DegreeSafetyInput } from '@/lib/degree/degreeSafetyScore';
+import { DegreeSafetyBadge } from '@/components/degree/DegreeSafetyBadge';
+import { AssociateAnchorBadge } from '@/components/degree/AssociateAnchorBadge';
+import { hasAssociateAnchor } from '@/types/associateDegree';
 interface TemplateCardProps {
   template: MarketplaceDegreeTemplate;
   isSelected: boolean;
@@ -224,6 +227,35 @@ export function TemplateCard({ template, isSelected, onToggleSelect }: TemplateC
     };
   }, [tieredSavings]);
 
+  // Calculate Degree Safety Score
+  const degreeSafetyScore = useMemo(() => {
+    const totalCourses = allCourses.length;
+    if (totalCourses === 0) return null;
+    
+    const coursesWithRules = tieredSavings 
+      ? tieredSavings.breakdown.tierA.count + tieredSavings.breakdown.tierB.count
+      : 0;
+    const coursesWithEvidence = tieredSavings?.breakdown.tierA.count ?? 0;
+    
+    // Extract unique providers
+    const providers = [...new Set(
+      allCourses
+        .map(c => c.providerCode)
+        .filter((p): p is string => Boolean(p))
+    )];
+    
+    const input: DegreeSafetyInput = {
+      targetSchool: template.anchorSchool,
+      totalCourses,
+      coursesWithRules,
+      coursesWithEvidence,
+      providers,
+      hasAssociatePathway: hasAssociateAnchor(template.anchorSchool),
+    };
+    
+    return calculateDegreeSafetyScore(input);
+  }, [allCourses, tieredSavings, template.anchorSchool]);
+
   return (
     <Card className={cn(
       "relative hover:shadow-lg transition-shadow",
@@ -278,8 +310,8 @@ export function TemplateCard({ template, isSelected, onToggleSelect }: TemplateC
           />
         </div>
 
-        {/* Anchor School Badge */}
-        <div className="mt-3 flex items-center gap-2">
+        {/* Anchor School Badge + Safety Indicators */}
+        <div className="mt-3 flex flex-wrap items-center gap-2">
           <Badge variant={isMatchingAnchor ? "default" : "outline"} className="gap-1">
             <GraduationCap className="h-3 w-3" />
             {template.anchorSchool}
@@ -295,6 +327,12 @@ export function TemplateCard({ template, isSelected, onToggleSelect }: TemplateC
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
+          )}
+          {/* Associate Anchor Badge - shows if AA/AS block transfer available */}
+          <AssociateAnchorBadge targetSchool={template.anchorSchool} compact />
+          {/* Degree Safety Score Badge */}
+          {degreeSafetyScore && (
+            <DegreeSafetyBadge safetyScore={degreeSafetyScore} compact />
           )}
           <span className="text-xs text-muted-foreground">• {template.catalogYear} Catalog</span>
         </div>
