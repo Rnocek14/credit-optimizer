@@ -11547,6 +11547,59 @@ export type Database = {
           },
         ]
       }
+      user_completed_courses: {
+        Row: {
+          completed_on: string | null
+          course_code: string
+          course_title: string | null
+          created_at: string
+          credits: number | null
+          grade: string | null
+          id: string
+          marketplace_course_id: string | null
+          provider_code: string
+          source: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          completed_on?: string | null
+          course_code: string
+          course_title?: string | null
+          created_at?: string
+          credits?: number | null
+          grade?: string | null
+          id?: string
+          marketplace_course_id?: string | null
+          provider_code: string
+          source?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          completed_on?: string | null
+          course_code?: string
+          course_title?: string | null
+          created_at?: string
+          credits?: number | null
+          grade?: string | null
+          id?: string
+          marketplace_course_id?: string | null
+          provider_code?: string
+          source?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_completed_courses_marketplace_course_id_fkey"
+            columns: ["marketplace_course_id"]
+            isOneToOne: false
+            referencedRelation: "marketplace_courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_course_events: {
         Row: {
           completion_date: string | null

@@ -29,16 +29,24 @@ import { toast } from "sonner";
 import { 
   Plus, 
   Check, 
-  X, 
   AlertCircle, 
   CheckCircle2, 
   HelpCircle,
   GraduationCap,
-  ChevronsUpDown
+  ChevronsUpDown,
+  ShieldCheck,
+  ShieldAlert,
+  FileQuestion
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { 
+  useSingleTransferVerification,
+  normalizeProviderCode,
+  normalizeCourseCode
+} from "@/pages/EduTree/marketplace/hooks/useTransferVerification";
+import { RISK_CLASS_CONFIG, classifyTransferRisk } from "@/types/transferRisk";
 
-// Known providers from credit_transfer_rules
+// Known providers - must match credit_transfer_rules.source_institution
 const PROVIDERS = [
   { id: 'SOPHIA', name: 'Sophia Learning' },
   { id: 'STUDYCOM', name: 'Study.com' },
@@ -74,104 +82,114 @@ export function TranscriptQuickEntry({
   const [selectedCourse, setSelectedCourse] = useState<CourseOption | null>(null);
   const [courseSearchOpen, setCourseSearchOpen] = useState(false);
   const [grade, setGrade] = useState<string>('');
-  const [recentlyAdded, setRecentlyAdded] = useState<string[]>([]);
+  const [recentlyAdded, setRecentlyAdded] = useState<Array<{code: string; status: string}>>([]);
 
-  // Fetch courses from marketplace
+  // Fetch courses from marketplace - filter by provider using provider_id join
   const { data: allCourses = [] } = useQuery({
-    queryKey: ['marketplace-courses-for-entry'],
+    queryKey: ['marketplace-courses-for-entry', selectedProvider],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('marketplace_courses')
-        .select('id, code, title, credits, provider_id')
+        .select('id, code, title, credits, provider_id, providers!inner(provider_code)')
         .eq('active', true)
         .order('title');
       
-      if (error) throw error;
+      // Filter by provider if selected
+      if (selectedProvider) {
+        query = query.eq('providers.provider_code', selectedProvider);
+      }
+      
+      const { data, error } = await query;
+      
+      if (error) {
+        console.error('Error fetching courses:', error);
+        // Fallback: fetch without join if providers table doesn't exist
+        const { data: fallbackData } = await supabase
+          .from('marketplace_courses')
+          .select('id, code, title, credits, provider_id')
+          .eq('active', true)
+          .order('title');
+        return (fallbackData || []) as CourseOption[];
+      }
       return (data || []) as CourseOption[];
     }
   });
 
-  // Filter courses by selected provider
-  const filteredCourses = useMemo(() => {
-    if (!selectedProvider) return allCourses;
-    // Match provider by code prefix pattern
-    return allCourses.filter(c => {
-      const codeUpper = c.code.toUpperCase();
-      if (selectedProvider === 'SOPHIA') return codeUpper.startsWith('SOPH');
-      if (selectedProvider === 'STUDYCOM') return codeUpper.startsWith('STUD') || codeUpper.startsWith('STDY') || codeUpper.startsWith('SDC');
-      if (selectedProvider === 'STRAIGHTERLINE') return codeUpper.startsWith('SL-') || codeUpper.startsWith('STRAIGHT');
-      if (selectedProvider === 'CLEP') return codeUpper.startsWith('CLEP');
-      if (selectedProvider === 'DSST') return codeUpper.startsWith('DSST');
-      if (selectedProvider === 'ACE') return codeUpper.startsWith('ACE');
-      if (selectedProvider === 'AP') return codeUpper.startsWith('AP-');
-      if (selectedProvider === 'TECEP') return codeUpper.startsWith('TECEP');
-      return true;
-    });
-  }, [allCourses, selectedProvider]);
-
-  // Check transfer status for selected course
-  const { data: transferStatus, isLoading: checkingTransfer } = useQuery({
-    queryKey: ['transfer-check', selectedCourse?.code, selectedProvider, targetSchool],
-    queryFn: async () => {
-      if (!selectedCourse || !selectedProvider) return null;
-
-      const { data, error } = await supabase
-        .from('credit_transfer_rules')
-        .select('*')
-        .eq('target_institution', targetSchool)
-        .eq('source_institution', selectedProvider)
-        .ilike('source_course_code', `%${selectedCourse.code.split('-').pop()}%`)
-        .limit(1)
-        .maybeSingle();
-
-      if (error) {
-        console.error('Transfer check error:', error);
-        return null;
-      }
-
-      return data;
-    },
-    enabled: !!selectedCourse && !!selectedProvider
-  });
+  // Use the REAL transfer verification hook - exact same logic as marketplace
+  const { 
+    data: transferResult, 
+    isLoading: checkingTransfer 
+  } = useSingleTransferVerification(
+    selectedCourse?.code,
+    selectedProvider,
+    targetSchool
+  );
 
   // Grade validation
   const gradeWarning = useMemo(() => {
     if (!grade) return null;
-    if (grade === 'Fail') return 'This grade will not transfer';
-    if (grade === 'C') return 'C grades may not transfer to some programs';
+    if (grade === 'Fail') return { text: 'This grade will not transfer', severity: 'error' };
+    if (grade === 'C') return { text: 'C grades may not transfer to some programs. Verify program requirements.', severity: 'warning' };
     return null;
   }, [grade]);
 
-  // Add course mutation
+  // Classify risk based on transfer result
+  const riskClass = useMemo(() => {
+    if (!transferResult) return null;
+    // Rule exists if status is verified/elective/review (not unknown)
+    const hasRule = transferResult.status !== 'unknown';
+    return classifyTransferRisk(
+      hasRule,
+      transferResult.confidence,
+      transferResult.evidenceUrl,
+      transferResult.ruleSource,
+      transferResult.status === 'verified' ? 'accepted' : 
+        transferResult.status === 'elective' ? 'elective' : undefined
+    );
+  }, [transferResult]);
+
+  // Add course mutation - insert into user_completed_courses (not transcripts!)
   const addCourseMutation = useMutation({
     mutationFn: async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
-      if (!selectedCourse || !grade) throw new Error('Missing required fields');
+      if (!selectedCourse || !grade || !selectedProvider) throw new Error('Missing required fields');
 
-      // Add to transcripts table
-      const { error } = await supabase.from('transcripts').insert({
+      const normalizedProvider = normalizeProviderCode(selectedProvider);
+      const normalizedCourse = normalizeCourseCode(selectedCourse.code);
+
+      // Insert into user_completed_courses (canonical completion table)
+      const { error } = await supabase.from('user_completed_courses').insert({
         user_id: user.id,
-        title: `${selectedCourse.code}: ${selectedCourse.title}`,
-        description: `Completed via ${PROVIDERS.find(p => p.id === selectedProvider)?.name || selectedProvider}`,
-        grade,
+        provider_code: normalizedProvider,
+        course_code: normalizedCourse,
+        course_title: selectedCourse.title,
         credits: selectedCourse.credits,
-        difficulty: 'Intermediate',
-        skill_tags: [],
-        cri_score: grade === 'A' ? 85 : grade === 'B' ? 75 : 65,
-        verified: false,
-        use_in_resume: true
+        grade,
+        source: 'manual',
+        marketplace_course_id: selectedCourse.id
       });
 
-      if (error) throw error;
-      return selectedCourse.code;
+      if (error) {
+        // Handle unique constraint violation
+        if (error.code === '23505') {
+          throw new Error('This course has already been added');
+        }
+        throw error;
+      }
+      
+      return { 
+        code: selectedCourse.code, 
+        status: transferResult?.status || 'unknown' 
+      };
     },
-    onSuccess: (code) => {
-      toast.success('Course added to transcript');
-      setRecentlyAdded(prev => [code, ...prev].slice(0, 5));
+    onSuccess: (result) => {
+      toast.success('Course added successfully');
+      setRecentlyAdded(prev => [result, ...prev].slice(0, 5));
       setSelectedCourse(null);
       setGrade('');
-      queryClient.invalidateQueries({ queryKey: ['transcript-entries'] });
+      queryClient.invalidateQueries({ queryKey: ['user-completed-courses'] });
+      queryClient.invalidateQueries({ queryKey: ['transfer-verification'] });
       onEntryAdded?.();
     },
     onError: (error) => {
@@ -187,33 +205,92 @@ export function TranscriptQuickEntry({
     addCourseMutation.mutate();
   };
 
+  // Render transfer status with risk class
   const getTransferBadge = () => {
     if (!selectedCourse) return null;
+    
     if (checkingTransfer) {
-      return <Badge variant="outline" className="animate-pulse">Checking...</Badge>;
+      return <Badge variant="outline" className="animate-pulse">Checking transfer...</Badge>;
     }
-    if (transferStatus?.acceptance_status === 'accepted') {
+    
+    if (!transferResult) {
       return (
-        <Badge className="bg-green-100 text-green-800 border-green-200">
-          <CheckCircle2 className="h-3 w-3 mr-1" />
-          Verified Transfer to {targetSchool}
+        <Badge variant="outline" className="text-muted-foreground">
+          <HelpCircle className="h-3 w-3 mr-1" />
+          Unable to check transfer
         </Badge>
       );
     }
-    if (transferStatus?.acceptance_status === 'elective') {
+
+    // Use risk class config for consistent styling
+    const config = riskClass ? RISK_CLASS_CONFIG[riskClass] : null;
+    
+    if (transferResult.status === 'verified') {
       return (
-        <Badge className="bg-blue-100 text-blue-800 border-blue-200">
-          <Check className="h-3 w-3 mr-1" />
-          Transfers as Elective
-        </Badge>
+        <div className="flex flex-col gap-1">
+          <Badge className="bg-green-100 text-green-800 border-green-200">
+            <CheckCircle2 className="h-3 w-3 mr-1" />
+            Verified Transfer to {targetSchool}
+          </Badge>
+          {config && (
+            <span className="text-xs text-muted-foreground flex items-center gap-1">
+              <ShieldCheck className="h-3 w-3 text-green-600" />
+              {config.label} • Confidence: {transferResult.confidence ? `${Math.round(transferResult.confidence * 100)}%` : 'N/A'}
+            </span>
+          )}
+        </div>
       );
     }
+    
+    if (transferResult.status === 'elective') {
+      return (
+        <div className="flex flex-col gap-1">
+          <Badge className="bg-blue-100 text-blue-800 border-blue-200">
+            <Check className="h-3 w-3 mr-1" />
+            Transfers as Elective
+          </Badge>
+          <span className="text-xs text-muted-foreground">
+            Will count toward elective credits, not major requirements
+          </span>
+        </div>
+      );
+    }
+    
+    if (transferResult.status === 'review') {
+      return (
+        <div className="flex flex-col gap-1">
+          <Badge className="bg-amber-100 text-amber-800 border-amber-200">
+            <ShieldAlert className="h-3 w-3 mr-1" />
+            Needs Review
+          </Badge>
+          <span className="text-xs text-muted-foreground">
+            Transfer possible but requires registrar evaluation
+          </span>
+        </div>
+      );
+    }
+    
+    // Unknown status
     return (
-      <Badge variant="outline" className="text-muted-foreground">
-        <HelpCircle className="h-3 w-3 mr-1" />
-        Transfer status unknown
-      </Badge>
+      <div className="flex flex-col gap-1">
+        <Badge variant="outline" className="text-muted-foreground">
+          <FileQuestion className="h-3 w-3 mr-1" />
+          Transfer status unknown
+        </Badge>
+        <span className="text-xs text-muted-foreground">
+          No transfer rule found. Contact {targetSchool} registrar for evaluation.
+        </span>
+      </div>
     );
+  };
+
+  const getStatusIcon = (status: string) => {
+    switch(status) {
+      case 'verified': return <CheckCircle2 className="h-3 w-3 text-green-600" />;
+      case 'elective': return <Check className="h-3 w-3 text-blue-600" />;
+      case 'review': return <ShieldAlert className="h-3 w-3 text-amber-600" />;
+      default: return <HelpCircle className="h-3 w-3 text-muted-foreground" />;
+    }
   };
 
   return (
@@ -224,7 +301,7 @@ export function TranscriptQuickEntry({
           Quick Add Course
         </CardTitle>
         <CardDescription>
-          Add completed courses from alternative credit providers. We'll check if they transfer to {targetSchool}.
+          Add completed courses from alternative credit providers. Transfer status is verified against {targetSchool}'s official policies.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -271,9 +348,9 @@ export function TranscriptQuickEntry({
               <Command>
                 <CommandInput placeholder="Search courses..." />
                 <CommandList>
-                  <CommandEmpty>No courses found.</CommandEmpty>
+                  <CommandEmpty>No courses found for {selectedProvider}.</CommandEmpty>
                   <CommandGroup>
-                    {filteredCourses.slice(0, 20).map((course) => (
+                    {allCourses.slice(0, 30).map((course) => (
                       <CommandItem
                         key={course.id}
                         value={`${course.code} ${course.title}`}
@@ -304,7 +381,7 @@ export function TranscriptQuickEntry({
 
         {/* Transfer Status Badge */}
         {selectedCourse && (
-          <div className="flex items-center gap-2">
+          <div className="p-3 rounded-lg bg-muted/50 border">
             {getTransferBadge()}
           </div>
         )}
@@ -323,9 +400,12 @@ export function TranscriptQuickEntry({
             </SelectContent>
           </Select>
           {gradeWarning && (
-            <div className="flex items-center gap-2 text-sm text-amber-600">
+            <div className={cn(
+              "flex items-center gap-2 text-sm",
+              gradeWarning.severity === 'error' ? 'text-destructive' : 'text-amber-600'
+            )}>
               <AlertCircle className="h-4 w-4" />
-              {gradeWarning}
+              {gradeWarning.text}
             </div>
           )}
         </div>
@@ -333,7 +413,7 @@ export function TranscriptQuickEntry({
         {/* Add Button */}
         <Button 
           onClick={handleAddCourse}
-          disabled={!selectedCourse || !grade || addCourseMutation.isPending}
+          disabled={!selectedCourse || !grade || addCourseMutation.isPending || grade === 'Fail'}
           className="w-full"
         >
           {addCourseMutation.isPending ? (
@@ -341,7 +421,7 @@ export function TranscriptQuickEntry({
           ) : (
             <>
               <Plus className="h-4 w-4 mr-2" />
-              Add to Transcript
+              Add Completed Course
             </>
           )}
         </Button>
@@ -351,10 +431,10 @@ export function TranscriptQuickEntry({
           <div className="pt-4 border-t">
             <Label className="text-muted-foreground text-xs">Recently Added</Label>
             <div className="flex flex-wrap gap-1 mt-2">
-              {recentlyAdded.map((code, i) => (
+              {recentlyAdded.map((item, i) => (
                 <Badge key={i} variant="secondary" className="text-xs">
-                  <Check className="h-3 w-3 mr-1 text-green-600" />
-                  {code}
+                  {getStatusIcon(item.status)}
+                  <span className="ml-1">{item.code}</span>
                 </Badge>
               ))}
             </div>
