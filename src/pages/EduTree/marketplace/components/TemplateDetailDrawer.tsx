@@ -19,6 +19,7 @@ import { TransferCoveragePanel } from './TransferCoveragePanel';
 import { YearComparisonTable } from './YearComparisonTable';
 import { useTransferVerification } from '../hooks/useTransferVerification';
 import { computeTransferCoverage } from '@/lib/transferCoverage';
+import { normalizeProviderCode } from '@/lib/providerNormalization';
 import { useMemo } from 'react';
 import { DollarSign, Clock, BookOpen, GitCompareArrows, List } from 'lucide-react';
 
@@ -58,11 +59,12 @@ export function TemplateDetailDrawer({ template, open, onOpenChange }: TemplateD
     template.anchorSchool
   );
 
-  // Build lookup map for course display
+  // Build lookup map for course display (using normalized provider codes for consistent matching)
   const transferStatusMap = useMemo(() => {
     const map = new Map();
     transferVerifications?.forEach(v => {
-      map.set(`${v.providerCode}:${v.courseCode}`, v);
+      const normalizedKey = `${normalizeProviderCode(v.providerCode)}:${v.courseCode}`;
+      map.set(normalizedKey, v);
     });
     return map;
   }, [transferVerifications]);
@@ -193,7 +195,8 @@ function CourseBreakdown({
               
               if (!option) return null;
 
-              const transferKey = `${option.providerCode}:${option.courseId}`;
+              // Use normalized provider code for map lookup (matches how we stored it)
+              const transferKey = `${normalizeProviderCode(option.providerCode || '')}:${option.courseId}`;
               const transferStatus = transferStatusMap.get(transferKey);
 
               return (
