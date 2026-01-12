@@ -6,7 +6,7 @@
  * - Step 2: Log Response (Tier 4 evidence)
  */
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Copy, Mail, ExternalLink, Check, AlertCircle, FileText, Calendar, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -79,6 +79,24 @@ export function PreApprovalEmailModal({
   const [responseDate, setResponseDate] = useState(new Date().toISOString().split('T')[0]);
   const [isPublic, setIsPublic] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+
+  // Reset to generate tab and clear form when modal opens
+  useEffect(() => {
+    if (open) {
+      setActiveTab('generate');
+      setAdvisorResult('');
+      setResponseText('');
+      setResponseDate(new Date().toISOString().split('T')[0]);
+      setIsPublic(false);
+    }
+  }, [open]);
+
+  // Sync program field with prop
+  useEffect(() => {
+    if (degreeProgram) {
+      setProgram(degreeProgram);
+    }
+  }, [degreeProgram]);
 
   // Get registrar email hint
   const registrarEmail = useMemo(
@@ -183,7 +201,7 @@ export function PreApprovalEmailModal({
         catalog_year: catalogYear || null,
         outcome_type: 'advisor_preapproval' as const,
         credits_applied: course.credits,
-        provenance_notes: `[${getResultLabel(advisorResult)}]\n\nAdvisor Response:\n${responseText.trim()}`,
+        evidence_notes: `[${getResultLabel(advisorResult)}]\n\nAdvisor Response:\n${responseText.trim()}`,
         outcome_date: responseDate,
         is_public: isPublic,
       }));

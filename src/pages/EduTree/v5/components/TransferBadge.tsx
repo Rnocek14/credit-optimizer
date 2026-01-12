@@ -2,10 +2,12 @@ import { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { ExternalLink, CheckCircle, AlertTriangle, XCircle, HelpCircle, Mail } from 'lucide-react';
+import { ExternalLink, CheckCircle, AlertTriangle, XCircle, HelpCircle, Mail, ShieldCheck } from 'lucide-react';
 import { usePlanBasket } from '../state/usePlanBasket';
 import { useTransferRule } from '../utils/useTransferRule';
 import { PreApprovalEmailModal } from '@/components/transfer/PreApprovalEmailModal';
+import { useAdvisorPreapproval, getAdvisorResultLabel } from '@/hooks/useAdvisorPreapproval';
+import { cn } from '@/lib/utils';
 
 export function TransferBadge({
   courseCode,
@@ -23,8 +25,16 @@ export function TransferBadge({
   const { constraints } = usePlanBasket();
   const target = constraints.target_school;
   const [emailModalOpen, setEmailModalOpen] = useState(false);
+  const [showFullNotes, setShowFullNotes] = useState(false);
 
   const { data: rule, isLoading } = useTransferRule(providerCode, courseCode, target);
+  
+  // Fetch Tier 4 advisor pre-approval evidence
+  const { data: preapproval, freshnessLabel, advisorResult } = useAdvisorPreapproval({
+    target,
+    providerCode,
+    courseCode,
+  });
 
   if (!target) return null;
 
@@ -77,6 +87,12 @@ export function TransferBadge({
     providerType: providerType,
   };
 
+  // Truncate notes for preview
+  const notesPreview = preapproval?.evidence_notes
+    ? preapproval.evidence_notes.slice(0, 200)
+    : null;
+  const hasMoreNotes = preapproval?.evidence_notes && preapproval.evidence_notes.length > 200;
+
   return (
     <>
       <Popover>
@@ -108,6 +124,53 @@ export function TransferBadge({
               <div className="text-xs text-muted-foreground">No explicit rule found • Showing heuristic.</div>
             )}
             
+            {/* Tier 4: Advisor Pre-Approval Evidence */}
+            {preapproval && (
+              <div className="rounded-md border border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-900/20 p-2 space-y-1.5">
+                <div className="flex items-center gap-1.5 text-green-700 dark:text-green-400 text-xs font-medium">
+                  <ShieldCheck className="h-3.5 w-3.5" />
+                  {getAdvisorResultLabel(advisorResult)}
+                  {freshnessLabel && (
+                    <span className={cn(
+                      'ml-auto text-[10px] px-1.5 py-0.5 rounded',
+                      freshnessLabel.color === 'green' && 'bg-green-200 text-green-800',
+                      freshnessLabel.color === 'yellow' && 'bg-yellow-200 text-yellow-800',
+                      freshnessLabel.color === 'orange' && 'bg-orange-200 text-orange-800',
+                      freshnessLabel.color === 'red' && 'bg-red-200 text-red-800',
+                    )}>
+                      {freshnessLabel.label}
+                    </span>
+                  )}
+                </div>
+                {preapproval.degree_program && (
+                  <div className="text-[11px] text-muted-foreground">
+                    Program: {preapproval.degree_program}
+                  </div>
+                )}
+                {preapproval.outcome_date && (
+                  <div className="text-[11px] text-muted-foreground">
+                    Date: {new Date(preapproval.outcome_date).toLocaleDateString()}
+                  </div>
+                )}
+                {notesPreview && (
+                  <div className="text-[11px] text-muted-foreground border-t border-green-200 dark:border-green-800 pt-1.5 mt-1.5">
+                    <div className={showFullNotes ? '' : 'line-clamp-3'}>
+                      {showFullNotes ? preapproval.evidence_notes : notesPreview}
+                      {hasMoreNotes && !showFullNotes && '...'}
+                    </div>
+                    {hasMoreNotes && (
+                      <button
+                        onClick={() => setShowFullNotes(!showFullNotes)}
+                        className="text-primary hover:underline mt-1"
+                      >
+                        {showFullNotes ? 'Show less' : 'View full response'}
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+            
             {/* Pre-Approval Email Button */}
             <Button
               variant="outline"
@@ -116,7 +179,7 @@ export function TransferBadge({
               onClick={() => setEmailModalOpen(true)}
             >
               <Mail className="h-4 w-4" />
-              Request Pre-Approval
+              {preapproval ? 'Update Pre-Approval' : 'Request Pre-Approval'}
             </Button>
           </div>
         </PopoverContent>
