@@ -205,6 +205,16 @@ export interface MarketplaceDegreeTemplate extends DegreeTemplate {
     weeks: number;        // Duration if all at anchor school
     source: string;       // "WGU 6-month term pricing" or "TESU per-credit rate"
     notes?: string;       // "Based on 4 terms @ $3,995"
+    
+    // Year-by-year breakdown for comparison view
+    yearBreakdown?: Array<{
+      year: number;
+      label: string;         // "Year 1 – Foundation"
+      credits: number;       // 30
+      costUsd: number;       // $3,995
+      weeks: number;         // 26
+      courseLabel?: string;  // "WGU Term 1 Bundle"
+    }>;
   };
 }
 
