@@ -93,7 +93,9 @@ export function YearComparisonTable({ template }: YearComparisonTableProps) {
   const multiSchoolTotalWeeks = template.totals.weeks;
   
   const totalSavings = baselineTotalCost - multiSchoolTotalCost;
-  const savingsPercent = Math.round((totalSavings / baselineTotalCost) * 100);
+  const savingsPercent = baselineTotalCost > 0 
+    ? Math.round((totalSavings / baselineTotalCost) * 100) 
+    : 0;
   const weeksSaved = baselineTotalWeeks - multiSchoolTotalWeeks;
   const monthsSaved = Math.round(weeksSaved / 4.33);
 
