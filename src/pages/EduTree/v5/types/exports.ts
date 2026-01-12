@@ -38,6 +38,8 @@ export interface Constraints {
   max_ace_credits?: number;
   max_concurrent_courses?: number;
   target_school?: string; // Anchor school for transfer policy tracking
+  degree_program?: string; // e.g., "B.S. in Computer Science"
+  catalog_year?: string; // e.g., "2024-2025"
 }
 
 export interface ScoringWeights {

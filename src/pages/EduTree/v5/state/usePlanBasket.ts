@@ -83,6 +83,8 @@ export interface Constraints {
   max_ace_credits?: number; // transfer cap
   max_concurrent_courses?: number; // for realistic deadline math
   target_school?: string; // Phase 0-2: anchor school for transfer policy tracking
+  degree_program?: string; // e.g., "B.S. in Computer Science"
+  catalog_year?: string; // e.g., "2024-2025"
 }
 
 // Per-module template tracking
