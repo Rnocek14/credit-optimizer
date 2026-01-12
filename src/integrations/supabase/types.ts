@@ -11182,6 +11182,9 @@ export type Database = {
           created_at: string
           maya_analyses_used: number
           month_start: string
+          plan_tier: Database["public"]["Enums"]["user_plan_tier"]
+          tier_expires_at: string | null
+          tier_source: string | null
           updated_at: string
           user_id: string
         }
@@ -11189,6 +11192,9 @@ export type Database = {
           created_at?: string
           maya_analyses_used?: number
           month_start?: string
+          plan_tier?: Database["public"]["Enums"]["user_plan_tier"]
+          tier_expires_at?: string | null
+          tier_source?: string | null
           updated_at?: string
           user_id: string
         }
@@ -11196,6 +11202,9 @@ export type Database = {
           created_at?: string
           maya_analyses_used?: number
           month_start?: string
+          plan_tier?: Database["public"]["Enums"]["user_plan_tier"]
+          tier_expires_at?: string | null
+          tier_source?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -13167,6 +13176,25 @@ export type Database = {
         }
         Returns: string
       }
+      ensure_quota_row: {
+        Args: { p_user: string }
+        Returns: {
+          created_at: string
+          maya_analyses_used: number
+          month_start: string
+          plan_tier: Database["public"]["Enums"]["user_plan_tier"]
+          tier_expires_at: string | null
+          tier_source: string | null
+          updated_at: string
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "usage_quotas"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       generate_autonomous_intervention: {
         Args: { risk_assessment: Json; target_user_id: string }
         Returns: string
@@ -13371,6 +13399,11 @@ export type Database = {
         | "provider_blacklist"
         | "time_limit"
       transfer_source: "ACE" | "NCCRS" | "CLEP" | "XFER" | "HOME" | "DSST"
+      user_plan_tier:
+        | "free"
+        | "single_school"
+        | "multi_compare"
+        | "multi_optimizer"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -13531,6 +13564,12 @@ export const Constants = {
         "time_limit",
       ],
       transfer_source: ["ACE", "NCCRS", "CLEP", "XFER", "HOME", "DSST"],
+      user_plan_tier: [
+        "free",
+        "single_school",
+        "multi_compare",
+        "multi_optimizer",
+      ],
     },
   },
 } as const
