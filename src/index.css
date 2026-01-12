@@ -622,10 +622,16 @@
     @apply border-border;
   }
 
+  html {
+    overflow-y: scroll;
+    scroll-behavior: smooth;
+  }
+
   body {
     @apply bg-background text-foreground font-inter antialiased;
     font-feature-settings: "rlig" 1, "calt" 1;
     letter-spacing: -0.01em;
+    min-height: 100vh;
   }
 
   /* Typography Scale - Enhanced with improved mobile readability */
