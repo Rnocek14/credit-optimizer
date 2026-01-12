@@ -21,6 +21,7 @@ import { StrategySavingsBanner } from './StrategySavingsBanner';
 import { useTransferVerification } from '../hooks/useTransferVerification';
 import { useVerifiedPolicyForInstitution } from '@/pages/EduTree/v5/hooks/useVerifiedPolicy';
 import { calculateTieredSavings, shouldShowSavings, type TieredTransferResult } from '@/lib/tieredSavingsCalculator';
+import { normalizeProviderCode } from '@/lib/providerNormalization';
 
 interface TemplateCardProps {
   template: MarketplaceDegreeTemplate;
@@ -118,19 +119,28 @@ export function TemplateCard({ template, isSelected, onToggleSelect }: TemplateC
     [template]
   );
 
-  // Calculate tiered savings - FIX: use map keyed by courseCode+providerCode to avoid index mismatch
+  // Calculate tiered savings - FIX: use normalized provider codes and handle duplicates
   const tieredSavings = useMemo(() => {
     if (!transferVerifications || !strategySavings) return null;
     
-    // Build a map keyed by (courseCode + providerCode) to avoid index mismatch
-    const costMap = new Map(
-      allCourses.map(c => [`${c.code}:${c.providerCode ?? ''}`, c])
-    );
+    // Helper to create canonical key
+    const keyOf = (courseCode: string, providerCode?: string | null) =>
+      `${courseCode}:${normalizeProviderCode(providerCode ?? '')}`;
     
-    // Map transfer verifications to TieredTransferResult format using the map
+    // Build a map with aggregated credits/cost (handles duplicate course codes)
+    const costMap = new Map<string, { credits: number; costUsd: number }>();
+    for (const c of allCourses) {
+      const k = keyOf(c.code, c.providerCode);
+      const prev = costMap.get(k) ?? { credits: 0, costUsd: 0 };
+      costMap.set(k, { 
+        credits: prev.credits + (c.credits ?? 0), 
+        costUsd: prev.costUsd + (c.costUsd ?? 0) 
+      });
+    }
+    
+    // Map transfer verifications to TieredTransferResult format using normalized keys
     const tieredResults: TieredTransferResult[] = transferVerifications.map(v => {
-      const key = `${v.courseCode}:${v.providerCode ?? ''}`;
-      const c = costMap.get(key);
+      const c = costMap.get(keyOf(v.courseCode, v.providerCode));
       return {
         ...v,
         credits: c?.credits ?? 0,
@@ -138,7 +148,17 @@ export function TemplateCard({ template, isSelected, onToggleSelect }: TemplateC
       };
     });
     
-    return calculateTieredSavings(template, tieredResults, policy ?? null);
+    const result = calculateTieredSavings(template, tieredResults, policy ?? null);
+    
+    // Dev invariant check
+    if (result && import.meta.env.DEV) {
+      const { guaranteedSavings, possibleSavings, maximumSavings } = result;
+      if (!(guaranteedSavings <= possibleSavings && possibleSavings <= maximumSavings)) {
+        console.warn('[TIERED_SAVINGS] invariant violated', result);
+      }
+    }
+    
+    return result;
   }, [transferVerifications, strategySavings, template, policy, allCourses]);
 
   // Determine what to show in savings display
