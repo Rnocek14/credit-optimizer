@@ -768,7 +768,8 @@ export function checkAnchorEligibility(policyData: any, institution: string): An
  * If null, degree completion claims are "unverified"
  */
 export function checkUpperDivisionVerified(policyData: any): { verified: boolean; value?: number } {
-  const minUL = policyData?.min_upper_division_credits;
+  // Canonical fallback: prefer min_upper_division_credits, fall back to upper_division_min
+  const minUL = policyData?.min_upper_division_credits ?? policyData?.upper_division_min ?? null;
   return {
     verified: minUL != null,
     value: minUL ?? undefined,
