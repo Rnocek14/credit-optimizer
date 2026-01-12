@@ -3647,6 +3647,7 @@ export type Database = {
           effective_from: string | null
           effective_start: string | null
           effective_to: string | null
+          evidence_type: string | null
           evidence_url: string | null
           id: string
           last_verified_at: string | null
@@ -3669,6 +3670,7 @@ export type Database = {
           effective_from?: string | null
           effective_start?: string | null
           effective_to?: string | null
+          evidence_type?: string | null
           evidence_url?: string | null
           id?: string
           last_verified_at?: string | null
@@ -3691,6 +3693,7 @@ export type Database = {
           effective_from?: string | null
           effective_start?: string | null
           effective_to?: string | null
+          evidence_type?: string | null
           evidence_url?: string | null
           id?: string
           last_verified_at?: string | null
