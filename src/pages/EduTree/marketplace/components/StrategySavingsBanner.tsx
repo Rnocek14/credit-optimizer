@@ -3,7 +3,7 @@ import { TrendingDown, Clock, Info, Sparkles, ShieldCheck, HelpCircle, AlertTria
 import type { TemplateStrategySavings } from '@/lib/templateSavingsCalculator';
 import { formatSavingsAmount, formatTimeSaved, MIN_WEEKS_TO_SHOW_TIME_SAVED } from '@/lib/templateSavingsCalculator';
 import type { TieredSavings } from '@/types/evidenceTiers';
-import { formatTieredSavings, shouldShowVerifiedLabel, TIERED_SAVINGS_THRESHOLDS } from '@/lib/tieredSavingsCalculator';
+import { formatTieredSavings, shouldShowVerifiedLabel } from '@/lib/tieredSavingsCalculator';
 import {
   Tooltip,
   TooltipContent,
@@ -30,12 +30,15 @@ export function StrategySavingsBanner({
 }: StrategySavingsBannerProps) {
   const timeSavedText = formatTimeSaved(savings.weeksSaved);
   const hasTieredData = !!tieredSavings;
-  const showVerifiedLabel = tieredSavings ? shouldShowVerifiedLabel(tieredSavings) : false;
   const formattedTiered = tieredSavings ? formatTieredSavings(tieredSavings) : null;
   
-  // Determine if we should show "verification pending" warning
-  const showPendingWarning = hasTieredData && !tieredSavings.policyVerified;
-  const hasMinimalTierA = hasTieredData && tieredSavings.breakdown.tierA.count === 0;
+  // Calculate verification percentage (confidence layer, not blocker)
+  const verificationPercent = hasTieredData && tieredSavings.totalCourses > 0
+    ? Math.round(((tieredSavings.breakdown.tierA.count + tieredSavings.breakdown.tierB.count) / tieredSavings.totalCourses) * 100)
+    : 0;
+  
+  const verifiedCount = hasTieredData ? tieredSavings.breakdown.tierA.count : 0;
+  const totalCourses = hasTieredData ? tieredSavings.totalCourses : 0;
   
   if (variant === 'card') {
     // Compact version for TemplateCard
@@ -45,7 +48,7 @@ export function StrategySavingsBanner({
           <div className="flex items-center gap-1.5">
             <Sparkles className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
             <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-300">
-              {showPendingWarning ? 'Estimated Savings' : 'Multi-School Savings'}
+              Plan Savings
             </span>
           </div>
           <TooltipProvider>
@@ -64,59 +67,34 @@ export function StrategySavingsBanner({
         </div>
         
         <div className="space-y-1">
-          <div className="flex justify-between items-center text-sm">
-            <span className="text-muted-foreground">Full {savings.anchorSchool}:</span>
-            <span className="line-through text-muted-foreground">
+          {/* ALWAYS show plan savings (cost math) - this is the primary number */}
+          <div className="flex justify-between items-center text-sm font-medium text-emerald-600 dark:text-emerald-400">
+            <span className="flex items-center gap-1">
+              <TrendingDown className="h-3.5 w-3.5" />
+              You save:
+            </span>
+            <span>
+              {formatSavingsAmount(savings.dollarSavings)} ({savings.percentSavings}%)
+            </span>
+          </div>
+          
+          {/* Cost comparison */}
+          <div className="flex justify-between items-center text-xs text-muted-foreground">
+            <span>Full {savings.anchorSchool}:</span>
+            <span className="line-through">
               {formatSavingsAmount(savings.baselineCost)}
             </span>
           </div>
           
-          {/* Tiered savings display */}
-          {hasTieredData && formattedTiered ? (
-            <>
-              {/* Verified savings (Tier A) */}
-              {tieredSavings.guaranteedSavings > 0 && (
-                <div className="flex justify-between items-center text-sm">
-                  <span className="flex items-center gap-1 text-emerald-700 dark:text-emerald-300">
-                    <ShieldCheck className="h-3.5 w-3.5" />
-                    Verified:
-                  </span>
-                  <span className="font-medium text-emerald-600 dark:text-emerald-400">
-                    {formattedTiered.verified} ({tieredSavings.guaranteedPercent}%)
-                  </span>
-                </div>
-              )}
-              
-              {/* Additional possible savings (Tier B) */}
-              {tieredSavings.possibleSavings > tieredSavings.guaranteedSavings && (
-                <div className="flex justify-between items-center text-xs text-muted-foreground">
-                  <span className="flex items-center gap-1">
-                    <HelpCircle className="h-3 w-3" />
-                    Additional possible:
-                  </span>
-                  <span>
-                    +{formatSavingsAmount(tieredSavings.possibleSavings - tieredSavings.guaranteedSavings)}
-                  </span>
-                </div>
-              )}
-              
-              {/* Warning if no verified savings */}
-              {hasMinimalTierA && (
-                <div className="flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400 mt-1">
-                  <AlertTriangle className="h-3 w-3" />
-                  <span>Verification pending</span>
-                </div>
-              )}
-            </>
-          ) : (
-            /* Legacy display (no tiered data) */
-            <div className="flex justify-between items-center text-sm font-medium text-emerald-600 dark:text-emerald-400">
-              <span className="flex items-center gap-1">
-                <TrendingDown className="h-3.5 w-3.5" />
-                You save:
-              </span>
+          {/* Verification status as confidence layer (not blocker) */}
+          {hasTieredData && (
+            <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1 pt-1 border-t border-emerald-200/50 dark:border-emerald-800/50">
+              <ShieldCheck className="h-3 w-3" />
               <span>
-                {formatSavingsAmount(savings.dollarSavings)} ({savings.percentSavings}%)
+                {verifiedCount > 0 
+                  ? `${verifiedCount} of ${totalCourses} courses verified`
+                  : `${totalCourses} courses with transfer rules`
+                }
               </span>
             </div>
           )}
@@ -136,31 +114,18 @@ export function StrategySavingsBanner({
   }
   
   // Full-width banner version
+  const showVerifiedLabel = tieredSavings ? shouldShowVerifiedLabel(tieredSavings) : false;
+  
   return (
     <div className={`rounded-lg bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-950/50 dark:to-teal-950/50 border border-emerald-200 dark:border-emerald-800 p-4 ${className}`}>
       <div className="flex items-start justify-between gap-4">
         <div className="flex-1">
+          {/* ALWAYS show plan savings as the headline */}
           <div className="flex items-center gap-2 mb-2">
             <Sparkles className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
             <h3 className="font-semibold text-emerald-800 dark:text-emerald-200">
-              {hasTieredData && showVerifiedLabel 
-                ? `Verified Savings: ${formattedTiered?.verified}`
-                : showPendingWarning
-                ? 'Estimated Savings (Verification Pending)'
-                : `Multi-School Strategy Saves ${formatSavingsAmount(savings.dollarSavings)}`
-              }
+              Plan Savings: {formatSavingsAmount(savings.dollarSavings)} ({savings.percentSavings}%)
             </h3>
-            {hasTieredData && tieredSavings.policyVerified && (
-              <Badge variant="secondary" className="bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-300">
-                Policy Verified
-              </Badge>
-            )}
-            {showPendingWarning && (
-              <Badge variant="outline" className="border-amber-500 text-amber-600 dark:text-amber-400">
-                <AlertTriangle className="h-3 w-3 mr-1" />
-                Pending
-              </Badge>
-            )}
           </div>
           
           <div className="grid grid-cols-2 gap-4 text-sm">
@@ -178,43 +143,61 @@ export function StrategySavingsBanner({
             </div>
           </div>
           
-          {/* Tiered breakdown in full variant */}
+          {/* Verification status as confidence layer */}
           {hasTieredData && formattedTiered && (
-            <div className="mt-3 pt-3 border-t border-emerald-200 dark:border-emerald-800 grid grid-cols-3 gap-3 text-sm">
-              <div>
-                <div className="flex items-center gap-1 text-emerald-700 dark:text-emerald-300 font-medium">
-                  <ShieldCheck className="h-4 w-4" />
-                  Verified
-                </div>
-                <div className="text-lg font-bold text-emerald-600 dark:text-emerald-400">
-                  {formattedTiered.verified}
-                </div>
-                <div className="text-xs text-muted-foreground">
-                  {tieredSavings.breakdown.tierA.count} courses
-                </div>
+            <div className="mt-3 pt-3 border-t border-emerald-200 dark:border-emerald-800">
+              <div className="flex items-center gap-2 mb-2">
+                <ShieldCheck className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                <span className="text-sm font-medium text-emerald-700 dark:text-emerald-300">
+                  {verifiedCount > 0 
+                    ? `${verifiedCount} of ${totalCourses} courses verified`
+                    : `${totalCourses} courses with transfer rules`
+                  }
+                </span>
+                {showVerifiedLabel && (
+                  <Badge variant="secondary" className="bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-300">
+                    Policy Verified
+                  </Badge>
+                )}
               </div>
-              <div>
-                <div className="flex items-center gap-1 text-amber-700 dark:text-amber-300 font-medium">
-                  <HelpCircle className="h-4 w-4" />
-                  Likely
+              
+              {/* Tier breakdown */}
+              <div className="grid grid-cols-3 gap-3 text-sm">
+                <div>
+                  <div className="flex items-center gap-1 text-emerald-700 dark:text-emerald-300 font-medium">
+                    <ShieldCheck className="h-4 w-4" />
+                    Verified
+                  </div>
+                  <div className="text-lg font-bold text-emerald-600 dark:text-emerald-400">
+                    {tieredSavings.breakdown.tierA.count} courses
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    {formattedTiered.verified} savings
+                  </div>
                 </div>
-                <div className="text-lg font-bold text-amber-600 dark:text-amber-400">
-                  +{formatSavingsAmount(tieredSavings.possibleSavings - tieredSavings.guaranteedSavings)}
+                <div>
+                  <div className="flex items-center gap-1 text-amber-700 dark:text-amber-300 font-medium">
+                    <HelpCircle className="h-4 w-4" />
+                    Likely
+                  </div>
+                  <div className="text-lg font-bold text-amber-600 dark:text-amber-400">
+                    {tieredSavings.breakdown.tierB.count} courses
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    +{formatSavingsAmount(tieredSavings.possibleSavings - tieredSavings.guaranteedSavings)}
+                  </div>
                 </div>
-                <div className="text-xs text-muted-foreground">
-                  {tieredSavings.breakdown.tierB.count} courses
-                </div>
-              </div>
-              <div>
-                <div className="flex items-center gap-1 text-muted-foreground font-medium">
-                  <AlertTriangle className="h-4 w-4" />
-                  Unverified
-                </div>
-                <div className="text-lg font-bold text-muted-foreground">
-                  {tieredSavings.breakdown.tierC.count} courses
-                </div>
-                <div className="text-xs text-muted-foreground">
-                  needs verification
+                <div>
+                  <div className="flex items-center gap-1 text-muted-foreground font-medium">
+                    <AlertTriangle className="h-4 w-4" />
+                    Unverified
+                  </div>
+                  <div className="text-lg font-bold text-muted-foreground">
+                    {tieredSavings.breakdown.tierC.count} courses
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    needs verification
+                  </div>
                 </div>
               </div>
             </div>
@@ -246,10 +229,10 @@ export function StrategySavingsBanner({
               )}
               {hasTieredData && (
                 <div className="mt-2 pt-2 border-t border-border">
-                  <p className="text-xs font-medium mb-1">Savings tiers:</p>
+                  <p className="text-xs font-medium mb-1">Verification tiers:</p>
                   <p className="text-xs">
-                    <strong>Verified:</strong> Rules with evidence + policy verified<br/>
-                    <strong>Likely:</strong> Rules exist but need verification<br/>
+                    <strong>Verified:</strong> Rules with evidence URL + high confidence<br/>
+                    <strong>Likely:</strong> Rules exist with reasonable confidence<br/>
                     <strong>Unverified:</strong> No transfer rules found
                   </p>
                 </div>
