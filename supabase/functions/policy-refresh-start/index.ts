@@ -167,7 +167,7 @@ Deno.serve(async (req) => {
 
     const { data: tasks, error: tasksError } = await supabase
       .from('policy_refresh_tasks')
-      .insert(taskRows)
+      .upsert(taskRows, { onConflict: 'run_id,institution' })
       .select('id, institution');
 
     if (tasksError) {
