@@ -549,15 +549,15 @@
     "inPersonWeeks": 0,
     "socialProof": { "popularityScore": 4.6, "dataSource": "generated" },
     "singleSchoolBaseline": {
-      "costUsd": 38400,
+      "costUsd": 21000,
       "weeks": 192,
-      "source": "Traditional 4-year university (avg. $9,600/year tuition)",
-      "notes": "Compared to average public university in-state tuition",
+      "source": "COSC Direct (120cr × $175/credit in-state tuition)",
+      "notes": "Charter Oak State College in-state per-credit rate without transfer credits",
       "yearBreakdown": [
-        { "year": 1, "label": "Year 1 – Freshman Year", "credits": 30, "costUsd": 9600, "weeks": 48, "courseLabel": "Traditional University Year 1" },
-        { "year": 2, "label": "Year 2 – Sophomore Year", "credits": 30, "costUsd": 9600, "weeks": 48, "courseLabel": "Traditional University Year 2" },
-        { "year": 3, "label": "Year 3 – Junior Year", "credits": 30, "costUsd": 9600, "weeks": 48, "courseLabel": "Traditional University Year 3" },
-        { "year": 4, "label": "Year 4 – Senior Year", "credits": 30, "costUsd": 9600, "weeks": 48, "courseLabel": "Traditional University Year 4" }
+        { "year": 1, "label": "Year 1", "credits": 30, "costUsd": 5250, "weeks": 48, "courseLabel": "COSC Direct Year 1" },
+        { "year": 2, "label": "Year 2", "credits": 30, "costUsd": 5250, "weeks": 48, "courseLabel": "COSC Direct Year 2" },
+        { "year": 3, "label": "Year 3", "credits": 30, "costUsd": 5250, "weeks": 48, "courseLabel": "COSC Direct Year 3" },
+        { "year": 4, "label": "Year 4", "credits": 30, "costUsd": 5250, "weeks": 48, "courseLabel": "COSC Direct Year 4" }
       ]
     },
     "yearTemplates": [
@@ -629,6 +629,6 @@
         ]
       }
     ],
-    "totals": { "credits": 120, "costUsd": 5778, "weeks": 168, "avgCri": 76 }
+    "totals": { "credits": 120, "costUsd": 4313, "weeks": 168, "avgCri": 76 }
   }
 ]
