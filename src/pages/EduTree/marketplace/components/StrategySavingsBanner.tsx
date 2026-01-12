@@ -1,7 +1,7 @@
 import { Badge } from '@/components/ui/badge';
 import { TrendingDown, Clock, Info, Sparkles } from 'lucide-react';
 import type { TemplateStrategySavings } from '@/lib/templateSavingsCalculator';
-import { formatSavingsAmount, formatTimeSaved } from '@/lib/templateSavingsCalculator';
+import { formatSavingsAmount, formatTimeSaved, MIN_WEEKS_TO_SHOW_TIME_SAVED } from '@/lib/templateSavingsCalculator';
 import {
   Tooltip,
   TooltipContent,
@@ -63,7 +63,7 @@ export function StrategySavingsBanner({ savings, variant = 'card', className = '
               {formatSavingsAmount(savings.dollarSavings)} ({savings.percentSavings}%)
             </span>
           </div>
-          {savings.weeksSaved > 8 && timeSavedText && (
+          {savings.weeksSaved > MIN_WEEKS_TO_SHOW_TIME_SAVED && timeSavedText && (
             <div className="flex justify-between items-center text-xs text-muted-foreground">
               <span className="flex items-center gap-1">
                 <Clock className="h-3 w-3" />
@@ -111,7 +111,7 @@ export function StrategySavingsBanner({ savings, variant = 'card', className = '
             <span className="flex items-center gap-1">
               ✓ Same {savings.anchorSchool} degree
             </span>
-            {savings.weeksSaved > 8 && timeSavedText && (
+            {savings.weeksSaved > MIN_WEEKS_TO_SHOW_TIME_SAVED && timeSavedText && (
               <span className="flex items-center gap-1">
                 <Clock className="h-3.5 w-3.5" />
                 {timeSavedText} faster
