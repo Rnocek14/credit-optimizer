@@ -111,9 +111,13 @@ export function PreApprovalEmailModal({
 
   const handleOpenEmail = () => {
     if (mailtoWithRecipient) {
-      window.open(mailtoWithRecipient, '_blank');
+      // Use location.href for better Safari/locked-down browser compatibility
+      window.location.href = mailtoWithRecipient;
     }
   };
+
+  // Check if mailto is too long (practical limit ~2000 chars for most email clients)
+  const mailtoTooLong = mailtoWithRecipient && mailtoWithRecipient.length > 2000;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -259,14 +263,23 @@ export function PreApprovalEmailModal({
 
           {/* Actions */}
           <div className="flex flex-col sm:flex-row gap-3">
-            <Button
-              onClick={handleOpenEmail}
-              disabled={!isValid}
-              className="flex-1"
-            >
-              <ExternalLink className="h-4 w-4 mr-2" />
-              Open in Email Client
-            </Button>
+            {!mailtoTooLong ? (
+              <Button
+                onClick={handleOpenEmail}
+                disabled={!isValid}
+                className="flex-1"
+              >
+                <ExternalLink className="h-4 w-4 mr-2" />
+                Open in Email Client
+              </Button>
+            ) : (
+              <Alert className="flex-1">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription className="text-xs">
+                  Email too long for mailto — please copy and paste instead.
+                </AlertDescription>
+              </Alert>
+            )}
             <Button
               variant="outline"
               onClick={() => handleCopy('body')}
@@ -277,10 +290,10 @@ export function PreApprovalEmailModal({
             </Button>
           </div>
 
-          {/* Trust Note */}
+          {/* Trust Note - clarify that responses (not this email) create evidence */}
           <p className="text-xs text-muted-foreground text-center">
-            This email respects registrar authority. Pre-approval responses create 
-            Tier 4 evidence in your transfer verification history.
+            This email respects registrar authority. When you receive a response, 
+            you can log it as Tier 4 evidence in your transfer verification history.
           </p>
         </div>
       </DialogContent>
