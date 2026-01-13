@@ -157,9 +157,9 @@ export function usePolicyTimeline(runId: string | null, institution: string | nu
   };
 
   // Safe payload accessor (handles null, string, or non-object payloads)
-  const getPayload = (e: PolicyEvent): Record<string, unknown> => {
+  const getPayload = (e: PolicyEvent): Record<string, any> => {
     if (e.payload && typeof e.payload === 'object' && !Array.isArray(e.payload)) {
-      return e.payload as Record<string, unknown>;
+      return e.payload as Record<string, any>;
     }
     return {};
   };
