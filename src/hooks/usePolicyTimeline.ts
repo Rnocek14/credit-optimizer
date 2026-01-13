@@ -156,6 +156,14 @@ export function usePolicyTimeline(runId: string | null, institution: string | nu
     );
   };
 
+  // Safe payload accessor (handles null, string, or non-object payloads)
+  const getPayload = (e: PolicyEvent): Record<string, unknown> => {
+    if (e.payload && typeof e.payload === 'object' && !Array.isArray(e.payload)) {
+      return e.payload as Record<string, unknown>;
+    }
+    return {};
+  };
+
   // Helper: check if any scan event exists
   const hasAnyScanEvent = () => {
     if (!events) return false;
@@ -251,10 +259,15 @@ export function usePolicyTimeline(runId: string | null, institution: string | nu
   findings?.forEach((f) => {
     const details = f.details as { has_conflicts?: boolean; conflicts?: Array<{ field: string }> } | null;
     if (details?.has_conflicts && details?.conflicts?.length) {
-      // Check if explicit event already exists for this finding
+      // Check if explicit event already exists for this finding (run-scoped if runId exists)
       const hasExplicitConflict = hasExplicit(
         'conflict_detected', 
-        e => (e.payload as Record<string, unknown>)?.finding_id === f.id
+        e => {
+          const p = getPayload(e);
+          const matchesFinding = p.finding_id === f.id;
+          const matchesRun = !runId || e.run_id === runId;
+          return matchesFinding && matchesRun;
+        }
       );
       
       if (!hasExplicitConflict) {
@@ -276,10 +289,15 @@ export function usePolicyTimeline(runId: string | null, institution: string | nu
   // Synthesize override events (with duplicate protection)
   overrides?.forEach((o) => {
     if (o.resolved_at) {
-      // Check if explicit event already exists for this override
+      // Check if explicit event already exists for this override (run-scoped if runId exists)
       const hasExplicitOverride = hasExplicit(
         'override_set',
-        e => (e.payload as Record<string, unknown>)?.override_id === o.id
+        e => {
+          const p = getPayload(e);
+          const matchesOverride = p.override_id === o.id;
+          const matchesRun = !runId || e.run_id === runId;
+          return matchesOverride && matchesRun;
+        }
       );
 
       if (!hasExplicitOverride) {
