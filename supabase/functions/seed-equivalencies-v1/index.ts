@@ -152,17 +152,15 @@ serve(async (req) => {
 
         // Create one row per requirement_area
         for (const reqArea of mapping.requirement_areas) {
-          const courseCode = `ALT-${mapping.source_code}-${mapping.identifier.toUpperCase().slice(0, 8)}`;
-          
           const equivalency = {
             alt_credit_id: altCreditId,
             institution_id: instId,
-            institutional_course_code: courseCode,
-            institutional_course_name: null, // We're mapping to requirement areas, not specific courses
+            institutional_course_code: null, // Not using fake codes - requirement_area is the real key
+            institutional_course_name: null,
             credits_awarded: mapping.credits_awarded,
             level: mapping.level,
             requirement_area: reqArea,
-            gened_category_code: reqArea, // For gened matching
+            gened_category_code: reqArea,
             confidence: adjustedConfidence,
             last_verified_date: new Date().toISOString().split('T')[0],
             source_documentation: 'seed-equivalencies-v1',
@@ -172,7 +170,7 @@ serve(async (req) => {
           const { error } = await supabase
             .from('cross_institution_equivalencies')
             .upsert(equivalency, { 
-              onConflict: 'alt_credit_id,institution_id,institutional_course_code' 
+              onConflict: 'alt_credit_id,institution_id,requirement_area' 
             });
 
           if (error) {

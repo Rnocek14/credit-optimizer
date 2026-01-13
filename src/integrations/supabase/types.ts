@@ -3797,7 +3797,7 @@ export type Database = {
           gened_category_code: string | null
           id: string
           institution_id: string
-          institutional_course_code: string
+          institutional_course_code: string | null
           institutional_course_name: string | null
           last_verified_date: string | null
           level: number | null
@@ -3815,7 +3815,7 @@ export type Database = {
           gened_category_code?: string | null
           id?: string
           institution_id: string
-          institutional_course_code: string
+          institutional_course_code?: string | null
           institutional_course_name?: string | null
           last_verified_date?: string | null
           level?: number | null
@@ -3833,7 +3833,7 @@ export type Database = {
           gened_category_code?: string | null
           id?: string
           institution_id?: string
-          institutional_course_code?: string
+          institutional_course_code?: string | null
           institutional_course_name?: string | null
           last_verified_date?: string | null
           level?: number | null

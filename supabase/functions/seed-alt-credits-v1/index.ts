@@ -375,8 +375,7 @@ serve(async (req) => {
     console.log(`[seed-alt-credits-v1] Total items to seed: ${ALT_CREDITS_CATALOG.length}`);
 
     const results = {
-      inserted: 0,
-      updated: 0,
+      upserted: 0, // Honest counter - we can't distinguish insert vs update
       errors: [] as string[],
     };
 
@@ -389,7 +388,7 @@ serve(async (req) => {
         console.error(`[seed-alt-credits-v1] Error upserting ${item.source_code}/${item.identifier}:`, error);
         results.errors.push(`${item.source_code}/${item.identifier}: ${error.message}`);
       } else {
-        results.inserted++;
+        results.upserted++;
         console.log(`[seed-alt-credits-v1] ✅ ${item.source_code}/${item.identifier}`);
       }
     }
@@ -406,7 +405,7 @@ serve(async (req) => {
         return { data: counts };
       });
 
-    console.log(`[seed-alt-credits-v1] ✅ Complete. Inserted/updated: ${results.inserted}`);
+    console.log(`[seed-alt-credits-v1] ✅ Complete. Upserted: ${results.upserted}`);
 
     return new Response(
       JSON.stringify({
