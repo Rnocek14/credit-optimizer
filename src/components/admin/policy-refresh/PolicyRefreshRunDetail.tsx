@@ -113,7 +113,11 @@ export function PolicyRefreshRunDetail({ runId, onReviewInstitution }: PolicyRef
     },
     onSuccess: () => {
       toast({ title: 'Pack promoted successfully' });
+      // Invalidate all related queries for proper UI refresh
       queryClient.invalidateQueries({ queryKey: ['policy-packs', runId] });
+      queryClient.invalidateQueries({ queryKey: ['policy-refresh-tasks', runId] });
+      queryClient.invalidateQueries({ queryKey: ['policy-diffs-count', runId] });
+      queryClient.invalidateQueries({ queryKey: ['policy-refresh-runs'] });
     },
     onError: (error: Error) => {
       toast({ 
@@ -131,13 +135,14 @@ export function PolicyRefreshRunDetail({ runId, onReviewInstitution }: PolicyRef
     return { ...task, pack, diffs };
   }) || [];
 
-  // Apply filter
+  // Apply filter (normalize status for consistency)
   const filtered = institutions.filter((inst) => {
+    const normalized = normalizeStatus(inst.status);
     if (filter === 'all') return true;
-    if (filter === 'complete') return inst.status === 'complete';
+    if (filter === 'complete') return normalized === 'complete';
     if (filter === 'blocked') return inst.pack?.blocked_reason;
-    if (filter === 'failed') return inst.status === 'failed';
-    if (filter === 'queued') return inst.status === 'queued' || inst.status === 'running';
+    if (filter === 'failed') return normalized === 'failed';
+    if (filter === 'queued') return normalized === 'queued' || normalized === 'running';
     return true;
   });
 
