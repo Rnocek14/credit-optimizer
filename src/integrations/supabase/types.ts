@@ -740,6 +740,42 @@ export type Database = {
         }
         Relationships: []
       }
+      alt_provider_pricing_packs: {
+        Row: {
+          created_at: string
+          id: string
+          pricing_data: Json
+          provenance_verified_at: string | null
+          provider_code: string
+          provider_name: string
+          source_url: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          pricing_data?: Json
+          provenance_verified_at?: string | null
+          provider_code: string
+          provider_name: string
+          source_url?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          pricing_data?: Json
+          provenance_verified_at?: string | null
+          provider_code?: string
+          provider_name?: string
+          source_url?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       alternative_courses: {
         Row: {
           created_at: string | null
@@ -10979,6 +11015,69 @@ export type Database = {
         }
         Relationships: []
       }
+      template_cost_snapshots: {
+        Row: {
+          alt_credits: number
+          computed_at: string
+          cost_status: string
+          created_at: string
+          id: string
+          inputs: Json
+          institution_code: string
+          institutional_credits: number
+          plan_cost_usd: number
+          plan_weeks: number
+          source_description: string | null
+          template_id: string
+          total_credits: number
+        }
+        Insert: {
+          alt_credits?: number
+          computed_at?: string
+          cost_status?: string
+          created_at?: string
+          id?: string
+          inputs?: Json
+          institution_code: string
+          institutional_credits?: number
+          plan_cost_usd: number
+          plan_weeks?: number
+          source_description?: string | null
+          template_id: string
+          total_credits: number
+        }
+        Update: {
+          alt_credits?: number
+          computed_at?: string
+          cost_status?: string
+          created_at?: string
+          id?: string
+          inputs?: Json
+          institution_code?: string
+          institutional_credits?: number
+          plan_cost_usd?: number
+          plan_weeks?: number
+          source_description?: string | null
+          template_id?: string
+          total_credits?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "template_cost_snapshots_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "degree_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "template_cost_snapshots_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "template_with_costs"
+            referencedColumns: ["template_id"]
+          },
+        ]
+      }
       track_courses: {
         Row: {
           course_id: string
@@ -13540,6 +13639,62 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      template_cost_latest: {
+        Row: {
+          alt_credits: number | null
+          computed_at: string | null
+          cost_status: string | null
+          id: string | null
+          inputs: Json | null
+          institution_code: string | null
+          institutional_credits: number | null
+          plan_cost_usd: number | null
+          plan_weeks: number | null
+          source_description: string | null
+          template_id: string | null
+          total_credits: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "template_cost_snapshots_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "degree_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "template_cost_snapshots_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "template_with_costs"
+            referencedColumns: ["template_id"]
+          },
+        ]
+      }
+      template_with_costs: {
+        Row: {
+          alt_credits: number | null
+          baseline_computed_at: string | null
+          baseline_cost_usd: number | null
+          baseline_status: string | null
+          baseline_weeks: number | null
+          estimated_duration_months: number | null
+          institution_code: string | null
+          institutional_credits: number | null
+          legacy_estimated_cost: number | null
+          plan_computed_at: string | null
+          plan_cost_status: string | null
+          plan_cost_usd: number | null
+          plan_weeks: number | null
+          program_code: string | null
+          savings_pct: number | null
+          savings_usd: number | null
+          template_id: string | null
+          total_credits: number | null
+          track_type: string | null
+        }
+        Relationships: []
       }
       track_cri_history_v: {
         Row: {
