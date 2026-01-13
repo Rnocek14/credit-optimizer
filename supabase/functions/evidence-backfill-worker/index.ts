@@ -91,6 +91,7 @@ serve(async (req) => {
           processed: 0,
           found: 0,
           not_found: 0,
+          needs_review: 0,
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       );
@@ -110,6 +111,7 @@ serve(async (req) => {
       processed: 0,
       found: 0,
       not_found: 0,
+      needs_review: 0,
       errors: 0,
       details: [] as Array<{
         tuple: string;
@@ -161,9 +163,76 @@ serve(async (req) => {
         nextCheck.setDate(nextCheck.getDate() + 30); // Re-check in 30 days
 
         if (evidenceUrl && confidence >= 0.4) {
-          // Evidence found
+          // Evidence candidate found - but must verify rule exists before marking as found
           if (!dry_run) {
-            // Update job
+            // First, update credit_transfer_rules with evidence and check if row exists
+            const { data: updatedRows, error: updateError } = await supabase
+              .from('credit_transfer_rules')
+              .update({ evidence_url: evidenceUrl })
+              .eq('target_institution_norm', job.target_institution_norm)
+              .eq('source_institution_norm', job.source_institution_norm)
+              .eq('source_course_code_norm', job.source_course_code_norm)
+              .select('id');
+            
+            const count = updatedRows?.length ?? 0;
+            
+            if (updateError) {
+              console.error(`[evidence-backfill-worker] Update error for ${tupleKey}: ${updateError.message}`);
+              // Mark job as needs_review with error
+              await supabase
+                .from('evidence_jobs')
+                .update({
+                  status: 'needs_review',
+                  error_message: `Rule update failed: ${updateError.message}`,
+                  last_checked_at: now,
+                  check_count: job.check_count + 1,
+                  updated_at: now,
+                })
+                .eq('id', job.id);
+              
+              results.needs_review++;
+              results.details.push({
+                tuple: tupleKey,
+                status: 'needs_review',
+                error: `Rule update failed: ${updateError.message}`,
+              });
+              results.processed++;
+              continue;
+            }
+            
+            // CRITICAL: Check if update affected any rows
+            if (!count || count === 0) {
+              console.warn(`[evidence-backfill-worker] No rule matched tuple ${tupleKey} (update affected 0 rows)`);
+              // Mark job as needs_review - rule doesn't exist
+              await supabase
+                .from('evidence_jobs')
+                .update({
+                  status: 'needs_review',
+                  error_message: 'no_rule_matched',
+                  evidence_url: evidenceUrl,
+                  evidence_type: evidenceType,
+                  confidence,
+                  last_checked_at: now,
+                  check_count: job.check_count + 1,
+                  updated_at: now,
+                })
+                .eq('id', job.id);
+              
+              results.needs_review++;
+              results.details.push({
+                tuple: tupleKey,
+                status: 'needs_review',
+                error: 'no_rule_matched',
+                evidence_url: evidenceUrl,
+              });
+              results.processed++;
+              continue;
+            }
+            
+            // Success: Rule was updated
+            console.log(`[evidence-backfill-worker] ✓ Updated ${count} rule(s) for ${tupleKey}`);
+            
+            // Update job to found
             await supabase
               .from('evidence_jobs')
               .update({
@@ -177,22 +246,6 @@ serve(async (req) => {
                 updated_at: now,
               })
               .eq('id', job.id);
-
-            // Update credit_transfer_rules with evidence (jobs now store correct case)
-            const { error: updateError, count } = await supabase
-              .from('credit_transfer_rules')
-              .update({
-                evidence_url: evidenceUrl,
-              })
-              .eq('target_institution_norm', job.target_institution_norm)
-              .eq('source_institution_norm', job.source_institution_norm)
-              .eq('source_course_code_norm', job.source_course_code_norm);
-            
-            if (updateError) {
-              console.warn(`[evidence-backfill-worker] Update error for ${tupleKey}: ${updateError.message}`);
-            } else {
-              console.log(`[evidence-backfill-worker] Updated ${count ?? 'unknown'} rules for ${tupleKey}`);
-            }
           }
 
           results.found++;
@@ -247,10 +300,11 @@ serve(async (req) => {
           status: 'error',
           error: errorMsg,
         });
+        results.processed++;
       }
     }
 
-    console.log(`[evidence-backfill-worker] Complete: processed=${results.processed}, found=${results.found}, not_found=${results.not_found}, errors=${results.errors}`);
+    console.log(`[evidence-backfill-worker] Complete: processed=${results.processed}, found=${results.found}, not_found=${results.not_found}, needs_review=${results.needs_review}, errors=${results.errors}`);
 
     return new Response(
       JSON.stringify({
