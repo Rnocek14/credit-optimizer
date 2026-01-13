@@ -54,7 +54,7 @@ export function TemplateDetailDrawer({ template, open, onOpenChange }: TemplateD
         module.options?.forEach(option => {
           // Only count alt-credit options (skip institutional courses with null provider)
           if (option?.courseId && option.providerCode) {
-            const key = `${normalizeProviderCode(option.providerCode)}::${option.courseId}`;
+            const key = `${normalizeProviderCode(option.providerCode)}::${normalizeCourseCode(option.courseId)}`;
             if (!seen.has(key)) {
               seen.add(key);
               courses.push({
