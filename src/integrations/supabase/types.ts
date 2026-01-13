@@ -5265,6 +5265,87 @@ export type Database = {
           },
         ]
       }
+      institution_pricing_packs: {
+        Row: {
+          created_at: string
+          extraction_confidence: number | null
+          id: string
+          institution_code: string
+          pricing_data: Json
+          program_code: string | null
+          provenance_verified_at: string | null
+          source_url: string | null
+          status: string
+          updated_at: string
+          verified_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          extraction_confidence?: number | null
+          id?: string
+          institution_code: string
+          pricing_data?: Json
+          program_code?: string | null
+          provenance_verified_at?: string | null
+          source_url?: string | null
+          status?: string
+          updated_at?: string
+          verified_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          extraction_confidence?: number | null
+          id?: string
+          institution_code?: string
+          pricing_data?: Json
+          program_code?: string | null
+          provenance_verified_at?: string | null
+          source_url?: string | null
+          status?: string
+          updated_at?: string
+          verified_by?: string | null
+        }
+        Relationships: []
+      }
+      institution_pricing_sources: {
+        Row: {
+          content_hash: string | null
+          created_at: string
+          id: string
+          institution_code: string
+          last_checked_at: string | null
+          notes: string | null
+          source_type: string
+          status: string
+          updated_at: string
+          url: string
+        }
+        Insert: {
+          content_hash?: string | null
+          created_at?: string
+          id?: string
+          institution_code: string
+          last_checked_at?: string | null
+          notes?: string | null
+          source_type?: string
+          status?: string
+          updated_at?: string
+          url: string
+        }
+        Update: {
+          content_hash?: string | null
+          created_at?: string
+          id?: string
+          institution_code?: string
+          last_checked_at?: string | null
+          notes?: string | null
+          source_type?: string
+          status?: string
+          updated_at?: string
+          url?: string
+        }
+        Relationships: []
+      }
       institutions: {
         Row: {
           accreditation_level: string | null
@@ -10859,6 +10940,45 @@ export type Database = {
         }
         Relationships: []
       }
+      template_baseline_snapshots: {
+        Row: {
+          baseline_cost_usd: number
+          baseline_status: string
+          baseline_weeks: number
+          computed_at: string
+          id: string
+          inputs: Json
+          institution_code: string
+          program_code: string | null
+          source_description: string | null
+          template_id: string
+        }
+        Insert: {
+          baseline_cost_usd: number
+          baseline_status?: string
+          baseline_weeks: number
+          computed_at?: string
+          id?: string
+          inputs?: Json
+          institution_code: string
+          program_code?: string | null
+          source_description?: string | null
+          template_id: string
+        }
+        Update: {
+          baseline_cost_usd?: number
+          baseline_status?: string
+          baseline_weeks?: number
+          computed_at?: string
+          id?: string
+          inputs?: Json
+          institution_code?: string
+          program_code?: string | null
+          source_description?: string | null
+          template_id?: string
+        }
+        Relationships: []
+      }
       track_courses: {
         Row: {
           course_id: string
@@ -13572,6 +13692,20 @@ export type Database = {
           user_id_param: string
         }
         Returns: string
+      }
+      compute_baseline_from_pricing: {
+        Args: {
+          p_institution_code: string
+          p_program_code: string
+          p_template_id: string
+          p_total_credits?: number
+        }
+        Returns: {
+          baseline_cost_usd: number
+          baseline_weeks: number
+          inputs: Json
+          source_description: string
+        }[]
       }
       create_celebration_moment: {
         Args: {
