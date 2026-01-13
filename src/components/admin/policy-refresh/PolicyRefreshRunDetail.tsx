@@ -139,11 +139,15 @@ export function PolicyRefreshRunDetail({ runId, onReviewInstitution }: PolicyRef
   const filtered = institutions.filter((inst) => {
     if (filter === 'all') return true;
     if (filter === 'complete') return inst.status_norm === 'complete';
-    if (filter === 'blocked') return inst.pack?.blocked_reason;
+    if (filter === 'blocked') return inst.status_norm === 'blocked' || !!inst.pack?.blocked_reason;
     if (filter === 'failed') return inst.status_norm === 'failed';
     if (filter === 'queued') return inst.status_norm === 'queued' || inst.status_norm === 'running';
     return true;
   });
+  
+  // Derive blocked reason from pack or task (whichever is available)
+  const getBlockedReason = (inst: typeof institutions[0]) => 
+    inst.pack?.blocked_reason ?? (inst.status_norm === 'blocked' ? inst.reason : null);
 
   const getStatusIcon = (statusNorm: string, blockedReason: string | null) => {
     if (blockedReason) return <AlertTriangle className="h-4 w-4 text-yellow-500" />;
@@ -241,9 +245,9 @@ export function PolicyRefreshRunDetail({ runId, onReviewInstitution }: PolicyRef
                     )}
                   </div>
 
-                  {inst.pack?.blocked_reason && (
+                  {getBlockedReason(inst) && (
                     <div className="mt-1 text-xs text-yellow-600">
-                      Blocked: {inst.pack.blocked_reason}
+                      Blocked: {getBlockedReason(inst)}
                     </div>
                   )}
                 </div>
