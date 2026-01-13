@@ -122,14 +122,13 @@ export function PolicyRefreshRunDetail({ runId, onReviewInstitution }: PolicyRef
       queryClient.invalidateQueries({ queryKey: ['policy-diffs-count', runId] });
       queryClient.invalidateQueries({ queryKey: ['policy-refresh-runs'] });
       
-      // Generate templates after successful promotion, then invalidate
+      // Generate templates after successful promotion, then invalidate (use finally to avoid stale UI on error)
       if (institutionCode) {
-        generateTemplates.mutateAsync(institutionCode).then(() => {
-          // Invalidate after templates are generated - match useDegreeTemplates queryKey
+        generateTemplates.mutateAsync(institutionCode).finally(() => {
           queryClient.invalidateQueries({ 
             predicate: (query) => 
               Array.isArray(query.queryKey) && 
-              query.queryKey[0] === 'degreeTemplates' 
+              String(query.queryKey[0]).toLowerCase().includes('degree')
           });
         });
       }
