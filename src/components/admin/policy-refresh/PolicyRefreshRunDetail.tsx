@@ -211,17 +211,19 @@ export function PolicyRefreshRunDetail({ runId, onReviewInstitution }: PolicyRef
               No institutions match the filter
             </div>
           ) : (
-            filtered.map((inst) => (
+            filtered.map((inst) => {
+              const blockedReason = getBlockedReason(inst);
+              return (
               <div
                 key={inst.institution}
                 className={cn(
                   "p-4 rounded-lg border bg-card flex items-center gap-4",
-                  inst.pack?.blocked_reason && "border-yellow-500/30 bg-yellow-500/5"
+                  blockedReason && "border-yellow-500/30 bg-yellow-500/5"
                 )}
               >
                 {/* Status */}
                 <div className="flex-shrink-0">
-                  {getStatusIcon(inst.status_norm, inst.pack?.blocked_reason || null)}
+                  {getStatusIcon(inst.status_norm, blockedReason)}
                 </div>
 
                 {/* Institution info */}
@@ -240,14 +242,14 @@ export function PolicyRefreshRunDetail({ runId, onReviewInstitution }: PolicyRef
                     {inst.diffs > 0 && (
                       <span>{inst.diffs} diffs</span>
                     )}
-                    {inst.reason && (
+                    {inst.reason && !blockedReason && (
                       <span className="text-yellow-600">{inst.reason}</span>
                     )}
                   </div>
 
-                  {getBlockedReason(inst) && (
+                  {blockedReason && (
                     <div className="mt-1 text-xs text-yellow-600">
-                      Blocked: {getBlockedReason(inst)}
+                      Blocked: {blockedReason}
                     </div>
                   )}
                 </div>
@@ -292,7 +294,8 @@ export function PolicyRefreshRunDetail({ runId, onReviewInstitution }: PolicyRef
                   )}
                 </div>
               </div>
-            ))
+              );
+            })
           )}
         </div>
       </ScrollArea>
