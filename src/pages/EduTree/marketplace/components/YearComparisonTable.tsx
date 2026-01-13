@@ -94,8 +94,9 @@ export function YearComparisonTable({ template }: YearComparisonTableProps) {
       dollarSavings !== null && baselineCost > 0
         ? Math.round((dollarSavings / baselineCost) * 100)
         : null;
-    const weeksSaved = baselineWeeks > 0 && planWeeks > 0 ? baselineWeeks - planWeeks : null;
-    const monthsSaved = weeksSaved !== null ? Math.round(weeksSaved / 4.33) : null;
+    const weeksDiff = baselineWeeks > 0 && planWeeks > 0 ? baselineWeeks - planWeeks : null;
+    const monthsDiff = weeksDiff !== null ? Math.round(Math.abs(weeksDiff) / 4.33) : null;
+    const isFaster = weeksDiff !== null && weeksDiff > 0;
 
     // Get baseline label
     const baselineLabel = getBaselineLabel(baseline.source, template.anchorSchool);
@@ -138,7 +139,7 @@ export function YearComparisonTable({ template }: YearComparisonTableProps) {
             <div className="text-center">
               <div className="text-lg font-bold text-emerald-700 dark:text-emerald-400">
                 🎉 Save ${dollarSavings.toLocaleString()} ({percentSavings}%)
-                {monthsSaved !== null && monthsSaved > 0 && ` + ${monthsSaved} months faster`}
+                {monthsDiff !== null && monthsDiff > 0 && (isFaster ? ` + ${monthsDiff} months faster` : ` (${monthsDiff} months longer)`)}
               </div>
               <div className="text-xs text-muted-foreground mt-1">
                 Verified baseline from {baselineLabel}
