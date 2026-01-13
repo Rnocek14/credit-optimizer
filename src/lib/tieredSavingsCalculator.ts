@@ -113,8 +113,9 @@ export function calculateTieredSavings(
 ): TieredSavings | null {
   const baseline = template.singleSchoolBaseline;
   
-  // Guard: no baseline or invalid baseline
-  if (!baseline || baseline.costUsd <= 0) return null;
+  // Guard: no baseline or invalid baseline - NEVER fabricate savings
+  // A baseline under $1000 for a degree is clearly invalid data
+  if (!baseline || !baseline.costUsd || baseline.costUsd <= 1000) return null;
   
   const breakdown = computeTierBreakdown(tieredResults);
   

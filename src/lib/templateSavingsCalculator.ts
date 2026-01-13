@@ -44,12 +44,14 @@ export interface TemplateStrategySavings {
 export function calculateStrategySavings(
   template: MarketplaceDegreeTemplate
 ): TemplateStrategySavings | null {
+  // Guard: no baseline data available - NEVER fabricate savings
   if (!template.singleSchoolBaseline) return null;
   
   const baseline = template.singleSchoolBaseline;
   
-  // Guard: invalid baseline cost (0 or negative) → treat as no baseline
-  if (baseline.costUsd <= 0) return null;
+  // Guard: invalid baseline cost (0, negative, or unreasonably low) → treat as no baseline
+  // A baseline under $1000 for a degree is clearly invalid data
+  if (!baseline.costUsd || baseline.costUsd <= 1000) return null;
   
   const dollarSavings = baseline.costUsd - template.totals.costUsd;
   

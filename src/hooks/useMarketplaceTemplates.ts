@@ -209,11 +209,11 @@ function transformToMarketplaceTemplate(row: DegreeTemplateRow): MarketplaceDegr
       cri: 75,
       workloadHours: 15,
     },
-    singleSchoolBaseline: (templateData.singleSchoolBaseline as MarketplaceDegreeTemplate['singleSchoolBaseline']) || {
-      costUsd: row.estimated_cost ? row.estimated_cost * 1.5 : 15000,
-      weeks: (row.estimated_duration_months || 24) * 4.33 * 1.2,
-      source: `${row.institution_code} Direct`,
-    },
+    // IMPORTANT: Only use real baseline data - never fabricate savings
+    // If singleSchoolBaseline is missing, leave it null so UI hides savings display
+    singleSchoolBaseline: (templateData.singleSchoolBaseline as MarketplaceDegreeTemplate['singleSchoolBaseline']) || null,
+    // Set baseline status to prevent future regressions - only 'verified' shows savings
+    baselineStatus: templateData.singleSchoolBaseline ? 'verified' : 'missing',
   };
 }
 

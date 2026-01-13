@@ -439,6 +439,9 @@ async function generateTemplatesFromPack(
     };
 
     // Calculate estimated cost based on policy data
+    // NOTE: This is the STRATEGY cost (multi-school path), NOT the baseline single-school cost
+    // DO NOT add singleSchoolBaseline here with fabricated data!
+    // Baseline should only come from real tuition data in policy_packs or a dedicated pricing table
     const estimatedCost = Math.round(totalCredits * BASE_COST_PER_CREDIT * estimates.costMultiplier);
 
     const template = {
@@ -453,6 +456,8 @@ async function generateTemplatesFromPack(
       estimated_duration_months: estimates.durationMonths,
       catalog_year: '2024-2025',
       template_data: templateData,
+      // IMPORTANT: template_data.singleSchoolBaseline is intentionally NOT set
+      // The UI will show "Savings: —" until real tuition data is available
       notes: `${trackType === 'alt_max' ? 'Maximizes alt-credit usage' : 'Standard institutional path'} - Generated from policy pack ${packId.slice(0, 8)}`,
     };
 
