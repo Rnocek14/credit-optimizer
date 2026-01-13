@@ -23,6 +23,13 @@ interface SynthesizedEvent {
 
 const SCAN_EVENTS = ['scan_started', 'scan_completed', 'scan_failed'];
 
+// Safe date parser that returns 0 for invalid dates
+const safeTimestamp = (s?: string | null): number => {
+  if (!s) return 0;
+  const n = Date.parse(String(s));
+  return Number.isFinite(n) ? n : 0;
+};
+
 export function usePolicyTimeline(runId: string | null, institution: string | null) {
   // Fetch explicit events from policy_pack_events
   const { data: events, isLoading: eventsLoading } = useQuery({
@@ -109,7 +116,7 @@ export function usePolicyTimeline(runId: string | null, institution: string | nu
         .select('id, details, created_at')
         .eq('institution', institution)
         .order('created_at', { ascending: false })
-        .limit(3); // Reduced to only most recent findings
+        .limit(3);
       if (error) return [];
       return data || [];
     },
@@ -138,14 +145,15 @@ export function usePolicyTimeline(runId: string | null, institution: string | nu
     eventsLoading || taskLoading || packLoading || diffsLoading || findingsLoading || overridesLoading
   );
 
-  // Helper: check if explicit event exists
-  const hasExplicitEvent = (eventType: string, packId?: string) => {
+  // Flexible helper: check if explicit event exists with optional predicate
+  const hasExplicit = (
+    eventType: string, 
+    pred?: (e: PolicyEvent) => boolean
+  ): boolean => {
     if (!events) return false;
-    return events.some(e => {
-      if (e.event_type !== eventType) return false;
-      if (packId && e.pack_id !== packId) return false;
-      return true;
-    });
+    return events.some(e => 
+      e.event_type === eventType && (!pred || pred(e))
+    );
   };
 
   // Helper: check if any scan event exists
@@ -196,7 +204,7 @@ export function usePolicyTimeline(runId: string | null, institution: string | nu
   }
 
   // Synthesize pack created event (check by pack_id)
-  if (pack && !hasExplicitEvent('merge_created', pack.id)) {
+  if (pack && !hasExplicit('merge_created', e => e.pack_id === pack.id)) {
     timeline.push({
       id: `pack-created-${pack.id}`,
       created_at: pack.created_at,
@@ -212,11 +220,11 @@ export function usePolicyTimeline(runId: string | null, institution: string | nu
     });
   }
 
-  // Synthesize diffs written event (only if no explicit event)
-  if (diffs && diffs.length > 0 && !hasExplicitEvent('diffs_written')) {
+  // Synthesize diffs written event (only when runId exists to ensure proper scoping)
+  if (runId && diffs && diffs.length > 0 && !hasExplicit('diffs_written')) {
     // Get best timestamp: first diff's created_at, or task.completed_at, or pack.created_at
     const diffTimestamp = 
-      (diffs[0]?.created_at) || 
+      diffs[0]?.created_at || 
       task?.completed_at || 
       pack?.created_at || 
       new Date().toISOString();
@@ -239,45 +247,63 @@ export function usePolicyTimeline(runId: string | null, institution: string | nu
     });
   }
 
-  // Synthesize conflict events from findings
+  // Synthesize conflict events from findings (with duplicate protection)
   findings?.forEach((f) => {
     const details = f.details as { has_conflicts?: boolean; conflicts?: Array<{ field: string }> } | null;
     if (details?.has_conflicts && details?.conflicts?.length) {
-      timeline.push({
-        id: `conflict-${f.id}`,
-        created_at: f.created_at,
-        event_type: 'conflict_detected',
-        source: 'finding',
-        payload: {
-          conflict_count: details.conflicts.length,
-          conflicts: details.conflicts,
-        },
-      });
+      // Check if explicit event already exists for this finding
+      const hasExplicitConflict = hasExplicit(
+        'conflict_detected', 
+        e => (e.payload as Record<string, unknown>)?.finding_id === f.id
+      );
+      
+      if (!hasExplicitConflict) {
+        timeline.push({
+          id: `conflict-${f.id}`,
+          created_at: f.created_at,
+          event_type: 'conflict_detected',
+          source: 'finding',
+          payload: {
+            finding_id: f.id,
+            conflict_count: details.conflicts.length,
+            conflicts: details.conflicts,
+          },
+        });
+      }
     }
   });
 
-  // Synthesize override events
+  // Synthesize override events (with duplicate protection)
   overrides?.forEach((o) => {
     if (o.resolved_at) {
-      timeline.push({
-        id: `override-${o.id}`,
-        created_at: o.resolved_at,
-        event_type: 'override_set',
-        source: 'override',
-        actor_user_id: o.resolved_by,
-        payload: {
-          field_name: o.field_name,
-          override_value: o.override_value,
-          citation_url: o.citation_url,
-          note: o.note,
-        },
-      });
+      // Check if explicit event already exists for this override
+      const hasExplicitOverride = hasExplicit(
+        'override_set',
+        e => (e.payload as Record<string, unknown>)?.override_id === o.id
+      );
+
+      if (!hasExplicitOverride) {
+        timeline.push({
+          id: `override-${o.id}`,
+          created_at: o.resolved_at,
+          event_type: 'override_set',
+          source: 'override',
+          actor_user_id: o.resolved_by,
+          payload: {
+            override_id: o.id,
+            field_name: o.field_name,
+            override_value: o.override_value,
+            citation_url: o.citation_url,
+            note: o.note,
+          },
+        });
+      }
     }
   });
 
-  // Sort by created_at descending with stable tiebreaker
+  // Sort by created_at descending with NaN-safe parsing and stable tiebreaker
   timeline.sort((a, b) => {
-    const timeDiff = new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    const timeDiff = safeTimestamp(b.created_at) - safeTimestamp(a.created_at);
     if (timeDiff !== 0) return timeDiff;
     return a.id.localeCompare(b.id);
   });
