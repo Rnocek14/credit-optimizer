@@ -215,6 +215,8 @@ serve(async (req) => {
               })
               .eq('id', job.id);
           }
+          results.processed++;
+          results.needs_review++;
           results.details.push({
             tuple: tupleKey,
             status: 'needs_review',
