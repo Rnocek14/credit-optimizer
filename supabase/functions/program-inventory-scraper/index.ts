@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.56.0?target=deno';
+import OpenAI from 'https://esm.sh/openai@4.20.1';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -212,10 +213,12 @@ async function extractProgramsWithAI(
   markdown: string,
   baseUrl: string
 ): Promise<ExtractedProgram[]> {
-  const apiKey = Deno.env.get('LOVABLE_API_KEY');
+  const apiKey = Deno.env.get('OPENAI_API_KEY');
   if (!apiKey) {
-    throw new Error('LOVABLE_API_KEY not configured');
+    throw new Error('OPENAI_API_KEY not configured');
   }
+
+  const openai = new OpenAI({ apiKey });
 
   // Truncate if too long
   const maxChars = 100000;
@@ -223,36 +226,22 @@ async function extractProgramsWithAI(
     ? markdown.slice(0, maxChars) + '\n\n[Content truncated...]'
     : markdown;
 
-  console.log(`Extracting programs from ${truncatedContent.length} chars of content`);
+  console.log(`Extracting programs from ${truncatedContent.length} chars of content using OpenAI`);
 
-  const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: 'google/gemini-3-flash-preview',
-      messages: [
-        { role: 'system', content: SYSTEM_PROMPT },
-        { role: 'user', content: `Extract all bachelor's degree programs from this university catalog page:\n\nBase URL: ${baseUrl}\n\n${truncatedContent}` }
-      ],
-      tools: [EXTRACTION_TOOL],
-      tool_choice: { type: 'function', function: { name: 'extract_programs' } }
-    }),
+  const response = await openai.chat.completions.create({
+    model: 'gpt-4o',
+    max_tokens: 8000,
+    messages: [
+      { role: 'system', content: SYSTEM_PROMPT },
+      { role: 'user', content: `Extract all bachelor's degree programs from this university catalog page:\n\nBase URL: ${baseUrl}\n\n${truncatedContent}` }
+    ],
+    tools: [EXTRACTION_TOOL],
+    tool_choice: { type: 'function', function: { name: 'extract_programs' } }
   });
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error('AI extraction error:', response.status, errorText);
-    throw new Error(`AI extraction failed: ${response.status}`);
-  }
-
-  const data = await response.json();
-  
-  const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
+  const toolCall = response.choices?.[0]?.message?.tool_calls?.[0];
   if (!toolCall || toolCall.function.name !== 'extract_programs') {
-    console.error('No tool call in response:', JSON.stringify(data));
+    console.error('No tool call in response:', JSON.stringify(response));
     throw new Error('AI did not return expected tool call');
   }
 
