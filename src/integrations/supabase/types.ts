@@ -3702,12 +3702,15 @@ export type Database = {
           rule_source: string | null
           rule_type: string | null
           source_course_code: string | null
+          source_course_code_norm: string | null
           source_institution: string
+          source_institution_norm: string | null
           status: string | null
           success_count: number | null
           superseded_by: string | null
           target_course_code: string | null
           target_institution: string
+          target_institution_norm: string | null
           verification_source: string | null
           verified_at: string | null
         }
@@ -3737,12 +3740,15 @@ export type Database = {
           rule_source?: string | null
           rule_type?: string | null
           source_course_code?: string | null
+          source_course_code_norm?: string | null
           source_institution: string
+          source_institution_norm?: string | null
           status?: string | null
           success_count?: number | null
           superseded_by?: string | null
           target_course_code?: string | null
           target_institution: string
+          target_institution_norm?: string | null
           verification_source?: string | null
           verified_at?: string | null
         }
@@ -3772,12 +3778,15 @@ export type Database = {
           rule_source?: string | null
           rule_type?: string | null
           source_course_code?: string | null
+          source_course_code_norm?: string | null
           source_institution?: string
+          source_institution_norm?: string | null
           status?: string | null
           success_count?: number | null
           superseded_by?: string | null
           target_course_code?: string | null
           target_institution?: string
+          target_institution_norm?: string | null
           verification_source?: string | null
           verified_at?: string | null
         }
