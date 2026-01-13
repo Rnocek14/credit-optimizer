@@ -6,8 +6,9 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowUpCircle, ExternalLink, CheckCircle, AlertTriangle } from 'lucide-react';
+import { ArrowUpCircle, ExternalLink, CheckCircle, AlertTriangle, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { PolicyTimelineTab } from './PolicyTimelineTab';
 
 interface InstitutionReviewDrawerProps {
   open: boolean;
@@ -240,13 +241,17 @@ export function InstitutionReviewDrawer({ open, onClose, runId, institution }: I
         </SheetHeader>
 
         <Tabs defaultValue="summary" className="mt-4">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="summary">Summary</TabsTrigger>
             <TabsTrigger value="diffs">
               Diffs {diffs && diffs.length > 0 && `(${diffs.length})`}
             </TabsTrigger>
             <TabsTrigger value="conflicts">
               Conflicts {latestConflicts.length > 0 && `(${latestConflicts.length})`}
+            </TabsTrigger>
+            <TabsTrigger value="timeline" className="flex items-center gap-1">
+              <Clock className="h-3 w-3" />
+              Timeline
             </TabsTrigger>
           </TabsList>
 
@@ -423,6 +428,11 @@ export function InstitutionReviewDrawer({ open, onClose, runId, institution }: I
                 </div>
               )}
             </ScrollArea>
+          </TabsContent>
+
+          {/* Timeline Tab */}
+          <TabsContent value="timeline" className="mt-4">
+            <PolicyTimelineTab runId={runId} institution={institution} />
           </TabsContent>
         </Tabs>
       </SheetContent>
