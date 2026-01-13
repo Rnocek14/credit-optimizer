@@ -106,6 +106,7 @@ export interface YearTemplate {
     options: MarketplaceOption[];
     recommendedCourseId?: string;
     targetCanonicalIds: CanonicalId[];
+    isCapLimited?: boolean; // True when slot was flipped from alt-credit to institutional due to cap
   }>;
   
   targetSchool?: string;
