@@ -155,8 +155,8 @@ export function normalizeCourseCode(code: string): string {
     console.debug('[CourseAlias] %s -> %s', upper, canonical);
   }
   
-  // Return alias if found, otherwise uppercase for stable keys
-  return canonical ?? upper;
+  // Return alias if found, otherwise preserve original case for case-sensitive DB matching
+  return canonical ?? code;
 }
 
 /**
