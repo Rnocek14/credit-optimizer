@@ -161,19 +161,67 @@ serve(async (req) => {
         // ============= UPDATE JOB STATUS =============
         const now = new Date().toISOString();
         
-        // Exponential backoff for re-checks: 30d → 60d → 120d → 180d (cap)
+        // Allowed evidence types (must match DB constraint)
+        const allowedEvidenceTypes = new Set([
+          'equivalency_page',
+          'catalog_page', 
+          'policy_provider_acceptance',
+          'catalog_statement',
+          'course_specific',
+          'equivalency_table',
+          'other_official',
+          'manual',
+        ]);
+        
+        // Refresh cadence by evidence type (days)
+        const refreshDaysByType: Record<string, number> = {
+          equivalency_page: 60,
+          policy_provider_acceptance: 60,
+          catalog_page: 90,
+          catalog_statement: 90,
+          course_specific: 180,
+          equivalency_table: 90,
+          other_official: 120,
+          manual: 365,
+        };
+        
+        // Exponential backoff for re-checks: 30 → 60 → 120 → 180 (cap)
+        // checkCount: 0/1 → 30d, 2 → 60d, 3 → 120d, 4+ → 180d
         const getNextCheckDays = (checkCount: number, status: string): number => {
           if (status === 'found') {
-            // Found jobs: refresh periodically based on evidence type
-            return evidenceType === 'equivalency_page' ? 60 : 90;
+            return refreshDaysByType[evidenceType ?? 'catalog_page'] ?? 90;
           }
-          // not_found: exponential backoff to avoid hammering
-          const backoffDays = Math.min(30 * Math.pow(2, checkCount), 180);
+          // not_found: exponential backoff (use max(checkCount-1, 0) to get exact ladder)
+          const backoffDays = Math.min(30 * Math.pow(2, Math.max(checkCount - 1, 0)), 180);
           return backoffDays;
         };
         
         const nextCheck = new Date();
         nextCheck.setDate(nextCheck.getDate() + getNextCheckDays(job.check_count, evidenceUrl ? 'found' : 'not_found'));
+        
+        // Guard: ensure evidence_type is valid before DB update
+        if (evidenceUrl && evidenceType && !allowedEvidenceTypes.has(evidenceType)) {
+          console.warn(`[evidence-backfill-worker] Invalid evidence_type "${evidenceType}" for ${tupleKey}, marking needs_review`);
+          if (!dry_run) {
+            await supabase
+              .from('evidence_jobs')
+              .update({
+                status: 'needs_review',
+                error_message: `invalid_evidence_type: ${evidenceType}`,
+                last_checked_at: now,
+                next_check_at: nextCheck.toISOString(),
+                check_count: job.check_count + 1,
+                updated_at: now,
+              })
+              .eq('id', job.id);
+          }
+          results.details.push({
+            tuple: tupleKey,
+            status: 'needs_review',
+            error: `invalid_evidence_type: ${evidenceType}`,
+          });
+          continue;
+        }
 
         if (evidenceUrl && confidence >= 0.4) {
           // Evidence candidate found - but must verify rule exists before marking as found
