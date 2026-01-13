@@ -4979,6 +4979,65 @@ export type Database = {
           },
         ]
       }
+      ground_truth_overrides: {
+        Row: {
+          academic_year: string | null
+          citation_url: string | null
+          created_at: string
+          field_name: string
+          id: string
+          institution: string
+          note: string | null
+          original_candidates: Json | null
+          override_value: Json
+          pack_scope: string | null
+          resolved_at: string
+          resolved_by: string | null
+          source_run_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          academic_year?: string | null
+          citation_url?: string | null
+          created_at?: string
+          field_name: string
+          id?: string
+          institution: string
+          note?: string | null
+          original_candidates?: Json | null
+          override_value: Json
+          pack_scope?: string | null
+          resolved_at?: string
+          resolved_by?: string | null
+          source_run_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          academic_year?: string | null
+          citation_url?: string | null
+          created_at?: string
+          field_name?: string
+          id?: string
+          institution?: string
+          note?: string | null
+          original_candidates?: Json | null
+          override_value?: Json
+          pack_scope?: string | null
+          resolved_at?: string
+          resolved_by?: string | null
+          source_run_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ground_truth_overrides_resolved_by_fkey"
+            columns: ["resolved_by"]
+            isOneToOne: false
+            referencedRelation: "v_transcript_health"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
       institution_credit_limits: {
         Row: {
           created_at: string | null
@@ -13370,7 +13429,7 @@ export type Database = {
       }
     }
     Functions: {
-      activate_policy_pack: { Args: { new_pack_id: string }; Returns: boolean }
+      activate_policy_pack: { Args: { p_pack_id: string }; Returns: Json }
       after_maya_analysis_increment_quota: { Args: never; Returns: undefined }
       award_xp: {
         Args: {
