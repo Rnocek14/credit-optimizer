@@ -9190,6 +9190,65 @@ export type Database = {
           },
         ]
       }
+      program_templates: {
+        Row: {
+          created_at: string
+          generated_at: string
+          generation_time_ms: number | null
+          id: string
+          institution_code: string
+          model: string
+          program_catalog_id: string
+          program_slug: string
+          prompt_version: string
+          source_snapshot: Json | null
+          template_json: Json
+          tokens_used: number | null
+          track: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          generated_at?: string
+          generation_time_ms?: number | null
+          id?: string
+          institution_code: string
+          model?: string
+          program_catalog_id: string
+          program_slug: string
+          prompt_version?: string
+          source_snapshot?: Json | null
+          template_json: Json
+          tokens_used?: number | null
+          track: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          generated_at?: string
+          generation_time_ms?: number | null
+          id?: string
+          institution_code?: string
+          model?: string
+          program_catalog_id?: string
+          program_slug?: string
+          prompt_version?: string
+          source_snapshot?: Json | null
+          template_json?: Json
+          tokens_used?: number | null
+          track?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "program_templates_program_catalog_id_fkey"
+            columns: ["program_catalog_id"]
+            isOneToOne: false
+            referencedRelation: "program_catalog"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       project_skills: {
         Row: {
           created_at: string | null
@@ -11582,14 +11641,19 @@ export type Database = {
       }
       template_generation_queue: {
         Row: {
+          attempt_count: number | null
           attempts: number | null
           blocked_reasons: string[] | null
+          completed_at: string | null
           created_at: string | null
           desired_tracks: string[] | null
           eligibility_status: Database["public"]["Enums"]["template_eligibility_status"]
+          error_code: string | null
           error_message: string | null
           id: string
           last_attempt_at: string | null
+          locked_at: string | null
+          locked_by: string | null
           next_attempt_at: string | null
           priority_score: number | null
           program_catalog_id: string
@@ -11598,14 +11662,19 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          attempt_count?: number | null
           attempts?: number | null
           blocked_reasons?: string[] | null
+          completed_at?: string | null
           created_at?: string | null
           desired_tracks?: string[] | null
           eligibility_status?: Database["public"]["Enums"]["template_eligibility_status"]
+          error_code?: string | null
           error_message?: string | null
           id?: string
           last_attempt_at?: string | null
+          locked_at?: string | null
+          locked_by?: string | null
           next_attempt_at?: string | null
           priority_score?: number | null
           program_catalog_id: string
@@ -11614,14 +11683,19 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          attempt_count?: number | null
           attempts?: number | null
           blocked_reasons?: string[] | null
+          completed_at?: string | null
           created_at?: string | null
           desired_tracks?: string[] | null
           eligibility_status?: Database["public"]["Enums"]["template_eligibility_status"]
+          error_code?: string | null
           error_message?: string | null
           id?: string
           last_attempt_at?: string | null
+          locked_at?: string | null
+          locked_by?: string | null
           next_attempt_at?: string | null
           priority_score?: number | null
           program_catalog_id?: string
