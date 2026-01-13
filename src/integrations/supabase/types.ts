@@ -8105,6 +8105,61 @@ export type Database = {
           },
         ]
       }
+      policy_pack_events: {
+        Row: {
+          actor_user_id: string | null
+          created_at: string
+          event_type: string
+          id: string
+          institution: string
+          pack_id: string | null
+          payload: Json | null
+          run_id: string | null
+        }
+        Insert: {
+          actor_user_id?: string | null
+          created_at?: string
+          event_type: string
+          id?: string
+          institution: string
+          pack_id?: string | null
+          payload?: Json | null
+          run_id?: string | null
+        }
+        Update: {
+          actor_user_id?: string | null
+          created_at?: string
+          event_type?: string
+          id?: string
+          institution?: string
+          pack_id?: string | null
+          payload?: Json | null
+          run_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "policy_pack_events_actor_user_id_fkey"
+            columns: ["actor_user_id"]
+            isOneToOne: false
+            referencedRelation: "v_transcript_health"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "policy_pack_events_pack_id_fkey"
+            columns: ["pack_id"]
+            isOneToOne: false
+            referencedRelation: "institution_policy_packs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "policy_pack_events_pack_id_fkey"
+            columns: ["pack_id"]
+            isOneToOne: false
+            referencedRelation: "institution_policy_packs_live"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       policy_refresh_diffs: {
         Row: {
           action: string | null
