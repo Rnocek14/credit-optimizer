@@ -38,17 +38,42 @@ serve(async (req) => {
       p_stale_threshold_minutes: 10,
     });
 
-    // Get health check to determine which institution to process
+    // Get health check to determine state
     const { data: health } = await supabase.rpc('check_template_generation_health');
 
     const queueByInstitution = health?.queue_by_institution || {};
+    const processingByInstitution = health?.processing_by_institution || {};
+    const staleProcessingCount = health?.stale_processing_count || 0;
 
-    // Find first institution with queued jobs
+    // If we just reaped stale jobs, skip this tick to let the system stabilize
+    if (reapResult?.reaped_count > 0) {
+      console.log(`Reaped ${reapResult.reaped_count} stale jobs, skipping generation this tick`);
+      return new Response(
+        JSON.stringify({
+          success: true,
+          action: 'reaped_only',
+          message: `Reaped ${reapResult.reaped_count} stale processing jobs`,
+          health,
+          reap_result: reapResult,
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Find first institution with queued jobs AND no active processing
     let targetInstitution: string | null = null;
     let queuedCount = 0;
 
     for (const inst of INSTITUTION_ORDER) {
       const instStatus = queueByInstitution[inst];
+      const processingCount = processingByInstitution[inst] || 0;
+      
+      // Skip if already processing for this institution (avoid contention)
+      if (processingCount > 0) {
+        console.log(`Skipping ${inst} - ${processingCount} jobs currently processing`);
+        continue;
+      }
+      
       if (instStatus?.queued > 0) {
         targetInstitution = inst;
         queuedCount = instStatus.queued;
@@ -57,11 +82,28 @@ serve(async (req) => {
     }
 
     if (!targetInstitution) {
+      // Check if any processing is happening
+      const totalProcessing = Object.values(processingByInstitution).reduce((a: number, b: any) => a + (b || 0), 0);
+      
+      if (totalProcessing > 0) {
+        console.log(`No queued jobs available, ${totalProcessing} jobs still processing`);
+        return new Response(
+          JSON.stringify({
+            success: true,
+            action: 'waiting',
+            message: `Waiting for ${totalProcessing} processing jobs to complete`,
+            health,
+            reap_result: reapResult,
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
       console.log('No queued jobs remaining for any institution');
       return new Response(
         JSON.stringify({
           success: true,
-          action: 'none',
+          action: 'complete',
           message: 'All institutions complete',
           health,
           reap_result: reapResult,
