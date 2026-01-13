@@ -153,6 +153,8 @@ interface MergeResult {
   sources_used: string[];
   field_provenance: FieldProvenance;
   trust_tier: 'verified' | 'partial' | 'unverified';
+  blocked_reason?: string | null;  // Phase C: promotion gating
+  stale_marked?: boolean;          // Phase C: whether active was marked stale
 }
 
 // Per-field provenance tracking
@@ -1418,6 +1420,8 @@ Deno.serve(async (req) => {
 
     // Create merged policy pack in database with provenance tracking
     let policyPackId: string | null = null;
+    let blocked_reason: string | null = null;  // Phase C: promotion gating
+    let isBlocked = false;  // Phase C: whether pack is blocked
     if (mergedPack) {
       // Build flat policy_data structure that trigger expects
       const policyData = {
@@ -1779,24 +1783,50 @@ Deno.serve(async (req) => {
       // Use earlyDiffsWritten for the count
       const diffsWritten = earlyDiffsWritten;
 
+      // === PHASE C: COMPUTE BLOCKED_REASON ===
+      // Deterministic machine-stable blocked reasons for promotion gating
+      const conflicts = mergeResult.conflicts || [];
+      const hasUnresolvedConflicts = conflicts.length > 0;
+      const confidenceThreshold = 0.80;
+      const isLowConfidence = totalScore < confidenceThreshold;
+      const missingProvenanceUrl = !canonicalProvenanceUrl;
+      const isProgramScopedPack = packScope === 'program';
+      
+      // Compute blocked_reason (first matching rule wins)
+      let blocked_reason: string | null = null;
+      if (isLowConfidence) {
+        blocked_reason = 'confidence_below_threshold';
+      } else if (hasUnresolvedConflicts) {
+        blocked_reason = 'unresolved_conflicts';
+      } else if (missingProvenanceUrl) {
+        blocked_reason = 'missing_provenance_url';
+      } else if (isProgramScopedPack) {
+        blocked_reason = 'program_scoped_policy';
+      }
+      
+      const isBlocked = blocked_reason !== null;
+      
+      console.log(`[merge] Phase C gate: blocked=${isBlocked}, reason=${blocked_reason}, score=${totalScore}, conflicts=${conflicts.length}`);
+      
       const { data: packData, error: policyError } = await supabase
         .from('institution_policy_packs')
         .insert({
           institution,
           academic_year: mergedPack.academic_year,
           degree_level: 'undergraduate',
-          pack_scope: packScope, // Guardrail B: explicit scope prevents WGU-style false coverage
-          policy_json: mergedPack,  // Keep for back-compat / full structure
-          policy_data: policyData,  // NEW: flat structure for trigger
+          pack_scope: packScope,
+          policy_json: mergedPack,
+          policy_data: policyData,
           confidence_score: totalScore,
           last_verified_at: new Date().toISOString(),
           verification_source: 'transfer-scraper-merge',
           status: 'draft',  // ALWAYS draft - GATE -1 compliance
           effective_start: mergedPack.policy_effective_dates?.effective_start,
           merged_from_job_ids: scrape_job_ids,
-          field_provenance: flatProvenance, // Flat keys for trigger
-          provenance_url: canonicalProvenanceUrl, // NEW: canonical source URL
-          last_run_id: run_id || null, // Track which run created this pack
+          field_provenance: flatProvenance,
+          provenance_url: canonicalProvenanceUrl,
+          last_run_id: run_id || null,
+          blocked_reason: blocked_reason, // Phase C: store block reason
         })
         .select('id')
         .single();
@@ -1805,7 +1835,22 @@ Deno.serve(async (req) => {
         console.error('[merge] Error creating policy pack:', policyError);
       } else {
         policyPackId = packData.id;
-        notes.push(`Created merged policy pack: ${packData.id}${diffsWritten > 0 ? ` (${diffsWritten} diffs written)` : ''}`);
+        notes.push(`Created merged policy pack: ${packData.id}${diffsWritten > 0 ? ` (${diffsWritten} diffs written)` : ''}${blocked_reason ? ` [BLOCKED: ${blocked_reason}]` : ''}`);
+
+        // === PHASE C: MARK ACTIVE PACK AS STALE IF BLOCKED ===
+        if (isBlocked) {
+          const { error: staleError } = await supabase
+            .from('institution_policy_packs')
+            .update({ stale: true })
+            .eq('institution', institution)
+            .eq('status', 'active');
+          
+          if (staleError) {
+            console.error('[merge] Error marking active pack stale:', staleError);
+          } else {
+            notes.push(`Marked active pack(s) as stale due to blocked draft`);
+          }
+        }
 
         // Log merge audit for bulletproof provenance trail
         const { error: auditError } = await supabase
@@ -1894,6 +1939,8 @@ Deno.serve(async (req) => {
       sources_used: sources,
       field_provenance: fieldProvenance,
       trust_tier: trustTier,
+      blocked_reason: blocked_reason ?? null, // Phase C: promotion gating
+      stale_marked: isBlocked, // Phase C: whether active was marked stale
     };
 
     console.log(`[merge] Complete: score=${totalScore}, action=${action}, trust=${trustTier}, overrides=${fieldsOverridden}`);

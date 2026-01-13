@@ -520,6 +520,10 @@ Deno.serve(async (req) => {
     if (failed === templates.length || (orderedJobIds.length === 0 && templates.length > 0)) {
       taskStatus = 'failed';
       taskReason = 'All URLs failed to process';
+    } else if (mergeResult?.blocked_reason) {
+      // Phase C: Use blocked_reason from merge for deterministic gating
+      taskStatus = 'blocked';
+      taskReason = `Pack blocked: ${mergeResult.blocked_reason}`;
     } else if (mergeResult?.action === 'hold') {
       taskStatus = 'blocked';
       taskReason = 'Merge action is hold - requires review';
