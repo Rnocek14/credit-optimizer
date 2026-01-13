@@ -91,6 +91,9 @@ export interface ModuleData {
   
   // Phase 1: Dynamic module provider support
   requirementArea?: string; // For template-based modules (e.g., "WRITTEN_COMM")
+  
+  // Cap-limited: true when slot was flipped from alt-credit to institutional due to cap
+  isCapLimited?: boolean;
 }
 
 export interface Requirement {
