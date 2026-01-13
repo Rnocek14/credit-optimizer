@@ -183,7 +183,9 @@ export function useAltOptionsForSlots({
         const area = row.requirement_area;
         if (!area || !result[area]) continue;
         
-        const altCredit = row.alt_credits as unknown as {
+        // Guard against array returns (rare but possible if FK config is off)
+        const rawAltCredit = row.alt_credits;
+        const altCredit = (Array.isArray(rawAltCredit) ? rawAltCredit[0] : rawAltCredit) as {
           id: string;
           source_code: string;
           identifier: string;
@@ -192,7 +194,9 @@ export function useAltOptionsForSlots({
           duration_estimate_weeks: number | null;
           exam_based: boolean | null;
           provider_url: string | null;
-        };
+        } | undefined;
+        
+        if (!altCredit) continue;
         
         result[area].push({
           id: row.id,

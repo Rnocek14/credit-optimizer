@@ -19,8 +19,10 @@ import { ProviderBadge } from './ProviderBadge';
 import { TransferStatusBadge } from './TransferStatusBadge';
 import { TransferCoveragePanel } from './TransferCoveragePanel';
 import { YearComparisonTable } from './YearComparisonTable';
+import { SlotAltOptions } from './SlotAltOptions';
 import { PreApprovalEmailModal } from '@/components/transfer/PreApprovalEmailModal';
 import { useTransferVerification } from '../hooks/useTransferVerification';
+import { useAltOptionsForSlots, type AltCreditOption } from '@/hooks/useAltOptionsForRequirementArea';
 import { computeTransferCoverage } from '@/lib/transferCoverage';
 import { normalizeProviderCode } from '@/lib/providerNormalization';
 import { DollarSign, Clock, BookOpen, GitCompareArrows, List, Mail } from 'lucide-react';
@@ -234,7 +236,7 @@ export function TemplateDetailDrawer({ template, open, onOpenChange }: TemplateD
   );
 }
 
-// Extracted course breakdown component
+// Extracted course breakdown component with alt-credit options
 function CourseBreakdown({ 
   template, 
   transferStatusMap 
@@ -242,6 +244,25 @@ function CourseBreakdown({
   template: MarketplaceDegreeTemplate; 
   transferStatusMap: Map<string, any>;
 }) {
+  // Collect all unique requirement areas from module targetCanonicalIds
+  const requirementAreas = useMemo(() => {
+    const areas = new Set<string>();
+    template.yearTemplates?.forEach(year => {
+      year.moduleTemplates?.forEach(module => {
+        // targetCanonicalIds contains the requirement area(s) for this slot
+        module.targetCanonicalIds?.forEach(id => areas.add(id));
+      });
+    });
+    return Array.from(areas);
+  }, [template.yearTemplates]);
+
+  // Batch fetch alt options for all requirement areas
+  const { data: altOptionsByArea } = useAltOptionsForSlots({
+    institutionCode: template.anchorSchool,
+    requirementAreas,
+    enabled: requirementAreas.length > 0,
+  });
+
   return (
     <div className="space-y-6">
       {template.yearTemplates?.map((year, yearIdx) => (
@@ -263,6 +284,12 @@ function CourseBreakdown({
               // Use normalized provider code for map lookup (matches how we stored it)
               const transferKey = `${normalizeProviderCode(option.providerCode || '')}:${option.courseId}`;
               const transferStatus = transferStatusMap.get(transferKey);
+
+              // Get alt options for this slot's requirement area
+              const primaryReqArea = module.targetCanonicalIds?.[0];
+              const slotAltOptions = primaryReqArea && altOptionsByArea 
+                ? (altOptionsByArea[primaryReqArea] || [])
+                : [];
 
               return (
                 <div 
@@ -310,6 +337,11 @@ function CourseBreakdown({
                       </span>
                     )}
                   </div>
+
+                  {/* Alt Credit Options for this slot */}
+                  {slotAltOptions.length > 0 && (
+                    <SlotAltOptions options={slotAltOptions} maxVisible={3} />
+                  )}
                 </div>
               );
             })}
