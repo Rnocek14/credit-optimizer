@@ -7,8 +7,10 @@ const corsHeaders = {
 };
 
 // Configuration
-const MAX_RUNTIME_MS = 25000; // Exit cleanly before 30s timeout
-const BATCH_SIZE = 3; // Jobs per invocation
+const MAX_RUNTIME_MS = 55000; // Total worker runtime limit (before 60s timeout)
+const OPENAI_TIMEOUT_MS = 45000; // Per-request timeout for OpenAI
+const MIN_TIME_FOR_NEW_JOB = 10000; // Don't start new job if less than this remaining
+const DEFAULT_BATCH_SIZE = 3;
 const MAX_ATTEMPTS = 3;
 
 interface QueueJob {
@@ -31,13 +33,23 @@ interface ProgramCatalog {
   catalog_url: string | null;
 }
 
-interface GenerationResult {
+interface TrackResult {
   success: boolean;
   track: string;
+  template_written: boolean;
   error_code?: string;
   error_message?: string;
   tokens_used?: number;
   generation_time_ms?: number;
+}
+
+interface JobResult {
+  job_id: string;
+  program_slug: string;
+  tracks_requested: number;
+  tracks_written: number;
+  tracks_failed: number;
+  tracks: TrackResult[];
 }
 
 serve(async (req) => {
@@ -45,7 +57,7 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  const startTime = Date.now();
+  const workerStartTime = Date.now();
   const workerId = `worker-${crypto.randomUUID().slice(0, 8)}`;
 
   const supabase = createClient(
@@ -64,89 +76,58 @@ serve(async (req) => {
   try {
     const body = await req.json().catch(() => ({}));
     const {
-      institution_code,
-      batch_size = BATCH_SIZE,
+      institution_code = null,
+      batch_size = DEFAULT_BATCH_SIZE,
       dry_run = false,
     } = body;
 
-    console.log(`[${workerId}] Starting template generation worker`, {
-      institution_code,
-      batch_size,
-      dry_run,
-    });
+    console.log(`[${workerId}] Starting worker`, { institution_code, batch_size, dry_run });
 
-    // Build the claim query with optional institution filter
-    let claimQuery = supabase
-      .from('template_generation_queue')
-      .select('id, program_catalog_id, program_slug, eligibility_status, desired_tracks, priority_score, attempt_count')
-      .eq('status', 'queued')
-      .eq('eligibility_status', 'needs_review') // Only process eligible programs
-      .order('priority_score', { ascending: false })
-      .order('updated_at', { ascending: true })
-      .limit(batch_size);
-
-    if (institution_code) {
-      // Filter by institution via join - need to use a different approach
-      // We'll claim broadly and filter in code for now
-    }
-
-    const { data: jobs, error: claimError } = await claimQuery;
+    // ATOMIC CLAIM via RPC with SKIP LOCKED
+    const { data: claimedJobs, error: claimError } = await supabase
+      .rpc('claim_template_generation_jobs', {
+        p_institution_code: institution_code,
+        p_batch_size: batch_size,
+        p_worker_id: workerId,
+      });
 
     if (claimError) {
-      throw new Error(`CLAIM_FAILED: ${claimError.message}`);
+      throw new Error(`CLAIM_RPC_FAILED: ${claimError.message}`);
     }
 
-    if (!jobs || jobs.length === 0) {
+    if (!claimedJobs || claimedJobs.length === 0) {
       console.log(`[${workerId}] No jobs available`);
       return new Response(
-        JSON.stringify({ success: true, jobs_processed: 0, message: 'No jobs available' }),
+        JSON.stringify({ 
+          success: true, 
+          worker_id: workerId,
+          jobs_claimed: 0, 
+          message: 'No jobs available' 
+        }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Filter by institution if specified (post-claim filtering)
-    let filteredJobs = jobs as QueueJob[];
-    if (institution_code) {
-      const slugPrefix = `${institution_code}:`;
-      filteredJobs = jobs.filter((j: QueueJob) => j.program_slug.startsWith(slugPrefix));
-      if (filteredJobs.length === 0) {
-        console.log(`[${workerId}] No jobs for institution ${institution_code}`);
-        return new Response(
-          JSON.stringify({ success: true, jobs_processed: 0, message: `No jobs for ${institution_code}` }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-    }
-
-    // Lock claimed jobs
-    const jobIds = filteredJobs.map(j => j.id);
-    const { error: lockError } = await supabase
-      .from('template_generation_queue')
-      .update({
-        status: 'processing',
-        locked_at: new Date().toISOString(),
-        locked_by: workerId,
-        last_attempt_at: new Date().toISOString(),
-      })
-      .in('id', jobIds);
-
-    if (lockError) {
-      throw new Error(`LOCK_FAILED: ${lockError.message}`);
-    }
-
-    console.log(`[${workerId}] Claimed ${filteredJobs.length} jobs:`, jobIds);
+    const jobs = claimedJobs as QueueJob[];
+    console.log(`[${workerId}] Claimed ${jobs.length} jobs via SKIP LOCKED`);
 
     // Process each job
-    const results: { job_id: string; program_slug: string; tracks: GenerationResult[] }[] = [];
-    let completed = 0;
-    let failed = 0;
+    const results: JobResult[] = [];
+    let totalTemplatesWritten = 0;
+    let totalTemplatesFailed = 0;
+    let jobsCompleted = 0;
+    let jobsFailed = 0;
+    let jobsRequeued = 0;
 
-    for (const job of filteredJobs) {
-      // Check runtime limit
-      if (Date.now() - startTime > MAX_RUNTIME_MS) {
-        console.log(`[${workerId}] Approaching time limit, stopping`);
-        // Release remaining jobs back to queue
-        const remainingIds = filteredJobs.slice(filteredJobs.indexOf(job)).map(j => j.id);
+    for (const job of jobs) {
+      const timeElapsed = Date.now() - workerStartTime;
+      const timeRemaining = MAX_RUNTIME_MS - timeElapsed;
+
+      // Don't start new job if not enough time remaining
+      if (timeRemaining < MIN_TIME_FOR_NEW_JOB) {
+        console.log(`[${workerId}] Time limit approaching (${timeRemaining}ms left), requeuing remaining jobs`);
+        // Requeue this and remaining jobs
+        const remainingIds = jobs.slice(jobs.indexOf(job)).map(j => j.id);
         await supabase
           .from('template_generation_queue')
           .update({
@@ -155,95 +136,43 @@ serve(async (req) => {
             locked_by: null,
           })
           .in('id', remainingIds);
+        jobsRequeued += remainingIds.length;
         break;
       }
 
-      try {
-        // Load program data
-        const { data: program, error: programError } = await supabase
-          .from('program_catalog')
-          .select('*')
-          .eq('id', job.program_catalog_id)
-          .single();
+      const jobResult = await processJob(
+        job,
+        supabase,
+        openaiKey,
+        workerId,
+        dry_run,
+        workerStartTime
+      );
 
-        if (programError || !program) {
-          throw new Error(`PROGRAM_NOT_FOUND: ${job.program_catalog_id}`);
-        }
+      results.push(jobResult);
+      totalTemplatesWritten += jobResult.tracks_written;
+      totalTemplatesFailed += jobResult.tracks_failed;
 
-        const programData = program as ProgramCatalog;
-        const trackResults: GenerationResult[] = [];
+      // Update queue status based on results
+      const allTracksSucceeded = jobResult.tracks_written === jobResult.tracks_requested;
 
-        // Generate template for each desired track
-        for (const track of job.desired_tracks || ['standard']) {
-          if (dry_run) {
-            console.log(`[${workerId}] DRY RUN: Would generate ${track} template for ${job.program_slug}`);
-            trackResults.push({ success: true, track });
-            continue;
-          }
-
-          const result = await generateTemplate(
-            openaiKey,
-            programData,
-            track,
-            supabase,
-            workerId
-          );
-          trackResults.push(result);
-
-          if (!result.success) {
-            console.error(`[${workerId}] Template generation failed for ${job.program_slug}/${track}:`, result.error_message);
-          }
-        }
-
-        // Check if all tracks succeeded
-        const allSucceeded = trackResults.every(r => r.success);
-
-        if (allSucceeded) {
-          // Mark job completed
-          await supabase
-            .from('template_generation_queue')
-            .update({
-              status: 'completed',
-              completed_at: new Date().toISOString(),
-              locked_at: null,
-              locked_by: null,
-              attempt_count: job.attempt_count + 1,
-            })
-            .eq('id', job.id);
-          completed++;
-        } else {
-          // Mark job failed or requeue
-          const newAttemptCount = job.attempt_count + 1;
-          const shouldRetry = newAttemptCount < MAX_ATTEMPTS;
-          const firstError = trackResults.find(r => !r.success);
-
-          await supabase
-            .from('template_generation_queue')
-            .update({
-              status: shouldRetry ? 'queued' : 'failed',
-              locked_at: null,
-              locked_by: null,
-              attempt_count: newAttemptCount,
-              error_code: firstError?.error_code || 'UNKNOWN',
-              error_message: firstError?.error_message || 'Unknown error',
-            })
-            .eq('id', job.id);
-          
-          if (!shouldRetry) failed++;
-        }
-
-        results.push({
-          job_id: job.id,
-          program_slug: job.program_slug,
-          tracks: trackResults,
-        });
-
-      } catch (jobError) {
-        const errorMessage = jobError instanceof Error ? jobError.message : 'Unknown error';
-        console.error(`[${workerId}] Job ${job.id} failed:`, errorMessage);
-
-        const newAttemptCount = job.attempt_count + 1;
-        const shouldRetry = newAttemptCount < MAX_ATTEMPTS;
+      if (allTracksSucceeded) {
+        await supabase
+          .from('template_generation_queue')
+          .update({
+            status: 'completed',
+            completed_at: new Date().toISOString(),
+            locked_at: null,
+            locked_by: null,
+            error_code: null,
+            error_message: null,
+          })
+          .eq('id', job.id);
+        jobsCompleted++;
+      } else {
+        // At least one track failed
+        const shouldRetry = job.attempt_count < MAX_ATTEMPTS;
+        const firstError = jobResult.tracks.find(t => !t.success);
 
         await supabase
           .from('template_generation_queue')
@@ -251,34 +180,34 @@ serve(async (req) => {
             status: shouldRetry ? 'queued' : 'failed',
             locked_at: null,
             locked_by: null,
-            attempt_count: newAttemptCount,
-            error_code: errorMessage.split(':')[0] || 'JOB_ERROR',
-            error_message: errorMessage,
+            error_code: firstError?.error_code || 'PARTIAL_FAILURE',
+            error_message: `${jobResult.tracks_written}/${jobResult.tracks_requested} tracks succeeded. ${firstError?.error_message || ''}`,
           })
           .eq('id', job.id);
 
-        if (!shouldRetry) failed++;
-
-        results.push({
-          job_id: job.id,
-          program_slug: job.program_slug,
-          tracks: [{ success: false, track: 'unknown', error_code: 'JOB_ERROR', error_message: errorMessage }],
-        });
+        if (shouldRetry) {
+          jobsRequeued++;
+        } else {
+          jobsFailed++;
+        }
       }
     }
 
-    const runtime = Date.now() - startTime;
-    console.log(`[${workerId}] Completed in ${runtime}ms: ${completed} succeeded, ${failed} failed`);
+    const runtime = Date.now() - workerStartTime;
+    console.log(`[${workerId}] Done in ${runtime}ms: ${jobsCompleted} completed, ${jobsFailed} failed, ${jobsRequeued} requeued, ${totalTemplatesWritten} templates written`);
 
     return new Response(
       JSON.stringify({
         success: true,
         worker_id: workerId,
-        jobs_claimed: filteredJobs.length,
-        jobs_completed: completed,
-        jobs_failed: failed,
-        runtime_ms: runtime,
         dry_run,
+        runtime_ms: runtime,
+        jobs_claimed: jobs.length,
+        jobs_completed: jobsCompleted,
+        jobs_failed: jobsFailed,
+        jobs_requeued: jobsRequeued,
+        templates_written: totalTemplatesWritten,
+        templates_failed: totalTemplatesFailed,
         results,
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -295,49 +224,181 @@ serve(async (req) => {
   }
 });
 
-async function generateTemplate(
+async function processJob(
+  job: QueueJob,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: any,
+  openaiKey: string,
+  workerId: string,
+  dryRun: boolean,
+  workerStartTime: number
+): Promise<JobResult> {
+  const tracks = job.desired_tracks || ['standard'];
+  const trackResults: TrackResult[] = [];
+
+  try {
+    // Load program data
+    const { data: program, error: programError } = await supabase
+      .from('program_catalog')
+      .select('*')
+      .eq('id', job.program_catalog_id)
+      .single();
+
+    if (programError || !program) {
+      // All tracks fail if program not found
+      for (const track of tracks) {
+        trackResults.push({
+          success: false,
+          track,
+          template_written: false,
+          error_code: 'PROGRAM_NOT_FOUND',
+          error_message: `Program ${job.program_catalog_id} not found`,
+        });
+      }
+      return {
+        job_id: job.id,
+        program_slug: job.program_slug,
+        tracks_requested: tracks.length,
+        tracks_written: 0,
+        tracks_failed: tracks.length,
+        tracks: trackResults,
+      };
+    }
+
+    const programData = program as ProgramCatalog;
+
+    // Process each track
+    for (const track of tracks) {
+      // Check time remaining before starting track
+      const timeRemaining = MAX_RUNTIME_MS - (Date.now() - workerStartTime);
+      if (timeRemaining < MIN_TIME_FOR_NEW_JOB) {
+        console.log(`[${workerId}] Skipping track ${track} - not enough time (${timeRemaining}ms)`);
+        trackResults.push({
+          success: false,
+          track,
+          template_written: false,
+          error_code: 'TIME_LIMIT',
+          error_message: `Skipped - only ${timeRemaining}ms remaining`,
+        });
+        continue;
+      }
+
+      if (dryRun) {
+        console.log(`[${workerId}] DRY RUN: Would generate ${track} for ${job.program_slug}`);
+        trackResults.push({
+          success: true,
+          track,
+          template_written: false, // Dry run doesn't write
+        });
+        continue;
+      }
+
+      const result = await generateAndWriteTemplate(
+        openaiKey,
+        programData,
+        track,
+        supabase,
+        workerId
+      );
+      trackResults.push(result);
+    }
+
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error(`[${workerId}] Job ${job.id} error:`, errorMessage);
+    
+    // Mark all remaining tracks as failed
+    const processedTracks = trackResults.map(t => t.track);
+    for (const track of tracks) {
+      if (!processedTracks.includes(track)) {
+        trackResults.push({
+          success: false,
+          track,
+          template_written: false,
+          error_code: 'JOB_ERROR',
+          error_message: errorMessage,
+        });
+      }
+    }
+  }
+
+  return {
+    job_id: job.id,
+    program_slug: job.program_slug,
+    tracks_requested: tracks.length,
+    tracks_written: trackResults.filter(t => t.template_written).length,
+    tracks_failed: trackResults.filter(t => !t.success).length,
+    tracks: trackResults,
+  };
+}
+
+async function generateAndWriteTemplate(
   openaiKey: string,
   program: ProgramCatalog,
   track: string,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   supabase: any,
   workerId: string
-): Promise<GenerationResult> {
+): Promise<TrackResult> {
   const startTime = Date.now();
 
   try {
     const prompt = buildTemplatePrompt(program, track);
 
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openaiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [
-          {
-            role: 'system',
-            content: `You are an academic advisor AI that creates degree completion templates. Output valid JSON only, no markdown.`,
-          },
-          {
-            role: 'user',
-            content: prompt,
-          },
-        ],
-        temperature: 0.3,
-        max_tokens: 4000,
-      }),
-    });
+    // Create AbortController for timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), OPENAI_TIMEOUT_MS);
+
+    let response: Response;
+    try {
+      response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${openaiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o-mini',
+          messages: [
+            {
+              role: 'system',
+              content: 'You are an academic advisor AI that creates degree completion templates. Output valid JSON only, no markdown.',
+            },
+            {
+              role: 'user',
+              content: prompt,
+            },
+          ],
+          temperature: 0.3,
+          max_tokens: 4000,
+        }),
+        signal: controller.signal,
+      });
+    } catch (fetchError) {
+      if (fetchError instanceof Error && fetchError.name === 'AbortError') {
+        return {
+          success: false,
+          track,
+          template_written: false,
+          error_code: 'OPENAI_TIMEOUT',
+          error_message: `OpenAI request timed out after ${OPENAI_TIMEOUT_MS}ms`,
+          generation_time_ms: Date.now() - startTime,
+        };
+      }
+      throw fetchError;
+    } finally {
+      clearTimeout(timeoutId);
+    }
 
     if (!response.ok) {
       const errorText = await response.text();
       return {
         success: false,
         track,
+        template_written: false,
         error_code: 'OPENAI_API_ERROR',
         error_message: `${response.status}: ${errorText.slice(0, 200)}`,
+        generation_time_ms: Date.now() - startTime,
       };
     }
 
@@ -349,32 +410,35 @@ async function generateTemplate(
       return {
         success: false,
         track,
+        template_written: false,
         error_code: 'MODEL_EMPTY',
         error_message: 'OpenAI returned empty content',
         tokens_used: tokensUsed,
+        generation_time_ms: Date.now() - startTime,
       };
     }
 
     // Parse the template JSON
     let templateJson: unknown;
     try {
-      // Clean up potential markdown code blocks
       const cleaned = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
       templateJson = JSON.parse(cleaned);
     } catch (parseError) {
       return {
         success: false,
         track,
+        template_written: false,
         error_code: 'PARSE_FAIL',
         error_message: `Failed to parse template JSON: ${parseError}`,
         tokens_used: tokensUsed,
+        generation_time_ms: Date.now() - startTime,
       };
     }
 
     const generationTimeMs = Date.now() - startTime;
 
-    // Upsert into program_templates (idempotent)
-    const { error: upsertError } = await supabase
+    // STRICT: Upsert into program_templates and verify write
+    const { data: upsertedRow, error: upsertError } = await supabase
       .from('program_templates')
       .upsert({
         program_catalog_id: program.id,
@@ -393,24 +457,41 @@ async function generateTemplate(
           total_credits: program.degree_total_credits,
           catalog_url: program.catalog_url,
         },
-      }, { onConflict: 'program_catalog_id,track' });
+      }, { onConflict: 'program_catalog_id,track' })
+      .select('id')
+      .single();
 
     if (upsertError) {
       return {
         success: false,
         track,
-        error_code: 'DB_CONSTRAINT',
+        template_written: false,
+        error_code: 'DB_WRITE_FAILED',
         error_message: upsertError.message,
         tokens_used: tokensUsed,
         generation_time_ms: generationTimeMs,
       };
     }
 
-    console.log(`[${workerId}] Generated ${track} template for ${program.program_slug} (${tokensUsed} tokens, ${generationTimeMs}ms)`);
+    // Verify template was actually written
+    if (!upsertedRow?.id) {
+      return {
+        success: false,
+        track,
+        template_written: false,
+        error_code: 'WRITE_UNVERIFIED',
+        error_message: 'Upsert succeeded but no row returned',
+        tokens_used: tokensUsed,
+        generation_time_ms: generationTimeMs,
+      };
+    }
+
+    console.log(`[${workerId}] ✓ ${track} template for ${program.program_slug} (${tokensUsed} tokens, ${generationTimeMs}ms)`);
 
     return {
       success: true,
       track,
+      template_written: true,
       tokens_used: tokensUsed,
       generation_time_ms: generationTimeMs,
     };
@@ -419,8 +500,10 @@ async function generateTemplate(
     return {
       success: false,
       track,
+      template_written: false,
       error_code: 'GENERATION_ERROR',
       error_message: error instanceof Error ? error.message : 'Unknown generation error',
+      generation_time_ms: Date.now() - startTime,
     };
   }
 }
@@ -434,16 +517,15 @@ function buildTemplatePrompt(program: ProgramCatalog, track: string): string {
     hybrid: 'A hybrid approach balancing cost, time, and quality.',
   };
 
-  return `Create a degree completion template for the following program:
+  return `Create a degree completion template for:
 
 Institution: ${program.institution_code}
 Program: ${program.program_name_raw}
 Degree Type: ${program.degree_type}
-Total Credits Required: ${program.degree_total_credits || 120}
-Track Type: ${track}
-Track Goal: ${trackDescriptions[track] || 'Standard approach'}
+Total Credits: ${program.degree_total_credits || 120}
+Track: ${track} - ${trackDescriptions[track] || 'Standard approach'}
 
-Generate a JSON template with this structure:
+Return JSON:
 {
   "programCode": "${program.degree_type}",
   "trackType": "${track}",
@@ -457,14 +539,14 @@ Generate a JSON template with this structure:
       "slots": [
         {
           "slotId": "slot-1",
-          "requirementArea": "WRITTEN_COMM" | "QUANTITATIVE" | "HUMANITIES" | "SOCIAL_SCIENCE" | "NATURAL_SCIENCE" | "ORAL_COMM" | "BUS_CORE" | "FREE_ELECTIVE" | "UPPER_BUSINESS" | "CAPSTONE",
-          "kind": "gened" | "major" | "elective" | "capstone",
+          "requirementArea": "WRITTEN_COMM"|"QUANTITATIVE"|"HUMANITIES"|"SOCIAL_SCIENCE"|"NATURAL_SCIENCE"|"BUS_CORE"|"FREE_ELECTIVE"|"UPPER_BUSINESS"|"CAPSTONE",
+          "kind": "gened"|"major"|"elective"|"capstone",
           "minCredits": 3,
           "preferred": {
-            "type": "institutional_course" | "alt_credit",
-            "courseCode": "ENG-101" (for institutional),
-            "sourceCode": "CLEP" | "DSST" | "SOPHIA" | "STUDY_COM" (for alt_credit),
-            "identifier": "college-composition" (for alt_credit)
+            "type": "institutional_course"|"alt_credit",
+            "courseCode": "ENG-101",
+            "sourceCode": "CLEP"|"DSST"|"SOPHIA"|"STUDY_COM",
+            "identifier": "college-composition"
           },
           "alternatives": [...]
         }
@@ -474,12 +556,11 @@ Generate a JSON template with this structure:
 }
 
 Requirements:
-1. Include all general education requirements typical for a ${program.degree_type} degree
-2. Include major-specific courses appropriate for ${program.program_name_raw}
-3. For ${track} track: ${trackDescriptions[track]}
-4. Distribute courses across 8-12 terms (2-3 years for accelerated, 4 years for standard)
-5. Include realistic cost and duration estimates
-6. Use CLEP, DSST, Sophia, Study.com for alt_credit options where applicable
+1. Include all gen-ed requirements for a ${program.degree_type} degree
+2. Include major courses for ${program.program_name_raw}
+3. For ${track}: ${trackDescriptions[track]}
+4. 8-12 terms (2-4 years)
+5. Use CLEP/DSST/Sophia/Study.com for alt_credit where applicable
 
-Output only valid JSON, no explanations.`;
+Output only valid JSON.`;
 }

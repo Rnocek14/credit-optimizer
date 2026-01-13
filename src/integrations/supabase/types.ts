@@ -14527,6 +14527,40 @@ export type Database = {
         Args: { mentor_user_id: string }
         Returns: undefined
       }
+      claim_template_generation_jobs: {
+        Args: {
+          p_batch_size?: number
+          p_institution_code?: string
+          p_worker_id?: string
+        }
+        Returns: {
+          attempt_count: number | null
+          attempts: number | null
+          blocked_reasons: string[] | null
+          completed_at: string | null
+          created_at: string | null
+          desired_tracks: string[] | null
+          eligibility_status: Database["public"]["Enums"]["template_eligibility_status"]
+          error_code: string | null
+          error_message: string | null
+          id: string
+          last_attempt_at: string | null
+          locked_at: string | null
+          locked_by: string | null
+          next_attempt_at: string | null
+          priority_score: number | null
+          program_catalog_id: string
+          program_slug: string
+          status: string | null
+          updated_at: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "template_generation_queue"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       clone_career_track: {
         Args: {
           new_color?: string
