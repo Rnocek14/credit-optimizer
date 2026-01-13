@@ -156,13 +156,15 @@ export function InstitutionReviewDrawer({ open, onClose, runId, institution }: I
         .upsert({
           institution: institution!,
           field_name: params.field,
+          academic_year: null, // Current year / default
+          pack_scope: null,    // Universal scope
           override_value: JSON.parse(JSON.stringify(params.value)),
           citation_url: params.sourceUrl,
           note: params.notes,
           resolved_by: userData.user.id,
           resolved_at: new Date().toISOString(),
         }, {
-          onConflict: 'institution,field_name',
+          onConflict: 'institution,field_name,academic_year,pack_scope',
         })
         .select()
         .single();
