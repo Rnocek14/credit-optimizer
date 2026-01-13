@@ -315,69 +315,9 @@ serve(async (req) => {
       }
     }
 
-    // ============= TRANSFER TRUTH CHECKS (Set-based, scalable) =============
-    // Run a single query that joins all alt slots with transfer rules using _norm columns
-    console.log(`[run-degree-truth-scan] Running transfer truth checks...`);
-    
-    const transferTruthQuery = `
-      WITH alt_slots AS (
-        SELECT
-          dt.id AS template_id,
-          dt.institution_code,
-          dt.program_code,
-          dt.track_type,
-          s->>'slotId' AS slot_id,
-          s->>'requirementArea' AS requirement_area,
-          UPPER(COALESCE(s->'preferred'->>'sourceCode','')) AS provider_norm,
-          LOWER(COALESCE(s->'preferred'->>'identifier','')) AS course_norm
-        FROM degree_templates dt,
-             jsonb_array_elements(dt.template_data->'terms') t,
-             jsonb_array_elements(t->'slots') s
-        WHERE dt.program_code = $1
-          AND ($2::text IS NULL OR dt.institution_code = $2)
-          AND s->'preferred'->>'type' = 'alt_credit'
-      ),
-      joined AS (
-        SELECT
-          a.*,
-          r.acceptance_status,
-          r.target_course_code,
-          r.rule_type,
-          r.rule_source
-        FROM alt_slots a
-        LEFT JOIN credit_transfer_rules r
-          ON r.target_institution_norm = a.institution_code
-         AND r.source_institution_norm = a.provider_norm
-         AND r.source_course_code_norm = a.course_norm
-      ),
-      classified AS (
-        SELECT
-          *,
-          CASE
-            WHEN acceptance_status IS NULL THEN 'missing'
-            WHEN acceptance_status ILIKE '%deny%' OR acceptance_status ILIKE '%reject%' OR acceptance_status ILIKE '%not accept%' THEN 'denied'
-            WHEN acceptance_status ILIKE '%review%' OR acceptance_status ILIKE '%unknown%' OR acceptance_status ILIKE '%verify%' THEN 'needs_review'
-            WHEN acceptance_status ILIKE '%elective%' THEN 'elective_only'
-            WHEN acceptance_status ILIKE '%accept%' THEN 'accepted'
-            ELSE 'other'
-          END AS status_bucket,
-          CASE
-            WHEN acceptance_status ILIKE '%accept%'
-             AND (target_course_code IS NULL OR length(trim(target_course_code))=0)
-            THEN true
-            ELSE false
-          END AS placement_missing
-        FROM joined
-      )
-      SELECT * FROM classified
-    `;
+    // ============= TRANSFER TRUTH CHECKS (Using optimized RPC) =============
+    console.log(`[run-degree-truth-scan] Running transfer truth checks via RPC...`);
 
-    // Skip the raw SQL RPC approach - use inline extraction which is more reliable
-    // The inline fallback handles this efficiently with batched rule lookups
-    const transferError = { message: 'Using inline extraction' };
-    const transferResults = null;
-
-    // Fallback: if RPC doesn't exist, extract alt slots from template_data and check inline
     interface TransferSlot {
       template_id: string;
       institution_code: string;
@@ -392,8 +332,18 @@ serve(async (req) => {
 
     let transferSlots: TransferSlot[] = [];
 
-    if (transferError || !transferResults) {
-      console.log(`[run-degree-truth-scan] Using inline transfer check (RPC fallback)`);
+    // Try the optimized RPC first
+    const { data: rpcResults, error: rpcError } = await supabase.rpc('get_transfer_truth_slots', {
+      p_program_code: program_code,
+      p_institution_code: institution_code || null,
+    });
+
+    if (!rpcError && rpcResults && rpcResults.length > 0) {
+      console.log(`[run-degree-truth-scan] RPC returned ${rpcResults.length} slots`);
+      transferSlots = rpcResults as TransferSlot[];
+    } else {
+      // Fallback: inline extraction with proper batching
+      console.log(`[run-degree-truth-scan] Using inline fallback (RPC error: ${rpcError?.message || 'no results'})`);
       
       // Extract alt slots from templates we already fetched
       const altSlotList: Array<{
@@ -432,25 +382,45 @@ serve(async (req) => {
         }
       }
 
-      // Batch fetch rules for all alt slots
+      // Batch fetch rules with proper filtering (include course_norm in chunks)
       if (altSlotList.length > 0) {
-        // Build unique (target, source, course) tuples for efficient lookup
-        const uniqueTuples = [...new Set(altSlotList.map(s => 
-          `${s.institution_code}|${s.provider_norm}|${s.course_norm}`
-        ))];
+        // Group by (target, provider) for efficient batched lookups
+        const groupedByTargetProvider = new Map<string, Set<string>>();
+        for (const s of altSlotList) {
+          const key = `${s.institution_code}|${s.provider_norm}`;
+          if (!groupedByTargetProvider.has(key)) {
+            groupedByTargetProvider.set(key, new Set());
+          }
+          groupedByTargetProvider.get(key)!.add(s.course_norm);
+        }
 
-        // Fetch matching rules (batched)
-        const { data: ruleRows } = await supabase
-          .from('credit_transfer_rules')
-          .select('target_institution_norm, source_institution_norm, source_course_code_norm, acceptance_status, target_course_code')
-          .in('target_institution_norm', [...new Set(altSlotList.map(s => s.institution_code))])
-          .in('source_institution_norm', [...new Set(altSlotList.map(s => s.provider_norm))]);
-
-        // Build lookup map: key -> rule
+        // Fetch rules in batches (by target+provider pair, with course_norm filtering)
         const ruleMap = new Map<string, { acceptance_status: string; target_course_code: string | null }>();
-        for (const r of ruleRows || []) {
-          const key = `${r.target_institution_norm}|${r.source_institution_norm}|${r.source_course_code_norm}`;
-          ruleMap.set(key, { acceptance_status: r.acceptance_status, target_course_code: r.target_course_code });
+        
+        for (const [targetProvider, courseSet] of groupedByTargetProvider) {
+          const [target, provider] = targetProvider.split('|');
+          const courses = [...courseSet];
+          
+          // Chunk courses if too many (500 per batch)
+          const CHUNK_SIZE = 500;
+          for (let i = 0; i < courses.length; i += CHUNK_SIZE) {
+            const chunk = courses.slice(i, i + CHUNK_SIZE);
+            
+            const { data: ruleRows } = await supabase
+              .from('credit_transfer_rules')
+              .select('source_course_code_norm, acceptance_status, target_course_code')
+              .eq('target_institution_norm', target)
+              .eq('source_institution_norm', provider)
+              .in('source_course_code_norm', chunk);
+
+            for (const r of ruleRows || []) {
+              const key = `${target}|${provider}|${r.source_course_code_norm}`;
+              ruleMap.set(key, { 
+                acceptance_status: r.acceptance_status, 
+                target_course_code: r.target_course_code 
+              });
+            }
+          }
         }
 
         // Classify each slot
@@ -488,8 +458,6 @@ serve(async (req) => {
           });
         }
       }
-    } else {
-      transferSlots = transferResults as TransferSlot[];
     }
 
     console.log(`[run-degree-truth-scan] Analyzed ${transferSlots.length} alt slots for transfer truth`);

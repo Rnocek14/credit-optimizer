@@ -14126,6 +14126,23 @@ export type Database = {
           total_tags: number
         }[]
       }
+      get_transfer_truth_slots: {
+        Args: { p_institution_code?: string; p_program_code: string }
+        Returns: {
+          acceptance_status: string
+          course_norm: string
+          institution_code: string
+          placement_missing: boolean
+          program_code: string
+          provider_norm: string
+          requirement_area: string
+          slot_id: string
+          status_bucket: string
+          target_course_code: string
+          template_id: string
+          track_type: string
+        }[]
+      }
       get_user_level: {
         Args: { user_id_param: string }
         Returns: {
