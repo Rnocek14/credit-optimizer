@@ -36,7 +36,11 @@ async function waitForCondition(
 ): Promise<void> {
   const start = Date.now();
   while (Date.now() - start < timeout) {
-    if (checkFn()) return;
+    try {
+      if (checkFn()) return;
+    } catch {
+      // Tolerate exceptions from checkFn, keep polling
+    }
     await new Promise((r) => setTimeout(r, interval));
   }
   throw new Error('Condition not met within timeout');
