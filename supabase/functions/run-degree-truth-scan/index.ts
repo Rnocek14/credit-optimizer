@@ -777,9 +777,9 @@ serve(async (req) => {
 
     console.log(`[run-degree-truth-scan] Evidence coverage check complete (${templatesWithAcceptedAltSlots} templates with accepted alt slots)`);
 
-    // Bulk insert findings
+    // Bulk upsert findings (idempotent per run - uses unique constraint on run_id, template_id, check_name)
     if (findings.length > 0) {
-      const findingsToInsert = findings.map(f => ({
+      const findingsToUpsert = findings.map(f => ({
         run_id: runId,
         template_id: f.template_id,
         institution_code: f.institution_code,
@@ -793,10 +793,13 @@ serve(async (req) => {
 
       const { error: findingsError } = await supabase
         .from('audit_findings')
-        .insert(findingsToInsert);
+        .upsert(findingsToUpsert, {
+          onConflict: 'run_id,template_id,check_name',
+          ignoreDuplicates: false, // Update on conflict
+        });
 
       if (findingsError) {
-        console.warn(`[run-degree-truth-scan] Failed to insert findings: ${findingsError.message}`);
+        console.warn(`[run-degree-truth-scan] Failed to upsert findings: ${findingsError.message}`);
       }
     }
 
@@ -824,22 +827,45 @@ serve(async (req) => {
       }
     }
 
-    // Tier classification (now evidence-aware)
-    // Tier A: All checks pass + evidence_pct >= threshold
-    // Tier B: All checks pass + evidence_pct < threshold
-    // Tier C: Any correctness/coverage fail
+    // ============= TIER CLASSIFICATION =============
+    // Tier logic is explicit and consistent:
+    //   - Tier C: Any correctness/coverage check has status='fail'
+    //   - Tier B: No failures (WARN allowed), but evidence_pct < threshold OR null
+    //   - Tier A: No failures (WARN allowed) AND evidence_pct >= threshold
+    // 
+    // Note: WARN status (e.g., evidence_coverage: warn) does NOT disqualify from Tier A/B.
+    // Only FAIL status causes demotion to Tier C.
     let tierA = 0;
     let tierB = 0;
     const tierC = failingTemplates.size;
 
     for (const tid of passingTemplates) {
       const evPct = templateEvidencePct.get(tid);
+      // Tier A requires non-null evidence AND >= threshold
       if (evPct !== null && evPct !== undefined && evPct >= TIER_A_EVIDENCE_THRESHOLD) {
         tierA++;
       } else {
+        // Tier B: passes correctness but insufficient/missing evidence
         tierB++;
       }
     }
+
+    // ============= EVIDENCE KPI SUMMARY =============
+    // Aggregate evidence metrics across all templates for single KPI tracking
+    let acceptedAltSlotsTotal = 0;
+    let acceptedAltSlotsWithEvidenceTotal = 0;
+    
+    for (const f of findings) {
+      if (f.check_name === 'evidence_coverage' && f.details) {
+        const details = f.details as { accepted_total?: number; with_evidence?: number };
+        acceptedAltSlotsTotal += details.accepted_total || 0;
+        acceptedAltSlotsWithEvidenceTotal += details.with_evidence || 0;
+      }
+    }
+    
+    const acceptedAltSlotsEvidencePctOverall = acceptedAltSlotsTotal > 0
+      ? Math.round((acceptedAltSlotsWithEvidenceTotal / acceptedAltSlotsTotal) * 100)
+      : null;
 
     // Compute total alt slots for summary
     let totalAltSlots = 0;
@@ -857,9 +883,15 @@ serve(async (req) => {
       tier_b: tierB,
       tier_c: tierC,
       tier_a_threshold_pct: TIER_A_EVIDENCE_THRESHOLD * 100,
+      // Alt slot metrics
       total_alt_slots: totalAltSlots,
       templates_with_alt_slots: templatesWithAltSlots,
       templates_with_accepted_alt_slots: templatesWithAcceptedAltSlots,
+      // Evidence KPIs (for tracking progress toward Tier A)
+      accepted_alt_slots_total: acceptedAltSlotsTotal,
+      accepted_alt_slots_with_evidence_total: acceptedAltSlotsWithEvidenceTotal,
+      accepted_alt_slots_evidence_pct_overall: acceptedAltSlotsEvidencePctOverall,
+      // Check breakdown
       check_breakdown: checkCounts,
       auto_fix_enabled: auto_fix,
     };
