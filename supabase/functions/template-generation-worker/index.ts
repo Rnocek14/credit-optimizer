@@ -88,7 +88,51 @@ serve(async (req) => {
     console.log(`[${workerId}] CONFIG`, CONFIG);
     console.log(`[${workerId}] Starting worker`, { institution_code, batch_size, dry_run });
 
-    // ATOMIC CLAIM via RPC with SKIP LOCKED
+    // DRY RUN: Preview jobs without claiming or modifying state
+    if (dry_run) {
+      let query = supabase
+        .from('template_generation_queue')
+        .select(`
+          id, program_catalog_id, program_slug, eligibility_status,
+          desired_tracks, priority_score, attempt_count,
+          program_catalog!inner(institution_code)
+        `)
+        .eq('status', 'queued')
+        .eq('eligibility_status', 'needs_review');
+
+      if (institution_code) {
+        query = query.eq('program_catalog.institution_code', institution_code);
+      }
+
+      const { data: previewJobs, error: previewError } = await query
+        .order('priority_score', { ascending: false })
+        .limit(batch_size);
+
+      if (previewError) {
+        console.error(`[${workerId}] DRY RUN preview error:`, previewError);
+      }
+
+      const jobs = (previewJobs || []) as QueueJob[];
+      console.log(`[${workerId}] DRY RUN: Would process ${jobs.length} jobs (no state modified)`);
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          worker_id: workerId,
+          dry_run: true,
+          jobs_preview: jobs.length,
+          jobs: jobs.map(j => ({
+            id: j.id,
+            program_slug: j.program_slug,
+            tracks: j.desired_tracks || ['standard'],
+          })),
+          message: 'Dry run - no jobs claimed or modified',
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // ATOMIC CLAIM via RPC with SKIP LOCKED (only for real runs)
     const { data: claimedJobs, error: claimError } = await supabase
       .rpc('claim_template_generation_jobs', {
         p_institution_code: institution_code,
