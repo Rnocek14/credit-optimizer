@@ -147,28 +147,44 @@ serve(async (req) => {
 
         if (targetEquivPage) {
           // Target institution has a known transfer page - use it as evidence
+          // Use 'policy_provider_acceptance' to match existing constraint values
           evidenceUrl = targetEquivPage;
-          evidenceType = 'equivalency_page';
+          evidenceType = 'policy_provider_acceptance';
           confidence = 0.6; // Medium confidence - page exists but we haven't verified specific course
         } else if (providerCatalogPage) {
           // Provider catalog as secondary evidence
           evidenceUrl = providerCatalogPage;
-          evidenceType = 'catalog_page';
+          evidenceType = 'catalog_statement';
           confidence = 0.4; // Lower confidence - just catalog, not transfer agreement
         }
 
         // ============= UPDATE JOB STATUS =============
         const now = new Date().toISOString();
+        
+        // Exponential backoff for re-checks: 30d → 60d → 120d → 180d (cap)
+        const getNextCheckDays = (checkCount: number, status: string): number => {
+          if (status === 'found') {
+            // Found jobs: refresh periodically based on evidence type
+            return evidenceType === 'equivalency_page' ? 60 : 90;
+          }
+          // not_found: exponential backoff to avoid hammering
+          const backoffDays = Math.min(30 * Math.pow(2, checkCount), 180);
+          return backoffDays;
+        };
+        
         const nextCheck = new Date();
-        nextCheck.setDate(nextCheck.getDate() + 30); // Re-check in 30 days
+        nextCheck.setDate(nextCheck.getDate() + getNextCheckDays(job.check_count, evidenceUrl ? 'found' : 'not_found'));
 
         if (evidenceUrl && confidence >= 0.4) {
           // Evidence candidate found - but must verify rule exists before marking as found
           if (!dry_run) {
-            // First, update credit_transfer_rules with evidence and check if row exists
+            // First, update credit_transfer_rules with evidence AND evidence_type
             const { data: updatedRows, error: updateError } = await supabase
               .from('credit_transfer_rules')
-              .update({ evidence_url: evidenceUrl })
+              .update({ 
+                evidence_url: evidenceUrl,
+                evidence_type: evidenceType,
+              })
               .eq('target_institution_norm', job.target_institution_norm)
               .eq('source_institution_norm', job.source_institution_norm)
               .eq('source_course_code_norm', job.source_course_code_norm)
@@ -229,8 +245,8 @@ serve(async (req) => {
               continue;
             }
             
-            // Success: Rule was updated
-            console.log(`[evidence-backfill-worker] ✓ Updated ${count} rule(s) for ${tupleKey}`);
+            // Success: Rule was updated with evidence + type
+            console.log(`[evidence-backfill-worker] ✓ Updated ${count} rule(s) for ${tupleKey} (type: ${evidenceType})`);
             
             // Update job to found
             await supabase
@@ -256,7 +272,7 @@ serve(async (req) => {
             evidence_type: evidenceType!,
           });
         } else {
-          // No evidence found
+          // No evidence found - apply exponential backoff
           if (!dry_run) {
             await supabase
               .from('evidence_jobs')
