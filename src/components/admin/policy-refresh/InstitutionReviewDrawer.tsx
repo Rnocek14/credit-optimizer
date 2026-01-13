@@ -197,8 +197,13 @@ export function InstitutionReviewDrawer({ open, onClose, runId, institution }: I
     },
     onSuccess: () => {
       toast({ title: 'Pack promoted to active' });
+      // Invalidate all related queries for proper UI refresh
       queryClient.invalidateQueries({ queryKey: ['pack-detail', runId, institution] });
       queryClient.invalidateQueries({ queryKey: ['policy-packs', runId] });
+      queryClient.invalidateQueries({ queryKey: ['policy-refresh-tasks', runId] });
+      queryClient.invalidateQueries({ queryKey: ['policy-diffs-count', runId] });
+      queryClient.invalidateQueries({ queryKey: ['conflicts-detail', institution] });
+      queryClient.invalidateQueries({ queryKey: ['policy-refresh-runs'] });
     },
     onError: (error: Error) => {
       toast({ 
