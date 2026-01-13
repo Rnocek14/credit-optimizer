@@ -54,3 +54,6 @@ verify_jwt = false
 
 [functions.run-degree-truth-scan]
 verify_jwt = false
+
+[functions.evidence-backfill-worker]
+verify_jwt = false

@@ -4604,6 +4604,63 @@ export type Database = {
         }
         Relationships: []
       }
+      evidence_jobs: {
+        Row: {
+          check_count: number | null
+          confidence: number | null
+          created_at: string
+          error_message: string | null
+          evidence_snippet: string | null
+          evidence_type: string | null
+          evidence_url: string | null
+          id: string
+          last_checked_at: string | null
+          next_check_at: string | null
+          source_course_code_norm: string
+          source_hash: string | null
+          source_institution_norm: string
+          status: string
+          target_institution_norm: string
+          updated_at: string
+        }
+        Insert: {
+          check_count?: number | null
+          confidence?: number | null
+          created_at?: string
+          error_message?: string | null
+          evidence_snippet?: string | null
+          evidence_type?: string | null
+          evidence_url?: string | null
+          id?: string
+          last_checked_at?: string | null
+          next_check_at?: string | null
+          source_course_code_norm: string
+          source_hash?: string | null
+          source_institution_norm: string
+          status?: string
+          target_institution_norm: string
+          updated_at?: string
+        }
+        Update: {
+          check_count?: number | null
+          confidence?: number | null
+          created_at?: string
+          error_message?: string | null
+          evidence_snippet?: string | null
+          evidence_type?: string | null
+          evidence_url?: string | null
+          id?: string
+          last_checked_at?: string | null
+          next_check_at?: string | null
+          source_course_code_norm?: string
+          source_hash?: string | null
+          source_institution_norm?: string
+          status?: string
+          target_institution_norm?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       featured_gallery_curations: {
         Row: {
           active: boolean

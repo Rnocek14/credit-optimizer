@@ -777,6 +777,60 @@ serve(async (req) => {
 
     console.log(`[run-degree-truth-scan] Evidence coverage check complete (${templatesWithAcceptedAltSlots} templates with accepted alt slots)`);
 
+    // ============= AUTO-QUEUE EVIDENCE JOBS =============
+    // Collect all tuples missing evidence and queue them for backfill
+    const missingEvidenceTuples: Array<{
+      target_institution_norm: string;
+      source_institution_norm: string;
+      source_course_code_norm: string;
+    }> = [];
+
+    for (const [, data] of evidenceByTemplate) {
+      for (const missing of data.missing_evidence) {
+        // Use uppercase norms to match credit_transfer_rules table format
+        missingEvidenceTuples.push({
+          target_institution_norm: data.institution_code.toUpperCase(),
+          source_institution_norm: missing.provider.toUpperCase(),
+          source_course_code_norm: missing.course, // course codes stay lowercase
+        });
+      }
+    }
+
+    // Dedupe and limit (prevent queue explosion)
+    const MAX_EVIDENCE_JOBS_PER_SCAN = 100;
+    const uniqueTuples = new Map<string, typeof missingEvidenceTuples[0]>();
+    for (const tuple of missingEvidenceTuples) {
+      const key = `${tuple.target_institution_norm}|${tuple.source_institution_norm}|${tuple.source_course_code_norm}`;
+      if (!uniqueTuples.has(key)) {
+        uniqueTuples.set(key, tuple);
+      }
+    }
+
+    const tuplesToQueue = [...uniqueTuples.values()].slice(0, MAX_EVIDENCE_JOBS_PER_SCAN);
+
+    if (tuplesToQueue.length > 0) {
+      console.log(`[run-degree-truth-scan] Queueing ${tuplesToQueue.length} evidence jobs (${uniqueTuples.size} unique tuples, capped at ${MAX_EVIDENCE_JOBS_PER_SCAN})`);
+
+      // Upsert evidence jobs (ignore conflicts - jobs may already exist)
+      const jobsToInsert = tuplesToQueue.map(t => ({
+        target_institution_norm: t.target_institution_norm,
+        source_institution_norm: t.source_institution_norm,
+        source_course_code_norm: t.source_course_code_norm,
+        status: 'queued',
+      }));
+
+      const { error: queueError } = await supabase
+        .from('evidence_jobs')
+        .upsert(jobsToInsert, {
+          onConflict: 'target_institution_norm,source_institution_norm,source_course_code_norm',
+          ignoreDuplicates: true, // Don't update existing jobs
+        });
+
+      if (queueError) {
+        console.warn(`[run-degree-truth-scan] Failed to queue evidence jobs: ${queueError.message}`);
+      }
+    }
+
     // Bulk upsert findings (idempotent per run - uses unique constraint on run_id, template_id, check_name)
     if (findings.length > 0) {
       const findingsToUpsert = findings.map(f => ({
