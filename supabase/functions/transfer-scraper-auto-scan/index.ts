@@ -225,6 +225,7 @@ Deno.serve(async (req) => {
     const results: Array<{
       url: string;
       page_type: string;
+      source_type: string;  // Added for merge scoring
       status: string;
       scrape_job_id: string | null;
       confidence_score: number | null;
@@ -241,6 +242,7 @@ Deno.serve(async (req) => {
       const result: {
         url: string;
         page_type: string;
+        source_type: string;
         status: string;
         scrape_job_id: string | null;
         confidence_score: number | null;
@@ -251,6 +253,7 @@ Deno.serve(async (req) => {
       } = {
         url: template.url,
         page_type: template.page_type,
+        source_type: template.source_type || 'other',  // Include source_type from template
         status: 'success',
         scrape_job_id: null,
         confidence_score: null,
@@ -413,10 +416,11 @@ Deno.serve(async (req) => {
       bestPolicyUrl = sorted[0].url;
     }
 
-    // Build URL diagnostics for merge (with samples and keyword hits)
+    // Build URL diagnostics for merge (with samples, keyword hits, and source_type)
     const urlDiagnostics = results.map(r => ({
       url: r.url,
       page_type: r.page_type,
+      source_type: r.source_type,  // Critical for merge scoring
       text_length: r.text_length,
       content_class: r.content_class,
       keyword_hits: (r as any).keyword_hits || 0,

@@ -27,6 +27,7 @@ const corsHeaders = {
 interface UrlDiagnostic {
   url: string;
   page_type: string;
+  source_type?: string;  // For source authority scoring (catalog, tuition, etc.)
   text_length: number | null;
   content_class: 'ok' | 'too_short' | 'js_junk' | 'error_page' | null;
   keyword_hits?: number;  // Policy keyword hit count
@@ -34,6 +35,17 @@ interface UrlDiagnostic {
   scrape_job_id: string | null;
   sample?: string | null;  // Content sample for debugging
 }
+
+// Source type authority weights for critical field scoring
+// tuition pages should NOT contribute to residency/max_transfer
+const CRITICAL_FIELD_SOURCE_AUTHORITY: Record<string, string[]> = {
+  'residency_credits': ['residency', 'catalog', 'transfer_policy'],
+  'max_transfer_credits': ['catalog', 'transfer_policy', 'residency'],
+  'max_ace_nccrs_credits': ['catalog', 'transfer_policy', 'alt_credit'],
+};
+
+// Non-authoritative sources for critical fields (will be filtered out)
+const NON_AUTHORITATIVE_SOURCES = ['tuition'];
 
 interface DiagnosticSummary {
   total_urls: number;
@@ -801,7 +813,8 @@ function pickBestValue<T>(
 async function mergePolicyPacks(
   supabase: any,
   institution: string,
-  extractions: { jobId: string; extraction: ExtractionResult; url: string }[]
+  extractions: { jobId: string; extraction: ExtractionResult; url: string }[],
+  urlDiagnostics?: UrlDiagnostic[]  // Added for source_type filtering
 ): Promise<{ 
   mergedPack: PolicyPack | null; 
   sources: string[]; 
@@ -820,6 +833,33 @@ async function mergePolicyPacks(
   const allScopedCaps: Array<{ field: string; value: number; url: string; scopeReason: string; contextSnippet?: string }> = [];
   const allConflicts: Array<{ field: string; values: Array<{ value: unknown; url: string; confidence: number }> }> = [];
   
+  // Build URL → source_type lookup from diagnostics
+  const sourceTypeByUrl = new Map<string, string>();
+  if (urlDiagnostics) {
+    for (const d of urlDiagnostics) {
+      sourceTypeByUrl.set(d.url, d.source_type || 'other');
+    }
+  }
+  
+  // Helper: filter extractions for critical fields (exclude non-authoritative sources)
+  const filterForCriticalField = (fieldName: string) => {
+    if (!urlDiagnostics || sourceTypeByUrl.size === 0) {
+      return extractions.filter(e => e.extraction.policy_pack);
+    }
+    
+    return extractions.filter(e => {
+      if (!e.extraction.policy_pack) return false;
+      const sourceType = sourceTypeByUrl.get(e.url) || 'other';
+      
+      // Exclude non-authoritative sources (like 'tuition') for critical fields
+      if (NON_AUTHORITATIVE_SOURCES.includes(sourceType)) {
+        console.log(`[merge] Filtering out ${e.url} (source_type=${sourceType}) for critical field ${fieldName}`);
+        return false;
+      }
+      return true;
+    });
+  };
+  
   const validExtractions = extractions.filter(e => e.extraction.policy_pack);
   if (validExtractions.length === 0) {
     return { 
@@ -832,20 +872,28 @@ async function mergePolicyPacks(
       conflicts: [],
     };
   }
+  
+  // For critical fields, use filtered extractions (excluding tuition sources)
+  const residencyExtractions = filterForCriticalField('residency_credits');
+  const maxTransferExtractions = filterForCriticalField('max_transfer_credits');
+  const aceNccrsExtractions = filterForCriticalField('max_ace_nccrs_credits');
+  
+  notes.push(`Source filtering: ${validExtractions.length} total, ${residencyExtractions.length} for residency, ${maxTransferExtractions.length} for max_transfer`);
 
   // Pick best values for NUMERIC fields with SCOPE DETECTION
+  // Use FILTERED extractions for critical fields (excludes tuition sources)
   const residencyResult = await pickBestValueWithScopeDetection(
-    supabase, validExtractions, 
+    supabase, residencyExtractions, 
     p => p.residency_policy?.min_institutional_credits, 
     'residency.min_institutional_credits'
   );
   const maxTransferResult = await pickBestValueWithScopeDetection(
-    supabase, validExtractions, 
+    supabase, maxTransferExtractions, 
     p => p.transfer_credit_limits?.max_total_transfer_credits, 
     'transfer.max_total'
   );
   const maxAceNccrsResult = await pickBestValueWithScopeDetection(
-    supabase, validExtractions, 
+    supabase, aceNccrsExtractions, 
     p => p.transfer_credit_limits?.max_ace_nccrs_credits, 
     'transfer.ace_nccrs'
   );
@@ -1141,7 +1189,8 @@ Deno.serve(async (req) => {
     console.log(`[merge] Found ${extractions.length} valid extractions`);
 
     // Merge policy packs (with best_policy_job_id as first for priority)
-    const mergeResult = await mergePolicyPacks(supabase, institution, extractions);
+    // Pass url_diagnostics for source_type filtering of critical fields
+    const mergeResult = await mergePolicyPacks(supabase, institution, extractions, url_diagnostics);
     const { mergedPack, sources, notes, pickedValues, scopedCapsDetected, scopedCaps, conflicts } = mergeResult;
     
     // Merge provider rules
