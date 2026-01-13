@@ -20,12 +20,13 @@ export function TransferWarningBanner({ onShowAlternatives }: { onShowAlternativ
           continue;
         }
 
+        // Use normalized columns for deterministic, index-optimized joins
         const { data: rule } = await supabase
           .from('credit_transfer_rules' as any)
           .select('*')
-          .eq('source_institution', (item.providerCode || '').toUpperCase())
-          .eq('source_course_code', item.courseId)
-          .eq('target_institution', target.toUpperCase())
+          .eq('source_institution_norm', (item.providerCode || '').toUpperCase())
+          .eq('source_course_code_norm', (item.courseId || '').toLowerCase())
+          .eq('target_institution_norm', target.toUpperCase())
           .maybeSingle();
 
         if (!rule || (rule as any)?.acceptance_status === 'rejected') out.push(item);

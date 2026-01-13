@@ -43,12 +43,13 @@ export function useTransferRule(
         });
       }
 
+      // Use normalized columns for deterministic, index-optimized joins
       const { data, error } = await supabase
         .from('credit_transfer_rules' as any)
         .select('*')
-        .eq('source_institution', normalizedProvider)
-        .eq('source_course_code', courseCode)
-        .eq('target_institution', normalizedTarget)
+        .eq('source_institution_norm', normalizedProvider)
+        .eq('source_course_code_norm', courseCode.toLowerCase())
+        .eq('target_institution_norm', normalizedTarget)
         .maybeSingle();
 
       // PostgREST no-rows code is fine

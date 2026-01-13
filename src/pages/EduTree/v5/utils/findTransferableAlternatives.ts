@@ -17,11 +17,11 @@ export async function findTransferableAlternatives(opts: {
   requirementId?: string;
   targetSchool: string;
 }): Promise<MarketplaceOptionLite[]> {
-  // Query credit_transfer_rules for accepted courses
+  // Query credit_transfer_rules for accepted courses using normalized columns
   const { data: rules } = await supabase
     .from('credit_transfer_rules' as any)
     .select('source_institution, source_course_code')
-    .eq('target_institution', opts.targetSchool.toUpperCase())
+    .eq('target_institution_norm', opts.targetSchool.toUpperCase())
     .eq('acceptance_status', 'accepted');
 
   if (!rules?.length) return [];
