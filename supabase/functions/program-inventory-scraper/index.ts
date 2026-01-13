@@ -470,7 +470,7 @@ Deno.serve(async (req) => {
           }, { onConflict: 'program_catalog_id' });
 
         if (queueErr) {
-          console.error(`Failed to queue program ${programSlug}:`, queueErr);
+          throw new Error(`FATAL: Failed to queue new program ${programSlug}: ${queueErr.message}`);
         }
 
         newCount++;
@@ -507,7 +507,7 @@ Deno.serve(async (req) => {
           }, { onConflict: 'program_catalog_id' });
 
         if (queueErr) {
-          console.error(`Failed to queue program ${programSlug}:`, queueErr);
+          throw new Error(`FATAL: Failed to queue existing program ${programSlug}: ${queueErr.message}`);
         }
 
         updatedCount++;
