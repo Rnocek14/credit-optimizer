@@ -55,21 +55,30 @@ export function TemplateCard({ template, isSelected, onToggleSelect }: TemplateC
 
   const deliveryBadge = deliveryBadgeConfig[template.deliveryMode];
 
-  // Extract all courses for transfer verification
+  // Extract ALL alt-credit options for transfer verification (deduplicated)
+  // This includes preferred + alternatives so Standard templates show meaningful coverage
   const allCourses = useMemo(() => {
+    const seen = new Set<string>();
     const courses: Array<{ code: string; providerCode: string | null; credits: number; costUsd: number }> = [];
     
     template.yearTemplates?.forEach(year => {
       year.moduleTemplates?.forEach(module => {
-        const option = module.options?.find(o => o.courseId === module.recommendedCourseId) || module.options?.[0];
-        if (option) {
-          courses.push({
-            code: option.courseId || '',
-            providerCode: option.providerCode || null,
-            credits: option.credits || 0,
-            costUsd: option.cost_usd || 0,
-          });
-        }
+        // Include ALL options (preferred + alternatives) for comprehensive coverage
+        module.options?.forEach(option => {
+          // Only count alt-credit options (skip institutional courses with null provider)
+          if (option && option.providerCode) {
+            const key = `${normalizeProviderCode(option.providerCode)}::${normalizeCourseCode(option.courseId || '')}`;
+            if (!seen.has(key)) {
+              seen.add(key);
+              courses.push({
+                code: option.courseId || '',
+                providerCode: option.providerCode,
+                credits: option.credits || 0,
+                costUsd: option.cost_usd || 0,
+              });
+            }
+          }
+        });
       });
     });
     
