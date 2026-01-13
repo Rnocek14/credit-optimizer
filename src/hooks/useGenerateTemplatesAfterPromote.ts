@@ -5,12 +5,13 @@ import { useToast } from '@/hooks/use-toast';
 interface GenerateTemplatesResult {
   success: boolean;
   templatesCreated?: number;
+  equivalenciesCreated?: number;
   error?: string;
 }
 
 /**
- * Hook to generate BSBA templates for an institution after pack promotion.
- * Calls the seed-bsba-templates edge function with the institution_code.
+ * Hook to generate BSBA templates AND seed equivalencies for an institution after pack promotion.
+ * Calls seed-bsba-templates first, then seed-equivalencies-v1 with the institution_code.
  */
 export function useGenerateTemplatesAfterPromote() {
   const { toast } = useToast();
@@ -19,7 +20,8 @@ export function useGenerateTemplatesAfterPromote() {
     mutationFn: async (institutionCode: string): Promise<GenerateTemplatesResult> => {
       console.log(`[useGenerateTemplatesAfterPromote] Generating templates for ${institutionCode}...`);
       
-      const { data, error } = await supabase.functions.invoke('seed-bsba-templates', {
+      // Step 1: Generate templates
+      const { data: templateData, error: templateError } = await supabase.functions.invoke('seed-bsba-templates', {
         body: { 
           institution_code: institutionCode,
           program_code: 'BSBA',
@@ -27,21 +29,42 @@ export function useGenerateTemplatesAfterPromote() {
         },
       });
 
-      if (error) {
-        throw new Error(`Template generation failed: ${error.message}`);
+      if (templateError) {
+        throw new Error(`Template generation failed: ${templateError.message}`);
       }
 
+      const templatesCreated = templateData?.summary?.templatesCreated ?? 0;
+      console.log(`[useGenerateTemplatesAfterPromote] Created ${templatesCreated} templates for ${institutionCode}`);
+
+      // Step 2: Seed equivalencies for this institution
+      console.log(`[useGenerateTemplatesAfterPromote] Seeding equivalencies for ${institutionCode}...`);
+      const { data: eqData, error: eqError } = await supabase.functions.invoke('seed-equivalencies-v1', {
+        body: { 
+          target_institutions: [institutionCode],
+        },
+      });
+
+      if (eqError) {
+        console.warn(`[useGenerateTemplatesAfterPromote] Equivalencies seeding failed for ${institutionCode}:`, eqError.message);
+        // Don't throw - templates were created successfully
+      }
+
+      const equivalenciesCreated = eqData?.results?.inserted ?? 0;
+      console.log(`[useGenerateTemplatesAfterPromote] Created ${equivalenciesCreated} equivalencies for ${institutionCode}`);
+
       return {
-        success: data?.success ?? false,
-        templatesCreated: data?.summary?.templatesCreated ?? 0,
-        error: data?.error,
+        success: templateData?.success ?? false,
+        templatesCreated,
+        equivalenciesCreated,
+        error: templateData?.error,
       };
     },
     onSuccess: (data, institutionCode) => {
       if (data.success && (data.templatesCreated ?? 0) > 0) {
+        const eqMsg = data.equivalenciesCreated ? ` + ${data.equivalenciesCreated} equivalencies` : '';
         toast({
           title: 'Templates generated',
-          description: `Created ${data.templatesCreated} BSBA template(s) for ${institutionCode}`,
+          description: `Created ${data.templatesCreated} BSBA template(s)${eqMsg} for ${institutionCode}`,
         });
       } else if (data.templatesCreated === 0) {
         console.warn(`[useGenerateTemplatesAfterPromote] No templates created for ${institutionCode}`);
