@@ -598,17 +598,7 @@ serve(async (req) => {
           details: { placement_missing_count: 0, note: 'no_alt_slots' },
           auto_fixable: false,
         });
-        // Evidence coverage for no-alt-slots templates
-        findings.push({
-          template_id: template.id,
-          institution_code: template.institution_code,
-          program_code: template.program_code,
-          check_name: 'evidence_coverage',
-          check_category: 'provenance',
-          status: 'pass',
-          details: { accepted_total: 0, with_evidence: 0, evidence_pct: null, note: 'no_alt_slots' },
-          auto_fixable: false,
-        });
+        // Note: evidence_coverage finding is added later in the evidence check section
       }
     }
 
@@ -639,37 +629,38 @@ serve(async (req) => {
       }
     }
 
-    // Fetch evidence_url for accepted rules
+    // Fetch evidence_url for accepted rules (batched by target+provider for efficiency)
     const evidenceMap = new Map<string, boolean>();
     
     if (acceptedTuples.length > 0) {
-      // Group by target institution for efficient batching
-      const byTarget = new Map<string, Array<{ provider: string; course: string }>>();
+      // Group by (target, provider) -> set of courses for tight batching
+      const byTargetProvider = new Map<string, Set<string>>();
       for (const t of acceptedTuples) {
-        if (!byTarget.has(t.institution_code)) {
-          byTarget.set(t.institution_code, []);
+        const key = `${t.institution_code}|${t.provider_norm}`;
+        if (!byTargetProvider.has(key)) {
+          byTargetProvider.set(key, new Set());
         }
-        byTarget.get(t.institution_code)!.push({ provider: t.provider_norm, course: t.course_norm });
+        byTargetProvider.get(key)!.add(t.course_norm);
       }
 
-      for (const [target, tuples] of byTarget) {
-        const providers = [...new Set(tuples.map(t => t.provider))];
-        const courses = [...new Set(tuples.map(t => t.course))];
-
-        // Batch fetch (chunk courses if needed)
+      // Fetch evidence per (target, provider) group with chunked courses
+      for (const [targetProvider, courseSet] of byTargetProvider) {
+        const [target, provider] = targetProvider.split('|');
+        const courses = [...courseSet];
+        
         const CHUNK_SIZE = 500;
         for (let i = 0; i < courses.length; i += CHUNK_SIZE) {
           const chunk = courses.slice(i, i + CHUNK_SIZE);
           
           const { data: evidenceRows } = await supabase
             .from('credit_transfer_rules')
-            .select('source_institution_norm, source_course_code_norm, evidence_url')
+            .select('source_course_code_norm, evidence_url')
             .eq('target_institution_norm', target)
-            .in('source_institution_norm', providers)
+            .eq('source_institution_norm', provider)
             .in('source_course_code_norm', chunk);
 
           for (const r of evidenceRows || []) {
-            const key = `${target}|${r.source_institution_norm}|${r.source_course_code_norm}`;
+            const key = `${target}|${provider}|${r.source_course_code_norm}`;
             const hasEvidence = !!(r.evidence_url && r.evidence_url.trim().length > 0);
             evidenceMap.set(key, hasEvidence);
           }
@@ -714,15 +705,28 @@ serve(async (req) => {
     // Tier A threshold (configurable)
     const TIER_A_EVIDENCE_THRESHOLD = 0.20; // 20%
 
-    // Generate evidence coverage findings
+    // Generate evidence coverage findings for ALL templates (not just those with accepted alt slots)
     const templateEvidencePct = new Map<string, number | null>();
+    let templatesWithAcceptedAltSlots = 0;
 
+    // First: handle templates that have accepted alt slots
     for (const [templateId, data] of evidenceByTemplate) {
+      templatesWithAcceptedAltSlots++;
       const pct = data.accepted_total > 0 ? data.with_evidence / data.accepted_total : null;
       templateEvidencePct.set(templateId, pct);
 
-      // Status: pass if we have any evidence, warn if 0 evidence
-      const status = pct === null ? 'pass' : (pct >= TIER_A_EVIDENCE_THRESHOLD ? 'pass' : 'warn');
+      // Status logic:
+      // - accepted_total = 0: pass (nothing to evidence)
+      // - pct >= threshold: pass (Tier A ready)
+      // - pct < threshold: warn (needs more evidence)
+      let status: 'pass' | 'warn' | 'fail';
+      if (data.accepted_total === 0) {
+        status = 'pass';
+      } else if (pct !== null && pct >= TIER_A_EVIDENCE_THRESHOLD) {
+        status = 'pass';
+      } else {
+        status = 'warn';
+      }
       
       findings.push({
         template_id: templateId,
@@ -742,7 +746,36 @@ serve(async (req) => {
       });
     }
 
-    console.log(`[run-degree-truth-scan] Evidence coverage check complete`);
+    // Second: handle templates NOT in evidenceByTemplate (no accepted alt slots)
+    // This ensures every template gets an evidence_coverage finding
+    for (const template of templates || []) {
+      if (!evidenceByTemplate.has(template.id)) {
+        // Template has no accepted alt slots - check if it has any alt slots at all
+        const hasAnyAltSlots = transferByTemplate.has(template.id);
+        const note = hasAnyAltSlots ? 'no_accepted_alt_slots' : 'no_alt_slots';
+        
+        templateEvidencePct.set(template.id, null); // Tier B (no evidence to measure)
+        
+        findings.push({
+          template_id: template.id,
+          institution_code: template.institution_code,
+          program_code: template.program_code,
+          check_name: 'evidence_coverage',
+          check_category: 'provenance',
+          status: 'pass',
+          details: {
+            accepted_total: 0,
+            with_evidence: 0,
+            evidence_pct: null,
+            threshold_pct: TIER_A_EVIDENCE_THRESHOLD * 100,
+            note,
+          },
+          auto_fixable: false,
+        });
+      }
+    }
+
+    console.log(`[run-degree-truth-scan] Evidence coverage check complete (${templatesWithAcceptedAltSlots} templates with accepted alt slots)`);
 
     // Bulk insert findings
     if (findings.length > 0) {
@@ -826,6 +859,7 @@ serve(async (req) => {
       tier_a_threshold_pct: TIER_A_EVIDENCE_THRESHOLD * 100,
       total_alt_slots: totalAltSlots,
       templates_with_alt_slots: templatesWithAltSlots,
+      templates_with_accepted_alt_slots: templatesWithAcceptedAltSlots,
       check_breakdown: checkCounts,
       auto_fix_enabled: auto_fix,
     };
