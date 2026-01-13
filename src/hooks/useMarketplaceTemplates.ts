@@ -37,6 +37,7 @@ function slotOptionToMarketplaceOption(
       credits: minCredits,
       subject: requirementArea,
       provider: sourceCode,
+      providerCode: sourceCode,
       providerType: 'testing_center',
       cost_usd: sourceCode === 'SOPHIA' ? 99 : sourceCode === 'CLEP' ? 90 : 150,
       duration_weeks: 4,
@@ -58,6 +59,7 @@ function slotOptionToMarketplaceOption(
     credits: minCredits,
     subject: requirementArea,
     provider: 'Institution',
+    providerCode: null,
     providerType: 'university',
     cost_usd: 300 * minCredits, // Estimated per-credit cost
     duration_weeks: 8,
