@@ -71,10 +71,85 @@ function getBaselineLabel(source: string | undefined, anchorSchool: string): str
 export function YearComparisonTable({ template }: YearComparisonTableProps) {
   const baseline = template.singleSchoolBaseline;
   
-  if (!baseline?.yearBreakdown) {
+  // No baseline at all - can't show comparison
+  if (!baseline) {
     return (
       <div className="text-center text-muted-foreground py-8">
         No comparison data available for this template.
+      </div>
+    );
+  }
+
+  // Baseline exists but no yearBreakdown - show aggregate comparison
+  if (!baseline.yearBreakdown) {
+    const baselineCost = baseline.costUsd ?? 0;
+    const planCost = template.totals?.costUsd ?? 0;
+    const baselineWeeks = baseline.weeks ?? 0;
+    const planWeeks = template.totals?.weeks ?? 0;
+
+    // Calculate savings if both values present
+    const dollarSavings =
+      baselineCost > 0 && planCost > 0 ? baselineCost - planCost : null;
+    const percentSavings =
+      dollarSavings !== null && baselineCost > 0
+        ? Math.round((dollarSavings / baselineCost) * 100)
+        : null;
+    const weeksSaved = baselineWeeks > 0 && planWeeks > 0 ? baselineWeeks - planWeeks : null;
+    const monthsSaved = weeksSaved !== null ? Math.round(weeksSaved / 4.33) : null;
+
+    // Get baseline label
+    const baselineLabel = getBaselineLabel(baseline.source, template.anchorSchool);
+
+    return (
+      <div className="space-y-4">
+        <div className="text-sm font-medium text-muted-foreground">Cost Comparison</div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div className="rounded-lg border bg-muted/20 p-4">
+            <div className="text-xs text-muted-foreground mb-1">{baselineLabel}</div>
+            <div className="text-2xl font-bold">${baselineCost.toLocaleString()}</div>
+            {baselineWeeks > 0 && (
+              <div className="text-xs text-muted-foreground mt-1">
+                {Math.round(baselineWeeks / 4.33)} months
+              </div>
+            )}
+          </div>
+
+          <div className="rounded-lg border bg-card p-4">
+            <div className="text-xs text-muted-foreground mb-1">Multi-School Strategy</div>
+            <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
+              {planCost > 0 ? `$${planCost.toLocaleString()}` : '—'}
+            </div>
+            {planWeeks > 0 && (
+              <div className="text-xs text-muted-foreground mt-1">
+                {Math.round(planWeeks / 4.33)} months
+              </div>
+            )}
+          </div>
+        </div>
+
+        {dollarSavings !== null && dollarSavings > 0 && percentSavings !== null && (
+          <div className={cn(
+            "rounded-lg border-2 p-4",
+            "bg-gradient-to-r from-emerald-50 to-blue-50",
+            "dark:from-emerald-950/30 dark:to-blue-950/30",
+            "border-emerald-200 dark:border-emerald-800"
+          )}>
+            <div className="text-center">
+              <div className="text-lg font-bold text-emerald-700 dark:text-emerald-400">
+                🎉 Save ${dollarSavings.toLocaleString()} ({percentSavings}%)
+                {monthsSaved !== null && monthsSaved > 0 && ` + ${monthsSaved} months faster`}
+              </div>
+              <div className="text-xs text-muted-foreground mt-1">
+                Verified baseline from {baselineLabel}
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div className="text-xs text-muted-foreground text-center">
+          Year-by-year breakdown will appear once detailed baseline data is available.
+        </div>
       </div>
     );
   }
