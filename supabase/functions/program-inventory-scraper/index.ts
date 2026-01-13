@@ -330,15 +330,16 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Create run record
+    // Create run record with heartbeat
     const { data: run, error: runErr } = await supabase
       .from('program_catalog_runs')
       .insert({
         institution_code,
         seed_url: seedUrl,
         status: 'running',
-        crawler_version: '1.0.0',
+        crawler_version: '1.1.0',
         model_version: 'gpt-4o',
+        heartbeat_at: new Date().toISOString(),
       })
       .select('id')
       .single();
@@ -353,6 +354,20 @@ Deno.serve(async (req) => {
 
     runId = run.id;
     console.log(`Created run ${runId}`);
+
+    // Helper to update heartbeat
+    const updateHeartbeat = async (programsProcessed?: number) => {
+      const updateData: Record<string, unknown> = {
+        heartbeat_at: new Date().toISOString(),
+      };
+      if (programsProcessed !== undefined) {
+        updateData.programs_processed = programsProcessed;
+      }
+      await supabase
+        .from('program_catalog_runs')
+        .update(updateData)
+        .eq('id', runId);
+    };
 
     // Scrape the catalog page
     const { markdown, html, attempts } = await scrapeWithFirecrawl(finalSeedUrl);
@@ -407,111 +422,134 @@ Deno.serve(async (req) => {
       (existingPrograms || []).map(p => [p.program_slug, p.id])
     );
 
-    // Upsert programs and track stats
+    // Batch processing with heartbeat
+    const BATCH_SIZE = 5;
     let newCount = 0;
     let updatedCount = 0;
+    let queuedCount = 0;
+    let processedCount = 0;
 
-    for (const program of extractedPrograms) {
-      const programSlug = generateProgramSlug(institution_code, program.degree_type, program.program_name);
-      const existingId = existingMap.get(programSlug);
+    for (let i = 0; i < extractedPrograms.length; i += BATCH_SIZE) {
+      const batch = extractedPrograms.slice(i, i + BATCH_SIZE);
+      
+      for (const program of batch) {
+        const programSlug = generateProgramSlug(institution_code, program.degree_type, program.program_name);
+        const existingId = existingMap.get(programSlug);
 
-      const eligibilityStatus = program.is_licensure 
-        ? 'blocked_licensure' 
-        : program.has_clinical 
-          ? 'blocked_clinical'
-          : 'needs_review';
+        const eligibilityStatus = program.is_licensure 
+          ? 'blocked_licensure' 
+          : program.has_clinical 
+            ? 'blocked_clinical'
+            : 'needs_review';
 
-      const blockedReasons = program.is_licensure 
-        ? ['Requires professional licensure']
-        : program.has_clinical 
-          ? ['Requires clinical/practicum hours']
-          : [];
+        const blockedReasons = program.is_licensure 
+          ? ['Requires professional licensure']
+          : program.has_clinical 
+            ? ['Requires clinical/practicum hours']
+            : [];
 
-      if (!existingId) {
-        // New program - insert
-        const { data: inserted, error: insertErr } = await supabase
-          .from('program_catalog')
-          .insert({
-            institution_code,
-            program_slug: programSlug,
-            program_name_raw: program.program_name,
-            program_name_normalized: program.program_name.toLowerCase(),
-            degree_level: 'bachelor',
-            degree_type: program.degree_type,
-            catalog_url: program.catalog_url,
-            marketing_url: program.marketing_url,
-            degree_total_credits: program.total_credits,
-            is_licensure_program: program.is_licensure,
-            has_clinical_or_practicum: program.has_clinical,
-            delivery_mode: program.delivery,
-            status: 'active',
-            first_seen_run_id: runId,
-            last_seen_run_id: runId,
-          })
-          .select('id')
-          .single();
+        if (!existingId) {
+          // New program - insert
+          const { data: inserted, error: insertErr } = await supabase
+            .from('program_catalog')
+            .insert({
+              institution_code,
+              program_slug: programSlug,
+              program_name_raw: program.program_name,
+              program_name_normalized: program.program_name.toLowerCase(),
+              degree_level: 'bachelor',
+              degree_type: program.degree_type,
+              catalog_url: program.catalog_url,
+              marketing_url: program.marketing_url,
+              degree_total_credits: program.total_credits,
+              is_licensure_program: program.is_licensure,
+              has_clinical_or_practicum: program.has_clinical,
+              delivery_mode: program.delivery,
+              status: 'active',
+              first_seen_run_id: runId,
+              last_seen_run_id: runId,
+            })
+            .select('id')
+            .single();
 
-        if (insertErr) {
-          console.error(`Failed to insert program ${programSlug}:`, insertErr);
-          continue;
+          if (insertErr) {
+            console.error(`Failed to insert program ${programSlug}:`, insertErr);
+            continue;
+          }
+
+          // Queue for template generation
+          const { error: queueErr } = await supabase
+            .from('template_generation_queue')
+            .upsert({
+              program_catalog_id: inserted.id,
+              program_slug: programSlug,
+              eligibility_status: eligibilityStatus,
+              blocked_reasons: blockedReasons,
+              status: 'queued',
+              desired_tracks: ['standard', 'alt_max'],
+              priority_score: 50,
+            }, { onConflict: 'program_catalog_id' });
+
+          if (queueErr) {
+            throw new Error(`FATAL: Failed to queue new program ${programSlug}: ${queueErr.message}`);
+          }
+
+          newCount++;
+          queuedCount++;
+        } else {
+          // Existing program - always update (idempotent)
+          await supabase
+            .from('program_catalog')
+            .update({
+              program_name_raw: program.program_name,
+              program_name_normalized: program.program_name.toLowerCase(),
+              degree_type: program.degree_type,
+              catalog_url: program.catalog_url,
+              marketing_url: program.marketing_url,
+              degree_total_credits: program.total_credits,
+              is_licensure_program: program.is_licensure,
+              has_clinical_or_practicum: program.has_clinical,
+              delivery_mode: program.delivery,
+              last_seen_run_id: runId,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', existingId);
+
+          // Upsert queue status (handles cases where queue row doesn't exist yet)
+          const { error: queueErr } = await supabase
+            .from('template_generation_queue')
+            .upsert({
+              program_catalog_id: existingId,
+              program_slug: programSlug,
+              eligibility_status: eligibilityStatus,
+              blocked_reasons: blockedReasons,
+              status: 'queued',
+              desired_tracks: ['standard', 'alt_max'],
+              priority_score: 50,
+            }, { onConflict: 'program_catalog_id' });
+
+          if (queueErr) {
+            throw new Error(`FATAL: Failed to queue existing program ${programSlug}: ${queueErr.message}`);
+          }
+
+          updatedCount++;
+          queuedCount++;
         }
-
-        // Queue for template generation
-        const { error: queueErr } = await supabase
-          .from('template_generation_queue')
-          .upsert({
-            program_catalog_id: inserted.id,
-            program_slug: programSlug,
-            eligibility_status: eligibilityStatus,
-            blocked_reasons: blockedReasons,
-            status: 'queued',
-            desired_tracks: ['standard', 'alt_max'],
-            priority_score: 50,
-          }, { onConflict: 'program_catalog_id' });
-
-        if (queueErr) {
-          throw new Error(`FATAL: Failed to queue new program ${programSlug}: ${queueErr.message}`);
-        }
-
-        newCount++;
-      } else {
-        // Existing program - always update (idempotent)
-        await supabase
-          .from('program_catalog')
-          .update({
-            program_name_raw: program.program_name,
-            program_name_normalized: program.program_name.toLowerCase(),
-            degree_type: program.degree_type,
-            catalog_url: program.catalog_url,
-            marketing_url: program.marketing_url,
-            degree_total_credits: program.total_credits,
-            is_licensure_program: program.is_licensure,
-            has_clinical_or_practicum: program.has_clinical,
-            delivery_mode: program.delivery,
-            last_seen_run_id: runId,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', existingId);
-
-        // Upsert queue status (handles cases where queue row doesn't exist yet)
-        const { error: queueErr } = await supabase
-          .from('template_generation_queue')
-          .upsert({
-            program_catalog_id: existingId,
-            program_slug: programSlug,
-            eligibility_status: eligibilityStatus,
-            blocked_reasons: blockedReasons,
-            status: 'queued',
-            desired_tracks: ['standard', 'alt_max'],
-            priority_score: 50,
-          }, { onConflict: 'program_catalog_id' });
-
-        if (queueErr) {
-          throw new Error(`FATAL: Failed to queue existing program ${programSlug}: ${queueErr.message}`);
-        }
-
-        updatedCount++;
+        processedCount++;
       }
+
+      // Update heartbeat after each batch
+      await updateHeartbeat(processedCount);
+      console.log(`Batch complete: ${processedCount}/${extractedPrograms.length} programs processed`);
+    }
+
+    // Parity check: ensure queued count matches discovered count
+    const catalogWriteCount = newCount + updatedCount;
+    if (catalogWriteCount !== extractedPrograms.length) {
+      throw new Error(`PARITY_MISMATCH: Wrote ${catalogWriteCount} programs but discovered ${extractedPrograms.length}`);
+    }
+    if (queuedCount !== extractedPrograms.length) {
+      throw new Error(`QUEUE_PARITY_MISMATCH: Queued ${queuedCount} programs but discovered ${extractedPrograms.length}`);
     }
 
     // Update run with final stats
@@ -520,13 +558,17 @@ Deno.serve(async (req) => {
       .update({
         status: 'completed',
         finished_at: new Date().toISOString(),
+        heartbeat_at: new Date().toISOString(),
         programs_discovered: extractedPrograms.length,
         programs_new: newCount,
         programs_updated: updatedCount,
+        programs_processed: processedCount,
         diff_summary: {
           total: extractedPrograms.length,
           new: newCount,
           updated: updatedCount,
+          queued: queuedCount,
+          parity_ok: true,
         },
       })
       .eq('id', runId);
