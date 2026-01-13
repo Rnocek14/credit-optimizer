@@ -82,11 +82,12 @@ serve(async (req) => {
       institution_code = null,
       batch_size = CONFIG.DEFAULT_BATCH_SIZE,
       dry_run = false,
+      force_regen = false,  // If true, regenerate even if template exists
     } = body;
 
     // LOG CONFIG so we can verify deployed version
     console.log(`[${workerId}] CONFIG`, CONFIG);
-    console.log(`[${workerId}] Starting worker`, { institution_code, batch_size, dry_run });
+    console.log(`[${workerId}] Starting worker`, { institution_code, batch_size, dry_run, force_regen });
 
     // DRY RUN: Preview jobs without claiming or modifying state
     if (dry_run) {
@@ -195,6 +196,7 @@ serve(async (req) => {
         openaiKey,
         workerId,
         dry_run,
+        force_regen,
         workerStartTime
       );
 
@@ -281,6 +283,7 @@ async function processJob(
   openaiKey: string,
   workerId: string,
   dryRun: boolean,
+  forceRegen: boolean,
   workerStartTime: number
 ): Promise<JobResult> {
   const tracks = job.desired_tracks || ['standard'];
@@ -317,6 +320,14 @@ async function processJob(
 
     const programData = program as ProgramCatalog;
 
+    // Check which templates already exist (for resume/skip logic)
+    const { data: existingTemplates } = await supabase
+      .from('program_templates')
+      .select('track')
+      .eq('program_catalog_id', job.program_catalog_id);
+    
+    const existingTracks = new Set((existingTemplates || []).map((t: { track: string }) => t.track));
+
     // Process each track
     for (const track of tracks) {
       // Check time remaining before starting track
@@ -329,6 +340,17 @@ async function processJob(
           template_written: false,
           error_code: 'TIME_LIMIT',
           error_message: `Skipped - only ${timeRemaining}ms remaining`,
+        });
+        continue;
+      }
+
+      // Skip if template already exists (unless force_regen)
+      if (existingTracks.has(track) && !forceRegen) {
+        console.log(`[${workerId}] ⏭ Skipping ${track} for ${job.program_slug} - template exists`);
+        trackResults.push({
+          success: true,
+          track,
+          template_written: true, // Already exists, counts as written
         });
         continue;
       }
