@@ -80,18 +80,18 @@ export function useTransferVerification(
         }));
       }
 
-      // Query transfer rules for all pairs at once using normalized provider codes
+      // Query transfer rules using normalized columns for deterministic, index-optimized joins
       const { data: rules, error } = await supabase
         .from('credit_transfer_rules' as any)
         .select('*')
-        .eq('target_institution', targetSchool.toUpperCase())
+        .eq('target_institution_norm', targetSchool.toUpperCase())
         .in(
-          'source_institution',
+          'source_institution_norm',
           Array.from(new Set(pairs.map(p => p.provider)))
         )
         .in(
-          'source_course_code',
-          Array.from(new Set(pairs.map(p => p.course)))
+          'source_course_code_norm',
+          Array.from(new Set(pairs.map(p => p.course.toLowerCase())))
         );
 
       if (error && error.code !== 'PGRST116') {
@@ -111,9 +111,11 @@ export function useTransferVerification(
         });
       }
 
+      // Build map using normalized columns for consistent lookups
       const rulesMap = new Map<string, TransferRule>();
       (rules || []).forEach((rule: any) => {
-        const key = `${rule.source_institution}:${rule.source_course_code}`;
+        // Use _norm columns for the key to match our query
+        const key = `${rule.source_institution_norm || rule.source_institution?.toUpperCase()}:${rule.source_course_code_norm || rule.source_course_code?.toLowerCase()}`;
         rulesMap.set(key, rule as TransferRule);
       });
 
@@ -147,8 +149,9 @@ export function useTransferVerification(
           };
         }
 
+        // Use normalized values for map lookup (matching the key format)
         const normalizedProvider = normalizeProviderCode(c.providerCode);
-        const normalizedCourse = normalizeCourseCode(c.code);
+        const normalizedCourse = normalizeCourseCode(c.code).toLowerCase();
         const key = `${normalizedProvider}:${normalizedCourse}`;
         const rule = rulesMap.get(key);
 

@@ -125,14 +125,14 @@ export async function checkTransferRule(
     };
   }
 
-  // 3) Query transfer rules table
+  // 3) Query transfer rules table using normalized columns for deterministic joins
   try {
     const { data, error } = await supabase
       .from('credit_transfer_rules')
       .select('*')
-      .eq('source_institution', provider)
-      .eq('source_course_code', code)
-      .eq('target_institution', target)
+      .eq('source_institution_norm', provider)
+      .eq('source_course_code_norm', code.toLowerCase())
+      .eq('target_institution_norm', target)
       .maybeSingle();
 
     // PGRST116 = no rows; treat as "no rule"

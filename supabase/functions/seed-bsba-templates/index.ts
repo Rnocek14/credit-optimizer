@@ -597,6 +597,15 @@ async function generateTemplatesFromPack(
           .reduce((slotSum, s) => slotSum + s.minCredits, 0), 0);
       
       console.log(`[seed-bsba-templates] ${institutionCode} alt_max cap enforcement: ${altCreditsBeforeCap} → ${altCreditsAfterCap} (max: ${maxAltCredits})`);
+      
+      // FAIL-FAST ASSERTION: Refuse to publish templates that still violate caps
+      // This is a platform-wide guardrail to prevent invalid templates from being seeded
+      if (altCreditsAfterCap > maxAltCredits) {
+        const violationMsg = `[seed-bsba-templates] FATAL: ${institutionCode} alt_max still violates cap after enforcement (${altCreditsAfterCap} > ${maxAltCredits}). Template NOT saved.`;
+        console.error(violationMsg);
+        errors.push(`alt_max: Cap violation - ${altCreditsAfterCap} > ${maxAltCredits}`);
+        continue; // Skip this template, do not upsert
+      }
     }
 
     const templateData: TemplateData = {
