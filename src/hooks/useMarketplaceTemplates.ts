@@ -1,23 +1,137 @@
 import { useQuery } from '@tanstack/react-query';
-import type { MarketplaceDegreeTemplate, MarketplaceFilters } from '@/pages/EduTree/v5/types/templates';
-import marketplaceTemplates from '@/fixtures/templates/marketplace-v2-templates.json';
+import { supabase } from '@/integrations/supabase/client';
+import type { MarketplaceDegreeTemplate, MarketplaceFilters, YearTemplate } from '@/pages/EduTree/v5/types/templates';
+import marketplaceFixtures from '@/fixtures/templates/marketplace-v2-templates.json';
 
-// Debug: Log template data on load to verify yearBreakdown
-console.log('[MarketplaceTemplates] Loaded templates:', marketplaceTemplates.length);
-console.log('[MarketplaceTemplates] First template yearBreakdown length:', 
-  (marketplaceTemplates as any)[0]?.singleSchoolBaseline?.yearBreakdown?.length);
-console.log('[MarketplaceTemplates] First template yearTemplates length:', 
-  (marketplaceTemplates as any)[0]?.yearTemplates?.length);
+interface DegreeTemplateRow {
+  id: string;
+  institution_code: string;
+  program_code: string;
+  track_type: string;
+  total_credits: number;
+  estimated_cost: number | null;
+  estimated_duration_months: number | null;
+  template_data: Record<string, unknown> | null;
+}
+
+/**
+ * Transform a database row to MarketplaceDegreeTemplate format
+ */
+function transformToMarketplaceTemplate(row: DegreeTemplateRow): MarketplaceDegreeTemplate {
+  const templateData = (row.template_data || {}) as Record<string, unknown>;
+  const optimization = row.track_type === 'alt_max' ? 'alt-credit' : 'standard';
+  const now = new Date().toISOString();
+  
+  // Try to extract yearTemplates from template_data
+  const yearTemplates = (templateData.yearTemplates as YearTemplate[]) || [];
+  
+  return {
+    id: row.id,
+    kind: 'degree',
+    programId: row.program_code,
+    anchorSchool: row.institution_code,
+    optimization,
+    label: `${row.program_code} @ ${row.institution_code} • ${row.track_type === 'alt_max' ? 'Alt-Credit Max' : 'Standard'}`,
+    summary: (templateData.summary as string) || `${row.program_code} degree at ${row.institution_code}`,
+    badge: row.track_type === 'alt_max' ? 'Cheapest' : undefined,
+    catalogYear: (templateData.catalogYear as string) || '2025',
+    policyVersion: (templateData.policyVersion as string) || `${row.institution_code}-2025-v1`,
+    generatedAt: (templateData.generatedAt as string) || now,
+    lastVerified: (templateData.lastVerified as string) || now,
+    marketplace: {
+      title: row.track_type === 'alt_max' 
+        ? `Budget ${row.program_code} Degree` 
+        : `${row.program_code} Degree`,
+      tagline: `${row.program_code} at ${row.institution_code}`,
+      badge: row.track_type === 'alt_max' ? 'Cheapest' : undefined,
+      isPremium: false,
+    },
+    lifestyle: (templateData.lifestyle as MarketplaceDegreeTemplate['lifestyle']) || {
+      avgWeeklyHours: 15,
+      paceType: 'flexible',
+      workCompatible: true,
+    },
+    primaryCareerIds: (templateData.primaryCareerIds as string[]) || ['business-analyst', 'manager'],
+    deliveryMode: 'fully_online',
+    inPersonWeeks: 0,
+    socialProof: {
+      popularityScore: 4.0,
+      dataSource: 'simulated',
+    },
+    totals: {
+      credits: row.total_credits,
+      costUsd: row.estimated_cost || 0,
+      weeks: (row.estimated_duration_months || 24) * 4.33,
+    },
+    yearTemplates,
+    targetSchool: row.institution_code,
+    transferVerified: true,
+    est: {
+      costUsd: row.estimated_cost || 0,
+      weeks: (row.estimated_duration_months || 24) * 4.33,
+      credits: row.total_credits,
+      cri: 75,
+      workloadHours: 15,
+    },
+    singleSchoolBaseline: (templateData.singleSchoolBaseline as MarketplaceDegreeTemplate['singleSchoolBaseline']) || {
+      costUsd: row.estimated_cost ? row.estimated_cost * 1.5 : 15000,
+      weeks: (row.estimated_duration_months || 24) * 4.33 * 1.2,
+      source: `${row.institution_code} Direct`,
+    },
+  };
+}
+
 /**
  * Hook to fetch and filter marketplace templates
- * V1: Uses static fixtures, V2+ will query database
+ * Fetches from database, merges with fixtures for rich data
  */
 export function useMarketplaceTemplates(filters?: Partial<MarketplaceFilters>) {
   return useQuery({
     queryKey: ['marketplace-templates', filters],
     queryFn: async () => {
-      // Load templates from fixtures
-      let templates = marketplaceTemplates as unknown as MarketplaceDegreeTemplate[];
+      // Fetch templates from database
+      const { data: dbRows, error } = await supabase
+        .from('degree_templates')
+        .select('id, institution_code, program_code, track_type, total_credits, estimated_cost, estimated_duration_months, template_data')
+        .eq('program_code', 'BSBA');
+      
+      if (error) {
+        console.error('[useMarketplaceTemplates] DB error:', error);
+        throw error;
+      }
+      
+      // Create a map of fixtures by anchorSchool + optimization for rich data lookup
+      const fixtureMap = new Map<string, MarketplaceDegreeTemplate>();
+      (marketplaceFixtures as unknown as MarketplaceDegreeTemplate[]).forEach(t => {
+        const key = `${t.anchorSchool}-${t.optimization}`;
+        fixtureMap.set(key, t);
+      });
+      
+      // Transform DB rows, using fixture data when available for rich content
+      let templates: MarketplaceDegreeTemplate[] = (dbRows || []).map((row) => {
+        const typedRow = row as unknown as DegreeTemplateRow;
+        const optimization = typedRow.track_type === 'alt_max' ? 'alt-credit' : 'standard';
+        const fixtureKey = `${typedRow.institution_code}-${optimization}`;
+        const fixture = fixtureMap.get(fixtureKey);
+        
+        if (fixture) {
+          // Use rich fixture data but update with DB values for cost/credits
+          return {
+            ...fixture,
+            id: typedRow.id, // Use DB id for consistency
+            totals: {
+              ...fixture.totals,
+              credits: typedRow.total_credits,
+              costUsd: typedRow.estimated_cost || fixture.totals.costUsd,
+            },
+          };
+        }
+        
+        // No fixture - transform DB row directly
+        return transformToMarketplaceTemplate(typedRow);
+      });
+      
+      console.log('[useMarketplaceTemplates] Loaded', templates.length, 'templates from DB');
 
       // Apply filters
       if (filters) {
@@ -111,12 +225,49 @@ export function useMarketplaceTemplate(templateId: string) {
   return useQuery({
     queryKey: ['marketplace-template', templateId],
     queryFn: async () => {
-      const templates = marketplaceTemplates as unknown as MarketplaceDegreeTemplate[];
-      const template = templates.find(t => t.id === templateId);
+      // First try to fetch from database
+      const { data: dbRow, error } = await supabase
+        .from('degree_templates')
+        .select('id, institution_code, program_code, track_type, total_credits, estimated_cost, estimated_duration_months, template_data')
+        .eq('id', templateId)
+        .maybeSingle();
+      
+      if (error) {
+        console.error('[useMarketplaceTemplate] DB error:', error);
+      }
+      
+      if (dbRow) {
+        const typedRow = dbRow as unknown as DegreeTemplateRow;
+        const optimization = typedRow.track_type === 'alt_max' ? 'alt-credit' : 'standard';
+        const fixtureKey = `${typedRow.institution_code}-${optimization}`;
+        
+        // Check if we have rich fixture data
+        const fixtures = marketplaceFixtures as unknown as MarketplaceDegreeTemplate[];
+        const fixture = fixtures.find(t => 
+          t.anchorSchool === typedRow.institution_code && t.optimization === optimization
+        );
+        
+        if (fixture) {
+          return {
+            ...fixture,
+            id: typedRow.id,
+            totals: {
+              ...fixture.totals,
+              credits: typedRow.total_credits,
+              costUsd: typedRow.estimated_cost || fixture.totals.costUsd,
+            },
+          };
+        }
+        
+        return transformToMarketplaceTemplate(typedRow);
+      }
+      
+      // Fallback to fixtures for backwards compatibility
+      const fixtures = marketplaceFixtures as unknown as MarketplaceDegreeTemplate[];
+      const template = fixtures.find(t => t.id === templateId);
       
       if (!template) {
         console.warn(`[useMarketplaceTemplate] Template not found: ${templateId}`);
-        console.log('[useMarketplaceTemplate] Available templates:', templates.map(t => t.id));
         return null;
       }
       
