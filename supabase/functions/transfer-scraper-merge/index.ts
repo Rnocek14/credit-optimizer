@@ -1785,28 +1785,30 @@ Deno.serve(async (req) => {
 
       // === PHASE C: COMPUTE BLOCKED_REASON ===
       // Deterministic machine-stable blocked reasons for promotion gating
+      // NOTE: program_scoped_policy is NOT a block reason - it's a structural property
+      // that indicates the pack applies to programs, not the whole institution
       const conflicts = mergeResult.conflicts || [];
       const hasUnresolvedConflicts = conflicts.length > 0;
       const confidenceThreshold = 0.80;
       const isLowConfidence = totalScore < confidenceThreshold;
       const missingProvenanceUrl = !canonicalProvenanceUrl;
-      const isProgramScopedPack = packScope === 'program';
       
       // Compute blocked_reason (first matching rule wins)
-      let blocked_reason: string | null = null;
+      // Only block for conditions that indicate data quality issues
+      // DO NOT block for structural properties like program_scoped
+      blocked_reason = null;
       if (isLowConfidence) {
         blocked_reason = 'confidence_below_threshold';
       } else if (hasUnresolvedConflicts) {
         blocked_reason = 'unresolved_conflicts';
       } else if (missingProvenanceUrl) {
         blocked_reason = 'missing_provenance_url';
-      } else if (isProgramScopedPack) {
-        blocked_reason = 'program_scoped_policy';
       }
+      // Note: program_scoped_policy is stored in pack_scope, not blocked_reason
       
-      const isBlocked = blocked_reason !== null;
+      isBlocked = blocked_reason !== null;
       
-      console.log(`[merge] Phase C gate: blocked=${isBlocked}, reason=${blocked_reason}, score=${totalScore}, conflicts=${conflicts.length}`);
+      console.log(`[merge] Phase C gate: blocked=${isBlocked}, reason=${blocked_reason}, score=${totalScore}, conflicts=${conflicts.length}, packScope=${packScope}`);
       
       const { data: packData, error: policyError } = await supabase
         .from('institution_policy_packs')
@@ -1837,8 +1839,17 @@ Deno.serve(async (req) => {
         policyPackId = packData.id;
         notes.push(`Created merged policy pack: ${packData.id}${diffsWritten > 0 ? ` (${diffsWritten} diffs written)` : ''}${blocked_reason ? ` [BLOCKED: ${blocked_reason}]` : ''}`);
 
-        // === PHASE C: MARK ACTIVE PACK AS STALE IF BLOCKED ===
-        if (isBlocked) {
+        // === PHASE C: MARK ACTIVE PACK AS STALE (only for specific blocked reasons) ===
+        // Only mark stale when blocked_reason indicates potential data staleness:
+        // - confidence_below_threshold: scrape quality degraded
+        // - unresolved_conflicts: sources disagree, active may be wrong
+        // DO NOT mark stale for:
+        // - missing_provenance_url: transient/fixable
+        // - program_scoped_policy: structural, not staleness
+        const shouldMarkStale = blocked_reason === 'confidence_below_threshold' || 
+                                 blocked_reason === 'unresolved_conflicts';
+        
+        if (shouldMarkStale) {
           const { error: staleError } = await supabase
             .from('institution_policy_packs')
             .update({ stale: true })
@@ -1848,7 +1859,7 @@ Deno.serve(async (req) => {
           if (staleError) {
             console.error('[merge] Error marking active pack stale:', staleError);
           } else {
-            notes.push(`Marked active pack(s) as stale due to blocked draft`);
+            notes.push(`Marked active pack(s) as stale due to: ${blocked_reason}`);
           }
         }
 
