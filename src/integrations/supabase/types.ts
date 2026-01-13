@@ -4066,6 +4066,7 @@ export type Database = {
         Row: {
           catalog_year: string | null
           created_at: string | null
+          degree_total_credits: number | null
           estimated_cost: number | null
           estimated_duration_months: number | null
           id: string
@@ -4074,8 +4075,10 @@ export type Database = {
           metadata: Json | null
           notes: string | null
           policy_last_verified: string | null
+          program_catalog_id: string | null
           program_code: string
           program_name: string
+          program_slug: string | null
           template_data: Json
           total_credits: number
           track_type: string
@@ -4084,6 +4087,7 @@ export type Database = {
         Insert: {
           catalog_year?: string | null
           created_at?: string | null
+          degree_total_credits?: number | null
           estimated_cost?: number | null
           estimated_duration_months?: number | null
           id: string
@@ -4092,8 +4096,10 @@ export type Database = {
           metadata?: Json | null
           notes?: string | null
           policy_last_verified?: string | null
+          program_catalog_id?: string | null
           program_code: string
           program_name: string
+          program_slug?: string | null
           template_data: Json
           total_credits: number
           track_type: string
@@ -4102,6 +4108,7 @@ export type Database = {
         Update: {
           catalog_year?: string | null
           created_at?: string | null
+          degree_total_credits?: number | null
           estimated_cost?: number | null
           estimated_duration_months?: number | null
           id?: string
@@ -4110,8 +4117,10 @@ export type Database = {
           metadata?: Json | null
           notes?: string | null
           policy_last_verified?: string | null
+          program_catalog_id?: string | null
           program_code?: string
           program_name?: string
+          program_slug?: string | null
           template_data?: Json
           total_credits?: number
           track_type?: string
@@ -4123,6 +4132,13 @@ export type Database = {
             columns: ["institution_id"]
             isOneToOne: false
             referencedRelation: "institutions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "degree_templates_program_catalog_id_fkey"
+            columns: ["program_catalog_id"]
+            isOneToOne: false
+            referencedRelation: "program_catalog"
             referencedColumns: ["id"]
           },
         ]
@@ -8819,6 +8835,164 @@ export type Database = {
         }
         Relationships: []
       }
+      program_catalog: {
+        Row: {
+          catalog_url: string | null
+          created_at: string | null
+          current_requirements_version_id: string | null
+          degree_level: string
+          degree_total_credits: number | null
+          degree_type: string | null
+          delivery_mode: string | null
+          family_code: string | null
+          first_seen_run_id: string | null
+          has_clinical_or_practicum: boolean | null
+          id: string
+          institution_code: string
+          is_licensure_program: boolean | null
+          last_seen_run_id: string | null
+          major_or_concentration: string | null
+          marketing_url: string | null
+          program_code_raw: string | null
+          program_name_normalized: string | null
+          program_name_raw: string
+          program_slug: string
+          scraped_at: string | null
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          catalog_url?: string | null
+          created_at?: string | null
+          current_requirements_version_id?: string | null
+          degree_level: string
+          degree_total_credits?: number | null
+          degree_type?: string | null
+          delivery_mode?: string | null
+          family_code?: string | null
+          first_seen_run_id?: string | null
+          has_clinical_or_practicum?: boolean | null
+          id?: string
+          institution_code: string
+          is_licensure_program?: boolean | null
+          last_seen_run_id?: string | null
+          major_or_concentration?: string | null
+          marketing_url?: string | null
+          program_code_raw?: string | null
+          program_name_normalized?: string | null
+          program_name_raw: string
+          program_slug: string
+          scraped_at?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          catalog_url?: string | null
+          created_at?: string | null
+          current_requirements_version_id?: string | null
+          degree_level?: string
+          degree_total_credits?: number | null
+          degree_type?: string | null
+          delivery_mode?: string | null
+          family_code?: string | null
+          first_seen_run_id?: string | null
+          has_clinical_or_practicum?: boolean | null
+          id?: string
+          institution_code?: string
+          is_licensure_program?: boolean | null
+          last_seen_run_id?: string | null
+          major_or_concentration?: string | null
+          marketing_url?: string | null
+          program_code_raw?: string | null
+          program_name_normalized?: string | null
+          program_name_raw?: string
+          program_slug?: string
+          scraped_at?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "program_catalog_current_requirements_version_id_fkey"
+            columns: ["current_requirements_version_id"]
+            isOneToOne: false
+            referencedRelation: "program_requirements_versions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "program_catalog_family_code_fkey"
+            columns: ["family_code"]
+            isOneToOne: false
+            referencedRelation: "supported_program_families"
+            referencedColumns: ["family_code"]
+          },
+          {
+            foreignKeyName: "program_catalog_first_seen_run_id_fkey"
+            columns: ["first_seen_run_id"]
+            isOneToOne: false
+            referencedRelation: "program_catalog_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "program_catalog_last_seen_run_id_fkey"
+            columns: ["last_seen_run_id"]
+            isOneToOne: false
+            referencedRelation: "program_catalog_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      program_catalog_runs: {
+        Row: {
+          crawler_version: string | null
+          created_at: string | null
+          diff_summary: Json | null
+          error_message: string | null
+          finished_at: string | null
+          id: string
+          institution_code: string
+          model_version: string | null
+          programs_discovered: number | null
+          programs_new: number | null
+          programs_updated: number | null
+          seed_url: string
+          started_at: string | null
+          status: string
+        }
+        Insert: {
+          crawler_version?: string | null
+          created_at?: string | null
+          diff_summary?: Json | null
+          error_message?: string | null
+          finished_at?: string | null
+          id?: string
+          institution_code: string
+          model_version?: string | null
+          programs_discovered?: number | null
+          programs_new?: number | null
+          programs_updated?: number | null
+          seed_url: string
+          started_at?: string | null
+          status?: string
+        }
+        Update: {
+          crawler_version?: string | null
+          created_at?: string | null
+          diff_summary?: Json | null
+          error_message?: string | null
+          finished_at?: string | null
+          id?: string
+          institution_code?: string
+          model_version?: string | null
+          programs_discovered?: number | null
+          programs_new?: number | null
+          programs_updated?: number | null
+          seed_url?: string
+          started_at?: string | null
+          status?: string
+        }
+        Relationships: []
+      }
       program_outcomes: {
         Row: {
           created_at: string | null
@@ -8887,6 +9061,128 @@ export type Database = {
           year?: number | null
         }
         Relationships: []
+      }
+      program_requirements_versions: {
+        Row: {
+          alt_credit_cap: number | null
+          capstone_required: boolean | null
+          confidence: number | null
+          content_hash: string | null
+          created_at: string | null
+          credits_total: number | null
+          effective_term: string | null
+          elective_credits: number | null
+          extracted_json: Json
+          extraction_model: string | null
+          extraction_prompt_version: string | null
+          extraction_source_type: string | null
+          gen_ed_credits: number | null
+          id: string
+          major_core_credits: number | null
+          program_catalog_id: string
+          raw_snapshot_id: string | null
+          residency_min: number | null
+          source_urls: string[] | null
+          transfer_max: number | null
+          version_number: number
+        }
+        Insert: {
+          alt_credit_cap?: number | null
+          capstone_required?: boolean | null
+          confidence?: number | null
+          content_hash?: string | null
+          created_at?: string | null
+          credits_total?: number | null
+          effective_term?: string | null
+          elective_credits?: number | null
+          extracted_json: Json
+          extraction_model?: string | null
+          extraction_prompt_version?: string | null
+          extraction_source_type?: string | null
+          gen_ed_credits?: number | null
+          id?: string
+          major_core_credits?: number | null
+          program_catalog_id: string
+          raw_snapshot_id?: string | null
+          residency_min?: number | null
+          source_urls?: string[] | null
+          transfer_max?: number | null
+          version_number?: number
+        }
+        Update: {
+          alt_credit_cap?: number | null
+          capstone_required?: boolean | null
+          confidence?: number | null
+          content_hash?: string | null
+          created_at?: string | null
+          credits_total?: number | null
+          effective_term?: string | null
+          elective_credits?: number | null
+          extracted_json?: Json
+          extraction_model?: string | null
+          extraction_prompt_version?: string | null
+          extraction_source_type?: string | null
+          gen_ed_credits?: number | null
+          id?: string
+          major_core_credits?: number | null
+          program_catalog_id?: string
+          raw_snapshot_id?: string | null
+          residency_min?: number | null
+          source_urls?: string[] | null
+          transfer_max?: number | null
+          version_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "program_requirements_versions_program_catalog_id_fkey"
+            columns: ["program_catalog_id"]
+            isOneToOne: false
+            referencedRelation: "program_catalog"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "program_requirements_versions_raw_snapshot_id_fkey"
+            columns: ["raw_snapshot_id"]
+            isOneToOne: false
+            referencedRelation: "scraped_content"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      program_slug_history: {
+        Row: {
+          changed_at: string | null
+          id: string
+          new_slug: string
+          old_slug: string
+          program_id: string
+          reason: string | null
+        }
+        Insert: {
+          changed_at?: string | null
+          id?: string
+          new_slug: string
+          old_slug: string
+          program_id: string
+          reason?: string | null
+        }
+        Update: {
+          changed_at?: string | null
+          id?: string
+          new_slug?: string
+          old_slug?: string
+          program_id?: string
+          reason?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "program_slug_history_program_id_fkey"
+            columns: ["program_id"]
+            isOneToOne: false
+            referencedRelation: "program_catalog"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       project_skills: {
         Row: {
@@ -10940,6 +11236,36 @@ export type Database = {
           },
         ]
       }
+      supported_program_families: {
+        Row: {
+          alt_credit_friendly: boolean | null
+          created_at: string | null
+          display_name: string
+          family_code: string
+          id: string
+          notes: string | null
+          priority_score: number | null
+        }
+        Insert: {
+          alt_credit_friendly?: boolean | null
+          created_at?: string | null
+          display_name: string
+          family_code: string
+          id?: string
+          notes?: string | null
+          priority_score?: number | null
+        }
+        Update: {
+          alt_credit_friendly?: boolean | null
+          created_at?: string | null
+          display_name?: string
+          family_code?: string
+          id?: string
+          notes?: string | null
+          priority_score?: number | null
+        }
+        Relationships: []
+      }
       switching_scenarios: {
         Row: {
           assumptions: Json
@@ -11245,6 +11571,109 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "template_with_costs"
             referencedColumns: ["template_id"]
+          },
+        ]
+      }
+      template_generation_queue: {
+        Row: {
+          attempts: number | null
+          blocked_reasons: string[] | null
+          created_at: string | null
+          desired_tracks: string[] | null
+          eligibility_status: Database["public"]["Enums"]["template_eligibility_status"]
+          error_message: string | null
+          id: string
+          last_attempt_at: string | null
+          next_attempt_at: string | null
+          priority_score: number | null
+          program_catalog_id: string
+          program_slug: string
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          attempts?: number | null
+          blocked_reasons?: string[] | null
+          created_at?: string | null
+          desired_tracks?: string[] | null
+          eligibility_status?: Database["public"]["Enums"]["template_eligibility_status"]
+          error_message?: string | null
+          id?: string
+          last_attempt_at?: string | null
+          next_attempt_at?: string | null
+          priority_score?: number | null
+          program_catalog_id: string
+          program_slug: string
+          status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          attempts?: number | null
+          blocked_reasons?: string[] | null
+          created_at?: string | null
+          desired_tracks?: string[] | null
+          eligibility_status?: Database["public"]["Enums"]["template_eligibility_status"]
+          error_message?: string | null
+          id?: string
+          last_attempt_at?: string | null
+          next_attempt_at?: string | null
+          priority_score?: number | null
+          program_catalog_id?: string
+          program_slug?: string
+          status?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "template_generation_queue_program_catalog_id_fkey"
+            columns: ["program_catalog_id"]
+            isOneToOne: true
+            referencedRelation: "program_catalog"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      template_generation_queue_tracks: {
+        Row: {
+          attempts: number | null
+          created_at: string | null
+          id: string
+          last_error: string | null
+          queue_id: string
+          status: string | null
+          template_id: string | null
+          track_type: string
+          updated_at: string | null
+        }
+        Insert: {
+          attempts?: number | null
+          created_at?: string | null
+          id?: string
+          last_error?: string | null
+          queue_id: string
+          status?: string | null
+          template_id?: string | null
+          track_type: string
+          updated_at?: string | null
+        }
+        Update: {
+          attempts?: number | null
+          created_at?: string | null
+          id?: string
+          last_error?: string | null
+          queue_id?: string
+          status?: string | null
+          template_id?: string | null
+          track_type?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "template_generation_queue_tracks_queue_id_fkey"
+            columns: ["queue_id"]
+            isOneToOne: false
+            referencedRelation: "template_generation_queue"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -13736,6 +14165,23 @@ export type Database = {
           },
         ]
       }
+      program_pipeline_health_v: {
+        Row: {
+          bachelor_programs: number | null
+          institutions_covered: number | null
+          last_catalog_run: string | null
+          last_requirements_extraction: string | null
+          queue_blocked: number | null
+          queue_eligible: number | null
+          queue_pending: number | null
+          templates_from_pipeline: number | null
+          total_programs: number | null
+          total_requirement_versions: number | null
+          total_templates: number | null
+          with_requirements: number | null
+        }
+        Relationships: []
+      }
       requirement_option_counts: {
         Row: {
           has_ace_credit: boolean | null
@@ -14330,6 +14776,15 @@ export type Database = {
         | "upper_division_min"
         | "provider_blacklist"
         | "time_limit"
+      template_eligibility_status:
+        | "eligible"
+        | "blocked_licensure"
+        | "blocked_clinical"
+        | "blocked_missing_requirements"
+        | "blocked_unsupported_family"
+        | "blocked_non_bachelor"
+        | "needs_review"
+        | "pending_extraction"
       transfer_source: "ACE" | "NCCRS" | "CLEP" | "XFER" | "HOME" | "DSST"
       user_plan_tier:
         | "free"
@@ -14494,6 +14949,16 @@ export const Constants = {
         "upper_division_min",
         "provider_blacklist",
         "time_limit",
+      ],
+      template_eligibility_status: [
+        "eligible",
+        "blocked_licensure",
+        "blocked_clinical",
+        "blocked_missing_requirements",
+        "blocked_unsupported_family",
+        "blocked_non_bachelor",
+        "needs_review",
+        "pending_extraction",
       ],
       transfer_source: ["ACE", "NCCRS", "CLEP", "XFER", "HOME", "DSST"],
       user_plan_tier: [
