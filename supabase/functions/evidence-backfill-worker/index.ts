@@ -20,7 +20,12 @@ interface EvidenceJob {
   check_count: number;
 }
 
-// Known transfer equivalency page patterns by institution
+// Normalize key for pattern lookup (lowercase, trimmed)
+function normKey(v: string | null | undefined): string {
+  return (v || '').trim().toLowerCase();
+}
+
+// Known transfer equivalency page patterns by institution (lowercase keys)
 const EQUIVALENCY_PAGE_PATTERNS: Record<string, string> = {
   'tesu': 'https://www.tesu.edu/degree-completion/transfer-credit',
   'wgu': 'https://www.wgu.edu/admissions/transfers.html',
@@ -29,13 +34,15 @@ const EQUIVALENCY_PAGE_PATTERNS: Record<string, string> = {
   'cosc': 'https://www.charteroak.edu/prospective-students/transfer-credit.php',
 };
 
-// Provider catalog patterns
+// Provider catalog patterns (lowercase keys)
 const PROVIDER_CATALOG_PATTERNS: Record<string, string> = {
   'sophia': 'https://www.sophia.org/online-courses',
+  'studycom': 'https://study.com/academy/catalog.html',
   'study.com': 'https://study.com/academy/catalog.html',
   'straighterline': 'https://www.straighterline.com/online-college-courses/',
   'saylor': 'https://learn.saylor.org/',
   'modernstates': 'https://modernstates.org/course/',
+  'clep': 'https://clep.collegeboard.org/clep-exams',
 };
 
 serve(async (req) => {
@@ -120,11 +127,15 @@ serve(async (req) => {
         console.log(`[evidence-backfill-worker] Processing: ${tupleKey}`);
 
         // ============= EVIDENCE DISCOVERY LOGIC =============
+        // Use normKey for pattern lookup (lowercase) but keep job values for DB updates (exact case)
+        const targetKey = normKey(job.target_institution_norm);
+        const providerKey = normKey(job.source_institution_norm);
+        
         // Strategy 1: Check if target institution has known equivalency page
-        const targetEquivPage = EQUIVALENCY_PAGE_PATTERNS[job.target_institution_norm];
+        const targetEquivPage = EQUIVALENCY_PAGE_PATTERNS[targetKey];
         
         // Strategy 2: Check if provider has known catalog page
-        const providerCatalogPage = PROVIDER_CATALOG_PATTERNS[job.source_institution_norm];
+        const providerCatalogPage = PROVIDER_CATALOG_PATTERNS[providerKey];
         
         // For now, we'll use a heuristic approach:
         // If we have known pages for both target and provider, construct a likely evidence URL
@@ -167,19 +178,21 @@ serve(async (req) => {
               })
               .eq('id', job.id);
 
-            // Update credit_transfer_rules with evidence (use uppercase norms for matching)
-            const targetNormUpper = job.target_institution_norm.toUpperCase();
-            const providerNormUpper = job.source_institution_norm.toUpperCase();
-            
-            await supabase
+            // Update credit_transfer_rules with evidence (jobs now store correct case)
+            const { error: updateError, count } = await supabase
               .from('credit_transfer_rules')
               .update({
                 evidence_url: evidenceUrl,
-                updated_at: now,
               })
-              .eq('target_institution_norm', targetNormUpper)
-              .eq('source_institution_norm', providerNormUpper)
+              .eq('target_institution_norm', job.target_institution_norm)
+              .eq('source_institution_norm', job.source_institution_norm)
               .eq('source_course_code_norm', job.source_course_code_norm);
+            
+            if (updateError) {
+              console.warn(`[evidence-backfill-worker] Update error for ${tupleKey}: ${updateError.message}`);
+            } else {
+              console.log(`[evidence-backfill-worker] Updated ${count ?? 'unknown'} rules for ${tupleKey}`);
+            }
           }
 
           results.found++;
