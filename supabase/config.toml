@@ -51,3 +51,6 @@ verify_jwt = false
 
 [functions.optimizer-seed-wgu]
 verify_jwt = false
+
+[functions.run-degree-truth-scan]
+verify_jwt = false

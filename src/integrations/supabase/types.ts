@@ -949,6 +949,110 @@ export type Database = {
           },
         ]
       }
+      audit_findings: {
+        Row: {
+          auto_fixable: boolean | null
+          catalog_year: string | null
+          check_category: string
+          check_name: string
+          created_at: string
+          details: Json | null
+          fixed_at: string | null
+          id: string
+          institution_code: string
+          policy_pack_id: string | null
+          pricing_pack_id: string | null
+          program_code: string | null
+          run_id: string | null
+          status: string
+          template_id: string
+          template_version: string | null
+        }
+        Insert: {
+          auto_fixable?: boolean | null
+          catalog_year?: string | null
+          check_category: string
+          check_name: string
+          created_at?: string
+          details?: Json | null
+          fixed_at?: string | null
+          id?: string
+          institution_code: string
+          policy_pack_id?: string | null
+          pricing_pack_id?: string | null
+          program_code?: string | null
+          run_id?: string | null
+          status: string
+          template_id: string
+          template_version?: string | null
+        }
+        Update: {
+          auto_fixable?: boolean | null
+          catalog_year?: string | null
+          check_category?: string
+          check_name?: string
+          created_at?: string
+          details?: Json | null
+          fixed_at?: string | null
+          id?: string
+          institution_code?: string
+          policy_pack_id?: string | null
+          pricing_pack_id?: string | null
+          program_code?: string | null
+          run_id?: string | null
+          status?: string
+          template_id?: string
+          template_version?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audit_findings_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "audit_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      audit_runs: {
+        Row: {
+          catalog_year: string | null
+          completed_at: string | null
+          created_by: string | null
+          id: string
+          run_type: string
+          scope: Json
+          started_at: string
+          status: string
+          summary: Json | null
+          template_version: string | null
+        }
+        Insert: {
+          catalog_year?: string | null
+          completed_at?: string | null
+          created_by?: string | null
+          id?: string
+          run_type: string
+          scope?: Json
+          started_at?: string
+          status?: string
+          summary?: Json | null
+          template_version?: string | null
+        }
+        Update: {
+          catalog_year?: string | null
+          completed_at?: string | null
+          created_by?: string | null
+          id?: string
+          run_type?: string
+          scope?: Json
+          started_at?: string
+          status?: string
+          summary?: Json | null
+          template_version?: string | null
+        }
+        Relationships: []
+      }
       autonomous_workflows: {
         Row: {
           completed_at: string | null
@@ -13866,6 +13970,21 @@ export type Database = {
         }
         Returns: {
           baseline_cost_usd: number
+          baseline_weeks: number
+          inputs: Json
+          source_description: string
+        }[]
+      }
+      compute_template_baseline: {
+        Args: {
+          p_institution_code: string
+          p_program_code?: string
+          p_template_id: string
+          p_total_credits?: number
+        }
+        Returns: {
+          baseline_cost_usd: number
+          baseline_status: string
           baseline_weeks: number
           inputs: Json
           source_description: string
