@@ -57,14 +57,19 @@ export function TemplateCard({ template, isSelected, onToggleSelect }: TemplateC
 
   // Extract ALL alt-credit options for transfer verification (deduplicated)
   // This includes preferred + alternatives so Standard templates show meaningful coverage
-  const { allCourses, totalSlots } = useMemo(() => {
+  const { allCourses, totalSlots, slotsWithAltOptions } = useMemo(() => {
     const seen = new Set<string>();
     const courses: Array<{ code: string; providerCode: string | null; credits: number; costUsd: number }> = [];
     let slotCount = 0;
+    let slotsWithAlt = 0;
     
     template.yearTemplates?.forEach(year => {
       year.moduleTemplates?.forEach(module => {
         slotCount++; // Count every module slot
+        // Check if this slot has any alt-credit options
+        const hasAltOption = module.options?.some(opt => opt && opt.providerCode);
+        if (hasAltOption) slotsWithAlt++;
+        
         // Include ALL options (preferred + alternatives) for comprehensive coverage
         module.options?.forEach(option => {
           // Only count alt-credit options (skip institutional courses with null provider)
@@ -84,7 +89,7 @@ export function TemplateCard({ template, isSelected, onToggleSelect }: TemplateC
       });
     });
     
-    return { allCourses: courses, totalSlots: slotCount };
+    return { allCourses: courses, totalSlots: slotCount, slotsWithAltOptions: slotsWithAlt };
   }, [template.yearTemplates]);
 
   // Get verified policy for anchor school
@@ -235,9 +240,10 @@ export function TemplateCard({ template, isSelected, onToggleSelect }: TemplateC
       rulesFound,
       evidenceLinked,
       totalAltOptions,
-      totalSlots, // Include total slots for availability context
+      totalSlots,
+      slotsWithAltOptions, // How many slots have at least one alt-credit option
     };
-  }, [tieredSavings, totalSlots]);
+  }, [tieredSavings, totalSlots, slotsWithAltOptions]);
 
   // Calculate Degree Safety Score
   const degreeSafetyScore = useMemo(() => {
@@ -436,7 +442,7 @@ export function TemplateCard({ template, isSelected, onToggleSelect }: TemplateC
                 <div className="space-y-1 text-xs">
                   <p className="font-medium">Alt-Credit Rule Coverage</p>
                   <p>{dataQuality.rulesFound} of {dataQuality.totalAltOptions} alt-credit options have verified transfer rules</p>
-                  <p className="text-muted-foreground">Alt-credit availability: {dataQuality.totalAltOptions} options across {dataQuality.totalSlots} slots</p>
+                  <p className="text-muted-foreground">Alt-credit availability: {dataQuality.slotsWithAltOptions}/{dataQuality.totalSlots} slots ({dataQuality.totalAltOptions} unique options)</p>
                   {dataQuality.evidenceLinked > 0 && (
                     <p>{dataQuality.evidenceLinked} are evidence-linked (Tier A)</p>
                   )}
