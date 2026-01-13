@@ -4,6 +4,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
+import { useGenerateTemplatesAfterPromote } from '@/hooks/useGenerateTemplatesAfterPromote';
 import { 
   CheckCircle, XCircle, AlertTriangle, Clock, Eye, 
   ArrowUpCircle, Filter 
@@ -52,6 +53,7 @@ export function PolicyRefreshRunDetail({ runId, onReviewInstitution }: PolicyRef
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [filter, setFilter] = useState<FilterStatus>('all');
+  const generateTemplates = useGenerateTemplatesAfterPromote();
 
   // Fetch tasks for this run
   const { data: tasks, isLoading: tasksLoading } = useQuery({
@@ -102,22 +104,30 @@ export function PolicyRefreshRunDetail({ runId, onReviewInstitution }: PolicyRef
     },
   });
 
-  // Promote mutation
+  // Promote mutation with post-promote template generation
   const promoteMutation = useMutation({
-    mutationFn: async (packId: string) => {
+    mutationFn: async ({ packId, institutionCode }: { packId: string; institutionCode: string }) => {
       const { data, error } = await supabase.rpc('activate_policy_pack', {
         p_pack_id: packId,
       });
       if (error) throw error;
-      return data;
+      // Return institutionCode for template generation after success
+      return { rpcResult: data, institutionCode };
     },
-    onSuccess: () => {
+    onSuccess: ({ rpcResult, institutionCode }) => {
       toast({ title: 'Pack promoted successfully' });
       // Invalidate all related queries for proper UI refresh
       queryClient.invalidateQueries({ queryKey: ['policy-packs', runId] });
       queryClient.invalidateQueries({ queryKey: ['policy-refresh-tasks', runId] });
       queryClient.invalidateQueries({ queryKey: ['policy-diffs-count', runId] });
       queryClient.invalidateQueries({ queryKey: ['policy-refresh-runs'] });
+      
+      // Generate templates after successful promotion
+      if (institutionCode) {
+        generateTemplates.mutate(institutionCode);
+        // Also invalidate degree templates queries
+        queryClient.invalidateQueries({ queryKey: ['degreeTemplates'] });
+      }
     },
     onError: (error: Error) => {
       toast({ 
@@ -283,13 +293,18 @@ export function PolicyRefreshRunDetail({ runId, onReviewInstitution }: PolicyRef
                     <Button
                       variant={hasLowConfidence(inst.pack) ? "outline" : "default"}
                       size="sm"
-                      onClick={() => inst.pack && promoteMutation.mutate(inst.pack.id)}
-                      disabled={promoteMutation.isPending}
+                      onClick={() => inst.pack && promoteMutation.mutate({ 
+                        packId: inst.pack.id, 
+                        institutionCode: inst.institution 
+                      })}
+                      disabled={promoteMutation.isPending || generateTemplates.isPending}
                       className={hasLowConfidence(inst.pack) ? "border-yellow-500 text-yellow-600" : ""}
                       title={hasLowConfidence(inst.pack) ? "Low confidence - review recommended" : ""}
                     >
                       <ArrowUpCircle className="h-4 w-4 mr-1" />
-                      {hasLowConfidence(inst.pack) ? "Promote (Caution)" : "Promote"}
+                      {promoteMutation.isPending ? "Promoting..." : 
+                       generateTemplates.isPending ? "Generating..." :
+                       hasLowConfidence(inst.pack) ? "Promote (Caution)" : "Promote"}
                     </Button>
                   )}
                 </div>

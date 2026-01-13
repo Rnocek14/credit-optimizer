@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
+import { useGenerateTemplatesAfterPromote } from '@/hooks/useGenerateTemplatesAfterPromote';
 import { ArrowUpCircle, ExternalLink, CheckCircle, AlertTriangle, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { PolicyTimelineTab } from './PolicyTimelineTab';
@@ -72,6 +73,7 @@ interface RefreshTask {
 export function InstitutionReviewDrawer({ open, onClose, runId, institution }: InstitutionReviewDrawerProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const generateTemplates = useGenerateTemplatesAfterPromote();
 
   // Fetch pack
   const { data: pack } = useQuery({
@@ -187,7 +189,7 @@ export function InstitutionReviewDrawer({ open, onClose, runId, institution }: I
     },
   });
 
-  // Promote mutation
+  // Promote mutation with post-promote template generation
   const promoteMutation = useMutation({
     mutationFn: async () => {
       if (!pack?.id) throw new Error('No pack to promote');
@@ -206,6 +208,12 @@ export function InstitutionReviewDrawer({ open, onClose, runId, institution }: I
       queryClient.invalidateQueries({ queryKey: ['policy-diffs-count', runId] });
       queryClient.invalidateQueries({ queryKey: ['conflicts-detail', institution] });
       queryClient.invalidateQueries({ queryKey: ['policy-refresh-runs'] });
+      
+      // Generate templates after successful promotion
+      if (institution) {
+        generateTemplates.mutate(institution);
+        queryClient.invalidateQueries({ queryKey: ['degreeTemplates'] });
+      }
     },
     onError: (error: Error) => {
       toast({ 
