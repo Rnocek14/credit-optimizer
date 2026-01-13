@@ -1794,19 +1794,25 @@ Deno.serve(async (req) => {
       const missingProvenanceUrl = !canonicalProvenanceUrl;
       
       // Compute blocked_reason (first matching rule wins)
-      // Only block for conditions that indicate data quality issues
-      // DO NOT block for structural properties like program_scoped
+      // Only HARD block for conditions that indicate data quality issues
+      // missing_provenance_url is stored but NOT a hard block (fixable via templates)
       blocked_reason = null;
+      let warningReason: string | null = null;  // Soft warnings that don't block
+      
       if (isLowConfidence) {
         blocked_reason = 'confidence_below_threshold';
       } else if (hasUnresolvedConflicts) {
         blocked_reason = 'unresolved_conflicts';
       } else if (missingProvenanceUrl) {
-        blocked_reason = 'missing_provenance_url';
+        // Store as warning, not block - provenance URL is fixable via template updates
+        warningReason = 'missing_provenance_url';
       }
       // Note: program_scoped_policy is stored in pack_scope, not blocked_reason
       
       isBlocked = blocked_reason !== null;
+      
+      // Store the warning in blocked_reason column for visibility, but don't set isBlocked
+      const storedBlockedReason = blocked_reason || warningReason;
       
       console.log(`[merge] Phase C gate: blocked=${isBlocked}, reason=${blocked_reason}, score=${totalScore}, conflicts=${conflicts.length}, packScope=${packScope}`);
       
@@ -1828,7 +1834,7 @@ Deno.serve(async (req) => {
           field_provenance: flatProvenance,
           provenance_url: canonicalProvenanceUrl,
           last_run_id: run_id || null,
-          blocked_reason: blocked_reason, // Phase C: store block reason
+          blocked_reason: storedBlockedReason, // Phase C: store block/warning reason
         })
         .select('id')
         .single();
@@ -1837,7 +1843,8 @@ Deno.serve(async (req) => {
         console.error('[merge] Error creating policy pack:', policyError);
       } else {
         policyPackId = packData.id;
-        notes.push(`Created merged policy pack: ${packData.id}${diffsWritten > 0 ? ` (${diffsWritten} diffs written)` : ''}${blocked_reason ? ` [BLOCKED: ${blocked_reason}]` : ''}`);
+        const blockNote = blocked_reason ? ` [BLOCKED: ${blocked_reason}]` : (warningReason ? ` [WARNING: ${warningReason}]` : '');
+        notes.push(`Created merged policy pack: ${packData.id}${diffsWritten > 0 ? ` (${diffsWritten} diffs written)` : ''}${blockNote}`);
 
         // === PHASE C: MARK ACTIVE PACK AS STALE (only for specific blocked reasons) ===
         // Only mark stale when blocked_reason indicates potential data staleness:
