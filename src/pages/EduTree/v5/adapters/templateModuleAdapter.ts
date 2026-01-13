@@ -43,6 +43,7 @@ export function createTemplateModuleProvider(
           recommendedCourseId: mt.recommendedCourseId,
           icon: getIconForRequirementArea(mt.moduleId),
           description: `${options.length} option${options.length !== 1 ? 's' : ''} available`,
+          isCapLimited: mt.isCapLimited, // Pass through cap-limited flag for badge display
         };
         
         return module;

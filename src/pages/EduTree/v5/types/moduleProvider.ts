@@ -28,6 +28,9 @@ export interface ModuleDefinition {
   
   // Optional: Recommended course for auto-fill
   recommendedCourseId?: string;
+  
+  // Cap-limited: true when slot was flipped from alt-credit to institutional due to cap
+  isCapLimited?: boolean;
 }
 
 /**

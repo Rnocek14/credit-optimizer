@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
-import { ChevronDown, ChevronRight, AlertTriangle } from 'lucide-react';
+import { ChevronDown, ChevronRight, AlertTriangle, Lock } from 'lucide-react';
 import { CourseCard } from './CourseCard';
 import { ModuleData } from '../types/v5';
 import { usePlanStore } from '../state/usePlanStore';
@@ -75,6 +75,7 @@ export function ModuleCard({
   allModules,
   moduleIndex,
   showDeadEndReasons = false,
+  isCapLimited,
 }: ModuleCardProps) {
   // Derive options count locally (belt + suspenders: guards against stale prop)
   // Memoized for performance with large marketplace options arrays
@@ -356,6 +357,24 @@ export function ModuleCard({
           <div className="flex items-center gap-2 flex-1 min-w-0">
             {icon && <span className="text-xl flex-shrink-0">{icon}</span>}
             <h3 className="font-semibold text-sm truncate">{label}</h3>
+            {/* Cap-limited badge: shows when slot was flipped from alt-credit due to cap */}
+            {isCapLimited && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 flex-shrink-0">
+                      <Lock className="h-2.5 w-2.5" />
+                      Cap-limited
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="max-w-xs">
+                    <p className="text-xs">
+                      Alt-credit cap reached. This slot must be taken as an institutional course unless you swap another alt-credit slot.
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
             {progress >= 100 && (
               <Badge variant="default" className="text-[10px] flex-shrink-0">
                 ✓ Complete
