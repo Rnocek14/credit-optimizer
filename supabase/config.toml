@@ -61,3 +61,6 @@ verify_jwt = false
 # Program Inventory Pipeline
 [functions.program-inventory-scraper]
 verify_jwt = false
+
+[functions.template-generation-worker]
+verify_jwt = false
