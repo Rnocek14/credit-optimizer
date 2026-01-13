@@ -1,6 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import type { MarketplaceDegreeTemplate, MarketplaceFilters, YearTemplate } from '@/pages/EduTree/v5/types/templates';
+import type { MarketplaceDegreeTemplate, MarketplaceFilters, YearTemplate, ModuleTemplate } from '@/pages/EduTree/v5/types/templates';
+import type { MarketplaceOption } from '@/pages/EduTree/v5/types/v5';
+import type { TemplateTerm, TemplateSlot, TemplateCourseOption } from '@/types/degreeTemplates';
 import marketplaceFixtures from '@/fixtures/templates/marketplace-v2-templates.json';
 
 interface DegreeTemplateRow {
@@ -15,6 +17,125 @@ interface DegreeTemplateRow {
 }
 
 /**
+ * Convert a template slot option to a MarketplaceOption
+ */
+function slotOptionToMarketplaceOption(
+  opt: TemplateCourseOption, 
+  slotId: string, 
+  requirementArea: string,
+  minCredits: number,
+  index: number
+): MarketplaceOption {
+  if (opt.type === 'alt_credit') {
+    const altOpt = opt as { sourceCode?: string; identifier?: string };
+    const identifier = altOpt.identifier || '';
+    const sourceCode = altOpt.sourceCode || 'SOPHIA';
+    return {
+      id: `${slotId}-alt-${index}`,
+      courseId: identifier,
+      title: identifier.replace(/_/g, ' '),
+      credits: minCredits,
+      subject: requirementArea,
+      provider: sourceCode,
+      providerType: 'testing_center',
+      cost_usd: sourceCode === 'SOPHIA' ? 99 : sourceCode === 'CLEP' ? 90 : 150,
+      duration_weeks: 4,
+      pace_type: 'self_paced',
+      satisfies_requirements: [requirementArea],
+      cri_score: 75,
+      aceNccrs: true,
+      proctored: sourceCode === 'CLEP' || sourceCode === 'DSST',
+    };
+  }
+  
+  // Institutional course
+  const instOpt = opt as { courseCode?: string };
+  const courseCode = instOpt.courseCode || '';
+  return {
+    id: `${slotId}-inst-${index}`,
+    courseId: courseCode,
+    title: courseCode.replace(/-/g, ' '),
+    credits: minCredits,
+    subject: requirementArea,
+    provider: 'Institution',
+    providerType: 'university',
+    cost_usd: 300 * minCredits, // Estimated per-credit cost
+    duration_weeks: 8,
+    pace_type: 'cohort',
+    satisfies_requirements: [requirementArea],
+    cri_score: 85,
+  };
+}
+
+/**
+ * Convert database terms (from seed-bsba-templates) to YearTemplate format for UI
+ * Groups terms by year and converts slots to modules
+ */
+function termsToYearTemplates(terms: TemplateTerm[]): YearTemplate[] {
+  if (!terms || terms.length === 0) return [];
+  
+  // Group terms by year (y1-t1, y1-t2 → Year 1, etc.)
+  const yearMap = new Map<string, { 
+    year: number; 
+    label: string; 
+    moduleTemplates: YearTemplate['moduleTemplates'][number][];
+  }>();
+  
+  for (const term of terms) {
+    // Extract year number from term id (e.g., 'y1-t1' → 1)
+    const yearMatch = term.id.match(/y(\d+)/);
+    const yearNum = yearMatch ? parseInt(yearMatch[1], 10) : 1;
+    const yearKey = `year-${yearNum}`;
+    
+    if (!yearMap.has(yearKey)) {
+      yearMap.set(yearKey, { 
+        year: yearNum, 
+        label: `Year ${yearNum}`, 
+        moduleTemplates: [] 
+      });
+    }
+    
+    // Convert each slot to a module template entry
+    for (const slot of term.slots) {
+      const allOptions = [slot.preferred, ...(slot.alternatives || [])];
+      const options: MarketplaceOption[] = allOptions.map((opt, idx) => 
+        slotOptionToMarketplaceOption(opt, slot.slotId, slot.requirementArea, slot.minCredits, idx)
+      );
+      
+      yearMap.get(yearKey)!.moduleTemplates.push({
+        moduleId: slot.slotId,
+        options,
+        recommendedCourseId: options[0]?.courseId,
+        targetCanonicalIds: [slot.requirementArea],
+      });
+    }
+  }
+  
+  // Convert map to sorted array
+  return Array.from(yearMap.entries())
+    .sort((a, b) => a[1].year - b[1].year)
+    .map(([id, data]) => ({
+      id,
+      kind: 'year' as const,
+      year: data.year,
+      label: data.label,
+      summary: `${data.moduleTemplates.length} courses`,
+      targetSchool: '',
+      transferVerified: true,
+      moduleTemplates: data.moduleTemplates,
+      est: {
+        costUsd: data.moduleTemplates.reduce((sum, m) => 
+          sum + (m.options[0]?.cost_usd || 0), 0),
+        weeks: 26,
+        credits: data.moduleTemplates.reduce((sum, m) => 
+          sum + (m.options[0]?.credits || 3), 0),
+        cri: 75,
+        workloadHours: 15,
+      },
+    }));
+}
+
+/**
  * Transform a database row to MarketplaceDegreeTemplate format
  */
 function transformToMarketplaceTemplate(row: DegreeTemplateRow): MarketplaceDegreeTemplate {
@@ -22,8 +143,21 @@ function transformToMarketplaceTemplate(row: DegreeTemplateRow): MarketplaceDegr
   const optimization = row.track_type === 'alt_max' ? 'alt-credit' : 'standard';
   const now = new Date().toISOString();
   
-  // Try to extract yearTemplates from template_data
-  const yearTemplates = (templateData.yearTemplates as YearTemplate[]) || [];
+  // First try yearTemplates directly, then convert from terms
+  let yearTemplates = (templateData.yearTemplates as YearTemplate[]) || [];
+  
+  if (yearTemplates.length === 0 && templateData.terms) {
+    yearTemplates = termsToYearTemplates(templateData.terms as TemplateTerm[]);
+    // Set targetSchool on each year/module
+    yearTemplates = yearTemplates.map(yt => ({
+      ...yt,
+      targetSchool: row.institution_code,
+      moduleTemplates: yt.moduleTemplates.map(mt => ({
+        ...mt,
+        targetSchool: row.institution_code,
+      })),
+    }));
+  }
   
   return {
     id: row.id,
