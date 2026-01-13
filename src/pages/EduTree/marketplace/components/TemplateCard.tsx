@@ -473,14 +473,21 @@ export function TemplateCard({ template, isSelected, onToggleSelect }: TemplateC
           </TooltipProvider>
         )}
 
-        {/* Strategy Savings Banner (if baseline exists) */}
-        {strategySavings && strategySavings.dollarSavings >= MIN_SAVINGS_TO_SHOW_BANNER && (
+        {/* Strategy Savings Banner - ONLY if verified baseline exists */}
+        {strategySavings && strategySavings.dollarSavings >= MIN_SAVINGS_TO_SHOW_BANNER && 
+         template.baselineStatus !== 'missing' && template.baselineStatus !== 'estimated' ? (
           <StrategySavingsBanner 
             savings={strategySavings} 
             tieredSavings={tieredSavings}
             variant="card" 
           />
-        )}
+        ) : !template.singleSchoolBaseline || template.baselineStatus === 'missing' ? (
+          // No baseline data - show placeholder
+          <div className="rounded-md bg-muted/40 px-3 py-2.5 text-xs text-muted-foreground">
+            <span className="font-medium">Savings: —</span>
+            <span className="ml-2">(single-school baseline not yet available)</span>
+          </div>
+        ) : null}
 
         {/* Provider Mix - only show if no strategy savings banner */}
         {providerMix.length > 0 && (!strategySavings || strategySavings.dollarSavings < MIN_SAVINGS_TO_SHOW_BANNER) && (

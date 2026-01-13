@@ -200,6 +200,7 @@ export interface MarketplaceDegreeTemplate extends DegreeTemplate {
   
   // Single-school baseline for savings comparison
   // Shows what the degree would cost if done entirely at the anchor school
+  // IMPORTANT: Only populate when you have real pricing data - never fabricate!
   singleSchoolBaseline?: {
     costUsd: number;      // Full cost if all credits at anchor school
     weeks: number;        // Duration if all at anchor school
@@ -215,7 +216,11 @@ export interface MarketplaceDegreeTemplate extends DegreeTemplate {
       weeks: number;         // 26
       courseLabel?: string;  // "WGU Term 1 Bundle"
     }>;
-  };
+  } | null;
+  
+  // Baseline data quality status (prevents future fabrication regressions)
+  // Only render savings UI when status === 'verified'
+  baselineStatus?: 'verified' | 'estimated' | 'missing';
 }
 
 /**
