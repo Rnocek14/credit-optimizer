@@ -438,6 +438,52 @@ function createBsbaTerms(trackType: 'standard' | 'alt_max'): TemplateTerm[] {
 }
 
 /**
+ * Enforce alt-credit cap by flipping excess alt slots to institutional courses.
+ * When cumulative alt credits would exceed maxAltCredits, convert the slot's
+ * preferred option to institutional and move the alt option to alternatives.
+ */
+function enforceAltCap(terms: TemplateTerm[], maxAltCredits: number): TemplateTerm[] {
+  let usedAltCredits = 0;
+  
+  return terms.map(term => ({
+    ...term,
+    slots: term.slots.map(slot => {
+      // Skip if not an alt-credit slot
+      if (slot.preferred.type !== 'alt_credit') {
+        return slot;
+      }
+      
+      const credits = slot.minCredits ?? 0;
+      
+      // Check if we can still fit this slot under the cap
+      if (usedAltCredits + credits <= maxAltCredits) {
+        usedAltCredits += credits;
+        return slot; // Keep alt-credit as preferred
+      }
+      
+      // Cap exceeded: flip to institutional course
+      // Preserve the original alt option as an alternative for UI visibility
+      const originalAltOption = slot.preferred;
+      const fallbackCourseCode = slot.preferred.courseCode 
+        || slot.preferred.identifier?.toUpperCase().replace(/-/g, '') 
+        || `INST-${slot.slotId.toUpperCase()}`;
+      
+      return {
+        ...slot,
+        preferred: {
+          type: 'institutional_course',
+          courseCode: fallbackCourseCode,
+        },
+        alternatives: [
+          originalAltOption, // Move original alt to alternatives
+          ...(slot.alternatives || []),
+        ],
+      };
+    }),
+  }));
+}
+
+/**
  * Compute plan cost from slot composition using real pricing data
  */
 function computePlanCostFromSlots(
@@ -534,8 +580,24 @@ async function generateTemplatesFromPack(
 
   for (const trackType of trackTypes) {
     const templateId = `${institutionCode}-${programCode}-${trackType.toUpperCase()}-V2`;
-    const terms = createBsbaTerms(trackType);
+    let terms = createBsbaTerms(trackType);
     const durationMonths = TRACK_DURATION[trackType];
+
+    // CRITICAL: Enforce alt-credit cap for alt_max tracks
+    // This prevents templates from exceeding institutional policy limits
+    if (trackType === 'alt_max') {
+      const altCreditsBeforeCap = terms.reduce((sum, term) => 
+        sum + term.slots.filter(s => s.preferred.type === 'alt_credit')
+          .reduce((slotSum, s) => slotSum + s.minCredits, 0), 0);
+      
+      terms = enforceAltCap(terms, maxAltCredits);
+      
+      const altCreditsAfterCap = terms.reduce((sum, term) => 
+        sum + term.slots.filter(s => s.preferred.type === 'alt_credit')
+          .reduce((slotSum, s) => slotSum + s.minCredits, 0), 0);
+      
+      console.log(`[seed-bsba-templates] ${institutionCode} alt_max cap enforcement: ${altCreditsBeforeCap} → ${altCreditsAfterCap} (max: ${maxAltCredits})`);
+    }
 
     const templateData: TemplateData = {
       version: '3.0', // Upgraded version for real cost computation
