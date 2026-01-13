@@ -473,8 +473,7 @@ Deno.serve(async (req) => {
             .single();
 
           if (insertErr) {
-            console.error(`Failed to insert program ${programSlug}:`, insertErr);
-            continue;
+            throw new Error(`CATALOG_INSERT_FAILED: ${programSlug} - ${insertErr.message}`);
           }
 
           // Queue for template generation
