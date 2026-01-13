@@ -66,6 +66,13 @@ const UNIVERSAL_MAPPINGS: EquivalencyMapping[] = [
 ];
 
 // Institution-specific adjustments (confidence modifiers)
+// Default modifier for new institutions - slightly conservative
+const DEFAULT_CONFIDENCE_MODIFIER: Record<string, number> = {
+  CLEP: 0.90,
+  SOPHIA: 0.85,
+  STUDY_COM: 0.80,
+};
+
 const INSTITUTION_CONFIDENCE_MODIFIERS: Record<string, Record<string, number>> = {
   COSC: {
     // COSC is very alt-credit friendly
@@ -85,7 +92,35 @@ const INSTITUTION_CONFIDENCE_MODIFIERS: Record<string, Record<string, number>> =
     SOPHIA: 0.95,
     STUDY_COM: 0.90,
   },
+  EXCELSIOR: {
+    // Excelsior is alt-credit friendly
+    CLEP: 0.95,
+    SOPHIA: 0.90,
+    STUDY_COM: 0.85,
+  },
+  EMPIRE: {
+    // Empire State is moderately alt-credit friendly
+    CLEP: 0.95,
+    SOPHIA: 0.90,
+    STUDY_COM: 0.85,
+  },
 };
+
+// Get active institution codes from policy packs
+async function getActiveInstitutionCodes(supabase: ReturnType<typeof createClient>): Promise<string[]> {
+  const { data, error } = await supabase
+    .from('institution_policy_packs')
+    .select('institution')
+    .eq('status', 'active');
+  
+  if (error) {
+    console.warn('[seed-equivalencies-v1] Failed to fetch active policy packs:', error.message);
+    return ['COSC', 'WGU', 'TESU']; // Fallback to original 3
+  }
+  
+  // Return unique institution codes
+  return [...new Set((data || []).map(p => p.institution))];
+}
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -99,13 +134,27 @@ serve(async (req) => {
       { auth: { persistSession: false } },
     );
 
-    console.log(`[seed-equivalencies-v1] Starting equivalencies seeding...`);
+    // Parse request body for optional filter
+    let targetInstitutions: string[] | undefined;
+    try {
+      const body = await req.json();
+      targetInstitutions = body?.target_institutions;
+    } catch {
+      // No body or invalid JSON - seed all active institutions
+    }
+
+    // Determine which institutions to seed
+    const institutionCodes = targetInstitutions?.length 
+      ? targetInstitutions 
+      : await getActiveInstitutionCodes(supabase);
+
+    console.log(`[seed-equivalencies-v1] Starting equivalencies seeding for: ${institutionCodes.join(', ')}`);
 
     // Get institution IDs
     const { data: institutions, error: instError } = await supabase
       .from('institutions')
       .select('id, code')
-      .in('code', ['COSC', 'WGU', 'TESU']);
+      .in('code', institutionCodes);
 
     if (instError) throw new Error(`Failed to fetch institutions: ${instError.message}`);
     
@@ -134,7 +183,7 @@ serve(async (req) => {
     for (const [instCode, instId] of instMap) {
       console.log(`[seed-equivalencies-v1] Processing ${instCode}...`);
       
-      const confModifiers = INSTITUTION_CONFIDENCE_MODIFIERS[instCode] || {};
+      const confModifiers = INSTITUTION_CONFIDENCE_MODIFIERS[instCode] || DEFAULT_CONFIDENCE_MODIFIER;
 
       for (const mapping of UNIVERSAL_MAPPINGS) {
         const altCreditId = altCreditMap.get(`${mapping.source_code}/${mapping.identifier}`);
