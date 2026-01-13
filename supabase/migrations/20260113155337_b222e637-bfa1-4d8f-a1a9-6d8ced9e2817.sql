@@ -1,0 +1,1 @@
+UPDATE evidence_jobs SET status = 'queued', next_check_at = now() WHERE status = 'found';
