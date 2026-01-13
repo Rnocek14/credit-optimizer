@@ -850,25 +850,7 @@ async function mergePolicyPacks(
     return sourceTypeByJobId.get(jobId) ?? sourceTypeByUrl.get(url) ?? 'other';
   };
   
-  // Helper: filter extractions for critical fields (exclude non-authoritative sources)
-  const filterForCriticalField = (fieldName: string) => {
-    if (!urlDiagnostics || (sourceTypeByJobId.size === 0 && sourceTypeByUrl.size === 0)) {
-      return extractions.filter(e => e.extraction.policy_pack);
-    }
-    
-    return extractions.filter(e => {
-      if (!e.extraction.policy_pack) return false;
-      const sourceType = getSourceType(e.jobId, e.url);
-      
-      // Exclude non-authoritative sources (like 'tuition') for critical fields
-      if (NON_AUTHORITATIVE_SOURCES.includes(sourceType)) {
-        console.log(`[merge] Filtering out job=${e.jobId} url=${e.url} (source_type=${sourceType}) for critical field ${fieldName}`);
-        return false;
-      }
-      return true;
-    });
-  };
-  
+  // Pre-filter valid extractions first
   const validExtractions = extractions.filter(e => e.extraction.policy_pack);
   if (validExtractions.length === 0) {
     return { 
@@ -880,6 +862,24 @@ async function mergePolicyPacks(
       scopedCaps: [],
       conflicts: [],
     };
+  }
+  
+  // Helper: filter validExtractions for critical fields (exclude non-authoritative sources)
+  const filterForCriticalField = (fieldName: string) => {
+    if (!urlDiagnostics || (sourceTypeByJobId.size === 0 && sourceTypeByUrl.size === 0)) {
+      return validExtractions;
+    }
+    
+    return validExtractions.filter(e => {
+      const sourceType = getSourceType(e.jobId, e.url);
+      
+      // Exclude non-authoritative sources (like 'tuition') for critical fields
+      if (NON_AUTHORITATIVE_SOURCES.includes(sourceType)) {
+        console.log(`[merge] Filtering out job=${e.jobId} url=${e.url} (source_type=${sourceType}) for critical field ${fieldName}`);
+        return false;
+      }
+      return true;
+    });
   }
   
   // For critical fields, use filtered extractions (excluding tuition sources)
