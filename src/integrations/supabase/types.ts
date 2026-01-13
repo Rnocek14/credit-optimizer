@@ -14808,6 +14808,10 @@ export type Database = {
         Args: { target_user_id: string }
         Returns: Json
       }
+      reap_stale_processing_jobs: {
+        Args: { p_stale_threshold_minutes?: number }
+        Returns: Json
+      }
       recompute_track_metrics: {
         Args: { p_track_id: string; p_user_id: string }
         Returns: undefined
