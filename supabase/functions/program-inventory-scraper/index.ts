@@ -124,19 +124,6 @@ function generateProgramSlug(institution: string, degreeType: string | null, pro
   return `${institution}:${type}:${cleanName}`;
 }
 
-function computeContentHash(programs: ExtractedProgram[]): string {
-  const sorted = [...programs].sort((a, b) => a.program_name.localeCompare(b.program_name));
-  const content = JSON.stringify(sorted);
-  // Simple hash - in production you'd use crypto.subtle
-  let hash = 0;
-  for (let i = 0; i < content.length; i++) {
-    const char = content.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
-    hash = hash & hash;
-  }
-  return Math.abs(hash).toString(16).padStart(8, '0');
-}
-
 async function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
@@ -172,7 +159,7 @@ async function scrapeWithFirecrawl(
         body: JSON.stringify({
           url,
           formats: ['markdown', 'html', 'links'],
-          onlyMainContent: false, // Need full page for program listings
+          onlyMainContent: false,
           waitFor: 3000,
         }),
       });
@@ -220,7 +207,6 @@ async function extractProgramsWithAI(
 
   const openai = new OpenAI({ apiKey });
 
-  // Truncate if too long
   const maxChars = 100000;
   const truncatedContent = markdown.length > maxChars 
     ? markdown.slice(0, maxChars) + '\n\n[Content truncated...]'
@@ -248,7 +234,6 @@ async function extractProgramsWithAI(
   const args = JSON.parse(toolCall.function.arguments);
   const programs: ExtractedProgram[] = args.programs || [];
 
-  // Filter to only bachelor's degrees and resolve relative URLs
   const bachelorPrograms = programs
     .filter(p => p.degree_level === 'bachelor')
     .map(p => ({
@@ -333,7 +318,6 @@ Deno.serve(async (req) => {
       seedUrl = template.url;
     }
 
-    // Type assertion - we've validated seedUrl exists
     const finalSeedUrl = seedUrl as string;
 
     // Validate URL
@@ -354,7 +338,7 @@ Deno.serve(async (req) => {
         seed_url: seedUrl,
         status: 'running',
         crawler_version: '1.0.0',
-        model_version: 'gemini-3-flash-preview',
+        model_version: 'gpt-4o',
       })
       .select('id')
       .single();
@@ -385,9 +369,6 @@ Deno.serve(async (req) => {
       throw new Error('No bachelor programs extracted from page');
     }
 
-    // Compute content hash for diffing
-    const contentHash = computeContentHash(extractedPrograms);
-
     // If dry_run, return results without writing to program_catalog
     if (dry_run) {
       await supabase
@@ -398,8 +379,6 @@ Deno.serve(async (req) => {
           programs_discovered: extractedPrograms.length,
           programs_new: 0,
           programs_updated: 0,
-          programs_unchanged: 0,
-          content_hash: contentHash,
           diff_summary: { dry_run: true, extracted_count: extractedPrograms.length },
         })
         .eq('id', runId);
@@ -408,35 +387,48 @@ Deno.serve(async (req) => {
         JSON.stringify({
           success: true,
           dry_run: true,
-        run_id: runId,
-        institution_code,
-        seed_url: finalSeedUrl,
+          run_id: runId,
+          institution_code,
+          seed_url: finalSeedUrl,
           programs_extracted: extractedPrograms.length,
-          content_hash: contentHash,
           programs: debug ? extractedPrograms : undefined,
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
+    // Get existing programs for this institution to determine new vs updated
+    const { data: existingPrograms } = await supabase
+      .from('program_catalog')
+      .select('id, program_slug')
+      .eq('institution_code', institution_code);
+
+    const existingMap = new Map(
+      (existingPrograms || []).map(p => [p.program_slug, p.id])
+    );
+
     // Upsert programs and track stats
     let newCount = 0;
     let updatedCount = 0;
-    let unchangedCount = 0;
 
     for (const program of extractedPrograms) {
       const programSlug = generateProgramSlug(institution_code, program.degree_type, program.program_name);
-      const programHash = computeContentHash([program]);
+      const existingId = existingMap.get(programSlug);
 
-      // Check if program exists
-      const { data: existing } = await supabase
-        .from('program_catalog')
-        .select('id, content_hash, program_slug')
-        .eq('program_slug', programSlug)
-        .maybeSingle();
+      const eligibilityStatus = program.is_licensure 
+        ? 'blocked_licensure' 
+        : program.has_clinical 
+          ? 'blocked_clinical'
+          : 'needs_review';
 
-      if (!existing) {
-        // New program
+      const blockedReasons = program.is_licensure 
+        ? ['Requires professional licensure']
+        : program.has_clinical 
+          ? ['Requires clinical/practicum hours']
+          : [];
+
+      if (!existingId) {
+        // New program - insert
         const { data: inserted, error: insertErr } = await supabase
           .from('program_catalog')
           .insert({
@@ -455,7 +447,6 @@ Deno.serve(async (req) => {
             status: 'active',
             first_seen_run_id: runId,
             last_seen_run_id: runId,
-            content_hash: programHash,
           })
           .select('id')
           .single();
@@ -470,22 +461,16 @@ Deno.serve(async (req) => {
           .from('template_generation_queue')
           .upsert({
             program_catalog_id: inserted.id,
-            eligibility_status: program.is_licensure || program.has_clinical 
-              ? (program.is_licensure ? 'blocked_licensure' : 'blocked_clinical')
-              : 'eligible',
-            blocked_reasons: program.is_licensure 
-              ? ['Requires professional licensure']
-              : program.has_clinical 
-                ? ['Requires clinical/practicum hours']
-                : [],
+            eligibility_status: eligibilityStatus,
+            blocked_reasons: blockedReasons,
             status: 'queued',
             desired_tracks: ['standard', 'alt_max'],
             priority_score: 50,
           }, { onConflict: 'program_catalog_id' });
 
         newCount++;
-      } else if (existing.content_hash !== programHash) {
-        // Updated program
+      } else {
+        // Existing program - always update (idempotent)
         await supabase
           .from('program_catalog')
           .update({
@@ -499,40 +484,21 @@ Deno.serve(async (req) => {
             has_clinical_or_practicum: program.has_clinical,
             delivery_mode: program.delivery,
             last_seen_run_id: runId,
-            content_hash: programHash,
             updated_at: new Date().toISOString(),
           })
-          .eq('id', existing.id);
+          .eq('id', existingId);
 
-        // Update queue status if eligibility changed
-        const newEligibility = program.is_licensure || program.has_clinical 
-          ? (program.is_licensure ? 'blocked_licensure' : 'blocked_clinical')
-          : 'eligible';
-
+        // Update queue status
         await supabase
           .from('template_generation_queue')
           .update({
-            eligibility_status: newEligibility,
-            blocked_reasons: program.is_licensure 
-              ? ['Requires professional licensure']
-              : program.has_clinical 
-                ? ['Requires clinical/practicum hours']
-                : [],
+            eligibility_status: eligibilityStatus,
+            blocked_reasons: blockedReasons,
             status: 'queued',
           })
-          .eq('program_catalog_id', existing.id);
+          .eq('program_catalog_id', existingId);
 
         updatedCount++;
-      } else {
-        // Unchanged - just update last_seen_run_id
-        await supabase
-          .from('program_catalog')
-          .update({
-            last_seen_run_id: runId,
-          })
-          .eq('id', existing.id);
-
-        unchangedCount++;
       }
     }
 
@@ -545,18 +511,15 @@ Deno.serve(async (req) => {
         programs_discovered: extractedPrograms.length,
         programs_new: newCount,
         programs_updated: updatedCount,
-        programs_unchanged: unchangedCount,
-        content_hash: contentHash,
         diff_summary: {
           total: extractedPrograms.length,
           new: newCount,
           updated: updatedCount,
-          unchanged: unchangedCount,
         },
       })
       .eq('id', runId);
 
-    console.log(`Run ${runId} completed: ${newCount} new, ${updatedCount} updated, ${unchangedCount} unchanged`);
+    console.log(`Run ${runId} completed: ${newCount} new, ${updatedCount} updated`);
 
     return new Response(
       JSON.stringify({
@@ -567,8 +530,6 @@ Deno.serve(async (req) => {
         programs_discovered: extractedPrograms.length,
         programs_new: newCount,
         programs_updated: updatedCount,
-        programs_unchanged: unchangedCount,
-        content_hash: contentHash,
         programs: debug ? extractedPrograms : undefined,
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -578,7 +539,6 @@ Deno.serve(async (req) => {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     console.error('Program inventory scrape error:', errorMessage);
 
-    // Update run status if we have a run ID
     if (runId) {
       await supabase
         .from('program_catalog_runs')
