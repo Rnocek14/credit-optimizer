@@ -8949,11 +8949,13 @@ export type Database = {
           diff_summary: Json | null
           error_message: string | null
           finished_at: string | null
+          heartbeat_at: string | null
           id: string
           institution_code: string
           model_version: string | null
           programs_discovered: number | null
           programs_new: number | null
+          programs_processed: number | null
           programs_updated: number | null
           seed_url: string
           started_at: string | null
@@ -8965,11 +8967,13 @@ export type Database = {
           diff_summary?: Json | null
           error_message?: string | null
           finished_at?: string | null
+          heartbeat_at?: string | null
           id?: string
           institution_code: string
           model_version?: string | null
           programs_discovered?: number | null
           programs_new?: number | null
+          programs_processed?: number | null
           programs_updated?: number | null
           seed_url: string
           started_at?: string | null
@@ -8981,11 +8985,13 @@ export type Database = {
           diff_summary?: Json | null
           error_message?: string | null
           finished_at?: string | null
+          heartbeat_at?: string | null
           id?: string
           institution_code?: string
           model_version?: string | null
           programs_discovered?: number | null
           programs_new?: number | null
+          programs_processed?: number | null
           programs_updated?: number | null
           seed_url?: string
           started_at?: string | null
