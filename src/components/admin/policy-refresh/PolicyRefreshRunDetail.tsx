@@ -128,28 +128,26 @@ export function PolicyRefreshRunDetail({ runId, onReviewInstitution }: PolicyRef
     },
   });
 
-  // Combine tasks with packs
+  // Combine tasks with packs + normalize status once
   const institutions = tasks?.map((task) => {
     const pack = packs?.find((p) => p.institution === task.institution);
     const diffs = diffCounts?.[task.institution] || 0;
-    return { ...task, pack, diffs };
+    return { ...task, pack, diffs, status_norm: normalizeStatus(task.status) };
   }) || [];
 
-  // Apply filter (normalize status for consistency)
+  // Apply filter using normalized status
   const filtered = institutions.filter((inst) => {
-    const normalized = normalizeStatus(inst.status);
     if (filter === 'all') return true;
-    if (filter === 'complete') return normalized === 'complete';
+    if (filter === 'complete') return inst.status_norm === 'complete';
     if (filter === 'blocked') return inst.pack?.blocked_reason;
-    if (filter === 'failed') return normalized === 'failed';
-    if (filter === 'queued') return normalized === 'queued' || normalized === 'running';
+    if (filter === 'failed') return inst.status_norm === 'failed';
+    if (filter === 'queued') return inst.status_norm === 'queued' || inst.status_norm === 'running';
     return true;
   });
 
-  const getStatusIcon = (status: string, blockedReason: string | null) => {
+  const getStatusIcon = (statusNorm: string, blockedReason: string | null) => {
     if (blockedReason) return <AlertTriangle className="h-4 w-4 text-yellow-500" />;
-    const normalized = normalizeStatus(status);
-    switch (normalized) {
+    switch (statusNorm) {
       case 'complete': return <CheckCircle className="h-4 w-4 text-green-500" />;
       case 'running': return <Clock className="h-4 w-4 text-blue-500 animate-pulse" />;
       case 'failed': return <XCircle className="h-4 w-4 text-red-500" />;
@@ -219,7 +217,7 @@ export function PolicyRefreshRunDetail({ runId, onReviewInstitution }: PolicyRef
               >
                 {/* Status */}
                 <div className="flex-shrink-0">
-                  {getStatusIcon(inst.status, inst.pack?.blocked_reason || null)}
+                  {getStatusIcon(inst.status_norm, inst.pack?.blocked_reason || null)}
                 </div>
 
                 {/* Institution info */}
