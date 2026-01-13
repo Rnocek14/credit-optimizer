@@ -575,7 +575,7 @@ serve(async (req) => {
           check_name: 'transfer_rule_coverage',
           check_category: 'correctness',
           status: 'pass',
-          details: { total_alt_slots: 0, note: 'no_alt_slots' },
+          details: { total_alt_slots: 0, coverage_pct: null, note: 'no_alt_slots' },
           auto_fixable: false,
         });
         findings.push({
@@ -598,10 +598,151 @@ serve(async (req) => {
           details: { placement_missing_count: 0, note: 'no_alt_slots' },
           auto_fixable: false,
         });
+        // Evidence coverage for no-alt-slots templates
+        findings.push({
+          template_id: template.id,
+          institution_code: template.institution_code,
+          program_code: template.program_code,
+          check_name: 'evidence_coverage',
+          check_category: 'provenance',
+          status: 'pass',
+          details: { accepted_total: 0, with_evidence: 0, evidence_pct: null, note: 'no_alt_slots' },
+          auto_fixable: false,
+        });
       }
     }
 
     console.log(`[run-degree-truth-scan] Transfer truth checks complete`);
+
+    // ============= CHECK 10: Evidence Coverage (per template) =============
+    // Fetch evidence_url for all accepted rules in scope
+    console.log(`[run-degree-truth-scan] Running evidence coverage check...`);
+
+    // Build list of accepted (target, provider, course) tuples that need evidence check
+    const acceptedTuples: Array<{
+      template_id: string;
+      institution_code: string;
+      program_code: string;
+      provider_norm: string;
+      course_norm: string;
+    }> = [];
+
+    for (const slot of transferSlots) {
+      if (slot.status_bucket === 'accepted') {
+        acceptedTuples.push({
+          template_id: slot.template_id,
+          institution_code: slot.institution_code,
+          program_code: slot.program_code,
+          provider_norm: slot.provider_norm,
+          course_norm: slot.course_norm,
+        });
+      }
+    }
+
+    // Fetch evidence_url for accepted rules
+    const evidenceMap = new Map<string, boolean>();
+    
+    if (acceptedTuples.length > 0) {
+      // Group by target institution for efficient batching
+      const byTarget = new Map<string, Array<{ provider: string; course: string }>>();
+      for (const t of acceptedTuples) {
+        if (!byTarget.has(t.institution_code)) {
+          byTarget.set(t.institution_code, []);
+        }
+        byTarget.get(t.institution_code)!.push({ provider: t.provider_norm, course: t.course_norm });
+      }
+
+      for (const [target, tuples] of byTarget) {
+        const providers = [...new Set(tuples.map(t => t.provider))];
+        const courses = [...new Set(tuples.map(t => t.course))];
+
+        // Batch fetch (chunk courses if needed)
+        const CHUNK_SIZE = 500;
+        for (let i = 0; i < courses.length; i += CHUNK_SIZE) {
+          const chunk = courses.slice(i, i + CHUNK_SIZE);
+          
+          const { data: evidenceRows } = await supabase
+            .from('credit_transfer_rules')
+            .select('source_institution_norm, source_course_code_norm, evidence_url')
+            .eq('target_institution_norm', target)
+            .in('source_institution_norm', providers)
+            .in('source_course_code_norm', chunk);
+
+          for (const r of evidenceRows || []) {
+            const key = `${target}|${r.source_institution_norm}|${r.source_course_code_norm}`;
+            const hasEvidence = !!(r.evidence_url && r.evidence_url.trim().length > 0);
+            evidenceMap.set(key, hasEvidence);
+          }
+        }
+      }
+    }
+
+    // Aggregate evidence by template
+    const evidenceByTemplate = new Map<string, {
+      institution_code: string;
+      program_code: string;
+      accepted_total: number;
+      with_evidence: number;
+      missing_evidence: Array<{ provider: string; course: string }>;
+    }>();
+
+    for (const tuple of acceptedTuples) {
+      if (!evidenceByTemplate.has(tuple.template_id)) {
+        evidenceByTemplate.set(tuple.template_id, {
+          institution_code: tuple.institution_code,
+          program_code: tuple.program_code,
+          accepted_total: 0,
+          with_evidence: 0,
+          missing_evidence: [],
+        });
+      }
+      const entry = evidenceByTemplate.get(tuple.template_id)!;
+      entry.accepted_total++;
+
+      const key = `${tuple.institution_code}|${tuple.provider_norm}|${tuple.course_norm}`;
+      const hasEvidence = evidenceMap.get(key) ?? false;
+      
+      if (hasEvidence) {
+        entry.with_evidence++;
+      } else {
+        if (entry.missing_evidence.length < 10) {
+          entry.missing_evidence.push({ provider: tuple.provider_norm, course: tuple.course_norm });
+        }
+      }
+    }
+
+    // Tier A threshold (configurable)
+    const TIER_A_EVIDENCE_THRESHOLD = 0.20; // 20%
+
+    // Generate evidence coverage findings
+    const templateEvidencePct = new Map<string, number | null>();
+
+    for (const [templateId, data] of evidenceByTemplate) {
+      const pct = data.accepted_total > 0 ? data.with_evidence / data.accepted_total : null;
+      templateEvidencePct.set(templateId, pct);
+
+      // Status: pass if we have any evidence, warn if 0 evidence
+      const status = pct === null ? 'pass' : (pct >= TIER_A_EVIDENCE_THRESHOLD ? 'pass' : 'warn');
+      
+      findings.push({
+        template_id: templateId,
+        institution_code: data.institution_code,
+        program_code: data.program_code,
+        check_name: 'evidence_coverage',
+        check_category: 'provenance',
+        status,
+        details: {
+          accepted_total: data.accepted_total,
+          with_evidence: data.with_evidence,
+          evidence_pct: pct !== null ? Math.round(pct * 100) : null,
+          threshold_pct: TIER_A_EVIDENCE_THRESHOLD * 100,
+          examples_missing_evidence: data.missing_evidence,
+        },
+        auto_fixable: false,
+      });
+    }
+
+    console.log(`[run-degree-truth-scan] Evidence coverage check complete`);
 
     // Bulk insert findings
     if (findings.length > 0) {
@@ -626,7 +767,7 @@ serve(async (req) => {
       }
     }
 
-    // Compute summary
+    // Compute summary with proper tiering
     const totalTemplates = templates?.length || 0;
     const passingTemplates = new Set<string>();
     const failingTemplates = new Set<string>();
@@ -650,13 +791,30 @@ serve(async (req) => {
       }
     }
 
-    // Tier classification
-    // Tier A: All checks pass + evidence
-    // Tier B: All checks pass, no evidence
-    // Tier C: Some checks fail
-    const tierA = 0; // TODO: implement evidence check
-    const tierB = passingTemplates.size;
+    // Tier classification (now evidence-aware)
+    // Tier A: All checks pass + evidence_pct >= threshold
+    // Tier B: All checks pass + evidence_pct < threshold
+    // Tier C: Any correctness/coverage fail
+    let tierA = 0;
+    let tierB = 0;
     const tierC = failingTemplates.size;
+
+    for (const tid of passingTemplates) {
+      const evPct = templateEvidencePct.get(tid);
+      if (evPct !== null && evPct !== undefined && evPct >= TIER_A_EVIDENCE_THRESHOLD) {
+        tierA++;
+      } else {
+        tierB++;
+      }
+    }
+
+    // Compute total alt slots for summary
+    let totalAltSlots = 0;
+    let templatesWithAltSlots = 0;
+    for (const [, data] of transferByTemplate) {
+      totalAltSlots += data.total_slots;
+      templatesWithAltSlots++;
+    }
 
     const summary = {
       total_templates: totalTemplates,
@@ -665,6 +823,9 @@ serve(async (req) => {
       tier_a: tierA,
       tier_b: tierB,
       tier_c: tierC,
+      tier_a_threshold_pct: TIER_A_EVIDENCE_THRESHOLD * 100,
+      total_alt_slots: totalAltSlots,
+      templates_with_alt_slots: templatesWithAltSlots,
       check_breakdown: checkCounts,
       auto_fix_enabled: auto_fix,
     };
