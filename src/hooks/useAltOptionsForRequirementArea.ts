@@ -132,13 +132,13 @@ export function useAltOptionsForSlots({
   requirementAreas: string[];
   enabled?: boolean;
 }) {
-  // Create stable cache key without mutating input
-  const sortedAreas = [...requirementAreas].sort();
+  // Create stable, deduped cache key
+  const areas = Array.from(new Set(requirementAreas)).sort();
   
   return useQuery({
-    queryKey: ['altOptionsBatch', institutionCode, sortedAreas.join(',')],
+    queryKey: ['altOptionsBatch', institutionCode, areas.join(',')],
     queryFn: async (): Promise<Record<string, AltCreditOption[]>> => {
-      if (!requirementAreas.length) return {};
+      if (!areas.length) return {};
 
       const instId = await getInstitutionId(institutionCode);
       if (!instId) return {};
@@ -164,7 +164,7 @@ export function useAltOptionsForSlots({
           )
         `)
         .eq('institution_id', instId)
-        .in('requirement_area', requirementAreas)
+        .in('requirement_area', areas)
         .order('confidence', { ascending: false });
 
       if (error) {
@@ -174,7 +174,7 @@ export function useAltOptionsForSlots({
 
       // Initialize result with empty arrays for all requested areas
       const result: Record<string, AltCreditOption[]> = {};
-      for (const area of requirementAreas) {
+      for (const area of areas) {
         result[area] = [];
       }
 
