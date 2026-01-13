@@ -75,49 +75,48 @@ const UNIVERSAL_MAPPINGS: EquivalencyMapping[] = [
 ];
 
 // Universal transfer rules - source course -> target course patterns
-// These are used to populate credit_transfer_rules for any target institution
+// IMPORTANT: source_course_code must match the EXACT identifier used in templates!
+// Templates use identifiers like 'ENG101', 'principles-management' (from alt_credits.identifier)
 const TRANSFER_RULE_MAPPINGS: TransferRuleMapping[] = [
-  // Sophia courses
-  { source_institution: 'SOPHIA', source_course_code: 'SOPHIA-ENG-COMP-I-II', target_course_code: 'ENG-101', rule_source: 'ACE Credit', confidence: 0.95 },
-  { source_institution: 'SOPHIA', source_course_code: 'SOPHIA-US-HIST-I', target_course_code: 'HIS-113', rule_source: 'ACE Credit', confidence: 0.95 },
-  { source_institution: 'SOPHIA', source_course_code: 'SOPHIA-COLLEGE-ALG', target_course_code: 'MAT-121', rule_source: 'ACE Credit', confidence: 0.95 },
-  { source_institution: 'SOPHIA', source_course_code: 'SOPHIA-INTRO-ETHICS', target_course_code: 'PHI-384', rule_source: 'ACE Credit', confidence: 0.95 },
-  { source_institution: 'SOPHIA', source_course_code: 'SOPHIA-ART-HIST-I', target_course_code: 'ART-101', rule_source: 'ACE Credit', confidence: 0.95 },
-  { source_institution: 'SOPHIA', source_course_code: 'SOPHIA-INTRO-PSYCH', target_course_code: 'PSY-101', rule_source: 'ACE Credit', confidence: 0.95 },
-  { source_institution: 'SOPHIA', source_course_code: 'SOPHIA-INTRO-SOC', target_course_code: 'SOC-101', rule_source: 'ACE Credit', confidence: 0.95 },
-  { source_institution: 'SOPHIA', source_course_code: 'SOPHIA-HUMAN-BIO', target_course_code: 'BIO-101', rule_source: 'ACE Credit', confidence: 0.95 },
-  { source_institution: 'SOPHIA', source_course_code: 'SOPHIA-ENV-SCI', target_course_code: 'ENV-101', rule_source: 'ACE Credit', confidence: 0.95 },
-  { source_institution: 'SOPHIA', source_course_code: 'SOPHIA-PUBLIC-SPEAK', target_course_code: 'COM-209', rule_source: 'ACE Credit', confidence: 0.95 },
-  { source_institution: 'SOPHIA', source_course_code: 'SOPHIA-MICRO-ECON', target_course_code: 'ECO-211', rule_source: 'ACE Credit', confidence: 0.92 },
-  { source_institution: 'SOPHIA', source_course_code: 'SOPHIA-MACRO-ECON', target_course_code: 'ECO-212', rule_source: 'ACE Credit', confidence: 0.92 },
-  { source_institution: 'SOPHIA', source_course_code: 'SOPHIA-FIN-ACCT', target_course_code: 'ACC-102', rule_source: 'ACE Credit', confidence: 0.92 },
-  { source_institution: 'SOPHIA', source_course_code: 'SOPHIA-MGT-ACCT', target_course_code: 'ACC-301', rule_source: 'ACE Credit', confidence: 0.92 },
-  { source_institution: 'SOPHIA', source_course_code: 'SOPHIA-BUS-LAW', target_course_code: 'BUS-311', rule_source: 'ACE Credit', confidence: 0.92 },
-  { source_institution: 'SOPHIA', source_course_code: 'SOPHIA-INTRO-BUS', target_course_code: 'BUS-101', rule_source: 'ACE Credit', confidence: 0.92 },
+  // =============================================================
+  // SOPHIA courses - using template identifiers (e.g., ENG101, BUS100)
+  // =============================================================
+  { source_institution: 'SOPHIA', source_course_code: 'ENG101', target_course_code: 'ENG-101', rule_source: 'ACE Credit', confidence: 0.95 },
+  { source_institution: 'SOPHIA', source_course_code: 'ENG102', target_course_code: 'ENG-102', rule_source: 'ACE Credit', confidence: 0.95 },
+  { source_institution: 'SOPHIA', source_course_code: 'MAT101', target_course_code: 'MAT-121', rule_source: 'ACE Credit', confidence: 0.95 },
+  { source_institution: 'SOPHIA', source_course_code: 'STAT101', target_course_code: 'STA-201', rule_source: 'ACE Credit', confidence: 0.92 },
+  { source_institution: 'SOPHIA', source_course_code: 'ART101', target_course_code: 'ART-101', rule_source: 'ACE Credit', confidence: 0.95 },
+  { source_institution: 'SOPHIA', source_course_code: 'HUM101', target_course_code: 'HUM-101', rule_source: 'ACE Credit', confidence: 0.92 },
+  { source_institution: 'SOPHIA', source_course_code: 'PHIL101', target_course_code: 'PHI-101', rule_source: 'ACE Credit', confidence: 0.92 },
+  { source_institution: 'SOPHIA', source_course_code: 'ETH301', target_course_code: 'PHI-384', rule_source: 'ACE Credit', confidence: 0.90 },
+  { source_institution: 'SOPHIA', source_course_code: 'SOC101', target_course_code: 'SOC-101', rule_source: 'ACE Credit', confidence: 0.95 },
+  { source_institution: 'SOPHIA', source_course_code: 'COMM101', target_course_code: 'COM-209', rule_source: 'ACE Credit', confidence: 0.95 },
+  { source_institution: 'SOPHIA', source_course_code: 'ENV101', target_course_code: 'ENV-101', rule_source: 'ACE Credit', confidence: 0.92 },
+  { source_institution: 'SOPHIA', source_course_code: 'SCI101', target_course_code: 'SCI-101', rule_source: 'ACE Credit', confidence: 0.92 },
+  { source_institution: 'SOPHIA', source_course_code: 'CRIT101', target_course_code: 'PHI-105', rule_source: 'ACE Credit', confidence: 0.90 },
+  { source_institution: 'SOPHIA', source_course_code: 'BUS100', target_course_code: 'BUS-101', rule_source: 'ACE Credit', confidence: 0.92 },
+  { source_institution: 'SOPHIA', source_course_code: 'CS101', target_course_code: 'CIS-101', rule_source: 'ACE Credit', confidence: 0.92 },
+  { source_institution: 'SOPHIA', source_course_code: 'ACC202', target_course_code: 'ACC-102', rule_source: 'ACE Credit', confidence: 0.92 },
+  { source_institution: 'SOPHIA', source_course_code: 'ELEC100', target_course_code: 'ELEC-100', rule_source: 'ACE Credit', confidence: 0.88 },
   
-  // Study.com courses
-  { source_institution: 'STUDYCOM', source_course_code: 'SDC-PRIN-MGMT', target_course_code: 'MAN-321', rule_source: 'ACE Credit', confidence: 0.92 },
-  { source_institution: 'STUDYCOM', source_course_code: 'SDC-PRIN-MKT', target_course_code: 'MAR-301', rule_source: 'ACE Credit', confidence: 0.92 },
-  { source_institution: 'STUDYCOM', source_course_code: 'SDC-FIN-ACCT', target_course_code: 'ACC-102', rule_source: 'ACE Credit', confidence: 0.92 },
-  { source_institution: 'STUDYCOM', source_course_code: 'SDC-MGT-ACCT', target_course_code: 'ACC-301', rule_source: 'ACE Credit', confidence: 0.92 },
-  { source_institution: 'STUDYCOM', source_course_code: 'SDC-MICRO-ECON', target_course_code: 'ECO-211', rule_source: 'ACE Credit', confidence: 0.92 },
-  { source_institution: 'STUDYCOM', source_course_code: 'SDC-MACRO-ECON', target_course_code: 'ECO-212', rule_source: 'ACE Credit', confidence: 0.92 },
-  { source_institution: 'STUDYCOM', source_course_code: 'SDC-INFO-SYS', target_course_code: 'CIS-301', rule_source: 'ACE Credit', confidence: 0.92 },
-  { source_institution: 'STUDYCOM', source_course_code: 'SDC-BUS-ETH', target_course_code: 'BUS-331', rule_source: 'ACE Credit', confidence: 0.90 },
-  { source_institution: 'STUDYCOM', source_course_code: 'SDC-CORP-FIN', target_course_code: 'FIN-321', rule_source: 'ACE Credit', confidence: 0.90 },
-  { source_institution: 'STUDYCOM', source_course_code: 'SDC-BUS-LAW', target_course_code: 'BUS-311', rule_source: 'ACE Credit', confidence: 0.90 },
-  { source_institution: 'STUDYCOM', source_course_code: 'SDC-HR-MGMT', target_course_code: 'HRM-301', rule_source: 'ACE Credit', confidence: 0.90 },
-  { source_institution: 'STUDYCOM', source_course_code: 'SDC-PROJ-MGMT', target_course_code: 'MAN-341', rule_source: 'ACE Credit', confidence: 0.90 },
-  { source_institution: 'STUDYCOM', source_course_code: 'SDC-SUPPLY-CHAIN', target_course_code: 'OPM-301', rule_source: 'ACE Credit', confidence: 0.90 },
-  { source_institution: 'STUDYCOM', source_course_code: 'SDC-BUS-ANALYTICS', target_course_code: 'BUS-351', rule_source: 'ACE Credit', confidence: 0.90 },
-  { source_institution: 'STUDYCOM', source_course_code: 'SDC-ENTREPRENEUR', target_course_code: 'ENT-301', rule_source: 'ACE Credit', confidence: 0.88 },
-  { source_institution: 'STUDYCOM', source_course_code: 'SDC-DIGITAL-MKT', target_course_code: 'MAR-331', rule_source: 'ACE Credit', confidence: 0.88 },
-  { source_institution: 'STUDYCOM', source_course_code: 'SDC-CONSUMER-BEH', target_course_code: 'MAR-321', rule_source: 'ACE Credit', confidence: 0.88 },
-  { source_institution: 'STUDYCOM', source_course_code: 'SDC-RESEARCH-METH', target_course_code: 'BUS-401', rule_source: 'ACE Credit', confidence: 0.88 },
-  { source_institution: 'STUDYCOM', source_course_code: 'SDC-DATA-DECISIONS', target_course_code: 'BUS-411', rule_source: 'ACE Credit', confidence: 0.88 },
-  { source_institution: 'STUDYCOM', source_course_code: 'SDC-ENG-COMP-I', target_course_code: 'ENG-101', rule_source: 'ACE Credit', confidence: 0.90 },
-  { source_institution: 'STUDYCOM', source_course_code: 'SDC-COLLEGE-ALG', target_course_code: 'MAT-121', rule_source: 'ACE Credit', confidence: 0.90 },
-  { source_institution: 'STUDYCOM', source_course_code: 'SDC-INTRO-PSYCH', target_course_code: 'PSY-101', rule_source: 'ACE Credit', confidence: 0.90 },
+  // =============================================================
+  // CLEP courses - using standard CLEP exam identifiers
+  // =============================================================
+  { source_institution: 'CLEP', source_course_code: 'college-composition', target_course_code: 'ENG-101', rule_source: 'CLEP', confidence: 0.98 },
+  { source_institution: 'CLEP', source_course_code: 'college-algebra', target_course_code: 'MAT-121', rule_source: 'CLEP', confidence: 0.98 },
+  { source_institution: 'CLEP', source_course_code: 'intro-psychology', target_course_code: 'PSY-101', rule_source: 'CLEP', confidence: 0.98 },
+  { source_institution: 'CLEP', source_course_code: 'principles-management', target_course_code: 'MAN-301', rule_source: 'CLEP', confidence: 0.98 },
+  { source_institution: 'CLEP', source_course_code: 'principles-marketing', target_course_code: 'MAR-301', rule_source: 'CLEP', confidence: 0.98 },
+  { source_institution: 'CLEP', source_course_code: 'microeconomics', target_course_code: 'ECO-211', rule_source: 'CLEP', confidence: 0.98 },
+  { source_institution: 'CLEP', source_course_code: 'macroeconomics', target_course_code: 'ECO-212', rule_source: 'CLEP', confidence: 0.98 },
+  { source_institution: 'CLEP', source_course_code: 'financial-accounting', target_course_code: 'ACC-101', rule_source: 'CLEP', confidence: 0.98 },
+  { source_institution: 'CLEP', source_course_code: 'business-law', target_course_code: 'BUS-311', rule_source: 'CLEP', confidence: 0.98 },
+  
+  // =============================================================
+  // STUDY_COM courses - using template identifiers
+  // =============================================================
+  { source_institution: 'STUDYCOM', source_course_code: 'BIO101L', target_course_code: 'BIO-101', rule_source: 'ACE Credit', confidence: 0.90 },
+  { source_institution: 'STUDY_COM', source_course_code: 'BIO101L', target_course_code: 'BIO-101', rule_source: 'ACE Credit', confidence: 0.90 },
 ];
 
 // Institution-specific adjustments (confidence modifiers)
