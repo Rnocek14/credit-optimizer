@@ -29,6 +29,7 @@ interface PricingPackData {
   per_credit_usd?: number;
   term_cost_usd?: number;
   typical_terms_to_complete?: number;
+  term_weeks?: number;
   required_fees_usd?: number;
   fee_schedule?: Record<string, number>;
 }
@@ -36,6 +37,21 @@ interface PricingPackData {
 interface ProviderPricingData {
   effective_cost_per_credit_usd: number;
   model: string;
+  provenance_verified_at?: string; // For determining verified vs estimated status
+}
+
+// Proper typed institution pricing - separate per-credit vs flat-term
+interface InstitutionPricing {
+  model: 'per_credit' | 'flat_term';
+  pricingPackId?: string;
+  provenanceVerified: boolean;
+  // Per-credit model fields
+  perCreditUsd?: number;
+  feesUsd: number;
+  // Flat-term model fields (WGU)
+  termCostUsd?: number;
+  typicalTerms?: number;
+  termWeeks?: number;
 }
 
 interface TemplateSlot {
@@ -502,8 +518,9 @@ async function generateTemplatesFromPack(
   policyData: PolicyData,
   packId: string,
   programCode: string,
-  institutionPricing: { perCreditUsd: number; feesUsd: number; model: string; pricingPackId?: string },
-  providerRates: Map<string, number>
+  institutionPricing: InstitutionPricing,
+  providerRates: Map<string, number>,
+  providerProvenanceVerified: boolean
 ): Promise<{ standard?: string; altMax?: string; errors: string[] }> {
   const errors: string[] = [];
   const trackTypes: ('standard' | 'alt_max')[] = ['standard', 'alt_max'];
@@ -543,16 +560,26 @@ async function generateTemplatesFromPack(
     let costBreakdown: CostBreakdown;
     
     if (institutionPricing.model === 'flat_term') {
-      // WGU uses flat-term model - special handling
+      // WGU uses flat-term model - use proper typed fields
       costBreakdown = computeWguCost({
-        term_cost_usd: institutionPricing.perCreditUsd, // Repurposed field for WGU
-        typical_terms_to_complete: 4,
+        term_cost_usd: institutionPricing.termCostUsd ?? 3855,
+        typical_terms_to_complete: institutionPricing.typicalTerms ?? 4,
         required_fees_usd: institutionPricing.feesUsd,
       });
     } else {
-      // Standard per-credit model
-      costBreakdown = computePlanCostFromSlots(terms, institutionPricing, providerRates);
+      // Standard per-credit model - pass proper typed pricing
+      costBreakdown = computePlanCostFromSlots(terms, {
+        perCreditUsd: institutionPricing.perCreditUsd ?? FALLBACK_PER_CREDIT_USD,
+        feesUsd: institutionPricing.feesUsd,
+        model: institutionPricing.model,
+        pricingPackId: institutionPricing.pricingPackId,
+      }, providerRates);
     }
+    
+    // Determine cost_status based on provenance verification
+    const costStatus = (institutionPricing.provenanceVerified && providerProvenanceVerified) 
+      ? 'verified' 
+      : 'estimated';
     
     console.log(`[seed-bsba-templates] ${institutionCode}/${trackType} cost breakdown:`, {
       total: costBreakdown.totalCostUsd,
@@ -592,11 +619,29 @@ async function generateTemplatesFromPack(
     
     console.log(`[seed-bsba-templates] ✅ Upserted ${templateId} with cost $${costBreakdown.totalCostUsd}`);
     
-    // Create cost snapshot for audit trail
+    // Query back the real UUID from the database (critical for snapshot joins)
+    const { data: dbRow, error: lookupError } = await supabase
+      .from('degree_templates')
+      .select('id')
+      .eq('institution_code', institutionCode)
+      .eq('program_code', programCode)
+      .eq('track_type', trackType)
+      .single();
+    
+    if (lookupError || !dbRow) {
+      console.error(`[seed-bsba-templates] Failed to lookup template UUID for ${templateId}:`, lookupError?.message);
+      errors.push(`${trackType}: Failed to lookup template UUID`);
+      continue;
+    }
+    
+    const realTemplateId = dbRow.id; // This is the actual UUID
+    console.log(`[seed-bsba-templates] Template ${templateId} has UUID: ${realTemplateId}`);
+    
+    // Create cost snapshot for audit trail using real UUID
     const { error: snapshotError } = await supabase
       .from('template_cost_snapshots')
       .insert({
-        template_id: templateId,
+        template_id: realTemplateId, // Use real UUID, not human-readable ID
         institution_code: institutionCode,
         plan_cost_usd: costBreakdown.totalCostUsd,
         plan_weeks: Math.round(durationMonths * 4.33),
@@ -606,20 +651,21 @@ async function generateTemplatesFromPack(
         inputs: {
           institution_pricing_pack_id: institutionPricing.pricingPackId,
           per_credit_usd: institutionPricing.perCreditUsd,
+          term_cost_usd: institutionPricing.termCostUsd,
           fees_usd: institutionPricing.feesUsd,
           pricing_model: institutionPricing.model,
           provider_rates_used: costBreakdown.providerRatesUsed,
           alt_credits_by_provider: costBreakdown.altCreditsByProvider,
-          formula_version: '3.0',
+          formula_version: '3.1', // Upgraded version for UUID fix
         },
-        cost_status: 'verified',
-        source_description: `Computed from pricing packs - ${institutionCode} per-credit + provider rates`,
+        cost_status: costStatus, // Use computed status, not hardcoded 'verified'
+        source_description: `Computed from pricing packs - ${institutionCode} ${institutionPricing.model} + provider rates (${costStatus})`,
       });
     
     if (snapshotError) {
-      console.warn(`[seed-bsba-templates] Failed to create cost snapshot for ${templateId}:`, snapshotError.message);
+      console.warn(`[seed-bsba-templates] Failed to create cost snapshot for ${realTemplateId}:`, snapshotError.message);
     } else {
-      console.log(`[seed-bsba-templates] ✅ Created cost snapshot for ${templateId}`);
+      console.log(`[seed-bsba-templates] ✅ Created cost snapshot for ${realTemplateId} (status: ${costStatus})`);
     }
     
     if (trackType === 'standard') results.standard = templateId;
@@ -662,31 +708,38 @@ serve(async (req) => {
     console.log(`[seed-bsba-templates] Starting v3 template generation with real costs...`);
     console.log(`[seed-bsba-templates] Params: institution_code=${institution_code || 'all'}, program_code=${program_code}, force_refresh=${force_refresh}`);
 
-    // Fetch all provider pricing packs
+    // Fetch all provider pricing packs (with provenance for status determination)
     const { data: providerPacks, error: providerError } = await supabase
       .from('alt_provider_pricing_packs')
-      .select('provider_code, pricing_data')
+      .select('provider_code, pricing_data, provenance_verified_at')
       .eq('status', 'active');
     
     if (providerError) {
       console.warn('[seed-bsba-templates] Failed to fetch provider pricing:', providerError.message);
     }
     
-    // Build provider rates map
+    // Build provider rates map and check provenance
     const providerRates = new Map<string, number>();
+    let providerProvenanceVerified = true; // Start true, set false if any unverified
+    
     (providerPacks || []).forEach((pack) => {
       const data = pack.pricing_data as ProviderPricingData;
       if (data?.effective_cost_per_credit_usd) {
         providerRates.set(pack.provider_code, data.effective_cost_per_credit_usd);
       }
+      // Check if this provider has verified provenance
+      if (!pack.provenance_verified_at) {
+        providerProvenanceVerified = false;
+      }
     });
     
     console.log('[seed-bsba-templates] Provider rates loaded:', Object.fromEntries(providerRates));
+    console.log('[seed-bsba-templates] Provider provenance verified:', providerProvenanceVerified);
 
-    // Fetch all institution pricing packs
+    // Fetch all institution pricing packs (with provenance for status)
     let pricingQuery = supabase
       .from('institution_pricing_packs')
-      .select('id, institution_code, pricing_data, status')
+      .select('id, institution_code, pricing_data, status, provenance_verified_at')
       .eq('status', 'active');
     
     if (institution_code) {
@@ -699,32 +752,38 @@ serve(async (req) => {
       console.warn('[seed-bsba-templates] Failed to fetch institution pricing:', pricingError.message);
     }
     
-    // Build institution pricing map
-    const institutionPricingMap = new Map<string, { 
-      perCreditUsd: number; 
-      feesUsd: number; 
-      model: string;
-      pricingPackId: string;
-    }>();
+    // Build institution pricing map with proper typed structure
+    const institutionPricingMap = new Map<string, InstitutionPricing>();
     
     (institutionPricingPacks || []).forEach((pack) => {
       const data = pack.pricing_data as PricingPackData;
-      const model = data?.model || 'per_credit';
-      
-      // For WGU flat-term model, store term cost in perCreditUsd field
-      const perCreditUsd = model === 'flat_term' 
-        ? (data?.term_cost_usd ?? 3855)
-        : (data?.per_credit_usd ?? FALLBACK_PER_CREDIT_USD);
+      const model = (data?.model || 'per_credit') as 'per_credit' | 'flat_term';
+      const provenanceVerified = !!pack.provenance_verified_at;
       
       const feesUsd = data?.required_fees_usd ?? 
         Object.values(data?.fee_schedule || {}).reduce((sum: number, fee: unknown) => sum + (fee as number), 0);
       
-      institutionPricingMap.set(pack.institution_code, {
-        perCreditUsd,
-        feesUsd,
-        model,
-        pricingPackId: pack.id,
-      });
+      if (model === 'flat_term') {
+        // WGU-style flat-term pricing
+        institutionPricingMap.set(pack.institution_code, {
+          model: 'flat_term',
+          pricingPackId: pack.id,
+          provenanceVerified,
+          feesUsd,
+          termCostUsd: data?.term_cost_usd ?? 3855,
+          typicalTerms: data?.typical_terms_to_complete ?? 4,
+          termWeeks: data?.term_weeks ?? 26,
+        });
+      } else {
+        // Standard per-credit pricing
+        institutionPricingMap.set(pack.institution_code, {
+          model: 'per_credit',
+          pricingPackId: pack.id,
+          provenanceVerified,
+          feesUsd,
+          perCreditUsd: data?.per_credit_usd ?? FALLBACK_PER_CREDIT_USD,
+        });
+      }
     });
     
     console.log('[seed-bsba-templates] Institution pricing loaded:', institutionPricingMap.size, 'schools');
@@ -786,10 +845,11 @@ serve(async (req) => {
       }
 
       // Get institution pricing (use fallback if not found)
-      const institutionPricing = institutionPricingMap.get(code) || {
+      const institutionPricing: InstitutionPricing = institutionPricingMap.get(code) || {
+        model: 'per_credit',
+        provenanceVerified: false,
         perCreditUsd: FALLBACK_PER_CREDIT_USD,
         feesUsd: 200,
-        model: 'per_credit',
         pricingPackId: undefined,
       };
       
@@ -802,7 +862,10 @@ serve(async (req) => {
         ? pack.policy_data as PolicyData
         : {};
 
-      console.log(`[seed-bsba-templates] ${code}: ${institutionPricing.model} model, $${institutionPricing.perCreditUsd}/${institutionPricing.model === 'flat_term' ? 'term' : 'credit'}`);
+      const displayRate = institutionPricing.model === 'flat_term' 
+        ? `$${institutionPricing.termCostUsd}/term`
+        : `$${institutionPricing.perCreditUsd}/credit`;
+      console.log(`[seed-bsba-templates] ${code}: ${institutionPricing.model} model, ${displayRate}`);
 
       // Generate templates from pack with real pricing
       const genResult = await generateTemplatesFromPack(
@@ -813,7 +876,8 @@ serve(async (req) => {
         pack.id,
         program_code,
         institutionPricing,
-        providerRates
+        providerRates,
+        providerProvenanceVerified
       );
 
       const insertedCount = (genResult.standard ? 1 : 0) + (genResult.altMax ? 1 : 0);
