@@ -13711,6 +13711,16 @@ export type Database = {
       }
       refresh_career_steps_with_levels: { Args: never; Returns: undefined }
       refresh_requirement_option_counts: { Args: never; Returns: undefined }
+      resolve_policy_conflict: {
+        Args: {
+          p_chosen_value: Json
+          p_citation_url?: string
+          p_field_name: string
+          p_institution: string
+          p_notes?: string
+        }
+        Returns: Json
+      }
       slugify: { Args: { input: string }; Returns: string }
       start_course_progress: {
         Args: { course_id_param: string; user_id_param: string }
