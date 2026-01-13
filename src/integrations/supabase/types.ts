@@ -14527,6 +14527,7 @@ export type Database = {
         Args: { mentor_user_id: string }
         Returns: undefined
       }
+      check_template_generation_health: { Args: never; Returns: Json }
       claim_template_generation_jobs: {
         Args: {
           p_batch_size?: number
