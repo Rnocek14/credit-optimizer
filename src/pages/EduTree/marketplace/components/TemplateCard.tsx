@@ -57,12 +57,14 @@ export function TemplateCard({ template, isSelected, onToggleSelect }: TemplateC
 
   // Extract ALL alt-credit options for transfer verification (deduplicated)
   // This includes preferred + alternatives so Standard templates show meaningful coverage
-  const allCourses = useMemo(() => {
+  const { allCourses, totalSlots } = useMemo(() => {
     const seen = new Set<string>();
     const courses: Array<{ code: string; providerCode: string | null; credits: number; costUsd: number }> = [];
+    let slotCount = 0;
     
     template.yearTemplates?.forEach(year => {
       year.moduleTemplates?.forEach(module => {
+        slotCount++; // Count every module slot
         // Include ALL options (preferred + alternatives) for comprehensive coverage
         module.options?.forEach(option => {
           // Only count alt-credit options (skip institutional courses with null provider)
@@ -82,7 +84,7 @@ export function TemplateCard({ template, isSelected, onToggleSelect }: TemplateC
       });
     });
     
-    return courses;
+    return { allCourses: courses, totalSlots: slotCount };
   }, [template.yearTemplates]);
 
   // Get verified policy for anchor school
@@ -194,13 +196,13 @@ export function TemplateCard({ template, isSelected, onToggleSelect }: TemplateC
   const dataQuality = useMemo(() => {
     if (!tieredSavings) return null;
     
-    const totalCourses = tieredSavings.totalCourses;
-    if (totalCourses === 0) return null;
+    const totalAltOptions = tieredSavings.totalCourses;
+    if (totalAltOptions === 0) return null;
     
     const rulesFound = tieredSavings.breakdown.tierA.count + tieredSavings.breakdown.tierB.count;
     const evidenceLinked = tieredSavings.breakdown.tierA.count;
     
-    const rulesFoundPercent = Math.round((rulesFound / totalCourses) * 100);
+    const rulesFoundPercent = Math.round((rulesFound / totalAltOptions) * 100);
     const evidenceLinkedPercent = rulesFound > 0 
       ? Math.round((evidenceLinked / rulesFound) * 100) 
       : 0;
@@ -212,15 +214,15 @@ export function TemplateCard({ template, isSelected, onToggleSelect }: TemplateC
     
     if (rulesFoundPercent >= 80 && evidenceLinkedPercent >= 50) {
       level = 'high';
-      label = 'Strong coverage';
+      label = 'Verified';
       icon = ShieldCheck;
     } else if (rulesFoundPercent >= 50) {
       level = 'medium';
-      label = 'Partial verification';
+      label = 'Partial';
       icon = Shield;
     } else {
       level = 'low';
-      label = 'Limited data';
+      label = 'Limited';
       icon = AlertTriangle;
     }
     
@@ -232,9 +234,10 @@ export function TemplateCard({ template, isSelected, onToggleSelect }: TemplateC
       evidenceLinkedPercent,
       rulesFound,
       evidenceLinked,
-      totalCourses,
+      totalAltOptions,
+      totalSlots, // Include total slots for availability context
     };
-  }, [tieredSavings]);
+  }, [tieredSavings, totalSlots]);
 
   // Calculate Degree Safety Score
   const degreeSafetyScore = useMemo(() => {
@@ -408,7 +411,7 @@ export function TemplateCard({ template, isSelected, onToggleSelect }: TemplateC
           </Tooltip>
         </TooltipProvider>
 
-        {/* Data Quality Indicator */}
+        {/* Alt-Credit Verification Indicator */}
         {dataQuality && (
           <TooltipProvider>
             <Tooltip>
@@ -425,14 +428,15 @@ export function TemplateCard({ template, isSelected, onToggleSelect }: TemplateC
                   <dataQuality.icon className="h-3.5 w-3.5" />
                   <span>{dataQuality.label}</span>
                   <span className="text-muted-foreground">
-                    ({dataQuality.rulesFoundPercent}% have rules{dataQuality.evidenceLinkedPercent > 0 ? ` • ${dataQuality.evidenceLinkedPercent}% evidence-linked` : ''})
+                    ({dataQuality.rulesFound}/{dataQuality.totalAltOptions} alt-credit verified)
                   </span>
                 </div>
               </TooltipTrigger>
               <TooltipContent className="max-w-xs">
                 <div className="space-y-1 text-xs">
-                  <p className="font-medium">Transfer Verification Quality</p>
-                  <p>{dataQuality.rulesFound} of {dataQuality.totalCourses} courses have transfer rules</p>
+                  <p className="font-medium">Alt-Credit Rule Coverage</p>
+                  <p>{dataQuality.rulesFound} of {dataQuality.totalAltOptions} alt-credit options have verified transfer rules</p>
+                  <p className="text-muted-foreground">Alt-credit availability: {dataQuality.totalAltOptions} options across {dataQuality.totalSlots} slots</p>
                   {dataQuality.evidenceLinked > 0 && (
                     <p>{dataQuality.evidenceLinked} are evidence-linked (Tier A)</p>
                   )}
