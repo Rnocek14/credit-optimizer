@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { renderHook, waitFor } from '@testing-library/react';
+import { renderHook } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useExplorationAnalytics } from '../useExplorationAnalytics';
 import * as explorationApi from '../explorationApi';
@@ -28,6 +28,20 @@ const mockData = {
   ],
 };
 
+// Simple polling helper since waitFor isn't available
+async function waitForCondition(
+  checkFn: () => boolean,
+  timeout = 5000,
+  interval = 50
+): Promise<void> {
+  const start = Date.now();
+  while (Date.now() - start < timeout) {
+    if (checkFn()) return;
+    await new Promise((r) => setTimeout(r, interval));
+  }
+  throw new Error('Condition not met within timeout');
+}
+
 function createWrapper() {
   const queryClient = new QueryClient({
     defaultOptions: {
@@ -52,7 +66,7 @@ describe('useExplorationAnalytics', () => {
       { wrapper: createWrapper() }
     );
 
-    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    await waitForCondition(() => result.current.isSuccess === true);
 
     expect(result.current.data).toEqual(mockData);
     expect(result.current.isLoading).toBe(false);
@@ -71,12 +85,14 @@ describe('useExplorationAnalytics', () => {
 
     renderHook(() => useExplorationAnalytics(params), { wrapper: createWrapper() });
 
-    await waitFor(() => {
-      expect(explorationApi.getExplorationAnalytics).toHaveBeenCalledWith(
-        expect.anything(),
-        params
-      );
-    });
+    await waitForCondition(() => 
+      vi.mocked(explorationApi.getExplorationAnalytics).mock.calls.length > 0
+    );
+
+    expect(explorationApi.getExplorationAnalytics).toHaveBeenCalledWith(
+      expect.anything(),
+      params
+    );
   });
 
   it('handles errors gracefully', async () => {
@@ -87,7 +103,7 @@ describe('useExplorationAnalytics', () => {
       wrapper: createWrapper(),
     });
 
-    await waitFor(() => expect(result.current.isError).toBe(true));
+    await waitForCondition(() => result.current.isError === true);
 
     expect(result.current.error).toBeTruthy();
     expect(result.current.data).toBeUndefined();
@@ -114,7 +130,7 @@ describe('useExplorationAnalytics', () => {
       wrapper: createWrapper(),
     });
 
-    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    await waitForCondition(() => result.current.isSuccess === true);
 
     // Second render with same params should use cache
     const { result: result2 } = renderHook(() => useExplorationAnalytics(params), {
