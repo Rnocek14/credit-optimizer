@@ -175,6 +175,7 @@ export function InstitutionReviewDrawer({ open, onClose, runId, institution }: I
       toast({ title: 'Conflict resolved' });
       queryClient.invalidateQueries({ queryKey: ['conflicts-detail', institution] });
       queryClient.invalidateQueries({ queryKey: ['pack-detail', runId, institution] });
+      queryClient.invalidateQueries({ queryKey: ['diffs-detail', runId, institution] });
     },
     onError: (error: Error) => {
       toast({ 
