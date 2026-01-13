@@ -6,12 +6,15 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Configuration
-const MAX_RUNTIME_MS = 55000; // Total worker runtime limit (before 60s timeout)
-const OPENAI_TIMEOUT_MS = 45000; // Per-request timeout for OpenAI
-const MIN_TIME_FOR_NEW_JOB = 10000; // Don't start new job if less than this remaining
-const DEFAULT_BATCH_SIZE = 3;
-const MAX_ATTEMPTS = 3;
+// Configuration - OBSERVABLE (logged at startup)
+const CONFIG = {
+  MAX_RUNTIME_MS: 120000,      // 2 min total worker budget
+  OPENAI_TIMEOUT_MS: 45000,    // 45s per OpenAI request
+  MIN_TIME_FOR_NEW_JOB: 55000, // Need 55s+ to start a new job
+  DEFAULT_BATCH_SIZE: 1,       // Start with 1, raise after observing times
+  MAX_ATTEMPTS: 3,
+  PROMPT_VERSION: 'v1',
+};
 
 interface QueueJob {
   id: string;
@@ -77,10 +80,12 @@ serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const {
       institution_code = null,
-      batch_size = DEFAULT_BATCH_SIZE,
+      batch_size = CONFIG.DEFAULT_BATCH_SIZE,
       dry_run = false,
     } = body;
 
+    // LOG CONFIG so we can verify deployed version
+    console.log(`[${workerId}] CONFIG`, CONFIG);
     console.log(`[${workerId}] Starting worker`, { institution_code, batch_size, dry_run });
 
     // ATOMIC CLAIM via RPC with SKIP LOCKED
@@ -121,10 +126,10 @@ serve(async (req) => {
 
     for (const job of jobs) {
       const timeElapsed = Date.now() - workerStartTime;
-      const timeRemaining = MAX_RUNTIME_MS - timeElapsed;
+      const timeRemaining = CONFIG.MAX_RUNTIME_MS - timeElapsed;
 
       // Don't start new job if not enough time remaining
-      if (timeRemaining < MIN_TIME_FOR_NEW_JOB) {
+      if (timeRemaining < CONFIG.MIN_TIME_FOR_NEW_JOB) {
         console.log(`[${workerId}] Time limit approaching (${timeRemaining}ms left), requeuing remaining jobs`);
         // Requeue this and remaining jobs
         const remainingIds = jobs.slice(jobs.indexOf(job)).map(j => j.id);
@@ -170,8 +175,9 @@ serve(async (req) => {
           .eq('id', job.id);
         jobsCompleted++;
       } else {
-        // At least one track failed
-        const shouldRetry = job.attempt_count < MAX_ATTEMPTS;
+        // Check if failure was TIME_LIMIT (always requeue) vs actual error
+        const hasTimeLimitOnly = jobResult.tracks.every(t => t.success || t.error_code === 'TIME_LIMIT');
+        const shouldRetry = hasTimeLimitOnly || job.attempt_count < CONFIG.MAX_ATTEMPTS;
         const firstError = jobResult.tracks.find(t => !t.success);
 
         await supabase
@@ -270,8 +276,8 @@ async function processJob(
     // Process each track
     for (const track of tracks) {
       // Check time remaining before starting track
-      const timeRemaining = MAX_RUNTIME_MS - (Date.now() - workerStartTime);
-      if (timeRemaining < MIN_TIME_FOR_NEW_JOB) {
+      const timeRemaining = CONFIG.MAX_RUNTIME_MS - (Date.now() - workerStartTime);
+      if (timeRemaining < CONFIG.MIN_TIME_FOR_NEW_JOB) {
         console.log(`[${workerId}] Skipping track ${track} - not enough time (${timeRemaining}ms)`);
         trackResults.push({
           success: false,
@@ -347,7 +353,7 @@ async function generateAndWriteTemplate(
 
     // Create AbortController for timeout
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), OPENAI_TIMEOUT_MS);
+    const timeoutId = setTimeout(() => controller.abort(), CONFIG.OPENAI_TIMEOUT_MS);
 
     let response: Response;
     try {
@@ -381,7 +387,7 @@ async function generateAndWriteTemplate(
           track,
           template_written: false,
           error_code: 'OPENAI_TIMEOUT',
-          error_message: `OpenAI request timed out after ${OPENAI_TIMEOUT_MS}ms`,
+          error_message: `OpenAI request timed out after ${CONFIG.OPENAI_TIMEOUT_MS}ms`,
           generation_time_ms: Date.now() - startTime,
         };
       }
