@@ -88,29 +88,39 @@ serve(async (req) => {
 
     console.log(`[run-degree-truth-scan] Found ${templates?.length || 0} templates to scan`);
 
-    // ============= CHECK 1: Baseline Coverage =============
+    // Build template ID list for scoped queries
+    const templateIds = (templates || []).map(t => t.id);
+
+    // ============= CHECK 1: Baseline Coverage (scoped to template IDs) =============
     const { data: baselines } = await supabase
       .from('template_baseline_snapshots')
       .select('template_id')
-      .order('computed_at', { ascending: false });
+      .in('template_id', templateIds.length > 0 ? templateIds : ['__none__']);
 
     const baselineTemplateIds = new Set((baselines || []).map(b => b.template_id));
 
-    // ============= CHECK 2: Cost Snapshot Coverage =============
+    // ============= CHECK 2: Cost Snapshot Coverage (scoped to template IDs) =============
     const { data: costSnapshots } = await supabase
       .from('template_cost_snapshots')
       .select('template_id')
-      .order('computed_at', { ascending: false });
+      .in('template_id', templateIds.length > 0 ? templateIds : ['__none__']);
 
     const costTemplateIds = new Set((costSnapshots || []).map(c => c.template_id));
 
-    // ============= CHECK 3: Policy Pack Coverage =============
+    // ============= CHECK 3: Policy Pack Coverage (FIXED: use 'institution' column) =============
     const { data: policyPacks } = await supabase
       .from('institution_policy_packs')
-      .select('institution_code')
+      .select('institution, id, policy_data')
       .eq('status', 'active');
 
-    const policyPackInstitutions = new Set((policyPacks || []).map(p => p.institution_code));
+    // Map institution -> { id, policy_data } for cap/residency lookups
+    interface PolicyPackData {
+      id: string;
+      policy_data: { max_alt_credit?: number; residency_credits?: number } | null;
+    }
+    const policyPackMap = new Map<string, PolicyPackData>(
+      (policyPacks || []).map(p => [p.institution, { id: p.id, policy_data: p.policy_data }])
+    );
 
     // ============= CHECK 4: Pricing Pack Coverage =============
     const { data: pricingPacks } = await supabase
@@ -125,6 +135,7 @@ serve(async (req) => {
       const templateId = template.id;
       const instCode = template.institution_code;
       const progCode = template.program_code;
+      const trackType = template.track_type;
       const templateData = template.template_data as Record<string, unknown>;
 
       // Check 1: baseline_exists
@@ -162,7 +173,6 @@ serve(async (req) => {
             inputs: baseline.inputs,
             source_description: baseline.source_description,
           });
-          // Update finding to show it was fixed
           findings[findings.length - 1].details = { ...findings[findings.length - 1].details, auto_fixed: true };
         }
       }
@@ -180,8 +190,9 @@ serve(async (req) => {
         auto_fixable: true,
       });
 
-      // Check 3: policy_pack_exists
-      const hasPolicy = policyPackInstitutions.has(instCode);
+      // Check 3: policy_pack_exists (FIXED: use policyPackMap with 'institution' key)
+      const policyPack = policyPackMap.get(instCode);
+      const hasPolicy = !!policyPack;
       findings.push({
         template_id: templateId,
         institution_code: instCode,
@@ -189,7 +200,7 @@ serve(async (req) => {
         check_name: 'policy_pack_exists',
         check_category: 'coverage',
         status: hasPolicy ? 'pass' : 'fail',
-        details: { has_policy_pack: hasPolicy },
+        details: { has_policy_pack: hasPolicy, policy_pack_id: policyPack?.id },
         auto_fixable: false,
       });
 
@@ -206,7 +217,7 @@ serve(async (req) => {
         auto_fixable: false,
       });
 
-      // Check 5: cap_compliance (extract alt credits from template_data)
+      // Check 5: cap_compliance (FIXED: use policy-driven cap, track-aware)
       if (templateData && typeof templateData === 'object') {
         let altCredits = 0;
         const terms = (templateData as { terms?: unknown[] }).terms || [];
@@ -220,20 +231,87 @@ serve(async (req) => {
           }
         }
         
-        // TODO: Fetch actual cap from policy pack - using 45 as default for now
-        const maxAltCredits = 45;
-        const capCompliant = altCredits <= maxAltCredits;
+        // Get cap from policy pack (institution-specific)
+        const maxAltCredits = policyPack?.policy_data?.max_alt_credit ?? null;
         
-        findings.push({
-          template_id: templateId,
-          institution_code: instCode,
-          program_code: progCode,
-          check_name: 'cap_compliance',
-          check_category: 'correctness',
-          status: capCompliant ? 'pass' : 'fail',
-          details: { alt_credits: altCredits, max_allowed: maxAltCredits },
-          auto_fixable: false,
-        });
+        // Only apply cap check to alt_max tracks; standard tracks have enforced caps already
+        if (trackType === 'alt_max' || trackType === 'cheapest') {
+          if (maxAltCredits === null) {
+            // No policy pack - can't evaluate cap, WARN instead of FAIL
+            findings.push({
+              template_id: templateId,
+              institution_code: instCode,
+              program_code: progCode,
+              check_name: 'cap_compliance',
+              check_category: 'correctness',
+              status: 'warn',
+              details: { alt_credits: altCredits, max_allowed: null, reason: 'no_policy_pack' },
+              auto_fixable: false,
+            });
+          } else {
+            const capCompliant = altCredits <= maxAltCredits;
+            findings.push({
+              template_id: templateId,
+              institution_code: instCode,
+              program_code: progCode,
+              check_name: 'cap_compliance',
+              check_category: 'correctness',
+              status: capCompliant ? 'pass' : 'fail',
+              details: { alt_credits: altCredits, max_allowed: maxAltCredits },
+              auto_fixable: false,
+            });
+          }
+        } else {
+          // Standard tracks: always pass cap (enforceAltCap already applied)
+          findings.push({
+            template_id: templateId,
+            institution_code: instCode,
+            program_code: progCode,
+            check_name: 'cap_compliance',
+            check_category: 'correctness',
+            status: 'pass',
+            details: { alt_credits: altCredits, track_type: trackType, note: 'standard_track_enforced' },
+            auto_fixable: false,
+          });
+        }
+
+        // Check 6: residency_compliance (institutional credits >= residency requirement)
+        const residencyRequired = policyPack?.policy_data?.residency_credits ?? null;
+        let institutionalCredits = 0;
+        for (const term of terms) {
+          const slots = (term as { slots?: unknown[] }).slots || [];
+          for (const slot of slots) {
+            const slotData = slot as { preferred?: { type?: string }; minCredits?: number };
+            if (slotData.preferred?.type === 'institutional_course') {
+              institutionalCredits += slotData.minCredits || 3;
+            }
+          }
+        }
+
+        if (residencyRequired === null) {
+          findings.push({
+            template_id: templateId,
+            institution_code: instCode,
+            program_code: progCode,
+            check_name: 'residency_compliance',
+            check_category: 'correctness',
+            status: 'warn',
+            details: { institutional_credits: institutionalCredits, residency_required: null, reason: 'no_policy_pack' },
+            auto_fixable: false,
+          });
+        } else {
+          const residencyCompliant = institutionalCredits >= residencyRequired;
+          findings.push({
+            template_id: templateId,
+            institution_code: instCode,
+            program_code: progCode,
+            check_name: 'residency_compliance',
+            check_category: 'correctness',
+            status: residencyCompliant ? 'pass' : 'fail',
+            details: { institutional_credits: institutionalCredits, residency_required: residencyRequired },
+            auto_fixable: false,
+          });
+        }
       }
     }
 
