@@ -1,4 +1,4 @@
-// Equivalencies Seeder V1 - Maps alt credits to COSC, WGU, TESU
+// Equivalencies & Transfer Rules Seeder V1 - Seeds both cross_institution_equivalencies AND credit_transfer_rules
 import { serve } from 'https://deno.land/std@0.224.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1';
 
@@ -16,6 +16,15 @@ interface EquivalencyMapping {
   credits_awarded: number;
   level: number;
   confidence: number; // 0.0 to 1.0
+}
+
+// Transfer rule structure for credit_transfer_rules table
+interface TransferRuleMapping {
+  source_institution: string; // SOPHIA, STUDYCOM, CLEP
+  source_course_code: string;
+  target_course_code: string;
+  rule_source: string;
+  confidence: number;
 }
 
 // V1 Mappings - These are generally accepted across COSC, WGU, TESU
@@ -65,44 +74,91 @@ const UNIVERSAL_MAPPINGS: EquivalencyMapping[] = [
   { source_code: 'SOPHIA', identifier: 'public-speaking', requirement_areas: ['ORAL_COMM'], credits_awarded: 3, level: 100, confidence: 0.90 },
 ];
 
+// Universal transfer rules - source course -> target course patterns
+// These are used to populate credit_transfer_rules for any target institution
+const TRANSFER_RULE_MAPPINGS: TransferRuleMapping[] = [
+  // Sophia courses
+  { source_institution: 'SOPHIA', source_course_code: 'SOPHIA-ENG-COMP-I-II', target_course_code: 'ENG-101', rule_source: 'ACE Credit', confidence: 0.95 },
+  { source_institution: 'SOPHIA', source_course_code: 'SOPHIA-US-HIST-I', target_course_code: 'HIS-113', rule_source: 'ACE Credit', confidence: 0.95 },
+  { source_institution: 'SOPHIA', source_course_code: 'SOPHIA-COLLEGE-ALG', target_course_code: 'MAT-121', rule_source: 'ACE Credit', confidence: 0.95 },
+  { source_institution: 'SOPHIA', source_course_code: 'SOPHIA-INTRO-ETHICS', target_course_code: 'PHI-384', rule_source: 'ACE Credit', confidence: 0.95 },
+  { source_institution: 'SOPHIA', source_course_code: 'SOPHIA-ART-HIST-I', target_course_code: 'ART-101', rule_source: 'ACE Credit', confidence: 0.95 },
+  { source_institution: 'SOPHIA', source_course_code: 'SOPHIA-INTRO-PSYCH', target_course_code: 'PSY-101', rule_source: 'ACE Credit', confidence: 0.95 },
+  { source_institution: 'SOPHIA', source_course_code: 'SOPHIA-INTRO-SOC', target_course_code: 'SOC-101', rule_source: 'ACE Credit', confidence: 0.95 },
+  { source_institution: 'SOPHIA', source_course_code: 'SOPHIA-HUMAN-BIO', target_course_code: 'BIO-101', rule_source: 'ACE Credit', confidence: 0.95 },
+  { source_institution: 'SOPHIA', source_course_code: 'SOPHIA-ENV-SCI', target_course_code: 'ENV-101', rule_source: 'ACE Credit', confidence: 0.95 },
+  { source_institution: 'SOPHIA', source_course_code: 'SOPHIA-PUBLIC-SPEAK', target_course_code: 'COM-209', rule_source: 'ACE Credit', confidence: 0.95 },
+  { source_institution: 'SOPHIA', source_course_code: 'SOPHIA-MICRO-ECON', target_course_code: 'ECO-211', rule_source: 'ACE Credit', confidence: 0.92 },
+  { source_institution: 'SOPHIA', source_course_code: 'SOPHIA-MACRO-ECON', target_course_code: 'ECO-212', rule_source: 'ACE Credit', confidence: 0.92 },
+  { source_institution: 'SOPHIA', source_course_code: 'SOPHIA-FIN-ACCT', target_course_code: 'ACC-102', rule_source: 'ACE Credit', confidence: 0.92 },
+  { source_institution: 'SOPHIA', source_course_code: 'SOPHIA-MGT-ACCT', target_course_code: 'ACC-301', rule_source: 'ACE Credit', confidence: 0.92 },
+  { source_institution: 'SOPHIA', source_course_code: 'SOPHIA-BUS-LAW', target_course_code: 'BUS-311', rule_source: 'ACE Credit', confidence: 0.92 },
+  { source_institution: 'SOPHIA', source_course_code: 'SOPHIA-INTRO-BUS', target_course_code: 'BUS-101', rule_source: 'ACE Credit', confidence: 0.92 },
+  
+  // Study.com courses
+  { source_institution: 'STUDYCOM', source_course_code: 'SDC-PRIN-MGMT', target_course_code: 'MAN-321', rule_source: 'ACE Credit', confidence: 0.92 },
+  { source_institution: 'STUDYCOM', source_course_code: 'SDC-PRIN-MKT', target_course_code: 'MAR-301', rule_source: 'ACE Credit', confidence: 0.92 },
+  { source_institution: 'STUDYCOM', source_course_code: 'SDC-FIN-ACCT', target_course_code: 'ACC-102', rule_source: 'ACE Credit', confidence: 0.92 },
+  { source_institution: 'STUDYCOM', source_course_code: 'SDC-MGT-ACCT', target_course_code: 'ACC-301', rule_source: 'ACE Credit', confidence: 0.92 },
+  { source_institution: 'STUDYCOM', source_course_code: 'SDC-MICRO-ECON', target_course_code: 'ECO-211', rule_source: 'ACE Credit', confidence: 0.92 },
+  { source_institution: 'STUDYCOM', source_course_code: 'SDC-MACRO-ECON', target_course_code: 'ECO-212', rule_source: 'ACE Credit', confidence: 0.92 },
+  { source_institution: 'STUDYCOM', source_course_code: 'SDC-INFO-SYS', target_course_code: 'CIS-301', rule_source: 'ACE Credit', confidence: 0.92 },
+  { source_institution: 'STUDYCOM', source_course_code: 'SDC-BUS-ETH', target_course_code: 'BUS-331', rule_source: 'ACE Credit', confidence: 0.90 },
+  { source_institution: 'STUDYCOM', source_course_code: 'SDC-CORP-FIN', target_course_code: 'FIN-321', rule_source: 'ACE Credit', confidence: 0.90 },
+  { source_institution: 'STUDYCOM', source_course_code: 'SDC-BUS-LAW', target_course_code: 'BUS-311', rule_source: 'ACE Credit', confidence: 0.90 },
+  { source_institution: 'STUDYCOM', source_course_code: 'SDC-HR-MGMT', target_course_code: 'HRM-301', rule_source: 'ACE Credit', confidence: 0.90 },
+  { source_institution: 'STUDYCOM', source_course_code: 'SDC-PROJ-MGMT', target_course_code: 'MAN-341', rule_source: 'ACE Credit', confidence: 0.90 },
+  { source_institution: 'STUDYCOM', source_course_code: 'SDC-SUPPLY-CHAIN', target_course_code: 'OPM-301', rule_source: 'ACE Credit', confidence: 0.90 },
+  { source_institution: 'STUDYCOM', source_course_code: 'SDC-BUS-ANALYTICS', target_course_code: 'BUS-351', rule_source: 'ACE Credit', confidence: 0.90 },
+  { source_institution: 'STUDYCOM', source_course_code: 'SDC-ENTREPRENEUR', target_course_code: 'ENT-301', rule_source: 'ACE Credit', confidence: 0.88 },
+  { source_institution: 'STUDYCOM', source_course_code: 'SDC-DIGITAL-MKT', target_course_code: 'MAR-331', rule_source: 'ACE Credit', confidence: 0.88 },
+  { source_institution: 'STUDYCOM', source_course_code: 'SDC-CONSUMER-BEH', target_course_code: 'MAR-321', rule_source: 'ACE Credit', confidence: 0.88 },
+  { source_institution: 'STUDYCOM', source_course_code: 'SDC-RESEARCH-METH', target_course_code: 'BUS-401', rule_source: 'ACE Credit', confidence: 0.88 },
+  { source_institution: 'STUDYCOM', source_course_code: 'SDC-DATA-DECISIONS', target_course_code: 'BUS-411', rule_source: 'ACE Credit', confidence: 0.88 },
+  { source_institution: 'STUDYCOM', source_course_code: 'SDC-ENG-COMP-I', target_course_code: 'ENG-101', rule_source: 'ACE Credit', confidence: 0.90 },
+  { source_institution: 'STUDYCOM', source_course_code: 'SDC-COLLEGE-ALG', target_course_code: 'MAT-121', rule_source: 'ACE Credit', confidence: 0.90 },
+  { source_institution: 'STUDYCOM', source_course_code: 'SDC-INTRO-PSYCH', target_course_code: 'PSY-101', rule_source: 'ACE Credit', confidence: 0.90 },
+];
+
 // Institution-specific adjustments (confidence modifiers)
 // Default modifier for new institutions - slightly conservative
 const DEFAULT_CONFIDENCE_MODIFIER: Record<string, number> = {
   CLEP: 0.90,
   SOPHIA: 0.85,
   STUDY_COM: 0.80,
+  STUDYCOM: 0.80,
 };
 
 const INSTITUTION_CONFIDENCE_MODIFIERS: Record<string, Record<string, number>> = {
   COSC: {
-    // COSC is very alt-credit friendly
     CLEP: 1.0,
     SOPHIA: 0.95,
     STUDY_COM: 0.90,
+    STUDYCOM: 0.90,
   },
   WGU: {
-    // WGU accepts most but has some restrictions
     CLEP: 0.95,
     SOPHIA: 0.90,
     STUDY_COM: 0.85,
+    STUDYCOM: 0.85,
   },
   TESU: {
-    // TESU is very alt-credit friendly
     CLEP: 1.0,
     SOPHIA: 0.95,
     STUDY_COM: 0.90,
+    STUDYCOM: 0.90,
   },
   EXCELSIOR: {
-    // Excelsior is alt-credit friendly
     CLEP: 0.95,
     SOPHIA: 0.90,
     STUDY_COM: 0.85,
+    STUDYCOM: 0.85,
   },
   EMPIRE: {
-    // Empire State is moderately alt-credit friendly
     CLEP: 0.95,
     SOPHIA: 0.90,
     STUDY_COM: 0.85,
+    STUDYCOM: 0.85,
   },
 };
 
@@ -148,7 +204,7 @@ serve(async (req) => {
       ? targetInstitutions 
       : await getActiveInstitutionCodes(supabase);
 
-    console.log(`[seed-equivalencies-v1] Starting equivalencies seeding for: ${institutionCodes.join(', ')}`);
+    console.log(`[seed-equivalencies-v1] Starting seeding for: ${institutionCodes.join(', ')}`);
 
     // Get institution IDs
     const { data: institutions, error: instError } = await supabase
@@ -174,37 +230,34 @@ serve(async (req) => {
     console.log(`[seed-equivalencies-v1] Found ${altCreditMap.size} alt credits`);
 
     const results = {
-      inserted: 0,
-      skipped: 0,
-      errors: [] as string[],
+      equivalencies: { inserted: 0, skipped: 0, errors: [] as string[] },
+      transferRules: { inserted: 0, skipped: 0, errors: [] as string[] },
     };
 
-    // Generate equivalencies for each institution
+    // Generate equivalencies and transfer rules for each institution
     for (const [instCode, instId] of instMap) {
       console.log(`[seed-equivalencies-v1] Processing ${instCode}...`);
       
       const confModifiers = INSTITUTION_CONFIDENCE_MODIFIERS[instCode] || DEFAULT_CONFIDENCE_MODIFIER;
 
+      // 1. Seed cross_institution_equivalencies
       for (const mapping of UNIVERSAL_MAPPINGS) {
         const altCreditId = altCreditMap.get(`${mapping.source_code}/${mapping.identifier}`);
         
         if (!altCreditId) {
-          console.warn(`[seed-equivalencies-v1] Alt credit not found: ${mapping.source_code}/${mapping.identifier}`);
-          results.skipped++;
+          results.equivalencies.skipped++;
           continue;
         }
 
-        // Calculate institution-specific confidence
         const baseConfidence = mapping.confidence;
         const modifier = confModifiers[mapping.source_code] || 0.9;
         const adjustedConfidence = Math.min(baseConfidence * modifier, 1.0);
 
-        // Create one row per requirement_area
         for (const reqArea of mapping.requirement_areas) {
           const equivalency = {
             alt_credit_id: altCreditId,
             institution_id: instId,
-            institutional_course_code: null, // Not using fake codes - requirement_area is the real key
+            institutional_course_code: null,
             institutional_course_name: null,
             credits_awarded: mapping.credits_awarded,
             level: mapping.level,
@@ -223,17 +276,44 @@ serve(async (req) => {
             });
 
           if (error) {
-            console.error(`[seed-equivalencies-v1] Error:`, error);
-            results.errors.push(`${instCode}/${reqArea}/${mapping.identifier}: ${error.message}`);
+            results.equivalencies.errors.push(`${instCode}/${reqArea}/${mapping.identifier}: ${error.message}`);
           } else {
-            results.inserted++;
+            results.equivalencies.inserted++;
           }
+        }
+      }
+
+      // 2. Seed credit_transfer_rules
+      for (const rule of TRANSFER_RULE_MAPPINGS) {
+        const modifier = confModifiers[rule.source_institution] || 0.85;
+        const adjustedConfidence = Math.min(rule.confidence * modifier, 1.0);
+
+        const transferRule = {
+          source_institution: rule.source_institution,
+          source_course_code: rule.source_course_code,
+          target_institution: instCode,
+          target_course_code: rule.target_course_code,
+          acceptance_status: 'accepted',
+          rule_source: rule.rule_source,
+          confidence: adjustedConfidence,
+        };
+
+        const { error } = await supabase
+          .from('credit_transfer_rules')
+          .upsert(transferRule, { 
+            onConflict: 'source_institution,source_course_code,target_institution,target_course_code' 
+          });
+
+        if (error) {
+          results.transferRules.errors.push(`${instCode}/${rule.source_course_code}: ${error.message}`);
+        } else {
+          results.transferRules.inserted++;
         }
       }
     }
 
-    // Get summary
-    const { data: summary } = await supabase
+    // Get summaries
+    const { data: eqSummary } = await supabase
       .from('cross_institution_equivalencies')
       .select('institution_id, institutions!inner(code)')
       .then(({ data }) => {
@@ -245,14 +325,30 @@ serve(async (req) => {
         return { data: counts };
       });
 
-    console.log(`[seed-equivalencies-v1] ✅ Complete. Inserted: ${results.inserted}, Skipped: ${results.skipped}`);
+    const { data: ruleSummary } = await supabase
+      .from('credit_transfer_rules')
+      .select('target_institution')
+      .then(({ data }) => {
+        const counts: Record<string, number> = {};
+        (data || []).forEach((row: { target_institution: string }) => {
+          counts[row.target_institution] = (counts[row.target_institution] || 0) + 1;
+        });
+        return { data: counts };
+      });
+
+    console.log(`[seed-equivalencies-v1] ✅ Complete.`);
+    console.log(`  Equivalencies: ${results.equivalencies.inserted} inserted, ${results.equivalencies.skipped} skipped`);
+    console.log(`  Transfer Rules: ${results.transferRules.inserted} inserted, ${results.transferRules.skipped} skipped`);
 
     return new Response(
       JSON.stringify({
         success: true,
         jobName: 'seed-equivalencies-v1',
         results,
-        summary,
+        summary: {
+          equivalencies: eqSummary,
+          transferRules: ruleSummary,
+        },
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
     );
