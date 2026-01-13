@@ -32,13 +32,13 @@ const EVENT_CONFIG: Record<string, {
 };
 
 export function PolicyTimelineTab({ runId, institution }: PolicyTimelineTabProps) {
-  const { timeline, isLoading } = usePolicyTimeline(runId, institution);
+  const { timeline, isLoading, isEmpty } = usePolicyTimeline(runId, institution);
 
   if (isLoading) {
     return <div className="p-4 text-center text-muted-foreground">Loading timeline...</div>;
   }
 
-  if (timeline.length === 0) {
+  if (isEmpty) {
     return (
       <div className="p-8 text-center text-muted-foreground">
         <Clock className="h-8 w-8 mx-auto mb-2 opacity-50" />

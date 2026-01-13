@@ -21,9 +21,11 @@ interface SynthesizedEvent {
   payload: Record<string, unknown>;
 }
 
+const SCAN_EVENTS = ['scan_started', 'scan_completed', 'scan_failed'];
+
 export function usePolicyTimeline(runId: string | null, institution: string | null) {
   // Fetch explicit events from policy_pack_events
-  const { data: events } = useQuery({
+  const { data: events, isLoading: eventsLoading } = useQuery({
     queryKey: ['policy-events', runId, institution],
     queryFn: async () => {
       if (!institution) return [];
@@ -47,7 +49,7 @@ export function usePolicyTimeline(runId: string | null, institution: string | nu
   });
 
   // Fetch task for this run (synthesize scan events)
-  const { data: task } = useQuery({
+  const { data: task, isLoading: taskLoading } = useQuery({
     queryKey: ['task-timeline', runId, institution],
     queryFn: async () => {
       if (!runId || !institution) return null;
@@ -64,7 +66,7 @@ export function usePolicyTimeline(runId: string | null, institution: string | nu
   });
 
   // Fetch pack for this run
-  const { data: pack } = useQuery({
+  const { data: pack, isLoading: packLoading } = useQuery({
     queryKey: ['pack-timeline', runId, institution],
     queryFn: async () => {
       if (!runId || !institution) return null;
@@ -80,8 +82,8 @@ export function usePolicyTimeline(runId: string | null, institution: string | nu
     enabled: !!runId && !!institution,
   });
 
-  // Fetch diffs summary
-  const { data: diffs } = useQuery({
+  // Fetch diffs summary with created_at and ordering
+  const { data: diffs, isLoading: diffsLoading } = useQuery({
     queryKey: ['diffs-timeline', runId, institution],
     queryFn: async () => {
       if (!runId || !institution) return [];
@@ -89,15 +91,16 @@ export function usePolicyTimeline(runId: string | null, institution: string | nu
         .from('policy_refresh_diffs')
         .select('id, field_name, action, created_at')
         .eq('run_id', runId)
-        .eq('institution', institution);
+        .eq('institution', institution)
+        .order('created_at', { ascending: false });
       if (error) return [];
       return data || [];
     },
     enabled: !!runId && !!institution,
   });
 
-  // Fetch findings (conflicts)
-  const { data: findings } = useQuery({
+  // Fetch findings (conflicts) - scoped to recent ones only
+  const { data: findings, isLoading: findingsLoading } = useQuery({
     queryKey: ['findings-timeline', institution],
     queryFn: async () => {
       if (!institution) return [];
@@ -106,7 +109,7 @@ export function usePolicyTimeline(runId: string | null, institution: string | nu
         .select('id, details, created_at')
         .eq('institution', institution)
         .order('created_at', { ascending: false })
-        .limit(10);
+        .limit(3); // Reduced to only most recent findings
       if (error) return [];
       return data || [];
     },
@@ -114,7 +117,7 @@ export function usePolicyTimeline(runId: string | null, institution: string | nu
   });
 
   // Fetch overrides
-  const { data: overrides } = useQuery({
+  const { data: overrides, isLoading: overridesLoading } = useQuery({
     queryKey: ['overrides-timeline', institution],
     queryFn: async () => {
       if (!institution) return [];
@@ -129,6 +132,27 @@ export function usePolicyTimeline(runId: string | null, institution: string | nu
     },
     enabled: !!institution,
   });
+
+  // Combined loading state
+  const isLoading = !!institution && (
+    eventsLoading || taskLoading || packLoading || diffsLoading || findingsLoading || overridesLoading
+  );
+
+  // Helper: check if explicit event exists
+  const hasExplicitEvent = (eventType: string, packId?: string) => {
+    if (!events) return false;
+    return events.some(e => {
+      if (e.event_type !== eventType) return false;
+      if (packId && e.pack_id !== packId) return false;
+      return true;
+    });
+  };
+
+  // Helper: check if any scan event exists
+  const hasAnyScanEvent = () => {
+    if (!events) return false;
+    return events.some(e => SCAN_EVENTS.includes(e.event_type));
+  };
 
   // Synthesize timeline from all sources
   const timeline: SynthesizedEvent[] = [];
@@ -145,8 +169,8 @@ export function usePolicyTimeline(runId: string | null, institution: string | nu
     });
   });
 
-  // Synthesize task events (if no explicit events)
-  if (task && !events?.some(e => e.event_type === 'scan_completed')) {
+  // Synthesize task events (only if no explicit scan events exist)
+  if (task && !hasAnyScanEvent()) {
     if (task.started_at) {
       timeline.push({
         id: `task-started-${task.started_at}`,
@@ -171,8 +195,8 @@ export function usePolicyTimeline(runId: string | null, institution: string | nu
     }
   }
 
-  // Synthesize pack created event
-  if (pack && !events?.some(e => e.event_type === 'merge_created')) {
+  // Synthesize pack created event (check by pack_id)
+  if (pack && !hasExplicitEvent('merge_created', pack.id)) {
     timeline.push({
       id: `pack-created-${pack.id}`,
       created_at: pack.created_at,
@@ -188,16 +212,24 @@ export function usePolicyTimeline(runId: string | null, institution: string | nu
     });
   }
 
-  // Synthesize diffs written event
-  if (diffs && diffs.length > 0 && !events?.some(e => e.event_type === 'diffs_written')) {
+  // Synthesize diffs written event (only if no explicit event)
+  if (diffs && diffs.length > 0 && !hasExplicitEvent('diffs_written')) {
+    // Get best timestamp: first diff's created_at, or task.completed_at, or pack.created_at
+    const diffTimestamp = 
+      (diffs[0]?.created_at) || 
+      task?.completed_at || 
+      pack?.created_at || 
+      new Date().toISOString();
+
     const diffsByAction = diffs.reduce((acc, d) => {
-      acc[d.action] = (acc[d.action] || 0) + 1;
+      const action = String(d.action || 'unknown');
+      acc[action] = (acc[action] || 0) + 1;
       return acc;
     }, {} as Record<string, number>);
 
     timeline.push({
       id: `diffs-${runId}`,
-      created_at: diffs[0].created_at,
+      created_at: diffTimestamp,
       event_type: 'diffs_written',
       source: 'diff',
       payload: {
@@ -209,7 +241,7 @@ export function usePolicyTimeline(runId: string | null, institution: string | nu
 
   // Synthesize conflict events from findings
   findings?.forEach((f) => {
-    const details = f.details as { has_conflicts?: boolean; conflicts?: unknown[] } | null;
+    const details = f.details as { has_conflicts?: boolean; conflicts?: Array<{ field: string }> } | null;
     if (details?.has_conflicts && details?.conflicts?.length) {
       timeline.push({
         id: `conflict-${f.id}`,
@@ -243,11 +275,18 @@ export function usePolicyTimeline(runId: string | null, institution: string | nu
     }
   });
 
-  // Sort by created_at descending
-  timeline.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  // Sort by created_at descending with stable tiebreaker
+  timeline.sort((a, b) => {
+    const timeDiff = new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    if (timeDiff !== 0) return timeDiff;
+    return a.id.localeCompare(b.id);
+  });
+
+  const isEmpty = !isLoading && timeline.length === 0;
 
   return {
     timeline,
-    isLoading: !events && !task && !pack,
+    isLoading,
+    isEmpty,
   };
 }
