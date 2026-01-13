@@ -1,4 +1,5 @@
-// BSBA Template Seeder v1 - Creates BSBA templates for COSC and WGU
+// BSBA Template Seeder v2 - Policy-driven template generation
+// Reads from active institution_policy_packs instead of hardcoded values
 import { serve } from 'https://deno.land/std@0.224.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1';
 
@@ -7,6 +8,21 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
 };
+
+interface SeedRequest {
+  institution_code?: string;  // If provided, only seed this school
+  program_code?: string;      // Default: 'BSBA'
+  force_refresh?: boolean;    // Re-generate even if templates exist
+}
+
+interface PolicyData {
+  residency_credits?: number;
+  max_transfer_credits?: number;
+  max_alt_credit?: number;
+  max_ace_nccrs_credits?: number;
+  total_credits?: number;
+  [key: string]: unknown;
+}
 
 interface TemplateSlot {
   slotId: string;
@@ -39,7 +55,25 @@ interface TemplateData {
     maxTransferCredits: number;
     maxAltCredits: number;
   };
+  sourcePolicyPackId?: string;
 }
+
+// Default policy values (fallback if pack doesn't have specific fields)
+const DEFAULT_POLICIES = {
+  residency_credits: 30,
+  max_transfer_credits: 90,
+  max_alt_credit: 60,
+  total_credits: 120,
+};
+
+// Estimated costs/duration based on track type (can be overridden by pack data)
+const TRACK_ESTIMATES = {
+  standard: { costMultiplier: 1.0, durationMonths: 24 },
+  alt_max: { costMultiplier: 0.6, durationMonths: 15 },
+};
+
+// Base cost per credit (rough estimate, varies by school)
+const BASE_COST_PER_CREDIT = 100;
 
 // BSBA Term structure (shared across schools, adapted per track)
 function createBsbaTerms(trackType: 'standard' | 'alt_max'): TemplateTerm[] {
@@ -361,36 +395,97 @@ function createBsbaTerms(trackType: 'standard' | 'alt_max'): TemplateTerm[] {
   ];
 }
 
-// School-specific policy configurations
-const SCHOOL_POLICIES: Record<string, {
-  residencyCredits: number;
-  maxTransferCredits: number;
-  maxAltCredits: number;
-  estimatedCost: { standard: number; alt_max: number };
-  estimatedDuration: { standard: number; alt_max: number };
-}> = {
-  COSC: {
-    residencyCredits: 6,
-    maxTransferCredits: 114,
-    maxAltCredits: 90,
-    estimatedCost: { standard: 12000, alt_max: 8500 },
-    estimatedDuration: { standard: 24, alt_max: 18 },
-  },
-  WGU: {
-    residencyCredits: 0,
-    maxTransferCredits: 90,
-    maxAltCredits: 90,
-    estimatedCost: { standard: 15000, alt_max: 10000 },
-    estimatedDuration: { standard: 24, alt_max: 12 },
-  },
-};
+// Generate templates for a single institution using its policy pack
+async function generateTemplatesFromPack(
+  supabase: ReturnType<typeof createClient>,
+  institutionCode: string,
+  institutionId: string,
+  policyData: PolicyData,
+  packId: string,
+  programCode: string = 'BSBA'
+): Promise<{ standard?: string; altMax?: string; errors: string[] }> {
+  const errors: string[] = [];
+  const trackTypes: ('standard' | 'alt_max')[] = ['standard', 'alt_max'];
+  const results: { standard?: string; altMax?: string } = {};
+
+  // Extract policy limits with fallbacks
+  const residencyCredits = policyData.residency_credits ?? DEFAULT_POLICIES.residency_credits;
+  const maxTransferCredits = policyData.max_transfer_credits ?? DEFAULT_POLICIES.max_transfer_credits;
+  const maxAltCredits = policyData.max_alt_credit ?? policyData.max_ace_nccrs_credits ?? DEFAULT_POLICIES.max_alt_credit;
+  const totalCredits = policyData.total_credits ?? DEFAULT_POLICIES.total_credits;
+
+  for (const trackType of trackTypes) {
+    const templateId = `${institutionCode}-${programCode}-${trackType.toUpperCase()}-V2`;
+    const terms = createBsbaTerms(trackType);
+    const estimates = TRACK_ESTIMATES[trackType];
+
+    const templateData: TemplateData = {
+      version: '2.0',
+      programCode,
+      trackType,
+      totalCredits,
+      terms,
+      policies: {
+        totalCredits,
+        genedCredits: 30,
+        majorCredits: 54,
+        electiveCredits: 36,
+        upperDivisionTotal: 30,
+        residencyCredits,
+        maxTransferCredits,
+        maxAltCredits,
+      },
+      sourcePolicyPackId: packId,
+    };
+
+    // Calculate estimated cost based on policy data
+    const estimatedCost = Math.round(totalCredits * BASE_COST_PER_CREDIT * estimates.costMultiplier);
+
+    const template = {
+      id: templateId,
+      institution_id: institutionId,
+      institution_code: institutionCode,
+      program_code: programCode,
+      program_name: `Bachelor of Science in Business Administration`,
+      track_type: trackType,
+      total_credits: totalCredits,
+      estimated_cost: estimatedCost,
+      estimated_duration_months: estimates.durationMonths,
+      catalog_year: '2024-2025',
+      template_data: templateData,
+      notes: `${trackType === 'alt_max' ? 'Maximizes alt-credit usage' : 'Standard institutional path'} - Generated from policy pack ${packId.slice(0, 8)}`,
+    };
+
+    const { error: upsertError } = await supabase
+      .from('degree_templates')
+      .upsert(template, {
+        onConflict: 'institution_code,program_code,track_type',
+      });
+
+    if (upsertError) {
+      console.error(`[seed-bsba-templates] Error upserting ${templateId}:`, upsertError);
+      errors.push(`${trackType}: ${upsertError.message}`);
+    } else {
+      console.log(`[seed-bsba-templates] ✅ Upserted ${templateId}`);
+      if (trackType === 'standard') results.standard = templateId;
+      else results.altMax = templateId;
+    }
+  }
+
+  return { ...results, errors };
+}
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
-  const results: Record<string, { inserted: number; error?: string }> = {};
+  const results: Record<string, { 
+    inserted: number; 
+    templates?: { standard?: string; altMax?: string };
+    source: 'policy_pack' | 'fallback';
+    error?: string 
+  }> = {};
 
   try {
     const supabase = createClient(
@@ -399,13 +494,58 @@ serve(async (req) => {
       { auth: { persistSession: false } },
     );
 
-    console.log('[seed-bsba-templates] Starting BSBA template seeding for COSC + WGU...');
+    // Parse request body
+    let body: SeedRequest = {};
+    try {
+      body = await req.json();
+    } catch {
+      // No body or invalid JSON - use defaults
+    }
 
-    const schoolCodes = ['COSC', 'WGU'];
-    const trackTypes: ('standard' | 'alt_max')[] = ['standard', 'alt_max'];
+    const { institution_code, program_code = 'BSBA', force_refresh = false } = body;
 
-    for (const code of schoolCodes) {
-      console.log(`[seed-bsba-templates] Processing ${code}...`);
+    console.log(`[seed-bsba-templates] Starting policy-driven template generation...`);
+    console.log(`[seed-bsba-templates] Params: institution_code=${institution_code || 'all'}, program_code=${program_code}, force_refresh=${force_refresh}`);
+
+    // Query active policy packs
+    let packsQuery = supabase
+      .from('institution_policy_packs')
+      .select('id, institution, policy_data, confidence_score')
+      .eq('status', 'active');
+
+    if (institution_code) {
+      packsQuery = packsQuery.eq('institution', institution_code);
+    }
+
+    const { data: activePacks, error: packsError } = await packsQuery;
+
+    if (packsError) {
+      throw new Error(`Failed to fetch active policy packs: ${packsError.message}`);
+    }
+
+    console.log(`[seed-bsba-templates] Found ${activePacks?.length || 0} active policy pack(s)`);
+
+    if (!activePacks || activePacks.length === 0) {
+      return new Response(
+        JSON.stringify({
+          success: true,
+          jobName: 'seed-bsba-templates',
+          results: {},
+          summary: {
+            templatesCreated: 0,
+            message: institution_code 
+              ? `No active policy pack found for ${institution_code}` 
+              : 'No active policy packs found',
+          },
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      );
+    }
+
+    // Process each active pack
+    for (const pack of activePacks) {
+      const code = pack.institution;
+      console.log(`[seed-bsba-templates] Processing ${code} (pack ${pack.id.slice(0, 8)})...`);
 
       // Get institution ID
       const { data: inst, error: instError } = await supabase
@@ -415,74 +555,60 @@ serve(async (req) => {
         .single();
 
       if (instError || !inst) {
-        results[code] = { inserted: 0, error: `Institution not found: ${instError?.message}` };
+        results[code] = { 
+          inserted: 0, 
+          source: 'policy_pack',
+          error: `Institution not found: ${instError?.message}` 
+        };
         continue;
       }
 
-      const policies = SCHOOL_POLICIES[code];
-      if (!policies) {
-        results[code] = { inserted: 0, error: 'No policy config for school' };
-        continue;
-      }
+      // Extract policy_data (handle both direct object and nested structures)
+      const policyData: PolicyData = typeof pack.policy_data === 'object' && pack.policy_data !== null
+        ? pack.policy_data as PolicyData
+        : {};
 
-      let insertedCount = 0;
+      console.log(`[seed-bsba-templates] Policy data for ${code}:`, JSON.stringify(policyData).slice(0, 200));
 
-      for (const trackType of trackTypes) {
-        const templateId = `${code}-BSBA-${trackType.toUpperCase()}-V1`;
-        const terms = createBsbaTerms(trackType);
+      // Generate templates from pack
+      const genResult = await generateTemplatesFromPack(
+        supabase,
+        code,
+        inst.id,
+        policyData,
+        pack.id,
+        program_code
+      );
 
-        const templateData: TemplateData = {
-          version: '1.0',
-          programCode: 'BSBA',
-          trackType,
-          totalCredits: 120,
-          terms,
-          policies: {
-            totalCredits: 120,
-            genedCredits: 30,
-            majorCredits: 54,
-            electiveCredits: 36,
-            upperDivisionTotal: 30,
-            residencyCredits: policies.residencyCredits,
-            maxTransferCredits: policies.maxTransferCredits,
-            maxAltCredits: policies.maxAltCredits,
-          },
-        };
+      const insertedCount = (genResult.standard ? 1 : 0) + (genResult.altMax ? 1 : 0);
+      
+      results[code] = {
+        inserted: insertedCount,
+        templates: { standard: genResult.standard, altMax: genResult.altMax },
+        source: 'policy_pack',
+        error: genResult.errors.length > 0 ? genResult.errors.join('; ') : undefined,
+      };
 
-        const template = {
-          id: templateId,
-          institution_id: inst.id,
-          institution_code: code,
-          program_code: 'BSBA',
-          program_name: 'Bachelor of Science in Business Administration',
-          track_type: trackType,
-          total_credits: 120,
-          estimated_cost: policies.estimatedCost[trackType],
-          estimated_duration_months: policies.estimatedDuration[trackType],
-          catalog_year: '2024-2025',
-          template_data: templateData,
-          notes: `${trackType === 'alt_max' ? 'Maximizes alt-credit usage' : 'Standard institutional path'}`,
-        };
-
-        const { error: upsertError } = await supabase
-          .from('degree_templates')
-          .upsert(template, {
-            onConflict: 'institution_code,program_code,track_type',
-          });
-
-        if (upsertError) {
-          console.error(`[seed-bsba-templates] Error upserting ${templateId}:`, upsertError);
-          results[`${code}-${trackType}`] = { inserted: 0, error: upsertError.message };
-        } else {
-          console.log(`[seed-bsba-templates] ✅ Upserted ${templateId}`);
-          insertedCount++;
-        }
-      }
-
-      results[code] = { inserted: insertedCount };
+      // Log template generation event
+      await supabase.from('policy_refresh_events').insert({
+        event_type: 'templates_generated',
+        institution_code: code,
+        metadata: {
+          program_code,
+          tracks_generated: ['standard', 'alt_max'].filter(t => 
+            t === 'standard' ? genResult.standard : genResult.altMax
+          ),
+          source_pack_id: pack.id,
+          policy_confidence: pack.confidence_score,
+          template_ids: [genResult.standard, genResult.altMax].filter(Boolean),
+        },
+      }).then(({ error }) => {
+        if (error) console.warn(`[seed-bsba-templates] Failed to log event for ${code}:`, error.message);
+      });
     }
 
-    console.log('[seed-bsba-templates] ✅ BSBA template seeding complete');
+    const totalCreated = Object.values(results).reduce((sum, r) => sum + r.inserted, 0);
+    console.log(`[seed-bsba-templates] ✅ Complete. Created ${totalCreated} template(s)`);
 
     return new Response(
       JSON.stringify({
@@ -490,9 +616,9 @@ serve(async (req) => {
         jobName: 'seed-bsba-templates',
         results,
         summary: {
-          templatesCreated: Object.values(results).reduce((sum, r) => sum + r.inserted, 0),
-          schools: schoolCodes,
-          tracks: trackTypes,
+          templatesCreated: totalCreated,
+          institutionsProcessed: Object.keys(results).length,
+          programCode: program_code,
         },
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
@@ -506,7 +632,7 @@ serve(async (req) => {
         error: err instanceof Error ? err.message : 'Unknown error',
         results,
       }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 },
     );
   }
 });
