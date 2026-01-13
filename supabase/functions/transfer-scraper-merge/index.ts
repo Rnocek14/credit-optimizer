@@ -833,27 +833,36 @@ async function mergePolicyPacks(
   const allScopedCaps: Array<{ field: string; value: number; url: string; scopeReason: string; contextSnippet?: string }> = [];
   const allConflicts: Array<{ field: string; values: Array<{ value: unknown; url: string; confidence: number }> }> = [];
   
-  // Build URL → source_type lookup from diagnostics
-  const sourceTypeByUrl = new Map<string, string>();
+  // Build source_type lookups from diagnostics - use scrape_job_id as primary key (more reliable than URL)
+  const sourceTypeByJobId = new Map<string, string>();
+  const sourceTypeByUrl = new Map<string, string>();  // Fallback for URL matching
   if (urlDiagnostics) {
     for (const d of urlDiagnostics) {
+      if (d.scrape_job_id) {
+        sourceTypeByJobId.set(d.scrape_job_id, d.source_type || 'other');
+      }
       sourceTypeByUrl.set(d.url, d.source_type || 'other');
     }
   }
   
+  // Helper: get source type for an extraction (job ID preferred, URL fallback)
+  const getSourceType = (jobId: string, url: string): string => {
+    return sourceTypeByJobId.get(jobId) ?? sourceTypeByUrl.get(url) ?? 'other';
+  };
+  
   // Helper: filter extractions for critical fields (exclude non-authoritative sources)
   const filterForCriticalField = (fieldName: string) => {
-    if (!urlDiagnostics || sourceTypeByUrl.size === 0) {
+    if (!urlDiagnostics || (sourceTypeByJobId.size === 0 && sourceTypeByUrl.size === 0)) {
       return extractions.filter(e => e.extraction.policy_pack);
     }
     
     return extractions.filter(e => {
       if (!e.extraction.policy_pack) return false;
-      const sourceType = sourceTypeByUrl.get(e.url) || 'other';
+      const sourceType = getSourceType(e.jobId, e.url);
       
       // Exclude non-authoritative sources (like 'tuition') for critical fields
       if (NON_AUTHORITATIVE_SOURCES.includes(sourceType)) {
-        console.log(`[merge] Filtering out ${e.url} (source_type=${sourceType}) for critical field ${fieldName}`);
+        console.log(`[merge] Filtering out job=${e.jobId} url=${e.url} (source_type=${sourceType}) for critical field ${fieldName}`);
         return false;
       }
       return true;
