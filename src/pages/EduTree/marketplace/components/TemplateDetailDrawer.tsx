@@ -24,7 +24,7 @@ import { PreApprovalEmailModal } from '@/components/transfer/PreApprovalEmailMod
 import { useTransferVerification } from '../hooks/useTransferVerification';
 import { useAltOptionsForSlots, type AltCreditOption } from '@/hooks/useAltOptionsForRequirementArea';
 import { computeTransferCoverage } from '@/lib/transferCoverage';
-import { normalizeProviderCode } from '@/lib/providerNormalization';
+import { normalizeProviderCode, normalizeCourseCode } from '@/lib/providerNormalization';
 import { DollarSign, Clock, BookOpen, GitCompareArrows, List, Mail } from 'lucide-react';
 import type { PreApprovalCourse } from '@/lib/transfer/preApprovalEmail';
 
@@ -43,21 +43,27 @@ export function TemplateDetailDrawer({ template, open, onOpenChange }: TemplateD
   const hasComparison = !!template.singleSchoolBaseline?.yearBreakdown;
   const [emailModalOpen, setEmailModalOpen] = useState(false);
   
-  // Collect SELECTED courses only (recommended or first option per module)
-  // This gives accurate coverage % without inflating from alternatives
+  // Collect ALL alt-credit options (deduplicated) for comprehensive transfer coverage
+  // This ensures Standard templates (which default to institutional) still show alt-credit rule coverage
   const selectedCourses = useMemo(() => {
+    const seen = new Set<string>();
     const courses: Array<{ code: string; providerCode: string | null }> = [];
     template.yearTemplates?.forEach(year => {
       year.moduleTemplates?.forEach(module => {
-        // Only include the selected/recommended option, not all alternatives
-        const option = module.options?.find(o => o.courseId === module.recommendedCourseId) 
-          || module.options?.[0];
-        if (option?.courseId) {
-          courses.push({
-            code: option.courseId,
-            providerCode: option.providerCode || null,
-          });
-        }
+        // Include ALL options for comprehensive coverage
+        module.options?.forEach(option => {
+          // Only count alt-credit options (skip institutional courses with null provider)
+          if (option?.courseId && option.providerCode) {
+            const key = `${normalizeProviderCode(option.providerCode)}::${option.courseId}`;
+            if (!seen.has(key)) {
+              seen.add(key);
+              courses.push({
+                code: option.courseId,
+                providerCode: option.providerCode,
+              });
+            }
+          }
+        });
       });
     });
     return courses;
