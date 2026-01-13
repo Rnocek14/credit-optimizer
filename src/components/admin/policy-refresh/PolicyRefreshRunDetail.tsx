@@ -6,10 +6,14 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { 
   CheckCircle, XCircle, AlertTriangle, Clock, Eye, 
-  ArrowUpCircle, RefreshCw, Filter 
+  ArrowUpCircle, Filter 
 } from 'lucide-react';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
+
+// Normalize status values (DB uses 'complete', some code expects 'completed')
+const normalizeStatus = (s?: string | null): string => 
+  s === 'completed' ? 'complete' : s ?? 'unknown';
 
 interface PolicyRefreshRunDetailProps {
   runId: string;
@@ -139,17 +143,24 @@ export function PolicyRefreshRunDetail({ runId, onReviewInstitution }: PolicyRef
 
   const getStatusIcon = (status: string, blockedReason: string | null) => {
     if (blockedReason) return <AlertTriangle className="h-4 w-4 text-yellow-500" />;
-    switch (status) {
+    const normalized = normalizeStatus(status);
+    switch (normalized) {
       case 'complete': return <CheckCircle className="h-4 w-4 text-green-500" />;
       case 'running': return <Clock className="h-4 w-4 text-blue-500 animate-pulse" />;
       case 'failed': return <XCircle className="h-4 w-4 text-red-500" />;
+      case 'blocked': return <AlertTriangle className="h-4 w-4 text-yellow-500" />;
       default: return <Clock className="h-4 w-4 text-muted-foreground" />;
     }
   };
 
+  // Promote gate: draft + not blocked (score is UX guidance, not hard blocker)
   const isPromotable = (pack: PolicyPack | undefined) => {
     if (!pack) return false;
-    return pack.status === 'draft' && !pack.blocked_reason && (pack.confidence_score || 0) >= 80;
+    return pack.status === 'draft' && !pack.blocked_reason;
+  };
+  
+  const hasLowConfidence = (pack: PolicyPack | undefined) => {
+    return pack && (pack.confidence_score || 0) < 80;
   };
 
   if (tasksLoading || packsLoading) {
@@ -261,13 +272,15 @@ export function PolicyRefreshRunDetail({ runId, onReviewInstitution }: PolicyRef
 
                   {isPromotable(inst.pack) && (
                     <Button
-                      variant="default"
+                      variant={hasLowConfidence(inst.pack) ? "outline" : "default"}
                       size="sm"
                       onClick={() => inst.pack && promoteMutation.mutate(inst.pack.id)}
                       disabled={promoteMutation.isPending}
+                      className={hasLowConfidence(inst.pack) ? "border-yellow-500 text-yellow-600" : ""}
+                      title={hasLowConfidence(inst.pack) ? "Low confidence - review recommended" : ""}
                     >
                       <ArrowUpCircle className="h-4 w-4 mr-1" />
-                      Promote
+                      {hasLowConfidence(inst.pack) ? "Promote (Caution)" : "Promote"}
                     </Button>
                   )}
                 </div>
