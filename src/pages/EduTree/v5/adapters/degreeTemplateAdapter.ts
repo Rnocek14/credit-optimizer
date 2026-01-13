@@ -57,11 +57,19 @@ export function adaptDegreeTemplate(
             convertSlotOptionToMarketplaceOption(alt, slot, equivalencies)
           );
           
+          // Detect cap-limited slots: institutional preferred but first alternative is alt_credit
+          // This happens when enforceAltCap() flipped the preferred option due to cap limits
+          const isCapLimited = 
+            slot.preferred.type === 'institutional_course' &&
+            !!slot.alternatives?.length &&
+            slot.alternatives[0]?.type === 'alt_credit';
+          
           return {
             moduleId: slot.slotId,
             options: [preferredOption, ...alternativeOptions],
             recommendedCourseId: preferredOption.courseId,
             targetCanonicalIds: [slot.requirementArea] as CanonicalId[],
+            isCapLimited, // Flag for UI to show cap-limited badge
           };
         })
       );

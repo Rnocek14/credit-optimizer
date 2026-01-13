@@ -25,7 +25,13 @@ import { useTransferVerification } from '../hooks/useTransferVerification';
 import { useAltOptionsForSlots, type AltCreditOption } from '@/hooks/useAltOptionsForRequirementArea';
 import { computeTransferCoverage } from '@/lib/transferCoverage';
 import { normalizeProviderCode, normalizeCourseCode } from '@/lib/providerNormalization';
-import { DollarSign, Clock, BookOpen, GitCompareArrows, List, Mail } from 'lucide-react';
+import { DollarSign, Clock, BookOpen, GitCompareArrows, List, Mail, Lock } from 'lucide-react';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import type { PreApprovalCourse } from '@/lib/transfer/preApprovalEmail';
 
 // Debug flag: only log in dev or with ?debug=1
@@ -307,8 +313,27 @@ function CourseBreakdown({
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1 min-w-0">
-                      <div className="font-medium text-sm truncate">
+                      <div className="font-medium text-sm truncate flex items-center gap-1.5">
                         {option.courseId}
+                        {/* Cap-limited badge: shows when slot was flipped from alt-credit due to cap */}
+                        {module.isCapLimited && (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-800 dark:bg-amber-900/30 dark:text-amber-400">
+                                  <Lock className="h-2.5 w-2.5" />
+                                  Cap-limited
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent side="top" className="max-w-xs">
+                                <p className="text-xs">
+                                  Alt-credit cap reached for {template.anchorSchool}. 
+                                  This slot must be taken as an institutional course unless you swap another alt-credit slot.
+                                </p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        )}
                       </div>
                       <div className="text-xs text-muted-foreground truncate">
                         {module.moduleId}
