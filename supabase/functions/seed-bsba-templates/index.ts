@@ -589,18 +589,20 @@ serve(async (req) => {
         error: genResult.errors.length > 0 ? genResult.errors.join('; ') : undefined,
       };
 
-      // Log template generation event
-      await supabase.from('policy_refresh_events').insert({
+      // Log template generation event to policy_pack_events (same table Timeline reads)
+      await supabase.from('policy_pack_events').insert({
+        institution: code,
+        pack_id: pack.id,
+        run_id: null, // Could be passed if available
         event_type: 'templates_generated',
-        institution_code: code,
-        metadata: {
+        actor_user_id: null, // Service role - no user context
+        payload: {
           program_code,
           tracks_generated: ['standard', 'alt_max'].filter(t => 
             t === 'standard' ? genResult.standard : genResult.altMax
           ),
-          source_pack_id: pack.id,
-          policy_confidence: pack.confidence_score,
           template_ids: [genResult.standard, genResult.altMax].filter(Boolean),
+          policy_confidence: pack.confidence_score,
         },
       }).then(({ error }) => {
         if (error) console.warn(`[seed-bsba-templates] Failed to log event for ${code}:`, error.message);

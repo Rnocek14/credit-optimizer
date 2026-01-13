@@ -209,10 +209,15 @@ export function InstitutionReviewDrawer({ open, onClose, runId, institution }: I
       queryClient.invalidateQueries({ queryKey: ['conflicts-detail', institution] });
       queryClient.invalidateQueries({ queryKey: ['policy-refresh-runs'] });
       
-      // Generate templates after successful promotion
+      // Generate templates after successful promotion, then invalidate
       if (institution) {
-        generateTemplates.mutate(institution);
-        queryClient.invalidateQueries({ queryKey: ['degreeTemplates'] });
+        generateTemplates.mutateAsync(institution).then(() => {
+          queryClient.invalidateQueries({ 
+            predicate: (query) => 
+              Array.isArray(query.queryKey) && 
+              query.queryKey[0] === 'degreeTemplates' 
+          });
+        });
       }
     },
     onError: (error: Error) => {
