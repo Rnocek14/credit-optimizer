@@ -39,8 +39,11 @@ interface TemplateDetailDrawerProps {
 }
 
 export function TemplateDetailDrawer({ template, open, onOpenChange }: TemplateDetailDrawerProps) {
-  // Check if comparison view is available
-  const hasComparison = !!template.singleSchoolBaseline?.yearBreakdown;
+  // Check if comparison view is available - show tab when verified baseline exists (even without yearBreakdown)
+  const hasBaseline =
+    template.baselineStatus === 'verified' &&
+    (template.singleSchoolBaseline?.costUsd ?? 0) > 0;
+  const hasComparison = hasBaseline;
   const [emailModalOpen, setEmailModalOpen] = useState(false);
   
   // Collect ALL alt-credit options (deduplicated) for comprehensive transfer coverage
