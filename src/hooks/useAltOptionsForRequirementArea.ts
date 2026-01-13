@@ -21,6 +21,29 @@ interface UseAltOptionsParams {
   enabled?: boolean;
 }
 
+// Cache institution IDs to avoid repeated lookups
+const institutionIdCache = new Map<string, string>();
+
+async function getInstitutionId(code: string): Promise<string | null> {
+  if (institutionIdCache.has(code)) {
+    return institutionIdCache.get(code)!;
+  }
+  
+  const { data, error } = await supabase
+    .from('institutions')
+    .select('id')
+    .eq('code', code)
+    .single();
+  
+  if (error || !data) {
+    console.warn(`[useAltOptions] Institution not found: ${code}`);
+    return null;
+  }
+  
+  institutionIdCache.set(code, data.id);
+  return data.id;
+}
+
 /**
  * Fetches alt-credit options for a specific requirement area at an institution.
  * Returns alternatives sorted by confidence (highest first).
@@ -33,17 +56,8 @@ export function useAltOptionsForRequirementArea({
   return useQuery({
     queryKey: ['altOptions', institutionCode, requirementArea],
     queryFn: async (): Promise<AltCreditOption[]> => {
-      // Get institution ID
-      const { data: inst, error: instError } = await supabase
-        .from('institutions')
-        .select('id')
-        .eq('code', institutionCode)
-        .single();
-
-      if (instError || !inst) {
-        console.warn(`[useAltOptionsForRequirementArea] Institution not found: ${institutionCode}`);
-        return [];
-      }
+      const instId = await getInstitutionId(institutionCode);
+      if (!instId) return [];
 
       // Query equivalencies with alt_credit details
       const { data, error } = await supabase
@@ -64,7 +78,7 @@ export function useAltOptionsForRequirementArea({
             provider_url
           )
         `)
-        .eq('institution_id', inst.id)
+        .eq('institution_id', instId)
         .eq('requirement_area', requirementArea)
         .order('confidence', { ascending: false });
 
@@ -74,19 +88,31 @@ export function useAltOptionsForRequirementArea({
       }
 
       // Transform to clean interface
-      return (data || []).map((row: any) => ({
-        id: row.id,
-        sourceCode: row.alt_credits.source_code,
-        identifier: row.alt_credits.identifier,
-        title: row.alt_credits.title,
-        creditsAwarded: row.credits_awarded,
-        level: row.level,
-        confidence: row.confidence,
-        costUsd: row.alt_credits.cost_usd,
-        durationWeeks: row.alt_credits.duration_estimate_weeks,
-        examBased: row.alt_credits.exam_based ?? false,
-        providerUrl: row.alt_credits.provider_url,
-      }));
+      return (data || []).map((row) => {
+        const altCredit = row.alt_credits as unknown as {
+          id: string;
+          source_code: string;
+          identifier: string;
+          title: string;
+          cost_usd: number | null;
+          duration_estimate_weeks: number | null;
+          exam_based: boolean | null;
+          provider_url: string | null;
+        };
+        return {
+          id: row.id,
+          sourceCode: altCredit.source_code,
+          identifier: altCredit.identifier,
+          title: altCredit.title,
+          creditsAwarded: row.credits_awarded,
+          level: row.level ?? 100,
+          confidence: row.confidence ?? 0,
+          costUsd: altCredit.cost_usd,
+          durationWeeks: altCredit.duration_estimate_weeks,
+          examBased: altCredit.exam_based ?? false,
+          providerUrl: altCredit.provider_url,
+        };
+      });
     },
     enabled: enabled && !!institutionCode && !!requirementArea,
     staleTime: 5 * 60 * 1000, // Cache for 5 minutes
@@ -106,22 +132,16 @@ export function useAltOptionsForSlots({
   requirementAreas: string[];
   enabled?: boolean;
 }) {
+  // Create stable cache key without mutating input
+  const sortedAreas = [...requirementAreas].sort();
+  
   return useQuery({
-    queryKey: ['altOptionsBatch', institutionCode, requirementAreas.sort().join(',')],
+    queryKey: ['altOptionsBatch', institutionCode, sortedAreas.join(',')],
     queryFn: async (): Promise<Record<string, AltCreditOption[]>> => {
       if (!requirementAreas.length) return {};
 
-      // Get institution ID
-      const { data: inst, error: instError } = await supabase
-        .from('institutions')
-        .select('id')
-        .eq('code', institutionCode)
-        .single();
-
-      if (instError || !inst) {
-        console.warn(`[useAltOptionsForSlots] Institution not found: ${institutionCode}`);
-        return {};
-      }
+      const instId = await getInstitutionId(institutionCode);
+      if (!instId) return {};
 
       // Query all equivalencies for these requirement areas
       const { data, error } = await supabase
@@ -143,7 +163,7 @@ export function useAltOptionsForSlots({
             provider_url
           )
         `)
-        .eq('institution_id', inst.id)
+        .eq('institution_id', instId)
         .in('requirement_area', requirementAreas)
         .order('confidence', { ascending: false });
 
@@ -152,28 +172,40 @@ export function useAltOptionsForSlots({
         throw error;
       }
 
-      // Group by requirement_area
+      // Initialize result with empty arrays for all requested areas
       const result: Record<string, AltCreditOption[]> = {};
       for (const area of requirementAreas) {
         result[area] = [];
       }
 
+      // Group by requirement_area
       for (const row of data || []) {
         const area = row.requirement_area;
-        if (!result[area]) result[area] = [];
+        if (!area || !result[area]) continue;
+        
+        const altCredit = row.alt_credits as unknown as {
+          id: string;
+          source_code: string;
+          identifier: string;
+          title: string;
+          cost_usd: number | null;
+          duration_estimate_weeks: number | null;
+          exam_based: boolean | null;
+          provider_url: string | null;
+        };
         
         result[area].push({
           id: row.id,
-          sourceCode: (row as any).alt_credits.source_code,
-          identifier: (row as any).alt_credits.identifier,
-          title: (row as any).alt_credits.title,
+          sourceCode: altCredit.source_code,
+          identifier: altCredit.identifier,
+          title: altCredit.title,
           creditsAwarded: row.credits_awarded,
-          level: row.level,
-          confidence: row.confidence,
-          costUsd: (row as any).alt_credits.cost_usd,
-          durationWeeks: (row as any).alt_credits.duration_estimate_weeks,
-          examBased: (row as any).alt_credits.exam_based ?? false,
-          providerUrl: (row as any).alt_credits.provider_url,
+          level: row.level ?? 100,
+          confidence: row.confidence ?? 0,
+          costUsd: altCredit.cost_usd,
+          durationWeeks: altCredit.duration_estimate_weeks,
+          examBased: altCredit.exam_based ?? false,
+          providerUrl: altCredit.provider_url,
         });
       }
 
