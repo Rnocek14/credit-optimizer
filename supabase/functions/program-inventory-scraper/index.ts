@@ -457,16 +457,21 @@ Deno.serve(async (req) => {
         }
 
         // Queue for template generation
-        await supabase
+        const { error: queueErr } = await supabase
           .from('template_generation_queue')
           .upsert({
             program_catalog_id: inserted.id,
+            program_slug: programSlug,
             eligibility_status: eligibilityStatus,
             blocked_reasons: blockedReasons,
             status: 'queued',
             desired_tracks: ['standard', 'alt_max'],
             priority_score: 50,
           }, { onConflict: 'program_catalog_id' });
+
+        if (queueErr) {
+          console.error(`Failed to queue program ${programSlug}:`, queueErr);
+        }
 
         newCount++;
       } else {
@@ -488,15 +493,22 @@ Deno.serve(async (req) => {
           })
           .eq('id', existingId);
 
-        // Update queue status
-        await supabase
+        // Upsert queue status (handles cases where queue row doesn't exist yet)
+        const { error: queueErr } = await supabase
           .from('template_generation_queue')
-          .update({
+          .upsert({
+            program_catalog_id: existingId,
+            program_slug: programSlug,
             eligibility_status: eligibilityStatus,
             blocked_reasons: blockedReasons,
             status: 'queued',
-          })
-          .eq('program_catalog_id', existingId);
+            desired_tracks: ['standard', 'alt_max'],
+            priority_score: 50,
+          }, { onConflict: 'program_catalog_id' });
+
+        if (queueErr) {
+          console.error(`Failed to queue program ${programSlug}:`, queueErr);
+        }
 
         updatedCount++;
       }
