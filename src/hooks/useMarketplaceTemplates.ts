@@ -16,6 +16,17 @@ interface DegreeTemplateRow {
   template_data: Record<string, unknown> | null;
 }
 
+interface BaselineSnapshot {
+  template_id: string;
+  institution_code: string;
+  baseline_cost_usd: number;
+  baseline_weeks: number;
+  baseline_status: 'verified' | 'estimated' | 'missing';
+  source_description: string;
+  inputs: Record<string, unknown>;
+  computed_at: string;
+}
+
 /**
  * Convert a template slot option to a MarketplaceOption
  */
@@ -236,12 +247,60 @@ export function useMarketplaceTemplates(filters?: Partial<MarketplaceFilters>) {
         throw error;
       }
       
+      // Fetch baseline snapshots (latest per template)
+      // We use a subquery pattern via RPC or just get all and dedupe client-side
+      const { data: snapshotRows, error: snapshotError } = await supabase
+        .from('template_baseline_snapshots')
+        .select('template_id, institution_code, baseline_cost_usd, baseline_weeks, baseline_status, source_description, inputs, computed_at')
+        .order('computed_at', { ascending: false });
+      
+      if (snapshotError) {
+        console.warn('[useMarketplaceTemplates] Snapshot fetch error (non-fatal):', snapshotError);
+      }
+      
+      // Build map of latest snapshot per template_id
+      const snapshotMap = new Map<string, BaselineSnapshot>();
+      (snapshotRows || []).forEach((row) => {
+        const snapshot = row as unknown as BaselineSnapshot;
+        // Only keep the first (latest) snapshot per template
+        if (!snapshotMap.has(snapshot.template_id)) {
+          snapshotMap.set(snapshot.template_id, snapshot);
+        }
+      });
+      
+      console.log('[useMarketplaceTemplates] Loaded', snapshotMap.size, 'baseline snapshots');
+      
       // Create a map of fixtures by anchorSchool + optimization for rich data lookup
       const fixtureMap = new Map<string, MarketplaceDegreeTemplate>();
       (marketplaceFixtures as unknown as MarketplaceDegreeTemplate[]).forEach(t => {
         const key = `${t.anchorSchool}-${t.optimization}`;
         fixtureMap.set(key, t);
       });
+      
+      // Helper to merge baseline snapshot into template
+      const mergeBaseline = (template: MarketplaceDegreeTemplate, templateId: string): MarketplaceDegreeTemplate => {
+        const snapshot = snapshotMap.get(templateId);
+        
+        if (snapshot && snapshot.baseline_status === 'verified' && snapshot.baseline_cost_usd > 0) {
+          return {
+            ...template,
+            singleSchoolBaseline: {
+              costUsd: snapshot.baseline_cost_usd,
+              weeks: snapshot.baseline_weeks,
+              source: snapshot.source_description,
+              notes: (snapshot.inputs as Record<string, unknown>)?.assumptions as string,
+            },
+            baselineStatus: 'verified',
+          };
+        }
+        
+        // No valid snapshot - keep template as-is (baseline will be null/missing)
+        return {
+          ...template,
+          singleSchoolBaseline: null,
+          baselineStatus: 'missing',
+        };
+      };
       
       // Transform DB rows, using fixture data when available for rich content
       let templates: MarketplaceDegreeTemplate[] = (dbRows || []).map((row) => {
@@ -250,9 +309,11 @@ export function useMarketplaceTemplates(filters?: Partial<MarketplaceFilters>) {
         const fixtureKey = `${typedRow.institution_code}-${optimization}`;
         const fixture = fixtureMap.get(fixtureKey);
         
+        let template: MarketplaceDegreeTemplate;
+        
         if (fixture) {
           // Use rich fixture data but update with DB values for cost/credits
-          return {
+          template = {
             ...fixture,
             id: typedRow.id, // Use DB id for consistency
             totals: {
@@ -261,13 +322,16 @@ export function useMarketplaceTemplates(filters?: Partial<MarketplaceFilters>) {
               costUsd: typedRow.estimated_cost || fixture.totals.costUsd,
             },
           };
+        } else {
+          // No fixture - transform DB row directly
+          template = transformToMarketplaceTemplate(typedRow);
         }
         
-        // No fixture - transform DB row directly
-        return transformToMarketplaceTemplate(typedRow);
+        // Merge baseline from snapshot (not from template_data)
+        return mergeBaseline(template, typedRow.id);
       });
       
-      console.log('[useMarketplaceTemplates] Loaded', templates.length, 'templates from DB');
+      console.log('[useMarketplaceTemplates] Loaded', templates.length, 'templates with baselines');
 
       // Apply filters
       if (filters) {
@@ -361,16 +425,52 @@ export function useMarketplaceTemplate(templateId: string) {
   return useQuery({
     queryKey: ['marketplace-template', templateId],
     queryFn: async () => {
-      // First try to fetch from database
-      const { data: dbRow, error } = await supabase
-        .from('degree_templates')
-        .select('id, institution_code, program_code, track_type, total_credits, estimated_cost, estimated_duration_months, template_data')
-        .eq('id', templateId)
-        .maybeSingle();
+      // Fetch template and baseline snapshot in parallel
+      const [templateResult, snapshotResult] = await Promise.all([
+        supabase
+          .from('degree_templates')
+          .select('id, institution_code, program_code, track_type, total_credits, estimated_cost, estimated_duration_months, template_data')
+          .eq('id', templateId)
+          .maybeSingle(),
+        supabase
+          .from('template_baseline_snapshots')
+          .select('template_id, institution_code, baseline_cost_usd, baseline_weeks, baseline_status, source_description, inputs, computed_at')
+          .eq('template_id', templateId)
+          .order('computed_at', { ascending: false })
+          .limit(1)
+          .maybeSingle()
+      ]);
+      
+      const { data: dbRow, error } = templateResult;
+      const { data: snapshotRow } = snapshotResult;
       
       if (error) {
         console.error('[useMarketplaceTemplate] DB error:', error);
       }
+      
+      // Helper to merge baseline
+      const mergeBaseline = (template: MarketplaceDegreeTemplate): MarketplaceDegreeTemplate => {
+        const snapshot = snapshotRow as BaselineSnapshot | null;
+        
+        if (snapshot && snapshot.baseline_status === 'verified' && snapshot.baseline_cost_usd > 0) {
+          return {
+            ...template,
+            singleSchoolBaseline: {
+              costUsd: snapshot.baseline_cost_usd,
+              weeks: snapshot.baseline_weeks,
+              source: snapshot.source_description,
+              notes: (snapshot.inputs as Record<string, unknown>)?.assumptions as string,
+            },
+            baselineStatus: 'verified',
+          };
+        }
+        
+        return {
+          ...template,
+          singleSchoolBaseline: null,
+          baselineStatus: 'missing',
+        };
+      };
       
       if (dbRow) {
         const typedRow = dbRow as unknown as DegreeTemplateRow;
@@ -383,8 +483,10 @@ export function useMarketplaceTemplate(templateId: string) {
           t.anchorSchool === typedRow.institution_code && t.optimization === optimization
         );
         
+        let template: MarketplaceDegreeTemplate;
+        
         if (fixture) {
-          return {
+          template = {
             ...fixture,
             id: typedRow.id,
             totals: {
@@ -393,9 +495,11 @@ export function useMarketplaceTemplate(templateId: string) {
               costUsd: typedRow.estimated_cost || fixture.totals.costUsd,
             },
           };
+        } else {
+          template = transformToMarketplaceTemplate(typedRow);
         }
         
-        return transformToMarketplaceTemplate(typedRow);
+        return mergeBaseline(template);
       }
       
       // Fallback to fixtures for backwards compatibility
@@ -407,7 +511,7 @@ export function useMarketplaceTemplate(templateId: string) {
         return null;
       }
       
-      return template;
+      return mergeBaseline(template);
     },
     enabled: !!templateId,
     staleTime: 10 * 60 * 1000, // 10 minutes
