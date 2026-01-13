@@ -739,6 +739,41 @@ async function generateTemplatesFromPack(
       console.log(`[seed-bsba-templates] ✅ Created cost snapshot for ${realTemplateId} (status: ${costStatus})`);
     }
     
+    // Generate baseline snapshot using canonical computation function (append-only)
+    const { data: baselineResult, error: baselineError } = await supabase
+      .rpc('compute_template_baseline', {
+        p_template_id: realTemplateId,
+        p_institution_code: institutionCode,
+        p_program_code: programCode,
+        p_total_credits: totalCredits,
+      });
+    
+    if (baselineError) {
+      console.warn(`[seed-bsba-templates] Failed to compute baseline for ${realTemplateId}:`, baselineError.message);
+    } else if (baselineResult && baselineResult.length > 0) {
+      const baseline = baselineResult[0];
+      const { error: baselineInsertError } = await supabase
+        .from('template_baseline_snapshots')
+        .insert({
+          template_id: realTemplateId,
+          institution_code: institutionCode,
+          program_code: programCode,
+          baseline_cost_usd: baseline.baseline_cost_usd,
+          baseline_weeks: baseline.baseline_weeks,
+          baseline_status: baseline.baseline_status,
+          inputs: baseline.inputs,
+          source_description: baseline.source_description,
+        });
+      
+      if (baselineInsertError) {
+        console.warn(`[seed-bsba-templates] Failed to insert baseline for ${realTemplateId}:`, baselineInsertError.message);
+      } else {
+        console.log(`[seed-bsba-templates] ✅ Created baseline snapshot for ${realTemplateId} (status: ${baseline.baseline_status})`);
+      }
+    } else {
+      console.warn(`[seed-bsba-templates] No baseline computed for ${realTemplateId} - missing pricing pack?`);
+    }
+    
     if (trackType === 'standard') results.standard = templateId;
     else results.altMax = templateId;
   }
