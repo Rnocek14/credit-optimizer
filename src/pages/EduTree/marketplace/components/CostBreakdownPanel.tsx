@@ -114,16 +114,16 @@ export function CostBreakdownPanel({ template, className }: CostBreakdownPanelPr
     if (!baseline) return [];
     
     const items: CostLineItem[] = [];
-    
-    // Main tuition calculation
     const credits = template.totals.credits || 120;
+    
+    // Label as "total (tuition + fees)" since we can't split them
+    // Use baseline.source and baseline.notes for provenance info
     items.push({
-      label: `${template.anchorSchool} tuition`,
+      label: `${template.anchorSchool} total`,
       amount: baseline.costUsd,
-      detail: `${credits} credits at school rate`,
+      detail: baseline.notes || `${credits} credits (tuition + fees)`,
     });
     
-    // Note about assumption
     items.push({
       label: 'Total',
       amount: baseline.costUsd,
@@ -133,8 +133,9 @@ export function CostBreakdownPanel({ template, className }: CostBreakdownPanelPr
     return items;
   }, [baseline, template.anchorSchool, template.totals.credits]);
 
-  // Check for EMPIRE in-state warning
-  const isEmpireInState = template.anchorSchool === 'EMPIRE';
+  // Check for in-state-only pricing warning (data-driven, not hardcoded)
+  // Fall back to EMPIRE check if pricingMetadata not available
+  const isInStateOnly = template.pricingMetadata?.inStateOnly ?? (template.anchorSchool === 'EMPIRE');
   
   if (!baseline) {
     return null;
@@ -168,24 +169,27 @@ export function CostBreakdownPanel({ template, className }: CostBreakdownPanelPr
             <div className="text-xs text-amber-800 dark:text-amber-200">
               <p className="font-medium mb-1">Baseline Assumption (Worst-Case)</p>
               <p>
-                "{template.anchorSchool} baseline" represents completing all {template.totals.credits || 120} credits 
+                "{template.anchorSchool} baseline" represents completing all {template.totals.credits} credits 
                 directly at {template.anchorSchool} without any transfer credits. Most students transfer some credits, 
                 which would reduce this baseline.
               </p>
+              {baseline.source && (
+                <p className="mt-1 text-muted-foreground">Source: {baseline.source}</p>
+              )}
             </div>
           </div>
         </div>
 
-        {/* EMPIRE in-state warning */}
-        {isEmpireInState && (
+        {/* In-state only pricing warning */}
+        {isInStateOnly && (
           <div className="mb-4 p-3 rounded-md bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800">
             <div className="flex items-start gap-2">
               <AlertTriangle className="h-4 w-4 text-orange-600 dark:text-orange-400 mt-0.5 flex-shrink-0" />
               <div className="text-xs text-orange-800 dark:text-orange-200">
-                <p className="font-medium mb-1">NY Residents Only</p>
+                <p className="font-medium mb-1">Residency Pricing</p>
                 <p>
-                  EMPIRE pricing shown is for New York state residents ($295/credit). 
-                  Out-of-state students pay higher rates.
+                  {template.pricingMetadata?.residencyNote || 
+                    `${template.anchorSchool} pricing shown may be for in-state residents only. Out-of-state students may pay higher rates.`}
                 </p>
               </div>
             </div>
@@ -235,8 +239,8 @@ export function CostBreakdownPanel({ template, className }: CostBreakdownPanelPr
                   </TooltipTrigger>
                   <TooltipContent className="max-w-xs">
                     <p className="text-xs">
-                      Worst-case baseline: completing {template.totals.credits || 120} credits entirely at {template.anchorSchool} 
-                      at the standard per-credit rate. No transfer credits applied.
+                      Worst-case baseline: completing {template.totals.credits} credits entirely at {template.anchorSchool} 
+                      at the standard rate. No transfer credits applied.
                     </p>
                   </TooltipContent>
                 </Tooltip>

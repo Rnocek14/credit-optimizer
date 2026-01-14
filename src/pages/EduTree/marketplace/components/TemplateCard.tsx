@@ -368,20 +368,20 @@ export function TemplateCard({ template, isSelected, onToggleSelect }: TemplateC
               </Tooltip>
             </TooltipProvider>
           )}
-          {/* EMPIRE NY Residents Only Warning */}
-          {template.anchorSchool === 'EMPIRE' && (
+          {/* In-state pricing warning - data-driven with fallback */}
+          {(template.pricingMetadata?.inStateOnly ?? template.anchorSchool === 'EMPIRE') && (
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Badge variant="outline" className="text-amber-600 border-amber-400 dark:text-amber-400 dark:border-amber-600 gap-1">
                     <AlertTriangle className="h-3 w-3" />
-                    NY Only
+                    Residency Req
                   </Badge>
                 </TooltipTrigger>
                 <TooltipContent className="max-w-xs">
                   <p className="text-xs">
-                    EMPIRE pricing shown ($295/credit) is for New York state residents only. 
-                    Out-of-state students pay higher rates.
+                    {template.pricingMetadata?.residencyNote || 
+                      `${template.anchorSchool} pricing shown may be for in-state residents only. Out-of-state rates may differ.`}
                   </p>
                 </TooltipContent>
               </Tooltip>
@@ -393,7 +393,7 @@ export function TemplateCard({ template, isSelected, onToggleSelect }: TemplateC
           {degreeSafetyScore && (
             <DegreeSafetyBadge safetyScore={degreeSafetyScore} compact />
           )}
-          {/* Pricing Provenance Badge */}
+          {/* Pricing Provenance Badge - honest copy, no fake dates */}
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -403,9 +403,11 @@ export function TemplateCard({ template, isSelected, onToggleSelect }: TemplateC
               </TooltipTrigger>
               <TooltipContent className="max-w-xs">
                 <div className="text-xs space-y-1">
-                  <p className="font-medium">Pricing Provenance</p>
-                  <p>Verified: Jan 2025</p>
-                  <p>Source: {template.anchorSchool} official website</p>
+                  <p className="font-medium">Pricing Source</p>
+                  <p>Based on {template.anchorSchool} {template.catalogYear} catalog rates</p>
+                  {template.pricingMetadata?.sourceUrl && (
+                    <p className="text-muted-foreground">Source: {template.pricingMetadata.sourceUrl}</p>
+                  )}
                   <p className="text-muted-foreground">Rates subject to change. Verify with institution.</p>
                 </div>
               </TooltipContent>

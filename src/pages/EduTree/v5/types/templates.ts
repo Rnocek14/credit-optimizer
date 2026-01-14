@@ -233,6 +233,15 @@ export interface MarketplaceDegreeTemplate extends DegreeTemplate {
   // Baseline data quality status (prevents future fabrication regressions)
   // Only render savings UI when status === 'verified'
   baselineStatus?: 'verified' | 'estimated' | 'missing';
+  
+  // Pricing metadata from institution pricing pack (for data-driven warnings)
+  pricingMetadata?: {
+    inStateOnly?: boolean;       // If true, show residency warning
+    residencyNote?: string;      // Custom note for residency restriction
+    sourceUrl?: string;          // Institution pricing source URL
+    verifiedAt?: string;         // ISO timestamp of last verification
+    model?: 'per_credit' | 'flat_term';  // Pricing model type
+  } | null;
 }
 
 /**
