@@ -22,7 +22,7 @@ import { useCourseIntelligence, type CurationQueueItem } from '@/hooks/useCourse
 import { useUnifiedData } from '@/contexts/UnifiedDataContext';
 import { HubNavigation } from '@/components/HubNavigation';
 import { supabase } from '@/integrations/supabase/client';
-import { isVerifiedCourseUrl } from '@/lib/urlValidation';
+import { sanitizeCourseUrl } from '@/lib/urlValidation';
 
 export default function CourseCuration() {
   const [curationQueue, setCurationQueue] = useState<CurationQueueItem[]>([]);
@@ -249,16 +249,19 @@ export default function CourseCuration() {
                 <CardHeader>
                   <CardTitle className="flex items-center justify-between">
                     <span>Course Review</span>
-                    {isVerifiedCourseUrl(selectedCourse.course_discovery_queue.course_url) && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => window.open(selectedCourse.course_discovery_queue.course_url, '_blank')}
-                      >
-                        <ExternalLink className="h-3 w-3 mr-1" />
-                        View Course
-                      </Button>
-                    )}
+                    {(() => {
+                      const safeUrl = sanitizeCourseUrl(selectedCourse?.course_discovery_queue?.course_url);
+                      return safeUrl ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => window.open(safeUrl, '_blank', 'noopener,noreferrer')}
+                        >
+                          <ExternalLink className="h-3 w-3 mr-1" />
+                          View Course
+                        </Button>
+                      ) : null;
+                    })()}
                   </CardTitle>
                   <CardDescription>
                     {selectedCourse.course_discovery_queue.discovery_data.title}
