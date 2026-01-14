@@ -7,9 +7,11 @@ import type { MarketplaceDegreeTemplate } from '@/pages/EduTree/v5/types/templat
 export const MIN_SAVINGS_TO_SHOW_BANNER = 500;
 
 /**
- * Minimum weeks saved to show time-saved text (avoids "1 month faster" noise).
+ * Minimum weeks saved to show time-saved text.
+ * Set to ~13 weeks (3 months) to suppress small rounding-artifact savings
+ * on per-credit schools while showing meaningful savings like WGU's 6 months.
  */
-export const MIN_WEEKS_TO_SHOW_TIME_SAVED = 8;
+export const MIN_WEEKS_TO_SHOW_TIME_SAVED = 13;
 
 /**
  * Maximum months saved to display (safety cap against data bugs).
