@@ -172,6 +172,10 @@ function transformToMarketplaceTemplate(row: DegreeTemplateRow): MarketplaceDegr
     }));
   }
   
+  // Duration: prefer plan_weeks from template_data if available (computed from pricing model)
+  // Otherwise derive from estimated_duration_months (database fallback)
+  const computedWeeks = (templateData.planWeeks as number) || (row.estimated_duration_months || 24) * 4.33;
+  
   return {
     id: row.id,
     kind: 'degree',
@@ -208,14 +212,14 @@ function transformToMarketplaceTemplate(row: DegreeTemplateRow): MarketplaceDegr
     totals: {
       credits: row.total_credits,
       costUsd: row.estimated_cost || 0,
-      weeks: (row.estimated_duration_months || 24) * 4.33,
+      weeks: computedWeeks,
     },
     yearTemplates,
     targetSchool: row.institution_code,
     transferVerified: true,
     est: {
       costUsd: row.estimated_cost || 0,
-      weeks: (row.estimated_duration_months || 24) * 4.33,
+      weeks: computedWeeks,
       credits: row.total_credits,
       cri: 75,
       workloadHours: 15,
