@@ -316,7 +316,11 @@ export function useMarketplaceTemplates(filters?: Partial<MarketplaceFilters>) {
         let template: MarketplaceDegreeTemplate;
         
         if (fixture) {
-          // Use rich fixture data but update with DB values for cost/credits
+          // Use rich fixture data but update with DB values for cost/credits/weeks
+          // Compute weeks from template_data.planWeeks (pricing-model-aware) or fall back to estimated_duration_months
+          const templateData = typedRow.template_data || {};
+          const computedWeeks = (templateData.planWeeks as number) || (typedRow.estimated_duration_months || 24) * 4.33;
+          
           template = {
             ...fixture,
             id: typedRow.id, // Use DB id for consistency
@@ -324,6 +328,7 @@ export function useMarketplaceTemplates(filters?: Partial<MarketplaceFilters>) {
               ...fixture.totals,
               credits: typedRow.total_credits,
               costUsd: typedRow.estimated_cost || fixture.totals.costUsd,
+              weeks: computedWeeks, // CRITICAL: Use computed weeks, not fixture hardcoded value
             },
           };
         } else {
