@@ -368,8 +368,8 @@ export function TemplateCard({ template, isSelected, onToggleSelect }: TemplateC
               </Tooltip>
             </TooltipProvider>
           )}
-          {/* In-state pricing warning - data-driven with fallback */}
-          {(template.pricingMetadata?.inStateOnly ?? template.anchorSchool === 'EMPIRE') && (
+          {/* In-state pricing warning - data-driven only, no school-name fallback */}
+          {template.pricingMetadata?.inStateOnly === true && (
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>

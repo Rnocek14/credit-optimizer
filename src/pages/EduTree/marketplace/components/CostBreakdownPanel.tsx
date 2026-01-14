@@ -32,6 +32,7 @@ interface CostLineItem {
  */
 export function CostBreakdownPanel({ template, className }: CostBreakdownPanelProps) {
   const baseline = template.singleSchoolBaseline;
+  const credits = template.totals?.credits ?? 120;
   
   // Calculate optimized path cost breakdown by provider
   const optimizedBreakdown = useMemo(() => {
@@ -114,7 +115,6 @@ export function CostBreakdownPanel({ template, className }: CostBreakdownPanelPr
     if (!baseline) return [];
     
     const items: CostLineItem[] = [];
-    const credits = template.totals.credits || 120;
     
     // Label as "total (tuition + fees)" since we can't split them
     // Use baseline.source and baseline.notes for provenance info
@@ -131,11 +131,10 @@ export function CostBreakdownPanel({ template, className }: CostBreakdownPanelPr
     });
     
     return items;
-  }, [baseline, template.anchorSchool, template.totals.credits]);
+  }, [baseline, template.anchorSchool, credits]);
 
-  // Check for in-state-only pricing warning (data-driven, not hardcoded)
-  // Fall back to EMPIRE check if pricingMetadata not available
-  const isInStateOnly = template.pricingMetadata?.inStateOnly ?? (template.anchorSchool === 'EMPIRE');
+  // Check for in-state-only pricing warning (data-driven only, no school-name fallback)
+  const isInStateOnly = template.pricingMetadata?.inStateOnly === true;
   
   if (!baseline) {
     return null;
@@ -169,7 +168,7 @@ export function CostBreakdownPanel({ template, className }: CostBreakdownPanelPr
             <div className="text-xs text-amber-800 dark:text-amber-200">
               <p className="font-medium mb-1">Baseline Assumption (Worst-Case)</p>
               <p>
-                "{template.anchorSchool} baseline" represents completing all {template.totals.credits} credits 
+                "{template.anchorSchool} baseline" represents completing all {credits} credits 
                 directly at {template.anchorSchool} without any transfer credits. Most students transfer some credits, 
                 which would reduce this baseline.
               </p>
@@ -239,7 +238,7 @@ export function CostBreakdownPanel({ template, className }: CostBreakdownPanelPr
                   </TooltipTrigger>
                   <TooltipContent className="max-w-xs">
                     <p className="text-xs">
-                      Worst-case baseline: completing {template.totals.credits} credits entirely at {template.anchorSchool} 
+                      Worst-case baseline: completing {credits} credits entirely at {template.anchorSchool} 
                       at the standard rate. No transfer credits applied.
                     </p>
                   </TooltipContent>
