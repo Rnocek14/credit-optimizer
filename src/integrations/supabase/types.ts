@@ -703,6 +703,10 @@ export type Database = {
           subject_area: string | null
           title: string
           updated_at: string | null
+          url_checked_at: string | null
+          url_http_status: number | null
+          url_notes: string | null
+          url_status: string | null
         }
         Insert: {
           cost_usd?: number | null
@@ -720,6 +724,10 @@ export type Database = {
           subject_area?: string | null
           title: string
           updated_at?: string | null
+          url_checked_at?: string | null
+          url_http_status?: number | null
+          url_notes?: string | null
+          url_status?: string | null
         }
         Update: {
           cost_usd?: number | null
@@ -737,6 +745,10 @@ export type Database = {
           subject_area?: string | null
           title?: string
           updated_at?: string | null
+          url_checked_at?: string | null
+          url_http_status?: number | null
+          url_notes?: string | null
+          url_status?: string | null
         }
         Relationships: []
       }
