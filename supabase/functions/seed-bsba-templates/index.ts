@@ -92,6 +92,7 @@ interface TemplateData {
   planWeeks?: number;
   altCostUsd?: number;
   institutionalCostUsd?: number;
+  seedVersion?: string;
 }
 
 interface CostBreakdown {
@@ -704,6 +705,7 @@ async function generateTemplatesFromPack(
     templateData.planWeeks = costBreakdown.planWeeks;
     templateData.altCostUsd = costBreakdown.altCostUsd;
     templateData.institutionalCostUsd = costBreakdown.institutionalCostUsd;
+    templateData.seedVersion = 'v3.1-twophase';
 
     const template = {
       id: templateId,
