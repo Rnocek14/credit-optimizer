@@ -216,6 +216,14 @@ function transformToMarketplaceTemplate(row: DegreeTemplateRow): MarketplaceDegr
       costUsd: row.estimated_cost || 0,
       weeks: computedWeeks,
     },
+    // Two-phase timeline data for alt-credit paths
+    twoPhaseData: templateData.altCredits ? {
+      altCredits: (templateData.altCredits as number) || 0,
+      institutionalCredits: (templateData.institutionalCredits as number) || row.total_credits,
+      altCostUsd: (templateData.altCostUsd as number) || 0,
+      institutionalCostUsd: (templateData.institutionalCostUsd as number) || (row.estimated_cost || 0),
+      planWeeks: computedWeeks,
+    } : null,
     yearTemplates,
     targetSchool: row.institution_code,
     transferVerified: true,
