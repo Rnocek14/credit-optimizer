@@ -1,10 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import type { MarketplaceDegreeTemplate, MarketplaceFilters, YearTemplate, ModuleTemplate } from '@/pages/EduTree/v5/types/templates';
+import type { MarketplaceDegreeTemplate, MarketplaceFilters, YearTemplate, ModuleTemplate, ProviderPricingInfo } from '@/pages/EduTree/v5/types/templates';
 import type { MarketplaceOption } from '@/pages/EduTree/v5/types/v5';
 import type { TemplateTerm, TemplateSlot, TemplateCourseOption } from '@/types/degreeTemplates';
 import marketplaceFixtures from '@/fixtures/templates/marketplace-v2-templates.json';
 import { normalizeOptimization, OPTIMIZATION, OPTIMIZATION_LABEL, isAltCreditOptimization } from '@/types/optimizationTypes';
+import { normalizeProviderCode } from '@/lib/providerNormalization';
 
 interface DegreeTemplateRow {
   id: string;
@@ -361,6 +362,35 @@ export function useMarketplaceTemplates(filters?: Partial<MarketplaceFilters>) {
         console.warn('[useMarketplaceTemplates] Snapshot fetch error (non-fatal):', snapshotError);
       }
       
+      // Fetch provider pricing packs for provenance display
+      const { data: providerPacks, error: providerPacksError } = await supabase
+        .from('alt_provider_pricing_packs')
+        .select('provider_code, provider_name, pricing_data, source_url, provenance_verified_at, updated_at, status')
+        .eq('status', 'active');
+      
+      if (providerPacksError) {
+        console.warn('[useMarketplaceTemplates] Provider packs fetch error (non-fatal):', providerPacksError);
+      }
+      
+      // Build map of provider pricing info keyed by normalized provider code
+      const providerPricingMap = new Map<string, ProviderPricingInfo>();
+      (providerPacks || []).forEach((pack) => {
+        const normalizedCode = normalizeProviderCode(pack.provider_code);
+        const pricingData = pack.pricing_data as Record<string, unknown> | null;
+        providerPricingMap.set(normalizedCode, {
+          providerCode: normalizedCode,
+          providerName: pack.provider_name,
+          sourceUrl: pack.source_url || undefined,
+          provenanceVerifiedAt: pack.provenance_verified_at || undefined,
+          updatedAt: pack.updated_at,
+          pricingModel: (pricingData?.model as string) || undefined,
+          notes: (pricingData?.notes as string) || undefined,
+          isEstimated: false,
+        });
+      });
+      
+      console.log('[useMarketplaceTemplates] Loaded', providerPricingMap.size, 'provider pricing packs');
+      
       // Build map of latest snapshot per template_id
       const snapshotMap = new Map<string, BaselineSnapshot>();
       (snapshotRows || []).forEach((row) => {
@@ -437,6 +467,45 @@ export function useMarketplaceTemplates(filters?: Partial<MarketplaceFilters>) {
         };
       };
       
+      // Helper to extract unique provider codes used in a template and build providerPricing map
+      const hydrateProviderPricing = (template: MarketplaceDegreeTemplate): MarketplaceDegreeTemplate => {
+        const usedProviders = new Set<string>();
+        
+        // Scan yearTemplates for provider codes
+        template.yearTemplates?.forEach(year => {
+          year.moduleTemplates?.forEach(module => {
+            const option = module.options?.find(o => o.courseId === module.recommendedCourseId) 
+              || module.options?.[0];
+            if (option?.providerCode) {
+              usedProviders.add(normalizeProviderCode(option.providerCode));
+            }
+          });
+        });
+        
+        // Build providerPricing map for only the providers used in this template
+        const providerPricing: Record<string, ProviderPricingInfo> = {};
+        usedProviders.forEach(providerCode => {
+          const packInfo = providerPricingMap.get(providerCode);
+          if (packInfo) {
+            providerPricing[providerCode] = packInfo;
+          } else {
+            // No pricing pack found - mark as estimated
+            providerPricing[providerCode] = {
+              providerCode,
+              providerName: providerCode, // Fallback to code as name
+              isEstimated: true,
+              notes: 'No pricing pack found',
+            };
+          }
+        });
+        
+        // Only attach if we have any providers
+        if (Object.keys(providerPricing).length > 0) {
+          return { ...template, providerPricing };
+        }
+        return template;
+      };
+      
       // Transform DB rows, using fixture data when available for rich content
       let templates: MarketplaceDegreeTemplate[] = (dbRows || []).map((row) => {
         const typedRow = row as unknown as DegreeTemplateRow;
@@ -468,7 +537,10 @@ export function useMarketplaceTemplates(filters?: Partial<MarketplaceFilters>) {
         }
         
         // Merge baseline from snapshot (not from template_data)
-        return mergeBaseline(template, typedRow.id);
+        template = mergeBaseline(template, typedRow.id);
+        
+        // Hydrate provider pricing provenance
+        return hydrateProviderPricing(template);
       });
       
       
