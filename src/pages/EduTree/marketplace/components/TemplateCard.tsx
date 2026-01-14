@@ -366,13 +366,26 @@ export function TemplateCard({ template, isSelected, onToggleSelect }: TemplateC
               <div className="text-xs text-muted-foreground">Total Cost</div>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <Clock className="h-4 w-4 text-muted-foreground" />
-            <div>
-              <div className="text-2xl font-bold">{timeMonths}</div>
-              <div className="text-xs text-muted-foreground">Months</div>
-            </div>
-          </div>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="flex items-center gap-2 cursor-help">
+                  <Clock className="h-4 w-4 text-muted-foreground" />
+                  <div>
+                    <div className="text-2xl font-bold">{timeMonths}</div>
+                    <div className="text-xs text-muted-foreground">Months</div>
+                  </div>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent className="max-w-xs">
+                <p className="text-xs">
+                  {template.optimization === 'alt_max' 
+                    ? 'Estimated enrollment time at typical pace. Big cost savings—your timeline depends on how quickly you earn alt credits before enrolling.'
+                    : 'Estimated time to complete at typical enrollment pace (~15 credits/term).'}
+                </p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
       </CardHeader>
 

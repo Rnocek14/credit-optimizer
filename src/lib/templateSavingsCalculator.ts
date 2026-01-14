@@ -10,8 +10,11 @@ export const MIN_SAVINGS_TO_SHOW_BANNER = 500;
  * Minimum weeks saved to show time-saved text.
  * Set to ~13 weeks (3 months) to suppress small rounding-artifact savings
  * on per-credit schools while showing meaningful savings like WGU's 6 months.
+ * 
+ * IMPORTANT: Hide small deltas that read like marketing; show only meaningful
+ * time savings. Do not lower this threshold without product review.
  */
-export const MIN_WEEKS_TO_SHOW_TIME_SAVED = 13;
+export const MIN_WEEKS_TO_SHOW_MEANINGFUL_TIME_SAVED = 13;
 
 /**
  * Maximum months saved to display (safety cap against data bugs).

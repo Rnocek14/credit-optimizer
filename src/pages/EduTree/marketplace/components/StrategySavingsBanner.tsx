@@ -1,7 +1,7 @@
 import { Badge } from '@/components/ui/badge';
 import { TrendingDown, Clock, Info, Sparkles, ShieldCheck, HelpCircle, AlertTriangle } from 'lucide-react';
 import type { TemplateStrategySavings } from '@/lib/templateSavingsCalculator';
-import { formatSavingsAmount, formatTimeSaved, MIN_WEEKS_TO_SHOW_TIME_SAVED } from '@/lib/templateSavingsCalculator';
+import { formatSavingsAmount, formatTimeSaved, MIN_WEEKS_TO_SHOW_MEANINGFUL_TIME_SAVED } from '@/lib/templateSavingsCalculator';
 import type { TieredSavings } from '@/types/evidenceTiers';
 import { formatTieredSavings, shouldShowVerifiedLabel } from '@/lib/tieredSavingsCalculator';
 import {
@@ -113,7 +113,7 @@ export function StrategySavingsBanner({
               <span>—</span>
             </div>
           ) : (
-            savings.weeksSaved > MIN_WEEKS_TO_SHOW_TIME_SAVED && timeSavedText && (
+            savings.weeksSaved > MIN_WEEKS_TO_SHOW_MEANINGFUL_TIME_SAVED && timeSavedText && (
               <div className="flex justify-between items-center text-xs text-muted-foreground">
                 <span className="flex items-center gap-1">
                   <Clock className="h-3 w-3" />
@@ -229,7 +229,7 @@ export function StrategySavingsBanner({
                 Typical pace
               </span>
             ) : (
-              savings.weeksSaved > MIN_WEEKS_TO_SHOW_TIME_SAVED && timeSavedText && (
+              savings.weeksSaved > MIN_WEEKS_TO_SHOW_MEANINGFUL_TIME_SAVED && timeSavedText && (
                 <span className="flex items-center gap-1">
                   <Clock className="h-3.5 w-3.5" />
                   {timeSavedText} faster
