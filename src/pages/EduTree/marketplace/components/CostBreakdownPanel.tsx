@@ -273,8 +273,9 @@ export function CostBreakdownPanel({ template, className }: CostBreakdownPanelPr
                       {item.detail && (
                         <span className="text-[10px] text-muted-foreground">{item.detail}</span>
                       )}
-                      {/* Provider provenance info - only show for provider rows, not estimated */}
-                      {provenance && !item.isSubtotal && !provenance.isEstimated && (
+                      {/* Provider provenance info - only show for provider rows with content */}
+                      {provenance && !item.isSubtotal && !provenance.isEstimated && 
+                       (hasValidSource || verifiedDate || updatedDate) && (
                         <div className="flex items-center gap-1.5 mt-0.5">
                           {hasValidSource && (
                             <a 
@@ -293,7 +294,7 @@ export function CostBreakdownPanel({ template, className }: CostBreakdownPanelPr
                           )}
                           {!verifiedDate && updatedDate && (
                             <span className="text-[9px] text-muted-foreground">
-                              {isValidHttpUrl(provenance.sourceUrl) ? '• ' : ''}Updated {updatedDate} (unverified)
+                              {hasValidSource ? '• ' : ''}Updated {updatedDate} (unverified)
                             </span>
                           )}
                         </div>
