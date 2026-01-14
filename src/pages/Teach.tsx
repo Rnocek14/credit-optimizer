@@ -24,6 +24,7 @@ import {
   User,
   ExternalLink
 } from "lucide-react";
+import { isVerifiedCourseUrl } from '@/lib/urlValidation';
 
 // Mock skill data (you can replace this with actual skill tree data)
 const demoSkillTreeData = [
@@ -396,7 +397,7 @@ const Teach = () => {
                         )}
                       </div>
                       
-                      {contribution.link && (
+                      {isVerifiedCourseUrl(contribution.link) && (
                         <Button size="sm" variant="outline" asChild>
                           <a href={contribution.link} target="_blank" rel="noopener noreferrer">
                             <ExternalLink className="h-3 w-3 mr-1" />

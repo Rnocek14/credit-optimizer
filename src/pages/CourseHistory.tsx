@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { ExternalLink, BookOpen } from "lucide-react";
+import { isVerifiedCourseUrl } from '@/lib/urlValidation';
 import { format } from "date-fns";
 import TrackSelector from "@/components/tracks/TrackSelector";
 import { useActiveTrackStore } from "@/stores/useActiveTrackStore";
@@ -435,7 +436,7 @@ export default function CourseHistory() {
                             Re-analyze
                           </Button>
                         )}
-                        {course.url && (
+                        {isVerifiedCourseUrl(course.url) && (
                           <Button size="sm" variant="outline" asChild>
                             <a href={course.url} target="_blank" rel="noopener noreferrer">
                               <ExternalLink className="h-3 w-3 mr-1" />

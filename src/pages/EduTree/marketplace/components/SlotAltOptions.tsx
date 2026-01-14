@@ -9,6 +9,7 @@ import {
 import { ChevronDown, ExternalLink, Clock, DollarSign, FileCheck } from 'lucide-react';
 import type { AltCreditOption } from '@/hooks/useAltOptionsForRequirementArea';
 import { cn } from '@/lib/utils';
+import { isVerifiedCourseUrl } from '@/lib/urlValidation';
 
 interface SlotAltOptionsProps {
   options: AltCreditOption[];
@@ -124,10 +125,10 @@ function AltOptionRow({ option }: { option: AltCreditOption }) {
         </span>
       )}
       
-      {/* Link to provider */}
-      {option.providerUrl && (
+      {/* Link to provider - only if URL is verified */}
+      {isVerifiedCourseUrl(option.providerUrl) && (
         <a 
-          href={option.providerUrl} 
+          href={option.providerUrl!.trim()} 
           target="_blank" 
           rel="noopener noreferrer"
           className="text-muted-foreground hover:text-foreground shrink-0"
