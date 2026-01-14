@@ -186,7 +186,7 @@ function transformToMarketplaceTemplate(row: DegreeTemplateRow): MarketplaceDegr
     optimization,
     label: `${row.program_code} @ ${row.institution_code} • ${OPTIMIZATION_LABEL[optimization]}`,
     summary: (templateData.summary as string) || `${row.program_code} degree at ${row.institution_code}`,
-    badge: isAltCredit ? 'Cheapest' : undefined,
+    badge: undefined, // Badges assigned by assignCompetitiveBadges() after all templates are loaded
     catalogYear: (templateData.catalogYear as string) || '2025',
     policyVersion: (templateData.policyVersion as string) || `${row.institution_code}-2025-v1`,
     generatedAt: (templateData.generatedAt as string) || now,
@@ -196,7 +196,7 @@ function transformToMarketplaceTemplate(row: DegreeTemplateRow): MarketplaceDegr
         ? `Budget ${row.program_code} Degree` 
         : `${row.program_code} Degree`,
       tagline: `${row.program_code} at ${row.institution_code}`,
-      badge: isAltCredit ? 'Cheapest' : undefined,
+      badge: undefined, // Badges assigned by assignCompetitiveBadges() after all templates are loaded
       isPremium: false,
     },
     lifestyle: (templateData.lifestyle as MarketplaceDegreeTemplate['lifestyle']) || {
@@ -240,6 +240,60 @@ function transformToMarketplaceTemplate(row: DegreeTemplateRow): MarketplaceDegr
     // Set baseline status to prevent future regressions - only 'verified' shows savings
     baselineStatus: templateData.singleSchoolBaseline ? 'verified' : 'missing',
   };
+}
+
+// Badge type matching the template definition
+type TemplateBadge = 'Cheapest' | 'Fastest' | 'Balanced' | 'Most Popular';
+
+/**
+ * Assign competitive badges based on actual comparison across all templates.
+ * At most one template gets "Cheapest", at most one gets "Fastest".
+ * If the same template wins both, only "Cheapest" is shown to avoid badge clutter.
+ */
+function assignCompetitiveBadges(templates: MarketplaceDegreeTemplate[]): MarketplaceDegreeTemplate[] {
+  if (templates.length === 0) return templates;
+  
+  // Find cheapest and fastest
+  let cheapestIdx = 0;
+  let fastestIdx = 0;
+  let cheapestCost = templates[0].totals.costUsd;
+  let fastestWeeks = templates[0].totals.weeks;
+  
+  templates.forEach((t, idx) => {
+    if (t.totals.costUsd < cheapestCost) {
+      cheapestCost = t.totals.costUsd;
+      cheapestIdx = idx;
+    }
+    if (t.totals.weeks < fastestWeeks) {
+      fastestWeeks = t.totals.weeks;
+      fastestIdx = idx;
+    }
+  });
+  
+  // Assign badges
+  return templates.map((template, idx) => {
+    let badge: TemplateBadge | undefined = undefined;
+    
+    if (idx === cheapestIdx) {
+      badge = 'Cheapest';
+    } else if (idx === fastestIdx && fastestIdx !== cheapestIdx) {
+      // Only assign "Fastest" if it's a different template than "Cheapest"
+      badge = 'Fastest';
+    }
+    
+    if (badge) {
+      return {
+        ...template,
+        badge,
+        marketplace: {
+          ...template.marketplace,
+          badge,
+        },
+      };
+    }
+    
+    return template;
+  });
 }
 
 /**
@@ -350,7 +404,11 @@ export function useMarketplaceTemplates(filters?: Partial<MarketplaceFilters>) {
         return mergeBaseline(template, typedRow.id);
       });
       
-      console.log('[useMarketplaceTemplates] Loaded', templates.length, 'templates with baselines');
+      // Assign competitive badges AFTER all templates are transformed
+      // This ensures only one "Cheapest" and one "Fastest" badge across the set
+      templates = assignCompetitiveBadges(templates);
+      
+      console.log('[useMarketplaceTemplates] Loaded', templates.length, 'templates with baselines and competitive badges');
 
       // Apply filters
       if (filters) {
