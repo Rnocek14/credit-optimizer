@@ -82,12 +82,31 @@ export function StrategySavingsBanner({
             </span>
           </div>
           
-          {/* Cost comparison */}
+          {/* Cost comparison - with baseline disclaimer */}
           <div className="flex justify-between items-center text-xs text-muted-foreground">
-            <span>Full {savings.anchorSchool}:</span>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="cursor-help underline decoration-dotted">
+                    All at {savings.anchorSchool}:
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent className="max-w-xs">
+                  <p className="text-xs">
+                    Worst-case baseline: completing all 120 credits directly at {savings.anchorSchool} 
+                    without any transfer credits. Most students transfer some credits.
+                  </p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
             <span className="line-through">
               {formatSavingsAmount(savings.baselineCost)}
             </span>
+          </div>
+          
+          {/* Baseline assumption note */}
+          <div className="text-[10px] text-muted-foreground/70 italic">
+            (vs. worst-case: 120cr in-residence)
           </div>
           
           {/* Verification status as confidence layer - clearer labels */}
@@ -145,9 +164,26 @@ export function StrategySavingsBanner({
           
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div>
-              <div className="text-muted-foreground mb-0.5">Full {savings.anchorSchool} Direct:</div>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="text-muted-foreground mb-0.5 cursor-help underline decoration-dotted">
+                      All credits at {savings.anchorSchool}:
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-xs">
+                    <p className="text-xs">
+                      Worst-case baseline: completing all 120 credits directly at {savings.anchorSchool} 
+                      without any transfer credits. Most students transfer some credits.
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
               <div className="line-through text-lg text-muted-foreground">
                 {formatSavingsAmount(savings.baselineCost)}
+              </div>
+              <div className="text-[10px] text-muted-foreground/70 italic">
+                (worst-case: 120cr in-residence)
               </div>
             </div>
             <div>

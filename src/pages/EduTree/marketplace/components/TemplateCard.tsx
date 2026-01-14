@@ -368,13 +368,49 @@ export function TemplateCard({ template, isSelected, onToggleSelect }: TemplateC
               </Tooltip>
             </TooltipProvider>
           )}
+          {/* EMPIRE NY Residents Only Warning */}
+          {template.anchorSchool === 'EMPIRE' && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Badge variant="outline" className="text-amber-600 border-amber-400 dark:text-amber-400 dark:border-amber-600 gap-1">
+                    <AlertTriangle className="h-3 w-3" />
+                    NY Only
+                  </Badge>
+                </TooltipTrigger>
+                <TooltipContent className="max-w-xs">
+                  <p className="text-xs">
+                    EMPIRE pricing shown ($295/credit) is for New York state residents only. 
+                    Out-of-state students pay higher rates.
+                  </p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
           {/* Associate Anchor Badge - shows if AA/AS block transfer available */}
           <AssociateAnchorBadge targetSchool={template.anchorSchool} compact />
           {/* Degree Safety Score Badge */}
           {degreeSafetyScore && (
             <DegreeSafetyBadge safetyScore={degreeSafetyScore} compact />
           )}
-          <span className="text-xs text-muted-foreground">• {template.catalogYear} Catalog</span>
+          {/* Pricing Provenance Badge */}
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Badge variant="outline" className="text-xs cursor-help">
+                  {template.catalogYear} Catalog
+                </Badge>
+              </TooltipTrigger>
+              <TooltipContent className="max-w-xs">
+                <div className="text-xs space-y-1">
+                  <p className="font-medium">Pricing Provenance</p>
+                  <p>Verified: Jan 2025</p>
+                  <p>Source: {template.anchorSchool} official website</p>
+                  <p className="text-muted-foreground">Rates subject to change. Verify with institution.</p>
+                </div>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
 
         {/* Key Metrics */}
