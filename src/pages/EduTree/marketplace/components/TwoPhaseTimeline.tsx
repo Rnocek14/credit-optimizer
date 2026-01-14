@@ -96,7 +96,7 @@ export function TwoPhaseTimeline({
               
               {/* Phase labels */}
               <div className="flex justify-between text-[10px] text-muted-foreground mt-0.5">
-                <span>{formatPhaseDuration(altCreditWeeks)} prep</span>
+                <span>{formatPhaseDuration(altCreditWeeks)} alt-credit</span>
                 <span>{formatPhaseDuration(enrollmentWeeks)} enrolled</span>
               </div>
               
@@ -124,7 +124,7 @@ export function TwoPhaseTimeline({
                 </div>
               </div>
               <p className="text-[10px] text-muted-foreground pt-1 border-t border-border">
-                Prep phase is self-paced—your actual time depends on how quickly you complete alt credits before enrolling.
+                Assumes ~4 weeks per 3-credit alt course. Your pace may vary—many learners overlap prep + enrollment.
               </p>
             </div>
           </TooltipContent>
