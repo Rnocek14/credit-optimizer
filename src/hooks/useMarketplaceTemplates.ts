@@ -319,6 +319,7 @@ function assignCompetitiveBadges(templates: MarketplaceDegreeTemplate[]): Market
     }
     
     // Always return with explicitly set badge (clears old values, assigns new)
+    // marketplace is always defined by type, but we spread to preserve all existing fields
     return {
       ...template,
       badge,
