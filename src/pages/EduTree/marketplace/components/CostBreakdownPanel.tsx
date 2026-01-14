@@ -8,10 +8,11 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { ChevronDown, Info, AlertTriangle } from 'lucide-react';
-import type { MarketplaceDegreeTemplate } from '@/pages/EduTree/v5/types/templates';
+import { ChevronDown, Info, AlertTriangle, ExternalLink } from 'lucide-react';
+import type { MarketplaceDegreeTemplate, ProviderPricingInfo } from '@/pages/EduTree/v5/types/templates';
 import { normalizeProviderCode } from '@/lib/providerNormalization';
 import { cn } from '@/lib/utils';
+import { formatDistanceToNow } from 'date-fns';
 
 interface CostBreakdownPanelProps {
   template: MarketplaceDegreeTemplate;
@@ -24,6 +25,20 @@ interface CostLineItem {
   detail?: string;
   isSubtotal?: boolean;
   isWarning?: boolean;
+  providerCode?: string; // For linking to provenance info
+}
+
+/**
+ * Format provenance date as relative time with fallback to absolute date
+ */
+function formatProvenanceDate(dateStr: string | undefined): string | null {
+  if (!dateStr) return null;
+  try {
+    const date = new Date(dateStr);
+    return formatDistanceToNow(date, { addSuffix: true });
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -79,6 +94,7 @@ export function CostBreakdownPanel({ template, className }: CostBreakdownPanelPr
   }, [template.yearTemplates, template.totals.costUsd]);
 
   // Build line items for optimized path
+  // Build line items for optimized path
   const optimizedItems: CostLineItem[] = useMemo(() => {
     const items: CostLineItem[] = [];
     
@@ -88,6 +104,7 @@ export function CostBreakdownPanel({ template, className }: CostBreakdownPanelPr
         label: `${provider}`,
         amount: cost,
         detail: `${credits} credits`,
+        providerCode: provider, // For provenance lookup
       });
     });
     
@@ -109,6 +126,12 @@ export function CostBreakdownPanel({ template, className }: CostBreakdownPanelPr
     
     return items;
   }, [optimizedBreakdown, template.anchorSchool]);
+  
+  // Get provider pricing info for a given provider code
+  const getProviderProvenance = (providerCode: string | undefined): ProviderPricingInfo | null => {
+    if (!providerCode || !template.providerPricing) return null;
+    return template.providerPricing[providerCode] || null;
+  };
 
   // Build line items for baseline path
   const baselineItems: CostLineItem[] = useMemo(() => {
@@ -202,26 +225,69 @@ export function CostBreakdownPanel({ template, className }: CostBreakdownPanelPr
             <h4 className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">
               Multi-School Path
             </h4>
-            <div className="space-y-1.5">
-              {optimizedItems.map((item, idx) => (
-                <div 
-                  key={idx}
-                  className={cn(
-                    "flex justify-between text-xs",
-                    item.isSubtotal && "border-t pt-1.5 mt-1.5 font-semibold"
-                  )}
-                >
-                  <div className="flex flex-col">
-                    <span>{item.label}</span>
-                    {item.detail && (
-                      <span className="text-[10px] text-muted-foreground">{item.detail}</span>
+            <div className="space-y-2">
+              {optimizedItems.map((item, idx) => {
+                const provenance = getProviderProvenance(item.providerCode);
+                const verifiedDate = formatProvenanceDate(provenance?.provenanceVerifiedAt);
+                const updatedDate = formatProvenanceDate(provenance?.updatedAt);
+                
+                return (
+                  <div 
+                    key={idx}
+                    className={cn(
+                      "flex justify-between text-xs",
+                      item.isSubtotal && "border-t pt-1.5 mt-1.5 font-semibold"
                     )}
+                  >
+                    <div className="flex flex-col">
+                      <div className="flex items-center gap-1">
+                        <span>{item.label}</span>
+                        {provenance?.isEstimated && (
+                          <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 text-amber-600 border-amber-300">
+                            Estimated
+                          </Badge>
+                        )}
+                      </div>
+                      {item.detail && (
+                        <span className="text-[10px] text-muted-foreground">{item.detail}</span>
+                      )}
+                      {/* Provider provenance info */}
+                      {provenance && !item.isSubtotal && (
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          {provenance.sourceUrl ? (
+                            <a 
+                              href={provenance.sourceUrl} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="text-[9px] text-primary/70 hover:text-primary flex items-center gap-0.5"
+                            >
+                              Source <ExternalLink className="h-2 w-2" />
+                            </a>
+                          ) : null}
+                          {verifiedDate && (
+                            <span className="text-[9px] text-muted-foreground">
+                              • Verified {verifiedDate}
+                            </span>
+                          )}
+                          {!verifiedDate && updatedDate && (
+                            <span className="text-[9px] text-muted-foreground">
+                              • Updated {updatedDate} (unverified)
+                            </span>
+                          )}
+                          {!verifiedDate && !updatedDate && !provenance.isEstimated && (
+                            <span className="text-[9px] text-muted-foreground">
+                              • Date unknown
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                    <span className={cn(item.isSubtotal && "text-emerald-600 dark:text-emerald-400")}>
+                      ${item.amount.toLocaleString()}
+                    </span>
                   </div>
-                  <span className={cn(item.isSubtotal && "text-emerald-600 dark:text-emerald-400")}>
-                    ${item.amount.toLocaleString()}
-                  </span>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
 
@@ -282,6 +348,11 @@ export function CostBreakdownPanel({ template, className }: CostBreakdownPanelPr
             </span>
           </div>
         </div>
+        
+        {/* Rates disclaimer */}
+        <p className="mt-3 text-[10px] text-muted-foreground text-center">
+          Rates can change — verify with providers before purchasing.
+        </p>
       </CollapsibleContent>
     </Collapsible>
   );

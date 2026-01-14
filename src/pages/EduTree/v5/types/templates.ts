@@ -242,6 +242,24 @@ export interface MarketplaceDegreeTemplate extends DegreeTemplate {
     verifiedAt?: string;         // ISO timestamp of last verification
     model?: 'per_credit' | 'flat_term';  // Pricing model type
   } | null;
+  
+  // Provider pricing provenance for alt-credit costs
+  // Keyed by normalized provider code (SOPHIA, CLEP, STUDYCOM, etc.)
+  providerPricing?: Record<string, ProviderPricingInfo> | null;
+}
+
+/**
+ * Provider pricing pack info for provenance display
+ */
+export interface ProviderPricingInfo {
+  providerCode: string;
+  providerName: string;
+  sourceUrl?: string;            // Link to provider pricing page
+  provenanceVerifiedAt?: string; // ISO timestamp when pricing was verified
+  updatedAt?: string;            // ISO timestamp of last database update
+  pricingModel?: string;         // 'subscription' | 'per_course' | 'per_exam'
+  notes?: string;                // Additional context about pricing
+  isEstimated?: boolean;         // True if pricing pack was missing / fallback used
 }
 
 /**
