@@ -97,6 +97,7 @@ interface CostBreakdown {
   feesUsd: number;
   altCreditsByProvider: Record<string, number>;
   providerRatesUsed: Record<string, number>;
+  planWeeks: number; // Pricing-model-aware duration in weeks
 }
 
 // Default policy values (fallback if pack doesn't have specific fields)
@@ -522,6 +523,12 @@ function computePlanCostFromSlots(
   
   const totalCostUsd = Math.round(altCostUsd + institutionalCostUsd + feesUsd);
   
+  // For per-credit schools, use standard semester-based duration
+  // Assume 15 credits/semester, 4 months/semester = standard pace
+  const totalCredits = altCredits + institutionalCredits;
+  const semesters = Math.ceil(totalCredits / 15);
+  const planWeeks = semesters * 17; // ~17 weeks per semester including breaks
+  
   return {
     totalCostUsd,
     altCredits,
@@ -531,6 +538,7 @@ function computePlanCostFromSlots(
     feesUsd: Math.round(feesUsd),
     altCreditsByProvider,
     providerRatesUsed,
+    planWeeks,
   };
 }
 
@@ -545,6 +553,7 @@ function computeWguCost(
 ): CostBreakdown {
   const termCost = pricingData.term_cost_usd ?? 3855;
   const baseTerms = pricingData.typical_terms_to_complete ?? 4;
+  const termWeeks = pricingData.term_weeks ?? 26; // WGU terms are 6 months = 26 weeks
   const fees = pricingData.required_fees_usd ?? 65;
   
   // For alt_max: reduce terms based on alt credits earned before enrollment
@@ -558,6 +567,7 @@ function computeWguCost(
   
   const totalCostUsd = Math.round((termCost * adjustedTerms) + fees);
   const institutionalCredits = 120 - altCreditsInPlan;
+  const planWeeks = adjustedTerms * termWeeks; // Term-based duration calculation
   
   return {
     totalCostUsd,
@@ -568,6 +578,7 @@ function computeWguCost(
     feesUsd: fees,
     altCreditsByProvider: {},
     providerRatesUsed: {},
+    planWeeks,
   };
 }
 
@@ -655,6 +666,7 @@ async function generateTemplatesFromPack(
       costBreakdown = computeWguCost({
         term_cost_usd: institutionPricing.termCostUsd ?? 3855,
         typical_terms_to_complete: institutionPricing.typicalTerms ?? 4,
+        term_weeks: institutionPricing.termWeeks ?? 26, // Pass term_weeks for duration calc
         required_fees_usd: institutionPricing.feesUsd,
       }, trackType, altCreditsInPlan);
     } else {
@@ -735,7 +747,7 @@ async function generateTemplatesFromPack(
         template_id: realTemplateId, // Use real UUID, not human-readable ID
         institution_code: institutionCode,
         plan_cost_usd: costBreakdown.totalCostUsd,
-        plan_weeks: Math.round(durationMonths * 4.33),
+        plan_weeks: costBreakdown.planWeeks, // Use pricing-model-aware duration
         alt_credits: costBreakdown.altCredits,
         institutional_credits: costBreakdown.institutionalCredits,
         total_credits: totalCredits,
