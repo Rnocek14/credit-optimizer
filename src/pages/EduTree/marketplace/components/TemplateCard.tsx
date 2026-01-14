@@ -2,7 +2,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Clock, DollarSign, Laptop, MapPin, TrendingUp, Star, AlertCircle, GraduationCap, CheckCircle2, Shield, ShieldCheck, AlertTriangle } from 'lucide-react';
+import { Clock, DollarSign, Laptop, MapPin, TrendingUp, AlertCircle, GraduationCap, CheckCircle2, Shield, ShieldCheck, AlertTriangle } from 'lucide-react';
 import type { MarketplaceDegreeTemplate } from '@/pages/EduTree/v5/types/templates';
 import { isAltCreditOptimization } from '@/types/optimizationTypes';
 import { useNavigate } from 'react-router-dom';
@@ -395,10 +395,12 @@ export function TemplateCard({ template, isSelected, onToggleSelect }: TemplateC
       </CardHeader>
 
       <CardContent className="space-y-3">
-        {/* ROI */}
+        {/* Cost Recovery Hint */}
         <div className="flex items-center gap-2 text-sm">
-          <TrendingUp className="h-4 w-4 text-green-600" />
-          <span className="text-muted-foreground">ROI: Break even in ~{roiYears} years</span>
+          <TrendingUp className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+          <span className="text-muted-foreground">
+            Cost recovery: {parseFloat(roiYears) < 1 ? 'Faster than typical' : parseFloat(roiYears) < 2 ? 'Quick payback' : 'Standard timeline'}
+          </span>
         </div>
 
         {/* Lifestyle Fit */}
@@ -419,21 +421,22 @@ export function TemplateCard({ template, isSelected, onToggleSelect }: TemplateC
           <Badge variant={deliveryBadge.variant}>{deliveryBadge.label}</Badge>
         </div>
 
-        {/* Social Proof */}
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <div className="flex items-center gap-2 text-sm">
-                <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                <span>{template.socialProof.popularityScore.toFixed(1)}/5.0</span>
-                <AlertCircle className="h-3 w-3 text-muted-foreground" />
-              </div>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p className="text-xs">⚠️ Modeled estimate (not actual student data)</p>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
+        {/* Evidence Summary - replaces star rating with defensible claim */}
+        {dataQuality && dataQuality.rulesFound > 0 && (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Shield className="h-4 w-4" />
+                  <span>{dataQuality.rulesFound} transfer rules evaluated</span>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p className="text-xs">Based on {dataQuality.rulesFound} verified transfer policies from {template.anchorSchool}</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        )}
 
         {/* Alt-Credit Verification Indicator */}
         {dataQuality && (
@@ -578,11 +581,11 @@ export function TemplateCard({ template, isSelected, onToggleSelect }: TemplateC
             </Tooltip>
           </TooltipProvider>
           <Button 
-            variant="outline" 
+            variant="ghost" 
             onClick={() => setIsDrawerOpen(true)}
-            className="flex-1"
+            className="text-muted-foreground hover:text-foreground"
           >
-            View Details
+            Details →
           </Button>
         </div>
       </CardContent>

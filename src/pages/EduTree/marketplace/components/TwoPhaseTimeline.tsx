@@ -100,8 +100,8 @@ export function TwoPhaseTimeline({
                 <span>{formatPhaseDuration(enrollmentWeeks)} enrolled</span>
               </div>
               
-              {/* Overlap hint */}
-              <div className="text-[9px] text-muted-foreground/70 mt-1 italic">
+              {/* Overlap hint - slightly larger for visibility */}
+              <div className="text-[10px] text-muted-foreground/80 mt-1 italic">
                 Often overlap to finish sooner
               </div>
             </div>
