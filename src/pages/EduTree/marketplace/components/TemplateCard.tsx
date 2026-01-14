@@ -298,7 +298,8 @@ export function TemplateCard({ template, isSelected, onToggleSelect }: TemplateC
   return (
     <Card className={cn(
       "relative hover:shadow-lg transition-shadow",
-      isIncomplete && "opacity-75 border-dashed border-amber-500/50"
+      isIncomplete && "opacity-75 border-dashed border-amber-500/50",
+      isSelected && "ring-2 ring-primary border-primary"
     )}>
       {/* Incomplete Warning Badge */}
       {isIncomplete && (

@@ -45,11 +45,14 @@ interface TemplateDetailDrawerProps {
 }
 
 export function TemplateDetailDrawer({ template, open, onOpenChange }: TemplateDetailDrawerProps) {
-  // Check if comparison view is available - show tab when verified baseline exists (even without yearBreakdown)
-  const hasBaseline =
+  // Check if comparison view is available - show tab when ANY baseline exists (verified, estimated, or missing)
+  // We show the tab with appropriate messaging for each status
+  const hasVerifiedBaseline =
     template.baselineStatus === 'verified' &&
     (template.singleSchoolBaseline?.costUsd ?? 0) > 0;
-  const hasComparison = hasBaseline;
+  
+  // Show comparison tab whenever there's baseline data OR we want to explain why it's missing
+  const hasComparison = template.singleSchoolBaseline !== undefined || template.baselineStatus !== undefined;
   const [emailModalOpen, setEmailModalOpen] = useState(false);
   
   // Collect ALL alt-credit options (deduplicated) for comprehensive transfer coverage
@@ -202,7 +205,7 @@ export function TemplateDetailDrawer({ template, open, onOpenChange }: TemplateD
                 </TabsList>
                 
                 <TabsContent value="comparison" className="mt-4">
-                  <YearComparisonTable template={template} />
+                  <YearComparisonTable template={template} baselineStatus={template.baselineStatus} />
                 </TabsContent>
                 
                 <TabsContent value="courses" className="mt-4">
