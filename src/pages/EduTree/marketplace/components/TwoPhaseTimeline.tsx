@@ -78,7 +78,7 @@ export function TwoPhaseTimeline({
                 <Clock className="h-4 w-4 text-muted-foreground" />
                 <div>
                   <div className="text-2xl font-bold">{weeksToMonths(totalWeeks)}</div>
-                  <div className="text-xs text-muted-foreground">Months total</div>
+                  <div className="text-xs text-muted-foreground">Est. months</div>
                 </div>
               </div>
               
@@ -98,6 +98,11 @@ export function TwoPhaseTimeline({
               <div className="flex justify-between text-[10px] text-muted-foreground mt-0.5">
                 <span>{formatPhaseDuration(altCreditWeeks)} prep</span>
                 <span>{formatPhaseDuration(enrollmentWeeks)} enrolled</span>
+              </div>
+              
+              {/* Overlap hint */}
+              <div className="text-[9px] text-muted-foreground/70 mt-1 italic">
+                Often overlap to finish sooner
               </div>
             </div>
           </TooltipTrigger>
