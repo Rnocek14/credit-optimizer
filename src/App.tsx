@@ -336,6 +336,17 @@ const App = () => {
           <Route path="/optimizer-setup" element={<OptimizerSetup />} />
           {/* Optimizer Seeding Dashboard - no SQL editor needed */}
           <Route path="/admin/optimizer-seeding" element={<OptimizerSeeding />} />
+          {/* URL Review Queue - for verifying course links */}
+          <Route 
+            path="/admin/url-review" 
+            element={
+              <ProtectedRoute requireAuth={true}>
+                <React.Suspense fallback={<PageLoader message="Loading URL Review..." />}>
+                  {React.createElement(React.lazy(() => import('./pages/admin/UrlReviewQueue')))}
+                </React.Suspense>
+              </ProtectedRoute>
+            } 
+          />
           <Route
             path="/compare" 
             element={

@@ -688,6 +688,7 @@ export type Database = {
       }
       alt_credits: {
         Row: {
+          confidence_score: number | null
           cost_usd: number | null
           created_at: string | null
           credits_typical: number
@@ -701,14 +702,18 @@ export type Database = {
           provider_url: string | null
           source_code: string
           subject_area: string | null
+          suggested_urls: Json | null
           title: string
           updated_at: string | null
           url_checked_at: string | null
           url_http_status: number | null
           url_notes: string | null
           url_status: string | null
+          verification_method: string | null
+          verified_by: string | null
         }
         Insert: {
+          confidence_score?: number | null
           cost_usd?: number | null
           created_at?: string | null
           credits_typical: number
@@ -722,14 +727,18 @@ export type Database = {
           provider_url?: string | null
           source_code: string
           subject_area?: string | null
+          suggested_urls?: Json | null
           title: string
           updated_at?: string | null
           url_checked_at?: string | null
           url_http_status?: number | null
           url_notes?: string | null
           url_status?: string | null
+          verification_method?: string | null
+          verified_by?: string | null
         }
         Update: {
+          confidence_score?: number | null
           cost_usd?: number | null
           created_at?: string | null
           credits_typical?: number
@@ -743,12 +752,15 @@ export type Database = {
           provider_url?: string | null
           source_code?: string
           subject_area?: string | null
+          suggested_urls?: Json | null
           title?: string
           updated_at?: string | null
           url_checked_at?: string | null
           url_http_status?: number | null
           url_notes?: string | null
           url_status?: string | null
+          verification_method?: string | null
+          verified_by?: string | null
         }
         Relationships: []
       }
