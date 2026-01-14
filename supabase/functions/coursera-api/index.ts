@@ -159,22 +159,29 @@ async function getCourseDetails(courseId: string) {
 }
 
 function transformCourseData(courses: any[]): any[] {
-  return courses.map(course => ({
-    id: course.id,
-    title: course.name || 'Untitled Course',
-    description: course.description || '',
-    platform: 'Coursera',
-    url: `https://www.coursera.org/learn/${course.slug || course.id}`,
-    difficulty: mapDifficultyFromCoursera(course.difficultyLevel),
-    duration_hours: extractDurationHours(course.workload),
-    cost: determineCost(course),
-    has_projects: course.courseType === 'project' || (course.description && course.description.toLowerCase().includes('project')),
-    skill_tags: extractSkillTags(course),
-    language: 'English',
-    certificate_available: course.certificates && course.certificates.length > 0,
-    instructor_rating: 4.5, // Default rating - would need instructor API call for real rating
-    updated_at: new Date().toISOString()
-  }));
+  return courses.map(course => {
+    // Only use real URLs from the Coursera API response
+    // If the API provides a 'link' or 'homeLink', use it. Otherwise, set to null.
+    // NEVER fabricate URLs from slugs or IDs - they often don't work
+    const realUrl = course.link || course.homeLink || course.url || null;
+    
+    return {
+      id: course.id,
+      title: course.name || 'Untitled Course',
+      description: course.description || '',
+      platform: 'Coursera',
+      url: realUrl, // null if no real URL available
+      difficulty: mapDifficultyFromCoursera(course.difficultyLevel),
+      duration_hours: extractDurationHours(course.workload),
+      cost: determineCost(course),
+      has_projects: course.courseType === 'project' || (course.description && course.description.toLowerCase().includes('project')),
+      skill_tags: extractSkillTags(course),
+      language: 'English',
+      certificate_available: course.certificates && course.certificates.length > 0,
+      instructor_rating: 4.5, // Default rating - would need instructor API call for real rating
+      updated_at: new Date().toISOString()
+    };
+  });
 }
 
 function mapDifficulty(difficulty: string): string {

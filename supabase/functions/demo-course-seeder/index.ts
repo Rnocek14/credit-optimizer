@@ -106,11 +106,12 @@ serve(async (req) => {
         
         for (const course of courses) {
           try {
-            // Insert into discovery queue
+            // Insert into discovery queue - NEVER fabricate URLs
+            // Only use URLs that are explicitly provided from the API
             const { data: queueItem, error: insertError } = await supabase
               .from('course_discovery_queue')
               .insert({
-                course_url: course.url || `https://coursera.org/course/${course.id}`,
+                course_url: course.url || null, // Don't fabricate if missing
                 source_platform: 'coursera',
                 discovery_method: 'demo_seeding',
                 discovery_data: {
