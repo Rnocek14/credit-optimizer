@@ -12,7 +12,7 @@ import { CourseCompletionModal } from '@/components/CourseCompletionModal';
 import { Trophy } from 'lucide-react';
 import { SaveToPlanButton } from '@/components/SaveToPlanButton';
 import TutorialTip from '@/tutorial/TutorialTip';
-import { isVerifiedCourseUrl } from '@/lib/urlValidation';
+import { sanitizeCourseUrl } from '@/lib/urlValidation';
 
 interface CourseCardProps {
   course: {
@@ -47,12 +47,12 @@ export const CourseCard: React.FC<CourseCardProps> = ({
   const progress = getProgressForCourse(course.id);
   const [showCompletionModal, setShowCompletionModal] = React.useState(false);
   
-  // Only allow opening verified URLs
-  const hasVerifiedUrl = isVerifiedCourseUrl(course.url);
+  // Only allow opening verified URLs (sanitized)
+  const safeUrl = sanitizeCourseUrl(course.url);
 
   const handleStartCourse = () => {
-    if (hasVerifiedUrl) {
-      window.open(course.url!, '_blank');
+    if (safeUrl) {
+      window.open(safeUrl, '_blank', 'noopener,noreferrer');
     }
     onStartCourse?.(course.id);
   };
@@ -82,7 +82,7 @@ export const CourseCard: React.FC<CourseCardProps> = ({
                 )}
               </div>
             </div>
-            {hasVerifiedUrl && (
+            {safeUrl && (
               <Button 
                 size="sm" 
                 variant="outline" 
