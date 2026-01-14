@@ -380,11 +380,42 @@ export function useMarketplaceTemplates(filters?: Partial<MarketplaceFilters>) {
         fixtureMap.set(key, t);
       });
       
+      // Helper to generate synthetic year breakdown from aggregate data
+      const generateYearBreakdown = (
+        totalCost: number,
+        totalWeeks: number,
+        totalCredits: number,
+        anchorSchool: string
+      ): Array<{ year: number; label: string; credits: number; costUsd: number; weeks: number; courseLabel: string }> => {
+        const years = 4;
+        const creditsPerYear = Math.round(totalCredits / years);
+        const costPerYear = Math.round(totalCost / years);
+        const weeksPerYear = Math.round(totalWeeks / years);
+        
+        return Array.from({ length: years }, (_, i) => ({
+          year: i + 1,
+          label: `Year ${i + 1}`,
+          credits: creditsPerYear,
+          costUsd: costPerYear,
+          weeks: weeksPerYear,
+          courseLabel: `${anchorSchool} Direct Year ${i + 1}`,
+        }));
+      };
+
       // Helper to merge baseline snapshot into template
       const mergeBaseline = (template: MarketplaceDegreeTemplate, templateId: string): MarketplaceDegreeTemplate => {
         const snapshot = snapshotMap.get(templateId);
         
         if (snapshot && snapshot.baseline_status === 'verified' && snapshot.baseline_cost_usd > 0) {
+          // IMPORTANT: Preserve yearBreakdown from fixture, or generate synthetic if missing
+          const existingBreakdown = template.singleSchoolBaseline?.yearBreakdown;
+          const yearBreakdown = existingBreakdown ?? generateYearBreakdown(
+            snapshot.baseline_cost_usd,
+            snapshot.baseline_weeks,
+            template.totals?.credits ?? 120,
+            template.anchorSchool
+          );
+          
           return {
             ...template,
             singleSchoolBaseline: {
@@ -392,6 +423,7 @@ export function useMarketplaceTemplates(filters?: Partial<MarketplaceFilters>) {
               weeks: snapshot.baseline_weeks,
               source: snapshot.source_description,
               notes: (snapshot.inputs as Record<string, unknown>)?.assumptions as string,
+              yearBreakdown,
             },
             baselineStatus: 'verified',
           };
@@ -562,11 +594,42 @@ export function useMarketplaceTemplate(templateId: string) {
         console.error('[useMarketplaceTemplate] DB error:', error);
       }
       
+      // Helper to generate synthetic year breakdown from aggregate data
+      const generateYearBreakdown = (
+        totalCost: number,
+        totalWeeks: number,
+        totalCredits: number,
+        anchorSchool: string
+      ): Array<{ year: number; label: string; credits: number; costUsd: number; weeks: number; courseLabel: string }> => {
+        const years = 4;
+        const creditsPerYear = Math.round(totalCredits / years);
+        const costPerYear = Math.round(totalCost / years);
+        const weeksPerYear = Math.round(totalWeeks / years);
+        
+        return Array.from({ length: years }, (_, i) => ({
+          year: i + 1,
+          label: `Year ${i + 1}`,
+          credits: creditsPerYear,
+          costUsd: costPerYear,
+          weeks: weeksPerYear,
+          courseLabel: `${anchorSchool} Direct Year ${i + 1}`,
+        }));
+      };
+
       // Helper to merge baseline
       const mergeBaseline = (template: MarketplaceDegreeTemplate): MarketplaceDegreeTemplate => {
         const snapshot = snapshotRow as BaselineSnapshot | null;
         
         if (snapshot && snapshot.baseline_status === 'verified' && snapshot.baseline_cost_usd > 0) {
+          // IMPORTANT: Preserve yearBreakdown from fixture, or generate synthetic if missing
+          const existingBreakdown = template.singleSchoolBaseline?.yearBreakdown;
+          const yearBreakdown = existingBreakdown ?? generateYearBreakdown(
+            snapshot.baseline_cost_usd,
+            snapshot.baseline_weeks,
+            template.totals?.credits ?? 120,
+            template.anchorSchool
+          );
+          
           return {
             ...template,
             singleSchoolBaseline: {
@@ -574,6 +637,7 @@ export function useMarketplaceTemplate(templateId: string) {
               weeks: snapshot.baseline_weeks,
               source: snapshot.source_description,
               notes: (snapshot.inputs as Record<string, unknown>)?.assumptions as string,
+              yearBreakdown,
             },
             baselineStatus: 'verified',
           };
