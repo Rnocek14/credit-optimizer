@@ -14848,6 +14848,7 @@ export type Database = {
         }[]
       }
       system_health_check: { Args: never; Returns: Json }
+      trigger_template_generation_cron: { Args: never; Returns: undefined }
       update_learning_streak: {
         Args: { activity_date?: string; user_id_param: string }
         Returns: Json
