@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ExternalLink, BookmarkPlus, Clock, TrendingUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { isVerifiedCourseUrl } from '@/lib/urlValidation';
+import { sanitizeCourseUrl } from '@/lib/urlValidation';
 
 export interface CourseRecoRowProps {
   title: string;
@@ -42,8 +42,8 @@ export function CourseRecoRow({
 }: CourseRecoRowProps) {
   const difficultyInfo = getDifficultyLabel(difficulty);
   const durationText = formatDuration(durationHours);
-  // Only show external link if URL is verified (not fabricated)
-  const hasVerifiedUrl = isVerifiedCourseUrl(url);
+  // Only show external link if URL is verified and sanitized
+  const safeUrl = sanitizeCourseUrl(url);
 
   return (
     <div className={cn(
@@ -52,9 +52,9 @@ export function CourseRecoRow({
     )}>
       <div className="flex-1 min-w-0 space-y-1">
         <div className="flex items-center gap-2 flex-wrap">
-          {hasVerifiedUrl ? (
+          {safeUrl ? (
             <a 
-              href={url!} 
+              href={safeUrl} 
               target="_blank" 
               rel="noopener noreferrer"
               className="font-medium text-sm hover:text-primary transition-colors truncate"
@@ -105,14 +105,14 @@ export function CourseRecoRow({
             Save
           </Button>
         )}
-        {hasVerifiedUrl && (
+        {safeUrl && (
           <Button
             variant="ghost"
             size="sm"
             className="h-7 w-7 p-0"
             asChild
           >
-            <a href={url!} target="_blank" rel="noopener noreferrer">
+            <a href={safeUrl} target="_blank" rel="noopener noreferrer">
               <ExternalLink className="h-3 w-3" />
             </a>
           </Button>

@@ -1,7 +1,7 @@
 import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { CheckCircle2, AlertCircle, HelpCircle, ExternalLink } from 'lucide-react';
-import { isVerifiedCourseUrl } from '@/lib/urlValidation';
+import { sanitizeCourseUrl } from '@/lib/urlValidation';
 
 export type TransferStatus = 'verified' | 'elective' | 'review' | 'unknown';
 
@@ -149,17 +149,20 @@ export function TransferStatusBadge({
             </div>
           )}
           
-          {isVerifiedCourseUrl(evidenceUrl) && (
-            <a 
-              href={evidenceUrl!.trim()}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-1 text-primary hover:underline"
-            >
-              <ExternalLink className="h-3 w-3" />
-              {getEvidenceLinkLabel(evidenceType)}
-            </a>
-          )}
+          {(() => {
+            const safeEvidenceUrl = sanitizeCourseUrl(evidenceUrl);
+            return safeEvidenceUrl ? (
+              <a 
+                href={safeEvidenceUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-primary hover:underline"
+              >
+                <ExternalLink className="h-3 w-3" />
+                {getEvidenceLinkLabel(evidenceType)}
+              </a>
+            ) : null;
+          })()}
         </div>
       </PopoverContent>
     </Popover>
