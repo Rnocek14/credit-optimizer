@@ -112,11 +112,8 @@ const DEFAULT_POLICIES = {
 const FALLBACK_PER_CREDIT_USD = 400;
 const FALLBACK_ALT_CREDIT_RATE = 50; // Conservative average for alt providers
 
-// Duration estimates by track type
-const TRACK_DURATION = {
-  standard: 24, // months
-  alt_max: 15,  // months
-};
+// Duration is now computed from planWeeks, not hardcoded
+// See computePlanCostFromSlots and computeWguCost for pricing-model-aware duration
 
 // BSBA Term structure (shared across schools, adapted per track)
 function createBsbaTerms(trackType: 'standard' | 'alt_max'): TemplateTerm[] {
@@ -607,7 +604,7 @@ async function generateTemplatesFromPack(
   for (const trackType of trackTypes) {
     const templateId = `${institutionCode}-${programCode}-${trackType.toUpperCase()}-V2`;
     let terms = createBsbaTerms(trackType);
-    const durationMonths = TRACK_DURATION[trackType];
+    // Duration computed later from costBreakdown.planWeeks (pricing-model-aware)
 
     // CRITICAL: Enforce alt-credit cap for alt_max tracks
     // This prevents templates from exceeding institutional policy limits
@@ -702,7 +699,7 @@ async function generateTemplatesFromPack(
       track_type: trackType,
       total_credits: totalCredits,
       estimated_cost: costBreakdown.totalCostUsd,
-      estimated_duration_months: durationMonths,
+      estimated_duration_months: Math.round(costBreakdown.planWeeks / 4.33), // Derived from computed weeks, not hardcoded
       catalog_year: '2024-2025',
       template_data: templateData,
       notes: `${trackType === 'alt_max' ? 'Maximizes alt-credit usage' : 'Standard institutional path'} - Real cost from pricing packs v3`,
