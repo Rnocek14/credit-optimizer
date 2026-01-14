@@ -1,4 +1,5 @@
 import type { MarketplaceOption, ProviderType } from './v5';
+import type { Optimization } from '@/types/optimizationTypes';
 
 // Template kinds for progressive disclosure
 export type TemplateKind = 'module' | 'year' | 'degree';
@@ -154,7 +155,7 @@ export interface MarketplaceDegreeTemplate extends DegreeTemplate {
   // Core identification (override from base)
   programId: string;
   anchorSchool: string;
-  optimization: string;
+  optimization: Optimization;
   
   // Provenance (critical for safety)
   catalogYear: string; // "2025"
