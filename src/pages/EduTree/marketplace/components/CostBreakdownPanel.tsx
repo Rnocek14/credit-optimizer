@@ -249,6 +249,9 @@ export function CostBreakdownPanel({ template, className }: CostBreakdownPanelPr
                 const provenance = getProviderProvenance(item.providerCode);
                 const verifiedDate = formatProvenanceDate(provenance?.provenanceVerifiedAt);
                 const updatedDate = formatProvenanceDate(provenance?.updatedAt);
+                // Extract and trim sourceUrl once for both validation and rendering
+                const sourceUrl = provenance?.sourceUrl?.trim();
+                const hasValidSource = isValidHttpUrl(sourceUrl);
                 
                 return (
                   <div 
@@ -273,9 +276,9 @@ export function CostBreakdownPanel({ template, className }: CostBreakdownPanelPr
                       {/* Provider provenance info - only show for provider rows, not estimated */}
                       {provenance && !item.isSubtotal && !provenance.isEstimated && (
                         <div className="flex items-center gap-1.5 mt-0.5">
-                          {isValidHttpUrl(provenance.sourceUrl) && (
+                          {hasValidSource && (
                             <a 
-                              href={provenance.sourceUrl!.trim()} 
+                              href={sourceUrl} 
                               target="_blank" 
                               rel="noopener noreferrer"
                               className="text-[9px] text-primary/70 hover:text-primary flex items-center gap-0.5"
@@ -285,7 +288,7 @@ export function CostBreakdownPanel({ template, className }: CostBreakdownPanelPr
                           )}
                           {verifiedDate && (
                             <span className="text-[9px] text-muted-foreground">
-                              {isValidHttpUrl(provenance.sourceUrl) ? '• ' : ''}Verified {verifiedDate}
+                              {hasValidSource ? '• ' : ''}Verified {verifiedDate}
                             </span>
                           )}
                           {!verifiedDate && updatedDate && (
