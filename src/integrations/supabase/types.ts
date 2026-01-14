@@ -14593,21 +14593,31 @@ export type Database = {
           source_description: string
         }[]
       }
-      compute_template_baseline: {
-        Args: {
-          p_institution_code: string
-          p_program_code?: string
-          p_template_id: string
-          p_total_credits?: number
-        }
-        Returns: {
-          baseline_cost_usd: number
-          baseline_status: string
-          baseline_weeks: number
-          inputs: Json
-          source_description: string
-        }[]
-      }
+      compute_template_baseline:
+        | {
+            Args: { p_institution_code: string; p_total_credits: number }
+            Returns: {
+              cost_usd: number
+              notes: string
+              source: string
+              weeks: number
+            }[]
+          }
+        | {
+            Args: {
+              p_institution_code: string
+              p_program_code?: string
+              p_template_id: string
+              p_total_credits?: number
+            }
+            Returns: {
+              baseline_cost_usd: number
+              baseline_status: string
+              baseline_weeks: number
+              inputs: Json
+              source_description: string
+            }[]
+          }
       create_celebration_moment: {
         Args: {
           celebration_data_param: Json
