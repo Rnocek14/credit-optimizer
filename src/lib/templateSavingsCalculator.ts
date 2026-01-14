@@ -12,6 +12,12 @@ export const MIN_SAVINGS_TO_SHOW_BANNER = 500;
 export const MIN_WEEKS_TO_SHOW_TIME_SAVED = 8;
 
 /**
+ * Maximum months saved to display (safety cap against data bugs).
+ * 36 months = 3 years is a reasonable upper bound for degree acceleration.
+ */
+export const MAX_MONTHS_SAVED_DISPLAY = 36;
+
+/**
  * Represents the savings from using a multi-school strategy
  * vs completing the degree entirely at the anchor school
  */
@@ -88,10 +94,12 @@ export function formatSavingsAmount(amount: number): string {
 }
 
 /**
- * Calculate time saved in months
+ * Calculate time saved in months (capped to prevent data bug display issues)
  */
 export function formatTimeSaved(weeks: number): string {
   const months = Math.round(weeks / 4.33);
   if (months === 0) return '';
-  return `${months} month${months !== 1 ? 's' : ''}`;
+  // Apply safety cap to prevent unrealistic claims from data bugs
+  const cappedMonths = Math.min(months, MAX_MONTHS_SAVED_DISPLAY);
+  return `${cappedMonths} month${cappedMonths !== 1 ? 's' : ''}`;
 }
