@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { PlayCircle, CheckCircle, ExternalLink } from 'lucide-react';
 import { useCourseProgress } from '@/hooks/useCourseProgress';
 import { CourseProgressBadge } from './CourseProgressBadge';
+import { isVerifiedCourseUrl } from '@/lib/urlValidation';
 
 interface StartLearningButtonProps {
   courseId: string;
@@ -32,6 +33,9 @@ export function StartLearningButton({
 
   const progress = getProgressForCourse(courseId);
   const status = getProgressStatus(courseId);
+  
+  // Only allow opening if URL is verified (not fabricated)
+  const hasVerifiedUrl = isVerifiedCourseUrl(courseUrl);
 
   const handleClick = async () => {
     if (status === 'not_started') {
@@ -42,9 +46,9 @@ export function StartLearningButton({
       updateProgress.mutate({ courseId });
     }
 
-    // Open the course URL if available
-    if (courseUrl) {
-      window.open(courseUrl, '_blank');
+    // Only open verified URLs - never open fabricated ones
+    if (hasVerifiedUrl) {
+      window.open(courseUrl!, '_blank');
     }
   };
 
@@ -87,7 +91,7 @@ export function StartLearningButton({
         onClick={handleClick}
         variant={variant}
         size={size}
-        disabled={config.disabled || isLoading || !courseUrl}
+        disabled={config.disabled || isLoading}
         className={className}
       >
         {isLoading ? (
@@ -96,7 +100,7 @@ export function StartLearningButton({
           <Icon className="h-4 w-4 mr-2" />
         )}
         {config.text}
-        {courseUrl && <ExternalLink className="h-3 w-3 ml-2" />}
+        {hasVerifiedUrl && <ExternalLink className="h-3 w-3 ml-2" />}
       </Button>
       
       {showProgressBadge && progress && (

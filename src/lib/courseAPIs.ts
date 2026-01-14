@@ -1,13 +1,18 @@
 /**
  * Real Course API Integration - Coursera, edX, and other platforms
+ * 
+ * IMPORTANT: We never fabricate URLs. If a course doesn't have a verified URL,
+ * we set url to null. The UI should hide external link buttons for null URLs.
  */
+
+import { isVerifiedCourseUrl } from './urlValidation';
 
 export interface RealCourse {
   id: string;
   title: string;
   description: string;
   platform: string;
-  url: string;
+  url: string | null; // null when no verified URL available
   difficulty: 'Beginner' | 'Intermediate' | 'Advanced';
   duration_hours: number;
   cost: number;
@@ -142,26 +147,32 @@ class CourseraAPI {
     });
   }
 
-  private transformCourseraData = (course: any): RealCourse => ({
-    id: `coursera_${course.id}`,
-    title: course.name,
-    description: course.description,
-    platform: 'Coursera',
-    url: `https://coursera.org/learn/${course.id}`,
-    difficulty: course.level as any,
-    duration_hours: course.estimatedHours,
-    cost: course.cost,
-    has_projects: course.hasProjects,
-    instructor_name: course.instructorName,
-    instructor_rating: course.rating,
-    skill_tags: course.skills,
-    enrollment_count: course.enrollmentCount,
-    completion_rate: 0.75, // Typical Coursera completion rate
-    rating: course.rating,
-    language: 'English',
-    certificate_available: course.certificate,
-    updated_at: new Date().toISOString()
-  });
+  private transformCourseraData = (course: any): RealCourse => {
+    // Only use URL if it's provided and verified - NEVER fabricate
+    const providedUrl = course.url || course.link;
+    const verifiedUrl = isVerifiedCourseUrl(providedUrl) ? providedUrl : null;
+    
+    return {
+      id: `coursera_${course.id}`,
+      title: course.name,
+      description: course.description,
+      platform: 'Coursera',
+      url: verifiedUrl, // null if no verified URL
+      difficulty: course.level as any,
+      duration_hours: course.estimatedHours,
+      cost: course.cost,
+      has_projects: course.hasProjects,
+      instructor_name: course.instructorName,
+      instructor_rating: course.rating,
+      skill_tags: course.skills,
+      enrollment_count: course.enrollmentCount,
+      completion_rate: 0.75,
+      rating: course.rating,
+      language: 'English',
+      certificate_available: course.certificate,
+      updated_at: new Date().toISOString()
+    };
+  };
 }
 
 /**
@@ -238,26 +249,32 @@ class EdXAPI {
     });
   }
 
-  private transformEdXData = (course: any): RealCourse => ({
-    id: `edx_${course.id}`,
-    title: course.name,
-    description: course.description,
-    platform: `edX (${course.institution})`,
-    url: `https://edx.org/course/${course.id}`,
-    difficulty: course.level as any,
-    duration_hours: course.estimatedHours,
-    cost: course.cost,
-    has_projects: course.hasProjects,
-    instructor_name: course.institution,
-    instructor_rating: course.rating,
-    skill_tags: course.skills,
-    enrollment_count: course.enrollmentCount,
-    completion_rate: 0.68, // Typical edX completion rate
-    rating: course.rating,
-    language: 'English',
-    certificate_available: course.certificate,
-    updated_at: new Date().toISOString()
-  });
+  private transformEdXData = (course: any): RealCourse => {
+    // Only use URL if it's provided and verified - NEVER fabricate
+    const providedUrl = course.url || course.link;
+    const verifiedUrl = isVerifiedCourseUrl(providedUrl) ? providedUrl : null;
+    
+    return {
+      id: `edx_${course.id}`,
+      title: course.name,
+      description: course.description,
+      platform: `edX (${course.institution})`,
+      url: verifiedUrl, // null if no verified URL
+      difficulty: course.level as any,
+      duration_hours: course.estimatedHours,
+      cost: course.cost,
+      has_projects: course.hasProjects,
+      instructor_name: course.institution,
+      instructor_rating: course.rating,
+      skill_tags: course.skills,
+      enrollment_count: course.enrollmentCount,
+      completion_rate: 0.68,
+      rating: course.rating,
+      language: 'English',
+      certificate_available: course.certificate,
+      updated_at: new Date().toISOString()
+    };
+  };
 }
 
 /**
