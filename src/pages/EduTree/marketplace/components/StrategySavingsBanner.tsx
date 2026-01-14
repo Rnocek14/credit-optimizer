@@ -93,7 +93,7 @@ export function StrategySavingsBanner({
                 </TooltipTrigger>
                 <TooltipContent className="max-w-xs">
                   <p className="text-xs">
-                    Worst-case baseline: completing all 120 credits directly at {savings.anchorSchool} 
+                    Worst-case baseline: completing all credits directly at {savings.anchorSchool} 
                     without any transfer credits. Most students transfer some credits.
                   </p>
                 </TooltipContent>
@@ -104,9 +104,9 @@ export function StrategySavingsBanner({
             </span>
           </div>
           
-          {/* Baseline assumption note */}
+          {/* Baseline assumption note - dynamic, not hardcoded */}
           <div className="text-[10px] text-muted-foreground/70 italic">
-            (vs. worst-case: 120cr in-residence)
+            (vs. worst-case: all credits in-residence)
           </div>
           
           {/* Verification status as confidence layer - clearer labels */}
@@ -173,7 +173,7 @@ export function StrategySavingsBanner({
                   </TooltipTrigger>
                   <TooltipContent className="max-w-xs">
                     <p className="text-xs">
-                      Worst-case baseline: completing all 120 credits directly at {savings.anchorSchool} 
+                      Worst-case baseline: completing all credits directly at {savings.anchorSchool} 
                       without any transfer credits. Most students transfer some credits.
                     </p>
                   </TooltipContent>
@@ -183,7 +183,7 @@ export function StrategySavingsBanner({
                 {formatSavingsAmount(savings.baselineCost)}
               </div>
               <div className="text-[10px] text-muted-foreground/70 italic">
-                (worst-case: 120cr in-residence)
+                (worst-case: all credits in-residence)
               </div>
             </div>
             <div>
