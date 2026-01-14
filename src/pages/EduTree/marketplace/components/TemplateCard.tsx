@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Checkbox } from '@/components/ui/checkbox';
 import { Clock, DollarSign, Laptop, MapPin, TrendingUp, Star, AlertCircle, GraduationCap, CheckCircle2, Shield, ShieldCheck, AlertTriangle } from 'lucide-react';
 import type { MarketplaceDegreeTemplate } from '@/pages/EduTree/v5/types/templates';
+import { OPTIMIZATION, isAltCreditOptimization, type Optimization } from '@/types/optimizationTypes';
 import { useNavigate } from 'react-router-dom';
 import { usePlanBasket } from '@/pages/EduTree/v5/state/usePlanBasket';
 import {
@@ -379,7 +380,7 @@ export function TemplateCard({ template, isSelected, onToggleSelect }: TemplateC
               </TooltipTrigger>
               <TooltipContent className="max-w-xs">
                 <p className="text-xs">
-                  {template.optimization === 'alt-credit' 
+                  {isAltCreditOptimization(template.optimization as Optimization)
                     ? 'Estimated timeline at typical pace. Big cost savings—total time depends on how quickly you finish alt credits before enrolling.'
                     : 'Estimated time to complete at typical enrollment pace (~15 credits/term).'}
                 </p>

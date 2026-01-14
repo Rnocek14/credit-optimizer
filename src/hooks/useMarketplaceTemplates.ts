@@ -4,6 +4,7 @@ import type { MarketplaceDegreeTemplate, MarketplaceFilters, YearTemplate, Modul
 import type { MarketplaceOption } from '@/pages/EduTree/v5/types/v5';
 import type { TemplateTerm, TemplateSlot, TemplateCourseOption } from '@/types/degreeTemplates';
 import marketplaceFixtures from '@/fixtures/templates/marketplace-v2-templates.json';
+import { normalizeOptimization, OPTIMIZATION, OPTIMIZATION_LABEL, isAltCreditOptimization } from '@/types/optimizationTypes';
 
 interface DegreeTemplateRow {
   id: string;
@@ -153,7 +154,8 @@ function termsToYearTemplates(terms: TemplateTerm[]): YearTemplate[] {
  */
 function transformToMarketplaceTemplate(row: DegreeTemplateRow): MarketplaceDegreeTemplate {
   const templateData = (row.template_data || {}) as Record<string, unknown>;
-  const optimization = row.track_type === 'alt_max' ? 'alt-credit' : 'standard';
+  const optimization = normalizeOptimization(row.track_type);
+  const isAltCredit = isAltCreditOptimization(optimization);
   const now = new Date().toISOString();
   
   // First try yearTemplates directly, then convert from terms
@@ -182,19 +184,19 @@ function transformToMarketplaceTemplate(row: DegreeTemplateRow): MarketplaceDegr
     programId: row.program_code,
     anchorSchool: row.institution_code,
     optimization,
-    label: `${row.program_code} @ ${row.institution_code} • ${row.track_type === 'alt_max' ? 'Alt-Credit Max' : 'Standard'}`,
+    label: `${row.program_code} @ ${row.institution_code} • ${OPTIMIZATION_LABEL[optimization]}`,
     summary: (templateData.summary as string) || `${row.program_code} degree at ${row.institution_code}`,
-    badge: row.track_type === 'alt_max' ? 'Cheapest' : undefined,
+    badge: isAltCredit ? 'Cheapest' : undefined,
     catalogYear: (templateData.catalogYear as string) || '2025',
     policyVersion: (templateData.policyVersion as string) || `${row.institution_code}-2025-v1`,
     generatedAt: (templateData.generatedAt as string) || now,
     lastVerified: (templateData.lastVerified as string) || now,
     marketplace: {
-      title: row.track_type === 'alt_max' 
+      title: isAltCredit 
         ? `Budget ${row.program_code} Degree` 
         : `${row.program_code} Degree`,
       tagline: `${row.program_code} at ${row.institution_code}`,
-      badge: row.track_type === 'alt_max' ? 'Cheapest' : undefined,
+      badge: isAltCredit ? 'Cheapest' : undefined,
       isPremium: false,
     },
     lifestyle: (templateData.lifestyle as MarketplaceDegreeTemplate['lifestyle']) || {
@@ -309,7 +311,7 @@ export function useMarketplaceTemplates(filters?: Partial<MarketplaceFilters>) {
       // Transform DB rows, using fixture data when available for rich content
       let templates: MarketplaceDegreeTemplate[] = (dbRows || []).map((row) => {
         const typedRow = row as unknown as DegreeTemplateRow;
-        const optimization = typedRow.track_type === 'alt_max' ? 'alt-credit' : 'standard';
+        const optimization = normalizeOptimization(typedRow.track_type);
         const fixtureKey = `${typedRow.institution_code}-${optimization}`;
         const fixture = fixtureMap.get(fixtureKey);
         
