@@ -536,19 +536,34 @@ function computePlanCostFromSlots(
 
 /**
  * Compute cost for WGU's flat-term model
+ * For alt_max tracks, reduce terms based on transferable alt credits
  */
-function computeWguCost(pricingData: PricingPackData): CostBreakdown {
+function computeWguCost(
+  pricingData: PricingPackData,
+  trackType: 'standard' | 'alt_max' = 'standard',
+  altCreditsInPlan: number = 0
+): CostBreakdown {
   const termCost = pricingData.term_cost_usd ?? 3855;
-  const terms = pricingData.typical_terms_to_complete ?? 4;
+  const baseTerms = pricingData.typical_terms_to_complete ?? 4;
   const fees = pricingData.required_fees_usd ?? 65;
   
-  const totalCostUsd = Math.round((termCost * terms) + fees);
+  // For alt_max: reduce terms based on alt credits earned before enrollment
+  // WGU accepts transfer credits before enrollment, ~30 credits per term
+  // Each 30 alt credits effectively saves ~1 term
+  let adjustedTerms = baseTerms;
+  if (trackType === 'alt_max' && altCreditsInPlan > 0) {
+    const termsSaved = Math.floor(altCreditsInPlan / 30);
+    adjustedTerms = Math.max(1, baseTerms - termsSaved); // At least 1 term for capstone
+  }
+  
+  const totalCostUsd = Math.round((termCost * adjustedTerms) + fees);
+  const institutionalCredits = 120 - altCreditsInPlan;
   
   return {
     totalCostUsd,
-    altCredits: 0,
-    institutionalCredits: 120, // All credits from WGU
-    altCostUsd: 0,
+    altCredits: altCreditsInPlan,
+    institutionalCredits,
+    altCostUsd: 0, // Alt credits earned externally before enrollment
     institutionalCostUsd: totalCostUsd - fees,
     feesUsd: fees,
     altCreditsByProvider: {},
@@ -630,13 +645,18 @@ async function generateTemplatesFromPack(
     // Compute real plan cost from slot composition
     let costBreakdown: CostBreakdown;
     
+    // Count alt credits in this template for flat-term cost adjustment
+    const altCreditsInPlan = terms.reduce((sum, term) => 
+      sum + term.slots.filter(s => s.preferred.type === 'alt_credit')
+        .reduce((slotSum, s) => slotSum + s.minCredits, 0), 0);
+    
     if (institutionPricing.model === 'flat_term') {
-      // WGU uses flat-term model - use proper typed fields
+      // WGU uses flat-term model - pass track type for alt_max term reduction
       costBreakdown = computeWguCost({
         term_cost_usd: institutionPricing.termCostUsd ?? 3855,
         typical_terms_to_complete: institutionPricing.typicalTerms ?? 4,
         required_fees_usd: institutionPricing.feesUsd,
-      });
+      }, trackType, altCreditsInPlan);
     } else {
       // Standard per-credit model - pass proper typed pricing
       costBreakdown = computePlanCostFromSlots(terms, {

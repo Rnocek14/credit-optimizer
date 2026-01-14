@@ -103,14 +103,25 @@ export function StrategySavingsBanner({
             </div>
           )}
           
-          {savings.weeksSaved > MIN_WEEKS_TO_SHOW_TIME_SAVED && timeSavedText && (
+          {/* Time comparison with guardrail for negative values */}
+          {savings.isSlowerThanBaseline ? (
             <div className="flex justify-between items-center text-xs text-muted-foreground">
               <span className="flex items-center gap-1">
                 <Clock className="h-3 w-3" />
-                Time saved:
+                Typical pace:
               </span>
-              <span>{timeSavedText} faster</span>
+              <span>—</span>
             </div>
+          ) : (
+            savings.weeksSaved > MIN_WEEKS_TO_SHOW_TIME_SAVED && timeSavedText && (
+              <div className="flex justify-between items-center text-xs text-muted-foreground">
+                <span className="flex items-center gap-1">
+                  <Clock className="h-3 w-3" />
+                  Time saved:
+                </span>
+                <span>{timeSavedText} faster</span>
+              </div>
+            )
           )}
         </div>
       </div>
@@ -211,11 +222,19 @@ export function StrategySavingsBanner({
             <span className="flex items-center gap-1">
               ✓ Same {savings.anchorSchool} degree
             </span>
-            {savings.weeksSaved > MIN_WEEKS_TO_SHOW_TIME_SAVED && timeSavedText && (
-              <span className="flex items-center gap-1">
+            {/* Time comparison with guardrail for negative values */}
+            {savings.isSlowerThanBaseline ? (
+              <span className="flex items-center gap-1 text-muted-foreground/70">
                 <Clock className="h-3.5 w-3.5" />
-                {timeSavedText} faster
+                Typical pace
               </span>
+            ) : (
+              savings.weeksSaved > MIN_WEEKS_TO_SHOW_TIME_SAVED && timeSavedText && (
+                <span className="flex items-center gap-1">
+                  <Clock className="h-3.5 w-3.5" />
+                  {timeSavedText} faster
+                </span>
+              )
             )}
           </div>
         </div>

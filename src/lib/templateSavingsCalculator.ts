@@ -39,6 +39,10 @@ export interface TemplateStrategySavings {
   baselineWeeks: number;
   weeksSaved: number;
   
+  // Edge case flags for UI guardrails
+  isSlowerThanBaseline: boolean;
+  isMoreExpensiveThanBaseline: boolean;
+  
   // Provenance
   baselineSource: string;
   baselineNotes?: string;
@@ -60,12 +64,20 @@ export function calculateStrategySavings(
   if (!baseline.costUsd || baseline.costUsd <= 1000) return null;
   
   const dollarSavings = baseline.costUsd - template.totals.costUsd;
+  const rawWeeksSaved = baseline.weeks - template.totals.weeks;
+  
+  // Edge case flags for UI guardrails
+  const isMoreExpensiveThanBaseline = dollarSavings < 0;
+  const isSlowerThanBaseline = rawWeeksSaved < 0;
   
   // Guard: don't surface negative savings (multi-school costs more than baseline)
-  if (dollarSavings <= 0) return null;
+  // Still return object with flags so UI can handle gracefully
+  if (isMoreExpensiveThanBaseline) return null;
   
   const percentSavings = Math.round((dollarSavings / baseline.costUsd) * 100);
-  const weeksSaved = baseline.weeks - template.totals.weeks;
+  
+  // Clamp weeksSaved to 0 minimum - never show negative time savings
+  const weeksSaved = Math.max(0, rawWeeksSaved);
   
   return {
     templateId: template.id,
@@ -78,6 +90,8 @@ export function calculateStrategySavings(
     optimizedWeeks: template.totals.weeks,
     baselineWeeks: baseline.weeks,
     weeksSaved,
+    isSlowerThanBaseline,
+    isMoreExpensiveThanBaseline,
     baselineSource: baseline.source,
     baselineNotes: baseline.notes,
   };
