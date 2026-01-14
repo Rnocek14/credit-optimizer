@@ -200,6 +200,16 @@ export interface MarketplaceDegreeTemplate extends DegreeTemplate {
     avgCri?: number | null;
   };
   
+  // Two-phase timeline data for alt-credit paths
+  // Enables transparent display of prep vs enrollment phases
+  twoPhaseData?: {
+    altCredits: number;
+    institutionalCredits: number;
+    altCostUsd: number;
+    institutionalCostUsd: number;
+    planWeeks: number;
+  } | null;
+  
   // Single-school baseline for savings comparison
   // Shows what the degree would cost if done entirely at the anchor school
   // IMPORTANT: Only populate when you have real pricing data - never fabricate!

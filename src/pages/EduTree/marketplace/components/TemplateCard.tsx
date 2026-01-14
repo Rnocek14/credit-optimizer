@@ -27,6 +27,8 @@ import { calculateDegreeSafetyScore, type DegreeSafetyInput } from '@/lib/degree
 import { DegreeSafetyBadge } from '@/components/degree/DegreeSafetyBadge';
 import { AssociateAnchorBadge } from '@/components/degree/AssociateAnchorBadge';
 import { hasAssociateAnchor } from '@/types/associateDegree';
+import { TwoPhaseTimeline } from './TwoPhaseTimeline';
+import { computeTwoPhaseBreakdown } from '@/lib/twoPhaseTimeline';
 interface TemplateCardProps {
   template: MarketplaceDegreeTemplate;
   isSelected: boolean;
@@ -47,6 +49,24 @@ export function TemplateCard({ template, isSelected, onToggleSelect }: TemplateC
 
   const timeMonths = Math.round(template.totals.weeks / 4.33);
   const roiYears = (template.totals.costUsd / 60000).toFixed(1); // Assume $60K salary gain
+
+  // Compute two-phase breakdown for alt-credit paths
+  const twoPhaseBreakdown = useMemo(() => {
+    // Reconstruct templateData from twoPhaseData for the computation
+    const templateData = template.twoPhaseData ? {
+      altCredits: template.twoPhaseData.altCredits,
+      institutionalCredits: template.twoPhaseData.institutionalCredits,
+      altCostUsd: template.twoPhaseData.altCostUsd,
+      institutionalCostUsd: template.twoPhaseData.institutionalCostUsd,
+      planWeeks: template.twoPhaseData.planWeeks,
+    } : null;
+    
+    return computeTwoPhaseBreakdown(
+      templateData,
+      template.optimization,
+      template.totals.weeks
+    );
+  }, [template.twoPhaseData, template.optimization, template.totals.weeks]);
 
   const deliveryBadgeConfig = {
     fully_online: { label: '100% Online', variant: 'default' as const },
@@ -367,26 +387,10 @@ export function TemplateCard({ template, isSelected, onToggleSelect }: TemplateC
               <div className="text-xs text-muted-foreground">Total Cost</div>
             </div>
           </div>
-          <TooltipProvider delayDuration={0}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <div className="flex items-center gap-2 cursor-help">
-                  <Clock className="h-4 w-4 text-muted-foreground" />
-                  <div>
-                    <div className="text-2xl font-bold">{timeMonths}</div>
-                    <div className="text-xs text-muted-foreground">Months</div>
-                  </div>
-                </div>
-              </TooltipTrigger>
-              <TooltipContent className="max-w-xs">
-                <p className="text-xs">
-                  {isAltCreditOptimization(template.optimization)
-                    ? 'Estimated timeline at typical pace. Big cost savings—total time depends on how quickly you finish alt credits before enrolling.'
-                    : 'Estimated time to complete at typical enrollment pace (~15 credits/term).'}
-                </p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+          <TwoPhaseTimeline 
+            breakdown={twoPhaseBreakdown} 
+            variant="compact"
+          />
         </div>
       </CardHeader>
 
