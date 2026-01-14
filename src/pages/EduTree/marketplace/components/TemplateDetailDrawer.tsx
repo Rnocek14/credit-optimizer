@@ -14,6 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { CostBreakdownPanel } from './CostBreakdownPanel';
 import type { MarketplaceDegreeTemplate } from '@/pages/EduTree/v5/types/templates';
 import { ProviderBadge } from './ProviderBadge';
 import { TransferStatusBadge } from './TransferStatusBadge';
@@ -187,6 +188,9 @@ export function TemplateDetailDrawer({ template, open, onOpenChange }: TemplateD
             {coverageBreakdown && (
               <TransferCoveragePanel coverage={coverageBreakdown} />
             )}
+
+            {/* Cost Breakdown Panel - shows line-item math */}
+            <CostBreakdownPanel template={template} />
 
             {/* Tabs for Comparison vs Course Details */}
             {hasComparison ? (
