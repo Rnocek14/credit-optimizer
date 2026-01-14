@@ -86,6 +86,12 @@ interface TemplateData {
     maxAltCredits: number;
   };
   sourcePolicyPackId?: string;
+  // Two-phase timeline fields (v3.1)
+  altCredits?: number;
+  institutionalCredits?: number;
+  planWeeks?: number;
+  altCostUsd?: number;
+  institutionalCostUsd?: number;
 }
 
 interface CostBreakdown {
@@ -631,8 +637,9 @@ async function generateTemplatesFromPack(
       }
     }
 
+    // Build templateData base structure (two-phase fields added after cost computation)
     const templateData: TemplateData = {
-      version: '3.0', // Upgraded version for real cost computation
+      version: '3.1', // Upgraded version for two-phase timeline support
       programCode,
       trackType,
       totalCredits,
@@ -688,7 +695,15 @@ async function generateTemplatesFromPack(
       altCost: costBreakdown.altCostUsd,
       institutionalCost: costBreakdown.institutionalCostUsd,
       fees: costBreakdown.feesUsd,
+      planWeeks: costBreakdown.planWeeks,
     });
+
+    // Add two-phase timeline fields to templateData (v3.1 feature)
+    templateData.altCredits = costBreakdown.altCredits;
+    templateData.institutionalCredits = costBreakdown.institutionalCredits;
+    templateData.planWeeks = costBreakdown.planWeeks;
+    templateData.altCostUsd = costBreakdown.altCostUsd;
+    templateData.institutionalCostUsd = costBreakdown.institutionalCostUsd;
 
     const template = {
       id: templateId,
