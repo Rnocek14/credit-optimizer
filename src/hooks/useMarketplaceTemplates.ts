@@ -273,10 +273,11 @@ function assignCompetitiveBadges(templates: MarketplaceDegreeTemplate[]): Market
   };
   
   // Tie-breaker: prefer template with more social proof, then alphabetical anchorSchool
+  // Returns NEGATIVE if A should win (for use with < 0 checks)
   const tieBreaker = (a: MarketplaceDegreeTemplate, b: MarketplaceDegreeTemplate): number => {
     const aScore = a.socialProof?.popularityScore ?? 0;
     const bScore = b.socialProof?.popularityScore ?? 0;
-    if (aScore !== bScore) return bScore - aScore; // Higher wins
+    if (aScore !== bScore) return bScore - aScore; // Higher score wins → returns negative when a > b
     return (a.anchorSchool || '').localeCompare(b.anchorSchool || '');
   };
   
@@ -304,8 +305,10 @@ function assignCompetitiveBadges(templates: MarketplaceDegreeTemplate[]): Market
     }
   });
   
-  // Assign badges
+  // Assign badges - ALWAYS clear first for idempotency
+  // This prevents stale badges from leaking through filter/sort changes
   return templates.map((template, idx) => {
+    // Determine if this template wins a badge
     let badge: TemplateBadge | undefined = undefined;
     
     if (idx === cheapestIdx && cheapestCost !== Infinity) {
@@ -315,18 +318,15 @@ function assignCompetitiveBadges(templates: MarketplaceDegreeTemplate[]): Market
       badge = 'Fastest';
     }
     
-    if (badge) {
-      return {
-        ...template,
+    // Always return with explicitly set badge (clears old values, assigns new)
+    return {
+      ...template,
+      badge,
+      marketplace: {
+        ...template.marketplace,
         badge,
-        marketplace: {
-          ...template.marketplace,
-          badge,
-        },
-      };
-    }
-    
-    return template;
+      },
+    };
   });
 }
 
