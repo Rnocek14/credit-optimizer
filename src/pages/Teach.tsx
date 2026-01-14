@@ -24,7 +24,7 @@ import {
   User,
   ExternalLink
 } from "lucide-react";
-import { isVerifiedCourseUrl } from '@/lib/urlValidation';
+import { sanitizeCourseUrl } from '@/lib/urlValidation';
 
 // Mock skill data (you can replace this with actual skill tree data)
 const demoSkillTreeData = [
@@ -397,14 +397,17 @@ const Teach = () => {
                         )}
                       </div>
                       
-                      {isVerifiedCourseUrl(contribution.link) && (
-                        <Button size="sm" variant="outline" asChild>
-                          <a href={contribution.link} target="_blank" rel="noopener noreferrer">
-                            <ExternalLink className="h-3 w-3 mr-1" />
-                            View
-                          </a>
-                        </Button>
-                      )}
+                      {(() => {
+                        const safeUrl = sanitizeCourseUrl(contribution.link);
+                        return safeUrl ? (
+                          <Button size="sm" variant="outline" asChild>
+                            <a href={safeUrl} target="_blank" rel="noopener noreferrer">
+                              <ExternalLink className="h-3 w-3 mr-1" />
+                              View
+                            </a>
+                          </Button>
+                        ) : null;
+                      })()}
                     </div>
 
                     <div className="mt-2 flex items-center gap-2 text-xs text-slate-500">
