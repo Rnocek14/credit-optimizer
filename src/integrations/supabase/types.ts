@@ -11626,14 +11626,14 @@ export type Database = {
           {
             foreignKeyName: "template_cost_snapshots_template_id_fkey"
             columns: ["template_id"]
-            isOneToOne: false
+            isOneToOne: true
             referencedRelation: "degree_templates"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "template_cost_snapshots_template_id_fkey"
             columns: ["template_id"]
-            isOneToOne: false
+            isOneToOne: true
             referencedRelation: "template_with_costs"
             referencedColumns: ["template_id"]
           },
@@ -14355,14 +14355,14 @@ export type Database = {
           {
             foreignKeyName: "template_cost_snapshots_template_id_fkey"
             columns: ["template_id"]
-            isOneToOne: false
+            isOneToOne: true
             referencedRelation: "degree_templates"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "template_cost_snapshots_template_id_fkey"
             columns: ["template_id"]
-            isOneToOne: false
+            isOneToOne: true
             referencedRelation: "template_with_costs"
             referencedColumns: ["template_id"]
           },
@@ -14593,31 +14593,15 @@ export type Database = {
           source_description: string
         }[]
       }
-      compute_template_baseline:
-        | {
-            Args: { p_institution_code: string; p_total_credits: number }
-            Returns: {
-              cost_usd: number
-              notes: string
-              source: string
-              weeks: number
-            }[]
-          }
-        | {
-            Args: {
-              p_institution_code: string
-              p_program_code?: string
-              p_template_id: string
-              p_total_credits?: number
-            }
-            Returns: {
-              baseline_cost_usd: number
-              baseline_status: string
-              baseline_weeks: number
-              inputs: Json
-              source_description: string
-            }[]
-          }
+      compute_template_baseline: {
+        Args: { p_institution_code: string; p_total_credits: number }
+        Returns: {
+          cost_usd: number
+          notes: string
+          source: string
+          weeks: number
+        }[]
+      }
       create_celebration_moment: {
         Args: {
           celebration_data_param: Json

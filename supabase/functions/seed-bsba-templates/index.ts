@@ -728,10 +728,10 @@ async function generateTemplatesFromPack(
     const realTemplateId = dbRow.id; // This is the actual UUID
     console.log(`[seed-bsba-templates] Template ${templateId} has UUID: ${realTemplateId}`);
     
-    // Create cost snapshot for audit trail using real UUID
+    // Create/update cost snapshot for audit trail using upsert (prevents duplicates)
     const { error: snapshotError } = await supabase
       .from('template_cost_snapshots')
-      .insert({
+      .upsert({
         template_id: realTemplateId, // Use real UUID, not human-readable ID
         institution_code: institutionCode,
         plan_cost_usd: costBreakdown.totalCostUsd,
@@ -751,20 +751,21 @@ async function generateTemplatesFromPack(
         },
         cost_status: costStatus, // Use computed status, not hardcoded 'verified'
         source_description: `Computed from pricing packs - ${institutionCode} ${institutionPricing.model} + provider rates (${costStatus})`,
+      }, { 
+        onConflict: 'template_id',
+        ignoreDuplicates: false 
       });
     
     if (snapshotError) {
-      console.warn(`[seed-bsba-templates] Failed to create cost snapshot for ${realTemplateId}:`, snapshotError.message);
+      console.warn(`[seed-bsba-templates] Failed to upsert cost snapshot for ${realTemplateId}:`, snapshotError.message);
     } else {
-      console.log(`[seed-bsba-templates] ✅ Created cost snapshot for ${realTemplateId} (status: ${costStatus})`);
+      console.log(`[seed-bsba-templates] ✅ Upserted cost snapshot for ${realTemplateId}: $${costBreakdown.totalCostUsd} (${costStatus})`);
     }
     
-    // Generate baseline snapshot using canonical computation function (append-only)
+    // Generate baseline snapshot using canonical 2-param computation function (upsert to prevent duplicates)
     const { data: baselineResult, error: baselineError } = await supabase
       .rpc('compute_template_baseline', {
-        p_template_id: realTemplateId,
         p_institution_code: institutionCode,
-        p_program_code: programCode,
         p_total_credits: totalCredits,
       });
     
@@ -772,23 +773,27 @@ async function generateTemplatesFromPack(
       console.warn(`[seed-bsba-templates] Failed to compute baseline for ${realTemplateId}:`, baselineError.message);
     } else if (baselineResult && baselineResult.length > 0) {
       const baseline = baselineResult[0];
-      const { error: baselineInsertError } = await supabase
+      // Use upsert to prevent duplicate baselines - always update to latest
+      const { error: baselineUpsertError } = await supabase
         .from('template_baseline_snapshots')
-        .insert({
+        .upsert({
           template_id: realTemplateId,
           institution_code: institutionCode,
           program_code: programCode,
-          baseline_cost_usd: baseline.baseline_cost_usd,
-          baseline_weeks: baseline.baseline_weeks,
-          baseline_status: baseline.baseline_status,
-          inputs: baseline.inputs,
-          source_description: baseline.source_description,
+          baseline_cost_usd: baseline.cost_usd,
+          baseline_weeks: baseline.weeks,
+          baseline_status: 'computed',
+          inputs: { institution_code: institutionCode, total_credits: totalCredits },
+          source_description: baseline.source || baseline.notes || `Computed baseline for ${institutionCode}`,
+        }, { 
+          onConflict: 'template_id',
+          ignoreDuplicates: false 
         });
       
-      if (baselineInsertError) {
-        console.warn(`[seed-bsba-templates] Failed to insert baseline for ${realTemplateId}:`, baselineInsertError.message);
+      if (baselineUpsertError) {
+        console.warn(`[seed-bsba-templates] Failed to upsert baseline for ${realTemplateId}:`, baselineUpsertError.message);
       } else {
-        console.log(`[seed-bsba-templates] ✅ Created baseline snapshot for ${realTemplateId} (status: ${baseline.baseline_status})`);
+        console.log(`[seed-bsba-templates] ✅ Upserted baseline snapshot for ${realTemplateId}: $${baseline.cost_usd} / ${baseline.weeks} weeks`);
       }
     } else {
       console.warn(`[seed-bsba-templates] No baseline computed for ${realTemplateId} - missing pricing pack?`);
