@@ -249,23 +249,57 @@ type TemplateBadge = 'Cheapest' | 'Fastest' | 'Balanced' | 'Most Popular';
  * Assign competitive badges based on actual comparison across all templates.
  * At most one template gets "Cheapest", at most one gets "Fastest".
  * If the same template wins both, only "Cheapest" is shown to avoid badge clutter.
+ * 
+ * IMPORTANT: This runs on the VISIBLE set (after filtering) so badges reflect
+ * "cheapest among what you're looking at" - standard marketplace UX.
+ * 
+ * Edge case handling:
+ * - Null/undefined values treated as Infinity (excluded from winning)
+ * - Ties broken by: higher dataQuality.rulesFound, then alphabetical anchorSchool
  */
 function assignCompetitiveBadges(templates: MarketplaceDegreeTemplate[]): MarketplaceDegreeTemplate[] {
   if (templates.length === 0) return templates;
   
-  // Find cheapest and fastest
+  // Helper to get cost with null guard
+  const getCost = (t: MarketplaceDegreeTemplate): number => {
+    const cost = t.totals?.costUsd;
+    return (cost != null && cost > 0) ? cost : Infinity;
+  };
+  
+  // Helper to get weeks with null guard
+  const getWeeks = (t: MarketplaceDegreeTemplate): number => {
+    const weeks = t.totals?.weeks;
+    return (weeks != null && weeks > 0) ? weeks : Infinity;
+  };
+  
+  // Tie-breaker: prefer template with more social proof, then alphabetical anchorSchool
+  const tieBreaker = (a: MarketplaceDegreeTemplate, b: MarketplaceDegreeTemplate): number => {
+    const aScore = a.socialProof?.popularityScore ?? 0;
+    const bScore = b.socialProof?.popularityScore ?? 0;
+    if (aScore !== bScore) return bScore - aScore; // Higher wins
+    return (a.anchorSchool || '').localeCompare(b.anchorSchool || '');
+  };
+  
+  // Find cheapest (with tie-breaker)
   let cheapestIdx = 0;
-  let fastestIdx = 0;
-  let cheapestCost = templates[0].totals.costUsd;
-  let fastestWeeks = templates[0].totals.weeks;
+  let cheapestCost = getCost(templates[0]);
   
   templates.forEach((t, idx) => {
-    if (t.totals.costUsd < cheapestCost) {
-      cheapestCost = t.totals.costUsd;
+    const cost = getCost(t);
+    if (cost < cheapestCost || (cost === cheapestCost && tieBreaker(t, templates[cheapestIdx]) < 0)) {
+      cheapestCost = cost;
       cheapestIdx = idx;
     }
-    if (t.totals.weeks < fastestWeeks) {
-      fastestWeeks = t.totals.weeks;
+  });
+  
+  // Find fastest (with tie-breaker)
+  let fastestIdx = 0;
+  let fastestWeeks = getWeeks(templates[0]);
+  
+  templates.forEach((t, idx) => {
+    const weeks = getWeeks(t);
+    if (weeks < fastestWeeks || (weeks === fastestWeeks && tieBreaker(t, templates[fastestIdx]) < 0)) {
+      fastestWeeks = weeks;
       fastestIdx = idx;
     }
   });
@@ -274,9 +308,9 @@ function assignCompetitiveBadges(templates: MarketplaceDegreeTemplate[]): Market
   return templates.map((template, idx) => {
     let badge: TemplateBadge | undefined = undefined;
     
-    if (idx === cheapestIdx) {
+    if (idx === cheapestIdx && cheapestCost !== Infinity) {
       badge = 'Cheapest';
-    } else if (idx === fastestIdx && fastestIdx !== cheapestIdx) {
+    } else if (idx === fastestIdx && fastestIdx !== cheapestIdx && fastestWeeks !== Infinity) {
       // Only assign "Fastest" if it's a different template than "Cheapest"
       badge = 'Fastest';
     }
@@ -404,11 +438,8 @@ export function useMarketplaceTemplates(filters?: Partial<MarketplaceFilters>) {
         return mergeBaseline(template, typedRow.id);
       });
       
-      // Assign competitive badges AFTER all templates are transformed
-      // This ensures only one "Cheapest" and one "Fastest" badge across the set
-      templates = assignCompetitiveBadges(templates);
       
-      console.log('[useMarketplaceTemplates] Loaded', templates.length, 'templates with baselines and competitive badges');
+      console.log('[useMarketplaceTemplates] Loaded', templates.length, 'templates with baselines');
 
       // Apply filters
       if (filters) {
@@ -487,6 +518,11 @@ export function useMarketplaceTemplates(filters?: Partial<MarketplaceFilters>) {
           });
         }
       }
+      
+      // Assign competitive badges AFTER filtering and sorting
+      // This ensures badges reflect "cheapest/fastest among visible results"
+      // which is standard marketplace UX (badges change when filters change)
+      templates = assignCompetitiveBadges(templates);
 
       return templates;
     },
