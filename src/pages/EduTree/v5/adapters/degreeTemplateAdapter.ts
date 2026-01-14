@@ -5,6 +5,7 @@ import type {
   CanonicalId 
 } from '../types/templates';
 import type { MarketplaceOption } from '../types/v5';
+import { normalizeOptimization } from '@/types/optimizationTypes';
 
 /**
  * Converts database DegreeTemplate format to MarketplaceDegreeTemplate format
@@ -127,7 +128,7 @@ export function adaptDegreeTemplate(
     
     programId: dbTemplate.program_code,
     anchorSchool: dbTemplate.institution_code,
-    optimization: dbTemplate.track_type,
+    optimization: normalizeOptimization(dbTemplate.track_type),
     
     // Provenance
     catalogYear: new Date().getFullYear().toString(),

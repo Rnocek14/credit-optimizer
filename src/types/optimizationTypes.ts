@@ -27,21 +27,37 @@ export const OPTIMIZATION_LABEL: Record<Optimization, string> = {
 
 /**
  * Map database track_type values to normalized Optimization values
- * Handles legacy 'alt_max' → 'alt-credit' conversion
+ * Handles legacy values, case differences, and underscore/hyphen variants
  */
 export function normalizeOptimization(trackType: string | null | undefined): Optimization {
   if (!trackType) return OPTIMIZATION.STANDARD;
   
-  // Handle legacy/DB values
-  if (trackType === 'alt_max') return OPTIMIZATION.ALT_CREDIT;
-  if (trackType === 'cheapest') return OPTIMIZATION.ALT_CREDIT;
+  // Normalize: trim, lowercase, convert underscores to hyphens
+  const normalized = trackType.trim().toLowerCase().replace(/_/g, '-');
   
-  // Direct match
-  if (Object.values(OPTIMIZATION).includes(trackType as Optimization)) {
-    return trackType as Optimization;
+  // Handle legacy/variant values
+  switch (normalized) {
+    case 'alt-max':
+    case 'altmax':
+    case 'alt-credit':
+    case 'altcredit':
+    case 'cheapest':
+      return OPTIMIZATION.ALT_CREDIT;
+    
+    case 'fastest':
+    case 'time-min':
+    case 'timemin':
+      return OPTIMIZATION.FASTEST;
+    
+    case 'balanced':
+      return OPTIMIZATION.BALANCED;
+    
+    case 'standard':
+    case 'standard-like':
+    case 'standardlike':
+    default:
+      return OPTIMIZATION.STANDARD;
   }
-  
-  return OPTIMIZATION.STANDARD;
 }
 
 /**
