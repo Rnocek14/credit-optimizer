@@ -7,6 +7,7 @@ import { useMemo } from 'react';
 
 interface YearComparisonTableProps {
   template: MarketplaceDegreeTemplate;
+  baselineStatus?: 'verified' | 'estimated' | 'missing';
 }
 
 interface YearTotals {
@@ -68,14 +69,32 @@ function getBaselineLabel(source: string | undefined, anchorSchool: string): str
   return mainPart || `${anchorSchool} Direct`;
 }
 
-export function YearComparisonTable({ template }: YearComparisonTableProps) {
+export function YearComparisonTable({ template, baselineStatus }: YearComparisonTableProps) {
   const baseline = template.singleSchoolBaseline;
   
-  // No baseline at all - can't show comparison
+  // No baseline at all - show appropriate message based on status
   if (!baseline) {
     return (
-      <div className="text-center text-muted-foreground py-8">
-        No comparison data available for this template.
+      <div className="text-center py-8 space-y-2">
+        <div className="text-muted-foreground">
+          {baselineStatus === 'estimated' ? (
+            <>
+              <div className="font-medium">Baseline data estimated</div>
+              <p className="text-sm mt-1">
+                Single-school cost estimates are being calculated. Accuracy ~85%.
+              </p>
+            </>
+          ) : baselineStatus === 'missing' ? (
+            <>
+              <div className="font-medium">Single-school baseline not yet verified</div>
+              <p className="text-sm mt-1">
+                We're working on verifying direct enrollment costs for {template.anchorSchool}.
+              </p>
+            </>
+          ) : (
+            'No comparison data available for this template.'
+          )}
+        </div>
       </div>
     );
   }

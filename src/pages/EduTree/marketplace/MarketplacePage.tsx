@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { TemplateFilters } from './components/TemplateFilters';
 import { TemplateGrid } from './components/TemplateGrid';
@@ -11,7 +11,12 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, GitCompare, Filter, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { toast } from 'sonner';
 import type { MarketplaceFilters } from '@/pages/EduTree/v5/types/templates';
+
+// Debug flag: only log in dev or with ?debug=1
+const isDebug = () =>
+  import.meta.env.DEV || new URLSearchParams(window.location.search).get('debug') === '1';
 
 export default function MarketplacePage() {
   const [searchParams] = useSearchParams();
@@ -40,12 +45,56 @@ export default function MarketplacePage() {
   
   const filteredCount = allTemplates.length - templates.length;
 
+  // Clear stale selections when filtered templates no longer include them
+  useEffect(() => {
+    const visibleIds = new Set(templates.map(t => t.id));
+    const validSelections = selectedTemplates.filter(id => visibleIds.has(id));
+    
+    if (validSelections.length !== selectedTemplates.length) {
+      setSelectedTemplates(validSelections);
+      if (validSelections.length < 2 && showComparison) {
+        setShowComparison(false);
+        toast.info('Comparison cleared: some selected templates are no longer visible');
+      }
+    }
+  }, [templates, selectedTemplates, showComparison]);
+
+  // Debug logging for compare state
+  useEffect(() => {
+    if (isDebug()) {
+      console.log('[MarketplaceCompare] State:', {
+        selectedTemplates,
+        selectedTemplateData: templates.filter(t => selectedTemplates.includes(t.id)).map(t => ({ 
+          id: t.id, 
+          school: t.anchorSchool 
+        })),
+        showComparison,
+        totalTemplates: templates.length,
+      });
+    }
+  }, [selectedTemplates, showComparison, templates]);
+
   const handleToggleSelect = (templateId: string) => {
     setSelectedTemplates(prev => 
       prev.includes(templateId)
         ? prev.filter(id => id !== templateId)
         : [...prev, templateId].slice(0, 3) // Max 3 for comparison
     );
+  };
+
+  // Handler for banner compare button
+  const handleBannerCompareClick = () => {
+    if (selectedTemplates.length >= 2) {
+      // Already have selections, open modal
+      setShowComparison(true);
+    } else if (templates.length >= 2) {
+      // Auto-select top 2 templates and open modal
+      setSelectedTemplates([templates[0].id, templates[1].id]);
+      setShowComparison(true);
+      toast.success('Auto-selected top 2 paths for comparison');
+    } else {
+      toast.info('Need at least 2 degree paths to compare');
+    }
   };
 
   const selectedTemplateData = templates.filter(t => selectedTemplates.includes(t.id));
@@ -105,7 +154,7 @@ export default function MarketplacePage() {
           <main className="lg:col-span-3">
             {/* Multi-School Savings Banner */}
             {!constraints.target_school && (
-              <MultiSchoolSavingsBanner />
+              <MultiSchoolSavingsBanner onCompareClick={handleBannerCompareClick} />
             )}
             
             {/* Filter Status Banner */}
