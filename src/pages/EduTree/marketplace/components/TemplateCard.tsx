@@ -366,7 +366,7 @@ export function TemplateCard({ template, isSelected, onToggleSelect }: TemplateC
               <div className="text-xs text-muted-foreground">Total Cost</div>
             </div>
           </div>
-          <TooltipProvider>
+          <TooltipProvider delayDuration={0}>
             <Tooltip>
               <TooltipTrigger asChild>
                 <div className="flex items-center gap-2 cursor-help">
@@ -379,8 +379,8 @@ export function TemplateCard({ template, isSelected, onToggleSelect }: TemplateC
               </TooltipTrigger>
               <TooltipContent className="max-w-xs">
                 <p className="text-xs">
-                  {template.optimization === 'alt_max' 
-                    ? 'Estimated enrollment time at typical pace. Big cost savings—your timeline depends on how quickly you earn alt credits before enrolling.'
+                  {template.optimization === 'alt-credit' 
+                    ? 'Estimated timeline at typical pace. Big cost savings—total time depends on how quickly you finish alt credits before enrolling.'
                     : 'Estimated time to complete at typical enrollment pace (~15 credits/term).'}
                 </p>
               </TooltipContent>
