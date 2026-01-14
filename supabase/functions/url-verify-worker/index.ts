@@ -1,5 +1,5 @@
 // URL Verification Worker - Firecrawl-based link integrity system
-// Implements 3-tier verification with confidence gating
+// Implements 3-tier verification with confidence gating and strict guardrails
 import { serve } from 'https://deno.land/std@0.224.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1';
 
@@ -14,12 +14,51 @@ const AUTO_FIX_THRESHOLD = 0.95; // Only auto-fix when very high confidence
 const REVIEW_THRESHOLD = 0.70;   // Queue for review if moderate confidence
 const MIN_TITLE_SIMILARITY = 0.85; // Title must be highly similar
 
-// Provider domain mappings for validation
-const PROVIDER_DOMAINS: Record<string, string[]> = {
+// Provider domain mappings - canonical search domains (no www)
+const PROVIDER_SEARCH_DOMAINS: Record<string, string> = {
+  'CLEP': 'clep.collegeboard.org',
+  'SOPHIA': 'sophia.org',
+  'STUDY_COM': 'study.com',
+  'DSST': 'getcollegecredit.com',
+};
+
+// Valid domains for each provider (for validation)
+const PROVIDER_VALID_DOMAINS: Record<string, string[]> = {
   'CLEP': ['clep.collegeboard.org', 'collegeboard.org'],
-  'SOPHIA': ['sophia.org', 'www.sophia.org'],
-  'STUDY_COM': ['study.com', 'www.study.com'],
+  'SOPHIA': ['sophia.org'],
+  'STUDY_COM': ['study.com'],
   'DSST': ['getcollegecredit.com', 'dantes.doded.mil'],
+};
+
+// Provider-specific URL patterns that indicate a course page (not listing)
+const PROVIDER_COURSE_PATTERNS: Record<string, RegExp[]> = {
+  'SOPHIA': [
+    /\/online-courses\/[^/]+\/[^/]+$/, // /online-courses/category/course-slug
+    /\/online-courses\/[^/]+$/,         // /online-courses/course-slug (legacy)
+  ],
+  'STUDY_COM': [
+    /\/academy\/course\/[^/]+\.html$/,  // /academy/course/course-name.html
+    /\/academy\/lesson\/[^/]+\.html$/,  // lesson pages
+  ],
+  'CLEP': [
+    /\/clep-exams\/[^/]+$/,             // /clep-exams/exam-name
+  ],
+};
+
+// Provider-specific deny patterns (definitely not a course page)
+const PROVIDER_DENY_PATTERNS: Record<string, RegExp[]> = {
+  'SOPHIA': [
+    /\/online-courses\/?$/,              // Just the courses listing
+    /\/online-courses\/[^/]+\/?$/,       // Category page without course
+  ],
+  'STUDY_COM': [
+    /\/academy\/search/,
+    /\/academy\/courses\/?$/,
+    /\/academy\/topic\//,
+  ],
+  'CLEP': [
+    /\/clep-exams\/?$/,                  // Just the exams listing
+  ],
 };
 
 interface VerifyRequest {
@@ -61,6 +100,15 @@ interface VerifyResult {
   reason: string;
 }
 
+// Normalize text for comparison (lowercase, remove punctuation, collapse whitespace)
+function normalizeText(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/[^\w\s]/g, ' ')  // Remove punctuation
+    .replace(/\s+/g, ' ')       // Collapse whitespace
+    .trim();
+}
+
 // Levenshtein distance for title similarity
 function levenshteinDistance(a: string, b: string): number {
   const matrix: number[][] = [];
@@ -87,8 +135,8 @@ function levenshteinDistance(a: string, b: string): number {
 }
 
 function calculateTitleSimilarity(title1: string, title2: string): number {
-  const a = title1.toLowerCase().trim();
-  const b = title2.toLowerCase().trim();
+  const a = normalizeText(title1);
+  const b = normalizeText(title2);
   if (a === b) return 1.0;
   const maxLen = Math.max(a.length, b.length);
   if (maxLen === 0) return 1.0;
@@ -96,19 +144,47 @@ function calculateTitleSimilarity(title1: string, title2: string): number {
   return 1 - distance / maxLen;
 }
 
-function extractDomain(url: string): string {
+// Check if normalized full title appears in content
+function contentContainsFullTitle(content: string, title: string): boolean {
+  const normalizedContent = normalizeText(content);
+  const normalizedTitle = normalizeText(title);
+  return normalizedContent.includes(normalizedTitle);
+}
+
+function extractHostname(url: string): string {
   try {
     const parsed = new URL(url);
-    return parsed.hostname.replace('www.', '');
+    return parsed.hostname.toLowerCase().replace(/^www\./, '');
   } catch {
     return '';
   }
 }
 
+// FIXED: Proper domain suffix check (not includes)
 function isValidProviderDomain(url: string, sourceCode: string): boolean {
-  const domain = extractDomain(url);
-  const validDomains = PROVIDER_DOMAINS[sourceCode] || [];
-  return validDomains.some(d => domain.includes(d.replace('www.', '')));
+  const hostname = extractHostname(url);
+  if (!hostname) return false;
+  
+  const validDomains = PROVIDER_VALID_DOMAINS[sourceCode] || [];
+  
+  return validDomains.some(d => {
+    const normalizedDomain = d.toLowerCase().replace(/^www\./, '');
+    // Must be exact match or proper subdomain
+    return hostname === normalizedDomain || hostname.endsWith('.' + normalizedDomain);
+  });
+}
+
+// Check provider-specific URL patterns
+function matchesProviderCoursePattern(url: string, sourceCode: string): boolean {
+  const patterns = PROVIDER_COURSE_PATTERNS[sourceCode];
+  if (!patterns) return true; // No patterns defined = allow
+  return patterns.some(p => p.test(url));
+}
+
+function matchesProviderDenyPattern(url: string, sourceCode: string): boolean {
+  const patterns = PROVIDER_DENY_PATTERNS[sourceCode];
+  if (!patterns) return false;
+  return patterns.some(p => p.test(url));
 }
 
 function isGenericListingPage(url: string, content?: string): boolean {
@@ -117,20 +193,14 @@ function isGenericListingPage(url: string, content?: string): boolean {
     '/search',
     '/browse',
     '/catalog',
-    '/courses$', // Just /courses without specific course
-    '/all-courses',
-    '/online-courses$',
     '?q=',
     '?search=',
+    '?query=',
   ];
   
   const lowerUrl = url.toLowerCase();
   for (const pattern of genericPatterns) {
-    if (pattern.endsWith('$')) {
-      if (lowerUrl.endsWith(pattern.slice(0, -1))) return true;
-    } else if (lowerUrl.includes(pattern)) {
-      return true;
-    }
+    if (lowerUrl.includes(pattern)) return true;
   }
   
   // If we have content, check for listing page indicators
@@ -139,8 +209,9 @@ function isGenericListingPage(url: string, content?: string): boolean {
       'showing results for',
       'search results',
       'browse all courses',
-      'filter by',
-      'sort by',
+      'filter by category',
+      'sort by popularity',
+      'results found',
     ];
     const lowerContent = content.toLowerCase();
     for (const indicator of listingIndicators) {
@@ -151,7 +222,13 @@ function isGenericListingPage(url: string, content?: string): boolean {
   return false;
 }
 
-async function firecrawlScrape(url: string, apiKey: string): Promise<{ success: boolean; statusCode?: number; markdown?: string; title?: string; error?: string }> {
+async function firecrawlScrape(url: string, apiKey: string): Promise<{ 
+  success: boolean; 
+  statusCode?: number; 
+  markdown?: string; 
+  title?: string; 
+  error?: string 
+}> {
   try {
     const response = await fetch('https://api.firecrawl.dev/v1/scrape', {
       method: 'POST',
@@ -196,7 +273,15 @@ async function firecrawlScrape(url: string, apiKey: string): Promise<{ success: 
   }
 }
 
-async function firecrawlSearch(query: string, apiKey: string, limit = 5): Promise<{ success: boolean; results?: Array<{ url: string; title: string; description: string }>; error?: string }> {
+async function firecrawlSearch(
+  query: string, 
+  apiKey: string, 
+  limit = 5
+): Promise<{ 
+  success: boolean; 
+  results?: Array<{ url: string; title: string; description: string }>; 
+  error?: string 
+}> {
   try {
     const response = await fetch('https://api.firecrawl.dev/v1/search', {
       method: 'POST',
@@ -238,43 +323,55 @@ function scoreSearchCandidate(
   if (!isValidProviderDomain(result.url, sourceCode)) {
     return { ...result, confidence: 0, reasons: ['Domain does not match provider'] };
   }
-  reasons.push('Domain matches provider');
-  score += 0.3;
+  reasons.push('✓ Domain matches provider');
+  score += 0.25;
   
-  // 2. Check if it's a generic listing page (disqualifying)
+  // 2. Check provider-specific deny patterns (disqualifying)
+  if (matchesProviderDenyPattern(result.url, sourceCode)) {
+    return { ...result, confidence: 0, reasons: ['URL matches provider deny pattern (listing page)'] };
+  }
+  
+  // 3. Check if it's a generic listing page (disqualifying)
   if (isGenericListingPage(result.url)) {
     return { ...result, confidence: 0, reasons: ['URL appears to be a generic listing page'] };
   }
-  reasons.push('Not a listing page');
+  reasons.push('✓ Not a listing page');
   score += 0.1;
   
-  // 3. Title similarity (critical)
+  // 4. Provider-specific course pattern bonus
+  if (matchesProviderCoursePattern(result.url, sourceCode)) {
+    reasons.push('✓ URL matches provider course pattern');
+    score += 0.1;
+  }
+  
+  // 5. Title similarity (critical) - using normalized full title
   const titleSim = calculateTitleSimilarity(courseTitle, result.title);
   if (titleSim >= 0.95) {
-    reasons.push(`Title exact/near-exact match (${(titleSim * 100).toFixed(0)}%)`);
-    score += 0.4;
+    reasons.push(`✓ Title exact match (${(titleSim * 100).toFixed(0)}%)`);
+    score += 0.35;
   } else if (titleSim >= MIN_TITLE_SIMILARITY) {
-    reasons.push(`Title similar (${(titleSim * 100).toFixed(0)}%)`);
+    reasons.push(`✓ Title similar (${(titleSim * 100).toFixed(0)}%)`);
     score += 0.25;
+  } else if (titleSim >= 0.7) {
+    reasons.push(`⚠ Title partially matches (${(titleSim * 100).toFixed(0)}%)`);
+    score += 0.1;
   } else {
-    reasons.push(`Title similarity too low (${(titleSim * 100).toFixed(0)}%)`);
-    // Don't add score, but don't disqualify
+    reasons.push(`✗ Title similarity too low (${(titleSim * 100).toFixed(0)}%)`);
+    // No score added, likely to fail threshold
   }
   
-  // 4. Description contains course title
-  const descLower = (result.description || '').toLowerCase();
-  const titleLower = courseTitle.toLowerCase();
-  if (descLower.includes(titleLower)) {
-    reasons.push('Description contains course title');
-    score += 0.2;
+  // 6. Description contains full normalized course title
+  if (contentContainsFullTitle(result.description || '', courseTitle)) {
+    reasons.push('✓ Description contains full course title');
+    score += 0.15;
   }
   
-  // 5. URL slug contains key words from title
+  // 7. URL slug contains key words from title (at least 2 significant words)
   const urlLower = result.url.toLowerCase();
-  const titleWords = titleLower.split(/\s+/).filter(w => w.length > 3);
+  const titleWords = normalizeText(courseTitle).split(/\s+/).filter(w => w.length > 3);
   const matchingWords = titleWords.filter(w => urlLower.includes(w));
-  if (matchingWords.length >= 2 || matchingWords.length === titleWords.length) {
-    reasons.push(`URL contains title keywords: ${matchingWords.join(', ')}`);
+  if (matchingWords.length >= 2 || (titleWords.length > 0 && matchingWords.length === titleWords.length)) {
+    reasons.push(`✓ URL contains title keywords: ${matchingWords.join(', ')}`);
     score += 0.1;
   }
   
@@ -304,7 +401,8 @@ async function verifyAndFixUrl(
       .update({
         url_status: 'invalid',
         url_checked_at: new Date().toISOString(),
-        url_notes: JSON.stringify({ error: 'No URL provided' }),
+        verification_method: 'no_url',
+        url_notes: 'No URL provided',
       })
       .eq('id', id);
     
@@ -320,13 +418,14 @@ async function verifyAndFixUrl(
   const scrapeResult = await firecrawlScrape(provider_url, apiKey);
   
   if (scrapeResult.success) {
-    // Additional check: verify page content contains course title
     const markdown = scrapeResult.markdown || '';
     const pageTitle = scrapeResult.title || '';
-    const titleInContent = markdown.toLowerCase().includes(title.toLowerCase());
-    const titleInPageTitle = calculateTitleSimilarity(title, pageTitle) >= 0.7;
     
-    if (titleInContent || titleInPageTitle) {
+    // FIXED: Check for FULL normalized title in content (not just first word)
+    const fullTitleInContent = contentContainsFullTitle(markdown, title);
+    const titleSimilarToPageTitle = calculateTitleSimilarity(title, pageTitle) >= 0.85;
+    
+    if (fullTitleInContent || titleSimilarToPageTitle) {
       // URL works and content matches - mark as valid
       await supabase
         .from('alt_credits')
@@ -334,11 +433,10 @@ async function verifyAndFixUrl(
           url_status: 'valid',
           url_http_status: 200,
           url_checked_at: new Date().toISOString(),
-          url_notes: JSON.stringify({ 
-            verification_method: 'scrape_verified',
-            page_title: pageTitle,
-            content_match: titleInContent,
-          }),
+          verification_method: 'scrape_verified',
+          verified_by: 'worker',
+          confidence_score: 1.0,
+          url_notes: `Page title: "${pageTitle.slice(0, 100)}"`,
         })
         .eq('id', id);
       
@@ -350,16 +448,18 @@ async function verifyAndFixUrl(
         reason: 'URL verified via scrape with content match',
       };
     } else {
-      // URL loads but content doesn't match - suspicious, queue for review
+      // URL loads but content doesn't match - queue for review
       console.log(`[url-verify-worker] URL loads but content mismatch: ${provider_url}`);
+      console.log(`[url-verify-worker] Expected: "${title}", Got page title: "${pageTitle}"`);
     }
   }
   
   // TIER B: URL failed or content mismatch - search for correct URL
   console.log(`[url-verify-worker] Searching for correct URL for: ${title}`);
   
-  const providerDomain = PROVIDER_DOMAINS[source_code]?.[0] || '';
-  const searchQuery = `"${title}" site:${providerDomain}`;
+  // FIXED: Use canonical search domain (no www)
+  const searchDomain = PROVIDER_SEARCH_DOMAINS[source_code] || '';
+  const searchQuery = `"${title}" site:${searchDomain}`;
   const searchResult = await firecrawlSearch(searchQuery, apiKey, 5);
   
   if (!searchResult.success || !searchResult.results?.length) {
@@ -370,10 +470,8 @@ async function verifyAndFixUrl(
         url_status: 'invalid',
         url_http_status: scrapeResult.statusCode || 404,
         url_checked_at: new Date().toISOString(),
-        url_notes: JSON.stringify({ 
-          error: 'Original URL failed and no alternatives found',
-          scrape_error: scrapeResult.error,
-        }),
+        verification_method: 'search_no_results',
+        url_notes: `Original URL failed (${scrapeResult.error}), no alternatives found`,
       })
       .eq('id', id);
     
@@ -399,10 +497,8 @@ async function verifyAndFixUrl(
         url_status: 'invalid',
         url_http_status: 404,
         url_checked_at: new Date().toISOString(),
-        url_notes: JSON.stringify({ 
-          error: 'No valid candidates found from search',
-          raw_results: searchResult.results.length,
-        }),
+        verification_method: 'search_no_valid_candidates',
+        url_notes: `${searchResult.results.length} results found but none passed validation`,
       })
       .eq('id', id);
     
@@ -416,15 +512,23 @@ async function verifyAndFixUrl(
   
   const bestCandidate = candidates[0];
   
-  // TIER B1: High confidence - auto-fix
+  // TIER B1: High confidence - attempt auto-fix with STRICT verification
   if (bestCandidate.confidence >= AUTO_FIX_THRESHOLD) {
-    // Before auto-fixing, verify the new URL actually works
+    // Before auto-fixing, verify the new URL actually works AND contains full title
     const verifyNewUrl = await firecrawlScrape(bestCandidate.url, apiKey);
     
     if (verifyNewUrl.success) {
-      // Double-check content contains title
-      const markdown = verifyNewUrl.markdown || '';
-      if (markdown.toLowerCase().includes(title.toLowerCase().split(' ')[0])) {
+      const newMarkdown = verifyNewUrl.markdown || '';
+      const newPageTitle = verifyNewUrl.title || '';
+      
+      // CRITICAL: Require FULL normalized title in content (not just first word)
+      const fullTitleInNewContent = contentContainsFullTitle(newMarkdown, title);
+      const pageTitleMatches = calculateTitleSimilarity(title, newPageTitle) >= 0.90;
+      
+      // Also verify it's not a listing page based on content
+      const isListing = isGenericListingPage(bestCandidate.url, newMarkdown);
+      
+      if ((fullTitleInNewContent || pageTitleMatches) && !isListing) {
         await supabase
           .from('alt_credits')
           .update({
@@ -432,13 +536,11 @@ async function verifyAndFixUrl(
             url_status: 'valid',
             url_http_status: 200,
             url_checked_at: new Date().toISOString(),
-            url_notes: JSON.stringify({ 
-              verification_method: 'search_auto_fix',
-              original_url: provider_url,
-              confidence: bestCandidate.confidence,
-              reasons: bestCandidate.reasons,
-              verified_by: 'worker',
-            }),
+            verification_method: 'search_auto_fix',
+            verified_by: 'worker',
+            confidence_score: bestCandidate.confidence,
+            suggested_urls: candidates.slice(0, 3),
+            url_notes: `Auto-fixed from "${provider_url}". Reasons: ${bestCandidate.reasons.join('; ')}`,
           })
           .eq('id', id);
         
@@ -450,11 +552,14 @@ async function verifyAndFixUrl(
           confidence: bestCandidate.confidence,
           reason: `Auto-fixed with ${(bestCandidate.confidence * 100).toFixed(0)}% confidence`,
         };
+      } else {
+        console.log(`[url-verify-worker] Auto-fix blocked: content verification failed for ${bestCandidate.url}`);
+        console.log(`[url-verify-worker] Full title in content: ${fullTitleInNewContent}, Page title matches: ${pageTitleMatches}, Is listing: ${isListing}`);
       }
     }
     
-    // New URL verification failed - queue for review instead
-    bestCandidate.confidence = Math.min(bestCandidate.confidence, REVIEW_THRESHOLD + 0.1);
+    // New URL verification failed - demote to review queue
+    bestCandidate.confidence = Math.min(bestCandidate.confidence, REVIEW_THRESHOLD + 0.15);
   }
   
   // TIER B2: Moderate confidence - queue for review
@@ -465,16 +570,10 @@ async function verifyAndFixUrl(
         url_status: 'needs_review',
         url_http_status: scrapeResult.statusCode || 404,
         url_checked_at: new Date().toISOString(),
-        url_notes: JSON.stringify({ 
-          verification_method: 'search_needs_review',
-          original_url: provider_url,
-          suggested_urls: candidates.slice(0, 3).map(c => ({
-            url: c.url,
-            title: c.title,
-            confidence: c.confidence,
-            reasons: c.reasons,
-          })),
-        }),
+        verification_method: 'search_needs_review',
+        confidence_score: bestCandidate.confidence,
+        suggested_urls: candidates.slice(0, 3),
+        url_notes: `Best match: ${bestCandidate.url} (${(bestCandidate.confidence * 100).toFixed(0)}%)`,
       })
       .eq('id', id);
     
@@ -495,11 +594,10 @@ async function verifyAndFixUrl(
       url_status: 'invalid',
       url_http_status: 404,
       url_checked_at: new Date().toISOString(),
-      url_notes: JSON.stringify({ 
-        error: 'No high-confidence match found',
-        best_confidence: bestCandidate.confidence,
-        candidates_found: candidates.length,
-      }),
+      verification_method: 'search_low_confidence',
+      confidence_score: bestCandidate.confidence,
+      suggested_urls: candidates.slice(0, 3),
+      url_notes: `Best confidence only ${(bestCandidate.confidence * 100).toFixed(0)}% - below ${(REVIEW_THRESHOLD * 100).toFixed(0)}% threshold`,
     })
     .eq('id', id);
   
@@ -508,7 +606,8 @@ async function verifyAndFixUrl(
     original_url: provider_url,
     action: 'invalid',
     confidence: bestCandidate.confidence,
-    reason: `Best candidate only ${(bestCandidate.confidence * 100).toFixed(0)}% confidence - below threshold`,
+    suggested_urls: candidates.slice(0, 3),
+    reason: `Best match only ${(bestCandidate.confidence * 100).toFixed(0)}% confidence - below review threshold`,
   };
 }
 
@@ -518,7 +617,7 @@ serve(async (req) => {
   }
 
   try {
-    const supabase = createClient(
+    const supabase: any = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
       { auth: { persistSession: false } },
@@ -528,53 +627,51 @@ serve(async (req) => {
     if (!apiKey) {
       return new Response(
         JSON.stringify({ success: false, error: 'FIRECRAWL_API_KEY not configured' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 },
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
       );
     }
+
+    const body: VerifyRequest = await req.json().catch(() => ({}));
     
-    const body: VerifyRequest = req.method === 'POST' ? await req.json() : {};
+    console.log('[url-verify-worker] Request:', JSON.stringify(body));
     
-    console.log('[url-verify-worker] Starting verification with params:', body);
-    
-    // Build query based on request parameters
-    let query = supabase
-      .from('alt_credits')
-      .select('id, source_code, identifier, title, provider_url, url_status, url_checked_at');
+    // Build query based on request
+    let query = supabase.from('alt_credits').select('*');
     
     if (body.id) {
-      // Single record verification
       query = query.eq('id', body.id);
     } else if (body.source_code) {
-      // Provider-specific verification
-      query = query
-        .eq('source_code', body.source_code)
-        .or('url_status.is.null,url_status.eq.unknown');
+      query = query.eq('source_code', body.source_code);
+      if (!body.recheck_valid) {
+        query = query.or('url_status.is.null,url_status.eq.unknown');
+      }
     } else if (body.recheck_valid) {
-      // Re-verify old valid URLs
       const daysAgo = body.recheck_days || 30;
-      const cutoffDate = new Date();
-      cutoffDate.setDate(cutoffDate.getDate() - daysAgo);
-      
+      const cutoff = new Date();
+      cutoff.setDate(cutoff.getDate() - daysAgo);
       query = query
         .eq('url_status', 'valid')
-        .lt('url_checked_at', cutoffDate.toISOString());
+        .lt('url_checked_at', cutoff.toISOString());
     } else if (body.all) {
-      // All unknown URLs
       query = query.or('url_status.is.null,url_status.eq.unknown');
     } else {
       return new Response(
         JSON.stringify({ 
           success: false, 
-          error: 'Must specify: id, source_code, all, or recheck_valid' 
+          error: 'Must specify source_code, id, all, or recheck_valid' 
         }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 },
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
       );
     }
     
     const { data: records, error: fetchError } = await query;
     
     if (fetchError) {
-      throw new Error(`Failed to fetch records: ${fetchError.message}`);
+      console.error('[url-verify-worker] Fetch error:', fetchError);
+      return new Response(
+        JSON.stringify({ success: false, error: fetchError.message }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+      );
     }
     
     if (!records || records.length === 0) {
@@ -582,36 +679,42 @@ serve(async (req) => {
         JSON.stringify({ 
           success: true, 
           message: 'No records to verify',
-          stats: { total: 0, valid: 0, auto_fixed: 0, needs_review: 0, invalid: 0 },
+          verified: 0,
         }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
     
-    console.log(`[url-verify-worker] Found ${records.length} records to verify`);
+    console.log(`[url-verify-worker] Verifying ${records.length} records...`);
     
     const results: VerifyResult[] = [];
-    const stats = { total: records.length, valid: 0, auto_fixed: 0, needs_review: 0, invalid: 0 };
+    const summary = {
+      valid: 0,
+      auto_fixed: 0,
+      needs_review: 0,
+      invalid: 0,
+    };
     
-    // Process records sequentially to avoid rate limits
+    // Process records sequentially to respect rate limits
     for (const record of records) {
-      const result = await verifyAndFixUrl(record as AltCredit, apiKey, supabase);
+      const result = await verifyAndFixUrl(record, apiKey, supabase);
       results.push(result);
-      stats[result.action]++;
+      summary[result.action]++;
       
-      // Small delay between requests to respect rate limits
+      // Small delay between requests to avoid rate limiting
       await new Promise(resolve => setTimeout(resolve, 500));
     }
     
-    console.log('[url-verify-worker] Verification complete:', stats);
+    console.log('[url-verify-worker] Verification complete:', summary);
     
     return new Response(
       JSON.stringify({
         success: true,
-        stats,
+        verified: records.length,
+        summary,
         results,
       }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
     
   } catch (err) {
@@ -621,7 +724,7 @@ serve(async (req) => {
         success: false,
         error: err instanceof Error ? err.message : 'Unknown error',
       }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 },
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
     );
   }
 });

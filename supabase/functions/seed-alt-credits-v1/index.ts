@@ -1,4 +1,5 @@
 // Alt-Credits Catalog Seeder V1 - CLEP, Sophia, Study.com
+// CRITICAL: Never overwrites provider_url when url_status is 'valid'
 import { serve } from 'https://deno.land/std@0.224.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1';
 
@@ -14,17 +15,22 @@ interface AltCredit {
   title: string;
   description?: string;
   credits_typical: number;
-  level?: number; // 100, 200, 300, 400
+  level?: number;
   subject_area?: string;
   cost_usd?: number;
   duration_estimate_weeks?: number;
   exam_based?: boolean;
   provider_url?: string;
+  // New fields for verification status
+  url_status?: string;
+  verification_method?: string;
 }
 
 // V1 Catalog - High-value BSBA-focused items
+// URLs are seeded as 'unknown' - verification worker will validate them
 const ALT_CREDITS_CATALOG: AltCredit[] = [
   // === CLEP Exams (exam-based, proctored) ===
+  // CLEP URLs are stable and well-structured
   {
     source_code: 'CLEP',
     identifier: 'college-composition',
@@ -147,6 +153,8 @@ const ALT_CREDITS_CATALOG: AltCredit[] = [
   },
 
   // === Sophia Learning (self-paced, no proctoring) ===
+  // NOTE: Sophia URLs need verification - structure may include category prefix
+  // These are seeded with url_status='unknown' and will be verified by worker
   {
     source_code: 'SOPHIA',
     identifier: 'english-comp-1',
@@ -155,10 +163,12 @@ const ALT_CREDITS_CATALOG: AltCredit[] = [
     credits_typical: 3,
     level: 100,
     subject_area: 'WRITTEN_COMM',
-    cost_usd: 99, // monthly subscription
+    cost_usd: 99,
     duration_estimate_weeks: 4,
     exam_based: false,
+    // URL may be: /english-and-communication/english-composition-i
     provider_url: 'https://www.sophia.org/online-courses/english-composition-i',
+    url_status: 'unknown',
   },
   {
     source_code: 'SOPHIA',
@@ -172,6 +182,7 @@ const ALT_CREDITS_CATALOG: AltCredit[] = [
     duration_estimate_weeks: 4,
     exam_based: false,
     provider_url: 'https://www.sophia.org/online-courses/english-composition-ii',
+    url_status: 'unknown',
   },
   {
     source_code: 'SOPHIA',
@@ -185,6 +196,7 @@ const ALT_CREDITS_CATALOG: AltCredit[] = [
     duration_estimate_weeks: 6,
     exam_based: false,
     provider_url: 'https://www.sophia.org/online-courses/introduction-to-statistics',
+    url_status: 'unknown',
   },
   {
     source_code: 'SOPHIA',
@@ -198,6 +210,7 @@ const ALT_CREDITS_CATALOG: AltCredit[] = [
     duration_estimate_weeks: 5,
     exam_based: false,
     provider_url: 'https://www.sophia.org/online-courses/microeconomics',
+    url_status: 'unknown',
   },
   {
     source_code: 'SOPHIA',
@@ -211,6 +224,7 @@ const ALT_CREDITS_CATALOG: AltCredit[] = [
     duration_estimate_weeks: 5,
     exam_based: false,
     provider_url: 'https://www.sophia.org/online-courses/macroeconomics',
+    url_status: 'unknown',
   },
   {
     source_code: 'SOPHIA',
@@ -224,6 +238,7 @@ const ALT_CREDITS_CATALOG: AltCredit[] = [
     duration_estimate_weeks: 6,
     exam_based: false,
     provider_url: 'https://www.sophia.org/online-courses/accounting-i',
+    url_status: 'unknown',
   },
   {
     source_code: 'SOPHIA',
@@ -237,6 +252,7 @@ const ALT_CREDITS_CATALOG: AltCredit[] = [
     duration_estimate_weeks: 6,
     exam_based: false,
     provider_url: 'https://www.sophia.org/online-courses/accounting-ii',
+    url_status: 'unknown',
   },
   {
     source_code: 'SOPHIA',
@@ -250,6 +266,7 @@ const ALT_CREDITS_CATALOG: AltCredit[] = [
     duration_estimate_weeks: 5,
     exam_based: false,
     provider_url: 'https://www.sophia.org/online-courses/business-law',
+    url_status: 'unknown',
   },
   {
     source_code: 'SOPHIA',
@@ -263,6 +280,7 @@ const ALT_CREDITS_CATALOG: AltCredit[] = [
     duration_estimate_weeks: 4,
     exam_based: false,
     provider_url: 'https://www.sophia.org/online-courses/introduction-to-business',
+    url_status: 'unknown',
   },
   {
     source_code: 'SOPHIA',
@@ -276,9 +294,11 @@ const ALT_CREDITS_CATALOG: AltCredit[] = [
     duration_estimate_weeks: 4,
     exam_based: false,
     provider_url: 'https://www.sophia.org/online-courses/public-speaking',
+    url_status: 'unknown',
   },
 
   // === Study.com (video-based, proctored exams) ===
+  // NOTE: Study.com URLs can change - always verify before displaying
   {
     source_code: 'STUDY_COM',
     identifier: 'english-comp-1',
@@ -287,10 +307,11 @@ const ALT_CREDITS_CATALOG: AltCredit[] = [
     credits_typical: 3,
     level: 100,
     subject_area: 'WRITTEN_COMM',
-    cost_usd: 199, // monthly subscription + exam fee
+    cost_usd: 199,
     duration_estimate_weeks: 4,
     exam_based: true,
     provider_url: 'https://study.com/academy/course/english-composition-i.html',
+    url_status: 'unknown',
   },
   {
     source_code: 'STUDY_COM',
@@ -304,6 +325,7 @@ const ALT_CREDITS_CATALOG: AltCredit[] = [
     duration_estimate_weeks: 5,
     exam_based: true,
     provider_url: 'https://study.com/academy/course/college-algebra.html',
+    url_status: 'unknown',
   },
   {
     source_code: 'STUDY_COM',
@@ -317,6 +339,7 @@ const ALT_CREDITS_CATALOG: AltCredit[] = [
     duration_estimate_weeks: 4,
     exam_based: true,
     provider_url: 'https://study.com/academy/course/intro-to-business.html',
+    url_status: 'unknown',
   },
   {
     source_code: 'STUDY_COM',
@@ -330,6 +353,7 @@ const ALT_CREDITS_CATALOG: AltCredit[] = [
     duration_estimate_weeks: 6,
     exam_based: true,
     provider_url: 'https://study.com/academy/course/financial-accounting.html',
+    url_status: 'unknown',
   },
   {
     source_code: 'STUDY_COM',
@@ -343,6 +367,7 @@ const ALT_CREDITS_CATALOG: AltCredit[] = [
     duration_estimate_weeks: 5,
     exam_based: true,
     provider_url: 'https://study.com/academy/course/principles-of-microeconomics.html',
+    url_status: 'unknown',
   },
   {
     source_code: 'STUDY_COM',
@@ -356,6 +381,7 @@ const ALT_CREDITS_CATALOG: AltCredit[] = [
     duration_estimate_weeks: 5,
     exam_based: true,
     provider_url: 'https://study.com/academy/course/principles-of-macroeconomics.html',
+    url_status: 'unknown',
   },
 ];
 
@@ -375,37 +401,101 @@ serve(async (req) => {
     console.log(`[seed-alt-credits-v1] Total items to seed: ${ALT_CREDITS_CATALOG.length}`);
 
     const results = {
-      upserted: 0, // Honest counter - we can't distinguish insert vs update
+      inserted: 0,
+      skipped_valid: 0, // Skipped because already valid
+      updated: 0,
       errors: [] as string[],
     };
 
     for (const item of ALT_CREDITS_CATALOG) {
-      const { error } = await supabase
+      // CRITICAL: Check if record exists and has valid URL status
+      const { data: existing } = await supabase
         .from('alt_credits')
-        .upsert(item, { onConflict: 'source_code,identifier' });
+        .select('id, url_status, provider_url')
+        .eq('source_code', item.source_code)
+        .eq('identifier', item.identifier)
+        .single();
 
-      if (error) {
-        console.error(`[seed-alt-credits-v1] Error upserting ${item.source_code}/${item.identifier}:`, error);
-        results.errors.push(`${item.source_code}/${item.identifier}: ${error.message}`);
+      if (existing) {
+        // Record exists - check if we should skip or update
+        if (existing.url_status === 'valid') {
+          // NEVER overwrite a validated URL
+          console.log(`[seed-alt-credits-v1] ⏭️ Skipping ${item.source_code}/${item.identifier} - already valid`);
+          results.skipped_valid++;
+          continue;
+        }
+
+        // Update non-URL fields only, preserve existing URL if different from seed
+        // Only update URL if currently null/empty or status is 'invalid'/'unknown'
+        const updateData: Record<string, unknown> = {
+          title: item.title,
+          description: item.description,
+          credits_typical: item.credits_typical,
+          level: item.level,
+          subject_area: item.subject_area,
+          cost_usd: item.cost_usd,
+          duration_estimate_weeks: item.duration_estimate_weeks,
+          exam_based: item.exam_based,
+        };
+
+        // Only update URL if there's no existing URL or status allows it
+        if (!existing.provider_url || existing.url_status === 'invalid' || existing.url_status === 'unknown' || !existing.url_status) {
+          updateData.provider_url = item.provider_url;
+          updateData.url_status = item.url_status || 'unknown';
+        }
+
+        const { error } = await supabase
+          .from('alt_credits')
+          .update(updateData)
+          .eq('id', existing.id);
+
+        if (error) {
+          console.error(`[seed-alt-credits-v1] Error updating ${item.source_code}/${item.identifier}:`, error);
+          results.errors.push(`${item.source_code}/${item.identifier}: ${error.message}`);
+        } else {
+          results.updated++;
+          console.log(`[seed-alt-credits-v1] 🔄 Updated ${item.source_code}/${item.identifier}`);
+        }
       } else {
-        results.upserted++;
-        console.log(`[seed-alt-credits-v1] ✅ ${item.source_code}/${item.identifier}`);
+        // New record - insert with initial url_status
+        const { error } = await supabase
+          .from('alt_credits')
+          .insert({
+            ...item,
+            url_status: item.url_status || 'unknown',
+          });
+
+        if (error) {
+          console.error(`[seed-alt-credits-v1] Error inserting ${item.source_code}/${item.identifier}:`, error);
+          results.errors.push(`${item.source_code}/${item.identifier}: ${error.message}`);
+        } else {
+          results.inserted++;
+          console.log(`[seed-alt-credits-v1] ✅ Inserted ${item.source_code}/${item.identifier}`);
+        }
       }
     }
 
     // Get summary by source
     const { data: summary } = await supabase
       .from('alt_credits')
-      .select('source_code')
+      .select('source_code, url_status')
       .then(({ data }) => {
-        const counts: Record<string, number> = {};
-        (data || []).forEach((row: { source_code: string }) => {
-          counts[row.source_code] = (counts[row.source_code] || 0) + 1;
+        const counts: Record<string, { total: number; valid: number; unknown: number; needs_review: number; invalid: number }> = {};
+        (data || []).forEach((row: { source_code: string; url_status: string | null }) => {
+          if (!counts[row.source_code]) {
+            counts[row.source_code] = { total: 0, valid: 0, unknown: 0, needs_review: 0, invalid: 0 };
+          }
+          counts[row.source_code].total++;
+          const status = row.url_status || 'unknown';
+          if (status in counts[row.source_code]) {
+            counts[row.source_code][status as keyof typeof counts[string]]++;
+          }
         });
         return { data: counts };
       });
 
-    console.log(`[seed-alt-credits-v1] ✅ Complete. Upserted: ${results.upserted}`);
+    console.log(`[seed-alt-credits-v1] ✅ Complete.`);
+    console.log(`[seed-alt-credits-v1] Inserted: ${results.inserted}, Updated: ${results.updated}, Skipped (valid): ${results.skipped_valid}`);
 
     return new Response(
       JSON.stringify({
@@ -413,6 +503,7 @@ serve(async (req) => {
         jobName: 'seed-alt-credits-v1',
         results,
         summary,
+        message: `Seeded ${results.inserted} new, updated ${results.updated}, skipped ${results.skipped_valid} valid URLs`,
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
     );
