@@ -68,3 +68,13 @@ verify_jwt = false
 # Cron runner - requires secret header for security
 [functions.template-generation-cron]
 verify_jwt = false
+
+# URL Verification System
+[functions.url-verify-worker]
+verify_jwt = false
+
+[functions.firecrawl-scrape]
+verify_jwt = false
+
+[functions.firecrawl-search]
+verify_jwt = false
