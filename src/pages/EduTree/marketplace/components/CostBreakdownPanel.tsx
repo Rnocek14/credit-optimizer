@@ -116,12 +116,14 @@ export function CostBreakdownPanel({ template, className }: CostBreakdownPanelPr
     
     // Alt-credit providers - use friendly name when available
     optimizedBreakdown.byProvider.forEach(({ provider, credits, cost }) => {
-      const provenance = template.providerPricing?.[provider];
+      // Normalize provider code to ensure consistent lookup against providerPricingMap
+      const providerKey = normalizeProviderCode(provider);
+      const provenance = template.providerPricing?.[providerKey];
       items.push({
         label: provenance?.providerName ?? provider,
         amount: cost,
         detail: `${credits} credits`,
-        providerCode: provider, // For provenance lookup (normalized key)
+        providerCode: providerKey, // Canonical key for provenance lookup
       });
     });
     
