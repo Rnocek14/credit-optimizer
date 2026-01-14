@@ -14,12 +14,18 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  // Security: require CRON_SECRET header to prevent unauthorized invocations
+  // Security: require CRON_SECRET header OR service role Authorization
+  // This allows both external calls (with x-cron-secret) and Supabase scheduler (with Authorization)
   const cronSecret = Deno.env.get('CRON_SECRET');
   const providedSecret = req.headers.get('x-cron-secret');
+  const authHeader = req.headers.get('authorization');
+  const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
   
-  // If CRON_SECRET is configured, validate it
-  if (cronSecret && providedSecret !== cronSecret) {
+  // Allow if: valid cron secret OR valid service role bearer token
+  const hasValidCronSecret = cronSecret && providedSecret === cronSecret;
+  const hasValidServiceRole = authHeader && serviceRoleKey && authHeader === `Bearer ${serviceRoleKey}`;
+  
+  if (!hasValidCronSecret && !hasValidServiceRole) {
     console.error('Unauthorized cron invocation attempt');
     return new Response(
       JSON.stringify({ success: false, error: 'Unauthorized' }),
