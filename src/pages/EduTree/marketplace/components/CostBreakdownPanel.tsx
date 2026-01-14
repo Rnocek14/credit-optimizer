@@ -35,9 +35,25 @@ function formatProvenanceDate(dateStr: string | undefined): string | null {
   if (!dateStr) return null;
   try {
     const date = new Date(dateStr);
+    if (isNaN(date.getTime())) return null;
     return formatDistanceToNow(date, { addSuffix: true });
   } catch {
     return null;
+  }
+}
+
+/**
+ * Validate URL is a proper http(s) URL
+ */
+function isValidHttpUrl(url: string | undefined): boolean {
+  if (!url) return false;
+  const trimmed = url.trim();
+  if (!trimmed) return false;
+  try {
+    const parsed = new URL(trimmed);
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+  } catch {
+    return false;
   }
 }
 
@@ -98,13 +114,14 @@ export function CostBreakdownPanel({ template, className }: CostBreakdownPanelPr
   const optimizedItems: CostLineItem[] = useMemo(() => {
     const items: CostLineItem[] = [];
     
-    // Alt-credit providers
+    // Alt-credit providers - use friendly name when available
     optimizedBreakdown.byProvider.forEach(({ provider, credits, cost }) => {
+      const provenance = template.providerPricing?.[provider];
       items.push({
-        label: `${provider}`,
+        label: provenance?.providerName ?? provider,
         amount: cost,
         detail: `${credits} credits`,
-        providerCode: provider, // For provenance lookup
+        providerCode: provider, // For provenance lookup (normalized key)
       });
     });
     
@@ -251,32 +268,27 @@ export function CostBreakdownPanel({ template, className }: CostBreakdownPanelPr
                       {item.detail && (
                         <span className="text-[10px] text-muted-foreground">{item.detail}</span>
                       )}
-                      {/* Provider provenance info */}
-                      {provenance && !item.isSubtotal && (
+                      {/* Provider provenance info - only show for provider rows, not estimated */}
+                      {provenance && !item.isSubtotal && !provenance.isEstimated && (
                         <div className="flex items-center gap-1.5 mt-0.5">
-                          {provenance.sourceUrl ? (
+                          {isValidHttpUrl(provenance.sourceUrl) && (
                             <a 
-                              href={provenance.sourceUrl} 
+                              href={provenance.sourceUrl!.trim()} 
                               target="_blank" 
                               rel="noopener noreferrer"
                               className="text-[9px] text-primary/70 hover:text-primary flex items-center gap-0.5"
                             >
                               Source <ExternalLink className="h-2 w-2" />
                             </a>
-                          ) : null}
+                          )}
                           {verifiedDate && (
                             <span className="text-[9px] text-muted-foreground">
-                              • Verified {verifiedDate}
+                              {isValidHttpUrl(provenance.sourceUrl) ? '• ' : ''}Verified {verifiedDate}
                             </span>
                           )}
                           {!verifiedDate && updatedDate && (
                             <span className="text-[9px] text-muted-foreground">
-                              • Updated {updatedDate} (unverified)
-                            </span>
-                          )}
-                          {!verifiedDate && !updatedDate && !provenance.isEstimated && (
-                            <span className="text-[9px] text-muted-foreground">
-                              • Date unknown
+                              {isValidHttpUrl(provenance.sourceUrl) ? '• ' : ''}Updated {updatedDate} (unverified)
                             </span>
                           )}
                         </div>
