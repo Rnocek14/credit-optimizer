@@ -11,10 +11,12 @@ export const PROVIDER_ALIAS_MAP: Record<string, string> = {
   // StraighterLine aliases
   'SL': 'STRAIGHTERLINE',
   'STRAIGHTERLINE': 'STRAIGHTERLINE',
-  // Study.com aliases
+  // Study.com aliases (include DB underscore format and dot variants)
   'STUDY': 'STUDYCOM',
   'STUDYCOM': 'STUDYCOM',
   'SDC': 'STUDYCOM',
+  'STUDY_COM': 'STUDYCOM',
+  'STUDY.COM': 'STUDYCOM',
   // Sophia aliases
   'SOPHIA': 'SOPHIA',
   // CLEP stays as-is
@@ -22,6 +24,8 @@ export const PROVIDER_ALIAS_MAP: Record<string, string> = {
   // Standardized exams
   'AP': 'AP',
   'DSST': 'DSST',
+  // Saylor
+  'SAYLOR': 'SAYLOR',
   // Institutions (used for anchor residency exclusion)
   'TESU': 'TESU',
   'COSC': 'COSC',

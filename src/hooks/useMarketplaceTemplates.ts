@@ -363,10 +363,13 @@ export function useMarketplaceTemplates(filters?: Partial<MarketplaceFilters>) {
       }
       
       // Fetch provider pricing packs for provenance display
+      // Order by provenance_verified_at DESC so first row wins = latest verified pack
       const { data: providerPacks, error: providerPacksError } = await supabase
         .from('alt_provider_pricing_packs')
         .select('provider_code, provider_name, pricing_data, source_url, provenance_verified_at, updated_at, status')
-        .eq('status', 'active');
+        .eq('status', 'active')
+        .order('provenance_verified_at', { ascending: false, nullsFirst: false })
+        .order('updated_at', { ascending: false });
       
       if (providerPacksError) {
         console.warn('[useMarketplaceTemplates] Provider packs fetch error (non-fatal):', providerPacksError);
