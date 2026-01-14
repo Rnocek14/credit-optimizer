@@ -31,10 +31,13 @@ export interface TwoPhaseBreakdown {
 }
 
 /**
- * Default assumptions for alt-credit pace
- * Conservative estimate: 4 weeks per 3-credit course
+ * Pace tier assumptions for alt-credit completion
+ * These can be made configurable via UI later:
+ * - Conservative: 6 weeks/course (busy adults, minimal study time)
+ * - Typical: 4 weeks/course (current default, ~10 hrs/week)
+ * - Aggressive: 2 weeks/course (dedicated learners, 20+ hrs/week)
  */
-const ALT_CREDIT_WEEKS_PER_COURSE = 4;
+const ALT_CREDIT_WEEKS_PER_COURSE = 4; // "Typical" pace
 const CREDITS_PER_ALT_COURSE = 3;
 
 /**
