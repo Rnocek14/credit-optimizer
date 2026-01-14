@@ -21,7 +21,7 @@ import {
 } from 'lucide-react';
 import { EnhancedCourse } from '@/hooks/useCourseIntelligenceEngine';
 import useCourseIntelligenceEngine from '@/hooks/useCourseIntelligenceEngine';
-import { isVerifiedCourseUrl } from '@/lib/urlValidation';
+import { sanitizeCourseUrl } from '@/lib/urlValidation';
 
 interface CourseIntelligenceCardProps {
   course: EnhancedCourse;
@@ -239,22 +239,25 @@ export const CourseIntelligenceCard: React.FC<CourseIntelligenceCardProps> = ({
             Rate
           </Button>
 
-          {isVerifiedCourseUrl(course.course_url) && (
-            <Button
-              variant="secondary"
-              size="sm"
-              asChild
-            >
-              <a 
-                href={course.course_url} 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="flex items-center"
+          {(() => {
+            const safeUrl = sanitizeCourseUrl(course.course_url);
+            return safeUrl ? (
+              <Button
+                variant="secondary"
+                size="sm"
+                asChild
               >
-                <ExternalLink className="w-4 h-4" />
-              </a>
-            </Button>
-          )}
+                <a 
+                  href={safeUrl} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="flex items-center"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                </a>
+              </Button>
+            ) : null;
+          })()}
         </div>
       </CardContent>
     </Card>
