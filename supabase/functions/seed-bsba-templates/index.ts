@@ -611,7 +611,7 @@ async function generateTemplatesFromPack(
   institutionPricing: InstitutionPricing,
   providerRates: Map<string, number>,
   providerProvenanceVerified: boolean,
-  policyStatus: PolicyStatus = 'green' // NEW: Pass policy status for template marking
+  gateResult: PolicyGateResult // Pass full gate result for status + reason tracking
 ): Promise<{ standard?: string; altMax?: string; errors: string[] }> {
   const errors: string[] = [];
   const trackTypes: ('standard' | 'alt_max')[] = ['standard', 'alt_max'];
@@ -724,8 +724,8 @@ async function generateTemplatesFromPack(
 
     // Determine template status based on policy gate result
     // Green = active (ready for use), Yellow = pending_review (needs verification)
-    const templateStatus = policyStatus === 'green' ? 'active' : 'pending_review';
-    const statusNote = policyStatus === 'yellow' 
+    const templateStatus = gateResult.status === 'green' ? 'active' : 'pending_review';
+    const statusNote = gateResult.status === 'yellow' 
       ? ' [PENDING REVIEW - policy incomplete]' 
       : '';
 
@@ -741,8 +741,9 @@ async function generateTemplatesFromPack(
       estimated_duration_months: Math.round(costBreakdown.planWeeks / 4.33), // Derived from computed weeks, not hardcoded
       catalog_year: '2024-2025',
       template_data: templateData,
-      status: templateStatus, // NEW: Template status based on policy gate
-      policy_status: policyStatus, // NEW: Track source policy status
+      status: templateStatus, // Template visibility based on policy gate
+      policy_status: gateResult.status, // Source policy gate status (green/yellow/red)
+      gate_reason: gateResult.reason, // Audit trail: why was this status assigned
       notes: `${trackType === 'alt_max' ? 'Maximizes alt-credit usage' : 'Standard institutional path'} - Real cost from pricing packs v3${statusNote}`,
     };
 
@@ -1115,7 +1116,7 @@ serve(async (req) => {
         institutionPricing,
         providerRates,
         providerProvenanceVerified,
-        gateResult.status // Pass status to mark templates appropriately
+        gateResult // Pass full gate result for status + reason
       );
 
       const insertedCount = (genResult.standard ? 1 : 0) + (genResult.altMax ? 1 : 0);

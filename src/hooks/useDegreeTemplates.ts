@@ -28,13 +28,15 @@ export function useDegreeTemplates(params: UseDegreeTemplatesParams) {
 
       if (instError) throw instError;
 
+      // CRITICAL: Only fetch ACTIVE templates - pending_review and blocked must NOT appear in user UX
       let query = supabase
         .from('degree_templates' as any)
         .select(
-          'id, institution_id, institution_code, program_code, track_type, total_credits, estimated_cost, estimated_duration_months, template_data'
+          'id, institution_id, institution_code, program_code, track_type, total_credits, estimated_cost, estimated_duration_months, template_data, status'
         )
         .eq('institution_id', (inst as any).id)
-        .eq('program_code', programCode);
+        .eq('program_code', programCode)
+        .eq('status', 'active'); // Only show verified templates
 
       if (trackType) {
         query = query.eq('track_type', trackType);
