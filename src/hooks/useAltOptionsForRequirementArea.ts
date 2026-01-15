@@ -13,6 +13,7 @@ export interface AltCreditOption {
   durationWeeks: number | null;
   examBased: boolean;
   providerUrl: string | null;
+  urlStatus: string | null; // Track verification status
 }
 
 interface UseAltOptionsParams {
@@ -47,6 +48,8 @@ async function getInstitutionId(code: string): Promise<string | null> {
 /**
  * Fetches alt-credit options for a specific requirement area at an institution.
  * Returns alternatives sorted by confidence (highest first).
+ * 
+ * IMPORTANT: Only shows providerUrl when url_status = 'valid' to prevent broken links.
  */
 export function useAltOptionsForRequirementArea({
   institutionCode,
@@ -59,7 +62,7 @@ export function useAltOptionsForRequirementArea({
       const instId = await getInstitutionId(institutionCode);
       if (!instId) return [];
 
-      // Query equivalencies with alt_credit details
+      // Query equivalencies with alt_credit details including url_status
       const { data, error } = await supabase
         .from('cross_institution_equivalencies')
         .select(`
@@ -75,7 +78,8 @@ export function useAltOptionsForRequirementArea({
             cost_usd,
             duration_estimate_weeks,
             exam_based,
-            provider_url
+            provider_url,
+            url_status
           )
         `)
         .eq('institution_id', instId)
@@ -87,7 +91,7 @@ export function useAltOptionsForRequirementArea({
         throw error;
       }
 
-      // Transform to clean interface
+      // Transform to clean interface with URL filtering
       return (data || []).map((row) => {
         const altCredit = row.alt_credits as unknown as {
           id: string;
@@ -98,7 +102,12 @@ export function useAltOptionsForRequirementArea({
           duration_estimate_weeks: number | null;
           exam_based: boolean | null;
           provider_url: string | null;
+          url_status: string | null;
         };
+        
+        // Only expose URL if it's verified as valid
+        const isUrlValid = altCredit.url_status === 'valid';
+        
         return {
           id: row.id,
           sourceCode: altCredit.source_code,
@@ -110,7 +119,9 @@ export function useAltOptionsForRequirementArea({
           costUsd: altCredit.cost_usd,
           durationWeeks: altCredit.duration_estimate_weeks,
           examBased: altCredit.exam_based ?? false,
-          providerUrl: altCredit.provider_url,
+          // Filter unverified URLs at the hook level
+          providerUrl: isUrlValid ? altCredit.provider_url : null,
+          urlStatus: altCredit.url_status,
         };
       });
     },
@@ -122,6 +133,8 @@ export function useAltOptionsForRequirementArea({
 /**
  * Batch fetch alt options for multiple requirement areas at once.
  * More efficient than calling useAltOptionsForRequirementArea multiple times.
+ * 
+ * IMPORTANT: Only shows providerUrl when url_status = 'valid' to prevent broken links.
  */
 export function useAltOptionsForSlots({
   institutionCode,
@@ -143,7 +156,7 @@ export function useAltOptionsForSlots({
       const instId = await getInstitutionId(institutionCode);
       if (!instId) return {};
 
-      // Query all equivalencies for these requirement areas
+      // Query all equivalencies for these requirement areas including url_status
       const { data, error } = await supabase
         .from('cross_institution_equivalencies')
         .select(`
@@ -160,7 +173,8 @@ export function useAltOptionsForSlots({
             cost_usd,
             duration_estimate_weeks,
             exam_based,
-            provider_url
+            provider_url,
+            url_status
           )
         `)
         .eq('institution_id', instId)
@@ -194,9 +208,13 @@ export function useAltOptionsForSlots({
           duration_estimate_weeks: number | null;
           exam_based: boolean | null;
           provider_url: string | null;
+          url_status: string | null;
         } | undefined;
         
         if (!altCredit) continue;
+        
+        // Only expose URL if it's verified as valid
+        const isUrlValid = altCredit.url_status === 'valid';
         
         result[area].push({
           id: row.id,
@@ -209,7 +227,9 @@ export function useAltOptionsForSlots({
           costUsd: altCredit.cost_usd,
           durationWeeks: altCredit.duration_estimate_weeks,
           examBased: altCredit.exam_based ?? false,
-          providerUrl: altCredit.provider_url,
+          // Filter unverified URLs at the hook level
+          providerUrl: isUrlValid ? altCredit.provider_url : null,
+          urlStatus: altCredit.url_status,
         });
       }
 
