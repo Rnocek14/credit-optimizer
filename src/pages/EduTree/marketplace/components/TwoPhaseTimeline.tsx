@@ -83,9 +83,9 @@ export function TwoPhaseTimeline({
               </div>
               
               {/* Visual timeline bar */}
-              <div className="flex h-1.5 rounded-full overflow-hidden bg-muted/50 dark:bg-white/10 mt-1">
+              <div className="flex h-1.5 rounded-full overflow-hidden bg-muted/30 dark:bg-white/5 mt-1">
                 <div 
-                  className="bg-primary/60 transition-all"
+                  className="bg-muted-foreground/40 dark:bg-white/30 transition-all"
                   style={{ width: `${altProportion * 100}%` }}
                 />
                 <div 
@@ -145,13 +145,13 @@ export function TwoPhaseTimeline({
       </div>
       
       {/* Visual timeline bar */}
-      <div className="flex h-3 rounded-full overflow-hidden bg-muted/50 dark:bg-white/10">
+      <div className="flex h-3 rounded-full overflow-hidden bg-muted/30 dark:bg-white/5">
         <div 
-          className="bg-primary/60 transition-all flex items-center justify-center"
+          className="bg-muted-foreground/40 dark:bg-white/30 transition-all flex items-center justify-center"
           style={{ width: `${altProportion * 100}%` }}
         >
           {altProportion > 0.15 && (
-            <span className="text-[9px] font-medium text-primary-foreground">Prep</span>
+            <span className="text-[9px] font-medium text-foreground dark:text-white">Prep</span>
           )}
         </div>
         <div 
