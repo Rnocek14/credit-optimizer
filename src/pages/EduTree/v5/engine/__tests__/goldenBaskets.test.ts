@@ -99,8 +99,17 @@ describe('Golden Basket Tests', () => {
         expect(result.hashes.output).toBeTruthy();
         expect(result.eligibility).toBeDefined();
         
-        // Log that this is pending (helpful for debugging)
-        console.log(`[PENDING] ${basket.id}: Expected ${basket.expected.eligibility}, got ${result.eligibility}`);
+        // Violation shape contract: every violation must have type, severity, message
+        result.violations.forEach((v, idx) => {
+          expect(v.type, `Violation ${idx} missing type`).toBeTruthy();
+          expect(v.severity, `Violation ${idx} missing severity`).toBeDefined();
+          expect(v.message, `Violation ${idx} missing message`).toBeTruthy();
+        });
+        
+        // Only log in debug mode (keeps CI clean)
+        if (process.env.DEBUG_PENDING === '1') {
+          console.log(`[PENDING] ${basket.id}: Expected ${basket.expected.eligibility}, got ${result.eligibility}`);
+        }
       });
     });
   });

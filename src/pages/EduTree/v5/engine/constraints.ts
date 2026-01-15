@@ -317,9 +317,10 @@ export function validatePlan(
   
   // 7. INSTITUTION-SPECIFIC RULES (policy-driven)
   // Pass policy data for policy-driven enforcement using constraint fields
+  // IMPORTANT: Do NOT default capstoneInResidence to true; undefined means "unknown, warn + don't enforce"
   const policyData: InstitutionRulesPolicy = {
     institutionCode,
-    capstoneInResidence: (constraints as any).capstone_in_residence ?? true, // Default to requiring capstone in residence
+    capstoneInResidence: (constraints as any).capstone_in_residence, // Tri-state: true/false/undefined
     minResidencyCredits: (constraints as any).min_residency_credits,
   };
   
@@ -565,7 +566,7 @@ export function validateInstitutionPolicies(
   
   const policyData: InstitutionRulesPolicy = {
     institutionCode,
-    capstoneInResidence: true, // Default: capstone must be in residence (safest assumption)
+    capstoneInResidence: undefined, // Tri-state: unknown from limits table; will warn
     minResidencyCredits: minResidency ?? undefined,
   };
   applyInstitutionSpecificRules(policyData, basket, summary, violations);
@@ -616,12 +617,16 @@ export function applyInstitutionSpecificRules(
     (item.providerCode?.toUpperCase() === institutionCode.toUpperCase());
   
   // ============================================
-  // POLICY-DRIVEN: Capstone in Residence Rule
+  // POLICY-DRIVEN: Capstone in Residence Rule (Tri-state)
   // ============================================
-  // Only enforce if policy says capstone must be in residence
-  if (capstoneInResidence !== false) {
-    const capstoneCourses = basket.filter(isCapstone);
-    const hasCapstone = capstoneCourses.length > 0;
+  // - true: Enforce CAPSTONE_SUBSTITUTION (error)
+  // - false: Do not enforce
+  // - undefined: Do not enforce, emit POLICY_UNVERIFIED warning
+  const capstoneCourses = basket.filter(isCapstone);
+  const hasCapstone = capstoneCourses.length > 0;
+  
+  if (capstoneInResidence === true) {
+    // Enforce: capstone must be in residence
     const hasResidentCapstone = capstoneCourses.some(isResident);
     
     if (hasCapstone && !hasResidentCapstone) {
@@ -644,7 +649,19 @@ export function applyInstitutionSpecificRules(
         suggestedFix: `Add ${institutionCode} capstone course`,
       });
     }
+  } else if (capstoneInResidence == null) {
+    // Unknown: warn so policy pack gets updated, but don't block
+    if (hasCapstone) {
+      violations.push({
+        type: VIOLATION_TYPES.POLICY_UNVERIFIED,
+        severity: 'warning',
+        message: `${institutionCode}: capstoneInResidence policy flag missing; capstone substitution not enforced`,
+        affectedCourses: [],
+        suggestedFix: 'Add capstone_in_residence flag to policy pack',
+      });
+    }
   }
+  // capstoneInResidence === false: no enforcement, no warning
   
   // ============================================
   // POLICY-DRIVEN: Minimum Residency Rule
