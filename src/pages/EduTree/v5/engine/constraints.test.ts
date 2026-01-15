@@ -79,7 +79,18 @@ describe('validatePlan - Transfer Cap', () => {
     expect(transferCapViolation).toBeUndefined();
   });
 
-  it('null providerType does not count toward ACE cap', () => {
+  /**
+   * CRITICAL INVARIANT: Missing providerType is treated as ALT credit (conservative).
+   * 
+   * Rationale:
+   * - Prevents "silent graduation eligibility" with unknown provenance
+   * - Forces upstream normalization (fix the data instead of letting unknowns pass)
+   * - Matches the design intent in altCredit.ts (countsTowardAltCap)
+   * 
+   * This is a safety posture - if we don't know the provider, we assume the
+   * most restrictive classification to avoid false "graduation ready" signals.
+   */
+  it('null providerType COUNTS toward ALT cap (conservative - fail safe)', () => {
     const basket: BasketItem[] = [
       {
         moduleId: 'mod1',
@@ -94,10 +105,44 @@ describe('validatePlan - Transfer Cap', () => {
       }
     ];
 
-    const violations = validatePlan(basket, [], { max_ace_credits: 6 });
+    // With bucket mode set to 'separate', null providerType should count as alt credit
+    const violations = validatePlan(basket, [], { 
+      max_ace_credits: 6,
+      transfer_alt_bucket_mode: 'separate',
+      max_alt_credit: 6,
+    } as any);
     
-    const transferCapViolation = violations.find(v => v.type === 'transfer_cap');
-    expect(transferCapViolation).toBeUndefined();
+    // Should trigger alt_cap violation since 10 > 6
+    const altCapViolation = violations.find(v => v.type === 'alt_cap');
+    expect(altCapViolation).toBeDefined();
+    expect(altCapViolation?.severity).toBe('error');
+    expect(altCapViolation?.message).toContain('10 alt credits exceeds 6');
+  });
+
+  it('null providerType under cap produces no violation', () => {
+    const basket: BasketItem[] = [
+      {
+        moduleId: 'mod1',
+        courseId: 'course1',
+        credits: 5, // Under the cap
+        cost_usd: 100,
+        duration_weeks: 8,
+        workload_weekly_hours: 7.5,
+        cri_score: 80,
+        status: 'pinned',
+        providerType: null
+      }
+    ];
+
+    const violations = validatePlan(basket, [], { 
+      max_ace_credits: 6,
+      transfer_alt_bucket_mode: 'separate',
+      max_alt_credit: 6,
+    } as any);
+    
+    // No violation since 5 < 6
+    const altCapViolation = violations.find(v => v.type === 'alt_cap');
+    expect(altCapViolation).toBeUndefined();
   });
 });
 

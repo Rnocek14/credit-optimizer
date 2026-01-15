@@ -14,6 +14,17 @@ export interface GraduationRequirement {
   shortfall: number;
   severity: 'ok' | 'warning' | 'error';
 }
+
+/**
+ * Optional overrides for graduation requirements.
+ * When provided, these take precedence over policy defaults.
+ * Use for degree-level-specific totals (associate vs bachelor).
+ */
+export interface GraduationRequirementOverrides {
+  /** Total credits required for degree (e.g., 120 for bachelor, 60 for associate) */
+  requiredTotalCredits?: number;
+}
+
 export interface GraduationReadiness {
   totalCredits: GraduationRequirement;
   residency: GraduationRequirement;
@@ -25,8 +36,19 @@ export interface GraduationReadiness {
   blockers: string[];
   warnings: string[];
   progressPercent: number;
+  /** Degree level used for this validation (for audit trail) */
+  degreeLevel?: 'bachelor' | 'associate';
 }
-const REQUIRED_CREDITS = 120;
+
+/**
+ * Default credit requirements by degree level.
+ * These are fallbacks when policy doesn't specify.
+ * IMPORTANT: Policy values should take precedence when available.
+ */
+const DEFAULT_CREDITS_BY_DEGREE = {
+  bachelor: 120,
+  associate: 60,
+} as const;
 
 /**
  * Calculate totals from basket items with proper provider type detection
@@ -62,19 +84,37 @@ function calculateBasketTotals(basket: BasketItem[]) {
 /**
  * Validate graduation readiness against anchor school policies
  */
+/**
+ * Validate graduation readiness against anchor school policies.
+ * 
+ * @param basket - All courses in the student's plan
+ * @param policy - Anchor school policy data
+ * @param overrides - Optional overrides (e.g., for degree-level-specific totals)
+ */
 export function validateGraduationReadiness(
   basket: BasketItem[],
-  policy: PartnerPolicy
+  policy: PartnerPolicy,
+  overrides?: GraduationRequirementOverrides
 ): GraduationReadiness {
   const totals = calculateBasketTotals(basket);
   
+  // Determine required credits: override > policy > default
+  // Policy should expose totalCreditsBachelor / totalCreditsAssociate in the future
+  const policyTotal = (policy as any).totalCreditsBachelor ?? (policy as any).degree_credit_total;
+  const requiredCredits = overrides?.requiredTotalCredits 
+    ?? policyTotal 
+    ?? DEFAULT_CREDITS_BY_DEGREE.bachelor;
+  
+  // Infer degree level for audit trail
+  const degreeLevel: 'bachelor' | 'associate' = requiredCredits <= 65 ? 'associate' : 'bachelor';
+  
   // 1. Total Credits Check
-  const totalShortfall = Math.max(0, REQUIRED_CREDITS - totals.totalCredits);
+  const totalShortfall = Math.max(0, requiredCredits - totals.totalCredits);
   const totalCredits: GraduationRequirement = {
     name: 'Total Credits',
     earned: totals.totalCredits,
-    required: REQUIRED_CREDITS,
-    met: totals.totalCredits >= REQUIRED_CREDITS,
+    required: requiredCredits,
+    met: totals.totalCredits >= requiredCredits,
     shortfall: totalShortfall,
     severity: totalShortfall === 0 ? 'ok' : totalShortfall > 30 ? 'error' : 'warning',
   };
@@ -118,7 +158,7 @@ export function validateGraduationReadiness(
   const warnings: string[] = [];
 
   if (!totalCredits.met) {
-    const msg = `Need ${totalCredits.shortfall} more credits to reach ${REQUIRED_CREDITS} total`;
+    const msg = `Need ${totalCredits.shortfall} more credits to reach ${requiredCredits} total`;
     totalCredits.severity === 'error' ? blockers.push(msg) : warnings.push(msg);
   }
 
@@ -150,10 +190,11 @@ export function validateGraduationReadiness(
 
   // Progress calculation (weighted by importance)
   const progressPercent = Math.min(100, Math.round(
-    (totals.totalCredits / REQUIRED_CREDITS) * 100
+    (totals.totalCredits / requiredCredits) * 100
   ));
 
   return {
+    degreeLevel,
     totalCredits,
     residency,
     upperDivision,
