@@ -13,6 +13,9 @@
 
 import type { ProviderType } from './optionScoring';
 
+// Module-level Set to prevent log spam (warn once per item per session)
+const _warnedMissingProviderType = new Set<string>();
+
 export interface AltCreditSignals {
   /** Explicit alt credit flag (highest priority if set) */
   isAltCredit?: boolean;
@@ -51,7 +54,19 @@ export function countsTowardAltCap(signals: AltCreditSignals): boolean {
   }
   
   // 4) Missing providerType → treat as alt credit (conservative default)
+  // SAFETY POSTURE: Unknown provenance = most restrictive classification
+  // This prevents false "graduation ready" signals and forces upstream data normalization
   if (!signals.providerType) {
+    // Dev-only warning to help identify data gaps (non-spammy)
+    if (typeof import.meta !== 'undefined' && import.meta.env?.DEV) {
+      const itemId = (signals as any).courseId || (signals as any).optionId || 'unknown';
+      if (!_warnedMissingProviderType.has(itemId)) {
+        _warnedMissingProviderType.add(itemId);
+        console.warn(
+          `[CreditClassification] Missing providerType for item "${itemId}" – treating as alt credit (conservative).`
+        );
+      }
+    }
     return true;
   }
   
