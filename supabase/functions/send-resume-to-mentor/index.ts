@@ -219,15 +219,18 @@ serve(async (req) => {
         <h3>📜 Proof of Learning (${proofItems.length} items)</h3>
         <p><strong>Learning Stats:</strong> ${resumeData.stats.completed_steps}/${resumeData.stats.total_steps} steps completed | ${resumeData.stats.verified_steps} mentor verified${resumeData.stats.avg_cri_score ? ` | Avg CRI Score: ${resumeData.stats.avg_cri_score}` : ''}</p>
         
-        ${proofItems.map(item => `
+        ${proofItems.map(item => {
+          // Defense-in-depth: re-sanitize at render time even though item.link should already be safe
+          const safeLink = sanitizeExternalUrl(item.link);
+          return `
           <div class="proof-item">
             <strong>${escapeHtml(item.type)}:</strong> ${escapeHtml(item.title)} 
             <span class="badge">${escapeHtml(item.track)}</span>
             ${item.criScore ? `<span class="badge">CRI: ${item.criScore}</span>` : ''}
             ${item.description ? `<br><small>${escapeHtml(item.description)}</small>` : ''}
-            ${item.link ? `<br><a href="${escapeHtml(item.link)}" target="_blank" rel="noopener noreferrer">🔗 View Resource</a>` : ''}
+            ${safeLink ? `<br><a href="${escapeHtml(safeLink)}" target="_blank" rel="noopener noreferrer">🔗 View Resource</a>` : ''}
           </div>
-        `).join('')}
+        `}).join('')}
       </div>
 
       <div class="section">
