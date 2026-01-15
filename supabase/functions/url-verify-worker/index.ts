@@ -31,10 +31,12 @@ const PROVIDER_VALID_DOMAINS: Record<string, string[]> = {
 };
 
 // Provider-specific URL patterns that indicate a course page (not listing)
+// ONLY match definitive course page patterns - be strict here
 const PROVIDER_COURSE_PATTERNS: Record<string, RegExp[]> = {
   'SOPHIA': [
-    /\/online-courses\/[^/]+\/[^/]+$/, // /online-courses/category/course-slug
-    /\/online-courses\/[^/]+$/,         // /online-courses/course-slug (legacy)
+    // ONLY: /online-courses/category/course-slug (two segments after /online-courses/)
+    /\/online-courses\/[^/]+\/[^/]+\/?$/,
+    // Removed legacy pattern - category pages like /online-courses/math/ would match incorrectly
   ],
   'STUDY_COM': [
     /\/academy\/course\/[^/]+\.html$/,  // /academy/course/course-name.html
@@ -48,13 +50,14 @@ const PROVIDER_COURSE_PATTERNS: Record<string, RegExp[]> = {
 // Provider-specific deny patterns (definitely not a course page)
 const PROVIDER_DENY_PATTERNS: Record<string, RegExp[]> = {
   'SOPHIA': [
-    /\/online-courses\/?$/,              // Just the courses listing
-    /\/online-courses\/[^/]+\/?$/,       // Category page without course
+    /\/online-courses\/?$/,              // Main courses listing page
+    /\/online-courses\/[^/]+\/?$/,       // Category page only (e.g., /online-courses/math/) - ends with one segment
   ],
   'STUDY_COM': [
     /\/academy\/search/,
     /\/academy\/courses\/?$/,
     /\/academy\/topic\//,
+    /\/academy\/subject\//,
   ],
   'CLEP': [
     /\/clep-exams\/?$/,                  // Just the exams listing
@@ -101,13 +104,34 @@ interface VerifyResult {
 }
 
 // Normalize text for comparison (lowercase, remove punctuation, collapse whitespace)
+// Also handles & -> and conversion for better matching
 function normalizeText(text: string): string {
   return text
     .toLowerCase()
-    .replace(/[^\w\s]/g, ' ')  // Remove punctuation
-    .replace(/\s+/g, ' ')       // Collapse whitespace
+    .replace(/&/g, 'and')         // & -> and
+    .replace(/[^\w\s]/g, ' ')     // Remove punctuation
+    .replace(/\s+/g, ' ')         // Collapse whitespace
     .trim();
 }
+
+// Get tokens from text for overlap calculations
+function getTokens(text: string): string[] {
+  return normalizeText(text).split(' ').filter(t => t.length > 0);
+}
+
+// Calculate token overlap (what % of title tokens appear in content)
+function calculateTokenOverlap(content: string, title: string): number {
+  const contentTokens = new Set(getTokens(content));
+  const titleTokens = getTokens(title);
+  
+  if (titleTokens.length === 0) return 0;
+  
+  const matchingTokens = titleTokens.filter(t => contentTokens.has(t));
+  return matchingTokens.length / titleTokens.length;
+}
+
+// Token overlap threshold for content verification fallback
+const MIN_TOKEN_OVERLAP = 0.75;
 
 // Levenshtein distance for title similarity
 function levenshteinDistance(a: string, b: string): number {
@@ -149,6 +173,22 @@ function contentContainsFullTitle(content: string, title: string): boolean {
   const normalizedContent = normalizeText(content);
   const normalizedTitle = normalizeText(title);
   return normalizedContent.includes(normalizedTitle);
+}
+
+// Content verification with fallback to token overlap
+function verifyContentMatchesTitle(content: string, title: string): { matches: boolean; method: string; score: number } {
+  // Try full title match first
+  if (contentContainsFullTitle(content, title)) {
+    return { matches: true, method: 'full_title_match', score: 1.0 };
+  }
+  
+  // Fallback: token overlap (handles punctuation/formatting differences)
+  const tokenOverlap = calculateTokenOverlap(content, title);
+  if (tokenOverlap >= MIN_TOKEN_OVERLAP) {
+    return { matches: true, method: 'token_overlap', score: tokenOverlap };
+  }
+  
+  return { matches: false, method: 'no_match', score: tokenOverlap };
 }
 
 function extractHostname(url: string): string {
@@ -421,12 +461,16 @@ async function verifyAndFixUrl(
     const markdown = scrapeResult.markdown || '';
     const pageTitle = scrapeResult.title || '';
     
-    // FIXED: Check for FULL normalized title in content (not just first word)
-    const fullTitleInContent = contentContainsFullTitle(markdown, title);
+    // FIXED: Use content verification with token overlap fallback
+    const contentVerification = verifyContentMatchesTitle(markdown, title);
     const titleSimilarToPageTitle = calculateTitleSimilarity(title, pageTitle) >= 0.85;
     
-    if (fullTitleInContent || titleSimilarToPageTitle) {
+    if (contentVerification.matches || titleSimilarToPageTitle) {
       // URL works and content matches - mark as valid
+      const verificationNote = contentVerification.matches 
+        ? `Content verified via ${contentVerification.method} (${(contentVerification.score * 100).toFixed(0)}%)`
+        : `Page title similarity: ${(calculateTitleSimilarity(title, pageTitle) * 100).toFixed(0)}%`;
+      
       await supabase
         .from('alt_credits')
         .update({
@@ -436,7 +480,7 @@ async function verifyAndFixUrl(
           verification_method: 'scrape_verified',
           verified_by: 'worker',
           confidence_score: 1.0,
-          url_notes: `Page title: "${pageTitle.slice(0, 100)}"`,
+          url_notes: `${verificationNote}. Page title: "${pageTitle.slice(0, 80)}"`,
         })
         .eq('id', id);
       
@@ -445,12 +489,12 @@ async function verifyAndFixUrl(
         original_url: provider_url,
         action: 'valid',
         confidence: 1.0,
-        reason: 'URL verified via scrape with content match',
+        reason: `URL verified via scrape - ${verificationNote}`,
       };
     } else {
       // URL loads but content doesn't match - queue for review
       console.log(`[url-verify-worker] URL loads but content mismatch: ${provider_url}`);
-      console.log(`[url-verify-worker] Expected: "${title}", Got page title: "${pageTitle}"`);
+      console.log(`[url-verify-worker] Expected: "${title}", Got page title: "${pageTitle}", Token overlap: ${(contentVerification.score * 100).toFixed(0)}%`);
     }
   }
   
@@ -521,14 +565,18 @@ async function verifyAndFixUrl(
       const newMarkdown = verifyNewUrl.markdown || '';
       const newPageTitle = verifyNewUrl.title || '';
       
-      // CRITICAL: Require FULL normalized title in content (not just first word)
-      const fullTitleInNewContent = contentContainsFullTitle(newMarkdown, title);
+      // CRITICAL: Use content verification with token overlap fallback
+      const contentVerification = verifyContentMatchesTitle(newMarkdown, title);
       const pageTitleMatches = calculateTitleSimilarity(title, newPageTitle) >= 0.90;
       
       // Also verify it's not a listing page based on content
       const isListing = isGenericListingPage(bestCandidate.url, newMarkdown);
       
-      if ((fullTitleInNewContent || pageTitleMatches) && !isListing) {
+      if ((contentVerification.matches || pageTitleMatches) && !isListing) {
+        const verificationNote = contentVerification.matches 
+          ? `Content verified via ${contentVerification.method} (${(contentVerification.score * 100).toFixed(0)}%)`
+          : `Page title match: ${(calculateTitleSimilarity(title, newPageTitle) * 100).toFixed(0)}%`;
+        
         await supabase
           .from('alt_credits')
           .update({
@@ -540,7 +588,7 @@ async function verifyAndFixUrl(
             verified_by: 'worker',
             confidence_score: bestCandidate.confidence,
             suggested_urls: candidates.slice(0, 3),
-            url_notes: `Auto-fixed from "${provider_url}". Reasons: ${bestCandidate.reasons.join('; ')}`,
+            url_notes: `Auto-fixed from "${provider_url}". ${verificationNote}. Reasons: ${bestCandidate.reasons.join('; ')}`,
           })
           .eq('id', id);
         
@@ -550,11 +598,11 @@ async function verifyAndFixUrl(
           new_url: bestCandidate.url,
           action: 'auto_fixed',
           confidence: bestCandidate.confidence,
-          reason: `Auto-fixed with ${(bestCandidate.confidence * 100).toFixed(0)}% confidence`,
+          reason: `Auto-fixed with ${(bestCandidate.confidence * 100).toFixed(0)}% confidence - ${verificationNote}`,
         };
       } else {
         console.log(`[url-verify-worker] Auto-fix blocked: content verification failed for ${bestCandidate.url}`);
-        console.log(`[url-verify-worker] Full title in content: ${fullTitleInNewContent}, Page title matches: ${pageTitleMatches}, Is listing: ${isListing}`);
+        console.log(`[url-verify-worker] Content: ${contentVerification.method} (${(contentVerification.score * 100).toFixed(0)}%), Page title: ${(calculateTitleSimilarity(title, newPageTitle) * 100).toFixed(0)}%, Is listing: ${isListing}`);
       }
     }
     
