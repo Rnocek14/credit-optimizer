@@ -36,6 +36,8 @@ import {
 } from '../utils/creditClassification';
 import { countsTowardAltCap, calculateAltCreditsTotal } from '../utils/altCredit';
 import { validateGraduationReadiness, type GraduationRequirementOverrides } from '../utils/graduationValidator';
+import { VIOLATION_TYPES, sortViolationsByPriority, VIOLATION_PRIORITY, type ViolationType } from './violationTypes';
+import { normalizePolicy, type NormalizedPolicy } from './normalizePolicy';
 
 // ============================================================================
 // Types
@@ -211,10 +213,12 @@ export function evaluateCreditDecision(input: CreditDecisionInput): CreditDecisi
   const { basket, institutionCode, degreeLevel, policy, residencyVariant } = input;
   
   // ============================================
-  // Step 1: Policy Verification
+  // Step 1: Policy Normalization & Verification
   // ============================================
-  const bucketMode: BucketMode = (policy as any).transfer_alt_bucket_mode ?? 'unknown';
-  const policyConfidence = (policy as any).confidence ?? 50; // Default to low confidence if not set
+  // Use the canonical normalizer to resolve all policy key variants
+  const normalized = normalizePolicy(policy as any, institutionCode, degreeLevel);
+  const bucketMode = normalized.bucketMode;
+  const policyConfidence = normalized.confidence;
   
   // ============================================
   // Step 2: Credit Classification
@@ -248,15 +252,16 @@ export function evaluateCreditDecision(input: CreditDecisionInput): CreditDecisi
   // ============================================
   // Step 3-6: Run Constraint Validation
   // ============================================
-  // Build constraints object from policy
+  // Build constraints object from normalized policy (no key guessing!)
   const constraints = {
     target_school: institutionCode,
-    max_ace_credits: policy.max_alt_credits,
-    transfer_alt_bucket_mode: bucketMode,
-    max_alt_credit: (policy as any).max_alt_credit ?? policy.max_alt_credits,
-    max_transfer_credits: (policy as any).max_transfer_credits,
-    max_transfer_alt_combined_credits: (policy as any).max_transfer_alt_combined_credits,
-    min_upper_division_credits: (policy as any).upper_division_min ?? (policy as any).min_upper_division_credits,
+    max_ace_credits: normalized.maxAltCredits,
+    transfer_alt_bucket_mode: normalized.bucketMode,
+    max_alt_credit: normalized.maxAltCredits, // Both keys point to same value
+    max_transfer_credits: normalized.maxTransferCredits,
+    max_transfer_alt_combined_credits: normalized.maxCombinedCredits,
+    min_upper_division_credits: normalized.upperDivisionMin,
+    provider_caps: normalized.providerCaps,
   };
   
   const violations = validatePlan(basket, [], constraints as any);
@@ -264,10 +269,9 @@ export function evaluateCreditDecision(input: CreditDecisionInput): CreditDecisi
   // ============================================
   // Step 7: Run Graduation Readiness Check
   // ============================================
+  // Use normalized policy values (no key guessing!)
   const overrides: GraduationRequirementOverrides = {
-    requiredTotalCredits: degreeLevel === 'associate' 
-      ? ((policy as any).totalCreditsAssociate ?? 60)
-      : ((policy as any).totalCreditsBachelor ?? (policy as any).degree_credit_total ?? 120),
+    requiredTotalCredits: normalized.requiredTotalCredits,
   };
   
   const readiness = validateGraduationReadiness(basket, policy, overrides);
@@ -275,33 +279,59 @@ export function evaluateCreditDecision(input: CreditDecisionInput): CreditDecisi
   // ============================================
   // Step 8: Compile Violations & Determine Eligibility
   // ============================================
-  // INVARIANT: Blockers are ordered consistently for deterministic output
-  // Order: residency first, then cap violations, then upper-division, then other
-  const residencyBlockers = readiness.blockers.filter(b => 
-    b.toLowerCase().includes('residency') || b.toLowerCase().includes('resident')
-  );
-  const capBlockers = violations
-    .filter(v => v.severity === 'error' && ['alt_cap', 'transfer_cap', 'combined_cap', 'total_transfer'].includes(v.type))
+  // INVARIANT: Blockers are ordered by violation type priority (deterministic)
+  // Uses VIOLATION_PRIORITY from violationTypes.ts instead of string matching
+  
+  // Sort violations by priority first
+  const sortedViolations = sortViolationsByPriority(violations);
+  
+  // Extract error-level violations as blockers (in priority order)
+  const violationBlockers = sortedViolations
+    .filter(v => v.severity === 'error')
     .map(v => v.message);
-  const upperDivBlockers = readiness.blockers.filter(b => 
-    b.toLowerCase().includes('upper') || b.toLowerCase().includes('division')
-  );
-  const otherBlockers = [
-    ...readiness.blockers.filter(b => 
-      !residencyBlockers.includes(b) && !upperDivBlockers.includes(b)
-    ),
-    ...violations
-      .filter(v => v.severity === 'error' && !['alt_cap', 'transfer_cap', 'combined_cap', 'total_transfer'].includes(v.type))
-      .map(v => v.message),
+  
+  // Combine with readiness blockers (these are already categorized)
+  // Map readiness blockers to violation types for proper ordering
+  const readinessBlockerTypes: Array<{ message: string; priority: number }> = 
+    readiness.blockers.map(msg => {
+      const lowerMsg = msg.toLowerCase();
+      let priority = 100; // Default: other
+      
+      if (lowerMsg.includes('residency') || lowerMsg.includes('resident')) {
+        priority = VIOLATION_PRIORITY[VIOLATION_TYPES.RESIDENCY];
+      } else if (lowerMsg.includes('upper') || lowerMsg.includes('division')) {
+        priority = VIOLATION_PRIORITY[VIOLATION_TYPES.UPPER_DIVISION];
+      } else if (lowerMsg.includes('total') || lowerMsg.includes('credit')) {
+        priority = 35; // After upper-division but before planning
+      }
+      
+      return { message: msg, priority };
+    });
+  
+  // Sort readiness blockers by mapped priority
+  const sortedReadinessBlockers = readinessBlockerTypes
+    .sort((a, b) => a.priority - b.priority)
+    .map(b => b.message);
+  
+  // Merge all blockers, maintaining priority order
+  // Policy violations first, then constraint violations, then readiness blockers
+  const policyViolationBlockers = sortedViolations
+    .filter(v => v.severity === 'error' && v.type === VIOLATION_TYPES.POLICY_UNVERIFIED)
+    .map(v => v.message);
+  
+  const otherViolationBlockers = sortedViolations
+    .filter(v => v.severity === 'error' && v.type !== VIOLATION_TYPES.POLICY_UNVERIFIED)
+    .map(v => v.message);
+  
+  // Final ordered blockers: policy → constraint violations → readiness
+  const allBlockers = [
+    ...policyViolationBlockers,
+    ...otherViolationBlockers,
+    ...sortedReadinessBlockers,
   ];
   
-  // Ordered: residency → caps → upper-div → other
-  const allBlockers = [
-    ...residencyBlockers,
-    ...capBlockers,
-    ...upperDivBlockers,
-    ...otherBlockers,
-  ];
+  // Dedupe (violations and readiness may overlap)
+  const uniqueBlockers = [...new Set(allBlockers)];
   
   const allWarnings = [
     ...readiness.warnings,
@@ -309,7 +339,7 @@ export function evaluateCreditDecision(input: CreditDecisionInput): CreditDecisi
   ];
   
   // ELIGIBILITY IS BINARY - no "almost"
-  const eligibility: Eligibility = allBlockers.length === 0 ? 'eligible' : 'blocked';
+  const eligibility: Eligibility = uniqueBlockers.length === 0 ? 'eligible' : 'blocked';
   
   // ============================================
   // Step 9: Build Requirements Summary
@@ -332,13 +362,13 @@ export function evaluateCreditDecision(input: CreditDecisionInput): CreditDecisi
     },
     altCreditCap: {
       earned: totals.alt,
-      limit: policy.max_alt_credits,
-      met: totals.alt <= policy.max_alt_credits,
+      limit: normalized.maxAltCredits ?? 0,
+      met: normalized.maxAltCredits != null ? totals.alt <= normalized.maxAltCredits : true,
     },
-    transferCap: (constraints.max_transfer_credits != null) ? {
+    transferCap: (normalized.maxTransferCredits != null) ? {
       earned: totals.transfer,
-      limit: constraints.max_transfer_credits,
-      met: totals.transfer <= constraints.max_transfer_credits,
+      limit: normalized.maxTransferCredits,
+      met: totals.transfer <= normalized.maxTransferCredits,
     } : undefined,
   };
   
@@ -350,16 +380,16 @@ export function evaluateCreditDecision(input: CreditDecisionInput): CreditDecisi
   const outputWithoutHashes = {
     totals,
     eligibility,
-    blockers: allBlockers,
+    blockers: uniqueBlockers, // Use deduped blockers
     warnings: allWarnings,
-    violations,
+    violations: sortedViolations, // Use sorted violations
     requirements,
     policy: {
       institution: institutionCode,
       degreeLevel,
       confidence: policyConfidence,
       bucketMode,
-      catalogYear: (policy as any).catalog_year,
+      catalogYear: normalized.catalogYear,
     },
   };
   
