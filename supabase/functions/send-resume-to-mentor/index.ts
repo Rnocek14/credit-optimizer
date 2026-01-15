@@ -7,6 +7,37 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Server-side URL sanitizer (deny-by-default)
+const ALLOWED_DOMAINS = [
+  'github.com', 'linkedin.com', 'coursera.org', 'edx.org', 'udemy.com',
+  'youtube.com', 'sophia.org', 'study.com', 'saylor.org', 'khanacademy.org',
+  'freecodecamp.org', 'codecademy.com', 'pluralsight.com', 'vercel.app',
+  'netlify.app', 'github.io', 'replit.com', 'codesandbox.io',
+];
+
+function sanitizeExternalUrl(url: string | null | undefined): string | null {
+  if (!url || typeof url !== 'string') return null;
+  
+  try {
+    const parsed = new URL(url.trim());
+    
+    // Only allow HTTPS
+    if (parsed.protocol !== 'https:') return null;
+    
+    // Check against allowlist
+    const hostname = parsed.hostname.toLowerCase();
+    const isAllowed = ALLOWED_DOMAINS.some(domain => 
+      hostname === domain || hostname.endsWith(`.${domain}`)
+    );
+    
+    if (!isAllowed) return null;
+    
+    return parsed.toString();
+  } catch {
+    return null;
+  }
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -45,7 +76,7 @@ serve(async (req) => {
       }
     }
 
-    // Create proof items summary
+    // Create proof items summary with sanitized links
     const proofItems: any[] = [];
     steps.forEach((step, index) => {
       const trackIndex = Math.floor(index / 3);
@@ -73,13 +104,18 @@ serve(async (req) => {
 
       if (step.external_links?.length > 0) {
         step.external_links.forEach((link: any) => {
-          proofItems.push({
-            type: 'External Link',
-            title: step.title,
-            link: link,
-            track: trackTitle,
-            criScore: step.cri_score
-          });
+          // Sanitize external links before including in email
+          const safeLink = sanitizeExternalUrl(link);
+          if (safeLink) {
+            proofItems.push({
+              type: 'External Link',
+              title: step.title,
+              link: safeLink,
+              track: trackTitle,
+              criScore: step.cri_score
+            });
+          }
+          // If link is not safe, omit it from the email entirely
         });
       }
     });
@@ -114,7 +150,7 @@ serve(async (req) => {
       }
     };
 
-    // Create HTML email content
+    // Create HTML email content with sanitized links
     const emailHTML = `
     <!DOCTYPE html>
     <html>
@@ -133,36 +169,36 @@ serve(async (req) => {
     <body>
       <div class="header">
         <h1>📋 Resume & Learning Portfolio</h1>
-        <h2>${profile.name}</h2>
-        <p><strong>Role:</strong> ${profile.role_title} | <strong>Experience:</strong> ${profile.experience_level} (${profile.years_experience || 0} years)</p>
-        <p><strong>Location:</strong> ${profile.location}</p>
-        ${message ? `<p><strong>Personal Message:</strong> ${message}</p>` : ''}
+        <h2>${escapeHtml(profile.name)}</h2>
+        <p><strong>Role:</strong> ${escapeHtml(profile.role_title)} | <strong>Experience:</strong> ${escapeHtml(profile.experience_level)} (${profile.years_experience || 0} years)</p>
+        <p><strong>Location:</strong> ${escapeHtml(profile.location)}</p>
+        ${message ? `<p><strong>Personal Message:</strong> ${escapeHtml(message)}</p>` : ''}
       </div>
 
       ${aiReview ? `
       <div class="ai-review">
         <h3>🤖 AI Career Analysis <span class="badge">✅ AI Reviewed</span></h3>
         <div class="score">Score: ${aiReview.overall_score}/100</div>
-        <p><strong>Summary:</strong> ${aiReview.summary}</p>
+        <p><strong>Summary:</strong> ${escapeHtml(aiReview.summary)}</p>
         
         <div style="display: flex; gap: 20px; margin-top: 15px;">
           <div style="flex: 1;">
             <h4>📈 Key Strengths</h4>
             <ul>
-              ${aiReview.strengths.map((strength: string) => `<li>${strength}</li>`).join('')}
+              ${(aiReview.strengths || []).map((strength: string) => `<li>${escapeHtml(strength)}</li>`).join('')}
             </ul>
           </div>
           <div style="flex: 1;">
             <h4>🎯 Growth Areas</h4>
             <ul>
-              ${aiReview.gaps.map((gap: string) => `<li>${gap}</li>`).join('')}
+              ${(aiReview.gaps || []).map((gap: string) => `<li>${escapeHtml(gap)}</li>`).join('')}
             </ul>
           </div>
         </div>
         
         <h4>🏷️ Professional Status</h4>
         <div>
-          ${aiReview.taglines.map((tagline: string) => `<span class="badge">${tagline}</span>`).join(' ')}
+          ${(aiReview.taglines || []).map((tagline: string) => `<span class="badge">${escapeHtml(tagline)}</span>`).join(' ')}
         </div>
       </div>
       ` : ''}
@@ -171,10 +207,10 @@ serve(async (req) => {
         <h3>🎯 Career Tracks (${tracks.length})</h3>
         ${tracks.map(track => `
           <div class="track">
-            <h4>${track.title}</h4>
-            <p>${track.description}</p>
-            <p><strong>Time to Proficiency:</strong> ${track.time_to_proficiency}</p>
-            <p><strong>Growth Potential:</strong> ${track.growth_potential}</p>
+            <h4>${escapeHtml(track.title)}</h4>
+            <p>${escapeHtml(track.description)}</p>
+            <p><strong>Time to Proficiency:</strong> ${escapeHtml(track.time_to_proficiency)}</p>
+            <p><strong>Growth Potential:</strong> ${escapeHtml(track.growth_potential)}</p>
           </div>
         `).join('')}
       </div>
@@ -185,20 +221,20 @@ serve(async (req) => {
         
         ${proofItems.map(item => `
           <div class="proof-item">
-            <strong>${item.type}:</strong> ${item.title} 
-            <span class="badge">${item.track}</span>
+            <strong>${escapeHtml(item.type)}:</strong> ${escapeHtml(item.title)} 
+            <span class="badge">${escapeHtml(item.track)}</span>
             ${item.criScore ? `<span class="badge">CRI: ${item.criScore}</span>` : ''}
-            ${item.description ? `<br><small>${item.description}</small>` : ''}
-            ${item.link ? `<br><a href="${item.link}" target="_blank">🔗 View Resource</a>` : ''}
+            ${item.description ? `<br><small>${escapeHtml(item.description)}</small>` : ''}
+            ${item.link ? `<br><a href="${item.link}" target="_blank" rel="noopener noreferrer">🔗 View Resource</a>` : ''}
           </div>
         `).join('')}
       </div>
 
       <div class="section">
         <h3>🎓 Skills & Education</h3>
-        <p><strong>Skills:</strong> ${(profile.skills || []).join(', ')}</p>
-        <p><strong>Education:</strong> ${profile.education}</p>
-        <p><strong>Career Goals:</strong> ${profile.career_goals}</p>
+        <p><strong>Skills:</strong> ${(profile.skills || []).map(escapeHtml).join(', ')}</p>
+        <p><strong>Education:</strong> ${escapeHtml(profile.education)}</p>
+        <p><strong>Career Goals:</strong> ${escapeHtml(profile.career_goals)}</p>
       </div>
 
       <hr style="margin: 30px 0;">
@@ -249,3 +285,14 @@ serve(async (req) => {
     );
   }
 });
+
+// HTML escape helper to prevent XSS in email
+function escapeHtml(text: string | null | undefined): string {
+  if (!text) return '';
+  return String(text)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}

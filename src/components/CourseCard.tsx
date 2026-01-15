@@ -12,7 +12,8 @@ import { CourseCompletionModal } from '@/components/CourseCompletionModal';
 import { Trophy } from 'lucide-react';
 import { SaveToPlanButton } from '@/components/SaveToPlanButton';
 import TutorialTip from '@/tutorial/TutorialTip';
-import { sanitizeCourseUrl } from '@/lib/urlValidation';
+import { sanitizeAllowlistedUrl } from '@/lib/urlValidation';
+import { safeOpenExternal } from '@/components/ui/SafeExternalLink';
 
 interface CourseCardProps {
   course: {
@@ -47,13 +48,11 @@ export const CourseCard: React.FC<CourseCardProps> = ({
   const progress = getProgressForCourse(course.id);
   const [showCompletionModal, setShowCompletionModal] = React.useState(false);
   
-  // Only allow opening verified URLs (sanitized)
-  const safeUrl = sanitizeCourseUrl(course.url);
+  // Only allow opening verified URLs (sanitized via allowlist)
+  const safeUrl = sanitizeAllowlistedUrl(course.url);
 
   const handleStartCourse = () => {
-    if (safeUrl) {
-      window.open(safeUrl, '_blank', 'noopener,noreferrer');
-    }
+    safeOpenExternal(course.url, { mode: 'allowlisted' });
     onStartCourse?.(course.id);
   };
 
