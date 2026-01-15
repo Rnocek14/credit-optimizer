@@ -14,6 +14,7 @@ import type { ScoringWeights as EngineScoringWeights } from '../types/v5';
 import { scoreOptions, compareByScore, type ScoredOption } from './optionFilters';
 import { calculateAnchorTotals } from '../utils/anchorPolicyAdapter';
 import { checkTransferRule, deriveRequirementType } from './transferEngine';
+import { VIOLATION_TYPES, type ViolationType } from './violationTypes';
 
 // Map engine weights (cri) to scoring weights (quality)
 function mapWeights(engineWeights: EngineScoringWeights): { cost: number; time: number; quality: number } {
@@ -55,7 +56,7 @@ export interface SemesterPlan {
 }
 
 export interface Violation {
-  type: 'transfer_cap' | 'residency' | 'upper_division' | 'prerequisite' | 'overload' | 'total_credits';
+  type: ViolationType;
   severity: 'error' | 'warning' | 'info';
   message: string;
   affectedCourses: string[];
@@ -453,7 +454,7 @@ export function validateAnchorPolicies(
     const shortfall = REQUIRED_CREDITS - totalPlanCredits;
     if (totalPlanCredits < REQUIRED_CREDITS) {
       warnings.push({
-        type: 'total_credits',
+        type: VIOLATION_TYPES.TOTAL_CREDITS,
         severity: shortfall > 30 ? 'error' : 'warning',
         message: `Plan has ${totalPlanCredits}/${REQUIRED_CREDITS} credits required for graduation`,
         affectedCourses: [],
@@ -465,7 +466,7 @@ export function validateAnchorPolicies(
   // 1. Check transfer cap (with safety margin)
   if (totals.aceCredits > policy.max_alt_credits) {
     warnings.push({
-      type: 'transfer_cap',
+      type: VIOLATION_TYPES.ALT_CAP,
       severity: 'error',
       message: `Exceeds transfer cap by ${totals.aceCredits - policy.max_alt_credits} credits`,
       affectedCourses: plan.fall.concat(plan.spring)
@@ -475,7 +476,7 @@ export function validateAnchorPolicies(
     });
   } else if (totals.aceCredits > policy.max_alt_credits - 6) {
     warnings.push({
-      type: 'transfer_cap',
+      type: VIOLATION_TYPES.ALT_CAP,
       severity: 'warning',
       message: `Approaching transfer cap (${totals.aceCredits}/${policy.max_alt_credits} credits used)`,
       affectedCourses: [],
@@ -487,7 +488,7 @@ export function validateAnchorPolicies(
   if (totals.residencyCredits < policy.min_residency_credits) {
     const shortfall = policy.min_residency_credits - totals.residencyCredits;
     warnings.push({
-      type: 'residency',
+      type: VIOLATION_TYPES.RESIDENCY,
       severity: shortfall > 12 ? 'error' : 'warning',
       message: `Need ${shortfall} more institutional credits to meet residency requirement`,
       affectedCourses: [],
@@ -499,7 +500,7 @@ export function validateAnchorPolicies(
   if (policy.upper_division_min > 0 && totals.upperDivisionCredits < policy.upper_division_min) {
     const shortfall = policy.upper_division_min - totals.upperDivisionCredits;
     warnings.push({
-      type: 'upper_division',
+      type: VIOLATION_TYPES.UPPER_DIVISION,
       severity: shortfall > 9 ? 'error' : 'warning',
       message: `Need ${shortfall} more upper-division credits (300/400 level)`,
       affectedCourses: [],
