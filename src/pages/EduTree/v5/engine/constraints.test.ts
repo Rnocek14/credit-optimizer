@@ -89,6 +89,11 @@ describe('validatePlan - Transfer Cap', () => {
    * 
    * This is a safety posture - if we don't know the provider, we assume the
    * most restrictive classification to avoid false "graduation ready" signals.
+   * 
+   * Key name mapping (from constraints.ts line 175-181):
+   * - max_alt_credit (from policy) takes precedence
+   * - max_ace_credits (from constraints) is fallback
+   * - effectiveAltCap = policyAltCap ?? constraintsAltCap
    */
   it('null providerType COUNTS toward ALT cap (conservative - fail safe)', () => {
     const basket: BasketItem[] = [
@@ -105,11 +110,11 @@ describe('validatePlan - Transfer Cap', () => {
       }
     ];
 
-    // With bucket mode set to 'separate', null providerType should count as alt credit
+    // IMPORTANT: Use max_alt_credit (policy key) - this takes precedence per constraints.ts
+    // bucket_mode must be 'separate' for alt_cap to be enforced
     const violations = validatePlan(basket, [], { 
-      max_ace_credits: 6,
       transfer_alt_bucket_mode: 'separate',
-      max_alt_credit: 6,
+      max_alt_credit: 6, // Policy key (takes precedence)
     } as any);
     
     // Should trigger alt_cap violation since 10 > 6
@@ -119,12 +124,12 @@ describe('validatePlan - Transfer Cap', () => {
     expect(altCapViolation?.message).toContain('10 alt credits exceeds 6');
   });
 
-  it('null providerType under cap produces no violation', () => {
+  it('null providerType under cap produces no alt_cap violation', () => {
     const basket: BasketItem[] = [
       {
         moduleId: 'mod1',
         courseId: 'course1',
-        credits: 5, // Under the cap
+        credits: 5, // Under the 6-credit cap
         cost_usd: 100,
         duration_weeks: 8,
         workload_weekly_hours: 7.5,
@@ -135,7 +140,6 @@ describe('validatePlan - Transfer Cap', () => {
     ];
 
     const violations = validatePlan(basket, [], { 
-      max_ace_credits: 6,
       transfer_alt_bucket_mode: 'separate',
       max_alt_credit: 6,
     } as any);
@@ -143,6 +147,32 @@ describe('validatePlan - Transfer Cap', () => {
     // No violation since 5 < 6
     const altCapViolation = violations.find(v => v.type === 'alt_cap');
     expect(altCapViolation).toBeUndefined();
+  });
+
+  it('null providerType uses fallback max_ace_credits when max_alt_credit missing', () => {
+    const basket: BasketItem[] = [
+      {
+        moduleId: 'mod1',
+        courseId: 'course1',
+        credits: 10,
+        cost_usd: 100,
+        duration_weeks: 8,
+        workload_weekly_hours: 7.5,
+        cri_score: 80,
+        status: 'pinned',
+        providerType: null
+      }
+    ];
+
+    // Use max_ace_credits (constraints key) as fallback
+    const violations = validatePlan(basket, [], { 
+      transfer_alt_bucket_mode: 'separate',
+      max_ace_credits: 6, // Fallback key
+    } as any);
+    
+    const altCapViolation = violations.find(v => v.type === 'alt_cap');
+    expect(altCapViolation).toBeDefined();
+    expect(altCapViolation?.message).toContain('10 alt credits exceeds 6');
   });
 });
 

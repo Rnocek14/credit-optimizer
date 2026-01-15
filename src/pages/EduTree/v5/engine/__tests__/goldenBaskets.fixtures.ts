@@ -12,12 +12,16 @@
  * 4. Upper Division - 300/400 level requirements
  * 5. Failure Modes - Policy errors, missing data
  * 
- * IMPORTANT: Add new fixtures here when discovering edge cases.
- * Do NOT modify existing fixtures without updating expected outputs.
+ * IMPORTANT: 
+ * - Use 3-credit blocks as default (realistic course sizes)
+ * - Use 1-credit blocks only for precise boundary tests
+ * - Add new fixtures when discovering edge cases
+ * - Do NOT modify existing fixtures without updating expected outputs
  */
 
 import type { BasketItem } from '../../state/usePlanBasket';
-import type { CreditDecisionInput, Eligibility } from '../creditPipeline';
+import type { CreditDecisionInput, CreditDecisionOutput, Eligibility } from '../creditPipeline';
+import { expect } from 'vitest';
 
 // ============================================================================
 // Helper: Create Basket Item
@@ -52,12 +56,13 @@ function createBasketItem(params: BasketItemParams): BasketItem {
 }
 
 // ============================================================================
-// Policy Templates
+// Policy Templates (aligned with actual constraint keys from constraints.ts)
 // ============================================================================
 
 const TESU_BACHELOR_POLICY = {
   min_residency_credits: 15,
-  max_alt_credits: 90,
+  max_alt_credits: 90,        // Used by graduation validator
+  max_alt_credit: 90,         // Used by constraints.ts (policy key takes precedence)
   upper_division_min: 18,
   transfer_alt_bucket_mode: 'separate' as const,
   degree_credit_total: 120,
@@ -67,9 +72,10 @@ const TESU_BACHELOR_POLICY = {
 };
 
 const WGU_BACHELOR_POLICY = {
-  min_residency_credits: 0, // WGU doesn't have traditional residency
+  min_residency_credits: 0,   // WGU doesn't have traditional residency
   max_alt_credits: 78,
-  upper_division_min: 0, // Competency-based
+  max_alt_credit: 78,
+  upper_division_min: 0,      // Competency-based
   transfer_alt_bucket_mode: 'separate' as const,
   degree_credit_total: 121,
   totalCreditsBachelor: 121,
@@ -80,6 +86,7 @@ const WGU_BACHELOR_POLICY = {
 const TESU_ASSOCIATE_POLICY = {
   min_residency_credits: 9,
   max_alt_credits: 45,
+  max_alt_credit: 45,
   upper_division_min: 0,
   transfer_alt_bucket_mode: 'separate' as const,
   degree_credit_total: 60,
@@ -90,7 +97,8 @@ const TESU_ASSOCIATE_POLICY = {
 
 const COSC_COMBINED_POLICY = {
   min_residency_credits: 30,
-  max_alt_credits: 0, // Not tracked separately
+  max_alt_credits: 0,         // Not tracked separately
+  max_alt_credit: 0,
   max_transfer_alt_combined_credits: 90,
   upper_division_min: 0,
   transfer_alt_bucket_mode: 'combined' as const,
@@ -101,7 +109,13 @@ const COSC_COMBINED_POLICY = {
 };
 
 // ============================================================================
-// Golden Baskets
+// Assertion Type (function-based, no eval)
+// ============================================================================
+
+export type AssertionFn = (result: CreditDecisionOutput) => void;
+
+// ============================================================================
+// Golden Basket Type
 // ============================================================================
 
 export interface GoldenBasket {
@@ -113,10 +127,14 @@ export interface GoldenBasket {
   expected: {
     eligibility: Eligibility;
     blockerCount: number;
-    /** Key assertions that must be true */
-    assertions: string[];
+    /** Function-based assertions for compile-time safety */
+    assertions: AssertionFn[];
   };
 }
+
+// ============================================================================
+// Golden Baskets
+// ============================================================================
 
 export const GOLDEN_BASKETS: GoldenBasket[] = [
   // ============================================
@@ -129,23 +147,23 @@ export const GOLDEN_BASKETS: GoldenBasket[] = [
     category: 'happy_path',
     input: {
       basket: [
-        // 30 credits from TESU (resident)
+        // 30 credits from TESU (resident) - 10 courses x 3 credits
         ...Array.from({ length: 10 }, (_, i) => createBasketItem({
           courseId: `TESU-${100 + i}`,
           credits: 3,
           providerType: 'university',
           providerCode: 'TESU',
-          level: i < 6 ? 100 : 300, // Mix of lower and upper div
+          level: i < 4 ? 100 : 300, // 4 lower-div, 6 upper-div = 18 upper-div credits
         })),
-        // 60 credits from RA transfer
+        // 60 credits from RA transfer - 20 courses x 3 credits
         ...Array.from({ length: 20 }, (_, i) => createBasketItem({
           courseId: `TRANSFER-${i}`,
           credits: 3,
           providerType: 'university',
           providerCode: 'OTHER_UNIV',
-          level: i < 14 ? 200 : 300,
+          level: 200, // Lower division
         })),
-        // 30 credits from alt (MOOCs)
+        // 30 credits from alt (MOOCs) - 10 courses x 3 credits
         ...Array.from({ length: 10 }, (_, i) => createBasketItem({
           courseId: `SOPHIA-${i}`,
           credits: 3,
@@ -162,10 +180,10 @@ export const GOLDEN_BASKETS: GoldenBasket[] = [
       eligibility: 'eligible',
       blockerCount: 0,
       assertions: [
-        'totals.total === 120',
-        'totals.resident >= 15',
-        'totals.alt <= 90',
-        'totals.upperDiv >= 18',
+        (r) => expect(r.totals.total).toBe(120),
+        (r) => expect(r.totals.resident).toBeGreaterThanOrEqual(15),
+        (r) => expect(r.totals.alt).toBeLessThanOrEqual(90),
+        (r) => expect(r.totals.upperDiv).toBeGreaterThanOrEqual(18),
       ],
     },
   },
@@ -177,7 +195,7 @@ export const GOLDEN_BASKETS: GoldenBasket[] = [
     category: 'happy_path',
     input: {
       basket: [
-        // 6 credits from TESU (accelerate variant minimum)
+        // 6 credits from TESU (accelerate variant minimum) - 2 courses x 3 credits
         ...Array.from({ length: 2 }, (_, i) => createBasketItem({
           courseId: `TESU-ACC-${i}`,
           credits: 3,
@@ -185,14 +203,15 @@ export const GOLDEN_BASKETS: GoldenBasket[] = [
           providerCode: 'TESU',
           level: 300,
         })),
-        // 114 credits from RA transfer + alt
+        // 60 credits from RA transfer - 20 courses x 3 credits
         ...Array.from({ length: 20 }, (_, i) => createBasketItem({
           courseId: `TRANSFER-ACC-${i}`,
           credits: 3,
           providerType: 'university',
           providerCode: 'OTHER_UNIV',
-          level: i < 10 ? 100 : 300,
+          level: i < 6 ? 300 : 100, // 6 upper-div = 18 credits
         })),
+        // 54 credits from alt (MOOCs) - 18 courses x 3 credits
         ...Array.from({ length: 18 }, (_, i) => createBasketItem({
           courseId: `SOPHIA-ACC-${i}`,
           credits: 3,
@@ -213,9 +232,10 @@ export const GOLDEN_BASKETS: GoldenBasket[] = [
       eligibility: 'eligible',
       blockerCount: 0,
       assertions: [
-        'totals.total === 120',
-        'totals.resident >= 6',
-        'totals.alt <= 90',
+        (r) => expect(r.totals.total).toBe(120),
+        (r) => expect(r.totals.resident).toBeGreaterThanOrEqual(6),
+        (r) => expect(r.totals.alt).toBe(54),
+        (r) => expect(r.totals.alt).toBeLessThanOrEqual(90),
       ],
     },
   },
@@ -230,23 +250,23 @@ export const GOLDEN_BASKETS: GoldenBasket[] = [
     category: 'cap_boundary',
     input: {
       basket: [
-        // 15 resident credits
+        // 15 resident credits - 5 courses x 3 credits
         ...Array.from({ length: 5 }, (_, i) => createBasketItem({
           courseId: `TESU-RES-${i}`,
           credits: 3,
           providerType: 'university',
           providerCode: 'TESU',
-          level: 300,
+          level: 300, // All upper-div
         })),
-        // 15 RA transfer credits
+        // 15 RA transfer credits - 5 courses x 3 credits
         ...Array.from({ length: 5 }, (_, i) => createBasketItem({
           courseId: `RA-XFER-${i}`,
           credits: 3,
           providerType: 'university',
           providerCode: 'OTHER',
-          level: 300,
+          level: 300, // Upper-div
         })),
-        // 90 alt credits (exactly at cap)
+        // 90 alt credits exactly - 30 courses x 3 credits
         ...Array.from({ length: 30 }, (_, i) => createBasketItem({
           courseId: `ALT-90-${i}`,
           credits: 3,
@@ -263,8 +283,8 @@ export const GOLDEN_BASKETS: GoldenBasket[] = [
       eligibility: 'eligible',
       blockerCount: 0,
       assertions: [
-        'totals.alt === 90',
-        'requirements.altCreditCap.met === true',
+        (r) => expect(r.totals.alt).toBe(90),
+        (r) => expect(r.requirements.altCreditCap.met).toBe(true),
       ],
     },
   },
@@ -276,7 +296,7 @@ export const GOLDEN_BASKETS: GoldenBasket[] = [
     category: 'cap_boundary',
     input: {
       basket: [
-        // 15 resident credits
+        // 15 resident credits - 5 courses x 3 credits
         ...Array.from({ length: 5 }, (_, i) => createBasketItem({
           courseId: `TESU-OVER-${i}`,
           credits: 3,
@@ -284,7 +304,7 @@ export const GOLDEN_BASKETS: GoldenBasket[] = [
           providerCode: 'TESU',
           level: 300,
         })),
-        // 14 RA transfer
+        // 14 RA transfer - 14 courses x 1 credit
         ...Array.from({ length: 14 }, (_, i) => createBasketItem({
           courseId: `RA-OVER-${i}`,
           credits: 1,
@@ -292,14 +312,21 @@ export const GOLDEN_BASKETS: GoldenBasket[] = [
           providerCode: 'OTHER',
           level: 200,
         })),
-        // 91 alt credits (1 over cap)
-        ...Array.from({ length: 13 }, (_, i) => createBasketItem({
+        // 91 alt credits (1 over cap) - 30 x 3 = 90, + 1 x 1 = 91
+        ...Array.from({ length: 30 }, (_, i) => createBasketItem({
           courseId: `ALT-OVER-${i}`,
-          credits: 7,
+          credits: 3,
           providerType: 'mooc',
           providerCode: 'SOPHIA',
           level: 100,
         })),
+        createBasketItem({
+          courseId: 'ALT-OVER-EXTRA',
+          credits: 1,
+          providerType: 'mooc',
+          providerCode: 'SOPHIA',
+          level: 100,
+        }),
       ],
       institutionCode: 'TESU',
       degreeLevel: 'bachelor',
@@ -307,10 +334,10 @@ export const GOLDEN_BASKETS: GoldenBasket[] = [
     },
     expected: {
       eligibility: 'blocked',
-      blockerCount: 1, // At least one blocker
+      blockerCount: 1,
       assertions: [
-        'totals.alt > 90',
-        'requirements.altCreditCap.met === false',
+        (r) => expect(r.totals.alt).toBe(91),
+        (r) => expect(r.requirements.altCreditCap.met).toBe(false),
       ],
     },
   },
@@ -322,7 +349,7 @@ export const GOLDEN_BASKETS: GoldenBasket[] = [
     category: 'cap_boundary',
     input: {
       basket: [
-        // 42 resident (WGU) - rest is alt
+        // 42 resident (WGU) - 14 courses x 3 credits
         ...Array.from({ length: 14 }, (_, i) => createBasketItem({
           courseId: `WGU-${i}`,
           credits: 3,
@@ -330,14 +357,21 @@ export const GOLDEN_BASKETS: GoldenBasket[] = [
           providerCode: 'WGU',
           level: 300,
         })),
-        // 79 alt credits
-        ...Array.from({ length: 79 }, (_, i) => createBasketItem({
+        // 79 alt credits - 26 x 3 = 78, + 1 = 79
+        ...Array.from({ length: 26 }, (_, i) => createBasketItem({
           courseId: `ALT-WGU-${i}`,
-          credits: 1,
+          credits: 3,
           providerType: 'testing_center',
           providerCode: 'CLEP',
           level: 100,
         })),
+        createBasketItem({
+          courseId: 'ALT-WGU-EXTRA',
+          credits: 1,
+          providerType: 'testing_center',
+          providerCode: 'CLEP',
+          level: 100,
+        }),
       ],
       institutionCode: 'WGU',
       degreeLevel: 'bachelor',
@@ -347,8 +381,8 @@ export const GOLDEN_BASKETS: GoldenBasket[] = [
       eligibility: 'blocked',
       blockerCount: 1,
       assertions: [
-        'totals.alt === 79',
-        'totals.alt > 78',
+        (r) => expect(r.totals.alt).toBe(79),
+        (r) => expect(r.totals.alt).toBeGreaterThan(78),
       ],
     },
   },
@@ -363,21 +397,28 @@ export const GOLDEN_BASKETS: GoldenBasket[] = [
     category: 'residency',
     input: {
       basket: [
-        // 14 resident credits (1 short)
-        ...Array.from({ length: 7 }, (_, i) => createBasketItem({
+        // 14 resident credits (1 short) - 14 courses x 1 credit
+        ...Array.from({ length: 14 }, (_, i) => createBasketItem({
           courseId: `TESU-SHORT-${i}`,
-          credits: 2,
+          credits: 1,
           providerType: 'university',
           providerCode: 'TESU',
-          level: 300,
+          level: i < 4 ? 100 : 300, // 10 upper-div
         })),
-        // Fill with transfer to reach 120
-        ...Array.from({ length: 53 }, (_, i) => createBasketItem({
+        // 106 credits from transfer to reach 120 - mix of upper/lower
+        ...Array.from({ length: 30 }, (_, i) => createBasketItem({
           courseId: `XFER-SHORT-${i}`,
-          credits: 2,
+          credits: 3,
           providerType: 'university',
           providerCode: 'OTHER',
-          level: i < 20 ? 300 : 100,
+          level: i < 3 ? 300 : 100, // 9 more upper-div = 19 total
+        })),
+        ...Array.from({ length: 16 }, (_, i) => createBasketItem({
+          courseId: `XFER-SHORT-B-${i}`,
+          credits: 1,
+          providerType: 'university',
+          providerCode: 'OTHER',
+          level: 100,
         })),
       ],
       institutionCode: 'TESU',
@@ -388,8 +429,8 @@ export const GOLDEN_BASKETS: GoldenBasket[] = [
       eligibility: 'blocked',
       blockerCount: 1,
       assertions: [
-        'totals.resident === 14',
-        'requirements.residency.met === false',
+        (r) => expect(r.totals.resident).toBe(14),
+        (r) => expect(r.requirements.residency.met).toBe(false),
       ],
     },
   },
@@ -401,21 +442,21 @@ export const GOLDEN_BASKETS: GoldenBasket[] = [
     category: 'residency',
     input: {
       basket: [
-        // 15 resident credits exactly
+        // 15 resident credits exactly - 5 courses x 3 credits
         ...Array.from({ length: 5 }, (_, i) => createBasketItem({
           courseId: `TESU-EXACT-${i}`,
           credits: 3,
           providerType: 'university',
           providerCode: 'TESU',
-          level: 300,
+          level: 300, // All upper-div
         })),
-        // Fill with transfer (no alt to stay under caps)
+        // 105 credits from transfer - 35 courses x 3 credits
         ...Array.from({ length: 35 }, (_, i) => createBasketItem({
           courseId: `XFER-EXACT-${i}`,
           credits: 3,
           providerType: 'university',
           providerCode: 'OTHER',
-          level: i < 3 ? 300 : 100,
+          level: i < 1 ? 300 : 100, // 3 more upper-div = 18 total
         })),
       ],
       institutionCode: 'TESU',
@@ -426,8 +467,8 @@ export const GOLDEN_BASKETS: GoldenBasket[] = [
       eligibility: 'eligible',
       blockerCount: 0,
       assertions: [
-        'totals.resident === 15',
-        'requirements.residency.met === true',
+        (r) => expect(r.totals.resident).toBe(15),
+        (r) => expect(r.requirements.residency.met).toBe(true),
       ],
     },
   },
@@ -442,7 +483,7 @@ export const GOLDEN_BASKETS: GoldenBasket[] = [
     category: 'upper_division',
     input: {
       basket: [
-        // 17 upper-div (1 short)
+        // 17 upper-div (1 short) - 17 courses x 1 credit
         ...Array.from({ length: 17 }, (_, i) => createBasketItem({
           courseId: `UPPER-SHORT-${i}`,
           credits: 1,
@@ -450,12 +491,12 @@ export const GOLDEN_BASKETS: GoldenBasket[] = [
           providerCode: 'TESU',
           level: 300,
         })),
-        // Fill with lower-div
+        // 103 lower-div to reach 120 - 103 courses x 1 credit (some TESU for residency)
         ...Array.from({ length: 103 }, (_, i) => createBasketItem({
           courseId: `LOWER-${i}`,
           credits: 1,
           providerType: 'university',
-          providerCode: i < 50 ? 'TESU' : 'OTHER',
+          providerCode: i < 3 ? 'TESU' : 'OTHER', // 3 more TESU = 20 total resident
           level: 100,
         })),
       ],
@@ -467,8 +508,8 @@ export const GOLDEN_BASKETS: GoldenBasket[] = [
       eligibility: 'blocked',
       blockerCount: 1,
       assertions: [
-        'totals.upperDiv === 17',
-        'requirements.upperDivision.met === false',
+        (r) => expect(r.totals.upperDiv).toBe(17),
+        (r) => expect(r.requirements.upperDivision.met).toBe(false),
       ],
     },
   },
@@ -496,6 +537,7 @@ export const GOLDEN_BASKETS: GoldenBasket[] = [
       policy: {
         min_residency_credits: 15,
         max_alt_credits: 90,
+        max_alt_credit: 90,
         // transfer_alt_bucket_mode: missing!
         confidence: 30,
       } as any,
@@ -504,7 +546,7 @@ export const GOLDEN_BASKETS: GoldenBasket[] = [
       eligibility: 'blocked',
       blockerCount: 1,
       assertions: [
-        'violations.some(v => v.type === "policy_unverified")',
+        (r) => expect(r.violations.some(v => v.type === 'policy_unverified')).toBe(true),
       ],
     },
   },
@@ -516,7 +558,7 @@ export const GOLDEN_BASKETS: GoldenBasket[] = [
     category: 'failure_mode',
     input: {
       basket: [
-        // 15 resident
+        // 15 resident - 5 courses x 3 credits
         ...Array.from({ length: 5 }, (_, i) => createBasketItem({
           courseId: `RES-NULL-${i}`,
           credits: 3,
@@ -524,15 +566,22 @@ export const GOLDEN_BASKETS: GoldenBasket[] = [
           providerCode: 'TESU',
           level: 300,
         })),
-        // 100 with null providerType (should count as alt)
-        ...Array.from({ length: 100 }, (_, i) => createBasketItem({
+        // 91 with null providerType (should count as alt, over 90 cap)
+        // 30 x 3 = 90, + 1 = 91
+        ...Array.from({ length: 30 }, (_, i) => createBasketItem({
           courseId: `NULL-PROV-${i}`,
-          credits: 1,
+          credits: 3,
           providerType: null,
           level: 100,
         })),
-        // 5 more credits to reach 120
-        ...Array.from({ length: 5 }, (_, i) => createBasketItem({
+        createBasketItem({
+          courseId: 'NULL-PROV-EXTRA',
+          credits: 1,
+          providerType: null,
+          level: 100,
+        }),
+        // 14 more credits to reach 120 - 14 x 1 credit
+        ...Array.from({ length: 14 }, (_, i) => createBasketItem({
           courseId: `EXTRA-${i}`,
           credits: 1,
           providerType: 'university',
@@ -548,8 +597,8 @@ export const GOLDEN_BASKETS: GoldenBasket[] = [
       eligibility: 'blocked',
       blockerCount: 1,
       assertions: [
-        'totals.alt === 100', // null providerType = alt
-        'totals.alt > 90', // Over cap
+        (r) => expect(r.totals.alt).toBe(91), // null providerType = alt
+        (r) => expect(r.totals.alt).toBeGreaterThan(90), // Over cap
       ],
     },
   },
