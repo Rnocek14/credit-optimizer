@@ -21,7 +21,107 @@ interface PolicyData {
   max_alt_credit?: number;
   max_ace_nccrs_credits?: number;
   total_credits?: number;
+  transfer_alt_bucket_mode?: 'separate' | 'combined' | 'unknown';
+  degree_credit_total?: number;
+  max_transfer_alt_combined_credits?: number;
   [key: string]: unknown;
+}
+
+// ============================================================================
+// Policy Completeness Gate (Enforcement at Write-Time)
+// ============================================================================
+
+type PolicyStatus = 'green' | 'yellow' | 'red';
+
+interface PolicyGateResult {
+  canGenerate: boolean;
+  status: PolicyStatus;
+  score: number;
+  reason?: string;
+  missingCritical: string[];
+}
+
+/**
+ * Evaluate policy completeness gate BEFORE generating templates.
+ * This is the write-time enforcement that prevents bad templates.
+ */
+function evaluatePolicyGate(policyData: PolicyData): PolicyGateResult {
+  const missingCritical: string[] = [];
+  let score = 0;
+  const maxScore = 100;
+  
+  // Critical field 1: bucket_mode (25 points)
+  const bucketMode = policyData.transfer_alt_bucket_mode;
+  if (!bucketMode || bucketMode === 'unknown') {
+    missingCritical.push('transfer_alt_bucket_mode (must be separate or combined)');
+  } else {
+    score += 25;
+  }
+  
+  // Critical field 2: degree_credit_total (15 points)
+  const totalCredits = policyData.degree_credit_total ?? policyData.total_credits;
+  if (!totalCredits || totalCredits <= 0) {
+    missingCritical.push('degree_credit_total');
+  } else {
+    score += 15;
+  }
+  
+  // Critical field 3: residency_credits (15 points)
+  if (!policyData.residency_credits || policyData.residency_credits <= 0) {
+    missingCritical.push('residency_credits');
+  } else {
+    score += 15;
+  }
+  
+  // Conditional fields based on bucket mode (25 points)
+  if (bucketMode === 'separate') {
+    if (policyData.max_alt_credit && policyData.max_alt_credit > 0) {
+      score += 15;
+    } else {
+      missingCritical.push('max_alt_credit (required for separate mode)');
+    }
+    if (policyData.max_transfer_credits && policyData.max_transfer_credits > 0) {
+      score += 10;
+    } else {
+      missingCritical.push('max_transfer_credits (required for separate mode)');
+    }
+  } else if (bucketMode === 'combined') {
+    if (policyData.max_transfer_alt_combined_credits && policyData.max_transfer_alt_combined_credits > 0) {
+      score += 25;
+    } else {
+      missingCritical.push('max_transfer_alt_combined_credits (required for combined mode)');
+    }
+  }
+  
+  // Optional fields (remaining 20 points) - don't block
+  score += 20; // Give benefit of doubt for optionals
+  
+  // Determine status
+  let status: PolicyStatus;
+  if (missingCritical.length > 0) {
+    status = 'red';
+  } else if (score >= 80) {
+    status = 'green';
+  } else if (score >= 50) {
+    status = 'yellow';
+  } else {
+    status = 'red';
+  }
+  
+  // Gate decision: Red = blocked, Yellow = allowed with warning, Green = allowed
+  const canGenerate = status !== 'red';
+  
+  const reason = canGenerate 
+    ? (status === 'yellow' ? 'Policy has warnings - templates marked pending_review' : undefined)
+    : `Blocked: ${missingCritical.slice(0, 3).join(', ')}`;
+  
+  return {
+    canGenerate,
+    status,
+    score,
+    reason,
+    missingCritical,
+  };
 }
 
 interface PricingPackData {
@@ -596,7 +696,8 @@ async function generateTemplatesFromPack(
   programCode: string,
   institutionPricing: InstitutionPricing,
   providerRates: Map<string, number>,
-  providerProvenanceVerified: boolean
+  providerProvenanceVerified: boolean,
+  policyStatus: PolicyStatus = 'green' // NEW: Pass policy status for template marking
 ): Promise<{ standard?: string; altMax?: string; errors: string[] }> {
   const errors: string[] = [];
   const trackTypes: ('standard' | 'alt_max')[] = ['standard', 'alt_max'];
@@ -707,6 +808,13 @@ async function generateTemplatesFromPack(
     templateData.institutionalCostUsd = costBreakdown.institutionalCostUsd;
     templateData.seedVersion = 'v3.1-twophase';
 
+    // Determine template status based on policy gate result
+    // Green = active (ready for use), Yellow = pending_review (needs verification)
+    const templateStatus = policyStatus === 'green' ? 'active' : 'pending_review';
+    const statusNote = policyStatus === 'yellow' 
+      ? ' [PENDING REVIEW - policy incomplete]' 
+      : '';
+
     const template = {
       id: templateId,
       institution_id: institutionId,
@@ -719,7 +827,9 @@ async function generateTemplatesFromPack(
       estimated_duration_months: Math.round(costBreakdown.planWeeks / 4.33), // Derived from computed weeks, not hardcoded
       catalog_year: '2024-2025',
       template_data: templateData,
-      notes: `${trackType === 'alt_max' ? 'Maximizes alt-credit usage' : 'Standard institutional path'} - Real cost from pricing packs v3`,
+      status: templateStatus, // NEW: Template status based on policy gate
+      policy_status: policyStatus, // NEW: Track source policy status
+      notes: `${trackType === 'alt_max' ? 'Maximizes alt-credit usage' : 'Standard institutional path'} - Real cost from pricing packs v3${statusNote}`,
     };
 
     const { error: upsertError } = await supabase
@@ -1019,6 +1129,51 @@ serve(async (req) => {
         ? pack.policy_data as PolicyData
         : {};
 
+      // ========================================================================
+      // PROMOTION GATE CHECK (Write-Time Enforcement)
+      // This is the critical safeguard that prevents bad templates from being written
+      // ========================================================================
+      const gateResult = evaluatePolicyGate(policyData);
+      console.log(`[seed-bsba-templates] ${code} gate check: ${gateResult.status} (score: ${gateResult.score})`);
+      
+      if (!gateResult.canGenerate) {
+        console.warn(`[seed-bsba-templates] ⛔ BLOCKED: ${code} - ${gateResult.reason}`);
+        results[code] = {
+          inserted: 0,
+          source: 'policy_pack',
+          blocked: true,
+          policyStatus: gateResult.status,
+          policyScore: gateResult.score,
+          error: `Template generation blocked: ${gateResult.reason}`,
+          missingFields: gateResult.missingCritical,
+        };
+        
+        // Log the blocked event
+        await supabase.from('policy_pack_events').insert({
+          institution: code,
+          pack_id: pack.id,
+          run_id: null,
+          event_type: 'template_generation_blocked',
+          actor_user_id: null,
+          payload: {
+            program_code,
+            policy_status: gateResult.status,
+            policy_score: gateResult.score,
+            missing_critical: gateResult.missingCritical,
+            reason: gateResult.reason,
+          },
+        }).then(({ error }) => {
+          if (error) console.warn(`[seed-bsba-templates] Failed to log blocked event for ${code}:`, error.message);
+        });
+        
+        continue; // Skip template generation for this institution
+      }
+      
+      // Log warning for Yellow status
+      if (gateResult.status === 'yellow') {
+        console.warn(`[seed-bsba-templates] ⚠️ WARNING: ${code} has incomplete policy (score: ${gateResult.score}). Templates will be marked pending_review.`);
+      }
+
       const displayRate = institutionPricing.model === 'flat_term' 
         ? `$${institutionPricing.termCostUsd}/term`
         : `$${institutionPricing.perCreditUsd}/credit`;
@@ -1034,7 +1189,8 @@ serve(async (req) => {
         program_code,
         institutionPricing,
         providerRates,
-        providerProvenanceVerified
+        providerProvenanceVerified,
+        gateResult.status // Pass status to mark templates appropriately
       );
 
       const insertedCount = (genResult.standard ? 1 : 0) + (genResult.altMax ? 1 : 0);
@@ -1043,15 +1199,18 @@ serve(async (req) => {
         inserted: insertedCount,
         templates: { standard: genResult.standard, altMax: genResult.altMax },
         source: 'policy_pack',
+        policyStatus: gateResult.status, // Track policy status in results
+        policyScore: gateResult.score,
+        templateStatus: gateResult.status === 'green' ? 'active' : 'pending_review',
         error: genResult.errors.length > 0 ? genResult.errors.join('; ') : undefined,
       };
 
-      // Log template generation event
+      // Log template generation event with policy status
       await supabase.from('policy_pack_events').insert({
         institution: code,
         pack_id: pack.id,
         run_id: null,
-        event_type: 'templates_generated',
+        event_type: gateResult.status === 'yellow' ? 'templates_generated_pending' : 'templates_generated',
         actor_user_id: null,
         payload: {
           program_code,
@@ -1060,6 +1219,9 @@ serve(async (req) => {
           ),
           template_ids: [genResult.standard, genResult.altMax].filter(Boolean),
           policy_confidence: pack.confidence_score,
+          policy_status: gateResult.status,
+          policy_score: gateResult.score,
+          template_status: gateResult.status === 'green' ? 'active' : 'pending_review',
           cost_formula_version: '3.0',
           pricing_model: institutionPricing.model,
         },
@@ -1068,8 +1230,14 @@ serve(async (req) => {
       });
     }
 
+    // Compute summary with gate statistics
     const totalCreated = Object.values(results).reduce((sum, r) => sum + r.inserted, 0);
+    const blockedCount = Object.values(results).filter((r: any) => r.blocked).length;
+    const pendingCount = Object.values(results).filter((r: any) => r.templateStatus === 'pending_review').length;
+    const activeCount = Object.values(results).filter((r: any) => r.templateStatus === 'active').length;
+    
     console.log(`[seed-bsba-templates] ✅ Complete. Created ${totalCreated} template(s) with real costs`);
+    console.log(`[seed-bsba-templates] Gate summary: ${activeCount} active, ${pendingCount} pending_review, ${blockedCount} blocked`);
 
     return new Response(
       JSON.stringify({
@@ -1082,6 +1250,12 @@ serve(async (req) => {
           programCode: program_code,
           costFormulaVersion: '3.0',
           providerRatesUsed: Object.fromEntries(providerRates),
+          // NEW: Gate enforcement summary
+          gateEnforcement: {
+            blocked: blockedCount,
+            pendingReview: pendingCount,
+            active: activeCount,
+          },
         },
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
