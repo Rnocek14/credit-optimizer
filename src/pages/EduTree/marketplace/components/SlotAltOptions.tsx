@@ -125,9 +125,10 @@ function AltOptionRow({ option }: { option: AltCreditOption }) {
         </span>
       )}
       
-      {/* Link to provider - only if URL is verified and sanitized */}
+      {/* Link to provider - only if URL is verified valid in database AND passes domain validation */}
       {(() => {
-        const safeProviderUrl = sanitizeCourseUrl(option.providerUrl);
+        // Pass both URL and its database verification status for defense-in-depth
+        const safeProviderUrl = sanitizeCourseUrl(option.providerUrl, option.urlStatus);
         return safeProviderUrl ? (
           <a 
             href={safeProviderUrl} 

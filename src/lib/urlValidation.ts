@@ -125,9 +125,23 @@ export function isVerifiedCourseUrl(url: string | undefined | null): boolean {
 
 /**
  * Sanitizes a URL for safe display/linking
- * Returns null if the URL is invalid
+ * Returns null if the URL is invalid or not verified in the database
+ * 
+ * @param url - The URL to sanitize
+ * @param urlStatus - Optional database verification status. If provided, URL must be 'valid' to pass.
+ * @returns The sanitized URL or null if invalid/unverified
  */
-export function sanitizeCourseUrl(url: string | undefined | null): string | null {
+export function sanitizeCourseUrl(
+  url: string | undefined | null,
+  urlStatus?: string | null
+): string | null {
+  // If we have database verification status, trust it first (defense-in-depth)
+  // This catches cases where the URL passes domain validation but is actually broken
+  if (urlStatus !== undefined && urlStatus !== null && urlStatus !== 'valid') {
+    return null;
+  }
+  
+  // Fallback to domain-based validation for URLs without DB status
   if (!isVerifiedCourseUrl(url)) return null;
   return url!.trim();
 }
