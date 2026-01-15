@@ -153,8 +153,8 @@ const ALT_CREDITS_CATALOG: AltCredit[] = [
   },
 
   // === Sophia Learning (self-paced, no proctoring) ===
-  // NOTE: Sophia URLs need verification - structure may include category prefix
-  // These are seeded with url_status='unknown' and will be verified by worker
+  // VERIFIED URLs: Sophia uses /online-courses/{category}/{course-slug}/ format
+  // All URLs verified via Firecrawl on 2026-01-15
   {
     source_code: 'SOPHIA',
     identifier: 'english-comp-1',
@@ -166,9 +166,9 @@ const ALT_CREDITS_CATALOG: AltCredit[] = [
     cost_usd: 99,
     duration_estimate_weeks: 4,
     exam_based: false,
-    // URL may be: /english-and-communication/english-composition-i
-    provider_url: 'https://www.sophia.org/online-courses/english-composition-i',
-    url_status: 'unknown',
+    provider_url: 'https://www.sophia.org/online-courses/english-and-communication/english-composition-i/',
+    url_status: 'valid',
+    verification_method: 'manual_verified',
   },
   {
     source_code: 'SOPHIA',
@@ -181,8 +181,9 @@ const ALT_CREDITS_CATALOG: AltCredit[] = [
     cost_usd: 99,
     duration_estimate_weeks: 4,
     exam_based: false,
-    provider_url: 'https://www.sophia.org/online-courses/english-composition-ii',
-    url_status: 'unknown',
+    provider_url: 'https://www.sophia.org/online-courses/english-and-communication/english-composition-ii/',
+    url_status: 'valid',
+    verification_method: 'manual_verified',
   },
   {
     source_code: 'SOPHIA',
@@ -195,8 +196,9 @@ const ALT_CREDITS_CATALOG: AltCredit[] = [
     cost_usd: 99,
     duration_estimate_weeks: 6,
     exam_based: false,
-    provider_url: 'https://www.sophia.org/online-courses/introduction-to-statistics',
-    url_status: 'unknown',
+    provider_url: 'https://www.sophia.org/online-courses/math/introduction-to-statistics/',
+    url_status: 'valid',
+    verification_method: 'manual_verified',
   },
   {
     source_code: 'SOPHIA',
@@ -209,8 +211,9 @@ const ALT_CREDITS_CATALOG: AltCredit[] = [
     cost_usd: 99,
     duration_estimate_weeks: 5,
     exam_based: false,
-    provider_url: 'https://www.sophia.org/online-courses/microeconomics',
-    url_status: 'unknown',
+    provider_url: 'https://www.sophia.org/online-courses/social-science/microeconomics/',
+    url_status: 'valid',
+    verification_method: 'manual_verified',
   },
   {
     source_code: 'SOPHIA',
@@ -223,13 +226,14 @@ const ALT_CREDITS_CATALOG: AltCredit[] = [
     cost_usd: 99,
     duration_estimate_weeks: 5,
     exam_based: false,
-    provider_url: 'https://www.sophia.org/online-courses/macroeconomics',
-    url_status: 'unknown',
+    provider_url: 'https://www.sophia.org/online-courses/social-science/macroeconomics/',
+    url_status: 'valid',
+    verification_method: 'manual_verified',
   },
   {
     source_code: 'SOPHIA',
     identifier: 'accounting-1',
-    title: 'Accounting I',
+    title: 'Financial Accounting',  // Renamed from "Accounting I"
     description: 'Financial accounting principles and practices',
     credits_typical: 3,
     level: 200,
@@ -237,13 +241,14 @@ const ALT_CREDITS_CATALOG: AltCredit[] = [
     cost_usd: 99,
     duration_estimate_weeks: 6,
     exam_based: false,
-    provider_url: 'https://www.sophia.org/online-courses/accounting-i',
-    url_status: 'unknown',
+    provider_url: 'https://www.sophia.org/online-courses/business/financial-accounting/',
+    url_status: 'valid',
+    verification_method: 'manual_verified',
   },
   {
     source_code: 'SOPHIA',
     identifier: 'accounting-2',
-    title: 'Accounting II',
+    title: 'Managerial Accounting',  // Renamed from "Accounting II"
     description: 'Managerial accounting and cost analysis',
     credits_typical: 3,
     level: 200,
@@ -251,8 +256,9 @@ const ALT_CREDITS_CATALOG: AltCredit[] = [
     cost_usd: 99,
     duration_estimate_weeks: 6,
     exam_based: false,
-    provider_url: 'https://www.sophia.org/online-courses/accounting-ii',
-    url_status: 'unknown',
+    provider_url: 'https://www.sophia.org/online-courses/business/managerial-accounting/',
+    url_status: 'valid',
+    verification_method: 'manual_verified',
   },
   {
     source_code: 'SOPHIA',
@@ -265,8 +271,9 @@ const ALT_CREDITS_CATALOG: AltCredit[] = [
     cost_usd: 99,
     duration_estimate_weeks: 5,
     exam_based: false,
-    provider_url: 'https://www.sophia.org/online-courses/business-law',
-    url_status: 'unknown',
+    provider_url: 'https://www.sophia.org/online-courses/business/business-law/',
+    url_status: 'valid',
+    verification_method: 'manual_verified',
   },
   {
     source_code: 'SOPHIA',
@@ -279,8 +286,9 @@ const ALT_CREDITS_CATALOG: AltCredit[] = [
     cost_usd: 99,
     duration_estimate_weeks: 4,
     exam_based: false,
-    provider_url: 'https://www.sophia.org/online-courses/introduction-to-business',
-    url_status: 'unknown',
+    provider_url: 'https://www.sophia.org/online-courses/business/introduction-to-business/',
+    url_status: 'valid',
+    verification_method: 'manual_verified',
   },
   {
     source_code: 'SOPHIA',
@@ -293,8 +301,9 @@ const ALT_CREDITS_CATALOG: AltCredit[] = [
     cost_usd: 99,
     duration_estimate_weeks: 4,
     exam_based: false,
-    provider_url: 'https://www.sophia.org/online-courses/public-speaking',
-    url_status: 'unknown',
+    provider_url: 'https://www.sophia.org/online-courses/english-and-communication/public-speaking/',
+    url_status: 'valid',
+    verification_method: 'manual_verified',
   },
 
   // === Study.com (video-based, proctored exams) ===
