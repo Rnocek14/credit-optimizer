@@ -1,6 +1,14 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
+/**
+ * Strict URL verification status type.
+ * - 'valid': URL has been verified and is safe to display
+ * - 'invalid': URL was checked and is broken/inaccessible
+ * - 'unknown': URL has not been verified yet (default for new records)
+ */
+export type UrlStatus = 'valid' | 'invalid' | 'unknown';
+
 export interface AltCreditOption {
   id: string;
   sourceCode: string;
@@ -13,7 +21,7 @@ export interface AltCreditOption {
   durationWeeks: number | null;
   examBased: boolean;
   providerUrl: string | null;
-  urlStatus: string | null; // Track verification status
+  urlStatus: UrlStatus; // Normalized to strict union type
 }
 
 interface UseAltOptionsParams {
@@ -24,6 +32,16 @@ interface UseAltOptionsParams {
 
 // Cache institution IDs to avoid repeated lookups
 const institutionIdCache = new Map<string, string>();
+
+/**
+ * Normalizes raw url_status from database to strict UrlStatus union.
+ * Defaults to 'unknown' for null or unexpected values (deny by default).
+ */
+function normalizeUrlStatus(rawStatus: string | null): UrlStatus {
+  if (rawStatus === 'valid') return 'valid';
+  if (rawStatus === 'invalid') return 'invalid';
+  return 'unknown'; // Default: treat as unverified
+}
 
 async function getInstitutionId(code: string): Promise<string | null> {
   if (institutionIdCache.has(code)) {
@@ -105,8 +123,9 @@ export function useAltOptionsForRequirementArea({
           url_status: string | null;
         };
         
-        // Only expose URL if it's verified as valid
-        const isUrlValid = altCredit.url_status === 'valid';
+        // Normalize url_status to strict union type (unknown if null/unexpected)
+        const urlStatus = normalizeUrlStatus(altCredit.url_status);
+        const isUrlValid = urlStatus === 'valid';
         
         return {
           id: row.id,
@@ -119,9 +138,9 @@ export function useAltOptionsForRequirementArea({
           costUsd: altCredit.cost_usd,
           durationWeeks: altCredit.duration_estimate_weeks,
           examBased: altCredit.exam_based ?? false,
-          // Filter unverified URLs at the hook level
+          // Filter unverified URLs at the hook level - deny by default
           providerUrl: isUrlValid ? altCredit.provider_url : null,
-          urlStatus: altCredit.url_status,
+          urlStatus,
         };
       });
     },
@@ -213,8 +232,9 @@ export function useAltOptionsForSlots({
         
         if (!altCredit) continue;
         
-        // Only expose URL if it's verified as valid
-        const isUrlValid = altCredit.url_status === 'valid';
+        // Normalize url_status to strict union type (unknown if null/unexpected)
+        const urlStatus = normalizeUrlStatus(altCredit.url_status);
+        const isUrlValid = urlStatus === 'valid';
         
         result[area].push({
           id: row.id,
@@ -227,9 +247,9 @@ export function useAltOptionsForSlots({
           costUsd: altCredit.cost_usd,
           durationWeeks: altCredit.duration_estimate_weeks,
           examBased: altCredit.exam_based ?? false,
-          // Filter unverified URLs at the hook level
+          // Filter unverified URLs at the hook level - deny by default
           providerUrl: isUrlValid ? altCredit.provider_url : null,
-          urlStatus: altCredit.url_status,
+          urlStatus,
         });
       }
 

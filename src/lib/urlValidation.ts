@@ -1,14 +1,20 @@
 /**
  * URL Validation Utilities for Course Links
  * 
- * This module provides validation for external course URLs to prevent
- * "Page not found" errors from fabricated or invalid links.
+ * This module provides DENY-BY-DEFAULT validation for external course URLs.
  * 
  * IMPORTANT: We never fabricate URLs. If a course doesn't have a verified URL,
  * we hide the link rather than showing a broken one.
+ * 
+ * Defense layers:
+ * 1. Database: url_status must be 'valid' (enforced via trigger + CHECK constraint)
+ * 2. Hook: Only passes providerUrl when url_status === 'valid'
+ * 3. Sanitizer: This module - final gate before render, requires HTTPS + allowlist
  */
 
-// Legitimate educational platform domains
+import type { UrlStatus } from '@/hooks/useAltOptionsForRequirementArea';
+
+// Legitimate educational platform domains (HTTPS required)
 const VALID_EDUCATIONAL_DOMAINS = [
   // Alternative credit providers (verified data)
   'sophia.org',
@@ -51,8 +57,40 @@ const VALID_EDUCATIONAL_DOMAINS = [
   'cloud.google.com',
 ];
 
+// Enable dev warnings via localStorage: localStorage.setItem('URL_VALIDATION_DEBUG', 'true')
+const isDebugEnabled = () => {
+  try {
+    return typeof localStorage !== 'undefined' && localStorage.getItem('URL_VALIDATION_DEBUG') === 'true';
+  } catch {
+    return false;
+  }
+};
+
 /**
- * Validates that a URL is a proper HTTP/HTTPS URL
+ * Logs a structured warning when a URL is blocked (dev mode only).
+ * Helps surface upstream data issues without spamming production.
+ */
+function logBlockedUrl(url: string | undefined | null, reason: string, urlStatus?: UrlStatus | null): void {
+  if (!isDebugEnabled()) return;
+  console.warn('[URL Blocked]', { url: url ?? '(empty)', reason, urlStatus: urlStatus ?? 'not-provided' });
+}
+
+/**
+ * Validates that a URL is a proper HTTPS URL (HTTP not allowed for security)
+ */
+export function isValidHttpsUrl(url: string | undefined | null): boolean {
+  if (!url?.trim()) return false;
+  
+  try {
+    const parsed = new URL(url.trim());
+    return parsed.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * @deprecated Use isValidHttpsUrl instead - we require HTTPS
  */
 export function isValidHttpUrl(url: string | undefined | null): boolean {
   if (!url?.trim()) return false;
@@ -67,7 +105,7 @@ export function isValidHttpUrl(url: string | undefined | null): boolean {
 
 /**
  * Validates that a URL belongs to a known educational platform
- * This provides a higher bar than just checking for valid HTTP URLs
+ * This provides a higher bar than just checking for valid HTTPS URLs
  */
 export function isValidCourseUrl(url: string | undefined | null): boolean {
   if (!url?.trim()) return false;
@@ -75,8 +113,8 @@ export function isValidCourseUrl(url: string | undefined | null): boolean {
   try {
     const parsed = new URL(url.trim());
     
-    // Must be HTTP or HTTPS
-    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+    // MUST be HTTPS (deny HTTP)
+    if (parsed.protocol !== 'https:') {
       return false;
     }
     
@@ -110,38 +148,89 @@ export function isFabricatedUrl(url: string | undefined | null): boolean {
 }
 
 /**
+ * Normalizes a URL by stripping common tracking parameters.
+ * Returns the cleaned URL or null if invalid.
+ */
+function normalizeUrl(url: string): string | null {
+  try {
+    const parsed = new URL(url.trim());
+    
+    // Remove common tracking params
+    const trackingParams = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', 'ref', 'source'];
+    trackingParams.forEach(param => parsed.searchParams.delete(param));
+    
+    return parsed.toString();
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Primary validation function - combines all checks
  * Returns true only for URLs that are:
- * 1. Valid HTTP/HTTPS URLs
+ * 1. Valid HTTPS URLs (HTTP rejected)
  * 2. From known educational platforms
  * 3. Not obviously fabricated
  */
 export function isVerifiedCourseUrl(url: string | undefined | null): boolean {
-  if (!isValidHttpUrl(url)) return false;
+  if (!isValidHttpsUrl(url)) return false;
   if (!isValidCourseUrl(url)) return false;
   if (isFabricatedUrl(url)) return false;
   return true;
 }
 
 /**
- * Sanitizes a URL for safe display/linking
- * Returns null if the URL is invalid or not verified in the database
+ * DENY-BY-DEFAULT URL sanitizer for rendering course links.
+ * 
+ * This is the final gate before a URL is displayed to users.
+ * It requires BOTH database verification AND domain validation.
  * 
  * @param url - The URL to sanitize
- * @param urlStatus - Optional database verification status. If provided, URL must be 'valid' to pass.
+ * @param urlStatus - Database verification status (required for defense-in-depth)
  * @returns The sanitized URL or null if invalid/unverified
+ * 
+ * Logic:
+ * 1. If urlStatus !== 'valid' → DENY (not verified in DB)
+ * 2. If URL is not HTTPS → DENY
+ * 3. If hostname not in allowlist → DENY
+ * 4. If URL looks fabricated → DENY
+ * 5. Strip tracking params and return normalized URL
  */
 export function sanitizeCourseUrl(
   url: string | undefined | null,
-  urlStatus?: string | null
+  urlStatus?: UrlStatus | string | null
 ): string | null {
-  // If we have database verification status, trust it first (defense-in-depth)
-  // This catches cases where the URL passes domain validation but is actually broken
-  if (urlStatus !== undefined && urlStatus !== null && urlStatus !== 'valid') {
+  // Layer 1: Database verification status MUST be 'valid'
+  // This is the primary gate - deny if not explicitly verified
+  if (urlStatus !== 'valid') {
+    logBlockedUrl(url, 'url_status not valid', urlStatus as UrlStatus | null);
     return null;
   }
   
-  // Fallback to domain-based validation for URLs without DB status
-  if (!isVerifiedCourseUrl(url)) return null;
-  return url!.trim();
+  // Layer 2: URL must exist and be non-empty
+  if (!url?.trim()) {
+    logBlockedUrl(url, 'empty or null URL', urlStatus as UrlStatus);
+    return null;
+  }
+  
+  // Layer 3: Must be HTTPS (block HTTP)
+  if (!isValidHttpsUrl(url)) {
+    logBlockedUrl(url, 'not HTTPS', urlStatus as UrlStatus);
+    return null;
+  }
+  
+  // Layer 4: Must be from known educational domain
+  if (!isValidCourseUrl(url)) {
+    logBlockedUrl(url, 'domain not in allowlist', urlStatus as UrlStatus);
+    return null;
+  }
+  
+  // Layer 5: Must not look fabricated
+  if (isFabricatedUrl(url)) {
+    logBlockedUrl(url, 'appears fabricated', urlStatus as UrlStatus);
+    return null;
+  }
+  
+  // All checks passed - normalize and return
+  return normalizeUrl(url);
 }

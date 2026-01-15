@@ -6,7 +6,12 @@ import {
   CollapsibleContent, 
   CollapsibleTrigger 
 } from '@/components/ui/collapsible';
-import { ChevronDown, ExternalLink, Clock, DollarSign, FileCheck } from 'lucide-react';
+import { 
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import { ChevronDown, ExternalLink, Clock, DollarSign, FileCheck, Link2Off } from 'lucide-react';
 import type { AltCreditOption } from '@/hooks/useAltOptionsForRequirementArea';
 import { cn } from '@/lib/utils';
 import { sanitizeCourseUrl } from '@/lib/urlValidation';
@@ -129,17 +134,39 @@ function AltOptionRow({ option }: { option: AltCreditOption }) {
       {(() => {
         // Pass both URL and its database verification status for defense-in-depth
         const safeProviderUrl = sanitizeCourseUrl(option.providerUrl, option.urlStatus);
-        return safeProviderUrl ? (
-          <a 
-            href={safeProviderUrl} 
-            target="_blank" 
-            rel="noopener noreferrer"
-            className="text-muted-foreground hover:text-foreground shrink-0"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <ExternalLink className="h-3 w-3" />
-          </a>
-        ) : null;
+        
+        // Show verified link
+        if (safeProviderUrl) {
+          return (
+            <a 
+              href={safeProviderUrl} 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="text-muted-foreground hover:text-foreground shrink-0"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <ExternalLink className="h-3 w-3" />
+            </a>
+          );
+        }
+        
+        // Show pending verification indicator if URL exists but isn't verified
+        if (option.urlStatus !== 'valid' && option.urlStatus !== 'invalid') {
+          return (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="text-muted-foreground/50 shrink-0 cursor-help">
+                  <Link2Off className="h-3 w-3" />
+                </span>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="text-xs">
+                Link pending verification
+              </TooltipContent>
+            </Tooltip>
+          );
+        }
+        
+        return null;
       })()}
     </div>
   );
