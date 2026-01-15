@@ -17,6 +17,7 @@ import { applyTemplate } from './applyTemplate';
 import { validatePlan, type Violation } from './constraints';
 import { isAltCredit, isTransferCredit, isResidentCredit } from '../utils/creditClassification';
 import { supabase } from '@/integrations/supabase/client';
+import { VIOLATION_TYPES } from './violationTypes';
 
 // Import fixture templates
 import marketplaceV2Templates from '@/fixtures/templates/marketplace-v2-templates.json';
@@ -374,13 +375,13 @@ function runTest(
         // Should correctly detect over-cap (test passes if violation detected)
         if (bucketMode === 'combined') {
           // Combined mode: expect combined_cap
-          passed = violations.some(v => v.type === 'combined_cap');
+          passed = violations.some(v => v.type === VIOLATION_TYPES.COMBINED_CAP);
         } else if (bucketMode === 'separate') {
           // Separate mode: expect transfer_cap or total_transfer
-          passed = violations.some(v => v.type === 'transfer_cap' || v.type === 'total_transfer');
+          passed = violations.some(v => v.type === VIOLATION_TYPES.TRANSFER_CAP || v.type === VIOLATION_TYPES.TOTAL_TRANSFER);
         } else {
           // Unknown mode: expect policy_unverified error
-          passed = violations.some(v => v.type === 'policy_unverified');
+          passed = violations.some(v => v.type === VIOLATION_TYPES.POLICY_UNVERIFIED);
         }
         break;
         
@@ -388,13 +389,13 @@ function runTest(
         // Should correctly detect alt cap violation
         if (bucketMode === 'combined') {
           // Combined mode: alt contributes to combined_cap
-          passed = violations.some(v => v.type === 'combined_cap');
+          passed = violations.some(v => v.type === VIOLATION_TYPES.COMBINED_CAP);
         } else if (bucketMode === 'separate') {
           // Separate mode: expect alt_cap (distinct from transfer_cap)
-          passed = violations.some(v => v.type === 'alt_cap');
+          passed = violations.some(v => v.type === VIOLATION_TYPES.ALT_CAP);
         } else {
           // Unknown mode: expect policy_unverified error
-          passed = violations.some(v => v.type === 'policy_unverified');
+          passed = violations.some(v => v.type === VIOLATION_TYPES.POLICY_UNVERIFIED);
         }
         break;
         

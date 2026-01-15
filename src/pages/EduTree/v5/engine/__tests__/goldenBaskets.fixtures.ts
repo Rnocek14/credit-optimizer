@@ -853,6 +853,79 @@ export const GOLDEN_BASKETS: GoldenBasket[] = [
       ],
     },
   },
+  
+  /**
+   * POLICY_UNVERIFIED: Missing capstoneInResidence flag emits warning
+   * Tests tri-state behavior: undefined flag = warn + don't block
+   * This guards against defaulting capstoneInResidence to true.
+   */
+  {
+    id: 'missing_capstone_flag_warning',
+    name: 'Missing Capstone Flag Produces Warning',
+    description: 'Policy without capstone_in_residence flag emits POLICY_UNVERIFIED warning but does not block',
+    category: 'failure_mode',
+    status: 'enforced',
+    input: {
+      basket: [
+        // 105 TESU resident credits
+        ...Array.from({ length: 35 }, (_, i) => createBasketItem({
+          courseId: `TESU-${i}`,
+          credits: 3,
+          providerType: 'university',
+          providerCode: 'TESU',
+          level: i < 20 ? 100 : 300, // Mix of lower and upper division
+        })),
+        // 15 transfer credits including a transfer capstone
+        ...Array.from({ length: 4 }, (_, i) => createBasketItem({
+          courseId: `TRANSFER-${i}`,
+          credits: 3,
+          providerType: 'university',
+          providerCode: 'OTHER',
+          level: 300,
+        })),
+        // Transfer capstone (would be blocked if capstoneInResidence was true)
+        createBasketItem({
+          courseId: 'capstone-transfer-no-flag',
+          credits: 3,
+          providerType: 'university',
+          providerCode: 'OTHER',
+          level: 400,
+        }),
+      ],
+      institutionCode: 'TESU',
+      degreeLevel: 'bachelor',
+      // Policy WITHOUT capstone_in_residence field (undefined = tri-state)
+      policy: {
+        min_residency_credits: 15,
+        max_alt_credits: 90,
+        max_alt_credit: 90,
+        upper_division_min: 18,
+        transfer_alt_bucket_mode: 'separate' as const,
+        degree_credit_total: 120,
+        totalCreditsBachelor: 120,
+        confidence: 95,
+        catalog_year: '2024-2025',
+        // NOTE: capstone_in_residence is intentionally MISSING
+      } as any,
+    },
+    expected: {
+      // NOT blocked because capstoneInResidence is undefined (tri-state)
+      eligibility: 'eligible',
+      blockerCount: 0,
+      assertions: [
+        (r) => expect(r.totals.total).toBe(120),
+        (r) => expect(r.totals.resident).toBe(105),
+        // Should have POLICY_UNVERIFIED warning (not error) about missing capstone flag
+        (r) => expect(r.violations.some(v => 
+          v.type === VIOLATION_TYPES.POLICY_UNVERIFIED && 
+          v.severity === 'warning' &&
+          v.message.includes('capstoneInResidence')
+        )).toBe(true),
+        // Should NOT have CAPSTONE_SUBSTITUTION error (because flag is undefined)
+        (r) => expect(r.violations.some(v => v.type === VIOLATION_TYPES.CAPSTONE_SUBSTITUTION)).toBe(false),
+      ],
+    },
+  },
 ];
 
 // ============================================================================

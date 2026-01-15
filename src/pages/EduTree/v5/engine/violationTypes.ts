@@ -51,6 +51,8 @@ export const VIOLATION_TYPES = {
   // ============================================
   // REQUIREMENT VIOLATIONS (Graduation requirements)
   // ============================================
+  /** Total credits below degree requirement */
+  TOTAL_CREDITS: 'total_credits',
   /** Residency credits below minimum */
   RESIDENCY: 'residency',
   /** Upper-division credits below minimum */
@@ -102,6 +104,7 @@ export const VIOLATION_CATEGORIES = {
     VIOLATION_TYPES.POLICY_UNVERIFIED,
   ],
   REQUIREMENTS: [
+    VIOLATION_TYPES.TOTAL_CREDITS,
     VIOLATION_TYPES.RESIDENCY,
     VIOLATION_TYPES.UPPER_DIVISION,
     VIOLATION_TYPES.GENED_INCOMPLETE,
@@ -131,15 +134,17 @@ export const VIOLATION_CATEGORIES = {
 export const VIOLATION_PRIORITY: Record<ViolationType, number> = {
   // Policy first
   [VIOLATION_TYPES.POLICY_UNVERIFIED]: 0,
-  // Residency second
+  // Total credits second (fundamental requirement)
+  [VIOLATION_TYPES.TOTAL_CREDITS]: 5,
+  // Residency third
   [VIOLATION_TYPES.RESIDENCY]: 10,
-  // Caps third
+  // Caps fourth
   [VIOLATION_TYPES.ALT_CAP]: 20,
   [VIOLATION_TYPES.TRANSFER_CAP]: 21,
   [VIOLATION_TYPES.COMBINED_CAP]: 22,
   [VIOLATION_TYPES.TOTAL_TRANSFER]: 23,
   [VIOLATION_TYPES.PROVIDER_CAP]: 24,
-  // Requirements fourth
+  // Requirements fifth
   [VIOLATION_TYPES.UPPER_DIVISION]: 30,
   [VIOLATION_TYPES.GENED_INCOMPLETE]: 31,
   [VIOLATION_TYPES.CAPSTONE_SUBSTITUTION]: 32,
