@@ -915,6 +915,8 @@ export const GOLDEN_BASKETS: GoldenBasket[] = [
       assertions: [
         (r) => expect(r.totals.total).toBe(120),
         (r) => expect(r.totals.resident).toBe(105),
+        // Explicit blockers guard - should have zero blockers
+        (r) => expect(r.blockers.length).toBe(0),
         // Should have POLICY_UNVERIFIED warning (not error) about missing capstone flag
         (r) => expect(r.violations.some(v => 
           v.type === VIOLATION_TYPES.POLICY_UNVERIFIED && 

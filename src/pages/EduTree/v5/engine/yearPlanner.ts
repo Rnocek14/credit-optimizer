@@ -463,22 +463,22 @@ export function validateAnchorPolicies(
     }
   }
 
-  // 1. Check transfer cap (with safety margin)
+  // 1. Check alt-credit cap (ACE/non-collegiate credits)
   if (totals.aceCredits > policy.max_alt_credits) {
     warnings.push({
       type: VIOLATION_TYPES.ALT_CAP,
       severity: 'error',
-      message: `Exceeds transfer cap by ${totals.aceCredits - policy.max_alt_credits} credits`,
+      message: `Exceeds alt-credit cap by ${totals.aceCredits - policy.max_alt_credits} credits`,
       affectedCourses: plan.fall.concat(plan.spring)
         .filter(i => isAceOption(i))
         .map(i => i.courseId),
-      suggestedFix: `Replace ${Math.ceil((totals.aceCredits - policy.max_alt_credits) / 3)} ACE courses with university courses`,
+      suggestedFix: `Replace ${Math.ceil((totals.aceCredits - policy.max_alt_credits) / 3)} ACE/non-collegiate courses with university courses`,
     });
   } else if (totals.aceCredits > policy.max_alt_credits - 6) {
     warnings.push({
       type: VIOLATION_TYPES.ALT_CAP,
       severity: 'warning',
-      message: `Approaching transfer cap (${totals.aceCredits}/${policy.max_alt_credits} credits used)`,
+      message: `Approaching alt-credit cap (${totals.aceCredits}/${policy.max_alt_credits} credits used)`,
       affectedCourses: [],
       suggestedFix: 'Consider institutional courses for remaining modules',
     });
