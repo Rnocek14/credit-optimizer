@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Search, Filter, BookOpen, Star, Clock, DollarSign, GraduationCap, TrendingUp } from 'lucide-react';
+import { safeOpenExternal } from '@/components/ui/SafeExternalLink';
 import { HubNavigation } from '@/components/HubNavigation';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -420,7 +421,7 @@ export default function ExploreCourses() {
                       View Details
                     </Button>
                     <Button 
-                      onClick={() => window.open(course.url, '_blank')}
+                      onClick={() => safeOpenExternal(course.url, 'unknown')}
                       size="sm"
                       className="flex-1"
                       disabled={!course.url}

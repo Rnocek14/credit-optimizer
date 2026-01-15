@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import SaveButton from '@/components/SaveButton';
+import { safeOpenExternal } from '@/components/ui/SafeExternalLink';
 
 interface Course {
   id: string;
@@ -59,12 +60,11 @@ export function CourseDetailModal({ course, isOpen, onClose }: CourseDetailModal
   if (!course) return null;
 
   const handleStartCourse = () => {
-    if (course.url) {
-      window.open(course.url, '_blank');
-    }
+    // Use safe open - treats unknown urlStatus as unverified
+    const opened = safeOpenExternal(course.url, 'unknown');
     toast({
-      title: 'Course started',
-      description: 'Opening course in new tab'
+      title: opened ? 'Course started' : 'Link unavailable',
+      description: opened ? 'Opening course in new tab' : 'This course link is pending verification'
     });
   };
 

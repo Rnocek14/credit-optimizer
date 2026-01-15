@@ -6,6 +6,7 @@ import { Brain, BookOpen, Star, TrendingUp, ExternalLink } from 'lucide-react';
 import { useEnhancedMaya } from '@/hooks/useEnhancedMaya';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { safeOpenExternal } from '@/components/ui/SafeExternalLink';
 
 interface MayaCourseRecommendationsProps {
   skillGaps?: string[];
@@ -242,7 +243,7 @@ export function MayaCourseRecommendations({
 
               <Button
                 size={compact ? "sm" : "default"}
-                onClick={() => window.open(course.url, '_blank')}
+                onClick={() => safeOpenExternal(course.url, 'unknown')}
                 disabled={!course.url}
                 className="flex-shrink-0"
               >

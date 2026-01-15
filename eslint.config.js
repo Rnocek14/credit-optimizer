@@ -49,6 +49,15 @@ export default tseslint.config(
         {
           selector: "TemplateLiteral[quasis.0.value.raw=/hsl\\(var\\(--/]",
           message: "❌ Don't wrap OKLCH variables in hsl(). Use var(--xxx) directly or color-mix() for opacity. See src/design/COLOR_SYSTEM.md"
+        },
+        // URL Sanitization Guards - prevent direct use of dynamic URLs in href
+        {
+          selector: "JSXAttribute[name.name='href'][value.expression.type='Identifier']",
+          message: "❌ Use SafeExternalLink or sanitizeCourseUrl() for dynamic href values. Direct URL variables are unsafe. See src/components/ui/SafeExternalLink.tsx"
+        },
+        {
+          selector: "JSXAttribute[name.name='href'][value.expression.type='MemberExpression']",
+          message: "❌ Use SafeExternalLink or sanitizeCourseUrl() for dynamic href values. Direct URL variables are unsafe. See src/components/ui/SafeExternalLink.tsx"
         }
       ],
       // Block new usage of deprecated V3NodeData.year field

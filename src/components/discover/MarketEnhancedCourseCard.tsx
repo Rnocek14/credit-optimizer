@@ -6,6 +6,7 @@ import { ExternalLink, TrendingUp, DollarSign, Clock, Star, Target, Info } from 
 import { MarketTooltip } from './MarketTooltip';
 import { calculateCourseROI } from '@/lib/marketScoring';
 import { SaveToPlanButton } from '@/components/SaveToPlanButton';
+import { safeOpenExternal } from '@/components/ui/SafeExternalLink';
 
 interface Course {
   id: string;
@@ -89,9 +90,8 @@ export const MarketEnhancedCourseCard: React.FC<MarketEnhancedCourseCardProps> =
   };
 
   const handleStartCourse = () => {
-    if (course.url) {
-      window.open(course.url, '_blank');
-    }
+    // Use safe open - treats unknown urlStatus as unverified
+    safeOpenExternal(course.url, 'unknown');
   };
 
   if (compact) {

@@ -11,6 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import TutorialTip from '@/tutorial/TutorialTip';
 import { TIPS } from '@/tutorial/tutorial-map';
+import { safeOpenExternal } from '@/components/ui/SafeExternalLink';
 
 interface SavedCourse {
   course_id: string;
@@ -391,7 +392,7 @@ function CourseCard({ course, status, onUpdateStatus, formatDuration, getDifficu
             <Button
               size="sm"
               variant="outline"
-              onClick={() => window.open(details.url, '_blank')}
+              onClick={() => safeOpenExternal(details.url, 'unknown')}
               className="flex-1"
             >
               <ExternalLink className="h-4 w-4 mr-1" />

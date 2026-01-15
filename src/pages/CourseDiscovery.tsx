@@ -21,6 +21,7 @@ import {
 import { useCourseIntelligence, type DiscoveredCourse } from '@/hooks/useCourseIntelligence';
 import { useUnifiedData } from '@/contexts/UnifiedDataContext';
 import { HubNavigation } from '@/components/HubNavigation';
+import { safeOpenExternal } from '@/components/ui/SafeExternalLink';
 
 export default function CourseDiscovery() {
   const [keywords, setKeywords] = useState('');
@@ -313,7 +314,7 @@ export default function CourseDiscovery() {
                         </Button>
                         <Button 
                           size="sm"
-                          onClick={() => course.url && window.open(course.url, '_blank')}
+                          onClick={() => safeOpenExternal(course.url, 'unknown')}
                           disabled={!course.url}
                         >
                           <ExternalLink className="h-3 w-3 mr-1" />

@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { useCourseIntelligence } from '@/hooks/useCourseIntelligence';
 import { useUser } from '@/hooks/useUser';
+import { SafeExternalLink, safeOpenExternal } from '@/components/ui/SafeExternalLink';
 
 interface CourseRecommendation {
   courseId: string;
@@ -145,19 +146,14 @@ export const CourseRecommendationCard: React.FC<CourseRecommendationCardProps> =
 
         {/* Actions */}
         <div className="flex gap-2 pt-2">
-          {recommendation.url && (
-            <Button asChild className="flex-1">
-              <a 
-                href={recommendation.url} 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="flex items-center gap-2"
-              >
-                <ExternalLink className="h-4 w-4" />
-                View Course
-              </a>
-            </Button>
-          )}
+          <Button 
+            className="flex-1"
+            onClick={() => safeOpenExternal(recommendation.url, 'unknown')}
+            disabled={!recommendation.url}
+          >
+            <ExternalLink className="h-4 w-4 mr-2" />
+            View Course
+          </Button>
           <Button 
             variant="outline" 
             onClick={handleEnroll}

@@ -51,6 +51,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 import { sanitizeUrl } from '@/utils/security';
+import { safeOpenExternal } from '@/components/ui/SafeExternalLink';
 import TrackSelector from "@/components/tracks/TrackSelector";
 import { useActiveTrackStore } from "@/stores/useActiveTrackStore";
 import { TrackManager } from "@/components/multi-track/TrackManager";
@@ -958,11 +959,14 @@ function CourseCard({
         <div className="flex items-center justify-between pt-2 border-t">
           <span className="font-semibold">{course.cost}</span>
           <div className="flex gap-2">
-            <Button size="sm" variant="outline" asChild>
-              <a href={course.url} target="_blank" rel="noopener noreferrer">
-                <ExternalLink className="h-3 w-3 mr-1" />
-                View
-              </a>
+            <Button 
+              size="sm" 
+              variant="outline" 
+              onClick={() => safeOpenExternal(course.url, 'unknown')}
+              disabled={!course.url}
+            >
+              <ExternalLink className="h-3 w-3 mr-1" />
+              View
             </Button>
           </div>
         </div>
