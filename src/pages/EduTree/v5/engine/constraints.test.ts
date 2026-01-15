@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { validatePlan } from './constraints';
+import { VIOLATION_TYPES } from './violationTypes';
 import type { BasketItem } from '../state/usePlanBasket';
 
 describe('validatePlan - Transfer Cap', () => {
@@ -31,7 +32,7 @@ describe('validatePlan - Transfer Cap', () => {
 
     const violations = validatePlan(basket, [], { max_ace_credits: 6 });
     
-    const transferCapViolation = violations.find(v => v.type === 'transfer_cap');
+    const transferCapViolation = violations.find(v => v.type === VIOLATION_TYPES.ALT_CAP);
     expect(transferCapViolation).toBeDefined();
     expect(transferCapViolation?.severity).toBe('error');
     expect(transferCapViolation?.message).toContain('7 ACE/alt credits exceeds 6');
@@ -54,7 +55,7 @@ describe('validatePlan - Transfer Cap', () => {
 
     const violations = validatePlan(basket, [], { max_ace_credits: 90 });
     
-    const transferCapViolation = violations.find(v => v.type === 'transfer_cap');
+    const transferCapViolation = violations.find(v => v.type === VIOLATION_TYPES.ALT_CAP);
     expect(transferCapViolation).toBeUndefined();
   });
 
@@ -75,7 +76,7 @@ describe('validatePlan - Transfer Cap', () => {
 
     const violations = validatePlan(basket, [], { max_ace_credits: 6 });
     
-    const transferCapViolation = violations.find(v => v.type === 'transfer_cap');
+    const transferCapViolation = violations.find(v => v.type === VIOLATION_TYPES.ALT_CAP);
     expect(transferCapViolation).toBeUndefined();
   });
 
@@ -118,7 +119,7 @@ describe('validatePlan - Transfer Cap', () => {
     } as any);
     
     // Should trigger alt_cap violation since 10 > 6
-    const altCapViolation = violations.find(v => v.type === 'alt_cap');
+    const altCapViolation = violations.find(v => v.type === VIOLATION_TYPES.ALT_CAP);
     expect(altCapViolation).toBeDefined();
     expect(altCapViolation?.severity).toBe('error');
     expect(altCapViolation?.message).toContain('10 alt credits exceeds 6');
@@ -145,7 +146,7 @@ describe('validatePlan - Transfer Cap', () => {
     } as any);
     
     // No violation since 5 < 6
-    const altCapViolation = violations.find(v => v.type === 'alt_cap');
+    const altCapViolation = violations.find(v => v.type === VIOLATION_TYPES.ALT_CAP);
     expect(altCapViolation).toBeUndefined();
   });
 
@@ -161,7 +162,7 @@ it('null providerType correctly uses max_ace_credits fallback when max_alt_credi
       // max_alt_credit intentionally omitted
     } as any);
 
-    expect(violations.some(v => v.type === 'alt_cap')).toBe(true);
+    expect(violations.some(v => v.type === VIOLATION_TYPES.ALT_CAP)).toBe(true);
   });
 
   /**
@@ -182,7 +183,7 @@ it('null providerType correctly uses max_ace_credits fallback when max_alt_credi
     } as any);
 
     // Should NOT have alt_cap violation because 7 < 10
-    expect(violations.some(v => v.type === 'alt_cap')).toBe(false);
+    expect(violations.some(v => v.type === VIOLATION_TYPES.ALT_CAP)).toBe(false);
   });
 
   /**
@@ -202,7 +203,7 @@ it('null providerType correctly uses max_ace_credits fallback when max_alt_credi
     } as any);
 
     // Should HAVE alt_cap violation because 8 > 6
-    expect(violations.some(v => v.type === 'alt_cap')).toBe(true);
+    expect(violations.some(v => v.type === VIOLATION_TYPES.ALT_CAP)).toBe(true);
   });
 });
 
@@ -246,7 +247,7 @@ describe('validatePlan - Workload', () => {
 
     const violations = validatePlan(basket, [], { max_weekly_hours: 20 });
     
-    const workloadViolation = violations.find(v => v.type === 'workload');
+    const workloadViolation = violations.find(v => v.type === VIOLATION_TYPES.WORKLOAD);
     expect(workloadViolation).toBeDefined();
     expect(workloadViolation?.severity).toBe('warning');
     expect(workloadViolation?.message).toContain('50hrs/wk exceeds 20hrs/wk');
@@ -269,7 +270,7 @@ describe('validatePlan - Workload', () => {
 
     const violations = validatePlan(basket, [], { max_weekly_hours: 20 });
     
-    const workloadViolation = violations.find(v => v.type === 'workload');
+    const workloadViolation = violations.find(v => v.type === VIOLATION_TYPES.WORKLOAD);
     expect(workloadViolation).toBeUndefined();
   });
 
@@ -301,7 +302,7 @@ describe('validatePlan - Workload', () => {
 
     const violations = validatePlan(basket, [], { max_weekly_hours: 20 });
     
-    const workloadViolation = violations.find(v => v.type === 'workload');
+    const workloadViolation = violations.find(v => v.type === VIOLATION_TYPES.WORKLOAD);
     expect(workloadViolation).toBeUndefined();
   });
 });
@@ -339,7 +340,7 @@ describe('validatePlan - Deadline with Concurrency', () => {
       max_concurrent_courses: 2 
     });
     
-    const deadlineViolation = violations.find(v => v.type === 'deadline');
+    const deadlineViolation = violations.find(v => v.type === VIOLATION_TYPES.DEADLINE);
     expect(deadlineViolation).toBeDefined();
     expect(deadlineViolation?.message).toContain('12 weeks');
     expect(deadlineViolation?.message).toContain('max 2 concurrent');
@@ -377,7 +378,7 @@ describe('validatePlan - Deadline with Concurrency', () => {
       max_concurrent_courses: 1 
     });
     
-    const deadlineViolation = violations.find(v => v.type === 'deadline');
+    const deadlineViolation = violations.find(v => v.type === VIOLATION_TYPES.DEADLINE);
     expect(deadlineViolation).toBeDefined();
     expect(deadlineViolation?.message).toContain('16 weeks');
     expect(deadlineViolation?.message).toContain('max 1 concurrent');
@@ -404,7 +405,7 @@ describe('validatePlan - Deadline with Concurrency', () => {
       max_concurrent_courses: 2 
     });
     
-    const deadlineViolation = violations.find(v => v.type === 'deadline');
+    const deadlineViolation = violations.find(v => v.type === VIOLATION_TYPES.DEADLINE);
     expect(deadlineViolation).toBeUndefined();
   });
 });
@@ -438,7 +439,7 @@ describe('validatePlan - Budget', () => {
 
     const violations = validatePlan(basket, [], { max_budget_usd: 1000 });
     
-    const budgetViolation = violations.find(v => v.type === 'budget');
+    const budgetViolation = violations.find(v => v.type === VIOLATION_TYPES.BUDGET);
     expect(budgetViolation).toBeDefined();
     expect(budgetViolation?.severity).toBe('error');
     expect(budgetViolation?.message).toContain('$1,300 exceeds budget of $1,000');
@@ -461,7 +462,7 @@ describe('validatePlan - Budget', () => {
 
     const violations = validatePlan(basket, [], { max_budget_usd: 1000 });
     
-    const budgetViolation = violations.find(v => v.type === 'budget');
+    const budgetViolation = violations.find(v => v.type === VIOLATION_TYPES.BUDGET);
     expect(budgetViolation).toBeUndefined();
   });
 });
