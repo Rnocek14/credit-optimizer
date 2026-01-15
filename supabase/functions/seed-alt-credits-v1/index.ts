@@ -475,20 +475,25 @@ serve(async (req) => {
       }
     }
 
-    // Get summary by source
+    // Get summary by source with proper typing
+    type StatusKey = 'total' | 'valid' | 'unknown' | 'needs_review' | 'invalid';
+    type ProviderCounts = Record<string, Record<StatusKey, number>>;
+    
     const { data: summary } = await supabase
       .from('alt_credits')
       .select('source_code, url_status')
-      .then(({ data }) => {
-        const counts: Record<string, { total: number; valid: number; unknown: number; needs_review: number; invalid: number }> = {};
-        (data || []).forEach((row: { source_code: string; url_status: string | null }) => {
+      .then(({ data }: { data: Array<{ source_code: string; url_status: string | null }> | null }) => {
+        const counts: ProviderCounts = {};
+        (data || []).forEach((row) => {
           if (!counts[row.source_code]) {
             counts[row.source_code] = { total: 0, valid: 0, unknown: 0, needs_review: 0, invalid: 0 };
           }
           counts[row.source_code].total++;
-          const status = row.url_status || 'unknown';
+          const status = (row.url_status || 'unknown') as StatusKey;
           if (status in counts[row.source_code]) {
-            counts[row.source_code][status as keyof typeof counts[string]]++;
+            counts[row.source_code][status]++;
+          } else {
+            counts[row.source_code].unknown++;
           }
         });
         return { data: counts };
