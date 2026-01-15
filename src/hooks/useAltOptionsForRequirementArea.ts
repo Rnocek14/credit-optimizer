@@ -1,13 +1,9 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { normalizeUrlStatus, type UrlStatus } from '@/lib/urlValidation';
 
-/**
- * Strict URL verification status type.
- * - 'valid': URL has been verified and is safe to display
- * - 'invalid': URL was checked and is broken/inaccessible
- * - 'unknown': URL has not been verified yet (default for new records)
- */
-export type UrlStatus = 'valid' | 'invalid' | 'unknown';
+// Re-export for consumers
+export type { UrlStatus } from '@/lib/urlValidation';
 
 export interface AltCreditOption {
   id: string;
@@ -20,8 +16,12 @@ export interface AltCreditOption {
   costUsd: number | null;
   durationWeeks: number | null;
   examBased: boolean;
+  /** Sanitized URL - only set when url_status === 'valid'. Safe for href. */
   providerUrl: string | null;
-  urlStatus: UrlStatus; // Normalized to strict union type
+  /** Raw URL from database - NEVER use for href, only for UI hints (e.g., "pending verification"). */
+  providerUrlRaw: string | null;
+  /** Normalized verification status */
+  urlStatus: UrlStatus;
 }
 
 interface UseAltOptionsParams {
@@ -32,16 +32,6 @@ interface UseAltOptionsParams {
 
 // Cache institution IDs to avoid repeated lookups
 const institutionIdCache = new Map<string, string>();
-
-/**
- * Normalizes raw url_status from database to strict UrlStatus union.
- * Defaults to 'unknown' for null or unexpected values (deny by default).
- */
-function normalizeUrlStatus(rawStatus: string | null): UrlStatus {
-  if (rawStatus === 'valid') return 'valid';
-  if (rawStatus === 'invalid') return 'invalid';
-  return 'unknown'; // Default: treat as unverified
-}
 
 async function getInstitutionId(code: string): Promise<string | null> {
   if (institutionIdCache.has(code)) {
@@ -68,6 +58,7 @@ async function getInstitutionId(code: string): Promise<string | null> {
  * Returns alternatives sorted by confidence (highest first).
  * 
  * IMPORTANT: Only shows providerUrl when url_status = 'valid' to prevent broken links.
+ * providerUrlRaw is provided for UI hints only (never use for href).
  */
 export function useAltOptionsForRequirementArea({
   institutionCode,
@@ -120,7 +111,7 @@ export function useAltOptionsForRequirementArea({
           duration_estimate_weeks: number | null;
           exam_based: boolean | null;
           provider_url: string | null;
-          url_status: string | null;
+          url_status: unknown;
         };
         
         // Normalize url_status to strict union type (unknown if null/unexpected)
@@ -138,8 +129,10 @@ export function useAltOptionsForRequirementArea({
           costUsd: altCredit.cost_usd,
           durationWeeks: altCredit.duration_estimate_weeks,
           examBased: altCredit.exam_based ?? false,
-          // Filter unverified URLs at the hook level - deny by default
+          // Only expose sanitized URL if verified - deny by default
           providerUrl: isUrlValid ? altCredit.provider_url : null,
+          // Keep raw for UI hints (e.g., "pending verification") - NEVER use for href
+          providerUrlRaw: altCredit.provider_url,
           urlStatus,
         };
       });
@@ -227,7 +220,7 @@ export function useAltOptionsForSlots({
           duration_estimate_weeks: number | null;
           exam_based: boolean | null;
           provider_url: string | null;
-          url_status: string | null;
+          url_status: unknown;
         } | undefined;
         
         if (!altCredit) continue;
@@ -247,8 +240,10 @@ export function useAltOptionsForSlots({
           costUsd: altCredit.cost_usd,
           durationWeeks: altCredit.duration_estimate_weeks,
           examBased: altCredit.exam_based ?? false,
-          // Filter unverified URLs at the hook level - deny by default
+          // Only expose sanitized URL if verified - deny by default
           providerUrl: isUrlValid ? altCredit.provider_url : null,
+          // Keep raw for UI hints - NEVER use for href
+          providerUrlRaw: altCredit.provider_url,
           urlStatus,
         });
       }
