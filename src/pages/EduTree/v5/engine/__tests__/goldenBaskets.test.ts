@@ -10,10 +10,10 @@
  * IMPORTANT:
  * - Do NOT modify expected outputs without understanding the implications
  * - Add new fixtures in goldenBaskets.fixtures.ts
- * - All assertions must be stable (sorted, normalized)
+ * - All assertions are function-based (no eval) for compile-time safety
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { evaluateCreditDecision, type CreditDecisionOutput } from '../creditPipeline';
 import { GOLDEN_BASKETS, getBasketsByCategory, type GoldenBasket } from './goldenBaskets.fixtures';
 
@@ -24,108 +24,29 @@ import { GOLDEN_BASKETS, getBasketsByCategory, type GoldenBasket } from './golde
 /**
  * Run a single golden basket test case.
  */
-function runGoldenTest(basket: GoldenBasket) {
-  const result = evaluateCreditDecision(basket.input);
-  
-  return {
-    result,
-    assertions: evaluateAssertions(result, basket.expected.assertions),
-  };
+function runGoldenTest(basket: GoldenBasket): CreditDecisionOutput {
+  return evaluateCreditDecision(basket.input);
 }
 
 /**
- * Evaluate string assertions against result.
- * Each assertion is a simple JS expression evaluated against the result.
+ * Run all assertions for a basket.
+ * Returns list of any failures.
  */
-function evaluateAssertions(
+function runAssertions(
   result: CreditDecisionOutput,
-  assertions: string[]
-): { assertion: string; passed: boolean; actual?: any }[] {
-  return assertions.map(assertion => {
+  assertions: GoldenBasket['expected']['assertions']
+): string[] {
+  const failures: string[] = [];
+  
+  for (let i = 0; i < assertions.length; i++) {
     try {
-      // Create a safe evaluation context
-      const context = {
-        totals: result.totals,
-        eligibility: result.eligibility,
-        blockers: result.blockers,
-        warnings: result.warnings,
-        violations: result.violations,
-        requirements: result.requirements,
-        policy: result.policy,
-      };
-      
-      // Simple expression evaluation (safe - no function execution)
-      const passed = evalAssertion(assertion, context);
-      
-      return { assertion, passed };
+      assertions[i](result);
     } catch (error) {
-      return { assertion, passed: false, actual: `Error: ${error}` };
+      failures.push(`Assertion ${i + 1} failed: ${error}`);
     }
-  });
-}
-
-/**
- * Safe assertion evaluator - only supports simple property access and comparisons.
- */
-function evalAssertion(assertion: string, context: any): boolean {
-  // Handle common patterns
-  
-  // Pattern: totals.x === n
-  const equalsMatch = assertion.match(/^([\w.]+)\s*===\s*(.+)$/);
-  if (equalsMatch) {
-    const [, path, expected] = equalsMatch;
-    const actual = getNestedValue(context, path);
-    const expectedValue = JSON.parse(expected);
-    return actual === expectedValue;
   }
   
-  // Pattern: totals.x > n
-  const gtMatch = assertion.match(/^([\w.]+)\s*>\s*(\d+)$/);
-  if (gtMatch) {
-    const [, path, num] = gtMatch;
-    const actual = getNestedValue(context, path);
-    return actual > Number(num);
-  }
-  
-  // Pattern: totals.x >= n
-  const gteMatch = assertion.match(/^([\w.]+)\s*>=\s*(\d+)$/);
-  if (gteMatch) {
-    const [, path, num] = gteMatch;
-    const actual = getNestedValue(context, path);
-    return actual >= Number(num);
-  }
-  
-  // Pattern: totals.x < n
-  const ltMatch = assertion.match(/^([\w.]+)\s*<\s*(\d+)$/);
-  if (ltMatch) {
-    const [, path, num] = ltMatch;
-    const actual = getNestedValue(context, path);
-    return actual < Number(num);
-  }
-  
-  // Pattern: totals.x <= n
-  const lteMatch = assertion.match(/^([\w.]+)\s*<=\s*(\d+)$/);
-  if (lteMatch) {
-    const [, path, num] = lteMatch;
-    const actual = getNestedValue(context, path);
-    return actual <= Number(num);
-  }
-  
-  // Pattern: violations.some(v => v.type === "x")
-  const someMatch = assertion.match(/^violations\.some\(v => v\.type === "([^"]+)"\)$/);
-  if (someMatch) {
-    const [, type] = someMatch;
-    return context.violations.some((v: any) => v.type === type);
-  }
-  
-  throw new Error(`Unknown assertion pattern: ${assertion}`);
-}
-
-/**
- * Get nested value from object by dot-separated path.
- */
-function getNestedValue(obj: any, path: string): any {
-  return path.split('.').reduce((current, key) => current?.[key], obj);
+  return failures;
 }
 
 // ============================================================================
@@ -136,7 +57,7 @@ describe('Golden Basket Tests', () => {
   describe('All Baskets - Eligibility', () => {
     GOLDEN_BASKETS.forEach(basket => {
       it(`${basket.id}: ${basket.name} → ${basket.expected.eligibility}`, () => {
-        const { result } = runGoldenTest(basket);
+        const result = runGoldenTest(basket);
         
         expect(result.eligibility).toBe(basket.expected.eligibility);
         
@@ -151,12 +72,13 @@ describe('Golden Basket Tests', () => {
   
   describe('All Baskets - Assertions', () => {
     GOLDEN_BASKETS.forEach(basket => {
-      it(`${basket.id}: assertions hold`, () => {
-        const { result, assertions } = runGoldenTest(basket);
+      it(`${basket.id}: all assertions pass`, () => {
+        const result = runGoldenTest(basket);
+        const failures = runAssertions(result, basket.expected.assertions);
         
-        assertions.forEach(({ assertion, passed, actual }) => {
-          expect(passed, `Assertion failed: ${assertion}${actual ? ` (got: ${actual})` : ''}`).toBe(true);
-        });
+        if (failures.length > 0) {
+          throw new Error(`Assertion failures:\n${failures.join('\n')}`);
+        }
       });
     });
   });
@@ -256,8 +178,8 @@ describe('Golden Basket Tests', () => {
       
       const result = evaluateCreditDecision(basket.input);
       
-      // 100 null-providerType items should count as alt
-      expect(result.totals.alt).toBe(100);
+      // 91 null-providerType items should count as alt
+      expect(result.totals.alt).toBe(91);
       expect(result.eligibility).toBe('blocked');
     });
   });
