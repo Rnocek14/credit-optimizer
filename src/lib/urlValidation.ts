@@ -48,7 +48,7 @@ const VALID_EDUCATIONAL_DOMAINS = [
   'udemy.com',
   'udacity.com',
   'pluralsight.com',
-  'linkedin.com', // LinkedIn Learning
+  'linkedin.com', // LinkedIn Learning + sharing
   'skillshare.com',
   'codecademy.com',
   'khanacademy.org',
@@ -67,11 +67,16 @@ const VALID_EDUCATIONAL_DOMAINS = [
   'youtu.be',
   'vimeo.com',
   
-  // Tech-specific learning
+  // Tech-specific learning & portfolios
   'github.com',
   'microsoft.com',
   'aws.amazon.com',
   'cloud.google.com',
+  
+  // Social sharing (for share buttons)
+  'twitter.com',
+  'x.com',
+  'facebook.com',
 ];
 
 // Enable dev warnings via localStorage: localStorage.setItem('URL_VALIDATION_DEBUG', 'true')

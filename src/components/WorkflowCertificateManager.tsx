@@ -20,6 +20,7 @@ import {
   Share2
 } from 'lucide-react';
 import TutorialTip from '@/tutorial/TutorialTip';
+import { safeOpenExternal } from '@/components/ui/SafeExternalLink';
 
 interface WorkflowCertificate {
   id: string;
@@ -214,7 +215,7 @@ export function WorkflowCertificateManager({
       `${certificate.total_decisions} AI-guided decisions. Verify at: ${window.location.origin}/verify/${certificate.verification_code}`
     );
     
-    window.open(`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(window.location.href)}&text=${text}`, '_blank');
+    safeOpenExternal(`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(window.location.href)}&text=${text}`);
   };
 
   const getEligibilityColor = (requirement: boolean) => {
