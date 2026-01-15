@@ -4,6 +4,7 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { BookOpen, Clock, DollarSign, Star, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { safeOpenExternal } from '@/components/ui/SafeExternalLink';
 
 interface CourseNodeData {
   title: string;
@@ -54,9 +55,12 @@ export const CourseNode: React.FC<CourseNodeProps> = memo(({ data, selected, onS
   };
 
   const handleCourseAction = () => {
-    if (url) {
-      window.open(url, '_blank');
-    } else if (onStartCourse) {
+    // Use safe open for verified URLs only
+    if (url && safeOpenExternal(url, 'unknown')) {
+      return; // URL opened successfully
+    }
+    // Fallback to onStartCourse callback
+    if (onStartCourse) {
       onStartCourse(data.title);
     }
   };

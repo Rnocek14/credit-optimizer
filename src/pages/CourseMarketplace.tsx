@@ -9,6 +9,7 @@ import { HubNavigation } from "@/components/HubNavigation";
 import { CourseIntelligenceCard } from "@/components/CourseIntelligenceCard";
 import { useState, useEffect, useMemo } from "react";
 import { Search, Star, Clock, DollarSign, ExternalLink, Filter, Award, Users, TrendingUp, BookOpen, X, ChevronLeft, ChevronRight } from "lucide-react";
+import { safeOpenExternal } from '@/components/ui/SafeExternalLink';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useCourseMarketplace } from "@/hooks/useCourseMarketplace";
 import useCourseIntelligenceEngine from "@/hooks/useCourseIntelligenceEngine";
@@ -521,7 +522,7 @@ export default function CourseMarketplace() {
                       <Button 
                         size="icon" 
                         variant="outline"
-                        onClick={() => course.url && window.open(course.url, '_blank')}
+                        onClick={() => safeOpenExternal(course.url, 'unknown')}
                         disabled={!course.url}
                       >
                         <ExternalLink className="h-4 w-4" />

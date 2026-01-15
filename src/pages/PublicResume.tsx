@@ -22,6 +22,7 @@ import {
   AlertCircle
 } from "lucide-react";
 import { toast } from "sonner";
+import { SafeExternalLink } from '@/components/ui/SafeExternalLink';
 
 interface ProfileData {
   id: string;
@@ -514,12 +515,15 @@ const PublicResume = () => {
                       )}
                       
                       <div className="flex gap-2 pt-2">
-                        <Button asChild size="sm" className="flex-1">
-                          <a href={course.url} target="_blank" rel="noopener noreferrer">
-                            View Course
-                            <ExternalLink className="h-3 w-3 ml-2" />
-                          </a>
-                        </Button>
+                        <SafeExternalLink 
+                          url={course.url} 
+                          urlStatus="unknown"
+                          className="inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-8 rounded-md px-3 flex-1"
+                          fallback="hidden"
+                          showIcon={true}
+                        >
+                          View Course
+                        </SafeExternalLink>
                         <SaveButton courseId={course.id} size="sm" />
                       </div>
                     </div>
