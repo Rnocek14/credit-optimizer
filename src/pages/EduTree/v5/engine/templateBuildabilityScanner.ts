@@ -18,6 +18,11 @@ import { validatePlan, type Violation } from './constraints';
 import { isAltCredit, isTransferCredit, isResidentCredit } from '../utils/creditClassification';
 import { supabase } from '@/integrations/supabase/client';
 import { VIOLATION_TYPES } from './violationTypes';
+import { 
+  computePolicyCompleteness, 
+  type PolicyStatus,
+  type PolicyCompletenessResult,
+} from './policyCompletenessScore';
 
 // Import fixture templates
 import marketplaceV2Templates from '@/fixtures/templates/marketplace-v2-templates.json';
@@ -107,6 +112,12 @@ export interface TemplateScanResult {
   tests: ScanTestResult[];
   overallPass: boolean;
   summary: string;
+  /** Template promotion status based on policy completeness */
+  promotionStatus: 'buildable' | 'pending_review' | 'blocked';
+  /** Policy completeness score (0-100) */
+  completenessScore?: number;
+  /** Policy status (green/yellow/red) */
+  policyStatus?: PolicyStatus;
 }
 
 export interface ScanReport {
@@ -116,6 +127,12 @@ export interface ScanReport {
   passedTests: number;
   failedTests: number;
   results: TemplateScanResult[];
+  /** Promotion gate summary */
+  promotionSummary: {
+    buildable: number;
+    pendingReview: number;
+    blocked: number;
+  };
   summaryTable: Array<{
     institution: string;
     templateId: string;
@@ -123,8 +140,71 @@ export interface ScanReport {
     over_transfer_cap: 'PASS' | 'FAIL';
     over_alt_cap: 'PASS' | 'FAIL';
     capstone_substitution: 'PASS' | 'FAIL';
+    promotionStatus: 'buildable' | 'pending_review' | 'blocked';
+    policyStatus?: PolicyStatus;
     topFailure?: string;
   }>;
+}
+
+// ============================================================================
+// Template Promotion Gate
+// ============================================================================
+
+/**
+ * Determine template promotion status based on policy completeness.
+ * 
+ * - Green → buildable (safe to generate and publish)
+ * - Yellow → pending_review (generate but mark for review)
+ * - Red → blocked (do not generate templates)
+ */
+export function getPromotionStatus(
+  policyStatus: PolicyStatus
+): 'buildable' | 'pending_review' | 'blocked' {
+  switch (policyStatus) {
+    case 'green':
+      return 'buildable';
+    case 'yellow':
+      return 'pending_review';
+    case 'red':
+      return 'blocked';
+  }
+}
+
+/**
+ * Check if an institution is ready for template generation.
+ * Returns detailed gate result.
+ */
+export interface PromotionGateResult {
+  allowed: boolean;
+  promotionStatus: 'buildable' | 'pending_review' | 'blocked';
+  policyStatus: PolicyStatus;
+  completenessScore: number;
+  reason?: string;
+  warnings: string[];
+}
+
+export function evaluatePromotionGate(
+  completeness: PolicyCompletenessResult
+): PromotionGateResult {
+  const promotionStatus = getPromotionStatus(completeness.status);
+  const allowed = promotionStatus !== 'blocked';
+  
+  const warnings: string[] = [];
+  if (completeness.status === 'yellow') {
+    warnings.push(`Policy has warnings: ${completeness.missingOptional.slice(0, 3).join(', ')}`);
+  }
+  if (!completeness.hasGroundTruth) {
+    warnings.push('No ground truth verification');
+  }
+  
+  return {
+    allowed,
+    promotionStatus,
+    policyStatus: completeness.status,
+    completenessScore: completeness.score,
+    reason: allowed ? undefined : completeness.summary,
+    warnings,
+  };
 }
 
 interface ModuleTemplate {
@@ -462,6 +542,15 @@ function scanTemplate(
   const overallPass = tests.every(t => t.passed);
   const failedTests = tests.filter(t => !t.passed);
   
+  // Compute policy completeness for promotion gate
+  const completeness = computePolicyCompleteness(
+    policyData,
+    template.anchorSchool,
+    'bachelor',
+    false // We don't have ground truth info here
+  );
+  const promotionStatus = getPromotionStatus(completeness.status);
+  
   return {
     templateId: template.id,
     institution: template.anchorSchool,
@@ -472,6 +561,9 @@ function scanTemplate(
     summary: overallPass 
       ? 'All tests passed' 
       : `Failed: ${failedTests.map(t => t.testType).join(', ')}`,
+    promotionStatus,
+    completenessScore: completeness.score,
+    policyStatus: completeness.status,
   };
 }
 
@@ -606,6 +698,9 @@ export async function runBuildabilityScan(): Promise<ScanReport> {
         ],
         overallPass: false,
         summary: `BLOCKED: No active policy pack - ${policyResult.error}`,
+        promotionStatus: 'blocked',
+        policyStatus: 'red',
+        completenessScore: 0,
       });
       continue;
     }
@@ -639,12 +734,21 @@ export async function runBuildabilityScan(): Promise<ScanReport> {
       over_transfer_cap: getStatus('over_transfer_cap'),
       over_alt_cap: getStatus('over_alt_cap'),
       capstone_substitution: getStatus('capstone_substitution'),
+      promotionStatus: r.promotionStatus,
+      policyStatus: r.policyStatus,
       topFailure: failedTest ? `${failedTest.testType}: ${failedTest.errors[0] || failedTest.details.violations[0] || 'unknown'}` : undefined,
     };
   });
   
   const totalTests = results.length * 4;
   const passedTests = results.reduce((sum, r) => sum + r.tests.filter(t => t.passed).length, 0);
+  
+  // Calculate promotion summary
+  const promotionSummary = {
+    buildable: results.filter(r => r.promotionStatus === 'buildable').length,
+    pendingReview: results.filter(r => r.promotionStatus === 'pending_review').length,
+    blocked: results.filter(r => r.promotionStatus === 'blocked').length,
+  };
   
   return {
     timestamp: new Date().toISOString(),
@@ -653,6 +757,7 @@ export async function runBuildabilityScan(): Promise<ScanReport> {
     passedTests,
     failedTests: totalTests - passedTests,
     results,
+    promotionSummary,
     summaryTable,
   };
 }
