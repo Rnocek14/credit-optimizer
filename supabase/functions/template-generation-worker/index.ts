@@ -1,5 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { evaluatePolicyGate, getTemplateStatus, type PolicyGateResult } from '../_shared/policyGate.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -320,6 +321,75 @@ async function processJob(
 
     const programData = program as ProgramCatalog;
 
+    // ========================================================================
+    // POLICY GATE CHECK (Write-Time Enforcement)
+    // Fetch active policy pack for institution and verify it passes the gate
+    // ========================================================================
+    const { data: policyPack } = await supabase
+      .from('institution_policy_packs')
+      .select('id, policy_data, provenance_url, field_provenance')
+      .eq('institution', programData.institution_code)
+      .eq('status', 'active')
+      .single();
+
+    let gateResult: PolicyGateResult | null = null;
+    
+    if (policyPack) {
+      const policyData = policyPack.policy_data || {};
+      
+      // Check for ground truth verification
+      const hasGroundTruth = !!(
+        policyData.provenance_verified_at ||
+        policyPack.provenance_url ||
+        (policyPack.field_provenance && Object.values(policyPack.field_provenance as Record<string, { source?: string }>)
+          .some((f: { source?: string }) => f?.source === 'ground_truth' || f?.source === 'human_override'))
+      );
+      
+      gateResult = evaluatePolicyGate(policyData, hasGroundTruth);
+      console.log(`[${workerId}] ${programData.institution_code} gate check: ${gateResult.status} (score: ${gateResult.score}, groundTruth: ${hasGroundTruth})`);
+      
+      if (!gateResult.canGenerate) {
+        console.warn(`[${workerId}] ⛔ BLOCKED: ${programData.institution_code} - ${gateResult.reason}`);
+        for (const track of tracks) {
+          trackResults.push({
+            success: false,
+            track,
+            template_written: false,
+            error_code: 'POLICY_GATE_BLOCKED',
+            error_message: `Template generation blocked: ${gateResult.reason}`,
+          });
+        }
+        return {
+          job_id: job.id,
+          program_slug: job.program_slug,
+          tracks_requested: tracks.length,
+          tracks_written: 0,
+          tracks_failed: tracks.length,
+          tracks: trackResults,
+        };
+      }
+    } else {
+      // No policy pack found - block generation
+      console.warn(`[${workerId}] ⛔ BLOCKED: ${programData.institution_code} - No active policy pack found`);
+      for (const track of tracks) {
+        trackResults.push({
+          success: false,
+          track,
+          template_written: false,
+          error_code: 'NO_POLICY_PACK',
+          error_message: 'No active policy pack found for institution',
+        });
+      }
+      return {
+        job_id: job.id,
+        program_slug: job.program_slug,
+        tracks_requested: tracks.length,
+        tracks_written: 0,
+        tracks_failed: tracks.length,
+        tracks: trackResults,
+      };
+    }
+
     // Check which templates already exist (for resume/skip logic)
     const { data: existingTemplates } = await supabase
       .from('program_templates')
@@ -370,7 +440,8 @@ async function processJob(
         programData,
         track,
         supabase,
-        workerId
+        workerId,
+        gateResult! // Pass gate result for status/reason tracking
       );
       trackResults.push(result);
     }
@@ -410,7 +481,8 @@ async function generateAndWriteTemplate(
   track: string,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   supabase: any,
-  workerId: string
+  workerId: string,
+  gateResult: PolicyGateResult // Policy gate result for status tracking
 ): Promise<TrackResult> {
   const startTime = Date.now();
 
@@ -509,6 +581,9 @@ async function generateAndWriteTemplate(
 
     const generationTimeMs = Date.now() - startTime;
 
+    // Determine template status based on policy gate result
+    const templateStatus = getTemplateStatus(gateResult);
+
     // STRICT: Upsert into program_templates and verify write
     const { data: upsertedRow, error: upsertError } = await supabase
       .from('program_templates')
@@ -528,7 +603,16 @@ async function generateAndWriteTemplate(
           degree_type: program.degree_type,
           total_credits: program.degree_total_credits,
           catalog_url: program.catalog_url,
+          // Include policy gate info in snapshot for audit
+          policy_gate: {
+            status: gateResult.status,
+            score: gateResult.score,
+            reason: gateResult.reason,
+            hasGroundTruth: gateResult.hasGroundTruth,
+          },
         },
+        // Template visibility status based on policy gate
+        // Note: Adding to source_snapshot since we can't modify table schema here
       }, { onConflict: 'program_catalog_id,track' })
       .select('id')
       .single();

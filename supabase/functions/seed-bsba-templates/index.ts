@@ -29,100 +29,14 @@ interface PolicyData {
 
 // ============================================================================
 // Policy Completeness Gate (Enforcement at Write-Time)
+// Import shared gate logic to ensure consistency across all template writers
 // ============================================================================
-
-type PolicyStatus = 'green' | 'yellow' | 'red';
-
-interface PolicyGateResult {
-  canGenerate: boolean;
-  status: PolicyStatus;
-  score: number;
-  reason?: string;
-  missingCritical: string[];
-}
-
-/**
- * Evaluate policy completeness gate BEFORE generating templates.
- * This is the write-time enforcement that prevents bad templates.
- */
-function evaluatePolicyGate(policyData: PolicyData): PolicyGateResult {
-  const missingCritical: string[] = [];
-  let score = 0;
-  const maxScore = 100;
-  
-  // Critical field 1: bucket_mode (25 points)
-  const bucketMode = policyData.transfer_alt_bucket_mode;
-  if (!bucketMode || bucketMode === 'unknown') {
-    missingCritical.push('transfer_alt_bucket_mode (must be separate or combined)');
-  } else {
-    score += 25;
-  }
-  
-  // Critical field 2: degree_credit_total (15 points)
-  const totalCredits = policyData.degree_credit_total ?? policyData.total_credits;
-  if (!totalCredits || totalCredits <= 0) {
-    missingCritical.push('degree_credit_total');
-  } else {
-    score += 15;
-  }
-  
-  // Critical field 3: residency_credits (15 points)
-  if (!policyData.residency_credits || policyData.residency_credits <= 0) {
-    missingCritical.push('residency_credits');
-  } else {
-    score += 15;
-  }
-  
-  // Conditional fields based on bucket mode (25 points)
-  if (bucketMode === 'separate') {
-    if (policyData.max_alt_credit && policyData.max_alt_credit > 0) {
-      score += 15;
-    } else {
-      missingCritical.push('max_alt_credit (required for separate mode)');
-    }
-    if (policyData.max_transfer_credits && policyData.max_transfer_credits > 0) {
-      score += 10;
-    } else {
-      missingCritical.push('max_transfer_credits (required for separate mode)');
-    }
-  } else if (bucketMode === 'combined') {
-    if (policyData.max_transfer_alt_combined_credits && policyData.max_transfer_alt_combined_credits > 0) {
-      score += 25;
-    } else {
-      missingCritical.push('max_transfer_alt_combined_credits (required for combined mode)');
-    }
-  }
-  
-  // Optional fields (remaining 20 points) - don't block
-  score += 20; // Give benefit of doubt for optionals
-  
-  // Determine status
-  let status: PolicyStatus;
-  if (missingCritical.length > 0) {
-    status = 'red';
-  } else if (score >= 80) {
-    status = 'green';
-  } else if (score >= 50) {
-    status = 'yellow';
-  } else {
-    status = 'red';
-  }
-  
-  // Gate decision: Red = blocked, Yellow = allowed with warning, Green = allowed
-  const canGenerate = status !== 'red';
-  
-  const reason = canGenerate 
-    ? (status === 'yellow' ? 'Policy has warnings - templates marked pending_review' : undefined)
-    : `Blocked: ${missingCritical.slice(0, 3).join(', ')}`;
-  
-  return {
-    canGenerate,
-    status,
-    score,
-    reason,
-    missingCritical,
-  };
-}
+import { 
+  evaluatePolicyGate, 
+  getTemplateStatus,
+  type PolicyStatus,
+  type PolicyGateResult 
+} from '../_shared/policyGate.ts';
 
 interface PricingPackData {
   model?: 'per_credit' | 'flat_term';
@@ -1130,11 +1044,22 @@ serve(async (req) => {
         : {};
 
       // ========================================================================
+      // GROUND TRUTH CHECK
+      // Green status requires verified ground truth, not just structurally complete
+      // ========================================================================
+      const hasGroundTruth = !!(
+        policyData.provenance_verified_at ||
+        pack.provenance_url ||
+        (pack.field_provenance && Object.values(pack.field_provenance as Record<string, { source?: string }>)
+          .some(f => f?.source === 'ground_truth' || f?.source === 'human_override'))
+      );
+
+      // ========================================================================
       // PROMOTION GATE CHECK (Write-Time Enforcement)
       // This is the critical safeguard that prevents bad templates from being written
       // ========================================================================
-      const gateResult = evaluatePolicyGate(policyData);
-      console.log(`[seed-bsba-templates] ${code} gate check: ${gateResult.status} (score: ${gateResult.score})`);
+      const gateResult = evaluatePolicyGate(policyData, hasGroundTruth);
+      console.log(`[seed-bsba-templates] ${code} gate check: ${gateResult.status} (score: ${gateResult.score}, groundTruth: ${hasGroundTruth})`);
       
       if (!gateResult.canGenerate) {
         console.warn(`[seed-bsba-templates] ⛔ BLOCKED: ${code} - ${gateResult.reason}`);
