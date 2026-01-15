@@ -174,13 +174,22 @@ function hashInput(input: CreditDecisionInput): string {
 
 /**
  * Create output hash for verification.
+ * 
+ * IMPORTANT: We hash normalized violation signatures (type + severity only)
+ * to ensure stable hashes even if violation message copy changes.
+ * Violations are sorted by type+severity for consistent ordering.
  */
 function hashOutput(output: Omit<CreditDecisionOutput, 'hashes' | 'evaluatedAt'>): string {
+  // Normalize violations to stable signature (type + severity only, sorted)
+  const normalizedViolations = output.violations
+    .map(v => ({ type: v.type, severity: v.severity }))
+    .sort((a, b) => (a.type + a.severity).localeCompare(b.type + b.severity));
+  
   const normalized = {
     totals: output.totals,
     eligibility: output.eligibility,
-    blockers: output.blockers.sort(),
-    violations: output.violations.map(v => v.type).sort(),
+    blockers: [...output.blockers].sort(),
+    violations: normalizedViolations,
   };
   return simpleHash(JSON.stringify(normalized));
 }
@@ -266,9 +275,32 @@ export function evaluateCreditDecision(input: CreditDecisionInput): CreditDecisi
   // ============================================
   // Step 8: Compile Violations & Determine Eligibility
   // ============================================
+  // INVARIANT: Blockers are ordered consistently for deterministic output
+  // Order: residency first, then cap violations, then upper-division, then other
+  const residencyBlockers = readiness.blockers.filter(b => 
+    b.toLowerCase().includes('residency') || b.toLowerCase().includes('resident')
+  );
+  const capBlockers = violations
+    .filter(v => v.severity === 'error' && ['alt_cap', 'transfer_cap', 'combined_cap', 'total_transfer'].includes(v.type))
+    .map(v => v.message);
+  const upperDivBlockers = readiness.blockers.filter(b => 
+    b.toLowerCase().includes('upper') || b.toLowerCase().includes('division')
+  );
+  const otherBlockers = [
+    ...readiness.blockers.filter(b => 
+      !residencyBlockers.includes(b) && !upperDivBlockers.includes(b)
+    ),
+    ...violations
+      .filter(v => v.severity === 'error' && !['alt_cap', 'transfer_cap', 'combined_cap', 'total_transfer'].includes(v.type))
+      .map(v => v.message),
+  ];
+  
+  // Ordered: residency → caps → upper-div → other
   const allBlockers = [
-    ...readiness.blockers,
-    ...violations.filter(v => v.severity === 'error').map(v => v.message),
+    ...residencyBlockers,
+    ...capBlockers,
+    ...upperDivBlockers,
+    ...otherBlockers,
   ];
   
   const allWarnings = [

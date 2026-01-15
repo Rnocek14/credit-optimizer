@@ -149,30 +149,60 @@ describe('validatePlan - Transfer Cap', () => {
     expect(altCapViolation).toBeUndefined();
   });
 
-  it('null providerType uses fallback max_ace_credits when max_alt_credit missing', () => {
+it('null providerType correctly uses max_ace_credits fallback when max_alt_credit is missing', () => {
     const basket: BasketItem[] = [
-      {
-        moduleId: 'mod1',
-        courseId: 'course1',
-        credits: 10,
-        cost_usd: 100,
-        duration_weeks: 8,
-        workload_weekly_hours: 7.5,
-        cri_score: 80,
-        status: 'pinned',
-        providerType: null
-      }
+      { moduleId: 'mod1', courseId: 'c1', credits: 10, status: 'pinned', providerType: null } as any,
     ];
 
-    // Use max_ace_credits (constraints key) as fallback
-    const violations = validatePlan(basket, [], { 
+    // Missing max_alt_credit, so should fall back to max_ace_credits
+    const violations = validatePlan(basket, [], {
       transfer_alt_bucket_mode: 'separate',
-      max_ace_credits: 6, // Fallback key
+      max_ace_credits: 6, // fallback key
+      // max_alt_credit intentionally omitted
     } as any);
-    
-    const altCapViolation = violations.find(v => v.type === 'alt_cap');
-    expect(altCapViolation).toBeDefined();
-    expect(altCapViolation?.message).toContain('10 alt credits exceeds 6');
+
+    expect(violations.some(v => v.type === 'alt_cap')).toBe(true);
+  });
+
+  /**
+   * PRECEDENCE TEST: max_alt_credit MUST override max_ace_credits when both provided.
+   * This prevents future refactors from accidentally reversing the merge logic.
+   */
+  it('effectiveAltCap uses max_alt_credit over max_ace_credits when both provided', () => {
+    const basket: BasketItem[] = [
+      { moduleId: 'mod1', courseId: 'c1', credits: 7, status: 'pinned', providerType: null } as any,
+    ];
+
+    // If precedence is correct: cap=10 (from max_alt_credit) => no violation (7 < 10)
+    // If precedence breaks: cap=6 (from max_ace_credits) => violation (7 > 6)
+    const violations = validatePlan(basket, [], {
+      transfer_alt_bucket_mode: 'separate',
+      max_alt_credit: 10,     // policy key - should WIN
+      max_ace_credits: 6,     // fallback key - should be IGNORED
+    } as any);
+
+    // Should NOT have alt_cap violation because 7 < 10
+    expect(violations.some(v => v.type === 'alt_cap')).toBe(false);
+  });
+
+  /**
+   * INVERSE PRECEDENCE TEST: Verify that when max_alt_credit is lower, it still wins.
+   */
+  it('max_alt_credit takes precedence even when lower than max_ace_credits', () => {
+    const basket: BasketItem[] = [
+      { moduleId: 'mod1', courseId: 'c1', credits: 8, status: 'pinned', providerType: null } as any,
+    ];
+
+    // If precedence is correct: cap=6 (from max_alt_credit) => violation (8 > 6)
+    // If precedence breaks: cap=10 (from max_ace_credits) => no violation (8 < 10)
+    const violations = validatePlan(basket, [], {
+      transfer_alt_bucket_mode: 'separate',
+      max_alt_credit: 6,      // policy key - should WIN
+      max_ace_credits: 10,    // fallback key - should be IGNORED
+    } as any);
+
+    // Should HAVE alt_cap violation because 8 > 6
+    expect(violations.some(v => v.type === 'alt_cap')).toBe(true);
   });
 });
 
