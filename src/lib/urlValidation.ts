@@ -198,6 +198,54 @@ export function isVerifiedCourseUrl(url: string | undefined | null): boolean {
 }
 
 /**
+ * ALLOWLIST-ONLY URL sanitizer for external links without DB verification.
+ * 
+ * Use this for URLs from discovery APIs or external sources that don't have
+ * a url_status field in the database. This is LESS strict than sanitizeCourseUrl
+ * but still enforces HTTPS + domain allowlist + fabrication detection.
+ * 
+ * @param url - The URL to sanitize
+ * @returns The sanitized URL or null if invalid
+ * 
+ * Logic:
+ * 1. If URL is empty → DENY
+ * 2. If URL is not HTTPS → DENY
+ * 3. If hostname not in allowlist → DENY
+ * 4. If URL looks fabricated → DENY
+ * 5. Strip tracking params and return normalized URL
+ */
+export function sanitizeAllowlistedUrl(
+  url: string | undefined | null
+): string | null {
+  // Layer 1: URL must exist and be non-empty
+  if (!url?.trim()) {
+    logBlockedUrl(url, 'empty or null URL', 'unknown');
+    return null;
+  }
+  
+  // Layer 2: Must be HTTPS (block HTTP, javascript:, data:, etc.)
+  if (!isValidHttpsUrl(url)) {
+    logBlockedUrl(url, 'not HTTPS', 'unknown');
+    return null;
+  }
+  
+  // Layer 3: Must be from known educational domain
+  if (!isAllowlistedEducationalDomain(url)) {
+    logBlockedUrl(url, 'domain not in allowlist', 'unknown');
+    return null;
+  }
+  
+  // Layer 4: Must not look fabricated
+  if (isFabricatedUrl(url)) {
+    logBlockedUrl(url, 'appears fabricated', 'unknown');
+    return null;
+  }
+  
+  // All checks passed - normalize and return
+  return normalizeUrl(url);
+}
+
+/**
  * DENY-BY-DEFAULT URL sanitizer for rendering course links.
  * 
  * This is the final gate before a URL is displayed to users.
@@ -227,30 +275,6 @@ export function sanitizeCourseUrl(
     return null;
   }
   
-  // Layer 2: URL must exist and be non-empty
-  if (!url?.trim()) {
-    logBlockedUrl(url, 'empty or null URL', status);
-    return null;
-  }
-  
-  // Layer 3: Must be HTTPS (block HTTP, javascript:, data:, etc.)
-  if (!isValidHttpsUrl(url)) {
-    logBlockedUrl(url, 'not HTTPS', status);
-    return null;
-  }
-  
-  // Layer 4: Must be from known educational domain
-  if (!isAllowlistedEducationalDomain(url)) {
-    logBlockedUrl(url, 'domain not in allowlist', status);
-    return null;
-  }
-  
-  // Layer 5: Must not look fabricated
-  if (isFabricatedUrl(url)) {
-    logBlockedUrl(url, 'appears fabricated', status);
-    return null;
-  }
-  
-  // All checks passed - normalize and return
-  return normalizeUrl(url);
+  // Use the allowlist sanitizer for remaining checks
+  return sanitizeAllowlistedUrl(url);
 }

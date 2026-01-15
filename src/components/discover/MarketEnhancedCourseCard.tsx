@@ -90,8 +90,8 @@ export const MarketEnhancedCourseCard: React.FC<MarketEnhancedCourseCardProps> =
   };
 
   const handleStartCourse = () => {
-    // Use safe open - treats unknown urlStatus as unverified
-    safeOpenExternal(course.url, 'unknown');
+    // Use safe open with allowlisted mode (default) - no DB status needed
+    safeOpenExternal(course.url);
   };
 
   if (compact) {

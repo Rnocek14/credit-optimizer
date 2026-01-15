@@ -392,7 +392,7 @@ function CourseCard({ course, status, onUpdateStatus, formatDuration, getDifficu
             <Button
               size="sm"
               variant="outline"
-              onClick={() => safeOpenExternal(details.url, 'unknown')}
+              onClick={() => safeOpenExternal(details.url)}
               className="flex-1"
             >
               <ExternalLink className="h-4 w-4 mr-1" />

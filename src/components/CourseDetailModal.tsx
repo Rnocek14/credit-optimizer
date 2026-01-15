@@ -60,11 +60,11 @@ export function CourseDetailModal({ course, isOpen, onClose }: CourseDetailModal
   if (!course) return null;
 
   const handleStartCourse = () => {
-    // Use safe open - treats unknown urlStatus as unverified
-    const opened = safeOpenExternal(course.url, 'unknown');
+    // Use safe open with allowlisted mode (default) - no DB status needed
+    const opened = safeOpenExternal(course.url);
     toast({
       title: opened ? 'Course started' : 'Link unavailable',
-      description: opened ? 'Opening course in new tab' : 'This course link is pending verification'
+      description: opened ? 'Opening course in new tab' : 'This course link is not available'
     });
   };
 
