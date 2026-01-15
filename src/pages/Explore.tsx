@@ -962,7 +962,7 @@ function CourseCard({
             <Button 
               size="sm" 
               variant="outline" 
-              onClick={() => safeOpenExternal(course.url, 'unknown')}
+              onClick={() => safeOpenExternal(course.url)}
               disabled={!course.url}
             >
               <ExternalLink className="h-3 w-3 mr-1" />

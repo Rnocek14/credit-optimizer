@@ -17,14 +17,23 @@
 import React from 'react';
 import { ExternalLink, AlertCircle, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { sanitizeCourseUrl, normalizeUrlStatus, type UrlStatus } from '@/lib/urlValidation';
+import { sanitizeCourseUrl, sanitizeAllowlistedUrl, normalizeUrlStatus, type UrlStatus } from '@/lib/urlValidation';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+
+/**
+ * Validation mode for external links:
+ * - 'verified': Requires url_status === 'valid' from DB (strictest - for alt_credits)
+ * - 'allowlisted': Only checks HTTPS + domain allowlist (for discovery APIs without DB status)
+ */
+export type LinkValidationMode = 'verified' | 'allowlisted';
 
 export interface SafeExternalLinkProps {
   /** The URL to validate and render */
   url: string | null | undefined;
-  /** Database verification status - accepts unknown for safety */
+  /** Database verification status - only used when mode='verified' */
   urlStatus?: unknown;
+  /** Validation mode: 'verified' requires DB status, 'allowlisted' only checks domain */
+  mode?: LinkValidationMode;
   /** Link content */
   children: React.ReactNode;
   /** Additional CSS classes */
@@ -41,12 +50,27 @@ export interface SafeExternalLinkProps {
 }
 
 /**
+ * Sanitizes URL based on validation mode.
+ */
+function sanitizeByMode(
+  url: string | null | undefined,
+  mode: LinkValidationMode,
+  urlStatus?: unknown
+): string | null {
+  if (mode === 'verified') {
+    return sanitizeCourseUrl(url, urlStatus);
+  }
+  return sanitizeAllowlistedUrl(url);
+}
+
+/**
  * Safe external link component with built-in URL sanitization.
  * Uses the same validation logic as sanitizeCourseUrl().
  */
 export function SafeExternalLink({
   url,
   urlStatus,
+  mode = 'allowlisted', // Default to allowlisted for safety without blocking everything
   children,
   className,
   showIcon = true,
@@ -55,8 +79,8 @@ export function SafeExternalLink({
   title,
   'aria-label': ariaLabel,
 }: SafeExternalLinkProps) {
-  const safeUrl = sanitizeCourseUrl(url, urlStatus);
-  const status = normalizeUrlStatus(urlStatus);
+  const safeUrl = sanitizeByMode(url, mode, urlStatus);
+  const status = mode === 'verified' ? normalizeUrlStatus(urlStatus) : 'unknown';
   
   // URL passed validation - render clickable link
   if (safeUrl) {
@@ -118,19 +142,28 @@ export function SafeExternalLink({
   );
 }
 
+export interface SafeOpenOptions {
+  /** Validation mode: 'verified' requires DB status, 'allowlisted' only checks domain */
+  mode?: LinkValidationMode;
+  /** Database verification status - only used when mode='verified' */
+  urlStatus?: unknown;
+}
+
 /**
  * Safe alternative to window.open() for external URLs.
  * 
  * Usage:
- * onClick={() => safeOpenExternal(course.url, course.urlStatus)}
+ * - For discovery APIs: safeOpenExternal(course.url) // defaults to allowlisted mode
+ * - For verified URLs: safeOpenExternal(option.providerUrl, { mode: 'verified', urlStatus: option.urlStatus })
  * 
  * @returns true if URL was opened, false if blocked
  */
 export function safeOpenExternal(
   url: string | null | undefined,
-  urlStatus?: unknown
+  options?: SafeOpenOptions
 ): boolean {
-  const safeUrl = sanitizeCourseUrl(url, urlStatus);
+  const { mode = 'allowlisted', urlStatus } = options ?? {};
+  const safeUrl = sanitizeByMode(url, mode, urlStatus);
   
   if (!safeUrl) {
     // URL failed validation - don't open
@@ -141,22 +174,31 @@ export function safeOpenExternal(
   return true;
 }
 
+export interface UseSafeUrlOptions {
+  /** Validation mode: 'verified' requires DB status, 'allowlisted' only checks domain */
+  mode?: LinkValidationMode;
+  /** Database verification status - only used when mode='verified' */
+  urlStatus?: unknown;
+}
+
 /**
  * Hook for URL validation state - useful for conditional rendering.
  * 
  * Usage:
- * const { safeUrl, isValid, status } = useSafeUrl(course.url, course.urlStatus);
+ * - For discovery APIs: useSafeUrl(course.url) // defaults to allowlisted mode
+ * - For verified URLs: useSafeUrl(option.providerUrl, { mode: 'verified', urlStatus: option.urlStatus })
  */
-export function useSafeUrl(url: string | null | undefined, urlStatus?: unknown) {
-  const safeUrl = sanitizeCourseUrl(url, urlStatus);
-  const status = normalizeUrlStatus(urlStatus);
+export function useSafeUrl(url: string | null | undefined, options?: UseSafeUrlOptions) {
+  const { mode = 'allowlisted', urlStatus } = options ?? {};
+  const safeUrl = sanitizeByMode(url, mode, urlStatus);
+  const status = mode === 'verified' ? normalizeUrlStatus(urlStatus) : 'unknown';
   
   return {
     safeUrl,
-    isValid: safeUrl !== null,
+    isValid: !!safeUrl,
     status,
-    isPending: status === 'unknown',
-    isInvalid: status === 'invalid',
+    isPending: mode === 'verified' && status === 'unknown',
+    isInvalid: mode === 'verified' && status === 'invalid',
   };
 }
 

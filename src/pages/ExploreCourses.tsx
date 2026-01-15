@@ -421,7 +421,7 @@ export default function ExploreCourses() {
                       View Details
                     </Button>
                     <Button 
-                      onClick={() => safeOpenExternal(course.url, 'unknown')}
+                      onClick={() => safeOpenExternal(course.url)}
                       size="sm"
                       className="flex-1"
                       disabled={!course.url}

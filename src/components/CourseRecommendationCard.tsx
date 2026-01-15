@@ -148,7 +148,7 @@ export const CourseRecommendationCard: React.FC<CourseRecommendationCardProps> =
         <div className="flex gap-2 pt-2">
           <Button 
             className="flex-1"
-            onClick={() => safeOpenExternal(recommendation.url, 'unknown')}
+            onClick={() => safeOpenExternal(recommendation.url)}
             disabled={!recommendation.url}
           >
             <ExternalLink className="h-4 w-4 mr-2" />

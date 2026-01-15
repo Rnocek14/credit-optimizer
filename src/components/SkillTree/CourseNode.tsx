@@ -55,8 +55,8 @@ export const CourseNode: React.FC<CourseNodeProps> = memo(({ data, selected, onS
   };
 
   const handleCourseAction = () => {
-    // Use safe open for verified URLs only
-    if (url && safeOpenExternal(url, 'unknown')) {
+    // Use safe open with allowlisted mode (default)
+    if (url && safeOpenExternal(url)) {
       return; // URL opened successfully
     }
     // Fallback to onStartCourse callback

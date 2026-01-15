@@ -243,7 +243,7 @@ export function MayaCourseRecommendations({
 
               <Button
                 size={compact ? "sm" : "default"}
-                onClick={() => safeOpenExternal(course.url, 'unknown')}
+                onClick={() => safeOpenExternal(course.url)}
                 disabled={!course.url}
                 className="flex-shrink-0"
               >
