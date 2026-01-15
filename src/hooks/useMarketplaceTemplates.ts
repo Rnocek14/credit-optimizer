@@ -340,11 +340,13 @@ export function useMarketplaceTemplates(filters?: Partial<MarketplaceFilters>) {
   return useQuery({
     queryKey: ['marketplace-templates', filters],
     queryFn: async () => {
-      // Fetch templates from database
+      // Fetch only ACTIVE templates from database
+      // This is critical: pending_review and blocked templates must NOT appear in user UX
       const { data: dbRows, error } = await supabase
         .from('degree_templates')
-        .select('id, institution_code, program_code, track_type, total_credits, estimated_cost, estimated_duration_months, template_data')
-        .eq('program_code', 'BSBA');
+        .select('id, institution_code, program_code, track_type, total_credits, estimated_cost, estimated_duration_months, template_data, status')
+        .eq('program_code', 'BSBA')
+        .eq('status', 'active'); // CRITICAL: Only show verified templates
       
       if (error) {
         console.error('[useMarketplaceTemplates] DB error:', error);
@@ -647,11 +649,13 @@ export function useMarketplaceTemplate(templateId: string) {
     queryKey: ['marketplace-template', templateId],
     queryFn: async () => {
       // Fetch template and baseline snapshot in parallel
+      // NOTE: Single template fetch still requires status='active' check for security
       const [templateResult, snapshotResult] = await Promise.all([
         supabase
           .from('degree_templates')
-          .select('id, institution_code, program_code, track_type, total_credits, estimated_cost, estimated_duration_months, template_data')
+          .select('id, institution_code, program_code, track_type, total_credits, estimated_cost, estimated_duration_months, template_data, status')
           .eq('id', templateId)
+          .eq('status', 'active') // CRITICAL: Only allow active templates to be viewed
           .maybeSingle(),
         supabase
           .from('template_baseline_snapshots')

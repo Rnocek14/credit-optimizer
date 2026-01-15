@@ -4093,16 +4093,19 @@ export type Database = {
           degree_total_credits: number | null
           estimated_cost: number | null
           estimated_duration_months: number | null
+          gate_reason: string | null
           id: string
           institution_code: string
           institution_id: string
           metadata: Json | null
           notes: string | null
           policy_last_verified: string | null
+          policy_status: string | null
           program_catalog_id: string | null
           program_code: string
           program_name: string
           program_slug: string | null
+          status: string
           template_data: Json
           total_credits: number
           track_type: string
@@ -4114,16 +4117,19 @@ export type Database = {
           degree_total_credits?: number | null
           estimated_cost?: number | null
           estimated_duration_months?: number | null
+          gate_reason?: string | null
           id: string
           institution_code: string
           institution_id: string
           metadata?: Json | null
           notes?: string | null
           policy_last_verified?: string | null
+          policy_status?: string | null
           program_catalog_id?: string | null
           program_code: string
           program_name: string
           program_slug?: string | null
+          status?: string
           template_data: Json
           total_credits: number
           track_type: string
@@ -4135,16 +4141,19 @@ export type Database = {
           degree_total_credits?: number | null
           estimated_cost?: number | null
           estimated_duration_months?: number | null
+          gate_reason?: string | null
           id?: string
           institution_code?: string
           institution_id?: string
           metadata?: Json | null
           notes?: string | null
           policy_last_verified?: string | null
+          policy_status?: string | null
           program_catalog_id?: string | null
           program_code?: string
           program_name?: string
           program_slug?: string | null
+          status?: string
           template_data?: Json
           total_credits?: number
           track_type?: string
