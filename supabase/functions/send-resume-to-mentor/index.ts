@@ -225,7 +225,7 @@ serve(async (req) => {
             <span class="badge">${escapeHtml(item.track)}</span>
             ${item.criScore ? `<span class="badge">CRI: ${item.criScore}</span>` : ''}
             ${item.description ? `<br><small>${escapeHtml(item.description)}</small>` : ''}
-            ${item.link ? `<br><a href="${item.link}" target="_blank" rel="noopener noreferrer">🔗 View Resource</a>` : ''}
+            ${item.link ? `<br><a href="${escapeHtml(item.link)}" target="_blank" rel="noopener noreferrer">🔗 View Resource</a>` : ''}
           </div>
         `).join('')}
       </div>
