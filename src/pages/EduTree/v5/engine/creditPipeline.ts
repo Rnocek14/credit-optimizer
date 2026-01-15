@@ -262,6 +262,9 @@ export function evaluateCreditDecision(input: CreditDecisionInput): CreditDecisi
     max_transfer_alt_combined_credits: normalized.maxCombinedCredits,
     min_upper_division_credits: normalized.upperDivisionMin,
     provider_caps: normalized.providerCaps,
+    // Policy flags for institution-specific rules (tri-state: true/false/undefined)
+    capstone_in_residence: normalized.capstoneInResidence,
+    min_residency_credits: normalized.minResidencyCredits,
   };
   
   const violations = validatePlan(basket, [], constraints as any);
