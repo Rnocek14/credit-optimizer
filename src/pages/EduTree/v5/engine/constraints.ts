@@ -303,7 +303,7 @@ export function validatePlan(
     }
   });
   
-  equivalencyGroups.forEach((courses, key) => {
+  equivalencyGroups.forEach((courses, _key) => {
     if (courses.length > 1) {
       violations.push({
         type: VIOLATION_TYPES.CONFLICT,
@@ -314,6 +314,23 @@ export function validatePlan(
       });
     }
   });
+  
+  // 7. INSTITUTION-SPECIFIC RULES (policy-driven)
+  // Pass policy data for policy-driven enforcement using constraint fields
+  const policyData: InstitutionRulesPolicy = {
+    institutionCode,
+    capstoneInResidence: (constraints as any).capstone_in_residence ?? true, // Default to requiring capstone in residence
+    minResidencyCredits: (constraints as any).min_residency_credits,
+  };
+  
+  // Summary for institution rules
+  const planSummary = {
+    total: basket.reduce((s, i) => s + i.credits, 0),
+    residency: basket.filter(i => isResidentCredit(toClassifiable(i), institutionCode)).reduce((s, i) => s + i.credits, 0),
+    upperDivision: basket.filter(i => ((i as any).level ?? 0) >= 300).reduce((s, i) => s + i.credits, 0),
+  };
+  
+  applyInstitutionSpecificRules(policyData, basket, planSummary, violations);
   
   return violations;
 }
@@ -541,25 +558,51 @@ export function validateInstitutionPolicies(
     }
   });
 
-  // 8. INSTITUTION-SPECIFIC RULES
-  applyInstitutionSpecificRules(institutionCode, basket, summary, violations);
+  // 8. INSTITUTION-SPECIFIC RULES (policy-driven)
+  // Build policy from limits array
+  // Note: capstone_in_residence is not in InstitutionCreditLimit type; default to true for safety
+  const minResidency = getLimit('min_residency');
+  
+  const policyData: InstitutionRulesPolicy = {
+    institutionCode,
+    capstoneInResidence: true, // Default: capstone must be in residence (safest assumption)
+    minResidencyCredits: minResidency ?? undefined,
+  };
+  applyInstitutionSpecificRules(policyData, basket, summary, violations);
 
   return violations;
 }
 
 /**
- * Institution-specific rules that go beyond database limits
+ * Policy data for institution-specific rules.
+ * This decouples enforcement from hardcoded institution checks.
+ */
+export interface InstitutionRulesPolicy {
+  institutionCode: string;
+  /** If true, capstone must be taken at the target institution */
+  capstoneInResidence?: boolean;
+  /** Minimum residency credits (institution-specific) */
+  minResidencyCredits?: number;
+}
+
+/**
+ * Institution-specific rules that go beyond database limits.
+ * 
+ * POLICY-DRIVEN: Rules are keyed off policy flags, not hardcoded institution checks.
+ * This makes adding new schools trivial: set the policy flags and rules "just work."
  * 
  * IMPORTANT: This function MUST emit proper violation types using VIOLATION_TYPES constants.
- * - 'capstone_substitution' when capstone is from non-resident provider
- * - 'residency' for general residency warnings
+ * - CAPSTONE_SUBSTITUTION when capstone is from non-resident provider
+ * - RESIDENCY for general residency warnings
  */
-function applyInstitutionSpecificRules(
-  institutionCode: string,
+export function applyInstitutionSpecificRules(
+  policy: InstitutionRulesPolicy,
   basket: BasketItem[],
   summary: { total: number; residency: number; upperDivision: number },
   violations: Violation[]
 ) {
+  const { institutionCode, capstoneInResidence, minResidencyCredits } = policy;
+  
   // Helper: Check if a course is a capstone (word-boundary regex to avoid false positives)
   // Priority: requirementArea='CAPSTONE' > isCapstone flag > word-boundary match
   const isCapstone = (item: BasketItem): boolean => 
@@ -572,133 +615,83 @@ function applyInstitutionSpecificRules(
     item.providerType === 'university' && 
     (item.providerCode?.toUpperCase() === institutionCode.toUpperCase());
   
+  // ============================================
+  // POLICY-DRIVEN: Capstone in Residence Rule
+  // ============================================
+  // Only enforce if policy says capstone must be in residence
+  if (capstoneInResidence !== false) {
+    const capstoneCourses = basket.filter(isCapstone);
+    const hasCapstone = capstoneCourses.length > 0;
+    const hasResidentCapstone = capstoneCourses.some(isResident);
+    
+    if (hasCapstone && !hasResidentCapstone) {
+      violations.push({
+        type: VIOLATION_TYPES.CAPSTONE_SUBSTITUTION,
+        severity: 'error',
+        message: `${institutionCode}: Capstone must be taken in residence`,
+        affectedCourses: capstoneCourses.map(c => c.courseId),
+        suggestedFix: `Replace with ${institutionCode} capstone course`,
+      });
+    }
+    
+    // Soft warning if near graduation but no capstone
+    if (!hasCapstone && summary.total >= 90) {
+      violations.push({
+        type: VIOLATION_TYPES.RESIDENCY,
+        severity: 'warning',
+        message: `${institutionCode}: Consider adding capstone course`,
+        affectedCourses: [],
+        suggestedFix: `Add ${institutionCode} capstone course`,
+      });
+    }
+  }
+  
+  // ============================================
+  // POLICY-DRIVEN: Minimum Residency Rule
+  // ============================================
+  // Institution-specific residency minimum (e.g., COSC requires 6)
+  if (minResidencyCredits !== undefined && summary.residency < minResidencyCredits) {
+    violations.push({
+      type: VIOLATION_TYPES.RESIDENCY,
+      severity: 'error',
+      message: `${institutionCode}: Plan must include at least ${minResidencyCredits} institutional credits`,
+      affectedCourses: [],
+      suggestedFix: `Add ${minResidencyCredits - summary.residency} more ${institutionCode} credits`,
+      metadata: { current: summary.residency, required: minResidencyCredits },
+    });
+  }
+  
+  // ============================================
+  // INSTITUTION-SPECIFIC SOFT WARNINGS (optional)
+  // ============================================
+  // These are informational and don't block; kept per-institution for now
   switch (institutionCode) {
-    case 'TESU': {
-      const capstoneCourses = basket.filter(isCapstone);
-      const hasCapstone = capstoneCourses.length > 0;
-      const hasResidentCapstone = capstoneCourses.some(isResident);
-      
-      // CRITICAL: Capstone must be taken in residence
-      if (hasCapstone && !hasResidentCapstone) {
-        violations.push({
-          type: VIOLATION_TYPES.CAPSTONE_SUBSTITUTION,
-          severity: 'error',
-          message: 'TESU: Capstone course must be taken at TESU (cannot use transfer/alt credit)',
-          affectedCourses: capstoneCourses.map(c => c.courseId),
-          suggestedFix: 'Replace transfer/alt capstone with TESU capstone course',
-        });
-      }
-      
-      if (!hasCapstone && summary.total >= 100) {
+    case 'COSC':
+      // COSC cornerstone reminder (doesn't block, just helpful)
+      if (summary.residency >= 3 && summary.residency < 6 && summary.total >= 60) {
         violations.push({
           type: VIOLATION_TYPES.RESIDENCY,
           severity: 'warning',
-          message: 'TESU: Consider adding the capstone course to complete residency requirements',
+          message: 'COSC: Consider adding cornerstone course for full institutional requirement',
           affectedCourses: [],
-          suggestedFix: 'Add TESU capstone course',
+          suggestedFix: 'Add COSC cornerstone (3cr) course',
         });
       }
       break;
-    }
-    case 'COSC': {
-      // COSC requires exactly 6 institutional credits (cornerstone + capstone)
-      if (summary.residency < 6) {
-        violations.push({
-          type: VIOLATION_TYPES.RESIDENCY,
-          severity: 'error',
-          message: 'COSC: Plan must include at least 6 institutional credits (cornerstone + capstone)',
-          affectedCourses: [],
-          suggestedFix: 'Add COSC cornerstone (3cr) and capstone (3cr) courses',
-          metadata: { current: summary.residency, required: 6 },
-        });
-      }
       
-      // Check capstone residency
-      const capstoneCourses = basket.filter(isCapstone);
-      const hasCapstone = capstoneCourses.length > 0;
-      const hasResidentCapstone = capstoneCourses.some(isResident);
-      
-      if (hasCapstone && !hasResidentCapstone) {
-        violations.push({
-          type: VIOLATION_TYPES.CAPSTONE_SUBSTITUTION,
-          severity: 'error',
-          message: 'COSC: Capstone must be taken at COSC',
-          affectedCourses: capstoneCourses.map(c => c.courseId),
-          suggestedFix: 'Replace with COSC capstone course',
-        });
-      }
-      break;
-    }
-    case 'EXCELSIOR': {
-      // Excelsior has flexible residency but requires capstone
-      const capstoneCourses = basket.filter(isCapstone);
-      const hasCapstone = capstoneCourses.length > 0;
-      const hasResidentCapstone = capstoneCourses.some(isResident);
-      
-      if (hasCapstone && !hasResidentCapstone) {
-        violations.push({
-          type: VIOLATION_TYPES.CAPSTONE_SUBSTITUTION,
-          severity: 'error',
-          message: 'Excelsior: Capstone must be taken at Excelsior',
-          affectedCourses: capstoneCourses.map(c => c.courseId),
-          suggestedFix: 'Add Excelsior capstone course',
-        });
-      }
-      
-      if (!hasCapstone && summary.total >= 90) {
-        violations.push({
-          type: VIOLATION_TYPES.RESIDENCY,
-          severity: 'warning',
-          message: 'Excelsior: Consider adding capstone requirement',
-          affectedCourses: [],
-          suggestedFix: 'Add Excelsior capstone course',
-        });
-      }
-      break;
-    }
-
-    case 'WGU': {
-      const capstoneCourses = basket.filter(isCapstone);
-      const hasCapstone = capstoneCourses.length > 0;
-      const hasResidentCapstone = capstoneCourses.some(isResident);
-
-      // Capstone substitution check
-      if (hasCapstone && !hasResidentCapstone) {
-        violations.push({
-          type: VIOLATION_TYPES.CAPSTONE_SUBSTITUTION,
-          severity: 'error',
-          message: 'WGU: Capstone must be taken at WGU',
-          affectedCourses: capstoneCourses.map(c => c.courseId),
-          suggestedFix: 'Replace with WGU capstone course',
-        });
-      }
-
-      // Soft expectation: ~30 in-house credits
+    case 'WGU':
+      // WGU soft expectation of ~30 in-house credits
       if (summary.residency < 30 && summary.total >= 60) {
         violations.push({
           type: VIOLATION_TYPES.RESIDENCY,
           severity: 'warning',
-          message:
-            'WGU: Plan currently has fewer than ~30 institutional credits; WGU may require more in-house coursework (including capstone).',
+          message: 'WGU: Plan has fewer than ~30 institutional credits; WGU may require more in-house coursework',
           affectedCourses: [],
-          suggestedFix:
-            'Shift some alt-credit/electives to WGU courses, especially near the end of the plan',
+          suggestedFix: 'Shift some alt-credit/electives to WGU courses',
           metadata: { current: summary.residency, required: 30 },
         });
       }
-
-      if (!hasCapstone && summary.total >= 90) {
-        violations.push({
-          type: VIOLATION_TYPES.RESIDENCY,
-          severity: 'warning',
-          message:
-            'WGU: Capstone-like requirement is typically expected in the home institution near the end of the program.',
-          affectedCourses: [],
-          suggestedFix: 'Add WGU capstone / final project course to the last term',
-        });
-      }
       break;
-    }
   }
 }
 
