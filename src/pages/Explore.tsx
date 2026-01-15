@@ -410,27 +410,23 @@ export default function Explore() {
   };
 
   const handleOpenCourse = async (url: string) => {
-    const safe = sanitizeUrl(url);
-    if (!safe) {
+    try {
+      // Track telemetry
+      await trackTelemetryEvent({
+        task: 'explore_reco_action',
+        complexity: { action: 'open', url }
+      });
+    } catch (error) {
+      console.error('Failed to track course open:', error);
+    }
+    
+    const opened = safeOpenExternal(url, { mode: 'allowlisted' });
+    if (!opened) {
       toast({
         title: 'Security Error',
         description: 'This URL is not allowed for security reasons.',
         variant: 'destructive',
       });
-      return;
-    }
-    
-    try {
-      // Track telemetry
-      await trackTelemetryEvent({
-        task: 'explore_reco_action',
-        complexity: { action: 'open', url: safe }
-      });
-      
-      window.open(safe, '_blank', 'noopener,noreferrer');
-    } catch (error) {
-      console.error('Failed to track course open:', error);
-      window.open(safe, '_blank', 'noopener,noreferrer');
     }
   };
 

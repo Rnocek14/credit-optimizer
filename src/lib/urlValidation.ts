@@ -69,9 +69,22 @@ const VALID_EDUCATIONAL_DOMAINS = [
   
   // Tech-specific learning & portfolios
   'github.com',
+  'raw.githubusercontent.com',
+  'github.io',
   'microsoft.com',
   'aws.amazon.com',
   'cloud.google.com',
+  
+  // Portfolio/demo hosting
+  'vercel.app',
+  'netlify.app',
+  'herokuapp.com',
+  'pages.dev', // Cloudflare Pages
+  'railway.app',
+  'render.com',
+  'replit.com',
+  'codesandbox.io',
+  'stackblitz.com',
   
   // Social sharing (for share buttons)
   'twitter.com',

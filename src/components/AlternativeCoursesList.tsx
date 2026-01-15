@@ -18,7 +18,7 @@ import { Label } from '@/components/ui/label';
 import { SkillTagsFallback } from '@/components/SkillTagsFallback';
 import { AlternativeCourse, UserAltCourseUsage, AltCourseResolveResponse, Provider, SkillTag } from '@/types/alternativeCourses';
 import { AlternativeCoursesErrorBoundary } from './AlternativeCoursesErrorBoundary';
-import { sanitizeCourseUrl } from '@/lib/urlValidation';
+import { safeOpenExternal } from '@/components/ui/SafeExternalLink';
 
 export function AlternativeCoursesList() {
   const { activeTrackId, setActiveTrackId } = useActiveTrackStore();
@@ -263,8 +263,8 @@ export function AlternativeCoursesList() {
   };
 
   const handleOpenCourse = (course: AlternativeCourse) => {
-    const safeUrl = sanitizeCourseUrl(course.url);
-    if (!safeUrl) {
+    const opened = safeOpenExternal(course.url, { mode: 'allowlisted' });
+    if (!opened) {
       toast({
         title: 'Link unavailable',
         description: 'This course link could not be verified.',
@@ -276,7 +276,6 @@ export function AlternativeCoursesList() {
       task: 'alt_course_clicked', 
       complexity: { alt_course_id: course.id, provider: course.provider } 
     });
-    window.open(safeUrl, '_blank', 'noopener,noreferrer');
   };
 
   if (!altCoursesEnabled) {
