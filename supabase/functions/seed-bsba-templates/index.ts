@@ -867,6 +867,9 @@ serve(async (req) => {
     templates?: { standard?: string; altMax?: string };
     costBreakdown?: { standard?: number; altMax?: number };
     source: 'policy_pack' | 'fallback';
+    policyStatus?: string;
+    policyScore?: number;
+    templateStatus?: string;
     error?: string 
   }> = {};
 
