@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Copy, Check, Share2, Twitter, Linkedin, Facebook } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { trackTelemetryEvent } from '@/utils/telemetry';
+import { safeOpenExternal } from '@/components/ui/SafeExternalLink';
 
 interface ShareModalProps {
   isOpen: boolean;
@@ -73,7 +74,7 @@ export function ShareModal({ isOpen, onClose, referralCode, scoreBucket, insight
     }
     
     if (url) {
-      window.open(url, '_blank', 'width=600,height=400');
+      safeOpenExternal(url);
     }
   };
 

@@ -4,6 +4,7 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Code2, Clock, Target, CheckCircle2, PlayCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { safeOpenExternal } from '@/components/ui/SafeExternalLink';
 
 interface ProjectNodeData {
   title: string;
@@ -166,7 +167,7 @@ export const ProjectNode: React.FC<ProjectNodeProps> = memo(({
                 variant="outline" 
                 size="sm" 
                 className="text-xs flex-1"
-                onClick={() => window.open(githubUrl, '_blank')}
+                onClick={() => safeOpenExternal(githubUrl)}
               >
                 GitHub
               </Button>
@@ -176,7 +177,7 @@ export const ProjectNode: React.FC<ProjectNodeProps> = memo(({
                 variant="outline" 
                 size="sm" 
                 className="text-xs flex-1"
-                onClick={() => window.open(liveUrl, '_blank')}
+                onClick={() => safeOpenExternal(liveUrl)}
               >
                 Live Demo
               </Button>

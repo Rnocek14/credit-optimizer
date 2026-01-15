@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { trackTelemetryEvent } from '@/utils/telemetry';
+import { safeOpenExternal } from '@/components/ui/SafeExternalLink';
 
 export interface AlternativeCourse {
   id: string;
@@ -33,7 +34,8 @@ export function useAltCourses(trackId: string | null) {
       task: 'alt_course_clicked', 
       complexity: { alt_course_id: id } 
     });
-    window.open(url, '_blank');
+    // Use safe open with allowlisted mode (default)
+    safeOpenExternal(url);
   };
 
   return { 

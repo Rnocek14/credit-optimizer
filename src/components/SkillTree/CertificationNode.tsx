@@ -4,6 +4,7 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Award, Clock, DollarSign, Calendar, ExternalLink, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { safeOpenExternal } from '@/components/ui/SafeExternalLink';
 
 interface CertificationNodeData {
   title: string;
@@ -67,7 +68,7 @@ export const CertificationNode: React.FC<CertificationNodeProps> = memo(({
 
   const handleAction = () => {
     if (registrationUrl) {
-      window.open(registrationUrl, '_blank');
+      safeOpenExternal(registrationUrl);
     } else if (onRegister) {
       onRegister(title);
     }

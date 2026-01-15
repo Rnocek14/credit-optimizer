@@ -22,7 +22,7 @@ import {
   AlertCircle
 } from "lucide-react";
 import { toast } from "sonner";
-import { SafeExternalLink } from '@/components/ui/SafeExternalLink';
+import { SafeExternalLink, safeOpenExternal } from '@/components/ui/SafeExternalLink';
 
 interface ProfileData {
   id: string;
@@ -233,12 +233,12 @@ const PublicResume = () => {
   const shareToTwitter = () => {
     const text = `Check out ${profile?.name}'s resume - ${profile?.role_title}`;
     const url = window.location.href;
-    window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`, '_blank');
+    safeOpenExternal(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`);
   };
 
   const shareToLinkedIn = () => {
     const url = window.location.href;
-    window.open(`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(url)}`, '_blank');
+    safeOpenExternal(`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(url)}`);
   };
 
   if (loading) {
@@ -517,7 +517,7 @@ const PublicResume = () => {
                       <div className="flex gap-2 pt-2">
                         <SafeExternalLink 
                           url={course.url} 
-                          urlStatus="unknown"
+                          mode="allowlisted"
                           className="inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-8 rounded-md px-3 flex-1"
                           fallback="hidden"
                           showIcon={true}
