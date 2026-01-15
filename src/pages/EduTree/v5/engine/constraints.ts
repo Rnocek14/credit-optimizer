@@ -9,6 +9,7 @@ import {
 } from './creditLoss';
 import { countsTowardAltCap } from '../utils/altCredit';
 import { isTransferCredit, isAltCredit, isResidentCredit } from '../utils/creditClassification';
+import { VIOLATION_TYPES, type ViolationType } from './violationTypes';
 
 // Bucket mode types for transfer/alt credit policy
 export type BucketMode = 'separate' | 'combined' | 'unknown';
@@ -28,7 +29,7 @@ export interface PolicyData {
 }
 
 export interface Violation {
-  type: 'budget' | 'workload' | 'deadline' | 'prerequisite' | 'transfer_cap' | 'alt_cap' | 'conflict' | 'residency' | 'upper_division' | 'provider_cap' | 'gened_incomplete' | 'total_transfer' | 'capstone_substitution' | 'combined_cap' | 'policy_unverified';
+  type: ViolationType;
   severity: 'error' | 'warning' | 'info';
   message: string;
   affectedCourses: string[];
@@ -100,7 +101,7 @@ export function validatePlan(
   const totalCost = basket.reduce((sum, i) => sum + (i.cost_usd ?? 0), 0);
   if (constraints.max_budget_usd && totalCost > constraints.max_budget_usd) {
     violations.push({
-      type: 'budget',
+      type: VIOLATION_TYPES.BUDGET,
       severity: 'error',
       message: `Plan exceeds budget by $${(totalCost - constraints.max_budget_usd).toFixed(0)}`,
       affectedCourses: basket.map(i => i.courseId),
@@ -113,7 +114,7 @@ export function validatePlan(
     const totalWeeklyHours = basket.reduce((sum, i) => sum + (i.workload_weekly_hours ?? 0), 0);
     if (constraints.max_weekly_hours && totalWeeklyHours > constraints.max_weekly_hours) {
       violations.push({
-        type: 'workload',
+        type: VIOLATION_TYPES.WORKLOAD,
         severity: 'warning',
         message: `Total ${totalWeeklyHours}hrs/wk exceeds ${constraints.max_weekly_hours}hrs/wk limit`,
         affectedCourses: basket.filter(i => i.workload_weekly_hours > 10).map(i => i.courseId),
@@ -133,7 +134,7 @@ export function validatePlan(
     
     if (realisticWeeks > weeksUntilDeadline) {
       violations.push({
-        type: 'deadline',
+        type: VIOLATION_TYPES.DEADLINE,
         severity: 'error',
         message: `Plan requires ${realisticWeeks} weeks (${basket.length} courses, max ${concurrency} concurrent) but only ${weeksUntilDeadline} weeks until graduation`,
         affectedCourses: basket.map(i => i.courseId),
@@ -188,7 +189,7 @@ export function validatePlan(
     if (maxTransferAltCombined == null) {
       // Combined mode but missing combined cap = policy invalid
       violations.push({
-        type: 'policy_unverified',
+        type: VIOLATION_TYPES.POLICY_UNVERIFIED,
         severity: 'error',
         message: `bucketMode=combined but max_transfer_alt_combined_credits is missing.`,
         affectedCourses: [],
@@ -204,7 +205,7 @@ export function validatePlan(
 
       if (combinedTotal > maxTransferAltCombined) {
         violations.push({
-          type: 'combined_cap',
+          type: VIOLATION_TYPES.COMBINED_CAP,
           severity: 'error',
           message: `${combinedTotal} combined transfer+alt credits exceeds ${maxTransferAltCombined} limit`,
           affectedCourses: getCourseIds(countsTowardCombined),
@@ -218,7 +219,7 @@ export function validatePlan(
     // 1. Alt credit cap (single effective cap, no duplicates)
     if (effectiveAltCap != null && altCredits > effectiveAltCap) {
       violations.push({
-        type: 'alt_cap',
+        type: VIOLATION_TYPES.ALT_CAP,
         severity: 'error',
         message: `${altCredits} alt credits exceeds ${effectiveAltCap} noncollegiate limit`,
         affectedCourses: getCourseIds(countsAsAlt),
@@ -230,7 +231,7 @@ export function validatePlan(
     // 2. Transfer cap (if school has one)
     if (maxTransferCredits != null && transferCredits > maxTransferCredits) {
       violations.push({
-        type: 'transfer_cap',
+        type: VIOLATION_TYPES.TRANSFER_CAP,
         severity: 'error',
         message: `${transferCredits} transfer credits exceeds ${maxTransferCredits} limit`,
         affectedCourses: getCourseIds(countsAsTransfer),
@@ -241,7 +242,7 @@ export function validatePlan(
   } else {
     // Unknown bucket mode = policy unverified, emit error (no heuristic fallback)
     violations.push({
-      type: 'policy_unverified',
+      type: VIOLATION_TYPES.POLICY_UNVERIFIED,
       severity: 'error',
       message: `transfer_alt_bucket_mode is '${bucketMode ?? 'undefined'}'. Cannot enforce transfer/alt caps without verified bucket mode.`,
       affectedCourses: [],
@@ -263,7 +264,7 @@ export function validatePlan(
     
     if (upperDivisionCredits < minUpperDivCredits) {
       violations.push({
-        type: 'upper_division',
+        type: VIOLATION_TYPES.UPPER_DIVISION,
         severity: 'error',
         message: `${upperDivisionCredits} upper-division credits is below required ${minUpperDivCredits}`,
         affectedCourses: basket.map(i => i.courseId),
@@ -281,7 +282,7 @@ export function validatePlan(
     
     if (unmetPrereqs.length > 0) {
       violations.push({
-        type: 'prerequisite',
+        type: VIOLATION_TYPES.PREREQUISITE,
         severity: 'error',
         message: `${opt?.title || item.courseId} requires ${unmetPrereqs.length} prerequisite(s)`,
         affectedCourses: [item.courseId],
@@ -305,7 +306,7 @@ export function validatePlan(
   equivalencyGroups.forEach((courses, key) => {
     if (courses.length > 1) {
       violations.push({
-        type: 'conflict',
+        type: VIOLATION_TYPES.CONFLICT,
         severity: 'warning',
         message: `Duplicate equivalent courses (${courses.length} versions of same course)`,
         affectedCourses: courses,
@@ -373,7 +374,7 @@ export function validateInstitutionPolicies(
   const residencyMin = getLimit('min_residency');
   if (residencyMin != null && summary.residency < residencyMin) {
     violations.push({
-      type: 'residency',
+      type: VIOLATION_TYPES.RESIDENCY,
       severity: 'error',
       message: `Need ${residencyMin - summary.residency} more ${institutionCode} credits to meet ${residencyMin}-credit residency requirement`,
       affectedCourses: [],
@@ -386,7 +387,7 @@ export function validateInstitutionPolicies(
   const upperDivMin = getLimit('upper_division_min');
   if (upperDivMin != null && summary.upperDivision < upperDivMin) {
     violations.push({
-      type: 'upper_division',
+      type: VIOLATION_TYPES.UPPER_DIVISION,
       severity: 'error',
       message: `Need ${upperDivMin - summary.upperDivision} more upper-division (300/400 level) credits (current: ${summary.upperDivision}/${upperDivMin})`,
       affectedCourses: [],
@@ -423,7 +424,7 @@ export function validateInstitutionPolicies(
       const lostItems = calculateCapExceedance(providerItems, credits, limit, 'provider', code);
       
       violations.push({
-        type: 'provider_cap',
+        type: VIOLATION_TYPES.PROVIDER_CAP,
         severity: 'error',
         message: `${code} credits (${credits}) exceed ${limit}-credit limit. Credit loss: ${creditLoss}`,
         affectedCourses: lostItems.map(i => i.courseId),
@@ -449,7 +450,7 @@ export function validateInstitutionPolicies(
     const lostItems = calculateCapExceedance(transferItems, summary.transfer, totalTransferMax, 'transfer');
     
     violations.push({
-      type: 'total_transfer',
+      type: VIOLATION_TYPES.TOTAL_TRANSFER,
       severity: 'error',
       message: `Total transfer credits (${summary.transfer}) exceed ${totalTransferMax}-credit limit. Credit loss: ${creditLoss}`,
       affectedCourses: lostItems.map(i => i.courseId),
@@ -473,7 +474,7 @@ export function validateInstitutionPolicies(
     const lostItems = calculateCapExceedance(altItems, summary.altCredits, altCreditMax, 'alt');
     
     violations.push({
-      type: 'transfer_cap',
+      type: VIOLATION_TYPES.TRANSFER_CAP,
       severity: 'error',
       message: `Alternative credits (${summary.altCredits}) exceed ${altCreditMax}-credit limit. Credit loss: ${creditLoss}`,
       affectedCourses: lostItems.map(i => i.courseId),
@@ -496,7 +497,7 @@ export function validateInstitutionPolicies(
       .reduce((sum, i) => sum + i.credits, 0);
     if (raCredits < raMin) {
       violations.push({
-        type: 'residency',
+        type: VIOLATION_TYPES.RESIDENCY,
         severity: 'error',
         message: `Regionally-accredited credits (${raCredits}) below required ${raMin}`,
         affectedCourses: [],
@@ -530,7 +531,7 @@ export function validateInstitutionPolicies(
     const required = category.credits_required;
     if (earned < required) {
       violations.push({
-        type: 'gened_incomplete',
+        type: VIOLATION_TYPES.GENED_INCOMPLETE,
         severity: 'error',
         message: `${category.category_name}: Need ${required - earned} more credits (${earned}/${required})`,
         affectedCourses: [],
@@ -549,7 +550,7 @@ export function validateInstitutionPolicies(
 /**
  * Institution-specific rules that go beyond database limits
  * 
- * IMPORTANT: This function MUST emit proper violation types:
+ * IMPORTANT: This function MUST emit proper violation types using VIOLATION_TYPES constants.
  * - 'capstone_substitution' when capstone is from non-resident provider
  * - 'residency' for general residency warnings
  */
@@ -559,10 +560,12 @@ function applyInstitutionSpecificRules(
   summary: { total: number; residency: number; upperDivision: number },
   violations: Violation[]
 ) {
-  // Helper: Check if a course is a capstone
+  // Helper: Check if a course is a capstone (word-boundary regex to avoid false positives)
+  // Priority: requirementArea='CAPSTONE' > isCapstone flag > word-boundary match
   const isCapstone = (item: BasketItem): boolean => 
-    item.courseId?.toLowerCase().includes('capstone') || 
-    (item as any).requirementArea === 'CAPSTONE';
+    (item as any).requirementArea === 'CAPSTONE' ||
+    (item as any).isCapstone === true ||
+    /\bcapstone\b/i.test(item.courseId || '');
   
   // Helper: Check if a course is resident at the target institution
   const isResident = (item: BasketItem): boolean =>
@@ -578,7 +581,7 @@ function applyInstitutionSpecificRules(
       // CRITICAL: Capstone must be taken in residence
       if (hasCapstone && !hasResidentCapstone) {
         violations.push({
-          type: 'capstone_substitution',
+          type: VIOLATION_TYPES.CAPSTONE_SUBSTITUTION,
           severity: 'error',
           message: 'TESU: Capstone course must be taken at TESU (cannot use transfer/alt credit)',
           affectedCourses: capstoneCourses.map(c => c.courseId),
@@ -588,7 +591,7 @@ function applyInstitutionSpecificRules(
       
       if (!hasCapstone && summary.total >= 100) {
         violations.push({
-          type: 'residency',
+          type: VIOLATION_TYPES.RESIDENCY,
           severity: 'warning',
           message: 'TESU: Consider adding the capstone course to complete residency requirements',
           affectedCourses: [],
@@ -601,7 +604,7 @@ function applyInstitutionSpecificRules(
       // COSC requires exactly 6 institutional credits (cornerstone + capstone)
       if (summary.residency < 6) {
         violations.push({
-          type: 'residency',
+          type: VIOLATION_TYPES.RESIDENCY,
           severity: 'error',
           message: 'COSC: Plan must include at least 6 institutional credits (cornerstone + capstone)',
           affectedCourses: [],
@@ -617,7 +620,7 @@ function applyInstitutionSpecificRules(
       
       if (hasCapstone && !hasResidentCapstone) {
         violations.push({
-          type: 'capstone_substitution',
+          type: VIOLATION_TYPES.CAPSTONE_SUBSTITUTION,
           severity: 'error',
           message: 'COSC: Capstone must be taken at COSC',
           affectedCourses: capstoneCourses.map(c => c.courseId),
@@ -634,7 +637,7 @@ function applyInstitutionSpecificRules(
       
       if (hasCapstone && !hasResidentCapstone) {
         violations.push({
-          type: 'capstone_substitution',
+          type: VIOLATION_TYPES.CAPSTONE_SUBSTITUTION,
           severity: 'error',
           message: 'Excelsior: Capstone must be taken at Excelsior',
           affectedCourses: capstoneCourses.map(c => c.courseId),
@@ -644,7 +647,7 @@ function applyInstitutionSpecificRules(
       
       if (!hasCapstone && summary.total >= 90) {
         violations.push({
-          type: 'residency',
+          type: VIOLATION_TYPES.RESIDENCY,
           severity: 'warning',
           message: 'Excelsior: Consider adding capstone requirement',
           affectedCourses: [],
@@ -662,7 +665,7 @@ function applyInstitutionSpecificRules(
       // Capstone substitution check
       if (hasCapstone && !hasResidentCapstone) {
         violations.push({
-          type: 'capstone_substitution',
+          type: VIOLATION_TYPES.CAPSTONE_SUBSTITUTION,
           severity: 'error',
           message: 'WGU: Capstone must be taken at WGU',
           affectedCourses: capstoneCourses.map(c => c.courseId),
@@ -673,7 +676,7 @@ function applyInstitutionSpecificRules(
       // Soft expectation: ~30 in-house credits
       if (summary.residency < 30 && summary.total >= 60) {
         violations.push({
-          type: 'residency',
+          type: VIOLATION_TYPES.RESIDENCY,
           severity: 'warning',
           message:
             'WGU: Plan currently has fewer than ~30 institutional credits; WGU may require more in-house coursework (including capstone).',
@@ -686,7 +689,7 @@ function applyInstitutionSpecificRules(
 
       if (!hasCapstone && summary.total >= 90) {
         violations.push({
-          type: 'residency',
+          type: VIOLATION_TYPES.RESIDENCY,
           severity: 'warning',
           message:
             'WGU: Capstone-like requirement is typically expected in the home institution near the end of the program.',

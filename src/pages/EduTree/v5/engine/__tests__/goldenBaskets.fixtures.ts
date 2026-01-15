@@ -12,6 +12,10 @@
  * 4. Upper Division - 300/400 level requirements
  * 5. Failure Modes - Policy errors, missing data
  * 
+ * Status:
+ * - 'enforced': This basket is fully wired and MUST pass as specified
+ * - 'pending': This basket documents expected behavior but isn't wired yet
+ * 
  * IMPORTANT: 
  * - Use 3-credit blocks as default (realistic course sizes)
  * - Use 1-credit blocks only for precise boundary tests
@@ -21,6 +25,7 @@
 
 import type { BasketItem } from '../../state/usePlanBasket';
 import type { CreditDecisionInput, CreditDecisionOutput, Eligibility } from '../creditPipeline';
+import { VIOLATION_TYPES } from '../violationTypes';
 import { expect } from 'vitest';
 
 // ============================================================================
@@ -123,6 +128,8 @@ export interface GoldenBasket {
   name: string;
   description: string;
   category: 'happy_path' | 'cap_boundary' | 'residency' | 'upper_division' | 'failure_mode';
+  /** 'enforced' = fully wired, must pass; 'pending' = documents expected behavior, not yet wired */
+  status: 'enforced' | 'pending';
   input: CreditDecisionInput;
   expected: {
     eligibility: Eligibility;
@@ -145,6 +152,7 @@ export const GOLDEN_BASKETS: GoldenBasket[] = [
     name: 'TESU Standard Bachelor Path',
     description: 'Standard 120-credit TESU graduation with proper residency and upper-div',
     category: 'happy_path',
+    status: 'enforced',
     input: {
       basket: [
         // 30 credits from TESU (resident) - 10 courses x 3 credits
@@ -193,6 +201,7 @@ export const GOLDEN_BASKETS: GoldenBasket[] = [
     name: 'TESU Accelerate Minimal Residency',
     description: 'TESU with fee waiver, minimal 6-credit residency variant',
     category: 'happy_path',
+    status: 'enforced',
     input: {
       basket: [
         // 6 credits from TESU (accelerate variant minimum) - 2 courses x 3 credits
@@ -248,6 +257,7 @@ export const GOLDEN_BASKETS: GoldenBasket[] = [
     name: 'TESU Exactly 90 Alt Credits',
     description: 'Exactly at the 90-credit alt cap - should pass',
     category: 'cap_boundary',
+    status: 'enforced',
     input: {
       basket: [
         // 15 resident credits - 5 courses x 3 credits
@@ -294,6 +304,7 @@ export const GOLDEN_BASKETS: GoldenBasket[] = [
     name: 'TESU 91 Alt Credits (Over Cap)',
     description: '91 alt credits exceeds 90-credit cap - MUST block',
     category: 'cap_boundary',
+    status: 'enforced',
     input: {
       basket: [
         // 15 resident credits - 5 courses x 3 credits
@@ -347,6 +358,7 @@ export const GOLDEN_BASKETS: GoldenBasket[] = [
     name: 'WGU 79 Alt Credits (Over Cap)',
     description: 'WGU has 78-credit alt cap - 79 should block',
     category: 'cap_boundary',
+    status: 'enforced',
     input: {
       basket: [
         // 42 resident (WGU) - 14 courses x 3 credits
@@ -395,6 +407,7 @@ export const GOLDEN_BASKETS: GoldenBasket[] = [
     name: 'TESU Residency Shortfall (14/15)',
     description: 'One credit short of residency - MUST block',
     category: 'residency',
+    status: 'enforced',
     input: {
       basket: [
         // 14 resident credits (1 short) - 14 courses x 1 credit
@@ -440,6 +453,7 @@ export const GOLDEN_BASKETS: GoldenBasket[] = [
     name: 'TESU Residency Exactly Met (15/15)',
     description: 'Exactly 15 resident credits - should pass',
     category: 'residency',
+    status: 'enforced',
     input: {
       basket: [
         // 15 resident credits exactly - 5 courses x 3 credits
@@ -481,6 +495,7 @@ export const GOLDEN_BASKETS: GoldenBasket[] = [
     name: 'TESU Upper-Div Shortfall (17/18)',
     description: 'One credit short of upper-division - MUST block',
     category: 'upper_division',
+    status: 'enforced',
     input: {
       basket: [
         // 17 upper-div (1 short) - 17 courses x 1 credit
@@ -522,6 +537,7 @@ export const GOLDEN_BASKETS: GoldenBasket[] = [
     name: 'Missing Bucket Mode',
     description: 'Policy without bucket mode should emit policy_unverified error',
     category: 'failure_mode',
+    status: 'enforced',
     input: {
       basket: [
         createBasketItem({
@@ -546,7 +562,7 @@ export const GOLDEN_BASKETS: GoldenBasket[] = [
       eligibility: 'blocked',
       blockerCount: 1,
       assertions: [
-        (r) => expect(r.violations.some(v => v.type === 'policy_unverified')).toBe(true),
+        (r) => expect(r.violations.some(v => v.type === VIOLATION_TYPES.POLICY_UNVERIFIED)).toBe(true),
       ],
     },
   },
@@ -556,6 +572,7 @@ export const GOLDEN_BASKETS: GoldenBasket[] = [
     name: 'Null Provider Type (Conservative)',
     description: 'Missing providerType should count as alt credit',
     category: 'failure_mode',
+    status: 'enforced',
     input: {
       basket: [
         // 15 resident - 5 courses x 3 credits
@@ -616,6 +633,7 @@ export const GOLDEN_BASKETS: GoldenBasket[] = [
     name: 'CLEP Provider Cap Exceeded',
     description: 'CLEP credits exceed per-provider 60-credit limit',
     category: 'failure_mode',
+    status: 'enforced',
     input: {
       basket: [
         // 63 credits from CLEP (3 over the 60-credit cap) - 21 courses x 3 credits
@@ -655,7 +673,7 @@ export const GOLDEN_BASKETS: GoldenBasket[] = [
       blockerCount: 1,
       assertions: [
         (r) => expect(r.totals.byProvider['CLEP']).toBe(63),
-        (r) => expect(r.violations.some(v => v.type === 'provider_cap')).toBe(true),
+        (r) => expect(r.violations.some(v => v.type === VIOLATION_TYPES.PROVIDER_CAP)).toBe(true),
       ],
     },
   },
@@ -680,6 +698,7 @@ export const GOLDEN_BASKETS: GoldenBasket[] = [
     name: 'Gen-Ed Humanities Incomplete (PENDING)',
     description: 'Missing credits in humanities gen-ed category - requires pipeline integration',
     category: 'failure_mode',
+    status: 'pending',
     input: {
       basket: [
         // All STEM courses, no humanities
@@ -722,6 +741,7 @@ export const GOLDEN_BASKETS: GoldenBasket[] = [
     name: 'Capstone Substitution Blocked',
     description: 'Capstone course from non-resident provider should be blocked',
     category: 'failure_mode',
+    status: 'enforced',
     input: {
       basket: [
         // 15 TESU resident credits (but no capstone)
@@ -764,7 +784,12 @@ export const GOLDEN_BASKETS: GoldenBasket[] = [
       assertions: [
         (r) => expect(r.totals.total).toBe(120),
         (r) => expect(r.totals.resident).toBe(15),
-        (r) => expect(r.violations.some(v => v.type === 'capstone_substitution')).toBe(true),
+        (r) => expect(r.violations.some(v => v.type === VIOLATION_TYPES.CAPSTONE_SUBSTITUTION)).toBe(true),
+        // Verify the affected course is the one we expected
+        (r) => {
+          const v = r.violations.find(v => v.type === VIOLATION_TYPES.CAPSTONE_SUBSTITUTION);
+          expect(v?.affectedCourses).toContain('capstone-transfer-blocked');
+        },
       ],
     },
   },
@@ -778,6 +803,7 @@ export const GOLDEN_BASKETS: GoldenBasket[] = [
     name: 'COSC Combined Cap Exceeded',
     description: 'Combined transfer+alt credits exceed 90-credit limit',
     category: 'cap_boundary',
+    status: 'enforced',
     input: {
       basket: [
         // 30 COSC resident
@@ -823,7 +849,7 @@ export const GOLDEN_BASKETS: GoldenBasket[] = [
         (r) => expect(r.totals.total).toBe(121),
         (r) => expect(r.totals.resident).toBe(30),
         (r) => expect(r.totals.transfer + r.totals.alt).toBe(91), // Combined over 90
-        (r) => expect(r.violations.some(v => v.type === 'combined_cap')).toBe(true),
+        (r) => expect(r.violations.some(v => v.type === VIOLATION_TYPES.COMBINED_CAP)).toBe(true),
       ],
     },
   },
