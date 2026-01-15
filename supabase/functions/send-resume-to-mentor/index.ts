@@ -226,7 +226,7 @@ serve(async (req) => {
           <div class="proof-item">
             <strong>${escapeHtml(item.type)}:</strong> ${escapeHtml(item.title)} 
             <span class="badge">${escapeHtml(item.track)}</span>
-            ${item.criScore ? `<span class="badge">CRI: ${item.criScore}</span>` : ''}
+            ${item.criScore ? `<span class="badge">CRI: ${escapeHtml(String(item.criScore))}</span>` : ''}
             ${item.description ? `<br><small>${escapeHtml(item.description)}</small>` : ''}
             ${safeLink ? `<br><a href="${escapeHtml(safeLink)}" target="_blank" rel="noopener noreferrer">🔗 View Resource</a>` : ''}
           </div>
