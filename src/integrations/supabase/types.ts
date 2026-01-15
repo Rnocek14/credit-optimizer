@@ -708,7 +708,7 @@ export type Database = {
           url_checked_at: string | null
           url_http_status: number | null
           url_notes: string | null
-          url_status: string | null
+          url_status: string
           verification_method: string | null
           verified_by: string | null
         }
@@ -733,7 +733,7 @@ export type Database = {
           url_checked_at?: string | null
           url_http_status?: number | null
           url_notes?: string | null
-          url_status?: string | null
+          url_status?: string
           verification_method?: string | null
           verified_by?: string | null
         }
@@ -758,7 +758,7 @@ export type Database = {
           url_checked_at?: string | null
           url_http_status?: number | null
           url_notes?: string | null
-          url_status?: string | null
+          url_status?: string
           verification_method?: string | null
           verified_by?: string | null
         }

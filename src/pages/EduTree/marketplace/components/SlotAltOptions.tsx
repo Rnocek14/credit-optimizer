@@ -90,6 +90,15 @@ export function SlotAltOptions({ options, maxVisible = 3, className }: SlotAltOp
 function AltOptionRow({ option }: { option: AltCreditOption }) {
   const conf = getConfidenceLabel(option.confidence);
   
+  // Pass both URL and its database verification status for defense-in-depth
+  // Uses providerUrl (already filtered by hook) but double-checks with sanitizer
+  const safeProviderUrl = sanitizeCourseUrl(option.providerUrl, option.urlStatus);
+  
+  // Check if there's a raw URL that's pending verification
+  // providerUrlRaw is ONLY used for this hint, never for href
+  const hasRawUrl = !!option.providerUrlRaw?.trim();
+  const isPendingVerification = !safeProviderUrl && hasRawUrl && option.urlStatus === 'unknown';
+  
   return (
     <div className="flex items-center gap-2 text-xs bg-muted/30 rounded px-2 py-1.5">
       {/* Provider badge */}
@@ -130,44 +139,30 @@ function AltOptionRow({ option }: { option: AltCreditOption }) {
         </span>
       )}
       
-      {/* Link to provider - only if URL is verified valid in database AND passes domain validation */}
-      {(() => {
-        // Pass both URL and its database verification status for defense-in-depth
-        const safeProviderUrl = sanitizeCourseUrl(option.providerUrl, option.urlStatus);
-        
-        // Show verified link
-        if (safeProviderUrl) {
-          return (
-            <a 
-              href={safeProviderUrl} 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="text-muted-foreground hover:text-foreground shrink-0"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <ExternalLink className="h-3 w-3" />
-            </a>
-          );
-        }
-        
-        // Show pending verification indicator if URL exists but isn't verified
-        if (option.urlStatus !== 'valid' && option.urlStatus !== 'invalid') {
-          return (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span className="text-muted-foreground/50 shrink-0 cursor-help">
-                  <Link2Off className="h-3 w-3" />
-                </span>
-              </TooltipTrigger>
-              <TooltipContent side="top" className="text-xs">
-                Link pending verification
-              </TooltipContent>
-            </Tooltip>
-          );
-        }
-        
-        return null;
-      })()}
+      {/* Link to provider - only if URL passes all validation layers */}
+      {safeProviderUrl ? (
+        <a 
+          href={safeProviderUrl} 
+          target="_blank" 
+          rel="noopener noreferrer"
+          className="text-muted-foreground hover:text-foreground shrink-0"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <ExternalLink className="h-3 w-3" />
+        </a>
+      ) : isPendingVerification ? (
+        // Show subtle indicator when URL exists but is pending verification
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span className="text-muted-foreground/50 shrink-0 cursor-help">
+              <Link2Off className="h-3 w-3" />
+            </span>
+          </TooltipTrigger>
+          <TooltipContent side="top" className="text-xs">
+            Link pending verification
+          </TooltipContent>
+        </Tooltip>
+      ) : null}
     </div>
   );
 }
