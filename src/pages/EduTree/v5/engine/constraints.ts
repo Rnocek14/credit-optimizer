@@ -548,6 +548,10 @@ export function validateInstitutionPolicies(
 
 /**
  * Institution-specific rules that go beyond database limits
+ * 
+ * IMPORTANT: This function MUST emit proper violation types:
+ * - 'capstone_substitution' when capstone is from non-resident provider
+ * - 'residency' for general residency warnings
  */
 function applyInstitutionSpecificRules(
   institutionCode: string,
@@ -555,11 +559,33 @@ function applyInstitutionSpecificRules(
   summary: { total: number; residency: number; upperDivision: number },
   violations: Violation[]
 ) {
+  // Helper: Check if a course is a capstone
+  const isCapstone = (item: BasketItem): boolean => 
+    item.courseId?.toLowerCase().includes('capstone') || 
+    (item as any).requirementArea === 'CAPSTONE';
+  
+  // Helper: Check if a course is resident at the target institution
+  const isResident = (item: BasketItem): boolean =>
+    item.providerType === 'university' && 
+    (item.providerCode?.toUpperCase() === institutionCode.toUpperCase());
+  
   switch (institutionCode) {
     case 'TESU': {
-      const hasCapstone = basket.some(i => 
-        i.courseId?.includes('capstone') || i.requirementArea === 'CAPSTONE'
-      );
+      const capstoneCourses = basket.filter(isCapstone);
+      const hasCapstone = capstoneCourses.length > 0;
+      const hasResidentCapstone = capstoneCourses.some(isResident);
+      
+      // CRITICAL: Capstone must be taken in residence
+      if (hasCapstone && !hasResidentCapstone) {
+        violations.push({
+          type: 'capstone_substitution',
+          severity: 'error',
+          message: 'TESU: Capstone course must be taken at TESU (cannot use transfer/alt credit)',
+          affectedCourses: capstoneCourses.map(c => c.courseId),
+          suggestedFix: 'Replace transfer/alt capstone with TESU capstone course',
+        });
+      }
+      
       if (!hasCapstone && summary.total >= 100) {
         violations.push({
           type: 'residency',
@@ -583,13 +609,39 @@ function applyInstitutionSpecificRules(
           metadata: { current: summary.residency, required: 6 },
         });
       }
+      
+      // Check capstone residency
+      const capstoneCourses = basket.filter(isCapstone);
+      const hasCapstone = capstoneCourses.length > 0;
+      const hasResidentCapstone = capstoneCourses.some(isResident);
+      
+      if (hasCapstone && !hasResidentCapstone) {
+        violations.push({
+          type: 'capstone_substitution',
+          severity: 'error',
+          message: 'COSC: Capstone must be taken at COSC',
+          affectedCourses: capstoneCourses.map(c => c.courseId),
+          suggestedFix: 'Replace with COSC capstone course',
+        });
+      }
       break;
     }
     case 'EXCELSIOR': {
       // Excelsior has flexible residency but requires capstone
-      const hasCapstone = basket.some(i => 
-        i.courseId?.toLowerCase().includes('capstone') || i.requirementArea === 'CAPSTONE'
-      );
+      const capstoneCourses = basket.filter(isCapstone);
+      const hasCapstone = capstoneCourses.length > 0;
+      const hasResidentCapstone = capstoneCourses.some(isResident);
+      
+      if (hasCapstone && !hasResidentCapstone) {
+        violations.push({
+          type: 'capstone_substitution',
+          severity: 'error',
+          message: 'Excelsior: Capstone must be taken at Excelsior',
+          affectedCourses: capstoneCourses.map(c => c.courseId),
+          suggestedFix: 'Add Excelsior capstone course',
+        });
+      }
+      
       if (!hasCapstone && summary.total >= 90) {
         violations.push({
           type: 'residency',
@@ -603,9 +655,20 @@ function applyInstitutionSpecificRules(
     }
 
     case 'WGU': {
-      const hasCapstone = basket.some(i =>
-        i.courseId?.toLowerCase().includes('capstone') || i.requirementArea === 'CAPSTONE'
-      );
+      const capstoneCourses = basket.filter(isCapstone);
+      const hasCapstone = capstoneCourses.length > 0;
+      const hasResidentCapstone = capstoneCourses.some(isResident);
+
+      // Capstone substitution check
+      if (hasCapstone && !hasResidentCapstone) {
+        violations.push({
+          type: 'capstone_substitution',
+          severity: 'error',
+          message: 'WGU: Capstone must be taken at WGU',
+          affectedCourses: capstoneCourses.map(c => c.courseId),
+          suggestedFix: 'Replace with WGU capstone course',
+        });
+      }
 
       // Soft expectation: ~30 in-house credits
       if (summary.residency < 30 && summary.total >= 60) {
