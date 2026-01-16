@@ -21,6 +21,7 @@ const corsHeaders = {
 
 interface PurgeRequest {
   dry_run?: boolean;
+  confirm?: string; // Must be "DELETE_SEEDED_DATA" for non-dry-run
 }
 
 interface PurgeResponse {
@@ -69,14 +70,23 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Check admin role
-    const { data: profile, error: profileError } = await supabase
-      .from('profiles')
+    // Check admin role using user_roles table (consistent with other admin endpoints)
+    const { data: roleRow, error: roleError } = await supabase
+      .from('user_roles')
       .select('role')
       .eq('user_id', user.id)
-      .single();
+      .eq('role', 'admin')
+      .maybeSingle();
 
-    if (profileError || profile?.role !== 'admin') {
+    if (roleError) {
+      console.error(`[purge-seeded-invariant-data] Role check error: ${roleError.message}`);
+      return new Response(
+        JSON.stringify({ error: 'Failed to verify admin role' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (!roleRow) {
       return new Response(
         JSON.stringify({ error: 'Forbidden: Admin role required' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -96,12 +106,22 @@ Deno.serve(async (req) => {
 
     const dryRun = body.dry_run !== false; // Only false if explicitly set to false
 
+    // Require explicit confirmation for destructive runs
+    if (!dryRun && body.confirm !== 'DELETE_SEEDED_DATA') {
+      return new Response(
+        JSON.stringify({ error: 'Destructive operation requires confirm: "DELETE_SEEDED_DATA"' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     console.log(`[purge-seeded-invariant-data] Admin ${user.email} requesting purge (dry_run=${dryRun})`);
 
     // Call the RPC function with service role for actual deletion
+    // persistSession: false prevents session storage in edge functions
     const supabaseService = createClient(
       supabaseUrl,
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+      { auth: { persistSession: false } }
     );
 
     const { data, error } = await supabaseService.rpc('admin_purge_seeded_invariant_data', {
