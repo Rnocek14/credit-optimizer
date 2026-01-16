@@ -38,7 +38,7 @@ const BulkRerunProgress: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
-  const pollIntervalRef = useRef<number | null>(null);
+  const processingRef = useRef(false); // Ref lock to prevent overlapping worker calls
   const { toast } = useToast();
 
   // Returns the fetched status for use in the polling loop (avoids stale closure)
@@ -61,17 +61,23 @@ const BulkRerunProgress: React.FC = () => {
     return null;
   }, [jobId]);
 
+  // Uses ref lock to prevent overlapping worker calls (React state is async)
   const triggerWorker = useCallback(async () => {
-    if (!jobId || isProcessing) return;
+    if (!jobId || processingRef.current) return;
 
+    processingRef.current = true;
     setIsProcessing(true);
-    const { error: workerError } = await triggerBulkRerunWorker(jobId, BATCH_SIZE);
-    setIsProcessing(false);
 
-    if (workerError) {
-      console.error('[BulkRerunProgress] Worker error:', workerError.message);
+    try {
+      const { error: workerError } = await triggerBulkRerunWorker(jobId, BATCH_SIZE);
+      if (workerError) {
+        console.error('[BulkRerunProgress] Worker error:', workerError.message);
+      }
+    } finally {
+      processingRef.current = false;
+      setIsProcessing(false);
     }
-  }, [jobId, isProcessing]);
+  }, [jobId]);
 
   // Polling effect - uses returned status to avoid stale closure issues
   useEffect(() => {
@@ -81,11 +87,31 @@ const BulkRerunProgress: React.FC = () => {
       const status = await fetchStatus();
       if (!status) return;
 
-      const isActive = status.job.status === 'queued' || status.job.status === 'running';
+      // Stop polling if job is terminal
+      const terminal = 
+        status.job.status === 'succeeded' ||
+        status.job.status === 'failed' ||
+        status.job.status === 'canceled';
+
+      if (terminal) {
+        if (timer) {
+          clearInterval(timer);
+          timer = null;
+        }
+        // Show completion toast
+        if (status.job.status === 'succeeded') {
+          toast({
+            title: 'Bulk rerun complete',
+            description: `${status.job.succeeded} succeeded, ${status.job.failed} failed`,
+          });
+        }
+        return;
+      }
+
       const remaining = status.job.total - status.job.processed;
 
       // Only trigger worker if job is active and has remaining work
-      if (isActive && remaining > 0) {
+      if (remaining > 0) {
         await triggerWorker();
       }
     };
@@ -99,36 +125,8 @@ const BulkRerunProgress: React.FC = () => {
     return () => {
       if (timer) clearInterval(timer);
     };
-  }, [fetchStatus, triggerWorker]);
+  }, [fetchStatus, triggerWorker, toast]);
 
-  // Initial worker trigger when job is queued
-  useEffect(() => {
-    if (jobStatus?.job.status === 'queued' && !isProcessing) {
-      triggerWorker();
-    }
-  }, [jobStatus?.job.status, isProcessing, triggerWorker]);
-
-  // Stop polling when job is complete
-  useEffect(() => {
-    if (
-      jobStatus?.job.status === 'succeeded' || 
-      jobStatus?.job.status === 'failed' || 
-      jobStatus?.job.status === 'canceled'
-    ) {
-      if (pollIntervalRef.current) {
-        clearInterval(pollIntervalRef.current);
-        pollIntervalRef.current = null;
-      }
-
-      // Show completion toast
-      if (jobStatus.job.status === 'succeeded') {
-        toast({
-          title: 'Bulk rerun complete',
-          description: `${jobStatus.job.succeeded} succeeded, ${jobStatus.job.failed} failed`,
-        });
-      }
-    }
-  }, [jobStatus?.job.status, jobStatus?.job.succeeded, jobStatus?.job.failed, toast]);
 
   if (loading) {
     return (
