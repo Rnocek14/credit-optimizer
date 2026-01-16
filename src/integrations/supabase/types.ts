@@ -14933,6 +14933,17 @@ export type Database = {
     }
     Functions: {
       activate_policy_pack: { Args: { p_pack_id: string }; Returns: Json }
+      admin_check_and_complete_bulk_job: {
+        Args: { p_job_id: string }
+        Returns: string
+      }
+      admin_claim_bulk_rerun_queue: {
+        Args: { p_batch_size?: number; p_job_id: string }
+        Returns: {
+          id: string
+          template_id: string
+        }[]
+      }
       admin_count_latest_invariant_snapshots:
         | {
             Args: {
@@ -14951,6 +14962,19 @@ export type Database = {
             }
             Returns: number
           }
+      admin_get_bulk_queue_remaining: {
+        Args: { p_job_id: string }
+        Returns: number
+      }
+      admin_increment_bulk_job_counters: {
+        Args: {
+          p_failed?: number
+          p_job_id: string
+          p_processed?: number
+          p_succeeded?: number
+        }
+        Returns: undefined
+      }
       admin_list_latest_invariant_snapshots: {
         Args: {
           p_decision?: string

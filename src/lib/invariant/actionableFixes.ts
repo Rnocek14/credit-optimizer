@@ -26,6 +26,7 @@ export const ADMIN_ROUTES = {
   policyRefresh: '/admin/policy-refresh',
   templateValidation: '/admin/template-validation',
   templateInvariants: '/admin/template-validation/:templateId/invariants',
+  bulkRerunProgress: '/admin/invariants/bulk/:jobId',
   transferScraper: '/admin/transfer-scraper',
   settings: '/admin/settings',
   generationJobs: '/admin/generation-jobs',

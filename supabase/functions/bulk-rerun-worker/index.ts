@@ -2,7 +2,7 @@
  * Bulk Rerun Worker Edge Function
  * 
  * Processes queued templates in batches from a bulk rerun job.
- * Called by UI polling or cron scheduler.
+ * Uses atomic RPCs for safe concurrency.
  * 
  * POST /bulk-rerun-worker
  * Body: { job_id: string, batch_size?: number }
@@ -290,7 +290,7 @@ Deno.serve(async (req: Request) => {
     // Check job exists and is active
     const { data: job, error: jobError } = await supabaseService
       .from('bulk_rerun_jobs')
-      .select('id, status, total, processed, succeeded, failed')
+      .select('id, status, total')
       .eq('id', job_id)
       .maybeSingle();
 
@@ -309,13 +309,20 @@ Deno.serve(async (req: Request) => {
     }
 
     if (job.status === 'canceled' || job.status === 'succeeded' || job.status === 'failed') {
+      // Get final counts
+      const { data: finalJob } = await supabaseService
+        .from('bulk_rerun_jobs')
+        .select('processed, succeeded, failed, total')
+        .eq('id', job_id)
+        .single();
+
       return new Response(
         JSON.stringify({ 
           job_id, 
-          processed: job.processed, 
-          succeeded: job.succeeded, 
-          failed: job.failed, 
-          remaining: job.total - job.processed, 
+          processed: finalJob?.processed ?? 0, 
+          succeeded: finalJob?.succeeded ?? 0, 
+          failed: finalJob?.failed ?? 0, 
+          remaining: 0, 
           status: 'completed' 
         } as WorkerResponse),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -330,18 +337,12 @@ Deno.serve(async (req: Request) => {
         .eq('id', job_id);
     }
 
-    // Atomic claim: update queued rows to running
+    // ATOMIC CLAIM: Use RPC with FOR UPDATE SKIP LOCKED
     const { data: claimed, error: claimError } = await supabaseService
-      .from('bulk_rerun_queue')
-      .update({ 
-        status: 'running', 
-        started_at: new Date().toISOString(),
-        attempts: 1, // Increment on claim
-      })
-      .eq('job_id', job_id)
-      .eq('status', 'queued')
-      .limit(batch_size)
-      .select('id, template_id');
+      .rpc('admin_claim_bulk_rerun_queue', {
+        p_job_id: job_id,
+        p_batch_size: batch_size,
+      });
 
     if (claimError) {
       console.error(`[bulk-rerun-worker] Claim error: ${claimError.message}`);
@@ -352,23 +353,13 @@ Deno.serve(async (req: Request) => {
     }
 
     if (!claimed || claimed.length === 0) {
-      // No work to do - check if job is complete
-      const { data: remaining } = await supabaseService
-        .from('bulk_rerun_queue')
-        .select('id', { count: 'exact', head: true })
-        .eq('job_id', job_id)
-        .in('status', ['queued', 'running']);
+      // No work to do - check if job is complete using atomic RPC
+      const { data: finalStatus } = await supabaseService
+        .rpc('admin_check_and_complete_bulk_job', { p_job_id: job_id });
 
-      if (!remaining || (remaining as any).count === 0) {
-        // Mark job complete
-        await supabaseService
-          .from('bulk_rerun_jobs')
-          .update({ 
-            status: 'succeeded', 
-            completed_at: new Date().toISOString(),
-          })
-          .eq('id', job_id);
-      }
+      // Get remaining count
+      const { data: remainingCount } = await supabaseService
+        .rpc('admin_get_bulk_queue_remaining', { p_job_id: job_id });
 
       return new Response(
         JSON.stringify({ 
@@ -376,8 +367,8 @@ Deno.serve(async (req: Request) => {
           processed: 0, 
           succeeded: 0, 
           failed: 0, 
-          remaining: 0, 
-          status: 'no_work' 
+          remaining: remainingCount ?? 0, 
+          status: finalStatus === 'succeeded' ? 'completed' : 'no_work' 
         } as WorkerResponse),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
@@ -415,34 +406,21 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    // Update job counters directly
-    await supabaseService
-      .from('bulk_rerun_jobs')
-      .update({
-        processed: job.processed + claimed.length,
-        succeeded: job.succeeded + succeeded,
-        failed: job.failed + failed,
-        last_heartbeat_at: new Date().toISOString(),
-      })
-      .eq('id', job_id);
+    // ATOMIC INCREMENT: Use RPC to update counters safely
+    await supabaseService.rpc('admin_increment_bulk_job_counters', {
+      p_job_id: job_id,
+      p_processed: claimed.length,
+      p_succeeded: succeeded,
+      p_failed: failed,
+    });
 
-    // Check remaining count
-    const { count: remainingCount } = await supabaseService
-      .from('bulk_rerun_queue')
-      .select('id', { count: 'exact', head: true })
-      .eq('job_id', job_id)
-      .in('status', ['queued', 'running']);
+    // Get remaining count using RPC
+    const { data: remainingCount } = await supabaseService
+      .rpc('admin_get_bulk_queue_remaining', { p_job_id: job_id });
 
-    // If no remaining work, mark job complete
-    if (remainingCount === 0) {
-      await supabaseService
-        .from('bulk_rerun_jobs')
-        .update({ 
-          status: 'succeeded', 
-          completed_at: new Date().toISOString(),
-        })
-        .eq('id', job_id);
-    }
+    // Check and complete job atomically
+    const { data: finalStatus } = await supabaseService
+      .rpc('admin_check_and_complete_bulk_job', { p_job_id: job_id });
 
     const response: WorkerResponse = {
       job_id,
@@ -450,7 +428,7 @@ Deno.serve(async (req: Request) => {
       succeeded,
       failed,
       remaining: remainingCount ?? 0,
-      status: remainingCount === 0 ? 'completed' : 'processing',
+      status: finalStatus === 'succeeded' ? 'completed' : 'processing',
     };
 
     console.log(`[bulk-rerun-worker] Job ${job_id}: processed=${claimed.length}, succeeded=${succeeded}, failed=${failed}, remaining=${remainingCount}`);
