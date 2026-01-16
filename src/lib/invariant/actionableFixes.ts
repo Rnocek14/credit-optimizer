@@ -25,6 +25,7 @@ import type { InvariantCode } from './invariantExplainers';
 export const ADMIN_ROUTES = {
   policyRefresh: '/admin/policy-refresh',
   templateValidation: '/admin/template-validation',
+  templateInvariants: '/admin/template-validation/:templateId/invariants',
   transferScraper: '/admin/transfer-scraper',
   settings: '/admin/settings',
   generationJobs: '/admin/generation-jobs',
