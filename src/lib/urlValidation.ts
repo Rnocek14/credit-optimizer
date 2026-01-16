@@ -54,13 +54,15 @@ const VALID_EDUCATIONAL_DOMAINS = [
   'khanacademy.org',
   'freecodecamp.org',
   
-  // University-specific
+  // University-specific (transfer-friendly institutions)
   'tesu.edu',
   'wgu.edu',
   'excelsior.edu',
   'snhu.edu',
   'umgc.edu',
   'purdueglobal.edu',
+  'charteroak.edu',  // COSC - Charter Oak State College
+  'esc.edu',         // SUNY Empire State College
   
   // Video platforms (for course content)
   'youtube.com',

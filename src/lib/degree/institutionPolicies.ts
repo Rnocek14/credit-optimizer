@@ -230,8 +230,10 @@ const WGU_POLICY: InstitutionPolicy = {
   },
   
   notes: 'Competency-based subscription model ($3,985/6mo term). Self-paced acceleration possible.',
-  evidenceUrls: [],
-  overallConfidence: 75,
+  evidenceUrls: [
+    'https://www.wgu.edu/admissions/transfers.html',
+  ],
+  overallConfidence: 80,
 };
 
 const UMGC_POLICY: InstitutionPolicy = {
@@ -320,8 +322,10 @@ const COSC_POLICY: InstitutionPolicy = {
   },
   
   notes: 'Connecticut state college with flexible transfer policies and competency-based options.',
-  evidenceUrls: [],
-  overallConfidence: 75,
+  evidenceUrls: [
+    'https://www.charteroak.edu/catalog/current/academic_policies_regulations/course_transfer_policy.php',
+  ],
+  overallConfidence: 80,
 };
 
 const SNHU_POLICY: InstitutionPolicy = {
