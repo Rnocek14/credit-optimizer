@@ -67,6 +67,13 @@ serve(async (req) => {
   const legacySecret = Deno.env.get('LEGACY_WORKER_SECRET');
   const providedSecret = req.headers.get('x-legacy-worker-secret');
   
+  // Log gate status clearly for debugging
+  if (!legacySecret) {
+    console.warn('[LEGACY-WORKER] UNGATED MODE - LEGACY_WORKER_SECRET not set (dev/test)');
+  } else {
+    console.log('[LEGACY-WORKER] GATED MODE - secret required for invocation');
+  }
+  
   if (legacySecret && providedSecret !== legacySecret) {
     console.warn('[DEPRECATED] template-generation-worker invoked without valid secret');
     return new Response(

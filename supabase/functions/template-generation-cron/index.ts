@@ -120,9 +120,10 @@ serve(async (req) => {
 
     console.log(`Processing ${targetInstitution} (${queuedCount} queued)`);
 
-    // Call the worker for this institution
+    // Call the NEW job processor pipeline (not legacy worker)
+    // The job processor will enqueue + process via template_generation_jobs
     const workerResponse = await fetch(
-      `${Deno.env.get('SUPABASE_URL')}/functions/v1/template-generation-worker`,
+      `${Deno.env.get('SUPABASE_URL')}/functions/v1/template-job-processor`,
       {
         method: 'POST',
         headers: {
@@ -130,9 +131,7 @@ serve(async (req) => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          institution_code: targetInstitution,
-          batch_size: 1,
-          dry_run: false,
+          institution: targetInstitution,  // Enqueue + process mode
         }),
       }
     );
