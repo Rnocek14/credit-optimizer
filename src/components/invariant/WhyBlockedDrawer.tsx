@@ -3,6 +3,7 @@
  * 
  * Admin-focused drawer for displaying detailed invariant violation explanations.
  * Shows hard failures, warnings, suggested fixes, and affected courses.
+ * Now includes actionable fix buttons for quick admin workflows.
  * 
  * SEVERITY SEMANTICS:
  * - 'hard': Blocking violations (template cannot proceed)
@@ -21,6 +22,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Separator } from '@/components/ui/separator';
 import {
   Accordion,
   AccordionContent,
@@ -34,15 +36,24 @@ import {
   ChevronRight,
   Info,
   Lightbulb,
+  Wrench,
   XCircle,
 } from 'lucide-react';
 import { useBlockedReason } from '@/hooks/useBlockedReason';
+import { FixActionList } from './FixActionButton';
+import { getPrioritizedFixes, type FixActionContext } from '@/lib/invariant/actionableFixes';
 import type { InvariantReport, AnyViolation, ExplainedViolation } from '@/lib/invariant';
 
 interface WhyBlockedDrawerProps {
   report: InvariantReport | null | undefined;
   templateName?: string;
+  templateId?: string;
+  institutionCode?: string;
+  programCode?: string;
+  policyPackId?: string;
   trigger?: React.ReactNode;
+  onStatusChange?: (status: string) => void;
+  onRerunValidation?: () => void;
 }
 
 /**
@@ -53,16 +64,25 @@ function isExplainedViolation(v: AnyViolation): v is ExplainedViolation {
 }
 
 /**
- * Violation Card Component
+ * Violation Card Component with actionable fixes
  */
 function ViolationCard({ 
   violation,
   isHardFailure,
+  context,
+  onStatusChange,
+  onRerunValidation,
 }: { 
   violation: AnyViolation;
   isHardFailure: boolean;
+  context: FixActionContext;
+  onStatusChange?: (status: string) => void;
+  onRerunValidation?: () => void;
 }) {
   const isExplained = isExplainedViolation(violation);
+  
+  // Get actionable fixes for this violation
+  const fixes = getPrioritizedFixes(violation.code, context, { maxFixes: 3 });
   
   return (
     <AccordionItem value={violation.code} className="border rounded-lg mb-2">
@@ -117,12 +137,31 @@ function ViolationCard({
             </div>
           )}
           
-          {/* Suggested Fixes */}
+          {/* Quick Actions - NEW */}
+          {fixes.length > 0 && (
+            <div className="pt-2">
+              <Separator className="mb-4" />
+              <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
+                <Wrench className="h-4 w-4" />
+                Quick Actions
+              </h4>
+              <FixActionList
+                fixes={fixes}
+                context={context}
+                onStatusChange={onStatusChange}
+                onRerunValidation={onRerunValidation}
+                layout="vertical"
+                maxVisible={3}
+              />
+            </div>
+          )}
+          
+          {/* Suggested Fixes (text-based fallback) */}
           {isExplained && violation.suggestedFixes.length > 0 && (
             <div>
               <h4 className="text-sm font-medium mb-2 flex items-center gap-2">
                 <Lightbulb className="h-4 w-4" />
-                Suggested Fixes
+                Additional Guidance
               </h4>
               <ul className="space-y-1">
                 {violation.suggestedFixes.map((fix, i) => (
@@ -170,7 +209,13 @@ function ViolationCard({
 export function WhyBlockedDrawer({
   report,
   templateName,
+  templateId,
+  institutionCode,
+  programCode,
+  policyPackId,
   trigger,
+  onStatusChange,
+  onRerunValidation,
 }: WhyBlockedDrawerProps) {
   const [open, setOpen] = useState(false);
   const {
@@ -183,6 +228,14 @@ export function WhyBlockedDrawer({
     warnCount,
     badgeText,
   } = useBlockedReason(report, { audience: 'admin' });
+  
+  // Build context for actionable fixes
+  const context: FixActionContext = {
+    templateId,
+    institutionCode,
+    programCode,
+    policyPackId,
+  };
   
   // Don't render if no issues
   if (!isBlocked && !hasWarnings) {
@@ -264,7 +317,10 @@ export function WhyBlockedDrawer({
                   <ViolationCard 
                     key={v.code} 
                     violation={v} 
-                    isHardFailure={true} 
+                    isHardFailure={true}
+                    context={context}
+                    onStatusChange={onStatusChange}
+                    onRerunValidation={onRerunValidation}
                   />
                 ))}
               </Accordion>
@@ -283,7 +339,10 @@ export function WhyBlockedDrawer({
                   <ViolationCard 
                     key={v.code} 
                     violation={v} 
-                    isHardFailure={false} 
+                    isHardFailure={false}
+                    context={context}
+                    onStatusChange={onStatusChange}
+                    onRerunValidation={onRerunValidation}
                   />
                 ))}
               </Accordion>
