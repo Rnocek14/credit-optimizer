@@ -123,11 +123,13 @@ const TemplateValidation: React.FC = () => {
     setSnapshotError(null);
     
     // Only request snapshots for templates visible on this page
+    // When using template_ids, omit limit/offset to get all matching IDs
+    // This avoids edge cases where paging could hide results
     const templateIds = visibleTemplates.map(r => r.templateId);
     
     const params: ListSnapshotsParams = {
       template_ids: templateIds,
-      limit: PAGE_SIZE, // We'll get at most PAGE_SIZE results
+      limit: 200, // High limit when filtering by IDs - ensures we get all
       offset: 0,
     };
 
@@ -339,7 +341,8 @@ const TemplateValidation: React.FC = () => {
             </div>
           )}
           <p className="text-xs text-muted-foreground mt-2">
-            Showing {visibleTemplates.length} of {totalTemplates} templates
+            Loaded snapshots: {Object.keys(snapshotMap).length} / {visibleTemplates.length} templates on this page
+            {' '}• Total filtered: {totalTemplates}
           </p>
         </CardContent>
       </Card>
