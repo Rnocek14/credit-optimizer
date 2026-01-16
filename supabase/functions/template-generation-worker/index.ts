@@ -690,9 +690,10 @@ async function generateAndWriteTemplate(
     } as RawPolicyPack);
 
     // v1.3: Fetch per-institution override config for threshold customization
+    // Pass actual templateStatus for proper multiplier application
     const invariantConfig = await getEffectiveInvariantConfig(supabase, {
       institutionCode: program.institution_code,
-      templateStatus: templateStatus,
+      templateStatus: templateStatus, // Actual status from gate result
     });
 
     const invariantReport = checkTemplateInvariants({
@@ -704,6 +705,7 @@ async function generateAndWriteTemplate(
       items: invariantItems,
       mode: 'warn_only', // Use warn_only for worker since templates are still experimental
       unknown_credits_warn_threshold: invariantConfig.unknownCreditsWarnThreshold, // v1.3: Per-institution threshold
+      unknown_credits_active_hard_zero: invariantConfig.unknownCreditsActiveHardZero, // v1.3: Per-institution hard-zero
     });
 
     // Store audit record

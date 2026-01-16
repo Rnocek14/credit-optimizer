@@ -1,6 +1,10 @@
 /**
  * Institution Override Settings - Edge Function Helper
  * 
+ * ⚠️ SOURCE OF TRUTH for override logic.
+ * The frontend version (src/lib/invariant/institutionOverrides.ts) MUST stay in sync.
+ * If you change types/bounds/defaults here, update the frontend copy.
+ * 
  * Edge-function-compatible version of the override config resolver.
  * This file can be imported by edge functions to fetch per-institution
  * invariant thresholds without importing browser-specific code.

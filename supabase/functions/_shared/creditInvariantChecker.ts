@@ -139,6 +139,7 @@ export interface InvariantCheckInput {
   mode: 'strict' | 'warn_only';
   template_status?: 'active' | 'pending_review' | 'blocked' | string; // v1.2: for status-aware checks
   unknown_credits_warn_threshold?: number; // v1.2: default 6
+  unknown_credits_active_hard_zero?: boolean; // v1.3: whether active templates must have 0 unknown (default true)
 }
 
 // ============================================================================
@@ -494,7 +495,8 @@ function checkUnknownCreditsByStatus(
   computed: ComputedMetrics,
   items: TemplateItem[],
   templateStatus: string | undefined,
-  warnThreshold: number = 6
+  warnThreshold: number = 6,
+  activeHardZero: boolean = true // v1.3: configurable per-institution
 ): InvariantViolation | null {
   const unknown = computed.unknownCredits;
   
@@ -513,8 +515,8 @@ function checkUnknownCreditsByStatus(
     return affected;
   };
 
-  // Active templates: unknown > 0 is a hard fail
-  if (templateStatus === 'active') {
+  // Active templates: unknown > 0 is a hard fail (if activeHardZero is enabled)
+  if (templateStatus === 'active' && activeHardZero) {
     return {
       type: 'INV_UNKNOWN_CREDITS_NONZERO_ACTIVE',
       severity: 'error',
@@ -524,22 +526,27 @@ function checkUnknownCreditsByStatus(
         unknownCredits: unknown, 
         templateStatus,
         unknownSources: computed.unknownSources,
+        activeHardZeroEnabled: activeHardZero,
       },
     };
   }
 
-  // Non-active templates: unknown > threshold is a warning (distinct code for dashboards)
-  if (templateStatus && templateStatus !== 'active' && unknown > warnThreshold) {
+  // Non-active templates OR active with hard-zero disabled: check threshold
+  if (unknown > warnThreshold) {
+    // For active with hard-zero disabled, still warn (not error)
+    const isActiveWithRelaxedPolicy = templateStatus === 'active' && !activeHardZero;
+    
     return {
       type: 'INV_UNKNOWN_CREDITS_EXCEEDS_THRESHOLD',
       severity: 'warning',
-      message: `Unknown credits (${unknown}) exceed warning threshold (${warnThreshold})`,
+      message: `Unknown credits (${unknown}) exceed warning threshold (${warnThreshold})${isActiveWithRelaxedPolicy ? ' [relaxed policy]' : ''}`,
       affectedCourses: getAffectedCourses(),
       metrics: {
         unknownCredits: unknown,
         warnThreshold,
         templateStatus,
         unknownSources: computed.unknownSources,
+        activeHardZeroEnabled: activeHardZero,
       },
     };
   }
@@ -864,7 +871,14 @@ function checkDuplicateEquivalencies(
 // ============================================================================
 
 export function checkTemplateInvariants(input: InvariantCheckInput): InvariantReport {
-  const { policy_data, items, mode, template_status, unknown_credits_warn_threshold } = input;
+  const { 
+    policy_data, 
+    items, 
+    mode, 
+    template_status, 
+    unknown_credits_warn_threshold,
+    unknown_credits_active_hard_zero,
+  } = input;
   
   const strictErrors: InvariantViolation[] = [];
   const warnings: InvariantViolation[] = [];
@@ -879,9 +893,15 @@ export function checkTemplateInvariants(input: InvariantCheckInput): InvariantRe
     checkCreditAccountingBalanced(computed),
   ];
 
-  // v1.2: Status-aware unknown credits check (active must be 0)
+  // v1.2/v1.3: Status-aware unknown credits check with configurable thresholds
   const statusAwareChecks = [
-    checkUnknownCreditsByStatus(computed, items, template_status, unknown_credits_warn_threshold ?? 6),
+    checkUnknownCreditsByStatus(
+      computed, 
+      items, 
+      template_status, 
+      unknown_credits_warn_threshold ?? 6,
+      unknown_credits_active_hard_zero ?? true // v1.3: default true for backwards compat
+    ),
     checkUnknownSources(items, computed, template_status), // v1.2: Now status-aware severity
   ];
 
