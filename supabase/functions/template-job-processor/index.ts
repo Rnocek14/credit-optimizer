@@ -289,9 +289,17 @@ async function processJob(
     // Use `ok` boolean field for accurate counting
     const invariantsPassed = jobReports?.filter(r => r.ok === true).length ?? 0;
     const invariantsFailed = jobReports?.filter(r => r.ok === false).length ?? 0;
+    const totalReports = (jobReports?.length ?? 0);
 
     // Note: job_id is now written at report creation time in seed-bsba-templates
     // No need for post-hoc assignment
+
+    // SAFEGUARD: If templates were created but no invariant reports exist, fail the job
+    // This catches upstream failures in the invariant writer
+    const totalTemplates = templatesCreated + templatesUpdated;
+    if (totalTemplates > 0 && totalReports === 0) {
+      throw new Error(`No invariant reports found for job_id ${job.id} - invariant checker may have failed`);
+    }
 
     // Mark job succeeded with real counts
     await markJobSucceeded(supabase, job.id, templatesCreated, templatesUpdated, invariantsPassed, invariantsFailed);
