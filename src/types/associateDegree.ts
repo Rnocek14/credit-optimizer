@@ -7,6 +7,8 @@
  * into 1 stable block-transfer edge.
  */
 
+import { getInstitutionPolicyUrl } from '@/lib/institutionUrls';
+
 /**
  * Types of associate degree credentials
  */
@@ -72,6 +74,11 @@ export interface AssociateDegreeArticulation {
  * Known associate degree articulations (static data for Phase 2A)
  * Will be moved to database table in Phase 2B
  */
+// Use central registry for URLs - ensures single source of truth
+const TESU_URL = getInstitutionPolicyUrl('TESU') || 'https://www.tesu.edu/transfer-credit';
+const COSC_URL = getInstitutionPolicyUrl('COSC') || 'https://www.charteroak.edu/catalog/current/academic_policies_regulations/course_transfer_policy.php';
+const WGU_URL = getInstitutionPolicyUrl('WGU') || 'https://www.wgu.edu/admissions/transfers.html';
+
 export const KNOWN_ASSOCIATE_ARTICULATIONS: Omit<AssociateDegreeArticulation, 'id'>[] = [
   // TESU - Very transfer-friendly
   {
@@ -83,7 +90,7 @@ export const KNOWN_ASSOCIATE_ARTICULATIONS: Omit<AssociateDegreeArticulation, 'i
     genEdWaived: true,
     residencyRemaining: 30,
     conditions: ['Must be from regionally accredited institution'],
-    evidenceUrl: 'https://www.tesu.edu/transfer-credit',
+    evidenceUrl: TESU_URL,
     evidenceType: 'policy_page',
     confidence: 0.95,
     notes: 'TESU is one of the most transfer-friendly schools. Gen ed typically waived with completed AA/AS.',
@@ -97,7 +104,7 @@ export const KNOWN_ASSOCIATE_ARTICULATIONS: Omit<AssociateDegreeArticulation, 'i
     genEdWaived: true,
     residencyRemaining: 30,
     conditions: ['Must be from regionally accredited institution'],
-    evidenceUrl: 'https://www.tesu.edu/transfer-credit',
+    evidenceUrl: TESU_URL,
     evidenceType: 'policy_page',
     confidence: 0.95,
   },
@@ -112,7 +119,7 @@ export const KNOWN_ASSOCIATE_ARTICULATIONS: Omit<AssociateDegreeArticulation, 'i
     genEdWaived: true,
     residencyRemaining: 9,  // Only 9 credits residency!
     conditions: ['From regionally accredited institution'],
-    evidenceUrl: 'https://www.charteroak.edu/catalog/current/academic_policies_regulations/course_transfer_policy.php',
+    evidenceUrl: COSC_URL,
     evidenceType: 'policy_page',
     confidence: 0.92,
     notes: 'COSC requires only 9 credits residency - ideal for transfer students.',
@@ -126,7 +133,7 @@ export const KNOWN_ASSOCIATE_ARTICULATIONS: Omit<AssociateDegreeArticulation, 'i
     genEdWaived: true,
     residencyRemaining: 9,
     conditions: ['From regionally accredited institution'],
-    evidenceUrl: 'https://www.charteroak.edu/catalog/current/academic_policies_regulations/course_transfer_policy.php',
+    evidenceUrl: COSC_URL,
     evidenceType: 'policy_page',
     confidence: 0.92,
   },
@@ -144,7 +151,7 @@ export const KNOWN_ASSOCIATE_ARTICULATIONS: Omit<AssociateDegreeArticulation, 'i
       'Evaluated per competency alignment',
       'Some programs have specific requirements',
     ],
-    evidenceUrl: 'https://www.wgu.edu/admissions/transfers.html',
+    evidenceUrl: WGU_URL,
     evidenceType: 'policy_page',
     confidence: 0.80,
     notes: 'WGU uses competency-based evaluation. Transfer credits depend on alignment with program outcomes.',

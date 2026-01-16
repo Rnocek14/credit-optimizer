@@ -26,12 +26,16 @@ function normKey(v: string | null | undefined): string {
 }
 
 // Known transfer equivalency page patterns by institution (lowercase keys)
+// SINGLE SOURCE OF TRUTH - keep in sync with src/lib/institutionUrls.ts
 const EQUIVALENCY_PAGE_PATTERNS: Record<string, string> = {
-  'tesu': 'https://www.tesu.edu/degree-completion/transfer-credit',
+  'tesu': 'https://www.tesu.edu/transfer-credit',
   'wgu': 'https://www.wgu.edu/admissions/transfers.html',
   'excelsior': 'https://www.excelsior.edu/admissions/transfer-credit/',
   'empire': 'https://www.esc.edu/transfer-credit/',
   'cosc': 'https://www.charteroak.edu/catalog/current/academic_policies_regulations/course_transfer_policy.php',
+  'umgc': 'https://www.umgc.edu/admissions/transfer-students',
+  'snhu': 'https://www.snhu.edu/admission/transferring-credits',
+  'purdue_global': 'https://www.purdueglobal.edu/transfer-students/',
 };
 
 // Provider catalog patterns (lowercase keys)
