@@ -116,7 +116,7 @@ export async function writeInvariantDecisionSnapshot(
   try {
     const { error } = await (supabase as any)
       .from('invariant_decision_snapshots')
-      .insert({
+      .upsert({
         job_id: input.job_id ?? null,
         template_id: input.template_id,
         institution_code: input.institution_code,
@@ -127,6 +127,9 @@ export async function writeInvariantDecisionSnapshot(
         effective_config: effectiveConfigSnapshot,
         decision,
         violation_codes: violationCodes,
+      }, { 
+        onConflict: 'template_id,invariant_version',
+        ignoreDuplicates: true // Silent on retries - keeps snapshots immutable
       });
 
     if (error) {

@@ -83,5 +83,9 @@ verify_jwt = false
 [functions.get-effective-invariant-config]
 verify_jwt = false
 
+# Admin-only invariant snapshot drilldown
+[functions.get-invariant-snapshot]
+verify_jwt = false
+
 # promote-policy-pack uses default verify_jwt = true
 # Authorization is handled inside the function via role checks
