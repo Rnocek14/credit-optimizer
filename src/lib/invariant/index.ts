@@ -42,7 +42,6 @@ export {
   getExplainersByCategory,
   getExplainersForAudience,
   isKnownInvariantCode,
-  mapReportSeverity,
 } from './invariantExplainers';
 
 // Resolver types
