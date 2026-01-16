@@ -1,7 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { evaluatePolicyGate, getTemplateStatus, type PolicyGateResult } from '../_shared/policyGate.ts';
-import { checkTemplateInvariants, buildAuditRecord, type TemplateItem, type PolicyData as InvariantPolicyData } from '../_shared/creditInvariantChecker.ts';
+import { checkTemplateInvariants, buildAuditRecord, normalizePolicyData, type TemplateItem, type RawPolicyPack } from '../_shared/creditInvariantChecker.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -657,10 +657,10 @@ async function generateAndWriteTemplate(
       }))
     );
 
-    const invariantPolicy: InvariantPolicyData = {
+    const invariantPolicy = normalizePolicyData({
       degree_credit_total: program.degree_total_credits ?? undefined,
       capstone_in_residence: true,
-    };
+    } as RawPolicyPack);
 
     const invariantReport = checkTemplateInvariants({
       template_id: upsertedRow.id,
