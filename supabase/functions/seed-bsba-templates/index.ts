@@ -431,11 +431,11 @@ function createBsbaTerms(trackType: 'standard' | 'alt_max'): TemplateTerm[] {
       label: 'Year 4 - Spring',
       slots: [
         {
-          slotId: 'capstone',
-          kind: 'capstone',
-          requirementArea: 'CAPSTONE',
+          slotId: 'bus-leadership',
+          kind: 'major',
+          requirementArea: 'UPPER_BUSINESS',
           minCredits: 3,
-          preferred: { type: 'institutional_course', courseCode: 'CAP-499' },
+          preferred: { type: 'institutional_course', courseCode: 'LDR-401' },
         },
         {
           slotId: 'elective-7',
@@ -457,6 +457,75 @@ function createBsbaTerms(trackType: 'standard' | 'alt_max'): TemplateTerm[] {
           requirementArea: 'FREE_ELECTIVE',
           minCredits: 3,
           preferred: { type: 'institutional_course', courseCode: 'ELEC-404' },
+        },
+      ],
+    },
+    // Year 5 terms to reach 120 credits (8 terms × 12 = 96 + 2 terms × 12 = 24 = 120)
+    {
+      id: 'y5-t1',
+      label: 'Year 5 - Fall',
+      slots: [
+        {
+          slotId: 'bus-analytics',
+          kind: 'major',
+          requirementArea: 'UPPER_BUSINESS',
+          minCredits: 3,
+          preferred: { type: 'institutional_course', courseCode: 'BAN-401' },
+        },
+        {
+          slotId: 'elective-10',
+          kind: 'elective',
+          requirementArea: 'FREE_ELECTIVE',
+          minCredits: 3,
+          preferred: { type: 'institutional_course', courseCode: 'ELEC-405' },
+        },
+        {
+          slotId: 'elective-11',
+          kind: 'elective',
+          requirementArea: 'FREE_ELECTIVE',
+          minCredits: 3,
+          preferred: { type: 'institutional_course', courseCode: 'ELEC-406' },
+        },
+        {
+          slotId: 'elective-12',
+          kind: 'elective',
+          requirementArea: 'FREE_ELECTIVE',
+          minCredits: 3,
+          preferred: { type: 'institutional_course', courseCode: 'ELEC-407' },
+        },
+      ],
+    },
+    {
+      id: 'y5-t2',
+      label: 'Year 5 - Spring (Capstone)',
+      slots: [
+        {
+          slotId: 'capstone',
+          kind: 'capstone',
+          requirementArea: 'CAPSTONE',
+          minCredits: 3,
+          preferred: { type: 'institutional_course', courseCode: 'CAP-499' },
+        },
+        {
+          slotId: 'elective-13',
+          kind: 'elective',
+          requirementArea: 'FREE_ELECTIVE',
+          minCredits: 3,
+          preferred: { type: 'institutional_course', courseCode: 'ELEC-408' },
+        },
+        {
+          slotId: 'elective-14',
+          kind: 'elective',
+          requirementArea: 'FREE_ELECTIVE',
+          minCredits: 3,
+          preferred: { type: 'institutional_course', courseCode: 'ELEC-409' },
+        },
+        {
+          slotId: 'elective-15',
+          kind: 'elective',
+          requirementArea: 'FREE_ELECTIVE',
+          minCredits: 3,
+          preferred: { type: 'institutional_course', courseCode: 'ELEC-410' },
         },
       ],
     },
