@@ -14824,15 +14824,24 @@ export type Database = {
     }
     Functions: {
       activate_policy_pack: { Args: { p_pack_id: string }; Returns: Json }
-      admin_count_latest_invariant_snapshots: {
-        Args: {
-          p_decision?: string
-          p_institution_code?: string
-          p_template_ids?: string[]
-          p_track?: string
-        }
-        Returns: number
-      }
+      admin_count_latest_invariant_snapshots:
+        | {
+            Args: {
+              p_decision?: string
+              p_institution_code?: string
+              p_template_ids?: string[]
+              p_track?: string
+            }
+            Returns: number
+          }
+        | {
+            Args: {
+              p_institution_code?: string
+              p_template_ids?: string[]
+              p_track?: string
+            }
+            Returns: number
+          }
       admin_list_latest_invariant_snapshots: {
         Args: {
           p_decision?: string
