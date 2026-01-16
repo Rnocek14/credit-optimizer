@@ -246,9 +246,9 @@ async function processJob(
       return { job_id: job.id, success: true, templates_created: 0 };
     }
 
-    // Call seed-bsba-templates to generate templates (seeder applies gate status internally)
+    // Call seed-bsba-templates to generate templates with job_id for traceability
     const seedResponse = await supabase.functions.invoke('seed-bsba-templates', {
-      body: { institution_code: job.institution },
+      body: { institution_code: job.institution, job_id: job.id },
     });
 
     if (seedResponse.error) {
@@ -258,47 +258,40 @@ async function processJob(
     const seedResult = seedResponse.data;
     const templatesCreated = seedResult?.templates_created ?? seedResult?.created ?? 0;
     const templatesUpdated = seedResult?.templates_updated ?? seedResult?.updated ?? 0;
+    const createdTemplateIds: string[] = seedResult?.templateIds ?? []; // UUIDs from seeder
 
     console.log(`[${workerId}] Generated ${templatesCreated} templates for ${job.institution} in ${Date.now() - startTime}ms`);
 
-    // Post-update: Ensure template status matches gate (belt and suspenders)
-    // This catches any templates that might have been missed by the seeder
-    if (templateStatus !== 'active') {
+    // Post-update: Scope template status updates to only the templates from this run
+    if (templateStatus !== 'active' && createdTemplateIds.length > 0) {
       const { error: statusUpdateError } = await supabase
         .from('degree_templates')
         .update({
           status: templateStatus,
           updated_at: new Date().toISOString(),
         })
-        .eq('institution_code', job.institution)
-        .eq('status', 'active') // Only downgrade active -> pending_review
-        .neq('status', 'blocked'); // Never touch blocked
+        .in('id', createdTemplateIds) // Only update templates from THIS run
+        .eq('status', 'active'); // Only downgrade active -> pending_review
       
       if (statusUpdateError) {
         console.warn(`[${workerId}] Warning: Failed to update template statuses:`, statusUpdateError);
       } else {
-        console.log(`[${workerId}] Post-updated templates to status: ${templateStatus}`);
+        console.log(`[${workerId}] Post-updated ${createdTemplateIds.length} templates to status: ${templateStatus}`);
       }
     }
 
-    // Get real invariant counts from template_invariant_reports
-    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
-    const { data: recentReports } = await supabase
+    // Get real invariant counts from template_invariant_reports (linked by job_id at creation)
+    const { data: jobReports } = await supabase
       .from('template_invariant_reports')
-      .select('id, status')
-      .eq('institution_code', job.institution)
-      .gte('created_at', fiveMinutesAgo);
+      .select('id, ok')
+      .eq('job_id', job.id); // Direct link - no time window needed
 
-    const invariantsPassed = recentReports?.filter(r => r.status === 'ok').length ?? templatesCreated;
-    const invariantsFailed = recentReports?.filter(r => r.status !== 'ok').length ?? 0;
+    // Use `ok` boolean field for accurate counting
+    const invariantsPassed = jobReports?.filter(r => r.ok === true).length ?? 0;
+    const invariantsFailed = jobReports?.filter(r => r.ok === false).length ?? 0;
 
-    // Update invariant reports with job_id for linking
-    if (recentReports && recentReports.length > 0) {
-      await supabase
-        .from('template_invariant_reports')
-        .update({ job_id: job.id })
-        .in('id', recentReports.map(r => r.id));
-    }
+    // Note: job_id is now written at report creation time in seed-bsba-templates
+    // No need for post-hoc assignment
 
     // Mark job succeeded with real counts
     await markJobSucceeded(supabase, job.id, templatesCreated, templatesUpdated, invariantsPassed, invariantsFailed);
