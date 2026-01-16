@@ -68,13 +68,6 @@ export type ExplainerSeverity = 'hard' | 'warn';
 export type ReportSeverity = 'error' | 'warning';
 
 /**
- * Map report severity to explainer severity (one-time boundary mapping)
- */
-export function mapReportSeverity(severity: ReportSeverity | string): ExplainerSeverity {
-  return severity === 'warning' ? 'warn' : 'hard';
-}
-
-/**
  * Audience visibility levels
  * - admin: Full details, internal terminology allowed
  * - marketplace: User-safe messaging, no internal jargon
