@@ -76,28 +76,16 @@ export type {
   InvariantFixMapping,
 } from './actionableFixes';
 
-// Institution override types
-export type {
-  InstitutionOverrideSettings,
-  InstitutionOverrideRow,
-  InstitutionOverrideAuditEntry,
-  EffectiveInvariantConfig,
-} from './institutionOverrides';
-
-// Institution override helpers
-export {
-  OVERRIDE_SCHEMA_VERSION,
-  OVERRIDE_BOUNDS,
-  DEFAULT_INVARIANT_CONFIG,
-  parseOverrideSettings,
-  serializeOverrideSettings,
-  mergeWithDefaults,
-  getEffectiveInvariantConfig,
-  getEffectiveInvariantConfigSync,
-  fetchInstitutionOverrides,
-  saveInstitutionOverrides,
-  disableInstitutionOverrides,
-  fetchOverrideAuditLog,
-  fetchAllInstitutionOverrides,
-  clearOverrideCache,
-} from './institutionOverrides';
+// ============================================
+// INSTITUTION OVERRIDES - ADMIN ONLY
+// ============================================
+// 
+// Institution override CRUD operations are in:
+//   src/lib/admin/institutionOverridesAdmin.ts
+// 
+// This is intentional: frontend is a dumb editor/viewer.
+// Edge functions are the ONLY source of truth for effective config.
+// 
+// DO NOT add computation functions (mergeWithDefaults, getEffectiveConfig)
+// to the frontend. If you need effective config in UI, call an edge endpoint.
+// ============================================
