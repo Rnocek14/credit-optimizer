@@ -701,15 +701,17 @@ async function generateTemplatesFromPack(
   const templateIds: string[] = []; // Track template UUIDs created in this run
 
   // v1.3: Fetch institution-specific override config ONCE per institution
-  // This enables per-institution threshold customization without inner-loop DB calls
-  const invariantConfig = await getEffectiveInvariantConfig(supabase, {
+  // Note: We fetch with undefined templateStatus here since actual status varies per template.
+  // The threshold multiplier for pending_review is applied later if needed.
+  const invariantConfigBase = await getEffectiveInvariantConfig(supabase, {
     institutionCode,
-    templateStatus: gateResult.status === 'green' ? 'active' : 'pending_review',
+    templateStatus: undefined, // Don't apply multiplier yet - will be handled per-template
   });
   
   console.log(`[seed-bsba-templates] Using invariant config for ${institutionCode}:`, {
-    unknownCreditsWarnThreshold: invariantConfig.unknownCreditsWarnThreshold,
-    hasOverrides: invariantConfig.hasOverrides,
+    unknownCreditsWarnThreshold: invariantConfigBase.unknownCreditsWarnThreshold,
+    unknownCreditsActiveHardZero: invariantConfigBase.unknownCreditsActiveHardZero,
+    hasOverrides: invariantConfigBase.hasOverrides,
   });
 
   // Extract policy limits with fallbacks
@@ -899,6 +901,12 @@ async function generateTemplatesFromPack(
       capstone_in_residence: true, // BSBA always requires capstone in residence
     } as RawPolicyPack);
     
+    // v1.3: Calculate effective threshold based on template status
+    // Apply pending_review multiplier if applicable
+    const effectiveWarnThreshold = templateStatus === 'pending_review'
+      ? Math.round(invariantConfigBase.unknownCreditsWarnThreshold * invariantConfigBase.pendingReviewThresholdMultiplier)
+      : invariantConfigBase.unknownCreditsWarnThreshold;
+    
     const invariantReport = checkTemplateInvariants({
       template_id: realTemplateId,
       template_table: 'degree_templates',
@@ -907,8 +915,9 @@ async function generateTemplatesFromPack(
       policy_data: invariantPolicy,
       items: invariantItems,
       mode: 'strict',
-      template_status: templateStatus, // v1.2: Pass status for status-aware checks
-      unknown_credits_warn_threshold: invariantConfig.unknownCreditsWarnThreshold, // v1.3: Per-institution threshold
+      template_status: templateStatus, // v1.2: Pass actual status for status-aware checks
+      unknown_credits_warn_threshold: effectiveWarnThreshold, // v1.3: Per-institution threshold with status multiplier
+      unknown_credits_active_hard_zero: invariantConfigBase.unknownCreditsActiveHardZero, // v1.3: Per-institution hard-zero setting
     });
     
     console.log(`[seed-bsba-templates] Invariant check for ${templateId}: ${invariantReport.summary}`);

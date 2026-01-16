@@ -1,6 +1,10 @@
 /**
  * Institution Override Settings
  * 
+ * ⚠️ MIRROR of supabase/functions/_shared/institutionOverrides.ts (SOURCE OF TRUTH).
+ * Types, bounds, and defaults MUST stay in sync with the edge function version.
+ * This frontend version uses the browser Supabase client.
+ * 
  * Per-institution configuration overrides for invariant thresholds and gates.
  * 
  * Design principles:
