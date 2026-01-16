@@ -1,15 +1,15 @@
 /**
  * Invariant Snapshot Client
  * 
- * Fetch wrapper for get-invariant-snapshot edge function.
+ * Fetch wrapper for invariant snapshot edge functions.
  * Uses GET with query params (not POST body).
- * 
- * Note: SUPABASE_URL and ANON_KEY are hardcoded because Lovable projects
- * connected to external Supabase don't support VITE_* env variables.
- * The anon key is publishable by design.
  */
 
 import { supabase } from '@/integrations/supabase/client';
+import { 
+  SUPABASE_ANON_KEY, 
+  getEdgeFunctionUrl 
+} from './supabaseExternalConfig';
 
 // ============================================
 // TYPES
@@ -42,6 +42,23 @@ export interface SnapshotDrilldownResponse {
   } | null;
 }
 
+export interface SnapshotSummary {
+  template_id: string;
+  decision: 'pass' | 'warn' | 'block';
+  violation_codes: string[];
+  violation_count: number;
+  invariant_version: string;
+  created_at: string;
+  job_id: string | null;
+}
+
+export interface ListSnapshotsResponse {
+  snapshots: SnapshotSummary[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
 export interface SnapshotClientError {
   type: 'auth' | 'not_found' | 'server' | 'network' | 'aborted';
   message: string;
@@ -49,23 +66,53 @@ export interface SnapshotClientError {
 }
 
 // ============================================
-// CONFIG
+// HELPERS
 // ============================================
 
-// Hardcoded because Lovable doesn't support VITE_* env variables for external Supabase
-const SUPABASE_URL = 'https://vzpissitddpunkpythsb.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ6cGlzc2l0ZGRwdW5rcHl0aHNiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI3ODUxMDUsImV4cCI6MjA2ODM2MTEwNX0.qm92R4H0_rQpNipa2u1PjJqjnKrlRz_RJe6h6J9G-RI';
+async function getAuthHeaders(signal?: AbortSignal): Promise<{ headers: Record<string, string> | null; error: SnapshotClientError | null }> {
+  if (signal?.aborted) {
+    return { headers: null, error: { type: 'aborted', message: 'Request aborted', status: 0 } };
+  }
+
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session?.access_token) {
+    return { headers: null, error: { type: 'auth', message: 'Please log in to access this page', status: 401 } };
+  }
+
+  return {
+    headers: {
+      Authorization: `Bearer ${session.access_token}`,
+      apikey: SUPABASE_ANON_KEY,
+    },
+    error: null,
+  };
+}
+
+function parseHttpError(res: Response, errBody: unknown): SnapshotClientError {
+  const message = 
+    (errBody as any)?.error || 
+    (errBody as any)?.message || 
+    res.statusText || 
+    `HTTP ${res.status}`;
+
+  if (res.status === 401) {
+    return { type: 'auth', message: 'Unauthorized', status: 401 };
+  }
+  if (res.status === 403) {
+    return { type: 'auth', message: message || 'Admin access required', status: 403 };
+  }
+  if (res.status === 404) {
+    return { type: 'not_found', message, status: 404 };
+  }
+  return { type: 'server', message, status: res.status };
+}
 
 // ============================================
-// CLIENT
+// GET SINGLE SNAPSHOT
 // ============================================
 
 /**
  * Fetch invariant snapshot for a template (GET request with query params)
- * 
- * @param templateId - Required template ID
- * @param invariantVersion - Optional specific version (defaults to latest)
- * @param signal - Optional AbortSignal for cancellation
  */
 export async function getInvariantSnapshot(
   templateId: string,
@@ -73,98 +120,100 @@ export async function getInvariantSnapshot(
   signal?: AbortSignal
 ): Promise<{ data: SnapshotDrilldownResponse | null; error: SnapshotClientError | null }> {
   try {
-    // Check for abort before starting
-    if (signal?.aborted) {
-      return {
-        data: null,
-        error: { type: 'aborted', message: 'Request aborted', status: 0 },
-      };
-    }
+    const { headers, error: authError } = await getAuthHeaders(signal);
+    if (authError) return { data: null, error: authError };
 
-    // Get session for auth header
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session?.access_token) {
-      return {
-        data: null,
-        error: { type: 'auth', message: 'Please log in to access this page', status: 401 },
-      };
-    }
-
-    // Build URL with query params
-    const base = `${SUPABASE_URL}/functions/v1/get-invariant-snapshot`;
     const params = new URLSearchParams({ template_id: templateId });
     if (invariantVersion) {
       params.set('invariant_version', invariantVersion);
     }
 
-    const url = `${base}?${params.toString()}`;
+    const url = `${getEdgeFunctionUrl('get-invariant-snapshot')}?${params.toString()}`;
 
-    // Make GET request (no Content-Type header for GET)
     const res = await fetch(url, {
       method: 'GET',
-      headers: {
-        Authorization: `Bearer ${session.access_token}`,
-        apikey: SUPABASE_ANON_KEY,
-      },
+      headers: headers!,
       signal,
     });
 
-    // Handle HTTP errors based on status code
     if (!res.ok) {
-      // Try to parse JSON error body, fallback to statusText
-      let message: string;
-      try {
-        const errBody = await res.json();
-        message = errBody.error || errBody.message || res.statusText || 'Request failed';
-      } catch {
-        message = res.statusText || `HTTP ${res.status}`;
-      }
-
-      if (res.status === 401) {
-        return {
-          data: null,
-          error: { type: 'auth', message: 'Unauthorized', status: 401 },
-        };
-      }
-      if (res.status === 403) {
-        return {
-          data: null,
-          error: { type: 'auth', message: message || 'Admin access required', status: 403 },
-        };
-      }
-      if (res.status === 404) {
-        return {
-          data: null,
-          error: { type: 'not_found', message, status: 404 },
-        };
-      }
-      return {
-        data: null,
-        error: { type: 'server', message, status: res.status },
-      };
+      const errBody = await res.json().catch(() => ({}));
+      return { data: null, error: parseHttpError(res, errBody) };
     }
 
-    // Parse successful response
     const responseData = await res.json() as SnapshotDrilldownResponse;
     return { data: responseData, error: null };
 
   } catch (err) {
-    // Handle abort
     if (err instanceof Error && err.name === 'AbortError') {
-      return {
-        data: null,
-        error: { type: 'aborted', message: 'Request aborted', status: 0 },
-      };
+      return { data: null, error: { type: 'aborted', message: 'Request aborted', status: 0 } };
     }
-
     console.error('[getInvariantSnapshot] Network error:', err);
     return {
       data: null,
-      error: {
-        type: 'network',
-        message: err instanceof Error ? err.message : 'Failed to connect to server',
-        status: 0,
-      },
+      error: { type: 'network', message: err instanceof Error ? err.message : 'Failed to connect', status: 0 },
+    };
+  }
+}
+
+// ============================================
+// LIST SNAPSHOTS (BULK)
+// ============================================
+
+export interface ListSnapshotsParams {
+  institution_code?: string;
+  track?: string;
+  decision?: 'pass' | 'warn' | 'block';
+  template_ids?: string[];
+  limit?: number;
+  offset?: number;
+}
+
+/**
+ * Fetch latest snapshots for multiple templates (bulk, paginated)
+ */
+export async function listInvariantSnapshots(
+  params: ListSnapshotsParams = {},
+  signal?: AbortSignal
+): Promise<{ data: ListSnapshotsResponse | null; error: SnapshotClientError | null }> {
+  try {
+    const { headers, error: authError } = await getAuthHeaders(signal);
+    if (authError) return { data: null, error: authError };
+
+    const queryParams = new URLSearchParams();
+    if (params.institution_code) queryParams.set('institution_code', params.institution_code);
+    if (params.track) queryParams.set('track', params.track);
+    if (params.decision) queryParams.set('decision', params.decision);
+    if (params.limit) queryParams.set('limit', String(params.limit));
+    if (params.offset) queryParams.set('offset', String(params.offset));
+    if (params.template_ids?.length) {
+      queryParams.set('template_ids', params.template_ids.join(','));
+    }
+
+    const url = `${getEdgeFunctionUrl('list-invariant-snapshots')}?${queryParams.toString()}`;
+
+    const res = await fetch(url, {
+      method: 'GET',
+      headers: headers!,
+      signal,
+    });
+
+    if (!res.ok) {
+      const errBody = await res.json().catch(() => ({}));
+      return { data: null, error: parseHttpError(res, errBody) };
+    }
+
+    const responseData = await res.json() as ListSnapshotsResponse;
+    return { data: responseData, error: null };
+
+  } catch (err) {
+    if (err instanceof Error && err.name === 'AbortError') {
+      return { data: null, error: { type: 'aborted', message: 'Request aborted', status: 0 } };
+    }
+    console.error('[listInvariantSnapshots] Network error:', err);
+    return {
+      data: null,
+      error: { type: 'network', message: err instanceof Error ? err.message : 'Failed to connect', status: 0 },
     };
   }
 }

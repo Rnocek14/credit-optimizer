@@ -2,36 +2,98 @@
  * Admin Template Validation Page
  * 
  * Shows validation status for all marketplace templates
- * with pass/fail indicators and detailed metrics.
+ * with pass/fail indicators, detailed metrics, and invariant snapshot status.
  */
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
 import { 
   CheckCircle, 
   XCircle, 
   AlertTriangle, 
   ChevronDown, 
-  RefreshCw,
   Download,
   GraduationCap,
   Building2,
   Layers,
-  Zap
+  ExternalLink,
+  HelpCircle,
+  Clock
 } from 'lucide-react';
 import marketplaceTemplates from '@/fixtures/templates/marketplace-v1-templates.json';
 import { auditAllTemplates, generateAuditReport, getFixSuggestions, TemplateAuditResult, AuditSummary } from '@/pages/EduTree/v5/utils/templateAudit';
+import { ADMIN_ROUTES } from '@/lib/invariant/actionableFixes';
+import { 
+  listInvariantSnapshots, 
+  type SnapshotSummary 
+} from '@/lib/admin/invariantSnapshotClient';
+
+// ============================================
+// TYPES
+// ============================================
+
+interface SnapshotMap {
+  [templateId: string]: SnapshotSummary;
+}
+
+// ============================================
+// MAIN COMPONENT
+// ============================================
 
 const TemplateValidation: React.FC = () => {
   const [expandedTemplates, setExpandedTemplates] = useState<Set<string>>(new Set());
+  const [snapshotMap, setSnapshotMap] = useState<SnapshotMap>({});
+  const [snapshotsLoading, setSnapshotsLoading] = useState(false);
+  const abortRef = useRef<AbortController | null>(null);
   
   const { results, summary } = useMemo(() => {
     return auditAllTemplates(marketplaceTemplates as any[]);
   }, []);
+
+  // Fetch invariant snapshots for all templates
+  useEffect(() => {
+    const fetchSnapshots = async () => {
+      abortRef.current?.abort();
+      const controller = new AbortController();
+      abortRef.current = controller;
+
+      setSnapshotsLoading(true);
+      
+      // Get all template IDs from results
+      const templateIds = results.map(r => r.templateId);
+      
+      const { data, error } = await listInvariantSnapshots(
+        { template_ids: templateIds, limit: 200 },
+        controller.signal
+      );
+
+      if (error?.type === 'aborted') return;
+
+      if (data?.snapshots) {
+        const map: SnapshotMap = {};
+        for (const s of data.snapshots) {
+          map[s.template_id] = s;
+        }
+        setSnapshotMap(map);
+      }
+      
+      setSnapshotsLoading(false);
+    };
+
+    if (results.length > 0) {
+      fetchSnapshots();
+    }
+
+    return () => {
+      abortRef.current?.abort();
+    };
+  }, [results]);
   
   const toggleExpanded = (id: string) => {
     setExpandedTemplates(prev => {
@@ -59,6 +121,24 @@ const TemplateValidation: React.FC = () => {
   const passRate = summary.totalTemplates > 0 
     ? Math.round((summary.passingTemplates / summary.totalTemplates) * 100) 
     : 0;
+
+  // Count invariant decisions
+  const invariantCounts = useMemo(() => {
+    const counts = { pass: 0, warn: 0, block: 0, pending: 0 };
+    for (const result of results) {
+      const snapshot = snapshotMap[result.templateId];
+      if (!snapshot) {
+        counts.pending++;
+      } else if (snapshot.decision === 'pass') {
+        counts.pass++;
+      } else if (snapshot.decision === 'warn') {
+        counts.warn++;
+      } else {
+        counts.block++;
+      }
+    }
+    return counts;
+  }, [results, snapshotMap]);
   
   return (
     <div className="container max-w-6xl mx-auto py-8 px-4 space-y-6">
@@ -131,6 +211,36 @@ const TemplateValidation: React.FC = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Invariant Status Summary */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <HelpCircle className="h-4 w-4" />
+            Invariant Snapshot Status
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-wrap gap-3">
+            <Badge variant="outline" className="gap-1 bg-green-500/10 text-green-600 border-green-500/20">
+              <CheckCircle className="h-3 w-3" />
+              {invariantCounts.pass} Pass
+            </Badge>
+            <Badge variant="outline" className="gap-1 bg-yellow-500/10 text-yellow-600 border-yellow-500/20">
+              <AlertTriangle className="h-3 w-3" />
+              {invariantCounts.warn} Warn
+            </Badge>
+            <Badge variant="outline" className="gap-1 bg-destructive/10 text-destructive border-destructive/20">
+              <XCircle className="h-3 w-3" />
+              {invariantCounts.block} Block
+            </Badge>
+            <Badge variant="secondary" className="gap-1">
+              <Clock className="h-3 w-3" />
+              {invariantCounts.pending} Pending
+            </Badge>
+          </div>
+        </CardContent>
+      </Card>
       
       {/* Pass Rate Progress */}
       <Card>
@@ -203,6 +313,8 @@ const TemplateValidation: React.FC = () => {
             <TemplateRow 
               key={result.templateId}
               result={result}
+              snapshot={snapshotMap[result.templateId]}
+              snapshotsLoading={snapshotsLoading}
               isExpanded={expandedTemplates.has(result.templateId)}
               onToggle={() => toggleExpanded(result.templateId)}
             />
@@ -213,15 +325,86 @@ const TemplateValidation: React.FC = () => {
   );
 };
 
+// ============================================
+// TEMPLATE ROW COMPONENT
+// ============================================
+
 interface TemplateRowProps {
   result: TemplateAuditResult;
+  snapshot?: SnapshotSummary;
+  snapshotsLoading: boolean;
   isExpanded: boolean;
   onToggle: () => void;
 }
 
-const TemplateRow: React.FC<TemplateRowProps> = ({ result, isExpanded, onToggle }) => {
+function InvariantBadge({ 
+  snapshot, 
+  loading 
+}: { 
+  snapshot?: SnapshotSummary; 
+  loading: boolean; 
+}) {
+  if (loading) {
+    return (
+      <Badge variant="secondary" className="gap-1 animate-pulse">
+        <Clock className="h-3 w-3" />
+        ...
+      </Badge>
+    );
+  }
+
+  if (!snapshot) {
+    return (
+      <Badge variant="secondary" className="gap-1">
+        <Clock className="h-3 w-3" />
+        Pending
+      </Badge>
+    );
+  }
+
+  switch (snapshot.decision) {
+    case 'pass':
+      return (
+        <Badge className="gap-1 bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20" variant="outline">
+          <CheckCircle className="h-3 w-3" />
+          Pass
+        </Badge>
+      );
+    case 'warn':
+      return (
+        <Badge className="gap-1 bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 border-yellow-500/20" variant="outline">
+          <AlertTriangle className="h-3 w-3" />
+          Warn
+        </Badge>
+      );
+    case 'block':
+      return (
+        <Badge variant="destructive" className="gap-1">
+          <XCircle className="h-3 w-3" />
+          Block
+        </Badge>
+      );
+  }
+}
+
+const TemplateRow: React.FC<TemplateRowProps> = ({ 
+  result, 
+  snapshot, 
+  snapshotsLoading,
+  isExpanded, 
+  onToggle 
+}) => {
   const suggestions = getFixSuggestions(result);
   const m = result.validation.metrics;
+
+  // Build drilldown URL
+  const drilldownUrl = snapshot 
+    ? `${ADMIN_ROUTES.templateInvariants.replace(':templateId', result.templateId)}${
+        snapshot.violation_codes.length > 0 
+          ? `?code=${snapshot.violation_codes[0]}` 
+          : ''
+      }`
+    : ADMIN_ROUTES.templateInvariants.replace(':templateId', result.templateId);
   
   return (
     <Collapsible open={isExpanded} onOpenChange={onToggle}>
@@ -241,6 +424,29 @@ const TemplateRow: React.FC<TemplateRowProps> = ({ result, isExpanded, onToggle 
             </div>
           </div>
           <div className="flex items-center gap-3">
+            {/* Invariant badge */}
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div onClick={(e) => e.stopPropagation()}>
+                    <InvariantBadge snapshot={snapshot} loading={snapshotsLoading} />
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {snapshot ? (
+                    <div className="text-xs">
+                      <div>{snapshot.violation_count} violations</div>
+                      <div className="text-muted-foreground">
+                        v{snapshot.invariant_version} • {new Date(snapshot.created_at).toLocaleDateString()}
+                      </div>
+                    </div>
+                  ) : (
+                    <span>No snapshot recorded</span>
+                  )}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+
             <div className="text-right">
               <div className="text-sm font-medium">{m.totalCredits}/120 cr</div>
               <div className="text-xs text-muted-foreground">
@@ -254,6 +460,19 @@ const TemplateRow: React.FC<TemplateRowProps> = ({ result, isExpanded, onToggle 
       
       <CollapsibleContent>
         <div className="ml-8 mt-2 p-4 bg-background border rounded-lg space-y-4">
+          {/* Invariant Drilldown Link */}
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium">Invariant Details</span>
+            <Button variant="outline" size="sm" asChild>
+              <Link to={drilldownUrl}>
+                <ExternalLink className="h-3 w-3 mr-1.5" />
+                {snapshot?.decision === 'block' || snapshot?.decision === 'warn' 
+                  ? 'Why blocked?' 
+                  : 'View Invariants'}
+              </Link>
+            </Button>
+          </div>
+
           {/* Metrics */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
             <div>
