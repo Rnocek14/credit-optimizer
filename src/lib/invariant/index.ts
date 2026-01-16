@@ -72,14 +72,18 @@ export type {
   FixActionType,
   FixActionContext,
   ActionableFix,
+  ResolvedFix,
   InvariantFixMapping,
 } from './actionableFixes';
 
 // Actionable fixes registry and helpers
 export {
+  ADMIN_ROUTES,
   INVARIANT_FIX_REGISTRY,
   getFixesForCode,
   resolveRoute,
   getPrioritizedFixes,
   getPrimaryFix,
+  hasUnresolvedPlaceholders,
+  extractMissingPlaceholders,
 } from './actionableFixes';
