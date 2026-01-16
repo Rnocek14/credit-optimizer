@@ -16,17 +16,38 @@
  */
 
 import {
-  type InvariantCode,
-  type InvariantExplainer,
   type AudienceLevel,
   type ExplainerCategory,
   type ExplainerSeverity,
   INVARIANT_EXPLAINERS,
   isKnownInvariantCode,
-  mapReportSeverity,
   UNKNOWN_CODE_ADMIN_TITLE,
   UNKNOWN_CODE_PUBLIC_TITLE,
 } from './invariantExplainers';
+
+// ============================================
+// SEVERITY MAPPING (boundary layer)
+// ============================================
+
+/**
+ * Map report severity to explainer severity
+ * This is the ONE place where we translate from report semantics to explainer semantics
+ * 
+ * Report uses: 'error' | 'warning'
+ * Explainer uses: 'hard' | 'warn'
+ */
+function mapReportSeverity(s: string): ExplainerSeverity {
+  // Primary mapping: report → explainer
+  if (s === 'error') return 'hard';
+  if (s === 'warning') return 'warn';
+  
+  // Future-proof: if report already uses hard/warn
+  if (s === 'hard') return 'hard';
+  if (s === 'warn') return 'warn';
+  
+  // Safe fallback: treat unknown as hard (audit-safe)
+  return 'hard';
+}
 
 // ============================================
 // INPUT TYPES (from invariant reports)
@@ -193,7 +214,7 @@ function explainViolation(
       title: UNKNOWN_CODE_ADMIN_TITLE,
       titleMarketplace: UNKNOWN_CODE_PUBLIC_TITLE,
       titlePublic: UNKNOWN_CODE_PUBLIC_TITLE,
-      explanation: `An unrecognized validation rule was triggered (${code}).`,
+      explanation: `An unrecognized validation rule was triggered.`, // No code leak
       originalMessage: violation.message,
       metrics: violation.metrics,
       affectedCourses: violation.affectedCourses,
@@ -270,10 +291,11 @@ function buildPrimaryBlocker(
 }
 
 /**
- * Filter hard failures for audience visibility
- * Returns ONLY visible hard failures (ExplainedViolation only)
+ * Filter violations for audience visibility
+ * Works for BOTH hardFailures and warnings
+ * Returns ONLY visible violations (ExplainedViolation only)
  */
-function filterHardFailuresForAudience(
+function filterViolationsForAudience(
   violations: AnyViolation[],
   audience: AudienceLevel
 ): ExplainedViolation[] {
@@ -300,7 +322,7 @@ function getAudiencePrimaryBlocker(
   hardFailures: AnyViolation[],
   audience: AudienceLevel
 ): PrimaryBlocker | null {
-  const visible = filterHardFailuresForAudience(hardFailures, audience);
+  const visible = filterViolationsForAudience(hardFailures, audience);
   if (visible.length === 0) return null;
   
   const first = visible[0];
@@ -311,6 +333,21 @@ function getAudiencePrimaryBlocker(
     explanation: first.explanation,
     isUnknownCode: false,
     originalMessage: first.originalMessage,
+  };
+}
+
+/**
+ * Create an UNKNOWN_BLOCKER fallback for edge cases
+ * Used when isBlocked=true but no errors exist (should be rare)
+ */
+function createUnknownBlockerFallback(summary: string): PrimaryBlocker {
+  return {
+    code: 'UNKNOWN_BLOCKER',
+    severity: 'hard',
+    title: UNKNOWN_CODE_ADMIN_TITLE,
+    explanation: 'The template was blocked, but no specific invariant was provided.',
+    isUnknownCode: true,
+    originalMessage: summary || 'Blocked',
   };
 }
 
@@ -327,27 +364,32 @@ function getAudiencePrimaryBlocker(
  * - Audience filtering only affects display lists, not blocking logic
  */
 export function resolveBlockedReason(report: InvariantReport): BlockedReasonPayload {
+  const isBlocked = !report.ok;
+  
   // Process hard failures (from errors array, preserving order)
   const hardFailures = report.errors.map(explainViolation);
   
   // Process warnings (preserving order)
   const warnings = report.warnings.map(explainViolation);
   
-  // Primary blocker is FIRST hard failure (never null when blocked)
-  const primaryBlocker = buildPrimaryBlocker(hardFailures, 'admin');
+  // Primary blocker: MUST exist when blocked (guaranteed)
+  // If no hard failures but still blocked, use fallback
+  const primaryBlocker = isBlocked
+    ? (buildPrimaryBlocker(hardFailures, 'admin') ?? createUnknownBlockerFallback(report.summary))
+    : buildPrimaryBlocker(hardFailures, 'admin');
   
-  // Marketplace-filtered (visible hard failures only)
-  const marketplaceHard = filterHardFailuresForAudience(hardFailures, 'marketplace');
-  const marketplaceWarn = filterHardFailuresForAudience(warnings, 'marketplace');
+  // Marketplace-filtered (visible violations only)
+  const marketplaceHard = filterViolationsForAudience(hardFailures, 'marketplace');
+  const marketplaceWarn = filterViolationsForAudience(warnings, 'marketplace');
   const marketplacePrimaryBlocker = getAudiencePrimaryBlocker(hardFailures, 'marketplace');
   
-  // Public-filtered (visible hard failures only)
-  const publicHard = filterHardFailuresForAudience(hardFailures, 'public');
-  const publicWarn = filterHardFailuresForAudience(warnings, 'public');
+  // Public-filtered (visible violations only)
+  const publicHard = filterViolationsForAudience(hardFailures, 'public');
+  const publicWarn = filterViolationsForAudience(warnings, 'public');
   const publicPrimaryBlocker = getAudiencePrimaryBlocker(hardFailures, 'public');
   
   return {
-    isBlocked: !report.ok,
+    isBlocked,
     hasWarnings: report.warnings.length > 0,
     wouldFailStrict: report.would_fail_strict ?? false,
     
