@@ -215,7 +215,6 @@ export function evaluateInvariants(
       }
     }
   } // end hasValidBucketMode
-  }
 
   // ============================================
   // D) Term sanity (only if terms present)
