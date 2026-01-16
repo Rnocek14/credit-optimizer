@@ -5,9 +5,9 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1';
 import { 
   checkTemplateInvariants, 
   buildAuditRecord,
-  type InvariantCheckInput,
+  normalizePolicyData,
   type TemplateItem,
-  type PolicyData as InvariantPolicyData,
+  type RawPolicyPack,
 } from '../_shared/creditInvariantChecker.ts';
 
 const corsHeaders = {
@@ -793,21 +793,22 @@ async function generateTemplatesFromPack(
       term.slots.map(slot => ({
         course_code: slot.preferred.courseCode || slot.slotId,
         credits: slot.minCredits,
-        source: slot.preferred.type === 'alt_credit' ? (slot.preferred.sourceCode?.toLowerCase() || 'alt') : 'resident',
-        is_upper_division: slot.kind === 'major' || slot.requirementArea?.includes('UPPER'),
-        is_capstone: slot.kind === 'capstone',
+        // v1.1: Use proper source type for robust classification
+        source: slot.preferred.type === 'alt_credit' 
+          ? (slot.preferred.sourceCode?.toLowerCase() || 'alt') 
+          : 'resident',
+        provider: slot.preferred.type === 'alt_credit' ? slot.preferred.sourceCode : undefined,
+        // v1.1: Pass all fields for robust capstone/upper-div detection
+        kind: slot.kind,
+        requirementArea: slot.requirementArea,
       }))
     );
     
-    const invariantPolicy: InvariantPolicyData = {
-      degree_credit_total: totalCredits,
-      residency_credits: normalizedPolicy.residency_credits,
-      max_alt_credits: normalizedPolicy.max_alt_credit,
-      max_transfer_credits: normalizedPolicy.max_transfer_credits,
-      max_combined_transfer_alt: normalizedPolicy.max_transfer_alt_combined_credits,
-      bucket_mode: normalizedPolicy.transfer_alt_bucket_mode === 'combined' ? 'combined' : 'separate',
+    // v1.1: Use shared policy normalizer
+    const invariantPolicy = normalizePolicyData({
+      ...normalizedPolicy,
       capstone_in_residence: true, // BSBA always requires capstone in residence
-    };
+    } as RawPolicyPack);
     
     const invariantReport = checkTemplateInvariants({
       template_id: realTemplateId,
