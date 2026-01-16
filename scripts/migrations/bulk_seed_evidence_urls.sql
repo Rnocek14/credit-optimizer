@@ -17,7 +17,7 @@ WHERE target_institution = 'TESU'
 -- COSC: Policy-level evidence
 UPDATE credit_transfer_rules
 SET
-  evidence_url = 'https://www.charteroak.edu/catalog/current/transfer-credit/course-transfer-policy-undergraduate/',
+  evidence_url = 'https://www.charteroak.edu/catalog/current/academic_policies_regulations/course_transfer_policy.php',
   rule_source = COALESCE(rule_source, 'Official transfer policy (provider-level)'),
   evidence_type = COALESCE(evidence_type, 'policy_provider_acceptance')
 WHERE target_institution = 'COSC'

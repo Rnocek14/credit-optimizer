@@ -31,7 +31,7 @@ const EQUIVALENCY_PAGE_PATTERNS: Record<string, string> = {
   'wgu': 'https://www.wgu.edu/admissions/transfers.html',
   'excelsior': 'https://www.excelsior.edu/admissions/transfer-credit/',
   'empire': 'https://www.esc.edu/transfer-credit/',
-  'cosc': 'https://www.charteroak.edu/catalog/current/transfer-credit/course-transfer-policy-undergraduate/',
+  'cosc': 'https://www.charteroak.edu/catalog/current/academic_policies_regulations/course_transfer_policy.php',
 };
 
 // Provider catalog patterns (lowercase keys)
