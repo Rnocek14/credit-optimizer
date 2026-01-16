@@ -292,12 +292,33 @@ serve(async (req) => {
       );
     }
 
-    // Race condition: another admin promoted it first
+    // Race condition: update returned no rows - check if already active (idempotent success)
     if (!updatedPack) {
+      const { data: recheckPack } = await serviceClient
+        .from('institution_policy_packs')
+        .select('status')
+        .eq('id', packId)
+        .single();
+      
+      if (recheckPack?.status === 'active') {
+        // Already active - return idempotent success
+        console.log(`[promote-policy-pack] Pack ${packId} already active (idempotent)`);
+        return new Response(
+          JSON.stringify({ 
+            success: true, 
+            message: 'Pack is already active',
+            pack: { id: packId, status: 'active' },
+            idempotent: true,
+          }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      // Something else blocked the update - true conflict
       return new Response(
         JSON.stringify({ 
           success: false, 
-          error: 'Pack was already promoted by another admin',
+          error: 'Pack promotion was blocked or modified by another process',
           pack: { id: packId }
         }),
         { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
