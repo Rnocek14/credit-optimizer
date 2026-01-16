@@ -485,7 +485,8 @@ async function processJob(
         supabase,
         workerId,
         gateResult!, // Pass gate result for status/reason tracking
-        invariantConfigBase // v1.4: Pass pre-fetched config (no DB call per-track)
+        invariantConfigBase, // v1.4: Pass pre-fetched config (no DB call per-track)
+        job.id // v1.5: Pass job ID for invariant snapshot traceability
       );
       trackResults.push(result);
     }
@@ -527,7 +528,8 @@ async function generateAndWriteTemplate(
   supabase: any,
   workerId: string,
   gateResult: PolicyGateResult, // Policy gate result for status tracking
-  invariantConfigBase: EffectiveInvariantConfig // v1.4: Pre-fetched config (no DB call here)
+  invariantConfigBase: EffectiveInvariantConfig, // v1.4: Pre-fetched config (no DB call here)
+  jobId: string // v1.5: Job ID for invariant snapshot traceability
 ): Promise<TrackResult> {
   const startTime = Date.now();
 
@@ -738,7 +740,7 @@ async function generateAndWriteTemplate(
     // Uses the effective config actually used for this template's evaluation
     const snapshotEffectiveConfig = buildSnapshotEffectiveConfig(invariantConfigBase, effectiveWarnThreshold);
     await writeInvariantDecisionSnapshot(supabase, {
-      job_id: null, // Worker doesn't track job_id at this level
+      job_id: jobId, // v1.5: Now properly tracked for audit trail
       template_id: upsertedRow.id,
       institution_code: program.institution_code,
       program_catalog_id: program.id,
