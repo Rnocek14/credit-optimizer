@@ -3,6 +3,10 @@
  * 
  * Fetch wrapper for get-invariant-snapshot edge function.
  * Uses GET with query params (not POST body).
+ * 
+ * Note: SUPABASE_URL and ANON_KEY are hardcoded because Lovable projects
+ * connected to external Supabase don't support VITE_* env variables.
+ * The anon key is publishable by design.
  */
 
 import { supabase } from '@/integrations/supabase/client';
@@ -39,26 +43,44 @@ export interface SnapshotDrilldownResponse {
 }
 
 export interface SnapshotClientError {
-  type: 'auth' | 'not_found' | 'server' | 'network';
+  type: 'auth' | 'not_found' | 'server' | 'network' | 'aborted';
   message: string;
   status: number;
 }
 
 // ============================================
-// CLIENT
+// CONFIG
 // ============================================
 
+// Hardcoded because Lovable doesn't support VITE_* env variables for external Supabase
 const SUPABASE_URL = 'https://vzpissitddpunkpythsb.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ6cGlzc2l0ZGRwdW5rcHl0aHNiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI3ODUxMDUsImV4cCI6MjA2ODM2MTEwNX0.qm92R4H0_rQpNipa2u1PjJqjnKrlRz_RJe6h6J9G-RI';
 
+// ============================================
+// CLIENT
+// ============================================
+
 /**
  * Fetch invariant snapshot for a template (GET request with query params)
+ * 
+ * @param templateId - Required template ID
+ * @param invariantVersion - Optional specific version (defaults to latest)
+ * @param signal - Optional AbortSignal for cancellation
  */
 export async function getInvariantSnapshot(
   templateId: string,
-  invariantVersion?: string | null
+  invariantVersion?: string | null,
+  signal?: AbortSignal
 ): Promise<{ data: SnapshotDrilldownResponse | null; error: SnapshotClientError | null }> {
   try {
+    // Check for abort before starting
+    if (signal?.aborted) {
+      return {
+        data: null,
+        error: { type: 'aborted', message: 'Request aborted', status: 0 },
+      };
+    }
+
     // Get session for auth header
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.access_token) {
@@ -77,20 +99,26 @@ export async function getInvariantSnapshot(
 
     const url = `${base}?${params.toString()}`;
 
-    // Make GET request
+    // Make GET request (no Content-Type header for GET)
     const res = await fetch(url, {
       method: 'GET',
       headers: {
         Authorization: `Bearer ${session.access_token}`,
         apikey: SUPABASE_ANON_KEY,
-        'Content-Type': 'application/json',
       },
+      signal,
     });
 
     // Handle HTTP errors based on status code
     if (!res.ok) {
-      const errBody = await res.json().catch(() => ({ error: 'Unknown error' }));
-      const message = errBody.error || errBody.message || 'Request failed';
+      // Try to parse JSON error body, fallback to statusText
+      let message: string;
+      try {
+        const errBody = await res.json();
+        message = errBody.error || errBody.message || res.statusText || 'Request failed';
+      } catch {
+        message = res.statusText || `HTTP ${res.status}`;
+      }
 
       if (res.status === 401) {
         return {
@@ -121,12 +149,20 @@ export async function getInvariantSnapshot(
     return { data: responseData, error: null };
 
   } catch (err) {
+    // Handle abort
+    if (err instanceof Error && err.name === 'AbortError') {
+      return {
+        data: null,
+        error: { type: 'aborted', message: 'Request aborted', status: 0 },
+      };
+    }
+
     console.error('[getInvariantSnapshot] Network error:', err);
     return {
       data: null,
       error: {
         type: 'network',
-        message: 'Failed to connect to server',
+        message: err instanceof Error ? err.message : 'Failed to connect to server',
         status: 0,
       },
     };

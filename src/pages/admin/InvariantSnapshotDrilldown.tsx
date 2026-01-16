@@ -7,11 +7,11 @@
  * Route: /admin/template-validation/:templateId/invariants
  */
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useSearchParams, Link } from 'react-router-dom';
 import { AlertTriangle, ArrowLeft, Copy, CheckCircle2, Clock, RefreshCw, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
@@ -40,6 +40,9 @@ export default function InvariantSnapshotDrilldown() {
   const { templateId } = useParams<{ templateId: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
 
+  // Abort controller ref for cleanup
+  const abortControllerRef = useRef<AbortController | null>(null);
+
   // Data state
   const [data, setData] = useState<SnapshotDrilldownResponse | null>(null);
   const [loadingState, setLoadingState] = useState<LoadingState>('idle');
@@ -64,13 +67,24 @@ export default function InvariantSnapshotDrilldown() {
   const fetchSnapshot = useCallback(async () => {
     if (!templateId) return;
 
+    // Cancel any in-flight request
+    abortControllerRef.current?.abort();
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     setLoadingState('loading');
     setError(null);
 
     const { data: responseData, error: fetchError } = await getInvariantSnapshot(
       templateId,
-      invariantVersion
+      invariantVersion,
+      controller.signal
     );
+
+    // Ignore aborted requests
+    if (fetchError?.type === 'aborted') {
+      return;
+    }
 
     if (fetchError) {
       setError(fetchError);
@@ -90,8 +104,14 @@ export default function InvariantSnapshotDrilldown() {
     }
   }, [templateId, invariantVersion, selectedCode, handleSelectCode]);
 
+  // Fetch on mount and when deps change
   useEffect(() => {
     fetchSnapshot();
+
+    // Cleanup: abort on unmount
+    return () => {
+      abortControllerRef.current?.abort();
+    };
   }, [fetchSnapshot]);
 
   // Copy snapshot JSON
@@ -250,15 +270,13 @@ export default function InvariantSnapshotDrilldown() {
           <div className="lg:col-span-2 space-y-6">
             {/* Violations Panel */}
             <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Violation Codes</CardTitle>
-                <CardDescription>
+              <div className="p-6">
+                <h3 className="text-lg font-semibold mb-1">Violation Codes</h3>
+                <p className="text-sm text-muted-foreground mb-4">
                   {snapshot.violation_codes.length === 0
                     ? 'No violations detected'
                     : `${snapshot.violation_codes.length} violation${snapshot.violation_codes.length > 1 ? 's' : ''} found`}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
+                </p>
                 {snapshot.violation_codes.length === 0 ? (
                   <div className="flex items-center gap-2 text-green-600 dark:text-green-400">
                     <CheckCircle2 className="h-5 w-5" />
@@ -271,7 +289,7 @@ export default function InvariantSnapshotDrilldown() {
                     onSelectCode={handleSelectCode}
                   />
                 )}
-              </CardContent>
+              </div>
             </Card>
 
             {/* Why Blocked Explainer Panel */}
