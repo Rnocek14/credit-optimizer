@@ -23,7 +23,8 @@ interface SnapshotDrilldownResponse {
     program_slug: string;
     track: string;
     generated_at: string | null;
-  } | null;
+    template_status?: string; // Derived from snapshot when available
+  };
   snapshot: {
     id: string;
     job_id: string | null;
@@ -168,6 +169,18 @@ serve(async (req) => {
 
     const snapshot = snapshots?.[0] ?? null;
 
+    // If specific version was requested but not found, return 404
+    if (invariantVersion && !snapshot) {
+      return new Response(
+        JSON.stringify({ 
+          error: 'Snapshot not found for invariant_version', 
+          template_id: templateId,
+          invariant_version: invariantVersion 
+        }),
+        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // 4c) Job info (if snapshot has job_id)
     let job = null;
     if (snapshot?.job_id) {
@@ -195,6 +208,8 @@ serve(async (req) => {
         program_slug: template.program_slug,
         track: template.track,
         generated_at: template.generated_at,
+        // Derive status from snapshot when available (what invariants evaluated against)
+        template_status: snapshot?.template_status ?? undefined,
       },
       snapshot: snapshot ? {
         id: snapshot.id,
