@@ -43,6 +43,8 @@ export type InvariantType =
   | 'INV_CREDIT_ACCOUNTING_UNBALANCED'
   | 'INV_UNKNOWN_CREDITS_NONZERO_ACTIVE'
   | 'INV_POLICY_MISSING_TRANSFER_CAP'
+  // v1.2 warnings
+  | 'INV_UNKNOWN_CREDITS_EXCEEDS_THRESHOLD'
   // v1.1 warnings
   | 'INV_DUPLICATE_EQUIVALENCY'
   | 'INV_PREREQUISITES_UNMET'
@@ -526,10 +528,10 @@ function checkUnknownCreditsByStatus(
     };
   }
 
-  // Non-active templates: unknown > threshold is a warning
+  // Non-active templates: unknown > threshold is a warning (distinct code for dashboards)
   if (templateStatus && templateStatus !== 'active' && unknown > warnThreshold) {
     return {
-      type: 'INV_UNKNOWN_SOURCE',
+      type: 'INV_UNKNOWN_CREDITS_EXCEEDS_THRESHOLD',
       severity: 'warning',
       message: `Unknown credits (${unknown}) exceed warning threshold (${warnThreshold})`,
       affectedCourses: getAffectedCourses(),
