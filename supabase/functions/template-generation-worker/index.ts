@@ -2,6 +2,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { evaluatePolicyGate, getTemplateStatus, type PolicyGateResult } from '../_shared/policyGate.ts';
 import { checkTemplateInvariants, buildAuditRecord, normalizePolicyData, type TemplateItem, type RawPolicyPack } from '../_shared/creditInvariantChecker.ts';
+import { getEffectiveInvariantConfig } from '../_shared/institutionOverrides.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -688,6 +689,12 @@ async function generateAndWriteTemplate(
       // capstone_in_residence: intentionally NOT set - don't assume all programs require it
     } as RawPolicyPack);
 
+    // v1.3: Fetch per-institution override config for threshold customization
+    const invariantConfig = await getEffectiveInvariantConfig(supabase, {
+      institutionCode: program.institution_code,
+      templateStatus: templateStatus,
+    });
+
     const invariantReport = checkTemplateInvariants({
       template_id: upsertedRow.id,
       template_table: 'program_templates',
@@ -696,6 +703,7 @@ async function generateAndWriteTemplate(
       policy_data: invariantPolicy,
       items: invariantItems,
       mode: 'warn_only', // Use warn_only for worker since templates are still experimental
+      unknown_credits_warn_threshold: invariantConfig.unknownCreditsWarnThreshold, // v1.3: Per-institution threshold
     });
 
     // Store audit record
