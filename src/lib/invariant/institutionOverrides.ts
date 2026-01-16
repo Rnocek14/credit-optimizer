@@ -12,7 +12,17 @@
  * @version 1.0.0
  */
 
-import { supabase } from '@/integrations/supabase/client';
+import {
+  dbGetOverrideSettings,
+  dbGetOverrideSettingsAnyStatus,
+  dbUpsertOverrideSettings,
+  dbUpdateOverrideStatus,
+  dbInsertOverrideAudit,
+  dbListOverrideAudit,
+  dbListAllOverrideSettings,
+  type OverrideAuditRowDb,
+  type OverrideSettingsRowDb,
+} from './institutionOverrides.db';
 
 // ============================================
 // TYPES
@@ -24,6 +34,7 @@ export const OVERRIDE_SCHEMA_VERSION = '1.0.0' as const;
 /** Bounded range constraints for numeric overrides */
 export const OVERRIDE_BOUNDS = {
   unknownCreditsWarnThreshold: { min: 0, max: 60, default: 6 },
+  pendingReviewThresholdMultiplier: { min: 1.0, max: 3.0, default: 1.5 },
 } as const;
 
 /**
@@ -67,7 +78,7 @@ export interface InstitutionOverrideSettings {
 }
 
 /**
- * Database row shape
+ * Database row shape (re-exported from DB layer with parsed overrides)
  */
 export interface InstitutionOverrideRow {
   id: string;
@@ -124,7 +135,7 @@ export const DEFAULT_INVARIANT_CONFIG: Omit<EffectiveInvariantConfig, 'hasOverri
   unknownCreditsWarnThreshold: OVERRIDE_BOUNDS.unknownCreditsWarnThreshold.default,
   unknownCreditsActiveHardZero: true,
   allowMissingCapsInDraft: false,
-  pendingReviewThresholdMultiplier: 1.5,
+  pendingReviewThresholdMultiplier: OVERRIDE_BOUNDS.pendingReviewThresholdMultiplier.default,
 };
 
 // ============================================
@@ -191,8 +202,8 @@ export function parseOverrideSettings(
   if (typeof obj.pendingReviewThresholdMultiplier === 'number') {
     result.pendingReviewThresholdMultiplier = clamp(
       obj.pendingReviewThresholdMultiplier,
-      1.0,
-      3.0
+      OVERRIDE_BOUNDS.pendingReviewThresholdMultiplier.min,
+      OVERRIDE_BOUNDS.pendingReviewThresholdMultiplier.max
     );
   }
   
@@ -296,31 +307,21 @@ export async function fetchInstitutionOverrides(
     return cached;
   }
   
-  try {
-    const { data, error } = await supabase
-      .from('institution_override_settings')
-      .select('overrides, status')
-      .eq('institution_code', institutionCode)
-      .eq('status', 'active')
-      .maybeSingle();
-    
-    if (error) {
-      console.error('Error fetching institution overrides:', error);
-      return null;
-    }
-    
-    if (!data) {
-      setCache(institutionCode, null);
-      return null;
-    }
-    
-    const parsed = parseOverrideSettings(data.overrides);
-    setCache(institutionCode, parsed);
-    return parsed;
-  } catch (err) {
-    console.error('Error fetching institution overrides:', err);
+  const { data, error } = await dbGetOverrideSettings(institutionCode);
+  
+  if (error) {
+    console.error('Error fetching institution overrides:', error.message);
     return null;
   }
+  
+  if (!data) {
+    setCache(institutionCode, null);
+    return null;
+  }
+  
+  const parsed = parseOverrideSettings(data.overrides);
+  setCache(institutionCode, parsed);
+  return parsed;
 }
 
 /**
@@ -374,10 +375,26 @@ export function getEffectiveInvariantConfigSync(params: {
 // ============================================
 
 /**
+ * Log audit failure with distinct warning for telemetry
+ */
+function logAuditFailure(
+  institutionCode: string,
+  action: string,
+  reason: string | null,
+  error: Error
+): void {
+  console.warn('[OVERRIDE_AUDIT_FAILED]', {
+    institutionCode,
+    action,
+    reason,
+    error: error.message,
+    timestamp: new Date().toISOString(),
+  });
+}
+
+/**
  * Save override settings for an institution
  * Automatically creates audit log entry
- * 
- * Note: Uses 'any' casts for Supabase tables until types are regenerated
  */
 export async function saveInstitutionOverrides(params: {
   institutionCode: string;
@@ -389,49 +406,40 @@ export async function saveInstitutionOverrides(params: {
   
   try {
     // Fetch existing settings
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: existing } = await (supabase as any)
-      .from('institution_override_settings')
-      .select('id, overrides, status')
-      .eq('institution_code', institutionCode)
-      .maybeSingle();
+    const { data: existing, error: fetchError } = await dbGetOverrideSettingsAnyStatus(institutionCode);
+    
+    if (fetchError) {
+      console.error('Error fetching existing overrides:', fetchError.message);
+    }
     
     const newOverrides = serializeOverrideSettings(settings);
     const action = existing ? 'update' : 'create';
     
     // Upsert settings
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error: upsertError } = await (supabase as any)
-      .from('institution_override_settings')
-      .upsert({
-        institution_code: institutionCode,
-        overrides: newOverrides,
-        status: 'active',
-        updated_by: userId,
-      }, {
-        onConflict: 'institution_code',
-      });
+    const { error: upsertError } = await dbUpsertOverrideSettings({
+      institution_code: institutionCode,
+      overrides: newOverrides as unknown as Record<string, unknown>,
+      status: 'active',
+      updated_by: userId,
+    });
     
     if (upsertError) {
       return { success: false, error: upsertError.message };
     }
     
     // Create audit entry
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error: auditError } = await (supabase as any)
-      .from('institution_override_audit')
-      .insert({
-        institution_code: institutionCode,
-        action,
-        old_overrides: existing?.overrides ?? null,
-        new_overrides: newOverrides,
-        reason,
-        actor_user_id: userId,
-      });
+    const { error: auditError } = await dbInsertOverrideAudit({
+      institution_code: institutionCode,
+      action,
+      old_overrides: existing?.overrides as Record<string, unknown> | null ?? null,
+      new_overrides: newOverrides as unknown as Record<string, unknown>,
+      reason,
+      actor_user_id: userId,
+    });
     
     if (auditError) {
-      console.error('Failed to create audit entry:', auditError);
-      // Don't fail the operation for audit errors
+      // Log but don't fail the operation
+      logAuditFailure(institutionCode, action, reason, auditError);
     }
     
     // Clear cache
@@ -439,7 +447,7 @@ export async function saveInstitutionOverrides(params: {
     
     return { success: true };
   } catch (err) {
-    return { success: false, error: String(err) };
+    return { success: false, error: err instanceof Error ? err.message : String(err) };
   }
 }
 
@@ -455,50 +463,47 @@ export async function disableInstitutionOverrides(params: {
   
   try {
     // Fetch existing settings
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: existing } = await (supabase as any)
-      .from('institution_override_settings')
-      .select('id, overrides')
-      .eq('institution_code', institutionCode)
-      .maybeSingle();
+    const { data: existing, error: fetchError } = await dbGetOverrideSettingsAnyStatus(institutionCode);
+    
+    if (fetchError) {
+      return { success: false, error: fetchError.message };
+    }
     
     if (!existing) {
       return { success: false, error: 'No override settings found' };
     }
     
     // Update status to disabled
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error: updateError } = await (supabase as any)
-      .from('institution_override_settings')
-      .update({
-        status: 'disabled',
-        updated_by: userId,
-      })
-      .eq('institution_code', institutionCode);
+    const { error: updateError } = await dbUpdateOverrideStatus(
+      institutionCode,
+      'disabled',
+      userId
+    );
     
     if (updateError) {
       return { success: false, error: updateError.message };
     }
     
     // Create audit entry
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (supabase as any)
-      .from('institution_override_audit')
-      .insert({
-        institution_code: institutionCode,
-        action: 'disable',
-        old_overrides: existing.overrides,
-        new_overrides: null,
-        reason,
-        actor_user_id: userId,
-      });
+    const { error: auditError } = await dbInsertOverrideAudit({
+      institution_code: institutionCode,
+      action: 'disable',
+      old_overrides: existing.overrides as Record<string, unknown>,
+      new_overrides: null,
+      reason,
+      actor_user_id: userId,
+    });
+    
+    if (auditError) {
+      logAuditFailure(institutionCode, 'disable', reason, auditError);
+    }
     
     // Clear cache
     clearOverrideCache(institutionCode);
     
     return { success: true };
   } catch (err) {
-    return { success: false, error: String(err) };
+    return { success: false, error: err instanceof Error ? err.message : String(err) };
   }
 }
 
@@ -509,46 +514,45 @@ export async function fetchOverrideAuditLog(
   institutionCode: string,
   limit = 50
 ): Promise<InstitutionOverrideAuditEntry[]> {
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (supabase as any)
-      .from('institution_override_audit')
-      .select('*')
-      .eq('institution_code', institutionCode)
-      .order('created_at', { ascending: false })
-      .limit(limit);
-    
-    if (error) {
-      console.error('Error fetching audit log:', error);
-      return [];
-    }
-    
-    return (data ?? []) as InstitutionOverrideAuditEntry[];
-  } catch (err) {
-    console.error('Error fetching audit log:', err);
+  const { data, error } = await dbListOverrideAudit(institutionCode, limit);
+  
+  if (error) {
+    console.error('Error fetching audit log:', error.message);
     return [];
   }
+  
+  // Transform DB rows to typed entries
+  return data.map((row: OverrideAuditRowDb): InstitutionOverrideAuditEntry => ({
+    id: row.id,
+    institution_code: row.institution_code,
+    action: row.action,
+    old_overrides: row.old_overrides ? parseOverrideSettings(row.old_overrides) : null,
+    new_overrides: row.new_overrides ? parseOverrideSettings(row.new_overrides) : null,
+    reason: row.reason,
+    actor_user_id: row.actor_user_id,
+    created_at: row.created_at,
+  }));
 }
 
 /**
  * Fetch all institutions with overrides configured
  */
 export async function fetchAllInstitutionOverrides(): Promise<InstitutionOverrideRow[]> {
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (supabase as any)
-      .from('institution_override_settings')
-      .select('*')
-      .order('institution_code');
-    
-    if (error) {
-      console.error('Error fetching all overrides:', error);
-      return [];
-    }
-    
-    return (data ?? []) as InstitutionOverrideRow[];
-  } catch (err) {
-    console.error('Error fetching all overrides:', err);
+  const { data, error } = await dbListAllOverrideSettings();
+  
+  if (error) {
+    console.error('Error fetching all overrides:', error.message);
     return [];
   }
+  
+  // Transform DB rows to typed entries
+  return data.map((row: OverrideSettingsRowDb): InstitutionOverrideRow => ({
+    id: row.id,
+    institution_code: row.institution_code,
+    overrides: parseOverrideSettings(row.overrides),
+    status: row.status,
+    updated_by: row.updated_by,
+    updated_at: row.updated_at,
+    created_at: row.created_at,
+  }));
 }
