@@ -9,7 +9,7 @@
  */
 
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -33,7 +33,8 @@ import {
   HelpCircle,
   Clock,
   Search,
-  Loader2
+  Loader2,
+  Play,
 } from 'lucide-react';
 import marketplaceTemplates from '@/fixtures/templates/marketplace-v1-templates.json';
 import { auditAllTemplates, generateAuditReport, getFixSuggestions, TemplateAuditResult, AuditSummary } from '@/pages/EduTree/v5/utils/templateAudit';
@@ -41,11 +42,13 @@ import { ADMIN_ROUTES } from '@/lib/invariant/actionableFixes';
 import { 
   listInvariantSnapshots, 
   rerunTemplateInvariants,
+  createBulkRerunJob,
   type SnapshotSummary,
   type ListSnapshotsParams 
 } from '@/lib/admin/invariantSnapshotClient';
 import { useToast } from '@/hooks/use-toast';
 import { RotateCcw } from 'lucide-react';
+import { BulkRerunModal } from '@/components/admin/BulkRerunModal';
 
 // ============================================
 // CONSTANTS
@@ -69,12 +72,15 @@ type AuditFilter = 'all' | 'passing' | 'failing';
 
 const TemplateValidation: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const [expandedTemplates, setExpandedTemplates] = useState<Set<string>>(new Set());
   const [snapshotMap, setSnapshotMap] = useState<SnapshotMap>({});
   const [snapshotsLoading, setSnapshotsLoading] = useState(false);
   const [snapshotError, setSnapshotError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [rerunLoading, setRerunLoading] = useState<Record<string, boolean>>({});
+  const [bulkRerunModalOpen, setBulkRerunModalOpen] = useState(false);
+  const [bulkRerunLoading, setBulkRerunLoading] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
   const { toast } = useToast();
 
@@ -243,6 +249,24 @@ const TemplateValidation: React.FC = () => {
     }
   };
   
+  // Handle bulk rerun
+  const handleBulkRerun = async () => {
+    setBulkRerunLoading(true);
+    try {
+      const { data, error } = await createBulkRerunJob({ decision: 'block' });
+      if (error) {
+        toast({ title: 'Failed to start bulk rerun', description: error.message, variant: 'destructive' });
+        return;
+      }
+      if (data?.job_id) {
+        setBulkRerunModalOpen(false);
+        navigate(ADMIN_ROUTES.bulkRerunProgress.replace(':jobId', data.job_id));
+      }
+    } finally {
+      setBulkRerunLoading(false);
+    }
+  };
+  
   const downloadReport = () => {
     const report = generateAuditReport(marketplaceTemplates as any[]);
     const blob = new Blob([report], { type: 'text/plain' });
@@ -293,11 +317,28 @@ const TemplateValidation: React.FC = () => {
           </p>
         </div>
         <div className="flex gap-2">
+          <Button 
+            variant="destructive" 
+            onClick={() => setBulkRerunModalOpen(true)}
+            disabled={invariantCounts.block === 0}
+          >
+            <Play className="h-4 w-4 mr-2" />
+            Bulk Rerun BLOCK ({invariantCounts.block})
+          </Button>
           <Button variant="outline" onClick={downloadReport}>
             <Download className="h-4 w-4 mr-2" />
             Download Report
           </Button>
         </div>
+
+        <BulkRerunModal
+          open={bulkRerunModalOpen}
+          onOpenChange={setBulkRerunModalOpen}
+          decision="block"
+          templateCount={invariantCounts.block}
+          onConfirm={handleBulkRerun}
+          isLoading={bulkRerunLoading}
+        />
       </div>
       
       {/* Summary Cards */}

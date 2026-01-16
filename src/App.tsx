@@ -884,6 +884,7 @@ const App = () => {
         <Route path="/admin/locations" element={<LocationManagerPanel />} />
         <Route path="/admin/template-validation" element={<TemplateValidation />} />
         <Route path="/admin/template-validation/:templateId/invariants" element={<React.Suspense fallback={<PageLoader message="Loading..." />}>{React.createElement(React.lazy(() => import('./pages/admin/InvariantSnapshotDrilldown')))}</React.Suspense>} />
+        <Route path="/admin/invariants/bulk/:jobId" element={<React.Suspense fallback={<PageLoader message="Loading..." />}>{React.createElement(React.lazy(() => import('./pages/admin/BulkRerunProgress')))}</React.Suspense>} />
         <Route path="/admin/degree-integrity-scan" element={<DegreeIntegrityScan />} />
         <Route path="/admin/transfer-scraper" element={<TransferScraperDashboard />} />
         <Route path="/admin/policy-refresh" element={<PolicyRefreshAdmin />} />
