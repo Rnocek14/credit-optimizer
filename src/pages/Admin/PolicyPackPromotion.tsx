@@ -34,12 +34,13 @@ interface PromotionCandidate {
   degree_level: string | null;
   status: string;
   has_ground_truth: boolean;
-  completeness_score: number;
+  confidence_score: number | null;
   catalog_year: string | null;
   gate_status: 'green' | 'yellow' | 'red';
   is_promotable: boolean;
   is_auto_promotable: boolean;
   promotion_reason: string;
+  missing_critical: string[] | null;
   templates_count: number;
   active_templates_count: number;
   stale: boolean | null;
@@ -229,9 +230,9 @@ export default function PolicyPackPromotion() {
                   </div>
 
                   <div className="flex items-center gap-4">
-                    {/* Completeness Score */}
+                    {/* Confidence Score */}
                     <div className="text-right">
-                      <div className="text-sm font-medium">{candidate.completeness_score}%</div>
+                      <div className="text-sm font-medium">{candidate.confidence_score ?? '-'}%</div>
                       <div className="text-xs text-muted-foreground">Score</div>
                     </div>
 
