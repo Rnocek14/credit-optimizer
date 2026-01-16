@@ -46,7 +46,7 @@ import ExplorationDashboard from "./pages/Analytics/ExplorationDashboard";
 import SmartWeightsAdmin from "./pages/Admin/SmartWeightsAdmin";
 import AdminAnalytics from "./pages/Admin/AdminAnalytics";
 import SeedGoldenProgram from "./pages/Admin/SeedGoldenProgram";
-import TemplateValidation from "./pages/Admin/TemplateValidation";
+import TemplateValidation from "./pages/admin/TemplateValidation";
 import DegreeIntegrityScan from "./pages/Admin/DegreeIntegrityScan";
 import PolicyRefreshAdmin from "./pages/Admin/PolicyRefreshAdmin";
 import TransferScraperDashboard from "./pages/Admin/TransferScraperDashboard";
