@@ -50,6 +50,8 @@ export interface SnapshotSummary {
   invariant_version: string;
   created_at: string;
   job_id: string | null;
+  institution_code: string;
+  track: string | null;
 }
 
 export interface ListSnapshotsResponse {

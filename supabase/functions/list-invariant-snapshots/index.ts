@@ -97,15 +97,27 @@ serve(async (req) => {
     }
 
     // ========================================================================
-    // 3) PARSE QUERY PARAMS
+    // 3) PARSE & VALIDATE QUERY PARAMS
     // ========================================================================
     const url = new URL(req.url);
     const institutionCode = url.searchParams.get('institution_code') || null;
     const track = url.searchParams.get('track') || null;
     const decision = url.searchParams.get('decision') || null;
     const templateIdsParam = url.searchParams.get('template_ids');
-    const limit = Math.min(parseInt(url.searchParams.get('limit') || '50', 10), 200);
-    const offset = parseInt(url.searchParams.get('offset') || '0', 10);
+    
+    // Validate decision param
+    if (decision && !['pass', 'warn', 'block'].includes(decision)) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid decision parameter. Must be pass, warn, or block.' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Parse and validate limit/offset
+    const limitParam = url.searchParams.get('limit');
+    const offsetParam = url.searchParams.get('offset');
+    const limit = Math.min(Math.max(parseInt(limitParam || '50', 10) || 50, 1), 200);
+    const offset = Math.max(parseInt(offsetParam || '0', 10) || 0, 0);
 
     // Parse template_ids into UUID array (limit to 100 to prevent URL issues)
     const templateIds: string[] | null = templateIdsParam 
