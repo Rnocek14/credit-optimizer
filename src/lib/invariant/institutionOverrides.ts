@@ -1,22 +1,22 @@
 /**
- * Institution Override Settings
+ * Institution Override Settings - Frontend Module
  * 
- * ⚠️ THIS IS A MIRROR - CANONICAL SOURCE OF TRUTH IS:
+ * This module provides CRUD operations for institution overrides.
+ * It is a DUMB EDITOR/VIEWER - no computation logic.
+ * 
+ * CANONICAL SOURCE OF TRUTH for effective config computation:
  *    supabase/functions/_shared/institutionOverrides.ts
  * 
- * Types, bounds, defaults, and pure functions (parseOverrideSettings, mergeWithDefaults,
- * computeEffectiveThreshold) MUST stay in sync with the edge function version.
+ * Frontend responsibilities:
+ * - Display override values
+ * - Validate input bounds client-side
+ * - Save/disable/enable overrides via DB layer
+ * - Fetch audit logs for admin UI
  * 
- * This frontend version adds:
- * - Browser Supabase client integration
- * - In-memory caching
- * - Mutation helpers (save, disable, enable)
- * 
- * Design principles:
- * - BOUNDED: Can only relax/tighten specific thresholds, not disable invariants
- * - AUDIT-LOGGED: Every change is recorded with who/when/why
- * - DASHBOARD-SAFE: Distinct codes stay distinct; overrides adjust thresholds only
- * - NON-FORKING: Apply overrides as config inputs, not duplicate logic
+ * Backend (edge) responsibilities:
+ * - Compute effective config from overrides
+ * - Apply status-specific multipliers
+ * - Enforce bounds and defaults during invariant checking
  * 
  * @version 1.0.0
  */
@@ -34,13 +34,13 @@ import {
 } from './institutionOverrides.db';
 
 // ============================================
-// TYPES
+// TYPES (shared with edge, but defined here for UI)
 // ============================================
 
 /** Current schema version for forward compatibility */
 export const OVERRIDE_SCHEMA_VERSION = '1.0.0' as const;
 
-/** Bounded range constraints for numeric overrides */
+/** Bounded range constraints for numeric overrides (for UI validation) */
 export const OVERRIDE_BOUNDS = {
   unknownCreditsWarnThreshold: { min: 0, max: 60, default: 6 },
   pendingReviewThresholdMultiplier: { min: 1.0, max: 3.0, default: 1.5 },
@@ -48,46 +48,18 @@ export const OVERRIDE_BOUNDS = {
 
 /**
  * Institution override settings shape (versioned)
- * 
  * All fields are optional - missing means "use default"
  */
 export interface InstitutionOverrideSettings {
-  /** Schema version for forward compatibility */
   version: typeof OVERRIDE_SCHEMA_VERSION;
-  
-  /**
-   * Warning threshold for unknown credits (in credit hours)
-   * If unknown credits exceed this, trigger INV_UNKNOWN_CREDITS_EXCEEDS_THRESHOLD warning
-   * Bounded: 0-60 credits
-   * Default: 6
-   */
   unknownCreditsWarnThreshold?: number;
-  
-  /**
-   * Whether active templates require unknown credits = 0
-   * If true, INV_UNKNOWN_CREDITS_NONZERO_ACTIVE is enforced as hard error
-   * Default: true
-   */
   unknownCreditsActiveHardZero?: boolean;
-  
-  /**
-   * Whether to allow missing cap configurations in draft/pending_review status
-   * If true, INV_POLICY_MISSING_*_CAP only fires for active templates
-   * Default: false
-   */
   allowMissingCapsInDraft?: boolean;
-  
-  /**
-   * Whether to allow higher unknown credits threshold for pending_review
-   * Multiplier applied to unknownCreditsWarnThreshold for pending_review templates
-   * Bounded: 1.0-3.0
-   * Default: 1.5
-   */
   pendingReviewThresholdMultiplier?: number;
 }
 
 /**
- * Database row shape (re-exported from DB layer with parsed overrides)
+ * Database row shape with parsed overrides
  */
 export interface InstitutionOverrideRow {
   id: string;
@@ -114,30 +86,20 @@ export interface InstitutionOverrideAuditEntry {
 }
 
 /**
- * Effective invariant configuration (after merging overrides with defaults)
+ * Effective invariant configuration (returned by edge functions)
+ * Frontend does NOT compute this - edge is source of truth
  */
 export interface EffectiveInvariantConfig {
-  /** Resolved warning threshold for unknown credits */
   unknownCreditsWarnThreshold: number;
-  
-  /** Whether active templates require unknown credits = 0 */
   unknownCreditsActiveHardZero: boolean;
-  
-  /** Whether missing caps are allowed in draft/pending_review */
   allowMissingCapsInDraft: boolean;
-  
-  /** Multiplier for pending_review threshold */
   pendingReviewThresholdMultiplier: number;
-  
-  /** Whether overrides were applied (vs pure defaults) */
   hasOverrides: boolean;
-  
-  /** Source institution code (if overrides applied) */
   sourceInstitution: string | null;
 }
 
 // ============================================
-// DEFAULT VALUES
+// DEFAULT VALUES (for UI display only)
 // ============================================
 
 export const DEFAULT_INVARIANT_CONFIG: Omit<EffectiveInvariantConfig, 'hasOverrides' | 'sourceInstitution'> = {
@@ -148,28 +110,14 @@ export const DEFAULT_INVARIANT_CONFIG: Omit<EffectiveInvariantConfig, 'hasOverri
 };
 
 // ============================================
-// PARSER & VALIDATOR
+// SIMPLE PARSE (for display, not computation)
 // ============================================
 
 /**
- * Clamp a number to a bounded range
+ * Parse override settings from raw JSON for display
+ * NOTE: This is for UI display only. Edge computes effective config.
  */
-function clamp(value: number, min: number, max: number): number {
-  return Math.max(min, Math.min(max, value));
-}
-
-/**
- * Safely parse and validate override settings from JSON
- * 
- * - Validates version
- * - Clamps numeric thresholds into safe bounds
- * - Ignores unknown keys (forward compatible)
- * - Returns empty object if invalid
- */
-export function parseOverrideSettings(
-  raw: unknown
-): InstitutionOverrideSettings {
-  // Default empty settings
+export function parseOverrideSettings(raw: unknown): InstitutionOverrideSettings {
   const empty: InstitutionOverrideSettings = { version: OVERRIDE_SCHEMA_VERSION };
   
   if (!raw || typeof raw !== 'object') {
@@ -178,45 +126,23 @@ export function parseOverrideSettings(
   
   const obj = raw as Record<string, unknown>;
   
-  // Version check (allow missing for backwards compat, but normalize)
+  // Version check
   const version = obj.version;
   if (version && version !== OVERRIDE_SCHEMA_VERSION) {
-    // Future: could add migration logic here
-    console.warn(`Unknown override schema version: ${version}, using defaults`);
-    return empty;
+    console.warn(`Unknown override schema version: ${version}, displaying as-is`);
   }
   
-  const result: InstitutionOverrideSettings = { version: OVERRIDE_SCHEMA_VERSION };
-  
-  // unknownCreditsWarnThreshold
-  if (typeof obj.unknownCreditsWarnThreshold === 'number') {
-    result.unknownCreditsWarnThreshold = clamp(
-      obj.unknownCreditsWarnThreshold,
-      OVERRIDE_BOUNDS.unknownCreditsWarnThreshold.min,
-      OVERRIDE_BOUNDS.unknownCreditsWarnThreshold.max
-    );
-  }
-  
-  // unknownCreditsActiveHardZero
-  if (typeof obj.unknownCreditsActiveHardZero === 'boolean') {
-    result.unknownCreditsActiveHardZero = obj.unknownCreditsActiveHardZero;
-  }
-  
-  // allowMissingCapsInDraft
-  if (typeof obj.allowMissingCapsInDraft === 'boolean') {
-    result.allowMissingCapsInDraft = obj.allowMissingCapsInDraft;
-  }
-  
-  // pendingReviewThresholdMultiplier
-  if (typeof obj.pendingReviewThresholdMultiplier === 'number') {
-    result.pendingReviewThresholdMultiplier = clamp(
-      obj.pendingReviewThresholdMultiplier,
-      OVERRIDE_BOUNDS.pendingReviewThresholdMultiplier.min,
-      OVERRIDE_BOUNDS.pendingReviewThresholdMultiplier.max
-    );
-  }
-  
-  return result;
+  return {
+    version: OVERRIDE_SCHEMA_VERSION,
+    unknownCreditsWarnThreshold: typeof obj.unknownCreditsWarnThreshold === 'number' 
+      ? obj.unknownCreditsWarnThreshold : undefined,
+    unknownCreditsActiveHardZero: typeof obj.unknownCreditsActiveHardZero === 'boolean'
+      ? obj.unknownCreditsActiveHardZero : undefined,
+    allowMissingCapsInDraft: typeof obj.allowMissingCapsInDraft === 'boolean'
+      ? obj.allowMissingCapsInDraft : undefined,
+    pendingReviewThresholdMultiplier: typeof obj.pendingReviewThresholdMultiplier === 'number'
+      ? obj.pendingReviewThresholdMultiplier : undefined,
+  };
 }
 
 /**
@@ -232,40 +158,59 @@ export function serializeOverrideSettings(
 }
 
 // ============================================
-// EFFECTIVE CONFIG RESOLVER
+// DEPRECATED - Use edge function for computation
 // ============================================
 
 /**
- * Merge override settings with defaults to get effective config
+ * @deprecated Frontend should not compute effective config.
+ * This is kept for backwards compatibility but always returns defaults.
+ * Edge functions are the source of truth.
  */
 export function mergeWithDefaults(
-  overrides: InstitutionOverrideSettings | null,
-  institutionCode: string | null
+  _overrides: InstitutionOverrideSettings | null,
+  _institutionCode: string | null
 ): EffectiveInvariantConfig {
-  if (!overrides) {
-    return {
-      ...DEFAULT_INVARIANT_CONFIG,
-      hasOverrides: false,
-      sourceInstitution: null,
-    };
-  }
-  
+  console.warn('[DEPRECATED] mergeWithDefaults called on frontend. Use edge function for effective config.');
   return {
-    unknownCreditsWarnThreshold: 
-      overrides.unknownCreditsWarnThreshold ?? DEFAULT_INVARIANT_CONFIG.unknownCreditsWarnThreshold,
-    unknownCreditsActiveHardZero:
-      overrides.unknownCreditsActiveHardZero ?? DEFAULT_INVARIANT_CONFIG.unknownCreditsActiveHardZero,
-    allowMissingCapsInDraft:
-      overrides.allowMissingCapsInDraft ?? DEFAULT_INVARIANT_CONFIG.allowMissingCapsInDraft,
-    pendingReviewThresholdMultiplier:
-      overrides.pendingReviewThresholdMultiplier ?? DEFAULT_INVARIANT_CONFIG.pendingReviewThresholdMultiplier,
-    hasOverrides: true,
-    sourceInstitution: institutionCode,
+    ...DEFAULT_INVARIANT_CONFIG,
+    hasOverrides: false,
+    sourceInstitution: null,
+  };
+}
+
+/**
+ * @deprecated Frontend should not compute effective config.
+ */
+export async function getEffectiveInvariantConfig(_params: {
+  institutionCode: string;
+  templateStatus?: string;
+}): Promise<EffectiveInvariantConfig> {
+  console.warn('[DEPRECATED] getEffectiveInvariantConfig called on frontend. Use edge function.');
+  return {
+    ...DEFAULT_INVARIANT_CONFIG,
+    hasOverrides: false,
+    sourceInstitution: null,
+  };
+}
+
+/**
+ * @deprecated Frontend should not compute effective config.
+ */
+export function getEffectiveInvariantConfigSync(_params: {
+  institutionCode: string | null;
+  templateStatus?: string;
+  overrides?: InstitutionOverrideSettings | null;
+}): EffectiveInvariantConfig {
+  console.warn('[DEPRECATED] getEffectiveInvariantConfigSync called on frontend. Use edge function.');
+  return {
+    ...DEFAULT_INVARIANT_CONFIG,
+    hasOverrides: false,
+    sourceInstitution: null,
   };
 }
 
 // ============================================
-// CACHE (simple in-memory, short TTL)
+// CACHE (for fetch operations)
 // ============================================
 
 const overrideCache = new Map<string, { data: InstitutionOverrideSettings | null; expiry: number }>();
@@ -288,9 +233,6 @@ function setCache(institutionCode: string, data: InstitutionOverrideSettings | n
   });
 }
 
-/**
- * Clear cache for an institution (call after updates)
- */
 export function clearOverrideCache(institutionCode?: string): void {
   if (institutionCode) {
     overrideCache.delete(institutionCode);
@@ -300,17 +242,15 @@ export function clearOverrideCache(institutionCode?: string): void {
 }
 
 // ============================================
-// DATA ACCESS
+// DATA ACCESS (for Admin UI)
 // ============================================
 
 /**
- * Fetch override settings for an institution
- * Returns null if no overrides configured or disabled
+ * Fetch override settings for display
  */
 export async function fetchInstitutionOverrides(
   institutionCode: string
 ): Promise<InstitutionOverrideSettings | null> {
-  // Check cache first
   const cached = getCached(institutionCode);
   if (cached !== undefined) {
     return cached;
@@ -333,59 +273,10 @@ export async function fetchInstitutionOverrides(
   return parsed;
 }
 
-/**
- * Get effective invariant configuration for an institution
- * This is the main entry point for invariant checkers
- */
-export async function getEffectiveInvariantConfig(params: {
-  institutionCode: string;
-  templateStatus?: string;
-}): Promise<EffectiveInvariantConfig> {
-  const { institutionCode, templateStatus } = params;
-  
-  const overrides = await fetchInstitutionOverrides(institutionCode);
-  const config = mergeWithDefaults(overrides, institutionCode);
-  
-  // Apply status-specific adjustments
-  if (templateStatus === 'pending_review') {
-    // Use multiplier for pending_review threshold
-    config.unknownCreditsWarnThreshold = Math.round(
-      config.unknownCreditsWarnThreshold * config.pendingReviewThresholdMultiplier
-    );
-  }
-  
-  return config;
-}
-
-/**
- * Synchronous version for when you already have the overrides loaded
- */
-export function getEffectiveInvariantConfigSync(params: {
-  institutionCode: string | null;
-  templateStatus?: string;
-  overrides?: InstitutionOverrideSettings | null;
-}): EffectiveInvariantConfig {
-  const { institutionCode, templateStatus, overrides } = params;
-  
-  const config = mergeWithDefaults(overrides ?? null, institutionCode);
-  
-  // Apply status-specific adjustments
-  if (templateStatus === 'pending_review') {
-    config.unknownCreditsWarnThreshold = Math.round(
-      config.unknownCreditsWarnThreshold * config.pendingReviewThresholdMultiplier
-    );
-  }
-  
-  return config;
-}
-
 // ============================================
 // MUTATION HELPERS
 // ============================================
 
-/**
- * Log audit failure with distinct warning for telemetry
- */
 function logAuditFailure(
   institutionCode: string,
   action: string,
@@ -401,10 +292,6 @@ function logAuditFailure(
   });
 }
 
-/**
- * Save override settings for an institution
- * Automatically creates audit log entry
- */
 export async function saveInstitutionOverrides(params: {
   institutionCode: string;
   settings: Partial<InstitutionOverrideSettings>;
@@ -414,7 +301,6 @@ export async function saveInstitutionOverrides(params: {
   const { institutionCode, settings, reason, userId } = params;
   
   try {
-    // Fetch existing settings
     const { data: existing, error: fetchError } = await dbGetOverrideSettingsAnyStatus(institutionCode);
     
     if (fetchError) {
@@ -424,7 +310,6 @@ export async function saveInstitutionOverrides(params: {
     const newOverrides = serializeOverrideSettings(settings);
     const action = existing ? 'update' : 'create';
     
-    // Upsert settings
     const { error: upsertError } = await dbUpsertOverrideSettings({
       institution_code: institutionCode,
       overrides: newOverrides as unknown as Record<string, unknown>,
@@ -436,7 +321,6 @@ export async function saveInstitutionOverrides(params: {
       return { success: false, error: upsertError.message };
     }
     
-    // Create audit entry
     const { error: auditError } = await dbInsertOverrideAudit({
       institution_code: institutionCode,
       action,
@@ -447,11 +331,9 @@ export async function saveInstitutionOverrides(params: {
     });
     
     if (auditError) {
-      // Log but don't fail the operation
       logAuditFailure(institutionCode, action, reason, auditError);
     }
     
-    // Clear cache
     clearOverrideCache(institutionCode);
     
     return { success: true };
@@ -460,9 +342,6 @@ export async function saveInstitutionOverrides(params: {
   }
 }
 
-/**
- * Disable overrides for an institution
- */
 export async function disableInstitutionOverrides(params: {
   institutionCode: string;
   reason: string;
@@ -471,7 +350,6 @@ export async function disableInstitutionOverrides(params: {
   const { institutionCode, reason, userId } = params;
   
   try {
-    // Fetch existing settings
     const { data: existing, error: fetchError } = await dbGetOverrideSettingsAnyStatus(institutionCode);
     
     if (fetchError) {
@@ -482,7 +360,6 @@ export async function disableInstitutionOverrides(params: {
       return { success: false, error: 'No override settings found' };
     }
     
-    // Update status to disabled
     const { error: updateError } = await dbUpdateOverrideStatus(
       institutionCode,
       'disabled',
@@ -493,7 +370,6 @@ export async function disableInstitutionOverrides(params: {
       return { success: false, error: updateError.message };
     }
     
-    // Create audit entry
     const { error: auditError } = await dbInsertOverrideAudit({
       institution_code: institutionCode,
       action: 'disable',
@@ -507,7 +383,6 @@ export async function disableInstitutionOverrides(params: {
       logAuditFailure(institutionCode, 'disable', reason, auditError);
     }
     
-    // Clear cache
     clearOverrideCache(institutionCode);
     
     return { success: true };
@@ -516,9 +391,10 @@ export async function disableInstitutionOverrides(params: {
   }
 }
 
-/**
- * Fetch audit log for an institution
- */
+// ============================================
+// AUDIT LOG ACCESS
+// ============================================
+
 export async function fetchOverrideAuditLog(
   institutionCode: string,
   limit = 50
@@ -530,11 +406,10 @@ export async function fetchOverrideAuditLog(
     return [];
   }
   
-  // Transform DB rows to typed entries
-  return data.map((row: OverrideAuditRowDb): InstitutionOverrideAuditEntry => ({
+  return (data ?? []).map((row: OverrideAuditRowDb) => ({
     id: row.id,
     institution_code: row.institution_code,
-    action: row.action,
+    action: row.action as 'create' | 'update' | 'disable' | 'enable',
     old_overrides: row.old_overrides ? parseOverrideSettings(row.old_overrides) : null,
     new_overrides: row.new_overrides ? parseOverrideSettings(row.new_overrides) : null,
     reason: row.reason,
@@ -543,9 +418,6 @@ export async function fetchOverrideAuditLog(
   }));
 }
 
-/**
- * Fetch all institutions with overrides configured
- */
 export async function fetchAllInstitutionOverrides(): Promise<InstitutionOverrideRow[]> {
   const { data, error } = await dbListAllOverrideSettings();
   
@@ -554,12 +426,11 @@ export async function fetchAllInstitutionOverrides(): Promise<InstitutionOverrid
     return [];
   }
   
-  // Transform DB rows to typed entries
-  return data.map((row: OverrideSettingsRowDb): InstitutionOverrideRow => ({
+  return (data ?? []).map((row: OverrideSettingsRowDb) => ({
     id: row.id,
     institution_code: row.institution_code,
     overrides: parseOverrideSettings(row.overrides),
-    status: row.status,
+    status: row.status as 'active' | 'disabled',
     updated_by: row.updated_by,
     updated_at: row.updated_at,
     created_at: row.created_at,
