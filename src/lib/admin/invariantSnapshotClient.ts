@@ -279,3 +279,153 @@ export async function rerunTemplateInvariants(
     };
   }
 }
+
+// ============================================
+// BULK RERUN
+// ============================================
+
+export interface BulkRerunRequest {
+  decision: 'block' | 'warn';
+  institution_code?: string;
+  track?: string;
+  template_ids?: string[];
+}
+
+export interface BulkRerunJobResponse {
+  job_id: string;
+  total: number;
+  status: string;
+  filter: Record<string, unknown>;
+}
+
+export interface BulkRerunJobStatus {
+  job: {
+    id: string;
+    created_at: string;
+    status: string;
+    filter: Record<string, unknown>;
+    total: number;
+    processed: number;
+    succeeded: number;
+    failed: number;
+    started_at: string | null;
+    completed_at: string | null;
+  };
+  progress_percent: number;
+  recent_failures: Array<{
+    id: string;
+    template_id: string;
+    last_error: string | null;
+  }>;
+}
+
+export interface WorkerResponse {
+  job_id: string;
+  processed: number;
+  succeeded: number;
+  failed: number;
+  remaining: number;
+  status: 'processing' | 'completed' | 'job_not_found' | 'no_work';
+}
+
+/**
+ * Create a bulk rerun job (admin-only)
+ */
+export async function createBulkRerunJob(
+  params: BulkRerunRequest,
+  signal?: AbortSignal
+): Promise<{ data: BulkRerunJobResponse | null; error: SnapshotClientError | null }> {
+  try {
+    const { headers, error: authError } = await getAuthHeaders(signal);
+    if (authError) return { data: null, error: authError };
+
+    const confirm = params.decision === 'block' 
+      ? 'BULK_RERUN_BLOCK_TEMPLATES' 
+      : 'BULK_RERUN_WARN_TEMPLATES';
+
+    const url = getEdgeFunctionUrl('bulk-rerun-templates');
+
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { ...headers!, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...params, confirm }),
+      signal,
+    });
+
+    if (!res.ok) {
+      const errBody = await res.json().catch(() => ({}));
+      return { data: null, error: parseHttpError(res, errBody) };
+    }
+
+    return { data: await res.json(), error: null };
+  } catch (err) {
+    if (err instanceof Error && err.name === 'AbortError') {
+      return { data: null, error: { type: 'aborted', message: 'Request aborted', status: 0 } };
+    }
+    return { data: null, error: { type: 'network', message: err instanceof Error ? err.message : 'Failed to connect', status: 0 } };
+  }
+}
+
+/**
+ * Get bulk rerun job status (admin-only)
+ */
+export async function getBulkRerunJob(
+  jobId: string,
+  signal?: AbortSignal
+): Promise<{ data: BulkRerunJobStatus | null; error: SnapshotClientError | null }> {
+  try {
+    const { headers, error: authError } = await getAuthHeaders(signal);
+    if (authError) return { data: null, error: authError };
+
+    const url = `${getEdgeFunctionUrl('get-bulk-rerun-job')}?job_id=${jobId}`;
+
+    const res = await fetch(url, { method: 'GET', headers: headers!, signal });
+
+    if (!res.ok) {
+      const errBody = await res.json().catch(() => ({}));
+      return { data: null, error: parseHttpError(res, errBody) };
+    }
+
+    return { data: await res.json(), error: null };
+  } catch (err) {
+    if (err instanceof Error && err.name === 'AbortError') {
+      return { data: null, error: { type: 'aborted', message: 'Request aborted', status: 0 } };
+    }
+    return { data: null, error: { type: 'network', message: err instanceof Error ? err.message : 'Failed to connect', status: 0 } };
+  }
+}
+
+/**
+ * Trigger bulk rerun worker to process batch (admin-only)
+ */
+export async function triggerBulkRerunWorker(
+  jobId: string,
+  batchSize: number = 10,
+  signal?: AbortSignal
+): Promise<{ data: WorkerResponse | null; error: SnapshotClientError | null }> {
+  try {
+    const { headers, error: authError } = await getAuthHeaders(signal);
+    if (authError) return { data: null, error: authError };
+
+    const url = getEdgeFunctionUrl('bulk-rerun-worker');
+
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { ...headers!, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ job_id: jobId, batch_size: batchSize }),
+      signal,
+    });
+
+    if (!res.ok) {
+      const errBody = await res.json().catch(() => ({}));
+      return { data: null, error: parseHttpError(res, errBody) };
+    }
+
+    return { data: await res.json(), error: null };
+  } catch (err) {
+    if (err instanceof Error && err.name === 'AbortError') {
+      return { data: null, error: { type: 'aborted', message: 'Request aborted', status: 0 } };
+    }
+    return { data: null, error: { type: 'network', message: err instanceof Error ? err.message : 'Failed to connect', status: 0 } };
+  }
+}

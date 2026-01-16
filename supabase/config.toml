@@ -99,5 +99,15 @@ verify_jwt = false
 [functions.rerun-template-invariants]
 verify_jwt = false
 
+# Bulk rerun system
+[functions.bulk-rerun-templates]
+verify_jwt = false
+
+[functions.bulk-rerun-worker]
+verify_jwt = false
+
+[functions.get-bulk-rerun-job]
+verify_jwt = false
+
 # promote-policy-pack uses default verify_jwt = true
 # Authorization is handled inside the function via role checks

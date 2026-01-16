@@ -1356,6 +1356,98 @@ export type Database = {
           },
         ]
       }
+      bulk_rerun_jobs: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          created_by: string
+          error: string | null
+          failed: number
+          filter: Json
+          id: string
+          last_heartbeat_at: string | null
+          processed: number
+          started_at: string | null
+          status: string
+          succeeded: number
+          total: number
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          created_by: string
+          error?: string | null
+          failed?: number
+          filter?: Json
+          id?: string
+          last_heartbeat_at?: string | null
+          processed?: number
+          started_at?: string | null
+          status?: string
+          succeeded?: number
+          total?: number
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string
+          error?: string | null
+          failed?: number
+          filter?: Json
+          id?: string
+          last_heartbeat_at?: string | null
+          processed?: number
+          started_at?: string | null
+          status?: string
+          succeeded?: number
+          total?: number
+        }
+        Relationships: []
+      }
+      bulk_rerun_queue: {
+        Row: {
+          attempts: number
+          completed_at: string | null
+          id: string
+          job_id: string
+          last_error: string | null
+          snapshot_id: string | null
+          started_at: string | null
+          status: string
+          template_id: string
+        }
+        Insert: {
+          attempts?: number
+          completed_at?: string | null
+          id?: string
+          job_id: string
+          last_error?: string | null
+          snapshot_id?: string | null
+          started_at?: string | null
+          status?: string
+          template_id: string
+        }
+        Update: {
+          attempts?: number
+          completed_at?: string | null
+          id?: string
+          job_id?: string
+          last_error?: string | null
+          snapshot_id?: string | null
+          started_at?: string | null
+          status?: string
+          template_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bulk_rerun_queue_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "bulk_rerun_jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       canonical_requirement_map: {
         Row: {
           canon_req_code: string
@@ -5955,6 +6047,7 @@ export type Database = {
       }
       invariant_decision_snapshots: {
         Row: {
+          bulk_job_id: string | null
           created_at: string
           data_source: string
           decision: string
@@ -5970,6 +6063,7 @@ export type Database = {
           violation_codes: string[]
         }
         Insert: {
+          bulk_job_id?: string | null
           created_at?: string
           data_source?: string
           decision: string
@@ -5985,6 +6079,7 @@ export type Database = {
           violation_codes?: string[]
         }
         Update: {
+          bulk_job_id?: string | null
           created_at?: string
           data_source?: string
           decision?: string
@@ -5999,7 +6094,15 @@ export type Database = {
           track?: string | null
           violation_codes?: string[]
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "invariant_decision_snapshots_bulk_job_id_fkey"
+            columns: ["bulk_job_id"]
+            isOneToOne: false
+            referencedRelation: "bulk_rerun_jobs"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       job_outcomes: {
         Row: {
