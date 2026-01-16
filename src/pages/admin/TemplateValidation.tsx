@@ -119,12 +119,14 @@ const TemplateValidation: React.FC = () => {
     const controller = new AbortController();
     abortRef.current = controller;
 
+    // Clear previous snapshot data immediately when starting new fetch
+    // This ensures "Loaded snapshots: X / Y" is always accurate for current page
+    setSnapshotMap({});
     setSnapshotsLoading(true);
     setSnapshotError(null);
     
     // Only request snapshots for templates visible on this page
-    // When using template_ids, omit limit/offset to get all matching IDs
-    // This avoids edge cases where paging could hide results
+    // When using template_ids, set high limit to get all matching IDs
     const templateIds = visibleTemplates.map(r => r.templateId);
     
     const params: ListSnapshotsParams = {
