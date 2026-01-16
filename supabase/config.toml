@@ -79,5 +79,9 @@ verify_jwt = false
 [functions.firecrawl-search]
 verify_jwt = false
 
+# Admin-only effective config preview
+[functions.get-effective-invariant-config]
+verify_jwt = false
+
 # promote-policy-pack uses default verify_jwt = true
 # Authorization is handled inside the function via role checks
