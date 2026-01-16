@@ -496,6 +496,9 @@ function checkUnknownCreditsByStatus(
 ): InvariantViolation | null {
   const unknown = computed.unknownCredits;
   
+  // No unknowns = no issue
+  if (unknown === 0) return null;
+  
   // Find affected courses for debugging
   const getAffectedCourses = (): string[] => {
     const affected: string[] = [];
@@ -509,7 +512,7 @@ function checkUnknownCreditsByStatus(
   };
 
   // Active templates: unknown > 0 is a hard fail
-  if (templateStatus === 'active' && unknown > 0) {
+  if (templateStatus === 'active') {
     return {
       type: 'INV_UNKNOWN_CREDITS_NONZERO_ACTIVE',
       severity: 'error',
@@ -524,43 +527,60 @@ function checkUnknownCreditsByStatus(
   }
 
   // Non-active templates: unknown > threshold is a warning
-  // (the original INV_UNKNOWN_SOURCE still fires as error for any unknown > 0,
-  // but this provides threshold-aware warning for pending_review templates)
+  if (templateStatus && templateStatus !== 'active' && unknown > warnThreshold) {
+    return {
+      type: 'INV_UNKNOWN_SOURCE',
+      severity: 'warning',
+      message: `Unknown credits (${unknown}) exceed warning threshold (${warnThreshold})`,
+      affectedCourses: getAffectedCourses(),
+      metrics: {
+        unknownCredits: unknown,
+        warnThreshold,
+        templateStatus,
+        unknownSources: computed.unknownSources,
+      },
+    };
+  }
   
   return null;
 }
 
 // Original check - now only runs for source provenance tracking
 // Status-aware gating is handled by checkUnknownCreditsByStatus
+// For active templates: return null (let INV_UNKNOWN_CREDITS_NONZERO_ACTIVE handle the hard fail)
+// For non-active templates: warning for debugging/tracking purposes
 function checkUnknownSources(items: TemplateItem[], computed: ComputedMetrics, templateStatus?: string): InvariantViolation | null {
-  // If status is provided and not active, downgrade to warning only above threshold
-  // For active or unknown status, keep as error
-  if (computed.unknownCredits > 0) {
-    const affectedCourses: string[] = [];
-    for (const item of items) {
-      const classification = classifySource(item.source, item.provider);
-      if (classification.isUnknown) {
-        affectedCourses.push(item.course_code || item.course_id || `unknown-${item.source}`);
-      }
+  // No unknowns = no issue
+  if (computed.unknownCredits === 0) return null;
+  
+  // For active templates, skip this check entirely to avoid double-fail spam
+  // checkUnknownCreditsByStatus already emits INV_UNKNOWN_CREDITS_NONZERO_ACTIVE
+  if (templateStatus === 'active') return null;
+  
+  // For non-active templates (or unknown status), emit as warning for provenance tracking
+  const affectedCourses: string[] = [];
+  for (const item of items) {
+    const classification = classifySource(item.source, item.provider);
+    if (classification.isUnknown) {
+      affectedCourses.push(item.course_code || item.course_id || `unknown-${item.source}`);
     }
-    
-    // For pending_review templates, this is a warning (they can have unknowns while being resolved)
-    // For active templates, INV_UNKNOWN_CREDITS_NONZERO_ACTIVE handles the hard fail
-    const severity: InvariantSeverity = (templateStatus && templateStatus !== 'active') ? 'warning' : 'error';
-    
-    return {
-      type: 'INV_UNKNOWN_SOURCE',
-      severity,
-      message: `${computed.unknownCredits} credits have unknown source type (${computed.unknownSources.join(', ')})`,
-      affectedCourses,
-      metrics: {
-        unknownCredits: computed.unknownCredits,
-        unknownSources: computed.unknownSources,
-        templateStatus,
-      },
-    };
   }
-  return null;
+  
+  // Unknown/no status: treat as error (conservative - forces status to be passed)
+  // Non-active with status: warning only (pending_review templates can have unknowns while being resolved)
+  const severity: InvariantSeverity = templateStatus ? 'warning' : 'error';
+  
+  return {
+    type: 'INV_UNKNOWN_SOURCE',
+    severity,
+    message: `${computed.unknownCredits} credits have unknown source type (${computed.unknownSources.join(', ')})`,
+    affectedCourses,
+    metrics: {
+      unknownCredits: computed.unknownCredits,
+      unknownSources: computed.unknownSources,
+      templateStatus,
+    },
+  };
 }
 
 function checkTotalCredits(
