@@ -40,9 +40,12 @@ import { auditAllTemplates, generateAuditReport, getFixSuggestions, TemplateAudi
 import { ADMIN_ROUTES } from '@/lib/invariant/actionableFixes';
 import { 
   listInvariantSnapshots, 
+  rerunTemplateInvariants,
   type SnapshotSummary,
   type ListSnapshotsParams 
 } from '@/lib/admin/invariantSnapshotClient';
+import { useToast } from '@/hooks/use-toast';
+import { RotateCcw } from 'lucide-react';
 
 // ============================================
 // CONSTANTS
@@ -71,7 +74,9 @@ const TemplateValidation: React.FC = () => {
   const [snapshotsLoading, setSnapshotsLoading] = useState(false);
   const [snapshotError, setSnapshotError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [rerunLoading, setRerunLoading] = useState<Record<string, boolean>>({});
   const abortRef = useRef<AbortController | null>(null);
+  const { toast } = useToast();
 
   // URL-driven state
   const auditFilter = (searchParams.get('status') as AuditFilter) || 'all';
@@ -199,6 +204,43 @@ const TemplateValidation: React.FC = () => {
       }
       return next;
     });
+  };
+
+  // Handle rerun invariants for a specific template
+  const handleRerun = async (templateId: string) => {
+    setRerunLoading(prev => ({ ...prev, [templateId]: true }));
+    
+    try {
+      const result = await rerunTemplateInvariants(templateId);
+      
+      if (result.error) {
+        toast({
+          title: 'Rerun failed',
+          description: result.error.message,
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      if (result.data) {
+        toast({
+          title: `Invariants: ${result.data.decision.toUpperCase()}`,
+          description: `${result.data.violation_codes.length} violations found`,
+          variant: result.data.decision === 'block' ? 'destructive' : 'default',
+        });
+
+        // Refresh snapshots for visible templates
+        await fetchSnapshotsForVisibleTemplates();
+      }
+    } catch (err) {
+      toast({
+        title: 'Rerun failed',
+        description: err instanceof Error ? err.message : 'Unknown error',
+        variant: 'destructive',
+      });
+    } finally {
+      setRerunLoading(prev => ({ ...prev, [templateId]: false }));
+    }
   };
   
   const downloadReport = () => {
@@ -458,6 +500,8 @@ const TemplateValidation: React.FC = () => {
                 snapshotsLoading={snapshotsLoading}
                 isExpanded={expandedTemplates.has(result.templateId)}
                 onToggle={() => toggleExpanded(result.templateId)}
+                onRerun={() => handleRerun(result.templateId)}
+                rerunLoading={rerunLoading[result.templateId] || false}
               />
             ))
           )}
@@ -506,6 +550,8 @@ interface TemplateRowProps {
   snapshotsLoading: boolean;
   isExpanded: boolean;
   onToggle: () => void;
+  onRerun: () => void;
+  rerunLoading: boolean;
 }
 
 function InvariantBadge({ 
@@ -570,7 +616,9 @@ const TemplateRow: React.FC<TemplateRowProps> = ({
   snapshot, 
   snapshotsLoading,
   isExpanded, 
-  onToggle 
+  onToggle,
+  onRerun,
+  rerunLoading,
 }) => {
   const suggestions = getFixSuggestions(result);
   const m = result.validation.metrics;
@@ -643,17 +691,35 @@ const TemplateRow: React.FC<TemplateRowProps> = ({
       
       <CollapsibleContent>
         <div className="ml-8 mt-2 p-4 bg-background border rounded-lg space-y-4">
-          {/* Invariant Drilldown Link */}
+          {/* Invariant Actions */}
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium">Invariant Details</span>
-            <Button variant="outline" size="sm" asChild>
-              <Link to={drilldownUrl}>
-                <ExternalLink className="h-3 w-3 mr-1.5" />
-                {snapshot?.decision === 'block' || snapshot?.decision === 'warn' 
-                  ? 'Why blocked?' 
-                  : 'View Invariants'}
-              </Link>
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onRerun();
+                }}
+                disabled={rerunLoading || snapshotsLoading}
+              >
+                {rerunLoading ? (
+                  <Loader2 className="h-3 w-3 mr-1.5 animate-spin" />
+                ) : (
+                  <RotateCcw className="h-3 w-3 mr-1.5" />
+                )}
+                Re-run
+              </Button>
+              <Button variant="outline" size="sm" asChild>
+                <Link to={drilldownUrl}>
+                  <ExternalLink className="h-3 w-3 mr-1.5" />
+                  {snapshot?.decision === 'block' || snapshot?.decision === 'warn' 
+                    ? 'Why blocked?' 
+                    : 'View Invariants'}
+                </Link>
+              </Button>
+            </div>
           </div>
 
           {/* Metrics */}
