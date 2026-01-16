@@ -7,6 +7,10 @@ import {
   computeEffectiveThreshold,
   type EffectiveInvariantConfig,
 } from '../_shared/institutionOverrides.ts';
+import {
+  writeInvariantDecisionSnapshot,
+  buildSnapshotEffectiveConfig,
+} from '../_shared/invariantDecisionSnapshot.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -729,6 +733,20 @@ async function generateAndWriteTemplate(
       run_source: 'worker',
       report: invariantReport,
     }));
+
+    // v1.5: Write invariant decision snapshot for audit trail
+    // Uses the effective config actually used for this template's evaluation
+    const snapshotEffectiveConfig = buildSnapshotEffectiveConfig(invariantConfigBase, effectiveWarnThreshold);
+    await writeInvariantDecisionSnapshot(supabase, {
+      job_id: null, // Worker doesn't track job_id at this level
+      template_id: upsertedRow.id,
+      institution_code: program.institution_code,
+      program_catalog_id: program.id,
+      track,
+      template_status: templateStatus,
+      effective_config: snapshotEffectiveConfig,
+      violations: [...invariantReport.errors, ...invariantReport.warnings],
+    });
 
     console.log(`[${workerId}] Invariant check: ${invariantReport.summary}`);
 

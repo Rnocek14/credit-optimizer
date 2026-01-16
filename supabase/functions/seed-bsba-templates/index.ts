@@ -14,6 +14,10 @@ import {
   computeEffectiveThreshold,
   type EffectiveInvariantConfig,
 } from '../_shared/institutionOverrides.ts';
+import {
+  writeInvariantDecisionSnapshot,
+  buildSnapshotEffectiveConfig,
+} from '../_shared/invariantDecisionSnapshot.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -934,6 +938,20 @@ async function generateTemplatesFromPack(
     if (auditError) {
       console.warn(`[seed-bsba-templates] Failed to insert invariant audit: ${auditError.message}`);
     }
+    
+    // v1.5: Write invariant decision snapshot for audit trail
+    // Uses the effective config actually used for this template's evaluation
+    const snapshotEffectiveConfig = buildSnapshotEffectiveConfig(invariantConfigBase, effectiveWarnThreshold);
+    await writeInvariantDecisionSnapshot(supabase, {
+      job_id: jobId,
+      template_id: realTemplateId,
+      institution_code: institutionCode,
+      program_catalog_id: null, // degree_templates don't have program_catalog_id
+      track: trackType,
+      template_status: templateStatus,
+      effective_config: snapshotEffectiveConfig,
+      violations: [...invariantReport.errors, ...invariantReport.warnings],
+    });
     
     // If invariants failed, downgrade template status
     if (!invariantReport.ok && templateStatus === 'active') {
