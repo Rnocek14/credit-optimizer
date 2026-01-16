@@ -46,11 +46,11 @@ export function evaluateInvariants(
 ): InvariantResult {
   const violations: InvariantViolation[] = [];
 
-  // Helper to add violations with explicit severity type
+  // Helper to add violations - ViolationSeverity type constrains values
   const fail = (code: InvariantCode, message: string, details?: JsonRecord) =>
-    violations.push({ code, severity: 'fail' as const, message, details });
+    violations.push({ code, severity: 'fail', message, details });
   const warn = (code: InvariantCode, message: string, details?: JsonRecord) =>
-    violations.push({ code, severity: 'warn' as const, message, details });
+    violations.push({ code, severity: 'warn', message, details });
 
   // ============================================
   // A) NEGATIVE / NaN CREDITS
