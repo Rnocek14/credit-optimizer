@@ -79,5 +79,5 @@ verify_jwt = false
 [functions.firecrawl-search]
 verify_jwt = false
 
-[functions.promote-policy-pack]
-verify_jwt = false
+# promote-policy-pack uses default verify_jwt = true
+# Authorization is handled inside the function via role checks

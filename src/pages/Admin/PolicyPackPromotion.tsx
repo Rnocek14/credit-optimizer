@@ -26,25 +26,20 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
+// Interface matches v_policy_pack_promotion_candidates view
 interface PromotionCandidate {
   pack_id: string;
-  institution_code: string;
-  institution_name: string | null;
-  program_code: string | null;
-  degree_level: string | null;
+  institution: string;
   status: string;
+  confidence_score: number;
   has_ground_truth: boolean;
-  confidence_score: number | null;
-  catalog_year: string | null;
+  missing_critical: string[] | null;
   gate_status: 'green' | 'yellow' | 'red';
   is_promotable: boolean;
-  is_auto_promotable: boolean;
-  promotion_reason: string;
-  missing_critical: string[] | null;
-  templates_count: number;
-  active_templates_count: number;
-  stale: boolean | null;
   blocked_reason: string | null;
+  updated_at: string;
+  active_templates: number;
+  pending_templates: number;
 }
 
 function GateStatusBadge({ status }: { status: 'green' | 'yellow' | 'red' }) {
@@ -74,11 +69,10 @@ export default function PolicyPackPromotion() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('v_policy_pack_promotion_candidates')
-        .select('*')
-        .order('completeness_score', { ascending: false });
+        .select('*');
       
       if (error) throw error;
-      return data as PromotionCandidate[];
+      return (data ?? []) as PromotionCandidate[];
     },
   });
 
@@ -208,22 +202,17 @@ export default function PolicyPackPromotion() {
                   <div className="flex items-center gap-4">
                     <div>
                       <div className="font-medium flex items-center gap-2">
-                        {candidate.institution_name || candidate.institution_code}
-                        {candidate.stale && (
-                          <Badge variant="outline" className="text-amber-600 border-amber-200">
-                            Stale
-                          </Badge>
-                        )}
+                        {candidate.institution}
                       </div>
                       <div className="text-sm text-muted-foreground flex items-center gap-2">
-                        <span>{candidate.program_code || 'All Programs'}</span>
-                        <span>•</span>
-                        <span>{candidate.degree_level}</span>
-                        {candidate.catalog_year && (
-                          <>
-                            <span>•</span>
-                            <span>{candidate.catalog_year}</span>
-                          </>
+                        {candidate.missing_critical && candidate.missing_critical.length > 0 && (
+                          <span className="text-red-600">
+                            Missing: {candidate.missing_critical.slice(0, 2).join(', ')}
+                            {candidate.missing_critical.length > 2 && ` +${candidate.missing_critical.length - 2} more`}
+                          </span>
+                        )}
+                        {candidate.blocked_reason && (
+                          <span className="text-red-600">Blocked: {candidate.blocked_reason}</span>
                         )}
                       </div>
                     </div>
@@ -254,7 +243,7 @@ export default function PolicyPackPromotion() {
                     {/* Templates Count */}
                     <div className="text-right min-w-[60px]">
                       <div className="text-sm font-medium">
-                        {candidate.active_templates_count}/{candidate.templates_count}
+                        {candidate.active_templates}/{candidate.active_templates + candidate.pending_templates}
                       </div>
                       <div className="text-xs text-muted-foreground">Templates</div>
                     </div>
@@ -305,10 +294,10 @@ export default function PolicyPackPromotion() {
             </AlertDialogTitle>
             <AlertDialogDescription className="space-y-2">
               <p>
-                You are promoting <strong>{confirmPack?.institution_name || confirmPack?.institution_code}</strong> with a <strong>yellow gate</strong>.
+                You are promoting <strong>{confirmPack?.institution}</strong> with a <strong>yellow gate</strong>.
               </p>
               <p className="text-amber-600">
-                Reason: {confirmPack?.promotion_reason}
+                This pack is missing ground truth verification or has incomplete policy data.
               </p>
               <p>
                 Templates generated from this pack will be set to <strong>pending_review</strong> and will not appear in the marketplace until manually approved.
