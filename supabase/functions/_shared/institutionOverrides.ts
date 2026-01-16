@@ -1,13 +1,16 @@
 /**
  * Institution Override Settings - Edge Function Helper
  * 
- * ⚠️ SOURCE OF TRUTH for override logic.
- * The frontend version (src/lib/invariant/institutionOverrides.ts) MUST stay in sync.
- * If you change types/bounds/defaults here, update the frontend copy.
+ * CANONICAL SOURCE OF TRUTH for override parsing/merge logic.
  * 
- * Edge-function-compatible version of the override config resolver.
- * This file can be imported by edge functions to fetch per-institution
- * invariant thresholds without importing browser-specific code.
+ * This file contains:
+ * 1. Pure functions (parseOverrideSettings, mergeWithDefaults, applyTemplateStatus)
+ *    - No Supabase client dependency
+ *    - Can be copied verbatim to frontend if needed
+ * 2. Edge-function-specific DB fetcher (getEffectiveInvariantConfig)
+ * 
+ * Frontend version (src/lib/invariant/institutionOverrides.ts) should import
+ * the pure functions OR keep them in sync manually with CI checks.
  * 
  * @version 1.0.0
  */
@@ -15,7 +18,7 @@
 import { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1';
 
 // ============================================
-// TYPES (duplicated from frontend for edge functions)
+// PURE TYPES & CONSTANTS (NO DEPENDENCIES)
 // ============================================
 
 export const OVERRIDE_SCHEMA_VERSION = '1.0.0' as const;
@@ -43,7 +46,7 @@ export interface EffectiveInvariantConfig {
 }
 
 // ============================================
-// DEFAULTS
+// PURE DEFAULTS (NO DEPENDENCIES)
 // ============================================
 
 export const DEFAULT_INVARIANT_CONFIG: Omit<EffectiveInvariantConfig, 'hasOverrides' | 'sourceInstitution'> = {
@@ -54,13 +57,18 @@ export const DEFAULT_INVARIANT_CONFIG: Omit<EffectiveInvariantConfig, 'hasOverri
 };
 
 // ============================================
-// PARSER
+// PURE FUNCTIONS (NO DEPENDENCIES)
+// These can be copied to frontend or shared via build
 // ============================================
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
 }
 
+/**
+ * Safely parse and validate override settings from JSON
+ * PURE: No external dependencies
+ */
 export function parseOverrideSettings(
   raw: unknown
 ): InstitutionOverrideSettings {
@@ -106,11 +114,11 @@ export function parseOverrideSettings(
   return result;
 }
 
-// ============================================
-// MERGE LOGIC
-// ============================================
-
-function mergeWithDefaults(
+/**
+ * Merge override settings with defaults
+ * PURE: No external dependencies
+ */
+export function mergeWithDefaults(
   overrides: InstitutionOverrideSettings | null,
   institutionCode: string | null
 ): EffectiveInvariantConfig {
@@ -136,31 +144,56 @@ function mergeWithDefaults(
   };
 }
 
+/**
+ * Compute effective threshold for a specific template status
+ * PURE: No external dependencies
+ * 
+ * Use this in loops to avoid re-fetching from DB per template.
+ * 
+ * @param baseConfig - Config fetched once per institution (without status adjustment)
+ * @param templateStatus - Actual template status (active, pending_review, etc.)
+ * @returns Adjusted unknownCreditsWarnThreshold
+ */
+export function computeEffectiveThreshold(
+  baseConfig: EffectiveInvariantConfig,
+  templateStatus: string | undefined
+): number {
+  if (templateStatus === 'pending_review') {
+    return Math.round(
+      baseConfig.unknownCreditsWarnThreshold * baseConfig.pendingReviewThresholdMultiplier
+    );
+  }
+  return baseConfig.unknownCreditsWarnThreshold;
+}
+
 // ============================================
-// EDGE FUNCTION CONFIG FETCHER
+// RAW DB ROW TYPE (for fetch result)
+// ============================================
+
+interface OverrideSettingsRowRaw {
+  overrides: unknown;
+  status: string;
+}
+
+// ============================================
+// EDGE FUNCTION DB FETCHER
 // ============================================
 
 /**
- * Fetch effective invariant configuration for an institution.
- * This is the main entry point for edge functions.
+ * Fetch RAW override settings from DB for an institution.
+ * Returns parsed settings without status-specific adjustments.
  * 
- * IMPORTANT: Call this ONCE per institution per job, then pass config down.
- * Do NOT call inside inner loops.
+ * IMPORTANT: Call this ONCE per institution per job.
+ * Then use computeEffectiveThreshold() per template in loops.
  * 
  * @param supabase - Supabase client (passed from edge function)
  * @param institutionCode - Institution to fetch overrides for
- * @param templateStatus - Template status for multiplier adjustment
- * @returns Effective configuration with defaults merged
+ * @returns Base config WITHOUT templateStatus adjustment
  */
-export async function getEffectiveInvariantConfig(
+export async function fetchInstitutionOverridesBase(
   supabase: SupabaseClient,
-  params: {
-    institutionCode: string;
-    templateStatus?: string;
-  }
+  institutionCode: string
 ): Promise<EffectiveInvariantConfig> {
-  const { institutionCode, templateStatus } = params;
-  
   try {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data, error } = await (supabase as any)
@@ -180,7 +213,6 @@ export async function getEffectiveInvariantConfig(
     }
     
     if (!data) {
-      // No overrides configured - use defaults
       return {
         ...DEFAULT_INVARIANT_CONFIG,
         hasOverrides: false,
@@ -188,20 +220,14 @@ export async function getEffectiveInvariantConfig(
       };
     }
     
-    const parsed = parseOverrideSettings(data.overrides);
+    const row = data as OverrideSettingsRowRaw;
+    const parsed = parseOverrideSettings(row.overrides);
     const config = mergeWithDefaults(parsed, institutionCode);
     
-    // Apply status-specific multiplier
-    if (templateStatus === 'pending_review') {
-      config.unknownCreditsWarnThreshold = Math.round(
-        config.unknownCreditsWarnThreshold * config.pendingReviewThresholdMultiplier
-      );
-    }
-    
-    console.log(`[institutionOverrides] Effective config for ${institutionCode}:`, {
+    console.log(`[institutionOverrides] Fetched base config for ${institutionCode}:`, {
       unknownCreditsWarnThreshold: config.unknownCreditsWarnThreshold,
+      unknownCreditsActiveHardZero: config.unknownCreditsActiveHardZero,
       hasOverrides: config.hasOverrides,
-      templateStatus,
     });
     
     return config;
@@ -213,4 +239,33 @@ export async function getEffectiveInvariantConfig(
       sourceInstitution: null,
     };
   }
+}
+
+/**
+ * Convenience wrapper that fetches and applies templateStatus in one call.
+ * 
+ * DEPRECATED for loops - use fetchInstitutionOverridesBase + computeEffectiveThreshold instead.
+ * This is kept for simple single-template use cases.
+ * 
+ * @param supabase - Supabase client (passed from edge function)
+ * @param params - institutionCode and optional templateStatus
+ * @returns Effective config with status adjustment already applied
+ */
+export async function getEffectiveInvariantConfig(
+  supabase: SupabaseClient,
+  params: {
+    institutionCode: string;
+    templateStatus?: string;
+  }
+): Promise<EffectiveInvariantConfig> {
+  const { institutionCode, templateStatus } = params;
+  
+  const baseConfig = await fetchInstitutionOverridesBase(supabase, institutionCode);
+  
+  // Apply status-specific multiplier
+  if (templateStatus === 'pending_review') {
+    baseConfig.unknownCreditsWarnThreshold = computeEffectiveThreshold(baseConfig, templateStatus);
+  }
+  
+  return baseConfig;
 }

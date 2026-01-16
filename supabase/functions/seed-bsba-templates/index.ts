@@ -10,7 +10,8 @@ import {
   type RawPolicyPack,
 } from '../_shared/creditInvariantChecker.ts';
 import { 
-  getEffectiveInvariantConfig,
+  fetchInstitutionOverridesBase,
+  computeEffectiveThreshold,
   type EffectiveInvariantConfig,
 } from '../_shared/institutionOverrides.ts';
 
@@ -700,13 +701,9 @@ async function generateTemplatesFromPack(
   const results: { standard?: string; altMax?: string } = {};
   const templateIds: string[] = []; // Track template UUIDs created in this run
 
-  // v1.3: Fetch institution-specific override config ONCE per institution
-  // Note: We fetch with undefined templateStatus here since actual status varies per template.
-  // The threshold multiplier for pending_review is applied later if needed.
-  const invariantConfigBase = await getEffectiveInvariantConfig(supabase, {
-    institutionCode,
-    templateStatus: undefined, // Don't apply multiplier yet - will be handled per-template
-  });
+  // v1.4: Fetch institution-specific override config ONCE per institution
+  // Then use computeEffectiveThreshold() per-template in-memory (no extra DB calls)
+  const invariantConfigBase = await fetchInstitutionOverridesBase(supabase, institutionCode);
   
   console.log(`[seed-bsba-templates] Using invariant config for ${institutionCode}:`, {
     unknownCreditsWarnThreshold: invariantConfigBase.unknownCreditsWarnThreshold,
@@ -901,11 +898,8 @@ async function generateTemplatesFromPack(
       capstone_in_residence: true, // BSBA always requires capstone in residence
     } as RawPolicyPack);
     
-    // v1.3: Calculate effective threshold based on template status
-    // Apply pending_review multiplier if applicable
-    const effectiveWarnThreshold = templateStatus === 'pending_review'
-      ? Math.round(invariantConfigBase.unknownCreditsWarnThreshold * invariantConfigBase.pendingReviewThresholdMultiplier)
-      : invariantConfigBase.unknownCreditsWarnThreshold;
+    // v1.4: Calculate effective threshold using shared helper (in-memory, no DB call)
+    const effectiveWarnThreshold = computeEffectiveThreshold(invariantConfigBase, templateStatus);
     
     const invariantReport = checkTemplateInvariants({
       template_id: realTemplateId,

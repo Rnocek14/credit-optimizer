@@ -1,11 +1,16 @@
 /**
  * Institution Override Settings
  * 
- * ⚠️ MIRROR of supabase/functions/_shared/institutionOverrides.ts (SOURCE OF TRUTH).
- * Types, bounds, and defaults MUST stay in sync with the edge function version.
- * This frontend version uses the browser Supabase client.
+ * ⚠️ THIS IS A MIRROR - CANONICAL SOURCE OF TRUTH IS:
+ *    supabase/functions/_shared/institutionOverrides.ts
  * 
- * Per-institution configuration overrides for invariant thresholds and gates.
+ * Types, bounds, defaults, and pure functions (parseOverrideSettings, mergeWithDefaults,
+ * computeEffectiveThreshold) MUST stay in sync with the edge function version.
+ * 
+ * This frontend version adds:
+ * - Browser Supabase client integration
+ * - In-memory caching
+ * - Mutation helpers (save, disable, enable)
  * 
  * Design principles:
  * - BOUNDED: Can only relax/tighten specific thresholds, not disable invariants
