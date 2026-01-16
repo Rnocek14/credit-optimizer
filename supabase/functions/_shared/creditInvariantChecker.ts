@@ -798,6 +798,7 @@ export interface AuditRecordInput {
   program_code?: string;
   run_source: 'seeder' | 'worker' | 'manual' | 'cron';
   report: InvariantReport;
+  job_id?: string; // Link to template_generation_jobs for traceability
 }
 
 export function buildAuditRecord(input: AuditRecordInput) {
@@ -815,6 +816,7 @@ export function buildAuditRecord(input: AuditRecordInput) {
       would_fail_strict: input.report.would_fail_strict,
     },
     summary: input.report.summary,
+    ...(input.job_id ? { job_id: input.job_id } : {}), // Include job_id when provided
   };
 }
 

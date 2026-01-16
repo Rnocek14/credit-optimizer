@@ -20,6 +20,7 @@ interface SeedRequest {
   institution_code?: string;  // If provided, only seed this school
   program_code?: string;      // Default: 'BSBA'
   force_refresh?: boolean;    // Re-generate even if templates exist
+  job_id?: string;            // Link to template_generation_jobs for traceability
 }
 
 interface PolicyData {
@@ -687,11 +688,13 @@ async function generateTemplatesFromPack(
   institutionPricing: InstitutionPricing,
   providerRates: Map<string, number>,
   providerProvenanceVerified: boolean,
-  gateResult: PolicyGateResult // Pass full gate result for status + reason tracking
-): Promise<{ standard?: string; altMax?: string; errors: string[] }> {
+  gateResult: PolicyGateResult, // Pass full gate result for status + reason tracking
+  jobId?: string // Link to template_generation_jobs for traceability
+): Promise<{ standard?: string; altMax?: string; errors: string[]; templateIds: string[] }> {
   const errors: string[] = [];
   const trackTypes: ('standard' | 'alt_max')[] = ['standard', 'alt_max'];
   const results: { standard?: string; altMax?: string } = {};
+  const templateIds: string[] = []; // Track template UUIDs created in this run
 
   // Extract policy limits with fallbacks
   const residencyCredits = policyData.residency_credits ?? DEFAULT_POLICIES.residency_credits;
@@ -853,6 +856,7 @@ async function generateTemplatesFromPack(
     }
     
     const realTemplateId = dbRow.id; // This is the actual UUID
+    templateIds.push(realTemplateId); // Track for job processor scoping
     console.log(`[seed-bsba-templates] Template ${templateId} has UUID: ${realTemplateId}`);
     
     // =========================================================================
@@ -891,7 +895,7 @@ async function generateTemplatesFromPack(
     
     console.log(`[seed-bsba-templates] Invariant check for ${templateId}: ${invariantReport.summary}`);
     
-    // Store audit record
+    // Store audit record with job_id for traceability
     const auditRecord = buildAuditRecord({
       template_id: realTemplateId,
       template_table: 'degree_templates',
@@ -899,6 +903,7 @@ async function generateTemplatesFromPack(
       program_code: programCode,
       run_source: 'seeder',
       report: invariantReport,
+      job_id: jobId, // Link to template_generation_jobs
     });
     
     const { error: auditError } = await supabase
@@ -1002,7 +1007,7 @@ async function generateTemplatesFromPack(
     else results.altMax = templateId;
   }
 
-  return { ...results, errors };
+  return { ...results, errors, templateIds };
 }
 
 serve(async (req) => {
@@ -1018,8 +1023,10 @@ serve(async (req) => {
     policyStatus?: string;
     policyScore?: number;
     templateStatus?: string;
+    templateIds?: string[]; // UUIDs of templates created
     error?: string 
   }> = {};
+  const allTemplateIds: string[] = []; // Aggregate all template UUIDs for response
 
   try {
     const supabase = createClient(
@@ -1036,7 +1043,7 @@ serve(async (req) => {
       // No body or invalid JSON - use defaults
     }
 
-    const { institution_code, program_code = 'BSBA', force_refresh = false } = body;
+    const { institution_code, program_code = 'BSBA', force_refresh = false, job_id } = body;
 
     console.log(`[seed-bsba-templates] Starting v3 template generation with real costs...`);
     console.log(`[seed-bsba-templates] Params: institution_code=${institution_code || 'all'}, program_code=${program_code}, force_refresh=${force_refresh}`);
@@ -1267,14 +1274,17 @@ serve(async (req) => {
         institutionPricing,
         providerRates,
         providerProvenanceVerified,
-        gateResult // Pass full gate result for status + reason
+        gateResult, // Pass full gate result for status + reason
+        job_id // Pass job_id for traceability
       );
 
       const insertedCount = (genResult.standard ? 1 : 0) + (genResult.altMax ? 1 : 0);
+      allTemplateIds.push(...genResult.templateIds); // Collect all UUIDs for response
       
       results[code] = {
         inserted: insertedCount,
         templates: { standard: genResult.standard, altMax: genResult.altMax },
+        templateIds: genResult.templateIds, // Per-institution UUIDs
         source: 'policy_pack',
         policyStatus: gateResult.status, // Track policy status in results
         policyScore: gateResult.score,
@@ -1321,6 +1331,7 @@ serve(async (req) => {
         success: true,
         jobName: 'seed-bsba-templates',
         results,
+        templateIds: allTemplateIds, // All UUIDs for job processor scoping
         summary: {
           templatesCreated: totalCreated,
           institutionsProcessed: Object.keys(results).length,
