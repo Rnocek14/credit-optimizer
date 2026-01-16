@@ -4,6 +4,7 @@ import { TemplateFilters } from './components/TemplateFilters';
 import { TemplateGrid } from './components/TemplateGrid';
 import { ComparisonModal } from './components/ComparisonModal';
 import { MultiSchoolSavingsBanner } from './components/MultiSchoolSavingsBanner';
+import { DataStatusStrip } from './components/DataStatusStrip';
 import { useMarketplaceTemplates } from '@/hooks/useMarketplaceTemplates';
 import { usePlanBasket } from '@/pages/EduTree/v5/state/usePlanBasket';
 import { AnchorSchoolSelector } from '@/pages/EduTree/v5/components/AnchorSchoolSelector';
@@ -127,6 +128,9 @@ export default function MarketplacePage() {
 
       {/* Main Content */}
       <div className="container mx-auto px-4 py-6">
+        {/* Dev-only data status strip */}
+        <DataStatusStrip />
+        
         {/* Planning Disclaimer */}
         <div className="mb-6 rounded-md border border-amber-500/30 bg-amber-500/5 px-3 py-2.5 flex items-start gap-2">
           <span className="mt-0.5 text-base leading-none">⚠️</span>
