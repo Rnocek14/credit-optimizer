@@ -5956,6 +5956,7 @@ export type Database = {
       invariant_decision_snapshots: {
         Row: {
           created_at: string
+          data_source: string
           decision: string
           effective_config: Json
           id: string
@@ -5970,6 +5971,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          data_source?: string
           decision: string
           effective_config: Json
           id?: string
@@ -5984,6 +5986,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          data_source?: string
           decision?: string
           effective_config?: Json
           id?: string
@@ -11834,6 +11837,7 @@ export type Database = {
           attempt_count: number
           completed_at: string | null
           created_at: string
+          data_source: string
           dedupe_key: string | null
           id: string
           institution: string
@@ -11856,6 +11860,7 @@ export type Database = {
           attempt_count?: number
           completed_at?: string | null
           created_at?: string
+          data_source?: string
           dedupe_key?: string | null
           id?: string
           institution: string
@@ -11878,6 +11883,7 @@ export type Database = {
           attempt_count?: number
           completed_at?: string | null
           created_at?: string
+          data_source?: string
           dedupe_key?: string | null
           id?: string
           institution?: string
@@ -14863,6 +14869,13 @@ export type Database = {
           violation_count: number
         }[]
       }
+      admin_purge_seeded_invariant_data: {
+        Args: { p_dry_run?: boolean }
+        Returns: {
+          jobs_deleted: number
+          snapshots_deleted: number
+        }[]
+      }
       after_maya_analysis_increment_quota: { Args: never; Returns: undefined }
       award_xp: {
         Args: {
@@ -14976,6 +14989,7 @@ export type Database = {
               attempt_count: number
               completed_at: string | null
               created_at: string
+              data_source: string
               dedupe_key: string | null
               id: string
               institution: string
