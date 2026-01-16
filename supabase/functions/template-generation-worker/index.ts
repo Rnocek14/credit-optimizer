@@ -2,7 +2,11 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { evaluatePolicyGate, getTemplateStatus, type PolicyGateResult } from '../_shared/policyGate.ts';
 import { checkTemplateInvariants, buildAuditRecord, normalizePolicyData, type TemplateItem, type RawPolicyPack } from '../_shared/creditInvariantChecker.ts';
-import { getEffectiveInvariantConfig } from '../_shared/institutionOverrides.ts';
+import { 
+  fetchInstitutionOverridesBase, 
+  computeEffectiveThreshold,
+  type EffectiveInvariantConfig,
+} from '../_shared/institutionOverrides.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -416,6 +420,15 @@ async function processJob(
       };
     }
 
+    // v1.4: Fetch override config ONCE per job (institution-level)
+    // Then compute effective threshold per-template in-memory
+    const invariantConfigBase = await fetchInstitutionOverridesBase(supabase, programData.institution_code);
+    console.log(`[${workerId}] Fetched invariant config for ${programData.institution_code}:`, {
+      unknownCreditsWarnThreshold: invariantConfigBase.unknownCreditsWarnThreshold,
+      unknownCreditsActiveHardZero: invariantConfigBase.unknownCreditsActiveHardZero,
+      hasOverrides: invariantConfigBase.hasOverrides,
+    });
+
     // Check which templates already exist (for resume/skip logic)
     const { data: existingTemplates } = await supabase
       .from('program_templates')
@@ -467,7 +480,8 @@ async function processJob(
         track,
         supabase,
         workerId,
-        gateResult! // Pass gate result for status/reason tracking
+        gateResult!, // Pass gate result for status/reason tracking
+        invariantConfigBase // v1.4: Pass pre-fetched config (no DB call per-track)
       );
       trackResults.push(result);
     }
@@ -508,7 +522,8 @@ async function generateAndWriteTemplate(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   supabase: any,
   workerId: string,
-  gateResult: PolicyGateResult // Policy gate result for status tracking
+  gateResult: PolicyGateResult, // Policy gate result for status tracking
+  invariantConfigBase: EffectiveInvariantConfig // v1.4: Pre-fetched config (no DB call here)
 ): Promise<TrackResult> {
   const startTime = Date.now();
 
@@ -689,12 +704,9 @@ async function generateAndWriteTemplate(
       // capstone_in_residence: intentionally NOT set - don't assume all programs require it
     } as RawPolicyPack);
 
-    // v1.3: Fetch per-institution override config for threshold customization
-    // Pass actual templateStatus for proper multiplier application
-    const invariantConfig = await getEffectiveInvariantConfig(supabase, {
-      institutionCode: program.institution_code,
-      templateStatus: templateStatus, // Actual status from gate result
-    });
+    // v1.4: Compute effective threshold in-memory from pre-fetched config
+    // No DB call here - config was fetched once per job
+    const effectiveWarnThreshold = computeEffectiveThreshold(invariantConfigBase, templateStatus);
 
     const invariantReport = checkTemplateInvariants({
       template_id: upsertedRow.id,
@@ -704,8 +716,8 @@ async function generateAndWriteTemplate(
       policy_data: invariantPolicy,
       items: invariantItems,
       mode: 'warn_only', // Use warn_only for worker since templates are still experimental
-      unknown_credits_warn_threshold: invariantConfig.unknownCreditsWarnThreshold, // v1.3: Per-institution threshold
-      unknown_credits_active_hard_zero: invariantConfig.unknownCreditsActiveHardZero, // v1.3: Per-institution hard-zero
+      unknown_credits_warn_threshold: effectiveWarnThreshold, // v1.4: Per-template threshold (computed in-memory)
+      unknown_credits_active_hard_zero: invariantConfigBase.unknownCreditsActiveHardZero, // v1.4: From pre-fetched config
     });
 
     // Store audit record
