@@ -137,51 +137,24 @@ serve(async (req) => {
       );
     }
 
-    // Mode 3: Process batch of queued jobs
+    // Mode 3: Process batch of queued jobs using safe RPC with SKIP LOCKED
     console.log(`[${workerId}] Claiming up to ${batch_size} jobs`);
 
-    // Atomically claim jobs
+    // Atomically claim jobs - RPC uses FOR UPDATE SKIP LOCKED for concurrency safety
     const { data: claimedJobs, error: claimError } = await supabase.rpc('claim_template_generation_jobs', {
       p_worker_id: workerId,
       p_batch_size: batch_size,
     });
 
-    // Fallback if RPC doesn't exist - use update with select
-    let jobs: Job[] = [];
     if (claimError) {
-      console.log(`[${workerId}] RPC not available, using fallback claim`);
-      
-      // Get eligible jobs
-      const { data: eligibleJobs } = await supabase
-        .from('template_generation_jobs')
-        .select('*')
-        .eq('status', 'queued')
-        .lte('run_after', new Date().toISOString())
-        .order('priority', { ascending: false })
-        .order('created_at', { ascending: true })
-        .limit(batch_size);
-
-      if (eligibleJobs && eligibleJobs.length > 0) {
-        const jobIds = eligibleJobs.map((j: Job) => j.id);
-        
-        // Claim them
-        const { data: claimed } = await supabase
-          .from('template_generation_jobs')
-          .update({
-            status: 'running',
-            locked_at: new Date().toISOString(),
-            locked_by: workerId,
-            updated_at: new Date().toISOString(),
-          })
-          .in('id', jobIds)
-          .eq('status', 'queued') // Double-check still queued
-          .select();
-
-        jobs = (claimed || []) as Job[];
-      }
-    } else {
-      jobs = (claimedJobs || []) as Job[];
+      console.error(`[${workerId}] Failed to claim jobs:`, claimError);
+      return new Response(
+        JSON.stringify({ success: false, error: `Claim RPC failed: ${claimError.message}` }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
+
+    const jobs: Job[] = (claimedJobs || []) as Job[];
 
     console.log(`[${workerId}] Claimed ${jobs.length} jobs`);
 
@@ -273,7 +246,7 @@ async function processJob(
       return { job_id: job.id, success: true, templates_created: 0 };
     }
 
-    // Call seed-bsba-templates to generate templates
+    // Call seed-bsba-templates to generate templates (seeder applies gate status internally)
     const seedResponse = await supabase.functions.invoke('seed-bsba-templates', {
       body: { institution_code: job.institution },
     });
@@ -288,8 +261,47 @@ async function processJob(
 
     console.log(`[${workerId}] Generated ${templatesCreated} templates for ${job.institution} in ${Date.now() - startTime}ms`);
 
-    // Mark job succeeded
-    await markJobSucceeded(supabase, job.id, templatesCreated, templatesUpdated, templatesCreated, 0);
+    // Post-update: Ensure template status matches gate (belt and suspenders)
+    // This catches any templates that might have been missed by the seeder
+    if (templateStatus !== 'active') {
+      const { error: statusUpdateError } = await supabase
+        .from('degree_templates')
+        .update({
+          status: templateStatus,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('institution_code', job.institution)
+        .eq('status', 'active') // Only downgrade active -> pending_review
+        .neq('status', 'blocked'); // Never touch blocked
+      
+      if (statusUpdateError) {
+        console.warn(`[${workerId}] Warning: Failed to update template statuses:`, statusUpdateError);
+      } else {
+        console.log(`[${workerId}] Post-updated templates to status: ${templateStatus}`);
+      }
+    }
+
+    // Get real invariant counts from template_invariant_reports
+    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+    const { data: recentReports } = await supabase
+      .from('template_invariant_reports')
+      .select('id, status')
+      .eq('institution_code', job.institution)
+      .gte('created_at', fiveMinutesAgo);
+
+    const invariantsPassed = recentReports?.filter(r => r.status === 'ok').length ?? templatesCreated;
+    const invariantsFailed = recentReports?.filter(r => r.status !== 'ok').length ?? 0;
+
+    // Update invariant reports with job_id for linking
+    if (recentReports && recentReports.length > 0) {
+      await supabase
+        .from('template_invariant_reports')
+        .update({ job_id: job.id })
+        .in('id', recentReports.map(r => r.id));
+    }
+
+    // Mark job succeeded with real counts
+    await markJobSucceeded(supabase, job.id, templatesCreated, templatesUpdated, invariantsPassed, invariantsFailed);
 
     return { job_id: job.id, success: true, templates_created: templatesCreated };
 
