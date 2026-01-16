@@ -62,6 +62,23 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // LEGACY WORKER GATE: Require explicit header to prevent accidental invocation
+  // This worker is deprecated in favor of template-job-processor pipeline
+  const legacySecret = Deno.env.get('LEGACY_WORKER_SECRET');
+  const providedSecret = req.headers.get('x-legacy-worker-secret');
+  
+  if (legacySecret && providedSecret !== legacySecret) {
+    console.warn('[DEPRECATED] template-generation-worker invoked without valid secret');
+    return new Response(
+      JSON.stringify({ 
+        success: false, 
+        error: 'DEPRECATED: This worker is deprecated. Use template-job-processor instead.',
+        code: 'LEGACY_DEPRECATED'
+      }),
+      { status: 410, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+
   const workerStartTime = Date.now();
   const workerId = `worker-${crypto.randomUUID().slice(0, 8)}`;
 
