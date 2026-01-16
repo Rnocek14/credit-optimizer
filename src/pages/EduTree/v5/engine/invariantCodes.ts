@@ -15,10 +15,20 @@
  */
 
 // ============================================
+// UTILITY TYPES (strict TS)
+// ============================================
+
+/** JSON-safe record type for details/computed payloads */
+export type JsonRecord = Record<string, unknown>;
+
+// ============================================
 // SEVERITY TYPES
 // ============================================
 
 export type InvariantSeverity = 'pass' | 'warn' | 'fail';
+
+/** Violation severity excludes 'pass' - violations are always warn or fail */
+export type ViolationSeverity = 'warn' | 'fail';
 
 // ============================================
 // VIOLATION SHAPE (stable, machine-queryable)
@@ -26,9 +36,9 @@ export type InvariantSeverity = 'pass' | 'warn' | 'fail';
 
 export type InvariantViolation = {
   code: InvariantCode;
-  severity: Exclude<InvariantSeverity, 'pass'>; // warn | fail
-  message: string;                              // short, human-readable
-  details?: Record<string, unknown>;            // structured payload for debug
+  severity: ViolationSeverity;        // explicit: warn | fail only
+  message: string;                    // short, human-readable
+  details?: JsonRecord;               // structured payload for debug
 };
 
 // ============================================
@@ -39,7 +49,7 @@ export type InvariantResult = {
   ok: boolean;                        // true iff no FAIL violations
   severity: InvariantSeverity;        // pass if none, warn if only warns, fail if any fail
   violations: InvariantViolation[];   // deterministic ordering
-  computed: Record<string, unknown>;  // optional, for dashboards
+  computed: JsonRecord;               // for dashboards
 };
 
 // ============================================
@@ -76,7 +86,11 @@ export const INVARIANT = {
   // ============================================
   /** Resident credits are below required residency minimum */
   RESIDENCY_BELOW_MINIMUM: 'RESIDENCY_BELOW_MINIMUM',
-  /** Resident credits sourced from invalid provider types */
+  /** 
+   * Resident credits sourced from invalid provider types.
+   * NOTE: Declared for V1 completeness; emitted only when 
+   * slot-level residency source validation is available.
+   */
   RESIDENCY_SOURCE_INVALID: 'RESIDENCY_SOURCE_INVALID',
 
   // ============================================
@@ -112,7 +126,12 @@ export const INVARIANT = {
   // ============================================
   /** Template status doesn't match expected gate status */
   TEMPLATE_STATUS_INCONSISTENT_WITH_GATE: 'TEMPLATE_STATUS_INCONSISTENT_WITH_GATE',
-  /** Invariant report missing for a touched template (job-level check) */
+  /** 
+   * Invariant report missing for a touched template.
+   * NOTE: This is a JOB-LEVEL check, not per-template. Implemented in 
+   * template-job-processor, NOT in evaluateInvariants(). Do not emit 
+   * from per-template evaluation.
+   */
   INVARIANT_REPORT_MISSING_FOR_TOUCHED_TEMPLATE: 'INVARIANT_REPORT_MISSING_FOR_TOUCHED_TEMPLATE',
 } as const;
 
@@ -239,20 +258,27 @@ export type InvariantInputs = {
 /**
  * Priority index map for deterministic violation sorting.
  * Lower number = higher priority (appears first).
+ * 
+ * Built from INVARIANT_EVAL_ORDER to ensure totality over InvariantCode.
  */
-export const INVARIANT_PRIORITY: Record<InvariantCode, number> = Object.fromEntries(
-  INVARIANT_EVAL_ORDER.map((code, index) => [code, index])
-) as Record<InvariantCode, number>;
+export const INVARIANT_PRIORITY: Record<InvariantCode, number> = INVARIANT_EVAL_ORDER.reduce(
+  (acc, code, idx) => {
+    acc[code] = idx;
+    return acc;
+  },
+  {} as Record<InvariantCode, number>
+);
 
 /**
  * Sort violations by canonical priority order.
+ * Unknown codes sort to end (MAX_SAFE_INTEGER).
  */
 export function sortViolationsByPriority(
   violations: InvariantViolation[]
 ): InvariantViolation[] {
   return [...violations].sort((a, b) => {
-    const priorityA = INVARIANT_PRIORITY[a.code] ?? 100;
-    const priorityB = INVARIANT_PRIORITY[b.code] ?? 100;
+    const priorityA = INVARIANT_PRIORITY[a.code] ?? Number.MAX_SAFE_INTEGER;
+    const priorityB = INVARIANT_PRIORITY[b.code] ?? Number.MAX_SAFE_INTEGER;
     return priorityA - priorityB;
   });
 }

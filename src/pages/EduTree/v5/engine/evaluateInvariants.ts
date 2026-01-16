@@ -5,9 +5,10 @@
  * 
  * Usage:
  * ```ts
- * import { evaluateInvariants, DEFAULT_INVARIANT_CONFIG } from './evaluateInvariants';
+ * import { evaluateInvariants } from './evaluateInvariants';
  * 
- * const result = evaluateInvariants(inputs, DEFAULT_INVARIANT_CONFIG);
+ * // Uses DEFAULT_INVARIANT_CONFIG when config omitted
+ * const result = evaluateInvariants(inputs);
  * if (!result.ok) {
  *   console.log('Invariant failures:', result.violations);
  * }
@@ -16,7 +17,7 @@
 
 import {
   INVARIANT,
-  INVARIANT_EVAL_ORDER,
+  DEFAULT_INVARIANT_CONFIG,
   sortViolationsByPriority,
   type InvariantCode,
   type InvariantConfig,
@@ -24,30 +25,32 @@ import {
   type InvariantResult,
   type InvariantSeverity,
   type InvariantViolation,
+  type ViolationSeverity,
+  type JsonRecord,
 } from './invariantCodes';
 
 // Re-export for convenience
 export { DEFAULT_INVARIANT_CONFIG } from './invariantCodes';
-export type { InvariantResult, InvariantViolation, InvariantInputs, InvariantConfig };
+export type { InvariantResult, InvariantViolation, InvariantInputs, InvariantConfig, JsonRecord };
 
 /**
  * Evaluate all template invariants against provided inputs.
  * 
  * @param input - Template data and policy information
- * @param config - Evaluation thresholds and expectations
+ * @param config - Evaluation thresholds and expectations (defaults to DEFAULT_INVARIANT_CONFIG)
  * @returns Deterministic result with ok flag, severity, and ordered violations
  */
 export function evaluateInvariants(
   input: InvariantInputs,
-  config: InvariantConfig
+  config: InvariantConfig = DEFAULT_INVARIANT_CONFIG
 ): InvariantResult {
   const violations: InvariantViolation[] = [];
 
-  // Helper to add violations
-  const fail = (code: InvariantCode, message: string, details?: Record<string, unknown>) =>
-    violations.push({ code, severity: 'fail', message, details });
-  const warn = (code: InvariantCode, message: string, details?: Record<string, unknown>) =>
-    violations.push({ code, severity: 'warn', message, details });
+  // Helper to add violations with explicit severity type
+  const fail = (code: InvariantCode, message: string, details?: JsonRecord) =>
+    violations.push({ code, severity: 'fail' as const, message, details });
+  const warn = (code: InvariantCode, message: string, details?: JsonRecord) =>
+    violations.push({ code, severity: 'warn' as const, message, details });
 
   // ============================================
   // A) NEGATIVE / NaN CREDITS
@@ -125,27 +128,29 @@ export function evaluateInvariants(
 
   // ============================================
   // B2) RESIDENCY_SOURCE_INVALID
-  // Placeholder: Implement when slot-level provider validation is available
+  // NOTE: Not implemented in V1. Requires slot-level residency source validation.
+  // Will be emitted when we can verify resident credits come from institution providers only.
   // ============================================
 
   // ============================================
   // C0) BUCKET_MODE_MISSING_OR_UNKNOWN
   // ============================================
-  {
-    const mode = input.caps.bucketMode;
-    if (!mode || mode === 'unknown') {
+  const bucketMode = input.caps.bucketMode;
+  const hasValidBucketMode = bucketMode === 'separate' || bucketMode === 'combined';
+{
+    if (!hasValidBucketMode) {
       fail(INVARIANT.BUCKET_MODE_MISSING_OR_UNKNOWN, 'Policy bucket mode is missing or unknown.', {
-        bucketMode: mode,
+        bucketMode,
       });
     }
   }
 
   // ============================================
   // C1) REQUIRED_CAP_VALUE_MISSING (mode-aware)
+  // Only check when bucket mode is valid to avoid noise
   // ============================================
-  {
-    const mode = input.caps.bucketMode;
-    if (mode === 'separate') {
+  if (hasValidBucketMode) {
+    if (bucketMode === 'separate') {
       if (input.caps.maxAltCredits == null || input.caps.maxTransferCredits == null) {
         fail(INVARIANT.REQUIRED_CAP_VALUE_MISSING, 'Separate bucket mode requires max_alt and max_transfer caps.', {
           maxAltCredits: input.caps.maxAltCredits,
@@ -153,7 +158,7 @@ export function evaluateInvariants(
         });
       }
     }
-    if (mode === 'combined') {
+    if (bucketMode === 'combined') {
       if (input.caps.maxCombinedCredits == null) {
         fail(INVARIANT.REQUIRED_CAP_VALUE_MISSING, 'Combined bucket mode requires a combined transfer+alt cap.', {
           maxCombinedCredits: input.caps.maxCombinedCredits,
@@ -164,16 +169,16 @@ export function evaluateInvariants(
 
   // ============================================
   // C2/C3) CAP EXCEEDED
+  // Only check when bucket mode is valid to avoid misleading errors
   // ============================================
-  {
-    const mode = input.caps.bucketMode;
+  if (hasValidBucketMode) {
     const isActive = input.templateStatus === 'active';
-    const overCapSeverity: 'fail' | 'warn' =
+    const overCapSeverity: ViolationSeverity =
       isActive || !config.allowOverCapInPendingReview ? 'fail' : 'warn';
 
     const emit = overCapSeverity === 'fail' ? fail : warn;
 
-    if (mode === 'separate' && input.caps.maxTransferCredits != null) {
+    if (bucketMode === 'separate' && input.caps.maxTransferCredits != null) {
       const over = input.credits.transfer - input.caps.maxTransferCredits;
       if (over > 0) {
         emit(INVARIANT.SEPARATE_TRANSFER_CAP_EXCEEDED, 'Transfer credits exceed separate-mode cap.', {
@@ -185,7 +190,7 @@ export function evaluateInvariants(
       }
     }
 
-    if (mode === 'separate' && input.caps.maxAltCredits != null) {
+    if (bucketMode === 'separate' && input.caps.maxAltCredits != null) {
       const over = input.credits.alt - input.caps.maxAltCredits;
       if (over > 0) {
         emit(INVARIANT.SEPARATE_ALT_CAP_EXCEEDED, 'Alt credits exceed separate-mode cap.', {
@@ -197,7 +202,7 @@ export function evaluateInvariants(
       }
     }
 
-    if (mode === 'combined' && input.caps.maxCombinedCredits != null) {
+    if (bucketMode === 'combined' && input.caps.maxCombinedCredits != null) {
       const combined = input.credits.transfer + input.credits.alt;
       const over = combined - input.caps.maxCombinedCredits;
       if (over > 0) {
@@ -209,6 +214,7 @@ export function evaluateInvariants(
         });
       }
     }
+  } // end hasValidBucketMode
   }
 
   // ============================================
@@ -289,8 +295,10 @@ export function evaluateInvariants(
 
   // ============================================
   // F2) INVARIANT_REPORT_MISSING_FOR_TOUCHED_TEMPLATE
-  // Note: This check usually happens at job-level (in template-job-processor)
-  // rather than per-template. Include only if touchedTemplateIds is provided.
+  // NOTE: This is a JOB-LEVEL check implemented in template-job-processor.
+  // It verifies that every touched template has a corresponding invariant report.
+  // DO NOT emit from per-template evaluation - the job processor handles this
+  // by comparing templateIds.length to invariant_reports created.
   // ============================================
 
   // ============================================
