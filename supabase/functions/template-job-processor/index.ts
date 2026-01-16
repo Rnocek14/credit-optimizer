@@ -362,7 +362,7 @@ async function markJobFailed(
     .update({
       status: shouldRetry ? 'queued' : 'failed',
       attempt_count: newAttemptCount,
-      last_error: errorMessage,
+      last_error: `[job:${job.id}][${job.institution}] ${errorMessage}`,
       run_after: shouldRetry ? runAfter : job.run_after,
       updated_at: new Date().toISOString(),
       locked_at: null,
