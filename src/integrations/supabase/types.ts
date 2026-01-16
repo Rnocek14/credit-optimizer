@@ -11790,6 +11790,51 @@ export type Database = {
           },
         ]
       }
+      template_invariant_reports: {
+        Row: {
+          computed: Json
+          created_at: string
+          errors: Json
+          id: string
+          institution_code: string
+          ok: boolean
+          program_code: string | null
+          run_source: string
+          summary: string | null
+          template_id: string
+          template_table: string
+          warnings: Json
+        }
+        Insert: {
+          computed?: Json
+          created_at?: string
+          errors?: Json
+          id?: string
+          institution_code: string
+          ok: boolean
+          program_code?: string | null
+          run_source: string
+          summary?: string | null
+          template_id: string
+          template_table: string
+          warnings?: Json
+        }
+        Update: {
+          computed?: Json
+          created_at?: string
+          errors?: Json
+          id?: string
+          institution_code?: string
+          ok?: boolean
+          program_code?: string | null
+          run_source?: string
+          summary?: string | null
+          template_id?: string
+          template_table?: string
+          warnings?: Json
+        }
+        Relationships: []
+      }
       track_courses: {
         Row: {
           course_id: string
