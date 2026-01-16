@@ -6,7 +6,13 @@
  * PURELY INTERPRETIVE - Does NOT modify invariant behavior.
  * Preserves deterministic invariant ordering from the source report.
  * 
- * @version 1.0.0
+ * KEY SEMANTICS:
+ * - Report uses 'error'|'warning' → mapped to 'hard'|'warn' at boundary
+ * - Primary blocker is ALWAYS first hard fail (never null when blocked)
+ * - Unknown codes get safe fallback titles
+ * - Audience filtering only applies to display, not blocking logic
+ * 
+ * @version 1.1.0
  */
 
 import {
@@ -14,8 +20,12 @@ import {
   type InvariantExplainer,
   type AudienceLevel,
   type ExplainerCategory,
+  type ExplainerSeverity,
   INVARIANT_EXPLAINERS,
   isKnownInvariantCode,
+  mapReportSeverity,
+  UNKNOWN_CODE_ADMIN_TITLE,
+  UNKNOWN_CODE_PUBLIC_TITLE,
 } from './invariantExplainers';
 
 // ============================================
@@ -25,10 +35,11 @@ import {
 /**
  * Violation shape from invariant checker
  * Matches InvariantViolation from creditInvariantChecker.ts
+ * Note: Uses 'error'|'warning' which we map to 'hard'|'warn'
  */
 export interface InvariantViolation {
   type: string;                           // InvariantCode
-  severity: 'error' | 'warning';
+  severity: 'error' | 'warning';          // Report severity (mapped at boundary)
   message: string;
   metrics?: Record<string, unknown>;
   affectedCourses?: string[];
@@ -41,8 +52,8 @@ export interface InvariantViolation {
 export interface InvariantReport {
   ok: boolean;
   would_fail_strict?: boolean;
-  errors: InvariantViolation[];
-  warnings: InvariantViolation[];
+  errors: InvariantViolation[];           // Hard failures (severity: 'error')
+  warnings: InvariantViolation[];         // Warnings (severity: 'warning')
   summary: string;
   computed?: Record<string, unknown>;
 }
@@ -55,8 +66,9 @@ export interface InvariantReport {
  * Single explained violation for UI display
  */
 export interface ExplainedViolation {
-  code: InvariantCode;
-  severity: 'error' | 'warning';
+  code: string;                           // InvariantCode or unknown code string
+  severity: ExplainerSeverity;            // 'hard' | 'warn'
+  isUnknownCode: false;
   
   // From explainer
   title: string;
@@ -69,18 +81,50 @@ export interface ExplainedViolation {
   originalMessage: string;
   metrics?: Record<string, unknown>;
   affectedCourses?: string[];
+  
+  // Visibility
+  showInMarketplace: boolean;
+  showInPublic: boolean;
 }
 
 /**
  * Fallback for unknown invariant codes
+ * Always included in primary blocker selection (with safe title)
  */
 export interface UnknownViolation {
   code: string;
-  severity: 'error' | 'warning';
+  severity: ExplainerSeverity;            // 'hard' | 'warn'
+  isUnknownCode: true;
+  
+  // Safe fallback titles
+  title: string;                          // Admin-safe title
+  titleMarketplace: string;               // Marketplace-safe title
+  titlePublic: string;                    // Public-safe title
+  explanation: string;
+  
+  // From original violation
+  originalMessage: string;
+  metrics?: Record<string, unknown>;
+  affectedCourses?: string[];
+  
+  // Visibility (unknown codes hidden from marketplace/public by default)
+  showInMarketplace: false;
+  showInPublic: false;
+}
+
+export type AnyViolation = ExplainedViolation | UnknownViolation;
+
+/**
+ * Primary blocker for UI display
+ * ALWAYS exists when isBlocked=true (never null)
+ */
+export interface PrimaryBlocker {
+  code: string;
+  severity: 'hard';
   title: string;
   explanation: string;
+  isUnknownCode: boolean;
   originalMessage: string;
-  isUnknownCode: true;
 }
 
 /**
@@ -92,35 +136,35 @@ export interface BlockedReasonPayload {
   hasWarnings: boolean;
   wouldFailStrict: boolean;
   
-  // Primary blocking reason (first hard fail)
-  primaryBlocker: ExplainedViolation | null;
+  // Primary blocking reason (first hard fail - NEVER null when blocked)
+  primaryBlocker: PrimaryBlocker | null;
   
-  // All violations (deterministic order preserved)
-  errors: (ExplainedViolation | UnknownViolation)[];
-  warnings: (ExplainedViolation | UnknownViolation)[];
+  // All violations (deterministic order preserved, mapped to hard/warn)
+  hardFailures: AnyViolation[];           // All hard failures
+  warnings: AnyViolation[];               // All warnings
   
   // Counts
-  errorCount: number;
-  warningCount: number;
+  hardCount: number;
+  warnCount: number;
   
   // Summary (from original report)
   summary: string;
   
-  // Audience-filtered versions
+  // Audience-filtered versions (only visible violations)
   marketplaceSafe: {
-    primaryBlocker: ExplainedViolation | null;
-    errors: ExplainedViolation[];
+    primaryBlocker: PrimaryBlocker | null;
+    hardFailures: ExplainedViolation[];
     warnings: ExplainedViolation[];
-    errorCount: number;
-    warningCount: number;
+    hardCount: number;
+    warnCount: number;
   };
   
   publicSafe: {
-    primaryBlocker: ExplainedViolation | null;
-    errors: ExplainedViolation[];
+    primaryBlocker: PrimaryBlocker | null;
+    hardFailures: ExplainedViolation[];
     warnings: ExplainedViolation[];
-    errorCount: number;
-    warningCount: number;
+    hardCount: number;
+    warnCount: number;
   };
   
   // Metadata
@@ -132,22 +176,29 @@ export interface BlockedReasonPayload {
 // ============================================
 
 /**
- * Convert a single violation to an explained violation
+ * Convert a single violation to an explained or unknown violation
  */
 function explainViolation(
   violation: InvariantViolation
-): ExplainedViolation | UnknownViolation {
+): AnyViolation {
   const code = violation.type;
+  const severity = mapReportSeverity(violation.severity);
   
-  // Handle unknown codes gracefully
+  // Handle unknown codes gracefully (still include in blocker selection)
   if (!isKnownInvariantCode(code)) {
     return {
       code,
-      severity: violation.severity,
-      title: 'Unknown Validation Issue',
-      explanation: `An unrecognized validation issue occurred (${code}).`,
-      originalMessage: violation.message,
+      severity,
       isUnknownCode: true,
+      title: UNKNOWN_CODE_ADMIN_TITLE,
+      titleMarketplace: UNKNOWN_CODE_PUBLIC_TITLE,
+      titlePublic: UNKNOWN_CODE_PUBLIC_TITLE,
+      explanation: `An unrecognized validation rule was triggered (${code}).`,
+      originalMessage: violation.message,
+      metrics: violation.metrics,
+      affectedCourses: violation.affectedCourses,
+      showInMarketplace: false,
+      showInPublic: false,
     };
   }
   
@@ -155,7 +206,8 @@ function explainViolation(
   
   return {
     code,
-    severity: violation.severity,
+    severity,
+    isUnknownCode: false,
     title: explainer.title,
     explanation: explainer.explanation,
     impact: explainer.impact,
@@ -164,36 +216,77 @@ function explainViolation(
     originalMessage: violation.message,
     metrics: violation.metrics,
     affectedCourses: violation.affectedCourses,
+    showInMarketplace: explainer.showInMarketplace,
+    showInPublic: explainer.showInPublic,
   };
 }
 
 /**
  * Type guard for ExplainedViolation
  */
-function isExplainedViolation(
-  v: ExplainedViolation | UnknownViolation
-): v is ExplainedViolation {
-  return !('isUnknownCode' in v);
+function isExplainedViolation(v: AnyViolation): v is ExplainedViolation {
+  return !v.isUnknownCode;
 }
 
 /**
- * Filter violations for audience level
+ * Get title for a violation based on audience
  */
-function filterForAudience(
-  violations: (ExplainedViolation | UnknownViolation)[],
+function getViolationTitle(v: AnyViolation, audience: AudienceLevel): string {
+  if (isExplainedViolation(v)) {
+    return v.title;
+  }
+  // Unknown violation - use audience-appropriate title
+  switch (audience) {
+    case 'admin':
+      return v.title;
+    case 'marketplace':
+      return v.titleMarketplace;
+    case 'public':
+      return v.titlePublic;
+    default:
+      return v.title;
+  }
+}
+
+/**
+ * Build primary blocker from first hard failure
+ * Returns non-null when blocked (guarantees primary blocker exists)
+ */
+function buildPrimaryBlocker(
+  hardFailures: AnyViolation[],
+  audience: AudienceLevel
+): PrimaryBlocker | null {
+  if (hardFailures.length === 0) return null;
+  
+  const first = hardFailures[0];
+  return {
+    code: first.code,
+    severity: 'hard',
+    title: getViolationTitle(first, audience),
+    explanation: first.explanation,
+    isUnknownCode: first.isUnknownCode,
+    originalMessage: first.originalMessage,
+  };
+}
+
+/**
+ * Filter hard failures for audience visibility
+ * Returns ONLY visible hard failures (ExplainedViolation only)
+ */
+function filterHardFailuresForAudience(
+  violations: AnyViolation[],
   audience: AudienceLevel
 ): ExplainedViolation[] {
   return violations.filter((v): v is ExplainedViolation => {
-    if (!isExplainedViolation(v)) return false;
+    if (v.isUnknownCode) return false; // Unknown codes hidden from marketplace/public
     
-    const explainer = INVARIANT_EXPLAINERS[v.code];
     switch (audience) {
       case 'admin':
         return true;
       case 'marketplace':
-        return explainer.showInMarketplace;
+        return v.showInMarketplace;
       case 'public':
-        return explainer.showInPublic;
+        return v.showInPublic;
       default:
         return false;
     }
@@ -201,33 +294,57 @@ function filterForAudience(
 }
 
 /**
+ * Get first visible hard failure for audience-specific primary blocker
+ */
+function getAudiencePrimaryBlocker(
+  hardFailures: AnyViolation[],
+  audience: AudienceLevel
+): PrimaryBlocker | null {
+  const visible = filterHardFailuresForAudience(hardFailures, audience);
+  if (visible.length === 0) return null;
+  
+  const first = visible[0];
+  return {
+    code: first.code,
+    severity: 'hard',
+    title: first.title,
+    explanation: first.explanation,
+    isUnknownCode: false,
+    originalMessage: first.originalMessage,
+  };
+}
+
+/**
  * Main resolver function
  * 
  * Consumes an invariant report and produces a UI-ready payload.
  * Preserves deterministic ordering from the source report.
+ * 
+ * KEY GUARANTEES:
+ * - primaryBlocker is NEVER null when isBlocked=true
+ * - Severity is mapped: error→hard, warning→warn
+ * - Unknown codes get safe fallback titles
+ * - Audience filtering only affects display lists, not blocking logic
  */
 export function resolveBlockedReason(report: InvariantReport): BlockedReasonPayload {
-  // Process errors (preserving order)
-  const explainedErrors = report.errors.map(explainViolation);
+  // Process hard failures (from errors array, preserving order)
+  const hardFailures = report.errors.map(explainViolation);
   
   // Process warnings (preserving order)
-  const explainedWarnings = report.warnings.map(explainViolation);
+  const warnings = report.warnings.map(explainViolation);
   
-  // Primary blocker is the FIRST error (deterministic)
-  const firstError = explainedErrors[0] ?? null;
-  const primaryBlocker = firstError && isExplainedViolation(firstError) 
-    ? firstError 
-    : null;
+  // Primary blocker is FIRST hard failure (never null when blocked)
+  const primaryBlocker = buildPrimaryBlocker(hardFailures, 'admin');
   
-  // Filter for marketplace audience
-  const marketplaceErrors = filterForAudience(explainedErrors, 'marketplace');
-  const marketplaceWarnings = filterForAudience(explainedWarnings, 'marketplace');
-  const marketplacePrimaryBlocker = marketplaceErrors[0] ?? null;
+  // Marketplace-filtered (visible hard failures only)
+  const marketplaceHard = filterHardFailuresForAudience(hardFailures, 'marketplace');
+  const marketplaceWarn = filterHardFailuresForAudience(warnings, 'marketplace');
+  const marketplacePrimaryBlocker = getAudiencePrimaryBlocker(hardFailures, 'marketplace');
   
-  // Filter for public audience
-  const publicErrors = filterForAudience(explainedErrors, 'public');
-  const publicWarnings = filterForAudience(explainedWarnings, 'public');
-  const publicPrimaryBlocker = publicErrors[0] ?? null;
+  // Public-filtered (visible hard failures only)
+  const publicHard = filterHardFailuresForAudience(hardFailures, 'public');
+  const publicWarn = filterHardFailuresForAudience(warnings, 'public');
+  const publicPrimaryBlocker = getAudiencePrimaryBlocker(hardFailures, 'public');
   
   return {
     isBlocked: !report.ok,
@@ -236,28 +353,28 @@ export function resolveBlockedReason(report: InvariantReport): BlockedReasonPayl
     
     primaryBlocker,
     
-    errors: explainedErrors,
-    warnings: explainedWarnings,
+    hardFailures,
+    warnings,
     
-    errorCount: explainedErrors.length,
-    warningCount: explainedWarnings.length,
+    hardCount: hardFailures.length,
+    warnCount: warnings.length,
     
     summary: report.summary,
     
     marketplaceSafe: {
       primaryBlocker: marketplacePrimaryBlocker,
-      errors: marketplaceErrors,
-      warnings: marketplaceWarnings,
-      errorCount: marketplaceErrors.length,
-      warningCount: marketplaceWarnings.length,
+      hardFailures: marketplaceHard,
+      warnings: marketplaceWarn,
+      hardCount: marketplaceHard.length,
+      warnCount: marketplaceWarn.length,
     },
     
     publicSafe: {
       primaryBlocker: publicPrimaryBlocker,
-      errors: publicErrors,
-      warnings: publicWarnings,
-      errorCount: publicErrors.length,
-      warningCount: publicWarnings.length,
+      hardFailures: publicHard,
+      warnings: publicWarn,
+      hardCount: publicHard.length,
+      warnCount: publicWarn.length,
     },
     
     resolvedAt: new Date().toISOString(),
@@ -277,6 +394,7 @@ export function getMarketplaceBlockedMessage(report: InvariantReport): string | 
   const payload = resolveBlockedReason(report);
   const blocker = payload.marketplaceSafe.primaryBlocker;
   
+  // Fallback if no visible blocker (admin-only errors)
   if (!blocker) {
     return 'This template is currently unavailable.';
   }
@@ -304,7 +422,7 @@ export function getMarketplaceWarningMessage(report: InvariantReport): string | 
  */
 export function hasAdminOnlyErrors(report: InvariantReport): boolean {
   const payload = resolveBlockedReason(report);
-  return payload.errorCount > payload.marketplaceSafe.errorCount;
+  return payload.hardCount > payload.marketplaceSafe.hardCount;
 }
 
 /**
@@ -314,14 +432,14 @@ export function getViolationCategories(report: InvariantReport): ExplainerCatego
   const payload = resolveBlockedReason(report);
   const categories = new Set<ExplainerCategory>();
   
-  for (const error of payload.errors) {
-    if (isExplainedViolation(error)) {
-      categories.add(error.category);
+  for (const v of payload.hardFailures) {
+    if (isExplainedViolation(v)) {
+      categories.add(v.category);
     }
   }
-  for (const warning of payload.warnings) {
-    if (isExplainedViolation(warning)) {
-      categories.add(warning.category);
+  for (const v of payload.warnings) {
+    if (isExplainedViolation(v)) {
+      categories.add(v.category);
     }
   }
   

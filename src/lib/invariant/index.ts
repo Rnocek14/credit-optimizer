@@ -4,6 +4,10 @@
  * This module provides human-readable explanations for invariant violations.
  * It is PURELY INTERPRETIVE and does not modify invariant behavior.
  * 
+ * SEVERITY SEMANTICS:
+ * - 'hard': Blocking violations (template cannot proceed)
+ * - 'warn': Non-blocking warnings
+ * 
  * Usage:
  * ```typescript
  * import { resolveBlockedReason, getExplainer } from '@/lib/invariant';
@@ -15,7 +19,7 @@
  * const explainer = getExplainer('INV_RESIDENCY_NOT_MET');
  * ```
  * 
- * @version 1.0.0
+ * @version 1.1.0
  */
 
 // Core types
@@ -25,16 +29,20 @@ export type {
   ExplainerSeverity,
   ExplainerCategory,
   AudienceLevel,
+  ReportSeverity,
 } from './invariantExplainers';
 
 // Explainer registry and helpers
 export {
   INVARIANT_EXPLAINERS,
+  UNKNOWN_CODE_ADMIN_TITLE,
+  UNKNOWN_CODE_PUBLIC_TITLE,
   getExplainer,
   getExplainersBySeverity,
   getExplainersByCategory,
   getExplainersForAudience,
   isKnownInvariantCode,
+  mapReportSeverity,
 } from './invariantExplainers';
 
 // Resolver types
@@ -43,6 +51,8 @@ export type {
   InvariantReport,
   ExplainedViolation,
   UnknownViolation,
+  AnyViolation,
+  PrimaryBlocker,
   BlockedReasonPayload,
 } from './resolveBlockedReason';
 

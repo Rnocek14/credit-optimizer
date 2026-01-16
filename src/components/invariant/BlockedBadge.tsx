@@ -3,6 +3,10 @@
  * 
  * Compact badge for showing blocked/warning status in lists and cards.
  * Marketplace-safe messaging by default.
+ * 
+ * SEVERITY SEMANTICS:
+ * - 'hard': Blocking violations (shown as blocked)
+ * - 'warn': Non-blocking warnings
  */
 
 import { Badge } from '@/components/ui/badge';
@@ -43,8 +47,8 @@ export function BlockedBadge({
     isBlocked,
     hasWarnings,
     primaryBlocker,
-    errorCount,
-    warningCount,
+    hardCount,
+    warnCount,
     badgeText,
   } = useBlockedReason(report, { audience });
   
@@ -62,7 +66,7 @@ export function BlockedBadge({
   
   const tooltipContent = isBlocked
     ? primaryBlocker?.title ?? 'Template blocked'
-    : `${warningCount} warning${warningCount > 1 ? 's' : ''}`;
+    : `${warnCount} warning${warnCount > 1 ? 's' : ''}`;
   
   return (
     <TooltipProvider>
