@@ -1,0 +1,331 @@
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { toast } from 'sonner';
+import { 
+  CheckCircle, 
+  AlertTriangle, 
+  XCircle, 
+  ChevronUp, 
+  Loader2,
+  Shield,
+  FileCheck,
+  RefreshCw
+} from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+
+interface PromotionCandidate {
+  pack_id: string;
+  institution_code: string;
+  institution_name: string | null;
+  program_code: string | null;
+  degree_level: string | null;
+  status: string;
+  has_ground_truth: boolean;
+  completeness_score: number;
+  catalog_year: string | null;
+  gate_status: 'green' | 'yellow' | 'red';
+  is_promotable: boolean;
+  is_auto_promotable: boolean;
+  promotion_reason: string;
+  templates_count: number;
+  active_templates_count: number;
+  stale: boolean | null;
+  blocked_reason: string | null;
+}
+
+function GateStatusBadge({ status }: { status: 'green' | 'yellow' | 'red' }) {
+  const config = {
+    green: { icon: CheckCircle, label: 'Green', className: 'bg-green-100 text-green-800 border-green-200' },
+    yellow: { icon: AlertTriangle, label: 'Yellow', className: 'bg-amber-100 text-amber-800 border-amber-200' },
+    red: { icon: XCircle, label: 'Red', className: 'bg-red-100 text-red-800 border-red-200' },
+  };
+  
+  const { icon: Icon, label, className } = config[status];
+  
+  return (
+    <Badge variant="outline" className={`gap-1 ${className}`}>
+      <Icon className="h-3 w-3" />
+      {label}
+    </Badge>
+  );
+}
+
+export default function PolicyPackPromotion() {
+  const queryClient = useQueryClient();
+  const [confirmPack, setConfirmPack] = useState<PromotionCandidate | null>(null);
+
+  // Fetch promotion candidates
+  const { data: candidates = [], isLoading, refetch } = useQuery({
+    queryKey: ['policy-pack-promotion-candidates'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('v_policy_pack_promotion_candidates')
+        .select('*')
+        .order('completeness_score', { ascending: false });
+      
+      if (error) throw error;
+      return data as PromotionCandidate[];
+    },
+  });
+
+  // Promote mutation
+  const promoteMutation = useMutation({
+    mutationFn: async ({ packId, force }: { packId: string; force: boolean }) => {
+      const { data, error } = await supabase.functions.invoke('promote-policy-pack', {
+        body: { packId, forcePromotion: force },
+      });
+      
+      if (error) throw error;
+      if (!data.success) throw new Error(data.error || 'Promotion failed');
+      return data;
+    },
+    onSuccess: (data) => {
+      toast.success(data.message || 'Pack promoted successfully');
+      queryClient.invalidateQueries({ queryKey: ['policy-pack-promotion-candidates'] });
+      setConfirmPack(null);
+    },
+    onError: (error: Error) => {
+      toast.error(`Promotion failed: ${error.message}`);
+    },
+  });
+
+  const handlePromote = (candidate: PromotionCandidate) => {
+    if (candidate.gate_status === 'yellow') {
+      // Show confirmation for yellow gate
+      setConfirmPack(candidate);
+    } else {
+      // Direct promotion for green gate
+      promoteMutation.mutate({ packId: candidate.pack_id, force: false });
+    }
+  };
+
+  const confirmYellowPromotion = () => {
+    if (confirmPack) {
+      promoteMutation.mutate({ packId: confirmPack.pack_id, force: true });
+    }
+  };
+
+  // Summary stats
+  const stats = {
+    total: candidates.length,
+    green: candidates.filter(c => c.gate_status === 'green' && c.status !== 'active').length,
+    yellow: candidates.filter(c => c.gate_status === 'yellow' && c.status !== 'active').length,
+    red: candidates.filter(c => c.gate_status === 'red').length,
+    active: candidates.filter(c => c.status === 'active').length,
+  };
+
+  return (
+    <div className="container mx-auto p-6 space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">Policy Pack Promotion</h1>
+          <p className="text-muted-foreground">
+            Manage policy pack promotion to enable template generation
+          </p>
+        </div>
+        <Button variant="outline" onClick={() => refetch()} disabled={isLoading}>
+          <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+          Refresh
+        </Button>
+      </div>
+
+      {/* Summary Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-2xl font-bold">{stats.total}</div>
+            <p className="text-xs text-muted-foreground">Total Packs</p>
+          </CardContent>
+        </Card>
+        <Card className="border-green-200 bg-green-50/50">
+          <CardContent className="pt-6">
+            <div className="text-2xl font-bold text-green-700">{stats.green}</div>
+            <p className="text-xs text-green-600">Ready (Green)</p>
+          </CardContent>
+        </Card>
+        <Card className="border-amber-200 bg-amber-50/50">
+          <CardContent className="pt-6">
+            <div className="text-2xl font-bold text-amber-700">{stats.yellow}</div>
+            <p className="text-xs text-amber-600">Manual (Yellow)</p>
+          </CardContent>
+        </Card>
+        <Card className="border-red-200 bg-red-50/50">
+          <CardContent className="pt-6">
+            <div className="text-2xl font-bold text-red-700">{stats.red}</div>
+            <p className="text-xs text-red-600">Blocked (Red)</p>
+          </CardContent>
+        </Card>
+        <Card className="border-primary/20 bg-primary/5">
+          <CardContent className="pt-6">
+            <div className="text-2xl font-bold text-primary">{stats.active}</div>
+            <p className="text-xs text-primary/80">Active</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Candidates List */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Promotion Candidates</CardTitle>
+          <CardDescription>
+            Policy packs eligible for promotion. Green gate = auto-eligible, Yellow = manual review required.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : candidates.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              No policy packs found
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {candidates.map((candidate) => (
+                <div
+                  key={candidate.pack_id}
+                  className={`flex items-center justify-between p-4 rounded-lg border ${
+                    candidate.status === 'active' 
+                      ? 'bg-muted/30 border-muted' 
+                      : 'bg-card'
+                  }`}
+                >
+                  <div className="flex items-center gap-4">
+                    <div>
+                      <div className="font-medium flex items-center gap-2">
+                        {candidate.institution_name || candidate.institution_code}
+                        {candidate.stale && (
+                          <Badge variant="outline" className="text-amber-600 border-amber-200">
+                            Stale
+                          </Badge>
+                        )}
+                      </div>
+                      <div className="text-sm text-muted-foreground flex items-center gap-2">
+                        <span>{candidate.program_code || 'All Programs'}</span>
+                        <span>•</span>
+                        <span>{candidate.degree_level}</span>
+                        {candidate.catalog_year && (
+                          <>
+                            <span>•</span>
+                            <span>{candidate.catalog_year}</span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-4">
+                    {/* Completeness Score */}
+                    <div className="text-right">
+                      <div className="text-sm font-medium">{candidate.completeness_score}%</div>
+                      <div className="text-xs text-muted-foreground">Score</div>
+                    </div>
+
+                    {/* Ground Truth Badge */}
+                    <Badge 
+                      variant="outline" 
+                      className={candidate.has_ground_truth 
+                        ? 'bg-green-50 text-green-700 border-green-200' 
+                        : 'bg-muted text-muted-foreground'
+                      }
+                    >
+                      <FileCheck className="h-3 w-3 mr-1" />
+                      {candidate.has_ground_truth ? 'Verified' : 'Unverified'}
+                    </Badge>
+
+                    {/* Gate Status */}
+                    <GateStatusBadge status={candidate.gate_status} />
+
+                    {/* Templates Count */}
+                    <div className="text-right min-w-[60px]">
+                      <div className="text-sm font-medium">
+                        {candidate.active_templates_count}/{candidate.templates_count}
+                      </div>
+                      <div className="text-xs text-muted-foreground">Templates</div>
+                    </div>
+
+                    {/* Status / Actions */}
+                    {candidate.status === 'active' ? (
+                      <Badge className="bg-green-100 text-green-800 border-green-200">
+                        <CheckCircle className="h-3 w-3 mr-1" />
+                        Active
+                      </Badge>
+                    ) : candidate.is_promotable ? (
+                      <Button
+                        size="sm"
+                        onClick={() => handlePromote(candidate)}
+                        disabled={promoteMutation.isPending}
+                        variant={candidate.gate_status === 'green' ? 'default' : 'outline'}
+                      >
+                        {promoteMutation.isPending ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <>
+                            <ChevronUp className="h-4 w-4 mr-1" />
+                            Promote
+                          </>
+                        )}
+                      </Button>
+                    ) : (
+                      <Badge variant="outline" className="text-red-600 border-red-200">
+                        <XCircle className="h-3 w-3 mr-1" />
+                        Blocked
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Yellow Gate Confirmation Dialog */}
+      <AlertDialog open={!!confirmPack} onOpenChange={() => setConfirmPack(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-amber-500" />
+              Confirm Yellow Gate Promotion
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              <p>
+                You are promoting <strong>{confirmPack?.institution_name || confirmPack?.institution_code}</strong> with a <strong>yellow gate</strong>.
+              </p>
+              <p className="text-amber-600">
+                Reason: {confirmPack?.promotion_reason}
+              </p>
+              <p>
+                Templates generated from this pack will be set to <strong>pending_review</strong> and will not appear in the marketplace until manually approved.
+              </p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmYellowPromotion}
+              className="bg-amber-600 hover:bg-amber-700"
+            >
+              <Shield className="h-4 w-4 mr-2" />
+              Confirm Promotion
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+}

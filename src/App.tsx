@@ -50,6 +50,7 @@ import TemplateValidation from "./pages/Admin/TemplateValidation";
 import DegreeIntegrityScan from "./pages/Admin/DegreeIntegrityScan";
 import PolicyRefreshAdmin from "./pages/Admin/PolicyRefreshAdmin";
 import TransferScraperDashboard from "./pages/Admin/TransferScraperDashboard";
+import PolicyPackPromotion from "./pages/Admin/PolicyPackPromotion";
 import MentorChat from "./pages/MentorChat";
 import AdminBadges from "./pages/AdminBadges";
 import EmbedExplorer from "./pages/EmbedExplorer";
@@ -884,6 +885,7 @@ const App = () => {
         <Route path="/admin/degree-integrity-scan" element={<DegreeIntegrityScan />} />
         <Route path="/admin/transfer-scraper" element={<TransferScraperDashboard />} />
         <Route path="/admin/policy-refresh" element={<PolicyRefreshAdmin />} />
+        <Route path="/admin/policy-promotion" element={<PolicyPackPromotion />} />
         <Route path="/embed-explorer" element={<EmbedExplorer />} />
           <Route 
             path="/resume-analytics" 
