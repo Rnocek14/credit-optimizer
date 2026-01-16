@@ -646,7 +646,8 @@ async function generateAndWriteTemplate(
     console.log(`[${workerId}] ✓ ${track} template for ${program.program_slug} (${tokensUsed} tokens, ${generationTimeMs}ms)`);
 
     // Run invariant check on the generated template
-    const invariantItems: TemplateItem[] = (templateJson.terms || []).flatMap((term: any) => 
+    const templateData = templateJson as { terms?: Array<{ slots?: Array<any> }> };
+    const invariantItems: TemplateItem[] = (templateData.terms || []).flatMap((term) => 
       (term.slots || []).map((slot: any) => ({
         course_code: slot.courseCode || slot.slotId,
         credits: slot.credits || 3,
@@ -657,7 +658,7 @@ async function generateAndWriteTemplate(
     );
 
     const invariantPolicy: InvariantPolicyData = {
-      degree_credit_total: program.degree_total_credits,
+      degree_credit_total: program.degree_total_credits ?? undefined,
       capstone_in_residence: true,
     };
 
@@ -689,7 +690,6 @@ async function generateAndWriteTemplate(
       template_written: true,
       tokens_used: tokensUsed,
       generation_time_ms: generationTimeMs,
-      invariant_ok: invariantReport.ok,
     };
 
   } catch (error) {
