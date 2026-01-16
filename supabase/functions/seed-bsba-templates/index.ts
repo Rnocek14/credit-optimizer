@@ -804,9 +804,9 @@ async function generateTemplatesFromPack(
       }))
     );
     
-    // v1.1: Use shared policy normalizer
+    // v1.1: Use shared policy normalizer with the actual policyData
     const invariantPolicy = normalizePolicyData({
-      ...normalizedPolicy,
+      ...policyData,
       capstone_in_residence: true, // BSBA always requires capstone in residence
     } as RawPolicyPack);
     
