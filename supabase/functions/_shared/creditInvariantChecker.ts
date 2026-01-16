@@ -174,10 +174,16 @@ const KNOWN_ALT_PROVIDERS = new Set([
 
 /**
  * Normalize provider code to canonical form
+ * Handles edge cases: whitespace, dots, dashes, underscores
  */
 export function normalizeProviderCode(provider: string): string {
-  const lower = provider.toLowerCase().replace(/[\s-]/g, '_');
-  return PROVIDER_ALIASES[lower] || lower;
+  const key = provider
+    .trim()
+    .toLowerCase()
+    .replace(/[.\s-]/g, '_')  // Replace dots, spaces, dashes with underscore
+    .replace(/_+/g, '_')       // Collapse multiple underscores
+    .replace(/^_|_$/g, '');    // Trim leading/trailing underscores
+  return PROVIDER_ALIASES[key] || key;
 }
 
 // ============================================================================
@@ -301,13 +307,24 @@ export function isUpperDivision(item: TemplateItem): boolean {
  * This ensures consistent field names across all callers
  */
 export function normalizePolicyData(raw: RawPolicyPack): PolicyData {
-  // Determine bucket mode
+  // Determine bucket mode - infer from caps even if transfer_alt_bucket_mode is 'unknown'
+  // Priority: explicit 'combined' or 'separate' > infer from caps > undefined
   let bucket_mode: 'separate' | 'combined' | undefined;
+  
+  // First check for combined indicators (takes priority)
   if (raw.transfer_alt_bucket_mode === 'combined' || raw.max_transfer_alt_combined_credits !== undefined) {
     bucket_mode = 'combined';
-  } else if (raw.transfer_alt_bucket_mode === 'separate' || raw.max_alt_credit !== undefined) {
+  } 
+  // Then check for separate indicators (including presence of individual caps)
+  else if (
+    raw.transfer_alt_bucket_mode === 'separate' || 
+    raw.max_alt_credit !== undefined || 
+    raw.max_transfer_credits !== undefined
+  ) {
     bucket_mode = 'separate';
   }
+  // Note: if transfer_alt_bucket_mode === 'unknown' and no caps exist, bucket_mode stays undefined
+  // This will trigger INV_BUCKET_MODE_UNKNOWN which is correct
   
   return {
     degree_credit_total: raw.degree_credit_total ?? raw.total_credits,
@@ -407,12 +424,22 @@ function computeMetrics(items: TemplateItem[], policy: PolicyData): ComputedMetr
 // Invariant Checkers
 // ============================================================================
 
-function checkUnknownSources(computed: ComputedMetrics): InvariantViolation | null {
+function checkUnknownSources(items: TemplateItem[], computed: ComputedMetrics): InvariantViolation | null {
   if (computed.unknownCredits > 0) {
+    // Find which courses have unknown sources for debugging
+    const affectedCourses: string[] = [];
+    for (const item of items) {
+      const classification = classifySource(item.source, item.provider);
+      if (classification.isUnknown) {
+        affectedCourses.push(item.course_code || item.course_id || `unknown-${item.source}`);
+      }
+    }
+    
     return {
       type: 'INV_UNKNOWN_SOURCE',
       severity: 'error',
       message: `${computed.unknownCredits} credits have unknown source type (${computed.unknownSources.join(', ')})`,
+      affectedCourses,
       metrics: {
         unknownCredits: computed.unknownCredits,
         unknownSources: computed.unknownSources,
@@ -705,7 +732,7 @@ export function checkTemplateInvariants(input: InvariantCheckInput): InvariantRe
 
   // Run all invariant checks
   const checks = [
-    checkUnknownSources(computed), // v1.1: New check
+    checkUnknownSources(items, computed), // v1.1: Now includes affectedCourses
     checkTotalCredits(computed, policy_data),
     checkResidency(computed, policy_data),
     ...checkBucketMode(computed, policy_data),

@@ -657,9 +657,11 @@ async function generateAndWriteTemplate(
       }))
     );
 
+    // v1.1: Don't assume capstone_in_residence - only set what we know
+    // The worker doesn't have access to full policy packs, so we only check credits
     const invariantPolicy = normalizePolicyData({
       degree_credit_total: program.degree_total_credits ?? undefined,
-      capstone_in_residence: true,
+      // capstone_in_residence: intentionally NOT set - don't assume all programs require it
     } as RawPolicyPack);
 
     const invariantReport = checkTemplateInvariants({
