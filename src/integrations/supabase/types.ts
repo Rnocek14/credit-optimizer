@@ -11710,6 +11710,7 @@ export type Database = {
           attempt_count: number
           completed_at: string | null
           created_at: string
+          dedupe_key: string | null
           id: string
           institution: string
           invariants_failed: number | null
@@ -11731,6 +11732,7 @@ export type Database = {
           attempt_count?: number
           completed_at?: string | null
           created_at?: string
+          dedupe_key?: string | null
           id?: string
           institution: string
           invariants_failed?: number | null
@@ -11752,6 +11754,7 @@ export type Database = {
           attempt_count?: number
           completed_at?: string | null
           created_at?: string
+          dedupe_key?: string | null
           id?: string
           institution?: string
           invariants_failed?: number | null
@@ -11918,6 +11921,7 @@ export type Database = {
           errors: Json
           id: string
           institution_code: string
+          job_id: string | null
           ok: boolean
           program_code: string | null
           run_source: string
@@ -11932,6 +11936,7 @@ export type Database = {
           errors?: Json
           id?: string
           institution_code: string
+          job_id?: string | null
           ok: boolean
           program_code?: string | null
           run_source: string
@@ -11946,6 +11951,7 @@ export type Database = {
           errors?: Json
           id?: string
           institution_code?: string
+          job_id?: string | null
           ok?: boolean
           program_code?: string | null
           run_source?: string
@@ -11954,7 +11960,15 @@ export type Database = {
           template_table?: string
           warnings?: Json
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "template_invariant_reports_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "template_generation_jobs"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       track_courses: {
         Row: {
@@ -14758,40 +14772,72 @@ export type Database = {
         Returns: undefined
       }
       check_template_generation_health: { Args: never; Returns: Json }
-      claim_template_generation_jobs: {
-        Args: {
-          p_batch_size?: number
-          p_institution_code?: string
-          p_worker_id?: string
-        }
-        Returns: {
-          attempt_count: number | null
-          attempts: number | null
-          blocked_reasons: string[] | null
-          completed_at: string | null
-          created_at: string | null
-          desired_tracks: string[] | null
-          eligibility_status: Database["public"]["Enums"]["template_eligibility_status"]
-          error_code: string | null
-          error_message: string | null
-          id: string
-          last_attempt_at: string | null
-          locked_at: string | null
-          locked_by: string | null
-          next_attempt_at: string | null
-          priority_score: number | null
-          program_catalog_id: string
-          program_slug: string
-          status: string | null
-          updated_at: string | null
-        }[]
-        SetofOptions: {
-          from: "*"
-          to: "template_generation_queue"
-          isOneToOne: false
-          isSetofReturn: true
-        }
-      }
+      claim_template_generation_jobs:
+        | {
+            Args: {
+              p_batch_size?: number
+              p_institution_code?: string
+              p_worker_id?: string
+            }
+            Returns: {
+              attempt_count: number | null
+              attempts: number | null
+              blocked_reasons: string[] | null
+              completed_at: string | null
+              created_at: string | null
+              desired_tracks: string[] | null
+              eligibility_status: Database["public"]["Enums"]["template_eligibility_status"]
+              error_code: string | null
+              error_message: string | null
+              id: string
+              last_attempt_at: string | null
+              locked_at: string | null
+              locked_by: string | null
+              next_attempt_at: string | null
+              priority_score: number | null
+              program_catalog_id: string
+              program_slug: string
+              status: string | null
+              updated_at: string | null
+            }[]
+            SetofOptions: {
+              from: "*"
+              to: "template_generation_queue"
+              isOneToOne: false
+              isSetofReturn: true
+            }
+          }
+        | {
+            Args: { p_batch_size?: number; p_worker_id: string }
+            Returns: {
+              attempt_count: number
+              completed_at: string | null
+              created_at: string
+              dedupe_key: string | null
+              id: string
+              institution: string
+              invariants_failed: number | null
+              invariants_passed: number | null
+              last_error: string | null
+              locked_at: string | null
+              locked_by: string | null
+              max_attempts: number
+              pack_id: string | null
+              priority: number
+              program_code: string | null
+              run_after: string
+              status: string
+              templates_created: number | null
+              templates_updated: number | null
+              updated_at: string
+            }[]
+            SetofOptions: {
+              from: "*"
+              to: "template_generation_jobs"
+              isOneToOne: false
+              isSetofReturn: true
+            }
+          }
       clone_career_track: {
         Args: {
           new_color?: string
