@@ -95,5 +95,9 @@ verify_jwt = false
 [functions.purge-seeded-invariant-data]
 verify_jwt = false
 
+# Admin-only rerun invariants for a template
+[functions.rerun-template-invariants]
+verify_jwt = false
+
 # promote-policy-pack uses default verify_jwt = true
 # Authorization is handled inside the function via role checks

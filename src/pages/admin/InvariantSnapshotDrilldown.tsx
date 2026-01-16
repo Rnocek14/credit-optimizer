@@ -9,7 +9,7 @@
 
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useSearchParams, Link } from 'react-router-dom';
-import { AlertTriangle, ArrowLeft, Copy, CheckCircle2, Clock, RefreshCw, AlertCircle } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, Copy, CheckCircle2, Clock, RefreshCw, AlertCircle, Play, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -22,6 +22,7 @@ import { InvariantExplainerPanel } from '@/components/admin/invariant/InvariantE
 import { EffectiveConfigViewer } from '@/components/admin/invariant/EffectiveConfigViewer';
 import { 
   getInvariantSnapshot, 
+  rerunTemplateInvariants,
   type SnapshotDrilldownResponse, 
   type SnapshotClientError 
 } from '@/lib/admin/invariantSnapshotClient';
@@ -47,6 +48,7 @@ export default function InvariantSnapshotDrilldown() {
   const [data, setData] = useState<SnapshotDrilldownResponse | null>(null);
   const [loadingState, setLoadingState] = useState<LoadingState>('idle');
   const [error, setError] = useState<SnapshotClientError | null>(null);
+  const [rerunLoading, setRerunLoading] = useState(false);
 
   // URL is single source of truth for selected code
   const invariantVersion = searchParams.get('invariant_version');
@@ -128,6 +130,37 @@ export default function InvariantSnapshotDrilldown() {
     newParams.delete('invariant_version');
     setSearchParams(newParams);
   }, [searchParams, setSearchParams]);
+
+  // Rerun invariants handler
+  const handleRerunInvariants = useCallback(async () => {
+    if (!templateId || rerunLoading) return;
+    
+    setRerunLoading(true);
+    const { data: result, error: rerunError } = await rerunTemplateInvariants(templateId);
+    setRerunLoading(false);
+
+    if (rerunError) {
+      toast.error(rerunError.message);
+      return;
+    }
+
+    if (result) {
+      toast.success(`Invariants re-evaluated: ${result.decision}`);
+      // Navigate to latest (remove version param) and refetch
+      const newParams = new URLSearchParams(searchParams);
+      newParams.delete('invariant_version');
+      // Keep code selection if still valid
+      if (selectedCode && result.violation_codes.includes(selectedCode)) {
+        newParams.set('code', selectedCode);
+      } else if (result.violation_codes.length > 0) {
+        newParams.set('code', result.violation_codes[0]);
+      } else {
+        newParams.delete('code');
+      }
+      setSearchParams(newParams);
+      fetchSnapshot();
+    }
+  }, [templateId, rerunLoading, searchParams, selectedCode, setSearchParams, fetchSnapshot]);
 
   // ============================================
   // RENDER: Loading
@@ -225,6 +258,19 @@ export default function InvariantSnapshotDrilldown() {
         </Button>
 
         <div className="flex items-center gap-2">
+          <Button 
+            variant="default" 
+            size="sm" 
+            onClick={handleRerunInvariants}
+            disabled={rerunLoading}
+          >
+            {rerunLoading ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <Play className="h-4 w-4 mr-2" />
+            )}
+            Re-run Invariants
+          </Button>
           <Button variant="outline" size="sm" onClick={handleCopySnapshot}>
             <Copy className="h-4 w-4 mr-2" />
             Copy JSON
