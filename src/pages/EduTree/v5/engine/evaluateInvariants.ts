@@ -1,0 +1,332 @@
+/**
+ * Template Invariant Evaluator
+ * 
+ * Deterministic evaluation of template invariants for scale-safe verification.
+ * 
+ * Usage:
+ * ```ts
+ * import { evaluateInvariants, DEFAULT_INVARIANT_CONFIG } from './evaluateInvariants';
+ * 
+ * const result = evaluateInvariants(inputs, DEFAULT_INVARIANT_CONFIG);
+ * if (!result.ok) {
+ *   console.log('Invariant failures:', result.violations);
+ * }
+ * ```
+ */
+
+import {
+  INVARIANT,
+  INVARIANT_EVAL_ORDER,
+  sortViolationsByPriority,
+  type InvariantCode,
+  type InvariantConfig,
+  type InvariantInputs,
+  type InvariantResult,
+  type InvariantSeverity,
+  type InvariantViolation,
+} from './invariantCodes';
+
+// Re-export for convenience
+export { DEFAULT_INVARIANT_CONFIG } from './invariantCodes';
+export type { InvariantResult, InvariantViolation, InvariantInputs, InvariantConfig };
+
+/**
+ * Evaluate all template invariants against provided inputs.
+ * 
+ * @param input - Template data and policy information
+ * @param config - Evaluation thresholds and expectations
+ * @returns Deterministic result with ok flag, severity, and ordered violations
+ */
+export function evaluateInvariants(
+  input: InvariantInputs,
+  config: InvariantConfig
+): InvariantResult {
+  const violations: InvariantViolation[] = [];
+
+  // Helper to add violations
+  const fail = (code: InvariantCode, message: string, details?: Record<string, unknown>) =>
+    violations.push({ code, severity: 'fail', message, details });
+  const warn = (code: InvariantCode, message: string, details?: Record<string, unknown>) =>
+    violations.push({ code, severity: 'warn', message, details });
+
+  // ============================================
+  // A) NEGATIVE / NaN CREDITS
+  // ============================================
+  {
+    const vals = input.credits;
+    const numeric = [vals.requiredTotal, vals.total, vals.resident, vals.transfer, vals.alt, vals.unknown];
+    const bad = numeric.some(n => typeof n !== 'number' || Number.isNaN(n) || !Number.isFinite(n) || n < 0);
+    if (bad) {
+      fail(INVARIANT.NEGATIVE_OR_NAN_CREDITS, 'One or more credit values are invalid (NaN, infinite, or negative).', {
+        credits: vals,
+      });
+    }
+  }
+
+  // ============================================
+  // A1) TOTAL_CREDITS_MISMATCH
+  // ============================================
+  {
+    const { requiredTotal, total } = input.credits;
+    if (requiredTotal > 0 && total !== requiredTotal) {
+      fail(INVARIANT.TOTAL_CREDITS_MISMATCH, 'Total credits do not match program requirement.', {
+        requiredTotal,
+        total,
+      });
+    }
+  }
+
+  // ============================================
+  // A2) CREDIT_ACCOUNTING_UNBALANCED
+  // ============================================
+  {
+    const c = input.credits;
+    const sum = c.resident + c.transfer + c.alt + c.unknown;
+    if (c.total !== sum) {
+      fail(INVARIANT.CREDIT_ACCOUNTING_UNBALANCED, 'Credit categories do not sum to total credits.', {
+        total: c.total,
+        sum,
+        breakdown: { resident: c.resident, transfer: c.transfer, alt: c.alt, unknown: c.unknown },
+      });
+    }
+  }
+
+  // ============================================
+  // A3) UNKNOWN_CREDITS rules
+  // ============================================
+  {
+    const { unknown } = input.credits;
+    const isActive = input.templateStatus === 'active';
+
+    if (isActive && unknown !== 0) {
+      fail(INVARIANT.UNKNOWN_CREDITS_NONZERO_ACTIVE, 'Active template contains unknown credits (must be zero).', {
+        unknown,
+      });
+    } else if (!isActive && unknown > config.unknownWarnThreshold) {
+      warn(INVARIANT.UNKNOWN_CREDITS_EXCEEDS_THRESHOLD, 'Unknown credits exceed warning threshold.', {
+        unknown,
+        threshold: config.unknownWarnThreshold,
+      });
+    }
+  }
+
+  // ============================================
+  // B1) RESIDENCY_BELOW_MINIMUM
+  // ============================================
+  {
+    const req = input.caps.residencyRequired ?? null;
+    if (req && req > 0 && input.credits.resident < req) {
+      fail(INVARIANT.RESIDENCY_BELOW_MINIMUM, 'Resident credits are below the required residency minimum.', {
+        required: req,
+        resident: input.credits.resident,
+      });
+    }
+  }
+
+  // ============================================
+  // B2) RESIDENCY_SOURCE_INVALID
+  // Placeholder: Implement when slot-level provider validation is available
+  // ============================================
+
+  // ============================================
+  // C0) BUCKET_MODE_MISSING_OR_UNKNOWN
+  // ============================================
+  {
+    const mode = input.caps.bucketMode;
+    if (!mode || mode === 'unknown') {
+      fail(INVARIANT.BUCKET_MODE_MISSING_OR_UNKNOWN, 'Policy bucket mode is missing or unknown.', {
+        bucketMode: mode,
+      });
+    }
+  }
+
+  // ============================================
+  // C1) REQUIRED_CAP_VALUE_MISSING (mode-aware)
+  // ============================================
+  {
+    const mode = input.caps.bucketMode;
+    if (mode === 'separate') {
+      if (input.caps.maxAltCredits == null || input.caps.maxTransferCredits == null) {
+        fail(INVARIANT.REQUIRED_CAP_VALUE_MISSING, 'Separate bucket mode requires max_alt and max_transfer caps.', {
+          maxAltCredits: input.caps.maxAltCredits,
+          maxTransferCredits: input.caps.maxTransferCredits,
+        });
+      }
+    }
+    if (mode === 'combined') {
+      if (input.caps.maxCombinedCredits == null) {
+        fail(INVARIANT.REQUIRED_CAP_VALUE_MISSING, 'Combined bucket mode requires a combined transfer+alt cap.', {
+          maxCombinedCredits: input.caps.maxCombinedCredits,
+        });
+      }
+    }
+  }
+
+  // ============================================
+  // C2/C3) CAP EXCEEDED
+  // ============================================
+  {
+    const mode = input.caps.bucketMode;
+    const isActive = input.templateStatus === 'active';
+    const overCapSeverity: 'fail' | 'warn' =
+      isActive || !config.allowOverCapInPendingReview ? 'fail' : 'warn';
+
+    const emit = overCapSeverity === 'fail' ? fail : warn;
+
+    if (mode === 'separate' && input.caps.maxTransferCredits != null) {
+      const over = input.credits.transfer - input.caps.maxTransferCredits;
+      if (over > 0) {
+        emit(INVARIANT.SEPARATE_TRANSFER_CAP_EXCEEDED, 'Transfer credits exceed separate-mode cap.', {
+          transfer: input.credits.transfer,
+          cap: input.caps.maxTransferCredits,
+          over,
+          templateStatus: input.templateStatus,
+        });
+      }
+    }
+
+    if (mode === 'separate' && input.caps.maxAltCredits != null) {
+      const over = input.credits.alt - input.caps.maxAltCredits;
+      if (over > 0) {
+        emit(INVARIANT.SEPARATE_ALT_CAP_EXCEEDED, 'Alt credits exceed separate-mode cap.', {
+          alt: input.credits.alt,
+          cap: input.caps.maxAltCredits,
+          over,
+          templateStatus: input.templateStatus,
+        });
+      }
+    }
+
+    if (mode === 'combined' && input.caps.maxCombinedCredits != null) {
+      const combined = input.credits.transfer + input.credits.alt;
+      const over = combined - input.caps.maxCombinedCredits;
+      if (over > 0) {
+        emit(INVARIANT.COMBINED_CAP_EXCEEDED, 'Transfer+Alt credits exceed combined-mode cap.', {
+          combined,
+          cap: input.caps.maxCombinedCredits,
+          over,
+          templateStatus: input.templateStatus,
+        });
+      }
+    }
+  }
+
+  // ============================================
+  // D) Term sanity (only if terms present)
+  // ============================================
+  if (input.terms && input.terms.length > 0) {
+    // D1) TERM_COUNT_UNEXPECTED
+    if (config.expectedTermCount != null && input.terms.length !== config.expectedTermCount) {
+      fail(INVARIANT.TERM_COUNT_UNEXPECTED, 'Template term count does not match expectation.', {
+        expected: config.expectedTermCount,
+        actual: input.terms.length,
+      });
+    }
+
+    // D2) TERM_SLOTS_COUNT_MISMATCH and D3) TERM_CREDITS_MISMATCH
+    for (const term of input.terms) {
+      if (config.expectedSlotsPerTerm != null && term.slots.length !== config.expectedSlotsPerTerm) {
+        fail(INVARIANT.TERM_SLOTS_COUNT_MISMATCH, 'Term slot count does not match expectation.', {
+          termIndex: term.index,
+          expected: config.expectedSlotsPerTerm,
+          actual: term.slots.length,
+        });
+      }
+
+      const termCredits = term.slots.reduce((s, slot) => s + (slot.credits ?? 0), 0);
+      if (config.expectedTermCredits != null && termCredits !== config.expectedTermCredits) {
+        fail(INVARIANT.TERM_CREDITS_MISMATCH, 'Term total credits do not match expectation.', {
+          termIndex: term.index,
+          expected: config.expectedTermCredits,
+          actual: termCredits,
+        });
+      }
+
+      // SLOT_CREDITS_INVALID + SLOT_TYPE_OR_PROVIDER_INVALID
+      for (const [i, slot] of term.slots.entries()) {
+        if (typeof slot.credits !== 'number' || !Number.isFinite(slot.credits) || slot.credits <= 0) {
+          fail(INVARIANT.SLOT_CREDITS_INVALID, 'Slot credits are invalid (must be positive number).', {
+            termIndex: term.index,
+            slotIndex: i,
+            credits: slot.credits,
+          });
+        }
+        if (!slot.providerType || typeof slot.providerType !== 'string') {
+          fail(INVARIANT.SLOT_TYPE_OR_PROVIDER_INVALID, 'Slot providerType is missing/invalid.', {
+            termIndex: term.index,
+            slotIndex: i,
+            providerType: slot.providerType,
+          });
+        }
+      }
+    }
+  }
+
+  // ============================================
+  // F1) TEMPLATE_STATUS_INCONSISTENT_WITH_GATE
+  // ============================================
+  {
+    const gate = input.gateStatus;
+    const status = input.templateStatus;
+
+    // Strict mapping:
+    // green -> active allowed
+    // yellow -> must be pending_review (active forbidden)
+    // red -> generation should be blocked
+    if (gate === 'yellow' && status === 'active') {
+      fail(INVARIANT.TEMPLATE_STATUS_INCONSISTENT_WITH_GATE, 'Template is active but gate status is yellow.', {
+        gate,
+        status,
+      });
+    }
+    if (gate === 'red' && (status === 'active' || status === 'pending_review')) {
+      fail(INVARIANT.TEMPLATE_STATUS_INCONSISTENT_WITH_GATE, 'Template exists in marketable state but gate status is red.', {
+        gate,
+        status,
+      });
+    }
+  }
+
+  // ============================================
+  // F2) INVARIANT_REPORT_MISSING_FOR_TOUCHED_TEMPLATE
+  // Note: This check usually happens at job-level (in template-job-processor)
+  // rather than per-template. Include only if touchedTemplateIds is provided.
+  // ============================================
+
+  // ============================================
+  // Deterministic ordering enforcement
+  // ============================================
+  const sortedViolations = sortViolationsByPriority(violations);
+
+  const hasFail = sortedViolations.some(v => v.severity === 'fail');
+  const hasWarn = sortedViolations.some(v => v.severity === 'warn');
+
+  const severity: InvariantSeverity = hasFail ? 'fail' : hasWarn ? 'warn' : 'pass';
+
+  return {
+    ok: !hasFail,
+    severity,
+    violations: sortedViolations,
+    computed: {
+      ...input.credits,
+      bucketMode: input.caps.bucketMode,
+      templateStatus: input.templateStatus,
+      gateStatus: input.gateStatus,
+      termCount: input.terms?.length ?? 0,
+    },
+  };
+}
+
+/**
+ * Quick check if a result has any specific violation code.
+ */
+export function hasViolation(result: InvariantResult, code: InvariantCode): boolean {
+  return result.violations.some(v => v.code === code);
+}
+
+/**
+ * Get all violation codes from a result (for snapshot testing).
+ */
+export function getViolationCodes(result: InvariantResult): InvariantCode[] {
+  return result.violations.map(v => v.code);
+}
