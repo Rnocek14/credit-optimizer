@@ -2,13 +2,18 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { evaluatePolicyGate, PolicyData } from "../_shared/policyGate.ts";
 
-// Critical env vars - fail fast if missing
+// Critical env vars - fail fast with explicit names if missing
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
 const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY');
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
-if (!SUPABASE_URL || !SUPABASE_ANON_KEY || !SUPABASE_SERVICE_ROLE_KEY) {
-  throw new Error('Missing required environment variables: SUPABASE_URL, SUPABASE_ANON_KEY, or SUPABASE_SERVICE_ROLE_KEY');
+const missingEnvVars: string[] = [];
+if (!SUPABASE_URL) missingEnvVars.push('SUPABASE_URL');
+if (!SUPABASE_ANON_KEY) missingEnvVars.push('SUPABASE_ANON_KEY');
+if (!SUPABASE_SERVICE_ROLE_KEY) missingEnvVars.push('SUPABASE_SERVICE_ROLE_KEY');
+
+if (missingEnvVars.length > 0) {
+  throw new Error(`Missing required environment variables: ${missingEnvVars.join(', ')}`);
 }
 
 const corsHeaders = {
