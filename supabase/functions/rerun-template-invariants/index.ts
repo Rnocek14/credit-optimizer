@@ -68,15 +68,19 @@ const RATE_LIMIT_SECONDS = 30;
 
 /**
  * Check if template was manually rerun within last 30 seconds (DB-based rate limit).
- * Only checks snapshots with data_source='real' (manual reruns), not job-generated ones.
- * This prevents blocking reruns after normal generation runs.
+ * 
+ * Discriminator: job_id IS NULL
+ * - Worker-generated snapshots always have job_id set (the generation job ID)
+ * - Manual reruns always have job_id = null
+ * 
+ * This ensures normal generation runs don't block admin reruns.
  */
 async function isRateLimited(supabase: any, templateId: string): Promise<boolean> {
   const { data, error } = await supabase
     .from('invariant_decision_snapshots')
     .select('created_at')
     .eq('template_id', templateId)
-    .eq('data_source', 'real') // Only rate-limit manual reruns, not job-generated snapshots
+    .is('job_id', null) // Only rate-limit manual reruns (job_id=null), not worker snapshots
     .order('created_at', { ascending: false })
     .limit(1)
     .maybeSingle();
