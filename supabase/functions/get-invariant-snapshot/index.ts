@@ -13,6 +13,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1';
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Cache-Control': 'no-store', // Admin-sensitive data
 };
 
 interface SnapshotDrilldownResponse {
@@ -22,7 +23,6 @@ interface SnapshotDrilldownResponse {
     program_slug: string;
     track: string;
     generated_at: string | null;
-    status?: string;
   } | null;
   snapshot: {
     id: string;
@@ -125,15 +125,26 @@ serve(async (req) => {
       auth: { persistSession: false },
     });
 
-    // 4a) Template metadata
+    // 4a) Template metadata (strict - fail on error)
     const { data: template, error: templateError } = await adminClient
       .from('program_templates')
-      .select('id, institution_code, program_slug, track, generated_at, source_snapshot')
+      .select('id, institution_code, program_slug, track, generated_at')
       .eq('id', templateId)
       .maybeSingle();
 
     if (templateError) {
       console.error('[get-invariant-snapshot] Template fetch error:', templateError.message);
+      return new Response(
+        JSON.stringify({ error: 'Failed to fetch template', details: templateError.message }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (!template) {
+      return new Response(
+        JSON.stringify({ error: 'Template not found', template_id: templateId }),
+        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     // 4b) Snapshot (latest or specific version)
@@ -152,6 +163,7 @@ serve(async (req) => {
 
     if (snapshotError) {
       console.error('[get-invariant-snapshot] Snapshot fetch error:', snapshotError.message);
+      // Non-fatal: return template with null snapshot
     }
 
     const snapshot = snapshots?.[0] ?? null;
@@ -167,6 +179,7 @@ serve(async (req) => {
 
       if (jobError) {
         console.error('[get-invariant-snapshot] Job fetch error:', jobError.message);
+        // Non-fatal: return null job
       } else {
         job = jobData;
       }
@@ -176,14 +189,13 @@ serve(async (req) => {
     // 5) BUILD RESPONSE
     // ========================================================================
     const response: SnapshotDrilldownResponse = {
-      template: template ? {
+      template: {
         id: template.id,
         institution_code: template.institution_code,
         program_slug: template.program_slug,
         track: template.track,
         generated_at: template.generated_at,
-        status: (template.source_snapshot as any)?.policy_gate?.status ?? undefined,
-      } : null,
+      },
       snapshot: snapshot ? {
         id: snapshot.id,
         job_id: snapshot.job_id,
@@ -197,7 +209,7 @@ serve(async (req) => {
       job,
     };
 
-    console.log(`[get-invariant-snapshot] Fetched drilldown for template=${templateId}, snapshot=${snapshot?.id ?? 'none'}`);
+    console.log(`[get-invariant-snapshot] Fetched drilldown for template=${templateId}, decision=${snapshot?.decision ?? 'no-snapshot'}`);
 
     return new Response(
       JSON.stringify(response),
