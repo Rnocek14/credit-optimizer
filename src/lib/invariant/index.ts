@@ -17,9 +17,12 @@
  * 
  * // Get explainer for a specific code
  * const explainer = getExplainer('INV_RESIDENCY_NOT_MET');
+ * 
+ * // Get actionable fixes for a violation
+ * const fixes = getPrioritizedFixes('INV_RESIDENCY_NOT_MET', context);
  * ```
  * 
- * @version 1.1.0
+ * @version 1.2.0
  */
 
 // Core types
@@ -63,3 +66,20 @@ export {
   hasAdminOnlyErrors,
   getViolationCategories,
 } from './resolveBlockedReason';
+
+// Actionable fixes types
+export type {
+  FixActionType,
+  FixActionContext,
+  ActionableFix,
+  InvariantFixMapping,
+} from './actionableFixes';
+
+// Actionable fixes registry and helpers
+export {
+  INVARIANT_FIX_REGISTRY,
+  getFixesForCode,
+  resolveRoute,
+  getPrioritizedFixes,
+  getPrimaryFix,
+} from './actionableFixes';

@@ -6,3 +6,4 @@
 
 export { WhyBlockedDrawer } from './WhyBlockedDrawer';
 export { BlockedBadge, BlockedMessage } from './BlockedBadge';
+export { FixActionButton, FixActionList } from './FixActionButton';
