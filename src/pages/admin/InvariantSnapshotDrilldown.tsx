@@ -8,58 +8,29 @@
  */
 
 import React, { useEffect, useState, useCallback } from 'react';
-import { useParams, useSearchParams, useNavigate, Link } from 'react-router-dom';
-import { AlertTriangle, ArrowLeft, Copy, CheckCircle2, Clock, RefreshCw, ExternalLink, AlertCircle } from 'lucide-react';
+import { useParams, useSearchParams, Link } from 'react-router-dom';
+import { AlertTriangle, ArrowLeft, Copy, CheckCircle2, Clock, RefreshCw, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
-import { supabase } from '@/integrations/supabase/client';
 import { ADMIN_ROUTES } from '@/lib/invariant/actionableFixes';
 import { InvariantDecisionHeaderCard } from '@/components/admin/invariant/InvariantDecisionHeaderCard';
 import { ViolationCodeChips } from '@/components/admin/invariant/ViolationCodeChips';
 import { InvariantExplainerPanel } from '@/components/admin/invariant/InvariantExplainerPanel';
 import { EffectiveConfigViewer } from '@/components/admin/invariant/EffectiveConfigViewer';
+import { 
+  getInvariantSnapshot, 
+  type SnapshotDrilldownResponse, 
+  type SnapshotClientError 
+} from '@/lib/admin/invariantSnapshotClient';
 
 // ============================================
 // TYPES
 // ============================================
 
-interface SnapshotDrilldownResponse {
-  template: {
-    id: string;
-    institution_code: string;
-    program_slug: string;
-    track: string;
-    generated_at: string | null;
-    template_status?: string;
-  };
-  snapshot: {
-    id: string;
-    job_id: string | null;
-    template_status: string;
-    invariant_version: string;
-    effective_config: Record<string, unknown>;
-    decision: 'pass' | 'warn' | 'block';
-    violation_codes: string[];
-    created_at: string;
-  } | null;
-  job: {
-    id: string;
-    status: string;
-    created_at: string;
-    completed_at: string | null;
-  } | null;
-}
-
 type LoadingState = 'idle' | 'loading' | 'success' | 'error';
-
-interface DrilldownError {
-  type: 'auth' | 'not_found' | 'server' | 'network';
-  message: string;
-  status?: number;
-}
 
 // ============================================
 // COMPONENT
@@ -68,19 +39,26 @@ interface DrilldownError {
 export default function InvariantSnapshotDrilldown() {
   const { templateId } = useParams<{ templateId: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
-  const navigate = useNavigate();
 
   // Data state
   const [data, setData] = useState<SnapshotDrilldownResponse | null>(null);
   const [loadingState, setLoadingState] = useState<LoadingState>('idle');
-  const [error, setError] = useState<DrilldownError | null>(null);
+  const [error, setError] = useState<SnapshotClientError | null>(null);
 
-  // UI state
-  const [selectedCode, setSelectedCode] = useState<string | null>(null);
-
-  // Query params
+  // URL is single source of truth for selected code
   const invariantVersion = searchParams.get('invariant_version');
-  const codeParam = searchParams.get('code');
+  const selectedCode = searchParams.get('code');
+
+  // Selection handler - updates URL only
+  const handleSelectCode = useCallback((code: string | null) => {
+    const newParams = new URLSearchParams(searchParams);
+    if (code) {
+      newParams.set('code', code);
+    } else {
+      newParams.delete('code');
+    }
+    setSearchParams(newParams, { replace: true });
+  }, [searchParams, setSearchParams]);
 
   // Fetch data
   const fetchSnapshot = useCallback(async () => {
@@ -89,78 +67,32 @@ export default function InvariantSnapshotDrilldown() {
     setLoadingState('loading');
     setError(null);
 
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        setError({ type: 'auth', message: 'Please log in to access this page' });
-        setLoadingState('error');
-        return;
-      }
+    const { data: responseData, error: fetchError } = await getInvariantSnapshot(
+      templateId,
+      invariantVersion
+    );
 
-      const queryParams = new URLSearchParams({ template_id: templateId });
-      if (invariantVersion) {
-        queryParams.append('invariant_version', invariantVersion);
-      }
-
-      const { data: responseData, error: fnError } = await supabase.functions.invoke(
-        'get-invariant-snapshot',
-        { body: { template_id: templateId, invariant_version: invariantVersion || undefined } }
-      );
-
-      if (fnError) {
-        // Parse error response
-        const errBody = (fnError as any).context?.json;
-        const status = errBody?.status || 500;
-        
-        if (status === 401 || status === 403) {
-          setError({ type: 'auth', message: errBody?.error || 'Admin access required', status });
-        } else if (status === 404) {
-          setError({ 
-            type: 'not_found', 
-            message: errBody?.error || 'Snapshot not found', 
-            status 
-          });
-        } else {
-          setError({ 
-            type: 'server', 
-            message: errBody?.error || fnError.message || 'Server error', 
-            status 
-          });
-        }
-        setLoadingState('error');
-        return;
-      }
-
-      setData(responseData as SnapshotDrilldownResponse);
-      setLoadingState('success');
-
-      // Auto-select first violation if decision is warn/block
-      const snapshot = (responseData as SnapshotDrilldownResponse).snapshot;
-      if (snapshot && (snapshot.decision === 'warn' || snapshot.decision === 'block')) {
-        const firstCode = codeParam || snapshot.violation_codes[0];
-        if (firstCode) {
-          setSelectedCode(firstCode);
-        }
-      }
-    } catch (err) {
-      console.error('[InvariantDrilldown] Fetch error:', err);
-      setError({ type: 'network', message: 'Failed to connect to server' });
+    if (fetchError) {
+      setError(fetchError);
       setLoadingState('error');
+      return;
     }
-  }, [templateId, invariantVersion, codeParam]);
+
+    setData(responseData);
+    setLoadingState('success');
+
+    // Auto-select first violation if decision is warn/block and no code selected
+    const snapshot = responseData?.snapshot;
+    if (snapshot && (snapshot.decision === 'warn' || snapshot.decision === 'block')) {
+      if (!selectedCode && snapshot.violation_codes.length > 0) {
+        handleSelectCode(snapshot.violation_codes[0]);
+      }
+    }
+  }, [templateId, invariantVersion, selectedCode, handleSelectCode]);
 
   useEffect(() => {
     fetchSnapshot();
   }, [fetchSnapshot]);
-
-  // Sync selectedCode with URL
-  useEffect(() => {
-    if (selectedCode) {
-      const newParams = new URLSearchParams(searchParams);
-      newParams.set('code', selectedCode);
-      setSearchParams(newParams, { replace: true });
-    }
-  }, [selectedCode, searchParams, setSearchParams]);
 
   // Copy snapshot JSON
   const handleCopySnapshot = useCallback(() => {
@@ -301,9 +233,11 @@ export default function InvariantSnapshotDrilldown() {
             <p className="text-muted-foreground mb-4">
               This template has not been evaluated by the invariant system yet.
             </p>
-            <Button>
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Re-run Generation
+            <Button asChild>
+              <Link to={`${ADMIN_ROUTES.generationJobs}?template_id=${template.id}`}>
+                <RefreshCw className="h-4 w-4 mr-2" />
+                View Generation Jobs
+              </Link>
             </Button>
           </CardContent>
         </Card>
@@ -334,7 +268,7 @@ export default function InvariantSnapshotDrilldown() {
                   <ViolationCodeChips
                     codes={snapshot.violation_codes}
                     selectedCode={selectedCode}
-                    onSelectCode={setSelectedCode}
+                    onSelectCode={handleSelectCode}
                   />
                 )}
               </CardContent>
@@ -345,7 +279,7 @@ export default function InvariantSnapshotDrilldown() {
               <InvariantExplainerPanel
                 code={selectedCode}
                 context={fixContext}
-                onClose={() => setSelectedCode(null)}
+                onClose={() => handleSelectCode(null)}
               />
             )}
           </div>
