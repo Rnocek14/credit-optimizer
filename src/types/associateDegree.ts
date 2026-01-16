@@ -112,7 +112,7 @@ export const KNOWN_ASSOCIATE_ARTICULATIONS: Omit<AssociateDegreeArticulation, 'i
     genEdWaived: true,
     residencyRemaining: 9,  // Only 9 credits residency!
     conditions: ['From regionally accredited institution'],
-    evidenceUrl: 'https://www.charteroak.edu/current-students/registrar/transfer-credits.php',
+    evidenceUrl: 'https://www.charteroak.edu/catalog/current/transfer-credit/course-transfer-policy-undergraduate/',
     evidenceType: 'policy_page',
     confidence: 0.92,
     notes: 'COSC requires only 9 credits residency - ideal for transfer students.',
@@ -126,7 +126,7 @@ export const KNOWN_ASSOCIATE_ARTICULATIONS: Omit<AssociateDegreeArticulation, 'i
     genEdWaived: true,
     residencyRemaining: 9,
     conditions: ['From regionally accredited institution'],
-    evidenceUrl: 'https://www.charteroak.edu/current-students/registrar/transfer-credits.php',
+    evidenceUrl: 'https://www.charteroak.edu/catalog/current/transfer-credit/course-transfer-policy-undergraduate/',
     evidenceType: 'policy_page',
     confidence: 0.92,
   },
