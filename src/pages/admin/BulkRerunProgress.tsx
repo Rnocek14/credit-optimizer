@@ -58,6 +58,10 @@ const BulkRerunProgress: React.FC = () => {
       setLoading(false);
       return data;
     }
+    
+    // No error but also no data - job not found
+    setError('Job not found');
+    setLoading(false);
     return null;
   }, [jobId]);
 
