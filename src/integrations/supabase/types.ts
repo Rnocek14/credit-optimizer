@@ -5953,6 +5953,51 @@ export type Database = {
           },
         ]
       }
+      invariant_decision_snapshots: {
+        Row: {
+          created_at: string
+          decision: string
+          effective_config: Json
+          id: string
+          institution_code: string
+          invariant_version: string
+          job_id: string | null
+          program_catalog_id: string | null
+          template_id: string | null
+          template_status: string
+          track: string | null
+          violation_codes: string[]
+        }
+        Insert: {
+          created_at?: string
+          decision: string
+          effective_config: Json
+          id?: string
+          institution_code: string
+          invariant_version: string
+          job_id?: string | null
+          program_catalog_id?: string | null
+          template_id?: string | null
+          template_status: string
+          track?: string | null
+          violation_codes?: string[]
+        }
+        Update: {
+          created_at?: string
+          decision?: string
+          effective_config?: Json
+          id?: string
+          institution_code?: string
+          invariant_version?: string
+          job_id?: string | null
+          program_catalog_id?: string | null
+          template_id?: string | null
+          template_status?: string
+          track?: string | null
+          violation_codes?: string[]
+        }
+        Relationships: []
+      }
       job_outcomes: {
         Row: {
           created_at: string | null
