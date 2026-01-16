@@ -182,7 +182,7 @@ export const MayaInsightDebugPanel: React.FC = () => {
   };
 
   return (
-    <Card className="border-amber-200 bg-amber-50/50 dark:border-amber-800 dark:bg-amber-950/50">
+    <Card className="border-transparent bg-amber-50/50 dark:border-transparent dark:bg-amber-950/50">
       <CardHeader>
         <CardTitle className="flex items-center justify-between text-amber-800 dark:text-amber-200">
           <div className="flex items-center gap-2">
