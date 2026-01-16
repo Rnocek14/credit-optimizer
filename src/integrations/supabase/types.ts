@@ -14572,26 +14572,17 @@ export type Database = {
       }
       v_policy_pack_promotion_candidates: {
         Row: {
-          active_templates_count: number | null
+          active_templates: number | null
           blocked_reason: string | null
-          catalog_year: string | null
           confidence_score: number | null
-          created_at: string | null
-          degree_level: string | null
           gate_status: string | null
           has_ground_truth: boolean | null
-          institution_code: string | null
-          institution_name: string | null
-          is_auto_promotable: boolean | null
+          institution: string | null
           is_promotable: boolean | null
           missing_critical: string[] | null
           pack_id: string | null
-          program_code: string | null
-          promoted_at: string | null
-          promotion_reason: string | null
-          stale: boolean | null
+          pending_templates: number | null
           status: string | null
-          templates_count: number | null
           updated_at: string | null
         }
         Relationships: []

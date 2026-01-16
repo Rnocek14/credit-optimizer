@@ -2,6 +2,15 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { evaluatePolicyGate, PolicyData } from "../_shared/policyGate.ts";
 
+// Critical env vars - fail fast if missing
+const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
+const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY');
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+
+if (!SUPABASE_URL || !SUPABASE_ANON_KEY || !SUPABASE_SERVICE_ROLE_KEY) {
+  throw new Error('Missing required environment variables: SUPABASE_URL, SUPABASE_ANON_KEY, or SUPABASE_SERVICE_ROLE_KEY');
+}
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -13,13 +22,14 @@ interface PromoteRequest {
 }
 
 /**
- * Derive hasGroundTruth from pack fields - mirrors view logic exactly
+ * Derive hasGroundTruth from pack fields - handles both string and object provenance values
+ * Mirrors view logic exactly but handles edge cases safely
  */
 function deriveHasGroundTruth(pack: {
   provenance_url?: string | null;
   last_verified_at?: string | null;
   policy_data?: Record<string, unknown> | null;
-  field_provenance?: Record<string, string> | null;
+  field_provenance?: Record<string, unknown> | null;
 }): boolean {
   // Check provenance_url
   if (pack.provenance_url) return true;
@@ -31,10 +41,22 @@ function deriveHasGroundTruth(pack: {
   if (pack.policy_data?.provenance_verified_at) return true;
   
   // Check field_provenance for ground_truth/human_override sources
+  // Handle both string values AND object values with "source" key
   if (pack.field_provenance && typeof pack.field_provenance === 'object') {
     const groundTruthSources = ['ground_truth', 'human_override', 'catalog_pdf'];
-    for (const source of Object.values(pack.field_provenance)) {
-      if (groundTruthSources.includes(source)) return true;
+    
+    for (const value of Object.values(pack.field_provenance)) {
+      // Case 1: value is a string (e.g., { "max_alt_credit": "ground_truth" })
+      if (typeof value === 'string' && groundTruthSources.includes(value)) {
+        return true;
+      }
+      // Case 2: value is an object with "source" key (e.g., { "max_alt_credit": { "source": "catalog_pdf", "url": "..." } })
+      if (value && typeof value === 'object' && !Array.isArray(value)) {
+        const sourceValue = (value as Record<string, unknown>).source;
+        if (typeof sourceValue === 'string' && groundTruthSources.includes(sourceValue)) {
+          return true;
+        }
+      }
     }
   }
   
@@ -103,12 +125,8 @@ serve(async (req) => {
       );
     }
 
-    // Create client with anon key first to verify the token
-    const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
-    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? '';
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
-    
-    const authClient = createClient(supabaseUrl, supabaseAnonKey, {
+    // Use pre-validated env vars
+    const authClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       global: { headers: { Authorization: authHeader } }
     });
 
@@ -130,9 +148,9 @@ serve(async (req) => {
     // =========================================================================
     // AUTHORIZATION: Check if user is allowed to promote packs
     // =========================================================================
-    const serviceClient = createClient(supabaseUrl, supabaseServiceKey);
+    const serviceClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
     
-    const isAdmin = await isAuthorizedAdmin(supabaseUrl, supabaseServiceKey, userId);
+    const isAdmin = await isAuthorizedAdmin(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, userId);
     if (!isAdmin) {
       console.warn(`[promote-policy-pack] User ${userId} is not authorized to promote packs`);
       return new Response(
@@ -247,22 +265,37 @@ serve(async (req) => {
     }
 
     // =========================================================================
-    // PROMOTE THE PACK
+    // PROMOTE THE PACK (atomic update with race protection)
     // =========================================================================
-    const { error: updateError } = await serviceClient
+    const { data: updatedPack, error: updateError } = await serviceClient
       .from('institution_policy_packs')
       .update({
         status: 'active',
         promoted_at: new Date().toISOString(),
         promoted_by: userId,
       })
-      .eq('id', packId);
+      .eq('id', packId)
+      .neq('status', 'active')  // Race protection: only update if not already active
+      .select()
+      .maybeSingle();
 
     if (updateError) {
       console.error(`[promote-policy-pack] Update error:`, updateError);
       return new Response(
         JSON.stringify({ error: 'Failed to update pack', details: updateError.message }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Race condition: another admin promoted it first
+    if (!updatedPack) {
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'Pack was already promoted by another admin',
+          pack: { id: packId }
+        }),
+        { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
