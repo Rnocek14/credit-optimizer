@@ -3,7 +3,9 @@
  * 
  * Shows validation status for all marketplace templates
  * with pass/fail indicators, detailed metrics, and invariant snapshot status.
- * Uses server-side pagination via list-invariant-snapshots edge function.
+ * 
+ * Model A: Page templates first, then fetch snapshots for visible templates only.
+ * This ensures "Pending" means "no snapshot exists" not "not in current fetch page".
  */
 
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
@@ -56,7 +58,7 @@ interface SnapshotMap {
   [templateId: string]: SnapshotSummary;
 }
 
-type DecisionFilter = 'all' | 'pass' | 'warn' | 'block';
+type AuditFilter = 'all' | 'passing' | 'failing';
 
 // ============================================
 // MAIN COMPONENT
@@ -68,21 +70,20 @@ const TemplateValidation: React.FC = () => {
   const [snapshotMap, setSnapshotMap] = useState<SnapshotMap>({});
   const [snapshotsLoading, setSnapshotsLoading] = useState(false);
   const [snapshotError, setSnapshotError] = useState<string | null>(null);
-  const [snapshotTotal, setSnapshotTotal] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
   const abortRef = useRef<AbortController | null>(null);
 
   // URL-driven state
-  const decisionFilter = (searchParams.get('decision') as DecisionFilter) || 'all';
+  const auditFilter = (searchParams.get('status') as AuditFilter) || 'all';
   const currentPage = parseInt(searchParams.get('page') || '1', 10);
-  const offset = (currentPage - 1) * PAGE_SIZE;
 
+  // Step 1: Get all audit results from templates
   const { results, summary } = useMemo(() => {
     return auditAllTemplates(marketplaceTemplates as any[]);
   }, []);
 
-  // Filter results by search term (client-side)
-  const filteredResults = useMemo(() => {
+  // Step 2: Filter by search term (client-side)
+  const searchFilteredResults = useMemo(() => {
     if (!searchTerm.trim()) return results;
     const term = searchTerm.toLowerCase();
     return results.filter(r => 
@@ -92,8 +93,28 @@ const TemplateValidation: React.FC = () => {
     );
   }, [results, searchTerm]);
 
-  // Fetch invariant snapshots for visible templates
-  const fetchSnapshots = useCallback(async () => {
+  // Step 3: Filter by audit status (client-side)
+  const filteredResults = useMemo(() => {
+    if (auditFilter === 'all') return searchFilteredResults;
+    if (auditFilter === 'passing') return searchFilteredResults.filter(r => r.passesAll);
+    return searchFilteredResults.filter(r => !r.passesAll);
+  }, [searchFilteredResults, auditFilter]);
+
+  // Step 4: Paginate templates (client-side)
+  const totalTemplates = filteredResults.length;
+  const totalPages = Math.max(1, Math.ceil(totalTemplates / PAGE_SIZE));
+  const safeCurrentPage = Math.min(Math.max(1, currentPage), totalPages);
+  const startIndex = (safeCurrentPage - 1) * PAGE_SIZE;
+  const endIndex = Math.min(startIndex + PAGE_SIZE, totalTemplates);
+  const visibleTemplates = filteredResults.slice(startIndex, endIndex);
+
+  // Step 5: Fetch snapshots ONLY for visible templates
+  const fetchSnapshotsForVisibleTemplates = useCallback(async () => {
+    if (visibleTemplates.length === 0) {
+      setSnapshotMap({});
+      return;
+    }
+
     abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
@@ -101,20 +122,14 @@ const TemplateValidation: React.FC = () => {
     setSnapshotsLoading(true);
     setSnapshotError(null);
     
-    const params: ListSnapshotsParams = {
-      limit: PAGE_SIZE,
-      offset: offset,
-    };
+    // Only request snapshots for templates visible on this page
+    const templateIds = visibleTemplates.map(r => r.templateId);
     
-    // Apply decision filter (server-side)
-    if (decisionFilter !== 'all') {
-      params.decision = decisionFilter;
-    }
-
-    // If searching with few results, use template_ids filter
-    if (filteredResults.length <= 100 && filteredResults.length > 0) {
-      params.template_ids = filteredResults.map(r => r.templateId);
-    }
+    const params: ListSnapshotsParams = {
+      template_ids: templateIds,
+      limit: PAGE_SIZE, // We'll get at most PAGE_SIZE results
+      offset: 0,
+    };
 
     const { data, error } = await listInvariantSnapshots(params, controller.signal);
 
@@ -132,26 +147,25 @@ const TemplateValidation: React.FC = () => {
         map[s.template_id] = s;
       }
       setSnapshotMap(map);
-      setSnapshotTotal(data.total);
     }
     
     setSnapshotsLoading(false);
-  }, [decisionFilter, offset, filteredResults]);
+  }, [visibleTemplates]);
 
   useEffect(() => {
-    fetchSnapshots();
+    fetchSnapshotsForVisibleTemplates();
     return () => {
       abortRef.current?.abort();
     };
-  }, [fetchSnapshots]);
+  }, [fetchSnapshotsForVisibleTemplates]);
 
   // URL update helpers
-  const setDecisionFilter = (decision: DecisionFilter) => {
+  const setAuditFilter = (status: AuditFilter) => {
     const newParams = new URLSearchParams(searchParams);
-    if (decision === 'all') {
-      newParams.delete('decision');
+    if (status === 'all') {
+      newParams.delete('status');
     } else {
-      newParams.set('decision', decision);
+      newParams.set('status', status);
     }
     newParams.set('page', '1'); // Reset to first page
     setSearchParams(newParams);
@@ -160,6 +174,14 @@ const TemplateValidation: React.FC = () => {
   const setPage = (page: number) => {
     const newParams = new URLSearchParams(searchParams);
     newParams.set('page', String(page));
+    setSearchParams(newParams);
+  };
+
+  const handleSearchChange = (value: string) => {
+    setSearchTerm(value);
+    // Reset to page 1 when search changes
+    const newParams = new URLSearchParams(searchParams);
+    newParams.set('page', '1');
     setSearchParams(newParams);
   };
 
@@ -190,10 +212,10 @@ const TemplateValidation: React.FC = () => {
     ? Math.round((summary.passingTemplates / summary.totalTemplates) * 100) 
     : 0;
 
-  // Count invariant decisions from snapshot map
+  // Count invariant decisions for VISIBLE templates only
   const invariantCounts = useMemo(() => {
     const counts = { pass: 0, warn: 0, block: 0, pending: 0 };
-    for (const result of filteredResults) {
+    for (const result of visibleTemplates) {
       const snapshot = snapshotMap[result.templateId];
       if (!snapshot) {
         counts.pending++;
@@ -206,12 +228,10 @@ const TemplateValidation: React.FC = () => {
       }
     }
     return counts;
-  }, [filteredResults, snapshotMap]);
+  }, [visibleTemplates, snapshotMap]);
 
-  // Pagination info
-  const totalPages = Math.ceil(snapshotTotal / PAGE_SIZE);
-  const hasNextPage = currentPage < totalPages;
-  const hasPrevPage = currentPage > 1;
+  const hasNextPage = safeCurrentPage < totalPages;
+  const hasPrevPage = safeCurrentPage > 1;
   
   return (
     <div className="container max-w-6xl mx-auto py-8 px-4 space-y-6">
@@ -285,12 +305,12 @@ const TemplateValidation: React.FC = () => {
         </Card>
       </div>
 
-      {/* Invariant Status Summary */}
+      {/* Invariant Status Summary (for visible page) */}
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
             <HelpCircle className="h-4 w-4" />
-            Invariant Snapshot Status
+            Invariant Snapshot Status (this page)
             {snapshotsLoading && <Loader2 className="h-4 w-4 animate-spin" />}
           </CardTitle>
         </CardHeader>
@@ -312,17 +332,15 @@ const TemplateValidation: React.FC = () => {
               <Clock className="h-3 w-3" />
               {invariantCounts.pending} Pending
             </Badge>
-            {snapshotTotal > 0 && (
-              <Badge variant="outline" className="gap-1 ml-auto">
-                Total with snapshots: {snapshotTotal}
-              </Badge>
-            )}
           </div>
           {snapshotError && (
             <div className="mt-2 text-sm text-destructive">
               Error loading snapshots: {snapshotError}
             </div>
           )}
+          <p className="text-xs text-muted-foreground mt-2">
+            Showing {visibleTemplates.length} of {totalTemplates} templates
+          </p>
         </CardContent>
       </Card>
       
@@ -399,41 +417,35 @@ const TemplateValidation: React.FC = () => {
                 <Input 
                   placeholder="Search templates..."
                   value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onChange={(e) => handleSearchChange(e.target.value)}
                   className="pl-8 w-48"
                 />
               </div>
               
-              {/* Decision Filter */}
+              {/* Audit Status Filter */}
               <Select 
-                value={decisionFilter} 
-                onValueChange={(v) => setDecisionFilter(v as DecisionFilter)}
+                value={auditFilter} 
+                onValueChange={(v) => setAuditFilter(v as AuditFilter)}
               >
                 <SelectTrigger className="w-32">
                   <SelectValue placeholder="Filter" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All</SelectItem>
-                  <SelectItem value="pass">Pass</SelectItem>
-                  <SelectItem value="warn">Warn</SelectItem>
-                  <SelectItem value="block">Block</SelectItem>
+                  <SelectItem value="passing">Passing</SelectItem>
+                  <SelectItem value="failing">Failing</SelectItem>
                 </SelectContent>
               </Select>
             </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-2">
-          {snapshotsLoading && filteredResults.length === 0 ? (
+          {visibleTemplates.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
-              <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
-              Loading templates...
-            </div>
-          ) : filteredResults.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              No templates found matching your search.
+              No templates found matching your filters.
             </div>
           ) : (
-            filteredResults.map(result => (
+            visibleTemplates.map(result => (
               <TemplateRow 
                 key={result.templateId}
                 result={result}
@@ -449,13 +461,13 @@ const TemplateValidation: React.FC = () => {
           {totalPages > 1 && (
             <div className="flex items-center justify-between pt-4 border-t">
               <div className="text-sm text-muted-foreground">
-                Page {currentPage} of {totalPages} ({snapshotTotal} templates with snapshots)
+                Page {safeCurrentPage} of {totalPages} ({totalTemplates} templates)
               </div>
               <div className="flex gap-2">
                 <Button 
                   variant="outline" 
                   size="sm" 
-                  onClick={() => setPage(currentPage - 1)}
+                  onClick={() => setPage(safeCurrentPage - 1)}
                   disabled={!hasPrevPage}
                 >
                   <ChevronLeft className="h-4 w-4" />
@@ -464,7 +476,7 @@ const TemplateValidation: React.FC = () => {
                 <Button 
                   variant="outline" 
                   size="sm" 
-                  onClick={() => setPage(currentPage + 1)}
+                  onClick={() => setPage(safeCurrentPage + 1)}
                   disabled={!hasNextPage}
                 >
                   Next
@@ -538,6 +550,13 @@ function InvariantBadge({
           Block
         </Badge>
       );
+    default:
+      return (
+        <Badge variant="secondary" className="gap-1">
+          <Clock className="h-3 w-3" />
+          Unknown
+        </Badge>
+      );
   }
 }
 
@@ -600,7 +619,7 @@ const TemplateRow: React.FC<TemplateRowProps> = ({
                       )}
                     </div>
                   ) : (
-                    <span>No snapshot recorded</span>
+                    <span>No snapshot recorded yet</span>
                   )}
                 </TooltipContent>
               </Tooltip>
