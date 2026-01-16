@@ -11705,6 +11705,94 @@ export type Database = {
           },
         ]
       }
+      template_generation_jobs: {
+        Row: {
+          attempt_count: number
+          completed_at: string | null
+          created_at: string
+          id: string
+          institution: string
+          invariants_failed: number | null
+          invariants_passed: number | null
+          last_error: string | null
+          locked_at: string | null
+          locked_by: string | null
+          max_attempts: number
+          pack_id: string | null
+          priority: number
+          program_code: string | null
+          run_after: string
+          status: string
+          templates_created: number | null
+          templates_updated: number | null
+          updated_at: string
+        }
+        Insert: {
+          attempt_count?: number
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          institution: string
+          invariants_failed?: number | null
+          invariants_passed?: number | null
+          last_error?: string | null
+          locked_at?: string | null
+          locked_by?: string | null
+          max_attempts?: number
+          pack_id?: string | null
+          priority?: number
+          program_code?: string | null
+          run_after?: string
+          status?: string
+          templates_created?: number | null
+          templates_updated?: number | null
+          updated_at?: string
+        }
+        Update: {
+          attempt_count?: number
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          institution?: string
+          invariants_failed?: number | null
+          invariants_passed?: number | null
+          last_error?: string | null
+          locked_at?: string | null
+          locked_by?: string | null
+          max_attempts?: number
+          pack_id?: string | null
+          priority?: number
+          program_code?: string | null
+          run_after?: string
+          status?: string
+          templates_created?: number | null
+          templates_updated?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "template_generation_jobs_pack_id_fkey"
+            columns: ["pack_id"]
+            isOneToOne: false
+            referencedRelation: "institution_policy_packs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "template_generation_jobs_pack_id_fkey"
+            columns: ["pack_id"]
+            isOneToOne: false
+            referencedRelation: "institution_policy_packs_live"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "template_generation_jobs_pack_id_fkey"
+            columns: ["pack_id"]
+            isOneToOne: false
+            referencedRelation: "v_policy_pack_promotion_candidates"
+            referencedColumns: ["pack_id"]
+          },
+        ]
+      }
       template_generation_queue: {
         Row: {
           attempt_count: number | null

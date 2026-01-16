@@ -337,6 +337,30 @@ serve(async (req) => {
       },
     });
 
+    // =========================================================================
+    // ENQUEUE TEMPLATE GENERATION JOB (idempotent - unique constraint handles dupes)
+    // =========================================================================
+    const { error: enqueueError } = await serviceClient
+      .from('template_generation_jobs')
+      .insert({
+        institution: pack.institution,
+        program_code: null, // All programs for this institution
+        pack_id: packId,
+        status: 'queued',
+        priority: gate.status === 'green' ? 80 : 60, // Green gets higher priority
+        run_after: new Date().toISOString(),
+      })
+      .select()
+      .maybeSingle();
+
+    // Ignore unique constraint violation - job already exists
+    const jobEnqueued = !enqueueError || enqueueError.code === '23505';
+    if (enqueueError && enqueueError.code !== '23505') {
+      console.warn(`[promote-policy-pack] Job enqueue warning:`, enqueueError);
+    } else {
+      console.log(`[promote-policy-pack] Template generation job ${jobEnqueued ? 'enqueued' : 'already exists'} for ${pack.institution}`);
+    }
+
     console.log(`[promote-policy-pack] ✅ Pack ${packId} promoted successfully`);
 
     return new Response(
@@ -349,6 +373,7 @@ serve(async (req) => {
           promotedAt: new Date().toISOString(),
         },
         gate,
+        jobEnqueued,
         message: gate.status === 'yellow' 
           ? 'Pack promoted with yellow gate (templates will be pending_review)'
           : 'Pack promoted successfully',
