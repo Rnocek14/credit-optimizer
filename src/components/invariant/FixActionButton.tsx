@@ -3,6 +3,13 @@
  * 
  * Renders actionable fix buttons that deep link to admin workflows
  * or trigger actions directly.
+ * 
+ * Handles:
+ * - Navigation to admin pages
+ * - Status changes with confirmation
+ * - Re-run validation
+ * - Disabled state for unresolved placeholders
+ * - Toast feedback for missing handlers
  */
 
 import { useNavigate } from 'react-router-dom';
@@ -24,6 +31,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import { toast } from '@/hooks/use-toast';
 import {
   Search,
   Clock,
@@ -49,7 +57,7 @@ import {
   MessageCircle,
   ExternalLink,
 } from 'lucide-react';
-import type { ActionableFix, FixActionContext } from '@/lib/invariant/actionableFixes';
+import type { ResolvedFix, FixActionContext } from '@/lib/invariant/actionableFixes';
 
 // Icon mapping
 const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -79,7 +87,7 @@ const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
 };
 
 interface FixActionButtonProps {
-  fix: ActionableFix & { resolvedRoute?: string };
+  fix: ResolvedFix;
   context: FixActionContext;
   onStatusChange?: (status: string) => void;
   onRerunValidation?: () => void;
@@ -89,7 +97,6 @@ interface FixActionButtonProps {
 
 export function FixActionButton({
   fix,
-  context,
   onStatusChange,
   onRerunValidation,
   size = 'sm',
@@ -99,30 +106,65 @@ export function FixActionButton({
   
   const IconComponent = fix.icon ? ICON_MAP[fix.icon] : ExternalLink;
   
+  // Determine if button should be disabled
+  const isDisabled = fix.hasUnresolvedPlaceholders && 
+    (fix.actionType === 'navigate' || fix.actionType === 'navigate_with_field');
+  
+  // Build tooltip text
+  const getTooltipText = () => {
+    if (isDisabled && fix.missingContextFields.length > 0) {
+      return `Missing context: ${fix.missingContextFields.join(', ')}`;
+    }
+    return fix.description;
+  };
+  
   const handleAction = () => {
     switch (fix.actionType) {
       case 'navigate':
       case 'navigate_with_field':
-        if (fix.resolvedRoute) {
+        if (fix.resolvedRoute && !fix.hasUnresolvedPlaceholders) {
           navigate(fix.resolvedRoute);
+        } else if (fix.hasUnresolvedPlaceholders) {
+          toast({
+            title: 'Navigation unavailable',
+            description: `Missing required context: ${fix.missingContextFields.join(', ')}`,
+            variant: 'destructive',
+          });
         }
         break;
         
       case 'set_status':
-        if (fix.targetStatus && onStatusChange) {
-          onStatusChange(fix.targetStatus);
+        if (fix.targetStatus) {
+          if (onStatusChange) {
+            onStatusChange(fix.targetStatus);
+          } else {
+            toast({
+              title: 'Action unavailable',
+              description: 'Status change handler not configured for this view.',
+              variant: 'destructive',
+            });
+          }
         }
         break;
         
       case 'rerun_validation':
         if (onRerunValidation) {
           onRerunValidation();
+        } else {
+          toast({
+            title: 'Action unavailable',
+            description: 'Re-validation handler not configured for this view.',
+            variant: 'destructive',
+          });
         }
         break;
         
       case 'invoke_function':
         // TODO: Implement edge function invocation
-        console.log('Invoke function:', fix.functionName, fix.functionParams);
+        toast({
+          title: 'Coming soon',
+          description: 'Direct function invocation is not yet implemented.',
+        });
         break;
     }
   };
@@ -139,14 +181,18 @@ export function FixActionButton({
       variant={fix.variant ?? 'outline'}
       size={size}
       onClick={fix.requiresConfirmation ? undefined : handleAction}
+      disabled={isDisabled}
       className="justify-start"
     >
       {buttonContent}
     </Button>
   );
   
+  // Always wrap in tooltip for disabled state or description
+  const tooltipText = getTooltipText();
+  
   // Wrap in confirmation dialog if needed
-  if (fix.requiresConfirmation) {
+  if (fix.requiresConfirmation && !isDisabled) {
     return (
       <AlertDialog>
         <TooltipProvider>
@@ -156,11 +202,9 @@ export function FixActionButton({
                 {button}
               </AlertDialogTrigger>
             </TooltipTrigger>
-            {showDescription && (
-              <TooltipContent>
-                <p>{fix.description}</p>
-              </TooltipContent>
-            )}
+            <TooltipContent>
+              <p>{tooltipText}</p>
+            </TooltipContent>
           </Tooltip>
         </TooltipProvider>
         
@@ -182,8 +226,8 @@ export function FixActionButton({
     );
   }
   
-  // Wrap in tooltip if showing description
-  if (showDescription) {
+  // Wrap in tooltip if showing description or disabled
+  if (showDescription || isDisabled) {
     return (
       <TooltipProvider>
         <Tooltip>
@@ -191,7 +235,9 @@ export function FixActionButton({
             {button}
           </TooltipTrigger>
           <TooltipContent>
-            <p>{fix.description}</p>
+            <p className={isDisabled ? 'text-destructive' : ''}>
+              {tooltipText}
+            </p>
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>
@@ -202,12 +248,13 @@ export function FixActionButton({
 }
 
 interface FixActionListProps {
-  fixes: Array<ActionableFix & { resolvedRoute?: string }>;
+  fixes: ResolvedFix[];
   context: FixActionContext;
   onStatusChange?: (status: string) => void;
   onRerunValidation?: () => void;
   layout?: 'horizontal' | 'vertical';
   maxVisible?: number;
+  hideUnresolved?: boolean;
 }
 
 export function FixActionList({
@@ -217,9 +264,20 @@ export function FixActionList({
   onRerunValidation,
   layout = 'vertical',
   maxVisible = 3,
+  hideUnresolved = false,
 }: FixActionListProps) {
-  const visibleFixes = fixes.slice(0, maxVisible);
-  const hiddenCount = fixes.length - visibleFixes.length;
+  // Optionally filter out unresolved fixes
+  const filteredFixes = hideUnresolved
+    ? fixes.filter(fix => !fix.hasUnresolvedPlaceholders)
+    : fixes;
+  
+  const visibleFixes = filteredFixes.slice(0, maxVisible);
+  const hiddenCount = filteredFixes.length - visibleFixes.length;
+  
+  // Don't render if no visible fixes
+  if (visibleFixes.length === 0) {
+    return null;
+  }
   
   return (
     <div className={`flex ${layout === 'vertical' ? 'flex-col' : 'flex-row flex-wrap'} gap-2`}>

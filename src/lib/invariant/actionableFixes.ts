@@ -6,10 +6,27 @@
  * 
  * PURELY INTERPRETIVE - Does NOT modify invariant behavior.
  * 
- * @version 1.0.0
+ * @version 1.1.0
  */
 
 import type { InvariantCode } from './invariantExplainers';
+
+// ============================================
+// ADMIN ROUTE CONSTANTS (prevent drift)
+// ============================================
+
+/**
+ * Centralized admin routes to prevent hardcoded string drift.
+ * Keep in sync with App.tsx route definitions.
+ */
+export const ADMIN_ROUTES = {
+  policyRefresh: '/admin/policy-refresh',
+  templateValidation: '/admin/template-validation',
+  transferScraper: '/admin/transfer-scraper',
+  settings: '/admin/settings',
+  generationJobs: '/admin/generation-jobs',
+  policyPromotion: '/admin/policy-promotion',
+} as const;
 
 // ============================================
 // TYPES
@@ -67,6 +84,15 @@ export interface ActionableFix {
   // Visibility
   requiresAdmin?: boolean;        // Only show to admins
   priority?: number;              // Sort order (lower = first)
+}
+
+/**
+ * Resolved fix with computed route and validation state
+ */
+export interface ResolvedFix extends ActionableFix {
+  resolvedRoute?: string;
+  hasUnresolvedPlaceholders: boolean;
+  missingContextFields: string[];
 }
 
 /**
@@ -520,6 +546,22 @@ export const INVARIANT_FIX_REGISTRY: Record<InvariantCode, ActionableFix[]> = {
 // ============================================
 
 /**
+ * Check if a URL has unresolved placeholders
+ */
+export function hasUnresolvedPlaceholders(url: string): boolean {
+  return /:[\w]+/.test(url);
+}
+
+/**
+ * Extract missing placeholder field names from a URL
+ */
+export function extractMissingPlaceholders(url: string): string[] {
+  const matches = url.match(/:(\w+)/g);
+  if (!matches) return [];
+  return matches.map(m => m.slice(1)); // Remove the leading ':'
+}
+
+/**
  * Get actionable fixes for an invariant code
  */
 export function getFixesForCode(code: string): ActionableFix[] {
@@ -534,7 +576,7 @@ export function getFixesForCode(code: string): ActionableFix[] {
       label: 'Contact Support',
       description: 'Get help resolving this issue',
       actionType: 'navigate',
-      route: '/admin/settings',
+      route: ADMIN_ROUTES.settings,
       queryParams: { tab: 'support' },
       icon: 'MessageCircle',
       priority: 1,
@@ -544,29 +586,41 @@ export function getFixesForCode(code: string): ActionableFix[] {
 
 /**
  * Resolve route placeholders with context values
+ * Safe for non-string values in queryParams (coerces to string)
  */
 export function resolveRoute(
   route: string,
   queryParams: Record<string, string> | undefined,
   context: FixActionContext
-): string {
+): { url: string; hasUnresolved: boolean; missingFields: string[] } {
   let resolvedRoute = route;
-  let resolvedParams: Record<string, string> = {};
+  const resolvedParams: Record<string, string> = {};
+  const missingFields: string[] = [];
   
-  // Replace :placeholders in route
-  resolvedRoute = resolvedRoute.replace(/:(\w+)/g, (_, key) => {
+  // Replace :placeholders in route path
+  resolvedRoute = resolvedRoute.replace(/:(\w+)/g, (match, key) => {
     const contextKey = key as keyof FixActionContext;
-    return context[contextKey]?.toString() ?? `:${key}`;
+    const value = context[contextKey];
+    if (value !== undefined && value !== null) {
+      return String(value);
+    }
+    missingFields.push(key);
+    return match; // Keep placeholder if not found
   });
   
-  // Replace :placeholders in query params
+  // Replace :placeholders in query params (with string safety)
   if (queryParams) {
-    for (const [key, value] of Object.entries(queryParams)) {
+    for (const [key, rawValue] of Object.entries(queryParams)) {
+      const value = String(rawValue); // Coerce to string for safety
+      
       if (value.startsWith(':')) {
         const contextKey = value.slice(1) as keyof FixActionContext;
         const contextValue = context[contextKey];
-        if (contextValue) {
-          resolvedParams[key] = contextValue.toString();
+        if (contextValue !== undefined && contextValue !== null) {
+          resolvedParams[key] = String(contextValue);
+        } else {
+          missingFields.push(contextKey);
+          // Don't include param with unresolved placeholder
         }
       } else {
         resolvedParams[key] = value;
@@ -576,31 +630,57 @@ export function resolveRoute(
   
   // Build query string
   const queryString = new URLSearchParams(resolvedParams).toString();
-  return queryString ? `${resolvedRoute}?${queryString}` : resolvedRoute;
+  const url = queryString ? `${resolvedRoute}?${queryString}` : resolvedRoute;
+  
+  return {
+    url,
+    hasUnresolved: hasUnresolvedPlaceholders(url) || missingFields.length > 0,
+    missingFields: [...new Set(missingFields)], // Dedupe
+  };
 }
 
 /**
- * Get prioritized fixes for display
+ * Get prioritized fixes for display with full resolution metadata
  */
 export function getPrioritizedFixes(
   code: string,
   context: FixActionContext,
-  options: { maxFixes?: number; adminOnly?: boolean } = {}
-): Array<ActionableFix & { resolvedRoute?: string }> {
-  const { maxFixes = 3, adminOnly = true } = options;
+  options: { maxFixes?: number; adminOnly?: boolean; includeUnresolved?: boolean } = {}
+): ResolvedFix[] {
+  const { maxFixes = 3, adminOnly = true, includeUnresolved = true } = options;
   
   const fixes = getFixesForCode(code)
     .filter(fix => !fix.requiresAdmin || adminOnly)
     .sort((a, b) => (a.priority ?? 99) - (b.priority ?? 99))
     .slice(0, maxFixes);
   
-  // Resolve routes
-  return fixes.map(fix => ({
-    ...fix,
-    resolvedRoute: fix.route 
-      ? resolveRoute(fix.route, fix.queryParams, context)
-      : undefined,
-  }));
+  // Resolve routes and add metadata
+  const resolved: ResolvedFix[] = fixes.map(fix => {
+    if (fix.route) {
+      const result = resolveRoute(fix.route, fix.queryParams, context);
+      return {
+        ...fix,
+        resolvedRoute: result.url,
+        hasUnresolvedPlaceholders: result.hasUnresolved,
+        missingContextFields: result.missingFields,
+      };
+    }
+    
+    // Non-navigation actions (set_status, rerun_validation, etc.)
+    return {
+      ...fix,
+      resolvedRoute: undefined,
+      hasUnresolvedPlaceholders: false,
+      missingContextFields: [],
+    };
+  });
+  
+  // Optionally filter out fixes with unresolved placeholders
+  if (!includeUnresolved) {
+    return resolved.filter(fix => !fix.hasUnresolvedPlaceholders);
+  }
+  
+  return resolved;
 }
 
 /**
@@ -609,7 +689,7 @@ export function getPrioritizedFixes(
 export function getPrimaryFix(
   code: string,
   context: FixActionContext
-): (ActionableFix & { resolvedRoute?: string }) | null {
+): ResolvedFix | null {
   const fixes = getPrioritizedFixes(code, context, { maxFixes: 1 });
   return fixes[0] ?? null;
 }
