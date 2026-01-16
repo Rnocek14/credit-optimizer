@@ -219,3 +219,63 @@ export async function listInvariantSnapshots(
     };
   }
 }
+
+// ============================================
+// RERUN INVARIANTS
+// ============================================
+
+export interface RerunInvariantsResponse {
+  template_id: string;
+  snapshot_id?: string;
+  decision: 'pass' | 'warn' | 'block';
+  violation_codes: string[];
+  invariant_version: string;
+  created_at?: string;
+  dry_run: boolean;
+  warning?: string;
+}
+
+/**
+ * Rerun invariants for a specific template (admin-only)
+ */
+export async function rerunTemplateInvariants(
+  templateId: string,
+  options: { reason?: string; dryRun?: boolean } = {},
+  signal?: AbortSignal
+): Promise<{ data: RerunInvariantsResponse | null; error: SnapshotClientError | null }> {
+  try {
+    const { headers, error: authError } = await getAuthHeaders(signal);
+    if (authError) return { data: null, error: authError };
+
+    const url = getEdgeFunctionUrl('rerun-template-invariants');
+
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { ...headers!, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        template_id: templateId,
+        reason: options.reason,
+        dry_run: options.dryRun ?? false,
+      }),
+      signal,
+    });
+
+    if (!res.ok) {
+      const errBody = await res.json().catch(() => ({}));
+      return { data: null, error: parseHttpError(res, errBody) };
+    }
+
+    const responseData = await res.json() as RerunInvariantsResponse;
+    return { data: responseData, error: null };
+
+  } catch (err) {
+    if (err instanceof Error && err.name === 'AbortError') {
+      return { data: null, error: { type: 'aborted', message: 'Request aborted', status: 0 } };
+    }
+    console.error('[rerunTemplateInvariants] Network error:', err);
+    return {
+      data: null,
+      error: { type: 'network', message: err instanceof Error ? err.message : 'Failed to connect', status: 0 },
+    };
+  }
+}
