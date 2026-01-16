@@ -76,14 +76,28 @@ export type {
   InvariantFixMapping,
 } from './actionableFixes';
 
-// Actionable fixes registry and helpers
+// Institution override types
+export type {
+  InstitutionOverrideSettings,
+  InstitutionOverrideRow,
+  InstitutionOverrideAuditEntry,
+  EffectiveInvariantConfig,
+} from './institutionOverrides';
+
+// Institution override helpers
 export {
-  ADMIN_ROUTES,
-  INVARIANT_FIX_REGISTRY,
-  getFixesForCode,
-  resolveRoute,
-  getPrioritizedFixes,
-  getPrimaryFix,
-  hasUnresolvedPlaceholders,
-  extractMissingPlaceholders,
-} from './actionableFixes';
+  OVERRIDE_SCHEMA_VERSION,
+  OVERRIDE_BOUNDS,
+  DEFAULT_INVARIANT_CONFIG,
+  parseOverrideSettings,
+  serializeOverrideSettings,
+  mergeWithDefaults,
+  getEffectiveInvariantConfig,
+  getEffectiveInvariantConfigSync,
+  fetchInstitutionOverrides,
+  saveInstitutionOverrides,
+  disableInstitutionOverrides,
+  fetchOverrideAuditLog,
+  fetchAllInstitutionOverrides,
+  clearOverrideCache,
+} from './institutionOverrides';
