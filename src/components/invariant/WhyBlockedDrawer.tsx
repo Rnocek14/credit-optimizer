@@ -2,7 +2,11 @@
  * WhyBlockedDrawer Component
  * 
  * Admin-focused drawer for displaying detailed invariant violation explanations.
- * Shows errors, warnings, suggested fixes, and affected courses.
+ * Shows hard failures, warnings, suggested fixes, and affected courses.
+ * 
+ * SEVERITY SEMANTICS:
+ * - 'hard': Blocking violations (template cannot proceed)
+ * - 'warn': Non-blocking warnings
  */
 
 import { useState } from 'react';
@@ -33,8 +37,7 @@ import {
   XCircle,
 } from 'lucide-react';
 import { useBlockedReason } from '@/hooks/useBlockedReason';
-import type { InvariantReport } from '@/lib/invariant';
-import type { ExplainedViolation, UnknownViolation } from '@/lib/invariant';
+import type { InvariantReport, AnyViolation, ExplainedViolation } from '@/lib/invariant';
 
 interface WhyBlockedDrawerProps {
   report: InvariantReport | null | undefined;
@@ -45,10 +48,8 @@ interface WhyBlockedDrawerProps {
 /**
  * Type guard for ExplainedViolation
  */
-function isExplainedViolation(
-  v: ExplainedViolation | UnknownViolation
-): v is ExplainedViolation {
-  return !('isUnknownCode' in v);
+function isExplainedViolation(v: AnyViolation): v is ExplainedViolation {
+  return !v.isUnknownCode;
 }
 
 /**
@@ -56,10 +57,10 @@ function isExplainedViolation(
  */
 function ViolationCard({ 
   violation,
-  isError,
+  isHardFailure,
 }: { 
-  violation: ExplainedViolation | UnknownViolation;
-  isError: boolean;
+  violation: AnyViolation;
+  isHardFailure: boolean;
 }) {
   const isExplained = isExplainedViolation(violation);
   
@@ -67,7 +68,7 @@ function ViolationCard({
     <AccordionItem value={violation.code} className="border rounded-lg mb-2">
       <AccordionTrigger className="px-4 py-3 hover:no-underline">
         <div className="flex items-center gap-3 text-left">
-          {isError ? (
+          {isHardFailure ? (
             <XCircle className="h-5 w-5 text-destructive shrink-0" />
           ) : (
             <AlertTriangle className="h-5 w-5 text-amber-500 shrink-0" />
@@ -81,6 +82,11 @@ function ViolationCard({
           {isExplained && (
             <Badge variant="outline" className="shrink-0 text-xs">
               {violation.category}
+            </Badge>
+          )}
+          {!isExplained && (
+            <Badge variant="secondary" className="shrink-0 text-xs">
+              Unknown
             </Badge>
           )}
         </div>
@@ -133,7 +139,7 @@ function ViolationCard({
           )}
           
           {/* Affected Courses */}
-          {isExplained && violation.affectedCourses && violation.affectedCourses.length > 0 && (
+          {violation.affectedCourses && violation.affectedCourses.length > 0 && (
             <div>
               <h4 className="text-sm font-medium mb-2">Affected Courses</h4>
               <div className="flex flex-wrap gap-1">
@@ -171,10 +177,10 @@ export function WhyBlockedDrawer({
     isBlocked,
     hasWarnings,
     wouldFailStrict,
-    errors,
+    hardFailures,
     warnings,
-    errorCount,
-    warningCount,
+    hardCount,
+    warnCount,
     badgeText,
   } = useBlockedReason(report, { audience: 'admin' });
   
@@ -235,9 +241,9 @@ export function WhyBlockedDrawer({
               </span>
             </div>
             <div className="text-sm text-muted-foreground">
-              {errorCount > 0 && `${errorCount} error${errorCount > 1 ? 's' : ''}`}
-              {errorCount > 0 && warningCount > 0 && ', '}
-              {warningCount > 0 && `${warningCount} warning${warningCount > 1 ? 's' : ''}`}
+              {hardCount > 0 && `${hardCount} hard failure${hardCount > 1 ? 's' : ''}`}
+              {hardCount > 0 && warnCount > 0 && ', '}
+              {warnCount > 0 && `${warnCount} warning${warnCount > 1 ? 's' : ''}`}
             </div>
             {wouldFailStrict && !isBlocked && (
               <Badge variant="outline" className="text-amber-600">
@@ -246,19 +252,19 @@ export function WhyBlockedDrawer({
             )}
           </div>
           
-          {/* Errors Section */}
-          {errors.length > 0 && (
+          {/* Hard Failures Section */}
+          {hardFailures.length > 0 && (
             <div className="mb-6">
               <h3 className="text-sm font-semibold mb-3 flex items-center gap-2 text-destructive">
                 <XCircle className="h-4 w-4" />
-                Errors ({errorCount})
+                Hard Failures ({hardCount})
               </h3>
               <Accordion type="single" collapsible className="space-y-2">
-                {errors.map((error) => (
+                {hardFailures.map((v) => (
                   <ViolationCard 
-                    key={error.code} 
-                    violation={error} 
-                    isError={true} 
+                    key={v.code} 
+                    violation={v} 
+                    isHardFailure={true} 
                   />
                 ))}
               </Accordion>
@@ -270,14 +276,14 @@ export function WhyBlockedDrawer({
             <div>
               <h3 className="text-sm font-semibold mb-3 flex items-center gap-2 text-amber-600">
                 <AlertTriangle className="h-4 w-4" />
-                Warnings ({warningCount})
+                Warnings ({warnCount})
               </h3>
               <Accordion type="single" collapsible className="space-y-2">
-                {warnings.map((warning) => (
+                {warnings.map((v) => (
                   <ViolationCard 
-                    key={warning.code} 
-                    violation={warning} 
-                    isError={false} 
+                    key={v.code} 
+                    violation={v} 
+                    isHardFailure={false} 
                   />
                 ))}
               </Accordion>

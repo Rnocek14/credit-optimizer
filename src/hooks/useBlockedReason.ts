@@ -3,15 +3,21 @@
  * 
  * React hook for resolving and displaying invariant explanations.
  * Provides audience-aware payloads for admin, marketplace, and public views.
+ * 
+ * SEVERITY SEMANTICS:
+ * - 'hard': Blocking violations
+ * - 'warn': Non-blocking warnings
  */
 
 import { useMemo } from 'react';
 import {
   type InvariantReport,
   type BlockedReasonPayload,
-  type AudienceLevel,
+  type AnyViolation,
+  type PrimaryBlocker,
   resolveBlockedReason,
 } from '@/lib/invariant';
+import type { AudienceLevel } from '@/lib/invariant';
 
 interface UseBlockedReasonOptions {
   /**
@@ -27,7 +33,7 @@ interface UseBlockedReasonResult {
   /** Full payload with all audience versions */
   payload: BlockedReasonPayload | null;
   
-  /** Is the template blocked (has errors)? */
+  /** Is the template blocked (has hard failures)? */
   isBlocked: boolean;
   
   /** Has warnings but not blocked? */
@@ -36,20 +42,20 @@ interface UseBlockedReasonResult {
   /** Would fail under strict mode? */
   wouldFailStrict: boolean;
   
-  /** Primary blocking reason for display */
-  primaryBlocker: BlockedReasonPayload['primaryBlocker'];
+  /** Primary blocking reason for display (never null when blocked) */
+  primaryBlocker: PrimaryBlocker | null;
   
-  /** Filtered errors for current audience */
-  errors: BlockedReasonPayload['errors'];
+  /** Filtered hard failures for current audience */
+  hardFailures: AnyViolation[];
   
   /** Filtered warnings for current audience */
-  warnings: BlockedReasonPayload['warnings'];
+  warnings: AnyViolation[];
   
-  /** Error count for current audience */
-  errorCount: number;
+  /** Hard failure count for current audience */
+  hardCount: number;
   
   /** Warning count for current audience */
-  warningCount: number;
+  warnCount: number;
   
   /** Quick badge text for UI */
   badgeText: string | null;
@@ -63,7 +69,7 @@ interface UseBlockedReasonResult {
  * 
  * @example
  * ```tsx
- * const { isBlocked, primaryBlocker, errors, warnings } = useBlockedReason(
+ * const { isBlocked, primaryBlocker, hardFailures, warnings } = useBlockedReason(
  *   template.invariantReport,
  *   { audience: 'marketplace' }
  * );
@@ -88,10 +94,10 @@ export function useBlockedReason(
         hasWarnings: false,
         wouldFailStrict: false,
         primaryBlocker: null,
-        errors: [],
+        hardFailures: [],
         warnings: [],
-        errorCount: 0,
-        warningCount: 0,
+        hardCount: 0,
+        warnCount: 0,
         badgeText: null,
       };
     }
@@ -101,54 +107,54 @@ export function useBlockedReason(
     
     // Get audience-filtered data
     let filteredData: {
-      primaryBlocker: BlockedReasonPayload['primaryBlocker'];
-      errors: BlockedReasonPayload['errors'];
-      warnings: BlockedReasonPayload['warnings'];
-      errorCount: number;
-      warningCount: number;
+      primaryBlocker: PrimaryBlocker | null;
+      hardFailures: AnyViolation[];
+      warnings: AnyViolation[];
+      hardCount: number;
+      warnCount: number;
     };
     
     switch (audience) {
       case 'marketplace':
         filteredData = {
           primaryBlocker: payload.marketplaceSafe.primaryBlocker,
-          errors: payload.marketplaceSafe.errors,
+          hardFailures: payload.marketplaceSafe.hardFailures,
           warnings: payload.marketplaceSafe.warnings,
-          errorCount: payload.marketplaceSafe.errorCount,
-          warningCount: payload.marketplaceSafe.warningCount,
+          hardCount: payload.marketplaceSafe.hardCount,
+          warnCount: payload.marketplaceSafe.warnCount,
         };
         break;
       case 'public':
         filteredData = {
           primaryBlocker: payload.publicSafe.primaryBlocker,
-          errors: payload.publicSafe.errors,
+          hardFailures: payload.publicSafe.hardFailures,
           warnings: payload.publicSafe.warnings,
-          errorCount: payload.publicSafe.errorCount,
-          warningCount: payload.publicSafe.warningCount,
+          hardCount: payload.publicSafe.hardCount,
+          warnCount: payload.publicSafe.warnCount,
         };
         break;
       case 'admin':
       default:
         filteredData = {
           primaryBlocker: payload.primaryBlocker,
-          errors: payload.errors,
+          hardFailures: payload.hardFailures,
           warnings: payload.warnings,
-          errorCount: payload.errorCount,
-          warningCount: payload.warningCount,
+          hardCount: payload.hardCount,
+          warnCount: payload.warnCount,
         };
         break;
     }
     
     // Generate badge text
     let badgeText: string | null = null;
-    if (filteredData.errorCount > 0) {
-      badgeText = filteredData.errorCount === 1 
+    if (filteredData.hardCount > 0) {
+      badgeText = filteredData.hardCount === 1 
         ? '1 issue' 
-        : `${filteredData.errorCount} issues`;
-    } else if (filteredData.warningCount > 0) {
-      badgeText = filteredData.warningCount === 1 
+        : `${filteredData.hardCount} issues`;
+    } else if (filteredData.warnCount > 0) {
+      badgeText = filteredData.warnCount === 1 
         ? '1 warning' 
-        : `${filteredData.warningCount} warnings`;
+        : `${filteredData.warnCount} warnings`;
     }
     
     return {

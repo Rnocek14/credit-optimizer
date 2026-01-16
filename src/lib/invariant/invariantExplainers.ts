@@ -12,7 +12,11 @@
  * - Audience-aware: different visibility levels
  * - Audit-safe: all explanations are policy-neutral and traceable
  * 
- * @version 1.0.0
+ * SEVERITY SEMANTICS:
+ * - 'hard': Blocking violations (template cannot proceed)
+ * - 'warn': Non-blocking warnings (informational only)
+ * 
+ * @version 1.1.0
  */
 
 // ============================================
@@ -50,7 +54,25 @@ export type InvariantCode =
   | 'INV_PREREQUISITES_UNMET'
   | 'INV_GENED_INCOMPLETE';
 
-export type ExplainerSeverity = 'error' | 'warning';
+/**
+ * Explainer severity uses invariant system semantics: hard vs warn
+ * - hard: Blocking violation
+ * - warn: Non-blocking warning
+ */
+export type ExplainerSeverity = 'hard' | 'warn';
+
+/**
+ * Report severity from creditInvariantChecker.ts uses error/warning
+ * This type is for mapping at the boundary
+ */
+export type ReportSeverity = 'error' | 'warning';
+
+/**
+ * Map report severity to explainer severity (one-time boundary mapping)
+ */
+export function mapReportSeverity(severity: ReportSeverity | string): ExplainerSeverity {
+  return severity === 'warning' ? 'warn' : 'hard';
+}
 
 /**
  * Audience visibility levels
@@ -99,7 +121,7 @@ export const INVARIANT_EXPLAINERS: Record<InvariantCode, InvariantExplainer> = {
   // ─────────────────────────────────────────
   INV_NEGATIVE_OR_NAN_CREDITS: {
     code: 'INV_NEGATIVE_OR_NAN_CREDITS',
-    severity: 'error',
+    severity: 'hard',
     title: 'Invalid Credit Values',
     explanation: 'The template contains negative or invalid credit values that prevent accurate calculations.',
     impact: 'Templates with invalid credit values cannot be used for degree planning as the math would be unreliable.',
@@ -116,7 +138,7 @@ export const INVARIANT_EXPLAINERS: Record<InvariantCode, InvariantExplainer> = {
 
   INV_CREDIT_ACCOUNTING_UNBALANCED: {
     code: 'INV_CREDIT_ACCOUNTING_UNBALANCED',
-    severity: 'error',
+    severity: 'hard',
     title: 'Credit Accounting Error',
     explanation: 'The sum of individual credit categories does not match the total credits in the template.',
     impact: 'Unbalanced credit accounting means the template cannot accurately represent degree requirements.',
@@ -136,7 +158,7 @@ export const INVARIANT_EXPLAINERS: Record<InvariantCode, InvariantExplainer> = {
   // ─────────────────────────────────────────
   INV_TOTAL_CREDITS_MISMATCH: {
     code: 'INV_TOTAL_CREDITS_MISMATCH',
-    severity: 'error',
+    severity: 'hard',
     title: 'Total Credits Mismatch',
     explanation: 'The template does not meet the degree\'s total credit requirement.',
     impact: 'Students using this template would not graduate with the required number of credits.',
@@ -153,7 +175,7 @@ export const INVARIANT_EXPLAINERS: Record<InvariantCode, InvariantExplainer> = {
 
   INV_RESIDENCY_NOT_MET: {
     code: 'INV_RESIDENCY_NOT_MET',
-    severity: 'error',
+    severity: 'hard',
     title: 'Residency Requirement Not Met',
     explanation: 'The template does not include enough credits from the degree-granting institution.',
     impact: 'Most institutions require a minimum number of credits to be completed at their school to grant a degree.',
@@ -170,7 +192,7 @@ export const INVARIANT_EXPLAINERS: Record<InvariantCode, InvariantExplainer> = {
 
   INV_BUCKET_MODE_UNKNOWN: {
     code: 'INV_BUCKET_MODE_UNKNOWN',
-    severity: 'error',
+    severity: 'hard',
     title: 'Transfer Policy Mode Unknown',
     explanation: 'The institution\'s transfer credit policy mode (combined or separate caps) could not be determined.',
     impact: 'Without knowing the policy mode, credit caps cannot be properly enforced.',
@@ -187,7 +209,7 @@ export const INVARIANT_EXPLAINERS: Record<InvariantCode, InvariantExplainer> = {
 
   INV_COMBINED_CAP_EXCEEDED: {
     code: 'INV_COMBINED_CAP_EXCEEDED',
-    severity: 'error',
+    severity: 'hard',
     title: 'Combined Transfer Cap Exceeded',
     explanation: 'The total transfer credits (traditional + alternative) exceed the institution\'s combined limit.',
     impact: 'The institution will not accept this many transfer credits, making the template unfeasible.',
@@ -204,7 +226,7 @@ export const INVARIANT_EXPLAINERS: Record<InvariantCode, InvariantExplainer> = {
 
   INV_ALT_CAP_EXCEEDED: {
     code: 'INV_ALT_CAP_EXCEEDED',
-    severity: 'error',
+    severity: 'hard',
     title: 'Alternative Credit Cap Exceeded',
     explanation: 'The template includes more alternative credits (CLEP, Sophia, etc.) than the institution allows.',
     impact: 'The institution has a specific limit on credits from alternative providers.',
@@ -221,7 +243,7 @@ export const INVARIANT_EXPLAINERS: Record<InvariantCode, InvariantExplainer> = {
 
   INV_TRANSFER_CAP_EXCEEDED: {
     code: 'INV_TRANSFER_CAP_EXCEEDED',
-    severity: 'error',
+    severity: 'hard',
     title: 'Traditional Transfer Cap Exceeded',
     explanation: 'The template includes more traditional transfer credits than the institution allows.',
     impact: 'The institution has a specific limit on credits from other accredited institutions.',
@@ -238,7 +260,7 @@ export const INVARIANT_EXPLAINERS: Record<InvariantCode, InvariantExplainer> = {
 
   INV_PROVIDER_CAP_EXCEEDED: {
     code: 'INV_PROVIDER_CAP_EXCEEDED',
-    severity: 'error',
+    severity: 'hard',
     title: 'Provider Credit Limit Exceeded',
     explanation: 'Credits from a specific provider exceed the institution\'s limit for that provider.',
     impact: 'Some institutions limit how many credits can come from any single alternative provider.',
@@ -255,7 +277,7 @@ export const INVARIANT_EXPLAINERS: Record<InvariantCode, InvariantExplainer> = {
 
   INV_UPPER_DIVISION_NOT_MET: {
     code: 'INV_UPPER_DIVISION_NOT_MET',
-    severity: 'error',
+    severity: 'hard',
     title: 'Upper Division Requirement Not Met',
     explanation: 'The template does not include enough upper-division (300-400 level) courses.',
     impact: 'Bachelor\'s degrees typically require a minimum number of advanced coursework credits.',
@@ -272,7 +294,7 @@ export const INVARIANT_EXPLAINERS: Record<InvariantCode, InvariantExplainer> = {
 
   INV_CAPSTONE_NOT_IN_RESIDENCE: {
     code: 'INV_CAPSTONE_NOT_IN_RESIDENCE',
-    severity: 'error',
+    severity: 'hard',
     title: 'Capstone Course Required In Residence',
     explanation: 'The capstone course must be taken at the degree-granting institution, not transferred.',
     impact: 'Most institutions require the culminating capstone experience to be completed at their school.',
@@ -292,7 +314,7 @@ export const INVARIANT_EXPLAINERS: Record<InvariantCode, InvariantExplainer> = {
   // ─────────────────────────────────────────
   INV_UNKNOWN_SOURCE: {
     code: 'INV_UNKNOWN_SOURCE',
-    severity: 'error',
+    severity: 'hard',
     title: 'Unknown Credit Source',
     explanation: 'One or more courses have an unrecognized credit source.',
     impact: 'Courses with unknown sources cannot be properly categorized for cap enforcement.',
@@ -309,7 +331,7 @@ export const INVARIANT_EXPLAINERS: Record<InvariantCode, InvariantExplainer> = {
 
   INV_POLICY_MISSING_COMBINED_CAP: {
     code: 'INV_POLICY_MISSING_COMBINED_CAP',
-    severity: 'error',
+    severity: 'hard',
     title: 'Missing Combined Transfer Cap',
     explanation: 'The institution\'s combined transfer credit cap is not configured.',
     impact: 'Without a combined cap, the system cannot validate transfer credit limits.',
@@ -326,7 +348,7 @@ export const INVARIANT_EXPLAINERS: Record<InvariantCode, InvariantExplainer> = {
 
   INV_POLICY_MISSING_ALT_CAP: {
     code: 'INV_POLICY_MISSING_ALT_CAP',
-    severity: 'error',
+    severity: 'hard',
     title: 'Missing Alternative Credit Cap',
     explanation: 'The institution\'s alternative credit cap is not configured.',
     impact: 'Without an alternative cap, limits on CLEP, Sophia, and similar credits cannot be enforced.',
@@ -346,7 +368,7 @@ export const INVARIANT_EXPLAINERS: Record<InvariantCode, InvariantExplainer> = {
   // ─────────────────────────────────────────
   INV_UNKNOWN_CREDITS_NONZERO_ACTIVE: {
     code: 'INV_UNKNOWN_CREDITS_NONZERO_ACTIVE',
-    severity: 'error',
+    severity: 'hard',
     title: 'Active Template Has Unknown Credits',
     explanation: 'An active template cannot have credits from unresolved or unknown sources.',
     impact: 'Active templates are shown to users; all credits must be verified before activation.',
@@ -363,19 +385,20 @@ export const INVARIANT_EXPLAINERS: Record<InvariantCode, InvariantExplainer> = {
 
   INV_POLICY_MISSING_TRANSFER_CAP: {
     code: 'INV_POLICY_MISSING_TRANSFER_CAP',
-    severity: 'error',
-    title: 'Missing Traditional Transfer Cap',
-    explanation: 'The institution uses separate caps but the traditional transfer cap is not configured.',
-    impact: 'Separate-mode institutions require both alternative AND traditional transfer caps.',
+    severity: 'hard',
+    title: 'Missing Required Cap for Separate Mode',
+    explanation: 'The institution uses separate caps but one or more required caps are not configured. Separate mode requires BOTH the traditional transfer cap AND the alternative credit cap.',
+    impact: 'Without both caps configured, the system cannot properly validate transfer credit limits for this institution.',
     suggestedFixes: [
-      'Configure the institution\'s traditional transfer credit limit',
-      'Review if the institution uses combined or separate cap mode',
-      'Check the institution\'s community college transfer policy',
+      'Configure BOTH max_transfer_credits AND max_alt_credits for this institution',
+      'Verify the institution uses separate cap mode (not combined)',
+      'Review the institution\'s official transfer policy for both cap values',
+      'If only one cap applies, consider switching to combined mode',
     ],
     showInMarketplace: false,
     showInPublic: false,
     category: 'policy',
-    version: '1.0.0',
+    version: '1.1.0',
   },
 
   // ─────────────────────────────────────────
@@ -383,7 +406,7 @@ export const INVARIANT_EXPLAINERS: Record<InvariantCode, InvariantExplainer> = {
   // ─────────────────────────────────────────
   INV_UNKNOWN_CREDITS_EXCEEDS_THRESHOLD: {
     code: 'INV_UNKNOWN_CREDITS_EXCEEDS_THRESHOLD',
-    severity: 'warning',
+    severity: 'warn',
     title: 'High Unknown Credits',
     explanation: 'A significant portion of credits come from unknown or unverified sources.',
     impact: 'While not blocking, high unknown credits may indicate data quality issues.',
@@ -400,7 +423,7 @@ export const INVARIANT_EXPLAINERS: Record<InvariantCode, InvariantExplainer> = {
 
   INV_DUPLICATE_EQUIVALENCY: {
     code: 'INV_DUPLICATE_EQUIVALENCY',
-    severity: 'warning',
+    severity: 'warn',
     title: 'Duplicate Course Equivalency',
     explanation: 'The same course requirement is being fulfilled by multiple transfer options.',
     impact: 'Duplicate equivalencies may confuse users or lead to double-counting.',
@@ -417,7 +440,7 @@ export const INVARIANT_EXPLAINERS: Record<InvariantCode, InvariantExplainer> = {
 
   INV_PREREQUISITES_UNMET: {
     code: 'INV_PREREQUISITES_UNMET',
-    severity: 'warning',
+    severity: 'warn',
     title: 'Prerequisites Not Met',
     explanation: 'Some courses have prerequisites that are not included in the template.',
     impact: 'Students may need to take additional courses before certain template courses.',
@@ -434,7 +457,7 @@ export const INVARIANT_EXPLAINERS: Record<InvariantCode, InvariantExplainer> = {
 
   INV_GENED_INCOMPLETE: {
     code: 'INV_GENED_INCOMPLETE',
-    severity: 'warning',
+    severity: 'warn',
     title: 'General Education Incomplete',
     explanation: 'Not all general education requirements are fully satisfied by the template.',
     impact: 'Students may need additional courses to complete general education requirements.',
@@ -449,6 +472,16 @@ export const INVARIANT_EXPLAINERS: Record<InvariantCode, InvariantExplainer> = {
     version: '1.0.0',
   },
 };
+
+// ============================================
+// FALLBACK TITLES FOR UNKNOWN CODES
+// ============================================
+
+/** Safe fallback title for admin view when code is unknown */
+export const UNKNOWN_CODE_ADMIN_TITLE = 'Template blocked by validation rule';
+
+/** Safe fallback title for marketplace/public when code is unknown */
+export const UNKNOWN_CODE_PUBLIC_TITLE = 'Temporarily unavailable';
 
 // ============================================
 // HELPER FUNCTIONS
