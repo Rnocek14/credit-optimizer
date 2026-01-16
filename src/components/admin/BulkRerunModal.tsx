@@ -22,7 +22,6 @@ interface BulkRerunModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   decision: 'block' | 'warn';
-  templateCount: number;
   onConfirm: () => Promise<void>;
   isLoading?: boolean;
 }
@@ -31,7 +30,6 @@ export function BulkRerunModal({
   open,
   onOpenChange,
   decision,
-  templateCount,
   onConfirm,
   isLoading = false,
 }: BulkRerunModalProps) {
@@ -63,9 +61,9 @@ export function BulkRerunModal({
             Confirm Bulk Rerun
           </DialogTitle>
           <DialogDescription>
-            This will re-evaluate invariants for{' '}
-            <strong className="text-foreground">{templateCount}</strong>{' '}
-            templates with <strong className="text-foreground">{decision.toUpperCase()}</strong> status.
+            This will re-evaluate invariants for <strong className="text-foreground">ALL</strong>{' '}
+            templates with <strong className="text-foreground">{decision.toUpperCase()}</strong> status across the entire system.
+            The exact count will be determined by the server.
           </DialogDescription>
         </DialogHeader>
 

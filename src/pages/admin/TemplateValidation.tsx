@@ -320,10 +320,9 @@ const TemplateValidation: React.FC = () => {
           <Button 
             variant="destructive" 
             onClick={() => setBulkRerunModalOpen(true)}
-            disabled={invariantCounts.block === 0}
           >
             <Play className="h-4 w-4 mr-2" />
-            Bulk Rerun BLOCK ({invariantCounts.block})
+            Bulk Rerun ALL BLOCK
           </Button>
           <Button variant="outline" onClick={downloadReport}>
             <Download className="h-4 w-4 mr-2" />
@@ -335,7 +334,6 @@ const TemplateValidation: React.FC = () => {
           open={bulkRerunModalOpen}
           onOpenChange={setBulkRerunModalOpen}
           decision="block"
-          templateCount={invariantCounts.block}
           onConfirm={handleBulkRerun}
           isLoading={bulkRerunLoading}
         />

@@ -41,65 +41,65 @@ const BulkRerunProgress: React.FC = () => {
   const pollIntervalRef = useRef<number | null>(null);
   const { toast } = useToast();
 
-  const fetchStatus = useCallback(async () => {
-    if (!jobId) return;
+  // Returns the fetched status for use in the polling loop (avoids stale closure)
+  const fetchStatus = useCallback(async (): Promise<BulkRerunJobStatus | null> => {
+    if (!jobId) return null;
 
     const { data, error: fetchError } = await getBulkRerunJob(jobId);
     
     if (fetchError) {
       setError(fetchError.message);
       setLoading(false);
-      return;
+      return null;
     }
 
     if (data) {
       setJobStatus(data);
       setLoading(false);
+      return data;
     }
+    return null;
   }, [jobId]);
 
   const triggerWorker = useCallback(async () => {
     if (!jobId || isProcessing) return;
 
     setIsProcessing(true);
-    const { data, error: workerError } = await triggerBulkRerunWorker(jobId, BATCH_SIZE);
+    const { error: workerError } = await triggerBulkRerunWorker(jobId, BATCH_SIZE);
     setIsProcessing(false);
 
     if (workerError) {
       console.error('[BulkRerunProgress] Worker error:', workerError.message);
-      return;
     }
+  }, [jobId, isProcessing]);
 
-    // Refresh status after worker completes
-    await fetchStatus();
-  }, [jobId, isProcessing, fetchStatus]);
-
-  // Polling effect
+  // Polling effect - uses returned status to avoid stale closure issues
   useEffect(() => {
-    fetchStatus();
+    let timer: number | null = null;
 
-    // Start polling
-    pollIntervalRef.current = window.setInterval(async () => {
-      await fetchStatus();
+    const tick = async () => {
+      const status = await fetchStatus();
+      if (!status) return;
 
-      // If job is still running and has remaining work, trigger worker
-      if (
-        jobStatus?.job.status === 'running' || 
-        jobStatus?.job.status === 'queued'
-      ) {
-        const remaining = jobStatus.job.total - jobStatus.job.processed;
-        if (remaining > 0) {
-          await triggerWorker();
-        }
-      }
-    }, POLL_INTERVAL_MS);
+      const isActive = status.job.status === 'queued' || status.job.status === 'running';
+      const remaining = status.job.total - status.job.processed;
 
-    return () => {
-      if (pollIntervalRef.current) {
-        clearInterval(pollIntervalRef.current);
+      // Only trigger worker if job is active and has remaining work
+      if (isActive && remaining > 0) {
+        await triggerWorker();
       }
     };
-  }, [fetchStatus, triggerWorker, jobStatus?.job.status, jobStatus?.job.total, jobStatus?.job.processed]);
+
+    // Initial tick
+    tick();
+
+    // Start polling (only depends on stable refs, not on jobStatus state)
+    timer = window.setInterval(tick, POLL_INTERVAL_MS);
+
+    return () => {
+      if (timer) clearInterval(timer);
+    };
+  }, [fetchStatus, triggerWorker]);
 
   // Initial worker trigger when job is queued
   useEffect(() => {
