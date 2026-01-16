@@ -61,26 +61,29 @@ interface RerunResponse {
 }
 
 // ============================================
-// RATE LIMIT CACHE (in-memory, per-instance)
+// RATE LIMIT (DB-based)
 // ============================================
 
-const recentReruns = new Map<string, number>();
-const RATE_LIMIT_MS = 30_000; // 30 seconds
+const RATE_LIMIT_SECONDS = 30;
 
-function isRateLimited(templateId: string): boolean {
-  const lastRun = recentReruns.get(templateId);
-  if (!lastRun) return false;
-  return Date.now() - lastRun < RATE_LIMIT_MS;
-}
+/**
+ * Check if template was rerun within last 30 seconds (DB-based rate limit).
+ * Uses the invariant_decision_snapshots table with data_source='real' as proxy.
+ */
+async function isRateLimited(supabase: any, templateId: string): Promise<boolean> {
+  const { data, error } = await supabase
+    .from('invariant_decision_snapshots')
+    .select('created_at')
+    .eq('template_id', templateId)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
 
-function recordRerun(templateId: string): void {
-  recentReruns.set(templateId, Date.now());
-  // Cleanup old entries (keep last 100)
-  if (recentReruns.size > 100) {
-    const entries = Array.from(recentReruns.entries());
-    const oldest = entries.sort((a, b) => a[1] - b[1]).slice(0, 50);
-    oldest.forEach(([k]) => recentReruns.delete(k));
-  }
+  if (error || !data) return false;
+
+  const lastRunTime = new Date(data.created_at).getTime();
+  const now = Date.now();
+  return (now - lastRunTime) < (RATE_LIMIT_SECONDS * 1000);
 }
 
 // ============================================
@@ -220,8 +223,14 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Rate limit check
-    if (isRateLimited(template_id)) {
+    // Service client for writes (created early for rate limit check)
+    const supabaseService = createClient(supabaseUrl, serviceKey, {
+      auth: { persistSession: false },
+    });
+
+    // Rate limit check (DB-based - works across instances)
+    const rateLimited = await isRateLimited(supabaseService, template_id);
+    if (rateLimited) {
       return new Response(
         JSON.stringify({ error: 'Rate limited: please wait 30 seconds between reruns for the same template' }),
         { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -229,11 +238,6 @@ Deno.serve(async (req: Request) => {
     }
 
     console.log(`[rerun-template-invariants] Admin ${user.email} rerunning for template ${template_id} (dry_run=${isDryRun})${reason ? ` reason: ${reason}` : ''}`);
-
-    // Service client for writes
-    const supabaseService = createClient(supabaseUrl, serviceKey, {
-      auth: { persistSession: false },
-    });
 
     // Load template from program_templates
     const { data: template, error: templateError } = await supabaseService
@@ -354,9 +358,6 @@ Deno.serve(async (req: Request) => {
 
       response.snapshot_id = newSnapshot.id;
       response.created_at = newSnapshot.created_at;
-
-      // Record for rate limiting
-      recordRerun(template_id);
 
       console.log(`[rerun-template-invariants] Wrote snapshot ${newSnapshot.id} for template ${template_id}`);
     }
