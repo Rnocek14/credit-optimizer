@@ -67,14 +67,16 @@ interface RerunResponse {
 const RATE_LIMIT_SECONDS = 30;
 
 /**
- * Check if template was rerun within last 30 seconds (DB-based rate limit).
- * Uses the invariant_decision_snapshots table with data_source='real' as proxy.
+ * Check if template was manually rerun within last 30 seconds (DB-based rate limit).
+ * Only checks snapshots with data_source='real' (manual reruns), not job-generated ones.
+ * This prevents blocking reruns after normal generation runs.
  */
 async function isRateLimited(supabase: any, templateId: string): Promise<boolean> {
   const { data, error } = await supabase
     .from('invariant_decision_snapshots')
     .select('created_at')
     .eq('template_id', templateId)
+    .eq('data_source', 'real') // Only rate-limit manual reruns, not job-generated snapshots
     .order('created_at', { ascending: false })
     .limit(1)
     .maybeSingle();
