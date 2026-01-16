@@ -9,6 +9,10 @@ import {
   type TemplateItem,
   type RawPolicyPack,
 } from '../_shared/creditInvariantChecker.ts';
+import { 
+  getEffectiveInvariantConfig,
+  type EffectiveInvariantConfig,
+} from '../_shared/institutionOverrides.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -696,6 +700,18 @@ async function generateTemplatesFromPack(
   const results: { standard?: string; altMax?: string } = {};
   const templateIds: string[] = []; // Track template UUIDs created in this run
 
+  // v1.3: Fetch institution-specific override config ONCE per institution
+  // This enables per-institution threshold customization without inner-loop DB calls
+  const invariantConfig = await getEffectiveInvariantConfig(supabase, {
+    institutionCode,
+    templateStatus: gateResult.status === 'green' ? 'active' : 'pending_review',
+  });
+  
+  console.log(`[seed-bsba-templates] Using invariant config for ${institutionCode}:`, {
+    unknownCreditsWarnThreshold: invariantConfig.unknownCreditsWarnThreshold,
+    hasOverrides: invariantConfig.hasOverrides,
+  });
+
   // Extract policy limits with fallbacks
   const residencyCredits = policyData.residency_credits ?? DEFAULT_POLICIES.residency_credits;
   const maxTransferCredits = policyData.max_transfer_credits ?? DEFAULT_POLICIES.max_transfer_credits;
@@ -892,6 +908,7 @@ async function generateTemplatesFromPack(
       items: invariantItems,
       mode: 'strict',
       template_status: templateStatus, // v1.2: Pass status for status-aware checks
+      unknown_credits_warn_threshold: invariantConfig.unknownCreditsWarnThreshold, // v1.3: Per-institution threshold
     });
     
     console.log(`[seed-bsba-templates] Invariant check for ${templateId}: ${invariantReport.summary}`);
