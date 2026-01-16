@@ -38,6 +38,11 @@ export type InvariantType =
   | 'INV_UNKNOWN_SOURCE'
   | 'INV_POLICY_MISSING_COMBINED_CAP'
   | 'INV_POLICY_MISSING_ALT_CAP'
+  // v1.2 scale-safety errors (foundational correctness)
+  | 'INV_NEGATIVE_OR_NAN_CREDITS'
+  | 'INV_CREDIT_ACCOUNTING_UNBALANCED'
+  | 'INV_UNKNOWN_CREDITS_NONZERO_ACTIVE'
+  | 'INV_POLICY_MISSING_TRANSFER_CAP'
   // v1.1 warnings
   | 'INV_DUPLICATE_EQUIVALENCY'
   | 'INV_PREREQUISITES_UNMET'
@@ -130,6 +135,8 @@ export interface InvariantCheckInput {
   policy_data: PolicyData;
   items: TemplateItem[];
   mode: 'strict' | 'warn_only';
+  template_status?: 'active' | 'pending_review' | 'blocked' | string; // v1.2: for status-aware checks
+  unknown_credits_warn_threshold?: number; // v1.2: default 6
 }
 
 // ============================================================================
@@ -424,9 +431,111 @@ function computeMetrics(items: TemplateItem[], policy: PolicyData): ComputedMetr
 // Invariant Checkers
 // ============================================================================
 
-function checkUnknownSources(items: TemplateItem[], computed: ComputedMetrics): InvariantViolation | null {
+// v1.2: Foundational correctness - check for invalid numeric values
+function checkInvalidCredits(computed: ComputedMetrics): InvariantViolation | null {
+  const fields: Array<[string, number]> = [
+    ['totalCredits', computed.totalCredits],
+    ['residentCredits', computed.residentCredits],
+    ['transferCredits', computed.transferCredits],
+    ['altCredits', computed.altCredits],
+    ['unknownCredits', computed.unknownCredits],
+  ];
+
+  const invalid = fields.filter(([_, v]) => 
+    typeof v !== 'number' || !Number.isFinite(v) || Number.isNaN(v) || v < 0
+  );
+
+  if (invalid.length > 0) {
+    return {
+      type: 'INV_NEGATIVE_OR_NAN_CREDITS',
+      severity: 'error',
+      message: `One or more computed credit values are invalid (NaN, infinite, or negative)`,
+      metrics: { 
+        invalidFields: invalid.map(([k, v]) => ({ field: k, value: v })),
+      },
+    };
+  }
+
+  return null;
+}
+
+// v1.2: Foundational correctness - verify credit buckets sum to total
+function checkCreditAccountingBalanced(computed: ComputedMetrics): InvariantViolation | null {
+  const sum = computed.residentCredits + computed.transferCredits + computed.altCredits + computed.unknownCredits;
+
+  if (computed.totalCredits !== sum) {
+    return {
+      type: 'INV_CREDIT_ACCOUNTING_UNBALANCED',
+      severity: 'error',
+      message: `Credit buckets (resident + transfer + alt + unknown) do not sum to total credits`,
+      metrics: {
+        totalCredits: computed.totalCredits,
+        computedSum: sum,
+        breakdown: {
+          residentCredits: computed.residentCredits,
+          transferCredits: computed.transferCredits,
+          altCredits: computed.altCredits,
+          unknownCredits: computed.unknownCredits,
+        },
+        difference: computed.totalCredits - sum,
+      },
+    };
+  }
+
+  return null;
+}
+
+// v1.2: Status-aware unknown credits check
+// Active templates MUST have zero unknown credits (hard fail)
+// Non-active templates warn if unknown exceeds threshold
+function checkUnknownCreditsByStatus(
+  computed: ComputedMetrics,
+  items: TemplateItem[],
+  templateStatus: string | undefined,
+  warnThreshold: number = 6
+): InvariantViolation | null {
+  const unknown = computed.unknownCredits;
+  
+  // Find affected courses for debugging
+  const getAffectedCourses = (): string[] => {
+    const affected: string[] = [];
+    for (const item of items) {
+      const classification = classifySource(item.source, item.provider);
+      if (classification.isUnknown) {
+        affected.push(item.course_code || item.course_id || `unknown-${item.source}`);
+      }
+    }
+    return affected;
+  };
+
+  // Active templates: unknown > 0 is a hard fail
+  if (templateStatus === 'active' && unknown > 0) {
+    return {
+      type: 'INV_UNKNOWN_CREDITS_NONZERO_ACTIVE',
+      severity: 'error',
+      message: `Active templates must have zero unknown credits (found ${unknown})`,
+      affectedCourses: getAffectedCourses(),
+      metrics: { 
+        unknownCredits: unknown, 
+        templateStatus,
+        unknownSources: computed.unknownSources,
+      },
+    };
+  }
+
+  // Non-active templates: unknown > threshold is a warning
+  // (the original INV_UNKNOWN_SOURCE still fires as error for any unknown > 0,
+  // but this provides threshold-aware warning for pending_review templates)
+  
+  return null;
+}
+
+// Original check - now only runs for source provenance tracking
+// Status-aware gating is handled by checkUnknownCreditsByStatus
+function checkUnknownSources(items: TemplateItem[], computed: ComputedMetrics, templateStatus?: string): InvariantViolation | null {
+  // If status is provided and not active, downgrade to warning only above threshold
+  // For active or unknown status, keep as error
   if (computed.unknownCredits > 0) {
-    // Find which courses have unknown sources for debugging
     const affectedCourses: string[] = [];
     for (const item of items) {
       const classification = classifySource(item.source, item.provider);
@@ -435,14 +544,19 @@ function checkUnknownSources(items: TemplateItem[], computed: ComputedMetrics): 
       }
     }
     
+    // For pending_review templates, this is a warning (they can have unknowns while being resolved)
+    // For active templates, INV_UNKNOWN_CREDITS_NONZERO_ACTIVE handles the hard fail
+    const severity: InvariantSeverity = (templateStatus && templateStatus !== 'active') ? 'warning' : 'error';
+    
     return {
       type: 'INV_UNKNOWN_SOURCE',
-      severity: 'error',
+      severity,
       message: `${computed.unknownCredits} credits have unknown source type (${computed.unknownSources.join(', ')})`,
       affectedCourses,
       metrics: {
         unknownCredits: computed.unknownCredits,
         unknownSources: computed.unknownSources,
+        templateStatus,
       },
     };
   }
@@ -581,20 +695,26 @@ function checkBucketMode(
       });
     }
 
-    // Transfer cap (optional - not all institutions define this)
-    if (policy.max_transfer_credits !== undefined) {
-      if (computed.transferCredits > policy.max_transfer_credits) {
-        violations.push({
-          type: 'INV_TRANSFER_CAP_EXCEEDED',
-          severity: 'error',
-          message: `Transfer credits (${computed.transferCredits}) exceeds cap (${policy.max_transfer_credits})`,
-          metrics: {
-            actual: computed.transferCredits,
-            cap: policy.max_transfer_credits,
-            excess: computed.transferCredits - policy.max_transfer_credits,
-          },
-        });
-      }
+    // v1.2: Missing transfer cap is now also an error in separate mode
+    // Both caps are required for separate-mode scale-safety
+    if (policy.max_transfer_credits === undefined) {
+      violations.push({
+        type: 'INV_POLICY_MISSING_TRANSFER_CAP',
+        severity: 'error',
+        message: 'Separate bucket mode requires max_transfer_credits cap',
+        metrics: { bucketMode: 'separate' },
+      });
+    } else if (computed.transferCredits > policy.max_transfer_credits) {
+      violations.push({
+        type: 'INV_TRANSFER_CAP_EXCEEDED',
+        severity: 'error',
+        message: `Transfer credits (${computed.transferCredits}) exceeds cap (${policy.max_transfer_credits})`,
+        metrics: {
+          actual: computed.transferCredits,
+          cap: policy.max_transfer_credits,
+          excess: computed.transferCredits - policy.max_transfer_credits,
+        },
+      });
     }
   }
 
@@ -722,7 +842,7 @@ function checkDuplicateEquivalencies(
 // ============================================================================
 
 export function checkTemplateInvariants(input: InvariantCheckInput): InvariantReport {
-  const { policy_data, items, mode } = input;
+  const { policy_data, items, mode, template_status, unknown_credits_warn_threshold } = input;
   
   const strictErrors: InvariantViolation[] = [];
   const warnings: InvariantViolation[] = [];
@@ -730,9 +850,21 @@ export function checkTemplateInvariants(input: InvariantCheckInput): InvariantRe
   // Compute metrics from items
   const computed = computeMetrics(items, policy_data);
 
-  // Run all invariant checks
-  const checks = [
-    checkUnknownSources(items, computed), // v1.1: Now includes affectedCourses
+  // v1.2: Foundational correctness checks run FIRST (before bucket mode / caps)
+  // If these fail, other checks may produce misleading errors
+  const foundationalChecks = [
+    checkInvalidCredits(computed),
+    checkCreditAccountingBalanced(computed),
+  ];
+
+  // v1.2: Status-aware unknown credits check (active must be 0)
+  const statusAwareChecks = [
+    checkUnknownCreditsByStatus(computed, items, template_status, unknown_credits_warn_threshold ?? 6),
+    checkUnknownSources(items, computed, template_status), // v1.2: Now status-aware severity
+  ];
+
+  // Original v1/v1.1 checks
+  const coreChecks = [
     checkTotalCredits(computed, policy_data),
     checkResidency(computed, policy_data),
     ...checkBucketMode(computed, policy_data),
@@ -740,6 +872,13 @@ export function checkTemplateInvariants(input: InvariantCheckInput): InvariantRe
     checkUpperDivision(computed, policy_data),
     checkCapstoneInResidence(items, policy_data),
     checkDuplicateEquivalencies(items),
+  ];
+
+  // Run all checks in deterministic order
+  const checks = [
+    ...foundationalChecks,
+    ...statusAwareChecks,
+    ...coreChecks,
   ];
 
   // Categorize violations

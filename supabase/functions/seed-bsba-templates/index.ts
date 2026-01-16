@@ -891,6 +891,7 @@ async function generateTemplatesFromPack(
       policy_data: invariantPolicy,
       items: invariantItems,
       mode: 'strict',
+      template_status: templateStatus, // v1.2: Pass status for status-aware checks
     });
     
     console.log(`[seed-bsba-templates] Invariant check for ${templateId}: ${invariantReport.summary}`);
