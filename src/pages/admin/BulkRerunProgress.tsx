@@ -108,10 +108,12 @@ const BulkRerunProgress: React.FC = () => {
         return;
       }
 
-      const remaining = status.job.total - status.job.processed;
+      // Clamp to prevent negative remaining if counters drift
+      const remaining = Math.max(0, status.job.total - status.job.processed);
 
       // Only trigger worker if job is active and has remaining work
-      if (remaining > 0) {
+      const isActive = status.job.status === 'queued' || status.job.status === 'running';
+      if (isActive && remaining > 0) {
         await triggerWorker();
       }
     };
