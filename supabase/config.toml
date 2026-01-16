@@ -78,3 +78,6 @@ verify_jwt = false
 
 [functions.firecrawl-search]
 verify_jwt = false
+
+[functions.promote-policy-pack]
+verify_jwt = false

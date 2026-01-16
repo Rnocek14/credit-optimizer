@@ -14575,7 +14575,7 @@ export type Database = {
           active_templates_count: number | null
           blocked_reason: string | null
           catalog_year: string | null
-          completeness_score: number | null
+          confidence_score: number | null
           created_at: string | null
           degree_level: string | null
           gate_status: string | null
@@ -14584,6 +14584,7 @@ export type Database = {
           institution_name: string | null
           is_auto_promotable: boolean | null
           is_promotable: boolean | null
+          missing_critical: string[] | null
           pack_id: string | null
           program_code: string | null
           promoted_at: string | null
