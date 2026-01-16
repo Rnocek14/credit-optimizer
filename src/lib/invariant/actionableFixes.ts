@@ -18,6 +18,9 @@ import type { InvariantCode } from './invariantExplainers';
 /**
  * Centralized admin routes to prevent hardcoded string drift.
  * Keep in sync with App.tsx route definitions.
+ * 
+ * Usage: Always reference ADMIN_ROUTES.<key> in fix registry.
+ * The AdminRouteKey type ensures compile-time safety.
  */
 export const ADMIN_ROUTES = {
   policyRefresh: '/admin/policy-refresh',
@@ -27,6 +30,12 @@ export const ADMIN_ROUTES = {
   generationJobs: '/admin/generation-jobs',
   policyPromotion: '/admin/policy-promotion',
 } as const;
+
+/** Type-safe route key for compile-time enforcement */
+export type AdminRouteKey = keyof typeof ADMIN_ROUTES;
+
+/** Type-safe route value */
+export type AdminRoute = typeof ADMIN_ROUTES[AdminRouteKey];
 
 // ============================================
 // TYPES
