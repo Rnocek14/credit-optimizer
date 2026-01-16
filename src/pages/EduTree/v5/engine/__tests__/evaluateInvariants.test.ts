@@ -439,7 +439,7 @@ describe('Deterministic Ordering', () => {
     );
   });
 
-  it('same input always produces same output (snapshot style)', () => {
+  it('same input always produces same output (full snapshot comparison)', () => {
     const input: InvariantInputs = {
       credits: {
         requiredTotal: 120,
@@ -458,8 +458,16 @@ describe('Deterministic Ordering', () => {
     const result1 = evaluateInvariants(input, DEFAULT_INVARIANT_CONFIG);
     const result2 = evaluateInvariants(input, DEFAULT_INVARIANT_CONFIG);
 
-    expect(getViolationCodes(result1)).toEqual(getViolationCodes(result2));
+    // Full violation comparison including codes, severity, and messages
+    expect(result1.violations).toEqual(result2.violations);
     expect(result1.ok).toBe(result2.ok);
     expect(result1.severity).toBe(result2.severity);
+    expect(result1.computed).toEqual(result2.computed);
+  });
+
+  it('uses default config when config parameter omitted', () => {
+    const result = evaluateInvariants(validInputs);
+    expect(result.ok).toBe(true);
+    expect(result.severity).toBe('pass');
   });
 });
