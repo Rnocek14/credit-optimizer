@@ -1,6 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { evaluatePolicyGate, getTemplateStatus, type PolicyGateResult } from '../_shared/policyGate.ts';
+import { checkTemplateInvariants, buildAuditRecord, type TemplateItem, type PolicyData as InvariantPolicyData } from '../_shared/creditInvariantChecker.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -644,12 +645,51 @@ async function generateAndWriteTemplate(
 
     console.log(`[${workerId}] ✓ ${track} template for ${program.program_slug} (${tokensUsed} tokens, ${generationTimeMs}ms)`);
 
+    // Run invariant check on the generated template
+    const invariantItems: TemplateItem[] = (templateJson.terms || []).flatMap((term: any) => 
+      (term.slots || []).map((slot: any) => ({
+        course_code: slot.courseCode || slot.slotId,
+        credits: slot.credits || 3,
+        source: slot.source || 'resident',
+        is_upper_division: slot.level === 'upper' || slot.level === '400',
+        is_capstone: slot.kind === 'capstone',
+      }))
+    );
+
+    const invariantPolicy: InvariantPolicyData = {
+      degree_credit_total: program.degree_total_credits,
+      capstone_in_residence: true,
+    };
+
+    const invariantReport = checkTemplateInvariants({
+      template_id: upsertedRow.id,
+      template_table: 'program_templates',
+      institution_code: program.institution_code,
+      program_code: program.program_slug,
+      policy_data: invariantPolicy,
+      items: invariantItems,
+      mode: 'warn_only', // Use warn_only for worker since templates are still experimental
+    });
+
+    // Store audit record
+    await supabase.from('template_invariant_reports').insert(buildAuditRecord({
+      template_id: upsertedRow.id,
+      template_table: 'program_templates',
+      institution_code: program.institution_code,
+      program_code: program.program_slug,
+      run_source: 'worker',
+      report: invariantReport,
+    }));
+
+    console.log(`[${workerId}] Invariant check: ${invariantReport.summary}`);
+
     return {
       success: true,
       track,
       template_written: true,
       tokens_used: tokensUsed,
       generation_time_ms: generationTimeMs,
+      invariant_ok: invariantReport.ok,
     };
 
   } catch (error) {

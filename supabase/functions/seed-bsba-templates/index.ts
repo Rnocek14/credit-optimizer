@@ -2,6 +2,13 @@
 // Computes plan costs from slot composition + provider/institution pricing
 import { serve } from 'https://deno.land/std@0.224.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1';
+import { 
+  checkTemplateInvariants, 
+  buildAuditRecord,
+  type InvariantCheckInput,
+  type TemplateItem,
+  type PolicyData as InvariantPolicyData,
+} from '../_shared/creditInvariantChecker.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -778,6 +785,77 @@ async function generateTemplatesFromPack(
     
     const realTemplateId = dbRow.id; // This is the actual UUID
     console.log(`[seed-bsba-templates] Template ${templateId} has UUID: ${realTemplateId}`);
+    
+    // =========================================================================
+    // CREDIT INVARIANT CHECK - Post-generation validation
+    // =========================================================================
+    const invariantItems: TemplateItem[] = terms.flatMap(term => 
+      term.slots.map(slot => ({
+        course_code: slot.preferred.courseCode || slot.slotId,
+        credits: slot.minCredits,
+        source: slot.preferred.type === 'alt_credit' ? (slot.preferred.sourceCode?.toLowerCase() || 'alt') : 'resident',
+        is_upper_division: slot.kind === 'major' || slot.requirementArea?.includes('UPPER'),
+        is_capstone: slot.kind === 'capstone',
+      }))
+    );
+    
+    const invariantPolicy: InvariantPolicyData = {
+      degree_credit_total: totalCredits,
+      residency_credits: normalizedPolicy.residency_credits,
+      max_alt_credits: normalizedPolicy.max_alt_credit,
+      max_transfer_credits: normalizedPolicy.max_transfer_credits,
+      max_combined_transfer_alt: normalizedPolicy.max_transfer_alt_combined_credits,
+      bucket_mode: normalizedPolicy.transfer_alt_bucket_mode === 'combined' ? 'combined' : 'separate',
+      capstone_in_residence: true, // BSBA always requires capstone in residence
+    };
+    
+    const invariantReport = checkTemplateInvariants({
+      template_id: realTemplateId,
+      template_table: 'degree_templates',
+      institution_code: institutionCode,
+      program_code: programCode,
+      policy_data: invariantPolicy,
+      items: invariantItems,
+      mode: 'strict',
+    });
+    
+    console.log(`[seed-bsba-templates] Invariant check for ${templateId}: ${invariantReport.summary}`);
+    
+    // Store audit record
+    const auditRecord = buildAuditRecord({
+      template_id: realTemplateId,
+      template_table: 'degree_templates',
+      institution_code: institutionCode,
+      program_code: programCode,
+      run_source: 'seeder',
+      report: invariantReport,
+    });
+    
+    const { error: auditError } = await supabase
+      .from('template_invariant_reports')
+      .insert(auditRecord);
+    
+    if (auditError) {
+      console.warn(`[seed-bsba-templates] Failed to insert invariant audit: ${auditError.message}`);
+    }
+    
+    // If invariants failed, downgrade template status
+    if (!invariantReport.ok && templateStatus === 'active') {
+      const { error: downgradeError } = await supabase
+        .from('degree_templates')
+        .update({ 
+          status: 'pending_review',
+          gate_reason: `Invariant check failed: ${invariantReport.errors[0]?.message || 'Unknown error'}`,
+        })
+        .eq('id', realTemplateId);
+      
+      if (downgradeError) {
+        console.error(`[seed-bsba-templates] Failed to downgrade template status: ${downgradeError.message}`);
+      } else {
+        console.warn(`[seed-bsba-templates] ⚠️ Template ${templateId} downgraded to pending_review due to invariant failure`);
+      }
+    }
+
     
     // Create/update cost snapshot for audit trail using upsert (prevents duplicates)
     const { error: snapshotError } = await supabase
