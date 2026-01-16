@@ -5428,12 +5428,14 @@ export type Database = {
         Row: {
           academic_year: string
           blocked_reason: string | null
+          completeness_score: number | null
           confidence_score: number | null
           created_at: string | null
           degree_level: string
           effective_end: string | null
           effective_start: string | null
           field_provenance: Json | null
+          has_ground_truth: boolean
           id: string
           institution: string
           last_run_id: string | null
@@ -5442,6 +5444,8 @@ export type Database = {
           pack_scope: string | null
           policy_data: Json | null
           policy_json: Json
+          promoted_at: string | null
+          promoted_by: string | null
           provenance_url: string | null
           source_scrape_ids: string[] | null
           stale: boolean | null
@@ -5454,12 +5458,14 @@ export type Database = {
         Insert: {
           academic_year: string
           blocked_reason?: string | null
+          completeness_score?: number | null
           confidence_score?: number | null
           created_at?: string | null
           degree_level?: string
           effective_end?: string | null
           effective_start?: string | null
           field_provenance?: Json | null
+          has_ground_truth?: boolean
           id?: string
           institution: string
           last_run_id?: string | null
@@ -5468,6 +5474,8 @@ export type Database = {
           pack_scope?: string | null
           policy_data?: Json | null
           policy_json: Json
+          promoted_at?: string | null
+          promoted_by?: string | null
           provenance_url?: string | null
           source_scrape_ids?: string[] | null
           stale?: boolean | null
@@ -5480,12 +5488,14 @@ export type Database = {
         Update: {
           academic_year?: string
           blocked_reason?: string | null
+          completeness_score?: number | null
           confidence_score?: number | null
           created_at?: string | null
           degree_level?: string
           effective_end?: string | null
           effective_start?: string | null
           field_provenance?: Json | null
+          has_ground_truth?: boolean
           id?: string
           institution?: string
           last_run_id?: string | null
@@ -5494,6 +5504,8 @@ export type Database = {
           pack_scope?: string | null
           policy_data?: Json | null
           policy_json?: Json
+          promoted_at?: string | null
+          promoted_by?: string | null
           provenance_url?: string | null
           source_scrape_ids?: string[] | null
           stale?: boolean | null
@@ -5517,6 +5529,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "institution_policy_packs_live"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "institution_policy_packs_superseded_by_fkey"
+            columns: ["superseded_by"]
+            isOneToOne: false
+            referencedRelation: "v_policy_pack_promotion_candidates"
+            referencedColumns: ["pack_id"]
           },
         ]
       }
@@ -8439,6 +8458,13 @@ export type Database = {
             referencedRelation: "institution_policy_packs_live"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "policy_merge_audit_log_policy_pack_id_fkey"
+            columns: ["policy_pack_id"]
+            isOneToOne: false
+            referencedRelation: "v_policy_pack_promotion_candidates"
+            referencedColumns: ["pack_id"]
+          },
         ]
       }
       policy_pack_events: {
@@ -8493,6 +8519,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "institution_policy_packs_live"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "policy_pack_events_pack_id_fkey"
+            columns: ["pack_id"]
+            isOneToOne: false
+            referencedRelation: "v_policy_pack_promotion_candidates"
+            referencedColumns: ["pack_id"]
           },
         ]
       }
@@ -12338,6 +12371,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "transfer_evidence_policy_pack_id_fkey"
+            columns: ["policy_pack_id"]
+            isOneToOne: false
+            referencedRelation: "v_policy_pack_promotion_candidates"
+            referencedColumns: ["pack_id"]
+          },
+          {
             foreignKeyName: "transfer_evidence_rule_id_fkey"
             columns: ["rule_id"]
             isOneToOne: false
@@ -14321,6 +14361,13 @@ export type Database = {
             referencedRelation: "institution_policy_packs_live"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "institution_policy_packs_superseded_by_fkey"
+            columns: ["superseded_by"]
+            isOneToOne: false
+            referencedRelation: "v_policy_pack_promotion_candidates"
+            referencedColumns: ["pack_id"]
+          },
         ]
       }
       program_pipeline_health_v: {
@@ -14522,6 +14569,31 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      v_policy_pack_promotion_candidates: {
+        Row: {
+          active_templates_count: number | null
+          blocked_reason: string | null
+          catalog_year: string | null
+          completeness_score: number | null
+          created_at: string | null
+          degree_level: string | null
+          gate_status: string | null
+          has_ground_truth: boolean | null
+          institution_code: string | null
+          institution_name: string | null
+          is_auto_promotable: boolean | null
+          is_promotable: boolean | null
+          pack_id: string | null
+          program_code: string | null
+          promoted_at: string | null
+          promotion_reason: string | null
+          stale: boolean | null
+          status: string | null
+          templates_count: number | null
+          updated_at: string | null
+        }
+        Relationships: []
       }
       v_transcript_health: {
         Row: {
