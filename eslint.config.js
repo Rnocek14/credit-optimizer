@@ -58,6 +58,11 @@ export default tseslint.config(
         {
           selector: "JSXAttribute[name.name='href'][value.expression.type='MemberExpression']",
           message: "❌ Use SafeExternalLink or sanitizeCourseUrl() for dynamic href values. Direct URL variables are unsafe. See src/components/ui/SafeExternalLink.tsx"
+        },
+        // BOUNDARY GUARD: Prevent admin module imports outside admin routes
+        {
+          selector: "ImportDeclaration[source.value=/lib\\/admin/]",
+          message: "❌ Admin modules (src/lib/admin/*) can only be imported from admin pages/components. See src/lib/admin/README.md"
         }
       ],
       // Block new usage of deprecated V3NodeData.year field
@@ -70,5 +75,44 @@ export default tseslint.config(
         }
       ]
     },
+  },
+  // EXCEPTION: Allow admin module imports in admin pages
+  {
+    files: ["src/pages/admin/**/*.{ts,tsx}", "src/components/admin/**/*.{ts,tsx}", "src/features/admin/**/*.{ts,tsx}"],
+    rules: {
+      "no-restricted-syntax": [
+        "error",
+        // Keep other restrictions but remove admin import restriction for admin files
+        {
+          selector: "Literal[value=/\\b(min-h|h)-(8|9|10|11)\\b/]",
+          message: "Interactive targets must be ≥48px (use h-12/min-h-12)."
+        },
+        {
+          selector: "AssignmentExpression[left.property.name='signature'][right.type='TemplateLiteral']",
+          message: "Use buildMarketplaceSig() for marketplace.signature — no template literals."
+        },
+        {
+          selector: "AssignmentExpression[left.property.name='signature'][right.type='BinaryExpression']",
+          message: "Use buildMarketplaceSig() for marketplace.signature — no string concatenation."
+        },
+        {
+          selector: "Literal[value=/hsl\\(var\\(--/]",
+          message: "❌ Don't wrap OKLCH variables in hsl(). Use var(--xxx) directly or color-mix() for opacity."
+        },
+        {
+          selector: "TemplateLiteral[quasis.0.value.raw=/hsl\\(var\\(--/]",
+          message: "❌ Don't wrap OKLCH variables in hsl(). Use var(--xxx) directly or color-mix() for opacity."
+        },
+        {
+          selector: "JSXAttribute[name.name='href'][value.expression.type='Identifier']",
+          message: "❌ Use SafeExternalLink or sanitizeCourseUrl() for dynamic href values."
+        },
+        {
+          selector: "JSXAttribute[name.name='href'][value.expression.type='MemberExpression']",
+          message: "❌ Use SafeExternalLink or sanitizeCourseUrl() for dynamic href values."
+        }
+        // NOTE: Admin import restriction intentionally omitted for admin files
+      ]
+    }
   }
 );
