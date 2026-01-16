@@ -5334,6 +5334,85 @@ export type Database = {
           },
         ]
       }
+      institution_override_audit: {
+        Row: {
+          action: string
+          actor_user_id: string | null
+          created_at: string
+          id: string
+          institution_code: string
+          new_overrides: Json | null
+          old_overrides: Json | null
+          reason: string | null
+        }
+        Insert: {
+          action: string
+          actor_user_id?: string | null
+          created_at?: string
+          id?: string
+          institution_code: string
+          new_overrides?: Json | null
+          old_overrides?: Json | null
+          reason?: string | null
+        }
+        Update: {
+          action?: string
+          actor_user_id?: string | null
+          created_at?: string
+          id?: string
+          institution_code?: string
+          new_overrides?: Json | null
+          old_overrides?: Json | null
+          reason?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "institution_override_audit_actor_user_id_fkey"
+            columns: ["actor_user_id"]
+            isOneToOne: false
+            referencedRelation: "v_transcript_health"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      institution_override_settings: {
+        Row: {
+          created_at: string
+          id: string
+          institution_code: string
+          overrides: Json
+          status: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          institution_code: string
+          overrides?: Json
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          institution_code?: string
+          overrides?: Json
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "institution_override_settings_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "v_transcript_health"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
       institution_policy_ground_truth: {
         Row: {
           academic_year: string | null
