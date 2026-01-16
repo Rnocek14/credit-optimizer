@@ -14824,6 +14824,36 @@ export type Database = {
     }
     Functions: {
       activate_policy_pack: { Args: { p_pack_id: string }; Returns: Json }
+      admin_count_latest_invariant_snapshots: {
+        Args: {
+          p_decision?: string
+          p_institution_code?: string
+          p_template_ids?: string[]
+          p_track?: string
+        }
+        Returns: number
+      }
+      admin_list_latest_invariant_snapshots: {
+        Args: {
+          p_decision?: string
+          p_institution_code?: string
+          p_limit?: number
+          p_offset?: number
+          p_template_ids?: string[]
+          p_track?: string
+        }
+        Returns: {
+          created_at: string
+          decision: string
+          institution_code: string
+          invariant_version: string
+          job_id: string
+          template_id: string
+          track: string
+          violation_codes: string[]
+          violation_count: number
+        }[]
+      }
       after_maya_analysis_increment_quota: { Args: never; Returns: undefined }
       award_xp: {
         Args: {
