@@ -393,10 +393,20 @@ export function getPolicy(code: string): InstitutionPolicy | undefined {
 }
 
 /**
- * Get institution policy with fallback to TESU
+ * Get institution policy with explicit null if not found
+ * 
+ * IMPORTANT: Do NOT fall back to TESU - callers must handle null explicitly
+ * This is a P1 safety fix to prevent silent misleading behavior
+ * 
+ * @deprecated Use getPolicy() instead and handle null cases explicitly
  */
-export function getPolicyOrDefault(code: string): InstitutionPolicy {
-  return POLICIES[code as InstitutionCode] ?? TESU_POLICY;
+export function getPolicyOrDefault(code: string): InstitutionPolicy | null {
+  const policy = POLICIES[code as InstitutionCode];
+  if (!policy) {
+    console.warn(`[institutionPolicies] No policy found for "${code}" - returning null (do not assume TESU defaults)`);
+    return null;
+  }
+  return policy;
 }
 
 /**

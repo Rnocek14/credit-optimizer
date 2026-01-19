@@ -84,18 +84,18 @@ export async function getVerifiedPolicy(
 ): Promise<VerifiedPolicy> {
   const centralPolicy = getPolicyOrDefault(institutionCode);
   
-  // Default fallback policy
+  // Default fallback policy - handle null policy safely
   const fallbackPolicy: VerifiedPolicy = {
     verified: false,
-    confidence: centralPolicy.overallConfidence,
+    confidence: centralPolicy?.overallConfidence ?? 50,
     institutionCode,
-    institutionName: centralPolicy.name,
+    institutionName: centralPolicy?.name ?? institutionCode,
     residencyCredits: getCentralResidency(institutionCode),
-    maxTransferCredits: centralPolicy.maxTransferTotal ?? 90,
+    maxTransferCredits: centralPolicy?.maxTransferTotal ?? 90,
     maxNoncollegiateCredits: getCentralNoncollegiateCap(institutionCode),
-    upperDivisionMin: centralPolicy.upperDivisionAreaOfStudyMin,
+    upperDivisionMin: centralPolicy?.upperDivisionAreaOfStudyMin ?? 18,
     source: 'central_service',
-    notes: 'Using central service fallback - no verified pack available',
+    notes: centralPolicy ? 'Using central service fallback - no verified pack available' : 'No policy found - using safe defaults',
     isProgramScoped: false,
     maxTransferVerified: false,
     residencyVerified: false,

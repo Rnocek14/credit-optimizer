@@ -58,6 +58,11 @@ interface PolicyPackRow {
   confidence_score: number;
 }
 
+// V1 Scope: Only these institutions are approved for user onboarding
+// Based on evidence coverage audit (TESU 78.8%, COSC 83.1%, WGU 56.9%)
+// EXCELSIOR/EMPIRE excluded until evidence coverage reaches 50%+
+const V1_ALLOWED_INSTITUTIONS = new Set(['TESU', 'COSC', 'WGU']);
+
 /**
  * Fetch available institutions from database
  * Combines scraped policy packs with static policies
@@ -155,6 +160,13 @@ export function useAvailableInstitutions() {
             if (isStale) {
               console.warn('[useAvailableInstitutions] Skipping %s: policy stale (%d days since verification, max %d)', 
                 row.institution, daysSinceVerified, STALENESS_THRESHOLD_DAYS);
+              continue;
+            }
+            
+            // P0 Gate: V1 scope restriction - only approved institutions
+            if (!V1_ALLOWED_INSTITUTIONS.has(row.institution)) {
+              console.warn('[useAvailableInstitutions] Skipping %s: not in V1 allowed scope (evidence coverage below threshold)', 
+                row.institution);
               continue;
             }
             
