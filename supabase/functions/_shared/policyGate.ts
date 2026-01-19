@@ -6,6 +6,30 @@
 
 export type PolicyStatus = 'green' | 'yellow' | 'red';
 
+/**
+ * V1 Allowlist: Only these institutions are permitted for template generation.
+ * This is the server-side enforcement that prevents bypassing the UI gate.
+ */
+export const V1_ALLOWED_INSTITUTIONS = new Set(['TESU', 'COSC', 'WGU']);
+
+/**
+ * Check if an institution is allowed in V1 scope.
+ * Returns { allowed: true } or { allowed: false, reason: string }
+ */
+export function checkV1InstitutionScope(institution: string): { allowed: true } | { allowed: false; reason: string } {
+  const normalized = institution?.toUpperCase()?.trim();
+  if (!normalized) {
+    return { allowed: false, reason: 'Institution code is required' };
+  }
+  if (!V1_ALLOWED_INSTITUTIONS.has(normalized)) {
+    return { 
+      allowed: false, 
+      reason: `Institution '${normalized}' is not in V1 scope. Allowed: ${Array.from(V1_ALLOWED_INSTITUTIONS).join(', ')}` 
+    };
+  }
+  return { allowed: true };
+}
+
 export interface PolicyData {
   residency_credits?: number;
   max_transfer_credits?: number;

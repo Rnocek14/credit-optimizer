@@ -1,6 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { evaluatePolicyGate, getTemplateStatus, type PolicyData } from '../_shared/policyGate.ts';
+import { evaluatePolicyGate, getTemplateStatus, checkV1InstitutionScope, type PolicyData } from '../_shared/policyGate.ts';
 
 // Critical env vars - fail fast with explicit names if missing
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
@@ -90,6 +90,16 @@ serve(async (req) => {
 
     // Mode 2: Enqueue and process institution
     if (institution) {
+      // V1 SCOPE ENFORCEMENT: Block institutions not in allowlist
+      const scopeCheck = checkV1InstitutionScope(institution);
+      if (!scopeCheck.allowed) {
+        console.warn(`[${workerId}] V1 scope block: ${scopeCheck.reason}`);
+        return new Response(
+          JSON.stringify({ success: false, error: 'INSTITUTION_NOT_IN_V1_SCOPE', message: scopeCheck.reason }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
       console.log(`[${workerId}] Enqueueing job for institution: ${institution}`);
       
       // Find the active pack
