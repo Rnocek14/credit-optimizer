@@ -57,6 +57,8 @@ The Transferability V1 system is **READY FOR LAUNCH** with:
 | promote-policy-pack | Resolved | pack_id → institution | ✅ Protected |
 | rerun-template-invariants | Resolved | template_id → institution | ✅ Protected |
 
+> **Note:** "User-exposed" refers to endpoints callable via the public application UI or unauthenticated client flows. Admin-only endpoints require authenticated admin JWT.
+
 ### Guard Implementation
 - **Location:** `supabase/functions/_shared/policyGate.ts`
 - **Function:** `checkV1InstitutionScope(institution: string)`
@@ -95,7 +97,8 @@ The `validate_policy_pack_active_status` trigger enforces:
 
 ### Staleness Threshold
 - **Threshold:** 180 days from `provenance_verified_at`
-- **Enforcement:** UI gating in `useAvailableInstitutions.ts`
+- **UI Enforcement:** Gating in `useAvailableInstitutions.ts` prevents selection
+- **Backend Enforcement:** Activation triggers and invariant evaluation block stale packs
 - **Display:** Evidence freshness badge (TransferVerificationBadge.tsx)
 
 ---
