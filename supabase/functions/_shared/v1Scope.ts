@@ -1,11 +1,12 @@
 /**
  * V1 Institution Scope Configuration (Backend)
  * 
- * SINGLE SOURCE OF TRUTH for V1-allowed institutions.
- * This is the server-side enforcement copy.
+ * SYNCHRONIZED CONFIG for V1-allowed institutions.
+ * This file MUST be kept in sync with:
+ *   - Frontend: src/lib/degree/v1Scope.ts
+ *   - Tests: tests/policyGate.test.ts (duplicates logic for bundling safety)
  * 
- * IMPORTANT: Keep this in sync with src/lib/degree/v1Scope.ts
- * Both files define the same allowlist to prevent frontend/backend drift.
+ * The test harness (tests/adminV1ScopeHarness.ts) helps detect drift.
  * 
  * Evidence coverage audit (as of V1 lock):
  * - TESU: 78.8%
@@ -13,6 +14,13 @@
  * - WGU: 56.9%
  * 
  * EXCELSIOR/EMPIRE excluded until evidence coverage reaches 50%+
+ * 
+ * To add an institution to V1 scope:
+ * 1. Verify evidence coverage >= 50%
+ * 2. Ensure policy pack is active with all required fields
+ * 3. Update BOTH v1Scope.ts files (frontend + backend)
+ * 4. Update tests/policyGate.test.ts sync check
+ * 5. Run black-box tests to verify enforcement
  */
 
 /**

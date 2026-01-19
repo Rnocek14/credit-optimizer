@@ -1,11 +1,12 @@
 /**
- * V1 Institution Scope Configuration
+ * V1 Institution Scope Configuration (Frontend)
  * 
- * SINGLE SOURCE OF TRUTH for V1-allowed institutions.
- * This file is the canonical definition used by:
- * - Frontend: useAvailableInstitutions.ts (UI gating)
- * - Backend: policyGate.ts (server-side enforcement)
- * - Tests: policyGate.test.ts (verification)
+ * SYNCHRONIZED CONFIG for V1-allowed institutions.
+ * This file MUST be kept in sync with:
+ *   - Backend: supabase/functions/_shared/v1Scope.ts
+ *   - Tests: tests/policyGate.test.ts (duplicates logic for bundling safety)
+ * 
+ * The test harness (tests/adminV1ScopeHarness.ts) helps detect drift.
  * 
  * Evidence coverage audit (as of V1 lock):
  * - TESU: 78.8%
@@ -17,8 +18,9 @@
  * To add an institution to V1 scope:
  * 1. Verify evidence coverage >= 50%
  * 2. Ensure policy pack is active with all required fields
- * 3. Add to V1_ALLOWED_INSTITUTIONS array below
- * 4. Run black-box tests to verify enforcement
+ * 3. Update BOTH v1Scope.ts files (frontend + backend)
+ * 4. Update tests/policyGate.test.ts sync check
+ * 5. Run black-box tests to verify enforcement
  */
 
 /**
