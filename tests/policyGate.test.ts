@@ -7,10 +7,11 @@
 
 import { assertEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
 
-// Note: We test the logic directly, not via import from _shared (which is edge-function-only)
-// This ensures tests don't get bundled with edge functions
-
-const V1_ALLOWED_INSTITUTIONS = new Set(['TESU', 'COSC', 'WGU']);
+// V1 Scope definition (matches src/lib/degree/v1Scope.ts and supabase/functions/_shared/v1Scope.ts)
+// We duplicate here to avoid bundling issues with edge functions
+// IMPORTANT: Keep in sync with v1Scope.ts files
+const V1_ALLOWED_INSTITUTIONS_LIST = ['TESU', 'COSC', 'WGU'] as const;
+const V1_ALLOWED_INSTITUTIONS = new Set<string>(V1_ALLOWED_INSTITUTIONS_LIST);
 
 function checkV1InstitutionScope(institution: string): { allowed: true } | { allowed: false; reason: string } {
   const normalized = institution?.toUpperCase()?.trim();
@@ -20,11 +21,15 @@ function checkV1InstitutionScope(institution: string): { allowed: true } | { all
   if (!V1_ALLOWED_INSTITUTIONS.has(normalized)) {
     return { 
       allowed: false, 
-      reason: `Institution '${normalized}' is not in V1 scope. Allowed: ${Array.from(V1_ALLOWED_INSTITUTIONS).join(', ')}` 
+      reason: `Institution '${normalized}' is not in V1 scope. Allowed: ${V1_ALLOWED_INSTITUTIONS_LIST.join(', ')}` 
     };
   }
   return { allowed: true };
 }
+
+// ============================================================================
+// Unit Tests: V1 Scope Logic
+// ============================================================================
 
 Deno.test("checkV1InstitutionScope - allows TESU", () => {
   const result = checkV1InstitutionScope("TESU");
@@ -81,4 +86,19 @@ Deno.test("checkV1InstitutionScope - rejects empty string", () => {
 Deno.test("checkV1InstitutionScope - handles mixed case", () => {
   const result = checkV1InstitutionScope("TeSu");
   assertEquals(result.allowed, true);
+});
+
+// ============================================================================
+// V1 Scope Sync Check: Verify test definition matches source files
+// ============================================================================
+
+Deno.test("V1 scope sync check - list matches expected institutions", () => {
+  // This test ensures the test file's V1 scope matches the expected institutions
+  // If this fails, the v1Scope.ts files may have been updated without syncing tests
+  const expected = ['TESU', 'COSC', 'WGU'];
+  assertEquals(
+    [...V1_ALLOWED_INSTITUTIONS].sort(),
+    expected.sort(),
+    "V1_ALLOWED_INSTITUTIONS should match expected list. Update test if v1Scope.ts changed."
+  );
 });

@@ -4,17 +4,23 @@
  * to ensure consistent write-time enforcement.
  */
 
-export type PolicyStatus = 'green' | 'yellow' | 'red';
+import { 
+  V1_ALLOWED_INSTITUTIONS, 
+  isV1Institution,
+  getV1InstitutionsList 
+} from './v1Scope.ts';
 
-/**
- * V1 Allowlist: Only these institutions are permitted for template generation.
- * This is the server-side enforcement that prevents bypassing the UI gate.
- */
-export const V1_ALLOWED_INSTITUTIONS = new Set(['TESU', 'COSC', 'WGU']);
+// Re-export for backward compatibility with existing edge functions
+export { V1_ALLOWED_INSTITUTIONS, isV1Institution, getV1InstitutionsList };
+
+export type PolicyStatus = 'green' | 'yellow' | 'red';
 
 /**
  * Check if an institution is allowed in V1 scope.
  * Returns { allowed: true } or { allowed: false, reason: string }
+ * 
+ * This is the primary enforcement function used by edge functions.
+ * Uses the shared V1 scope config for consistency with frontend.
  */
 export function checkV1InstitutionScope(institution: string): { allowed: true } | { allowed: false; reason: string } {
   const normalized = institution?.toUpperCase()?.trim();
@@ -24,7 +30,7 @@ export function checkV1InstitutionScope(institution: string): { allowed: true } 
   if (!V1_ALLOWED_INSTITUTIONS.has(normalized)) {
     return { 
       allowed: false, 
-      reason: `Institution '${normalized}' is not in V1 scope. Allowed: ${Array.from(V1_ALLOWED_INSTITUTIONS).join(', ')}` 
+      reason: `Institution '${normalized}' is not in V1 scope. Allowed: ${getV1InstitutionsList()}` 
     };
   }
   return { allowed: true };
