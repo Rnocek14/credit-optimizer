@@ -1,5 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { checkV1InstitutionScope } from '../_shared/policyGate.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -44,6 +45,18 @@ serve(async (req) => {
     }
 
     const { institution_code, program_code = 'BSBA', auto_fix = false, created_by = 'manual' } = body;
+
+    // V1 SCOPE ENFORCEMENT: If specific institution provided, verify it's allowed
+    if (institution_code) {
+      const scopeCheck = checkV1InstitutionScope(institution_code);
+      if (!scopeCheck.allowed) {
+        console.warn(`[run-degree-truth-scan] V1 scope block: ${scopeCheck.reason}`);
+        return new Response(
+          JSON.stringify({ error: 'INSTITUTION_NOT_IN_V1_SCOPE', message: scopeCheck.reason }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
 
     console.log(`[run-degree-truth-scan] Starting scan: institution=${institution_code || 'all'}, program=${program_code}, auto_fix=${auto_fix}`);
 

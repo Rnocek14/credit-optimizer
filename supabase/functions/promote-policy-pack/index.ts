@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { evaluatePolicyGate, PolicyData } from "../_shared/policyGate.ts";
+import { evaluatePolicyGate, checkV1InstitutionScope, PolicyData } from "../_shared/policyGate.ts";
 
 // Critical env vars - fail fast with explicit names if missing
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
@@ -191,6 +191,18 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ error: 'Pack not found', details: fetchError?.message }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // =========================================================================
+    // V1 SCOPE ENFORCEMENT: Verify pack's institution is in V1 scope
+    // =========================================================================
+    const scopeCheck = checkV1InstitutionScope(pack.institution);
+    if (!scopeCheck.allowed) {
+      console.warn(`[promote-policy-pack] V1 scope block: ${scopeCheck.reason}`);
+      return new Response(
+        JSON.stringify({ error: 'INSTITUTION_NOT_IN_V1_SCOPE', message: scopeCheck.reason }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
