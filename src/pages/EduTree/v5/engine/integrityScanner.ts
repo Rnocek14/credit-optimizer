@@ -207,11 +207,12 @@ async function runSingleSimulation(
   const noncollegiateCap = getNoncollegiateCap(anchorSchool);
   const residencyRequired = getResidencyCredits(anchorSchool, 'standard');
   
+  // P1 Safety: Handle missing policy explicitly
   const partnerPolicy = {
-    partner_name: policy.name,
+    partner_name: policy?.name ?? anchorSchool,
     max_alt_credits: noncollegiateCap,
     min_residency_credits: residencyRequired,
-    upper_division_min: policy.upperDivisionAreaOfStudyMin,
+    upper_division_min: policy?.upperDivisionAreaOfStudyMin ?? 18,
     notes: '',
   };
   

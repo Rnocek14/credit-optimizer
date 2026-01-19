@@ -52,8 +52,10 @@ export function checkForDeadEnd(
   const policy = getPolicyOrDefault(anchorSchool);
   const noncollegiateCap = getNoncollegiateCap(anchorSchool, 'bachelor');
   const residencyRequired = getResidencyCredits(anchorSchool, 'standard');
-  const upperDivRequired = policy.upperDivisionAreaOfStudyMin;
-  const totalCreditsRequired = policy.totalCreditsBachelor;
+  
+  // P1 Safety: Handle missing policy explicitly
+  const upperDivRequired = policy?.upperDivisionAreaOfStudyMin ?? 18;
+  const totalCreditsRequired = policy?.totalCreditsBachelor ?? 120;
   
   const reasons: string[] = [];
   

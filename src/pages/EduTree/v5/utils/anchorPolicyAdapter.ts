@@ -54,6 +54,18 @@ export function getAnchorPolicyFromConstraints(
   // Get policy from central service (single source of truth)
   const centralPolicy = getPolicyOrDefault(institutionCode);
   
+  // P1 Safety: Handle missing policy explicitly
+  if (!centralPolicy) {
+    console.warn(`[anchorPolicyAdapter] No policy for "${institutionCode}" - falling back to safe defaults`);
+    return {
+      partner_name: partnerName,
+      max_alt_credits: getNoncollegiateCap(institutionCode) || 90,
+      min_residency_credits: getResidencyCredits(institutionCode, 'standard') || 30,
+      upper_division_min: 18, // Safe conservative default
+      notes: `No verified policy for ${institutionCode} - using safe defaults`,
+    };
+  }
+  
   return {
     partner_name: partnerName,
     max_alt_credits: getNoncollegiateCap(institutionCode),

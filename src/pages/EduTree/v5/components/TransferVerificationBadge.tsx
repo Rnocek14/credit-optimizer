@@ -6,21 +6,16 @@
  */
 
 import React, { useState } from 'react';
-import { Check, AlertTriangle, X, Building2, Mail } from 'lucide-react';
+import { Check, AlertTriangle, X, Building2, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
 import { PreApprovalEmailModal } from '@/components/transfer/PreApprovalEmailModal';
+import { getEvidenceFreshnessLabel, isEvidenceStale } from '@/lib/transfer/evidenceDecay';
 
 export type TransferStatus = 'verified' | 'elective-only' | 'unverified' | 'institutional' | 'loading';
 
@@ -30,6 +25,8 @@ interface TransferVerificationBadgeProps {
   targetEquivCode?: string;
   anchorSchool?: string;
   evidenceUrl?: string | null;
+  /** ISO date string when evidence was last verified */
+  lastVerifiedAt?: string | null;
   compact?: boolean;
   className?: string;
   // For pre-approval email
@@ -118,6 +115,7 @@ export function TransferVerificationBadge({
   targetEquivCode,
   anchorSchool,
   evidenceUrl,
+  lastVerifiedAt,
   compact = false,
   className,
   courseCode,
@@ -127,7 +125,7 @@ export function TransferVerificationBadge({
   degreeProgram,
   catalogYear,
 }: TransferVerificationBadgeProps) {
-  const [emailModalOpen, setEmailModalOpen] = useState(false);
+  const [emailModalOpen] = useState(false);
   const config = STATUS_CONFIG[status] ?? STATUS_CONFIG.unverified;
   const Icon = config.icon;
   const hasEvidence = Boolean(evidenceUrl && evidenceUrl.trim());
@@ -136,6 +134,12 @@ export function TransferVerificationBadge({
   const description = getStatusDescription(status, hasEvidence);
   
   const confidencePercent = confidence ? Math.round(confidence * 100) : null;
+
+  // Evidence freshness calculation (P1 tighten-up: user-facing staleness)
+  const freshnessInfo = hasEvidence && lastVerifiedAt 
+    ? getEvidenceFreshnessLabel(lastVerifiedAt) 
+    : null;
+  const isStale = lastVerifiedAt ? isEvidenceStale(lastVerifiedAt) : false;
 
   // Check if pre-approval email can be shown (not institutional, has course info)
   const canShowPreApproval = status !== 'institutional' && status !== 'loading' && courseCode && anchorSchool;
@@ -155,12 +159,36 @@ export function TransferVerificationBadge({
         <p className="text-sm">
           <span className="text-muted-foreground">Confidence:</span>{' '}
           <span className={cn(
-            confidencePercent >= 90 ? 'text-green-600' :
-            confidencePercent >= 80 ? 'text-amber-600' :
-            'text-red-600'
+            confidencePercent >= 90 ? 'text-primary' :
+            confidencePercent >= 80 ? 'text-accent-foreground' :
+            'text-destructive'
           )}>
             {confidencePercent}%
           </span>
+        </p>
+      )}
+      {/* P1: Evidence freshness indicator */}
+      {freshnessInfo && (
+        <p className="text-sm flex items-center gap-1">
+          <Clock className="w-3 h-3 text-muted-foreground" />
+          <span className="text-muted-foreground">Evidence:</span>{' '}
+          <span className={cn(
+            freshnessInfo.color === 'green' ? 'text-primary' :
+            freshnessInfo.color === 'yellow' ? 'text-accent-foreground' :
+            freshnessInfo.color === 'orange' ? 'text-accent-foreground' :
+            'text-destructive'
+          )}>
+            {freshnessInfo.label}
+          </span>
+          {isStale && (
+            <span className="text-destructive text-xs">(stale)</span>
+          )}
+        </p>
+      )}
+      {!hasEvidence && status !== 'institutional' && status !== 'loading' && (
+        <p className="text-sm text-muted-foreground italic flex items-center gap-1">
+          <AlertTriangle className="w-3 h-3" />
+          No evidence link
         </p>
       )}
     </div>
