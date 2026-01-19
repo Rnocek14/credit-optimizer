@@ -29,6 +29,7 @@ import {
   DEFAULT_INVARIANT_CONFIG,
   type EffectiveInvariantConfig,
 } from '../_shared/institutionOverrides.ts';
+import { checkV1InstitutionScope } from '../_shared/policyGate.ts';
 
 // ============================================
 // CORS
@@ -264,6 +265,16 @@ Deno.serve(async (req: Request) => {
       return new Response(
         JSON.stringify({ error: 'Template not found' }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // V1 SCOPE ENFORCEMENT: Guard on resolved institution from template
+    const scopeCheck = checkV1InstitutionScope(template.institution_code);
+    if (!scopeCheck.allowed) {
+      console.warn(`[rerun-template-invariants] V1 scope block: ${scopeCheck.reason}`);
+      return new Response(
+        JSON.stringify({ error: 'INSTITUTION_NOT_IN_V1_SCOPE', message: scopeCheck.reason }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
