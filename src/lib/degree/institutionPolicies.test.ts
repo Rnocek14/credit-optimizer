@@ -280,9 +280,9 @@ describe('institutionPolicies', () => {
       expect(policy.upperDivisionAreaOfStudyMin).toBe(0);
     });
 
-    it('getPolicyOrDefault falls back to TESU for unknown code', () => {
+    it('getPolicyOrDefault returns null for unknown code (P1 safety fix)', () => {
       const policy = getPolicyOrDefault('UNKNOWN_SCHOOL');
-      expect(policy.code).toBe('TESU');
+      expect(policy).toBeNull();
     });
   });
 

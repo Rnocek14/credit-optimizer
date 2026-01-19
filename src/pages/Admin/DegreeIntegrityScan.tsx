@@ -94,14 +94,15 @@ const DegreeIntegrityScan: React.FC = () => {
     const institutions = getAvailableInstitutions();
     return institutions.map(code => {
       const policy = getPolicyOrDefault(code);
+      // Handle null policy safely
       return {
         code,
-        name: policy.name,
+        name: policy?.name ?? code,
         noncollegiateCap: getNoncollegiateCap(code, 'bachelor'),
         residency: getResidencyCredits(code, 'standard'),
-        upperDiv: policy.upperDivisionAreaOfStudyMin,
-        confidence: policy.overallConfidence,
-        requiredCourses: policy.requiredResidenceCourses.length,
+        upperDiv: policy?.upperDivisionAreaOfStudyMin ?? 18,
+        confidence: policy?.overallConfidence ?? 50,
+        requiredCourses: policy?.requiredResidenceCourses?.length ?? 0,
       };
     });
   }, []);

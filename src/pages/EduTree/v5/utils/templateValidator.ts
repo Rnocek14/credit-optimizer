@@ -141,13 +141,13 @@ export function validateTemplate(template: any): TemplateValidationResult {
   const issues: ValidationIssue[] = [];
   const anchorSchool = template.anchorSchool || 'TESU';
   
-  // Get policy from central service
+  // Get policy from central service - handle null safely
   const policy = getPolicyOrDefault(anchorSchool);
   const residencyCreditsRequired = getResidencyCredits(anchorSchool);
-  const genEdReqs = policy.genEdRequirements;
+  const genEdReqs = policy?.genEdRequirements;
   
   // Check required in-residence courses FIRST (MARKETPLACE BLOCKER)
-  const residenceCourseCheck = validateRequiredResidenceCourses(template, policy);
+  const residenceCourseCheck = policy ? validateRequiredResidenceCourses(template, policy) : null;
   
   // Calculate metrics by analyzing all modules and their options
   let totalCredits = 0;
@@ -261,8 +261,8 @@ export function validateTemplate(template: any): TemplateValidationResult {
     });
   }
   
-  // Validate: Upper-division
-  const upperDivRequired = policy.upperDivisionAreaOfStudyMin;
+  // Validate: Upper-division (handle null policy)
+  const upperDivRequired = policy?.upperDivisionAreaOfStudyMin ?? 18;
   if (upperDivRequired > 0 && upperDivCredits < upperDivRequired) {
     issues.push({
       type: 'error',
