@@ -13,6 +13,7 @@
 // =============================================================================
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.56.0?target=deno';
+import { checkV1InstitutionScope } from '../_shared/policyGate.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -398,6 +399,18 @@ Deno.serve(async (req) => {
         JSON.stringify({ error: 'Either scrape_job_id or extraction_result is required' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
+    }
+
+    // V1 SCOPE ENFORCEMENT: Verify institution is allowed before processing
+    if (result.policy_pack?.institution) {
+      const scopeCheck = checkV1InstitutionScope(result.policy_pack.institution);
+      if (!scopeCheck.allowed) {
+        console.warn(`[transfer-scraper-validate] V1 scope block: ${scopeCheck.reason}`);
+        return new Response(
+          JSON.stringify({ error: 'INSTITUTION_NOT_IN_V1_SCOPE', message: scopeCheck.reason }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
     }
 
     // Determine action

@@ -51,6 +51,7 @@ interface PolicyData {
 import { 
   evaluatePolicyGate, 
   getTemplateStatus,
+  checkV1InstitutionScope,
   type PolicyStatus,
   type PolicyGateResult 
 } from '../_shared/policyGate.ts';
@@ -1083,6 +1084,18 @@ serve(async (req) => {
     }
 
     const { institution_code, program_code = 'BSBA', force_refresh = false, job_id } = body;
+
+    // V1 SCOPE ENFORCEMENT: If specific institution provided, verify it's allowed
+    if (institution_code) {
+      const scopeCheck = checkV1InstitutionScope(institution_code);
+      if (!scopeCheck.allowed) {
+        console.warn(`[seed-bsba-templates] V1 scope block: ${scopeCheck.reason}`);
+        return new Response(
+          JSON.stringify({ error: 'INSTITUTION_NOT_IN_V1_SCOPE', message: scopeCheck.reason }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
 
     console.log(`[seed-bsba-templates] Starting v3 template generation with real costs...`);
     console.log(`[seed-bsba-templates] Params: institution_code=${institution_code || 'all'}, program_code=${program_code}, force_refresh=${force_refresh}`);

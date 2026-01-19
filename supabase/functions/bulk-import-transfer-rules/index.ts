@@ -1,5 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.56.0?target=deno';
 import { corsHeaders } from '../_shared/util.ts';
+import { checkV1InstitutionScope } from '../_shared/policyGate.ts';
 
 interface TransferRule {
   source_institution: string;
@@ -49,6 +50,19 @@ Deno.serve(async (req) => {
 
     if (!Array.isArray(rules) || rules.length === 0) {
       throw new Error('Invalid input: rules array required');
+    }
+
+    // V1 SCOPE ENFORCEMENT: Verify all target_institution values are in V1 scope
+    const uniqueTargets = new Set(rules.map(r => r.target_institution?.toUpperCase?.()?.trim?.()).filter(Boolean));
+    for (const target of uniqueTargets) {
+      const scopeCheck = checkV1InstitutionScope(target as string);
+      if (!scopeCheck.allowed) {
+        console.warn(`[bulk-import-transfer-rules] V1 scope block: ${scopeCheck.reason}`);
+        return new Response(
+          JSON.stringify({ error: 'INSTITUTION_NOT_IN_V1_SCOPE', message: scopeCheck.reason }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
     }
 
     console.log(`📥 Processing ${rules.length} transfer rules for bulk import`);
