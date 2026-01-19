@@ -6,6 +6,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { getAvailableInstitutions as getStaticInstitutions } from './institutionPolicies';
+import { isV1Institution } from './v1Scope';
 
 export interface AvailableInstitution {
   code: string;
@@ -58,10 +59,9 @@ interface PolicyPackRow {
   confidence_score: number;
 }
 
-// V1 Scope: Only these institutions are approved for user onboarding
+// V1 Scope: Imported from shared config (src/lib/degree/v1Scope.ts)
 // Based on evidence coverage audit (TESU 78.8%, COSC 83.1%, WGU 56.9%)
 // EXCELSIOR/EMPIRE excluded until evidence coverage reaches 50%+
-const V1_ALLOWED_INSTITUTIONS = new Set(['TESU', 'COSC', 'WGU']);
 
 /**
  * Fetch available institutions from database
@@ -164,7 +164,8 @@ export function useAvailableInstitutions() {
             }
             
             // P0 Gate: V1 scope restriction - only approved institutions
-            if (!V1_ALLOWED_INSTITUTIONS.has(row.institution)) {
+            // Uses isV1Institution from shared config (src/lib/degree/v1Scope.ts)
+            if (!isV1Institution(row.institution)) {
               console.warn('[useAvailableInstitutions] Skipping %s: not in V1 allowed scope (evidence coverage below threshold)', 
                 row.institution);
               continue;
