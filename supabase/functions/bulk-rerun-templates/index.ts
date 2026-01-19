@@ -15,6 +15,7 @@
  */
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1';
+import { checkV1InstitutionScope } from '../_shared/policyGate.ts';
 
 // ============================================
 // CORS
@@ -146,7 +147,17 @@ Deno.serve(async (req: Request) => {
 
     const { decision, institution_code, track, template_ids, confirm } = body;
 
-    // Validate decision
+    // V1 SCOPE ENFORCEMENT: If specific institution provided, verify it's allowed
+    if (institution_code) {
+      const scopeCheck = checkV1InstitutionScope(institution_code);
+      if (!scopeCheck.allowed) {
+        console.warn(`[bulk-rerun-templates] V1 scope block: ${scopeCheck.reason}`);
+        return new Response(
+          JSON.stringify({ error: 'INSTITUTION_NOT_IN_V1_SCOPE', message: scopeCheck.reason }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
     if (!decision || !['block', 'warn'].includes(decision)) {
       return new Response(
         JSON.stringify({ error: 'decision must be "block" or "warn"' }),
