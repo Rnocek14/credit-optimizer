@@ -7,6 +7,7 @@
  * Usage:
  *   1. Set environment variables:
  *      - SUPABASE_URL: Your Supabase project URL
+ *      - SUPABASE_ANON_KEY: Your Supabase anon/public key (required for auth)
  *      - ADMIN_EMAIL: Email of admin user
  *      - ADMIN_PASSWORD: Password of admin user
  *      - BLOCKED_PACK_ID: UUID of a policy pack for EMPIRE/EXCELSIOR
@@ -20,6 +21,11 @@
  *   - rerun-template-invariants with blocked template ID → 403 INSTITUTION_NOT_IN_V1_SCOPE
  * 
  * If you get 401/403 for auth reasons, the guard was not tested.
+ * 
+ * NOTE: V1 scope is defined in synchronized configs:
+ *   - Frontend: src/lib/degree/v1Scope.ts
+ *   - Backend: supabase/functions/_shared/v1Scope.ts
+ * These must be kept in sync manually. This harness helps detect drift.
  */
 
 interface TestResult {
@@ -32,6 +38,9 @@ interface TestResult {
   message: string;
 }
 
+// Global anon key - validated at startup
+let SUPABASE_ANON_KEY: string;
+
 async function getAdminJwt(
   supabaseUrl: string,
   email: string,
@@ -41,7 +50,8 @@ async function getAdminJwt(
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'apikey': Deno.env.get('SUPABASE_ANON_KEY') || '',
+      'apikey': SUPABASE_ANON_KEY,
+      'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
     },
     body: JSON.stringify({ email, password }),
   });
@@ -71,6 +81,7 @@ async function testEndpoint(
       method,
       headers: {
         'Content-Type': 'application/json',
+        'apikey': SUPABASE_ANON_KEY,
         'Authorization': `Bearer ${jwt}`,
       },
       body: JSON.stringify(body),
@@ -112,6 +123,7 @@ async function runHarness() {
 
   // Check required environment variables
   const supabaseUrl = Deno.env.get('SUPABASE_URL');
+  const anonKey = Deno.env.get('SUPABASE_ANON_KEY');
   const adminEmail = Deno.env.get('ADMIN_EMAIL');
   const adminPassword = Deno.env.get('ADMIN_PASSWORD');
   const blockedPackId = Deno.env.get('BLOCKED_PACK_ID');
@@ -119,6 +131,7 @@ async function runHarness() {
 
   const missing: string[] = [];
   if (!supabaseUrl) missing.push('SUPABASE_URL');
+  if (!anonKey) missing.push('SUPABASE_ANON_KEY');
   if (!adminEmail) missing.push('ADMIN_EMAIL');
   if (!adminPassword) missing.push('ADMIN_PASSWORD');
 
@@ -127,12 +140,16 @@ async function runHarness() {
     console.error('');
     console.error('Set them and retry:');
     console.error('  export SUPABASE_URL=https://your-project.supabase.co');
+    console.error('  export SUPABASE_ANON_KEY=your-anon-key');
     console.error('  export ADMIN_EMAIL=admin@example.com');
     console.error('  export ADMIN_PASSWORD=your-password');
     console.error('  export BLOCKED_PACK_ID=uuid-of-empire-pack (optional)');
     console.error('  export BLOCKED_TEMPLATE_ID=uuid-of-empire-template (optional)');
     Deno.exit(1);
   }
+
+  // Set global anon key for use in request headers
+  SUPABASE_ANON_KEY = anonKey!
 
   // Step 1: Get admin JWT
   console.log('Step 1: Authenticating as admin...');
