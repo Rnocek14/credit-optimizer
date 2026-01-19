@@ -38,14 +38,14 @@ function useInstitutionPolicyDisplay(institution: AvailableInstitution): PolicyD
     };
   }
 
-  // Fall back to static policy
+  // Fall back to static policy - handle null safely
   const staticPolicy = getPolicyOrDefault(institution.code);
   return {
     code: institution.code,
     name: institution.name,
     maxAltCredits: getNoncollegiateCap(institution.code, 'bachelor'),
     minResidency: getResidencyCredits(institution.code, 'standard'),
-    upperDivMin: staticPolicy.upperDivisionAreaOfStudyMin,
+    upperDivMin: staticPolicy?.upperDivisionAreaOfStudyMin ?? 18,
     confidence: institution.confidence,
     status: institution.status,
   };
