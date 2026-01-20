@@ -54,6 +54,7 @@ The Transferability V1 system is **READY FOR LAUNCH** with:
 | bulk-import-transfer-rules | Direct | institution_code | ✅ Protected |
 | transfer-scraper-merge | Direct | institution_code | ✅ Protected |
 | run-degree-truth-scan | Direct | institution_code | ✅ Protected |
+| evidence-backfill-worker | Skip-guard | target_institution_norm | ✅ Protected |
 | transfer-scraper-validate | Resolved | template_id → institution | ✅ Protected |
 | promote-policy-pack | Resolved | pack_id → institution | ✅ Protected |
 | rerun-template-invariants | Resolved | template_id → institution | ✅ Protected |
@@ -206,6 +207,8 @@ deno run --allow-net --allow-env tests/adminV1ScopeHarness.ts
 | 2026-01-19 | Initial V1 compliance audit frozen | System |
 | 2026-01-20 | Added EXCELSIOR to V1 scope (evidence coverage ≥ 50%) | System |
 | 2026-01-20 | Added EMPIRE to V1 scope (evidence coverage 53.8% via Tier-1 institution_web source) | System |
+| 2026-01-20 | Added V1 scope guard to evidence-backfill-worker (skip-guard pattern for non-V1 institutions) | System |
+| 2026-01-20 | Verified constraints/triggers exist: chk_source_institution_no_study_com, credit_transfer_rules_evidence_source_type_chk, 3 activation triggers | System |
 
 ---
 

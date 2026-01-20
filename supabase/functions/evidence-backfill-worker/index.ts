@@ -1,5 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { isV1Institution } from '../_shared/v1Scope.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -117,6 +118,7 @@ serve(async (req) => {
       not_found: 0,
       needs_review: 0,
       errors: 0,
+      skipped_non_v1: 0,
       details: [] as Array<{
         tuple: string;
         status: string;
@@ -128,6 +130,18 @@ serve(async (req) => {
 
     for (const job of jobs as EvidenceJob[]) {
       const tupleKey = `${job.target_institution_norm}|${job.source_institution_norm}|${job.source_course_code_norm}`;
+      
+      // V1 SCOPE GUARD: Skip jobs for non-V1 institutions
+      if (!isV1Institution(job.target_institution_norm)) {
+        console.log(`[evidence-backfill-worker] Skipping non-V1 institution: ${job.target_institution_norm} (${tupleKey})`);
+        results.skipped_non_v1++;
+        results.details.push({
+          tuple: tupleKey,
+          status: 'skipped',
+          error: `INSTITUTION_NOT_IN_V1_SCOPE: ${job.target_institution_norm}`,
+        });
+        continue;
+      }
       
       try {
         console.log(`[evidence-backfill-worker] Processing: ${tupleKey}`);
@@ -374,7 +388,7 @@ serve(async (req) => {
       }
     }
 
-    console.log(`[evidence-backfill-worker] Complete: processed=${results.processed}, found=${results.found}, not_found=${results.not_found}, needs_review=${results.needs_review}, errors=${results.errors}`);
+    console.log(`[evidence-backfill-worker] Complete: processed=${results.processed}, found=${results.found}, not_found=${results.not_found}, needs_review=${results.needs_review}, skipped_non_v1=${results.skipped_non_v1}, errors=${results.errors}`);
 
     return new Response(
       JSON.stringify({
