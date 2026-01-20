@@ -3918,6 +3918,7 @@ export type Database = {
           last_outcome_at: string | null
           last_verified_at: string | null
           last_verified_at_inferred: boolean | null
+          last_verified_at_inferred_from: string | null
           precedence: number | null
           provenance_notes: string | null
           rejection_count: number | null
@@ -3961,6 +3962,7 @@ export type Database = {
           last_outcome_at?: string | null
           last_verified_at?: string | null
           last_verified_at_inferred?: boolean | null
+          last_verified_at_inferred_from?: string | null
           precedence?: number | null
           provenance_notes?: string | null
           rejection_count?: number | null
@@ -4004,6 +4006,7 @@ export type Database = {
           last_outcome_at?: string | null
           last_verified_at?: string | null
           last_verified_at_inferred?: boolean | null
+          last_verified_at_inferred_from?: string | null
           precedence?: number | null
           provenance_notes?: string | null
           rejection_count?: number | null
@@ -14995,6 +14998,7 @@ export type Database = {
           last_outcome_at: string | null
           last_verified_at: string | null
           last_verified_at_inferred: boolean | null
+          last_verified_at_inferred_from: string | null
           precedence: number | null
           provenance_notes: string | null
           rejection_count: number | null
@@ -15014,6 +15018,7 @@ export type Database = {
           target_institution: string | null
           target_institution_norm: string | null
           ttl_days: number | null
+          verification_kind: string | null
           verification_source: string | null
           verified_at: string | null
         }
