@@ -17,9 +17,12 @@ Deno.serve(async (req) => {
   }
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+  const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
   const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
   // ============ ADMIN AUTHENTICATION GUARD ============
+  // Use anon client for auth verification (proper trust boundary)
+  // Use service role client only for DB writes
   const authHeader = req.headers.get("authorization");
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
     console.error("[seed-sophia-canonical] SECURITY: Missing or invalid authorization header");
@@ -30,10 +33,14 @@ Deno.serve(async (req) => {
   }
 
   const token = authHeader.replace("Bearer ", "");
-  const supabase = createClient(supabaseUrl, supabaseServiceKey);
+  
+  // Anon client for auth verification only
+  const supabaseAnon = createClient(supabaseUrl, supabaseAnonKey);
+  // Service role client for privileged DB operations
+  const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
-  // Verify the user from the JWT
-  const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+  // Verify the user from the JWT using anon client
+  const { data: { user }, error: authError } = await supabaseAnon.auth.getUser(token);
   if (authError || !user) {
     console.error("[seed-sophia-canonical] SECURITY: Invalid token", authError);
     return new Response(
@@ -42,8 +49,8 @@ Deno.serve(async (req) => {
     );
   }
 
-  // Check if user has admin role
-  const { data: userRole, error: roleError } = await supabase.rpc("get_user_role", {
+  // Check if user has admin role (use admin client for RPC)
+  const { data: userRole, error: roleError } = await supabaseAdmin.rpc("get_user_role", {
     user_uuid: user.id,
   });
 
@@ -102,7 +109,7 @@ Deno.serve(async (req) => {
     ];
 
     // Insert canonicals with upsert
-    const { data: insertedCanonicals, error: canonicalError } = await supabase
+    const { data: insertedCanonicals, error: canonicalError } = await supabaseAdmin
       .from("source_courses")
       .upsert(canonicals, { 
         onConflict: "provider_code_norm,canonical_code_norm",
@@ -117,7 +124,7 @@ Deno.serve(async (req) => {
     }
 
     // 2) Fetch all canonical IDs for alias mapping
-    const { data: allCanonicals, error: fetchError } = await supabase
+    const { data: allCanonicals, error: fetchError } = await supabaseAdmin
       .from("source_courses")
       .select("id, canonical_code, provider_code_norm, canonical_code_norm")
       .eq("provider_code_norm", "SOPHIA");
@@ -206,7 +213,7 @@ Deno.serve(async (req) => {
     }).filter(Boolean);
 
     if (aliasRows.length > 0) {
-      const { data: insertedAliases, error: aliasError } = await supabase
+      const { data: insertedAliases, error: aliasError } = await supabaseAdmin
         .from("source_course_aliases")
         .upsert(aliasRows, {
           onConflict: "provider_code_norm,alias_code_norm",
@@ -222,7 +229,7 @@ Deno.serve(async (req) => {
     }
 
     // 4) Verify resolution
-    const { data: resolutionStats, error: statsError } = await supabase
+    const { data: resolutionStats, error: statsError } = await supabaseAdmin
       .from("transfer_rules_resolved")
       .select("canonical_resolution_status")
       .eq("source_institution", "SOPHIA");
