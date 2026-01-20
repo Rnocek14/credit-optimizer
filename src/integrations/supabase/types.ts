@@ -3908,6 +3908,8 @@ export type Database = {
           effective_from: string | null
           effective_start: string | null
           effective_to: string | null
+          evidence_locator: string | null
+          evidence_source_type: string | null
           evidence_type: string | null
           evidence_url: string | null
           expires_at: string | null
@@ -3922,7 +3924,9 @@ export type Database = {
           rule_source: string | null
           rule_type: string | null
           source_course_code: string | null
+          source_course_code_canonical: string | null
           source_course_code_norm: string | null
+          source_course_title_canonical: string | null
           source_institution: string
           source_institution_norm: string | null
           status: string | null
@@ -3946,6 +3950,8 @@ export type Database = {
           effective_from?: string | null
           effective_start?: string | null
           effective_to?: string | null
+          evidence_locator?: string | null
+          evidence_source_type?: string | null
           evidence_type?: string | null
           evidence_url?: string | null
           expires_at?: string | null
@@ -3960,7 +3966,9 @@ export type Database = {
           rule_source?: string | null
           rule_type?: string | null
           source_course_code?: string | null
+          source_course_code_canonical?: string | null
           source_course_code_norm?: string | null
+          source_course_title_canonical?: string | null
           source_institution: string
           source_institution_norm?: string | null
           status?: string | null
@@ -3984,6 +3992,8 @@ export type Database = {
           effective_from?: string | null
           effective_start?: string | null
           effective_to?: string | null
+          evidence_locator?: string | null
+          evidence_source_type?: string | null
           evidence_type?: string | null
           evidence_url?: string | null
           expires_at?: string | null
@@ -3998,7 +4008,9 @@ export type Database = {
           rule_source?: string | null
           rule_type?: string | null
           source_course_code?: string | null
+          source_course_code_canonical?: string | null
           source_course_code_norm?: string | null
+          source_course_title_canonical?: string | null
           source_institution?: string
           source_institution_norm?: string | null
           status?: string | null
