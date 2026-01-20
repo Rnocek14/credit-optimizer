@@ -75,9 +75,26 @@ The Transferability V1 system is **READY FOR LAUNCH** with:
 | Direct-input guards (7 endpoints) | Black-box verified | ✅ Complete | Tested with blocked institutions |
 | Resolved guards (2 endpoints) | Code-path verified | ✅ Complete | Guard placement confirmed |
 | Resolved guards black-box | QA harness ready | 🧪 Pending | `tests/adminV1ScopeHarness.ts` |
+| Skip-guard (evidence-backfill-worker) | Black-box verified | ✅ Complete | See verification evidence below |
 | Provider canonicalization | DB constraint | ✅ Complete | CHECK constraint blocks STUDY_COM |
 | Activation invariants | DB trigger | ✅ Complete | 6 required fields enforced |
 | Bundling risk | Test relocation | ✅ Complete | Tests outside deployment graph |
+
+### Skip-Guard Verification Evidence
+
+**Date:** 2026-01-20  
+**Test:** Inserted synthetic job for SNHU (blocked institution)  
+**Result:**
+```json
+{
+  "skipped_non_v1": 1,
+  "processed": 0,
+  "status": "skipped",
+  "error": "INSTITUTION_NOT_IN_V1_SCOPE: SNHU",
+  "success": true
+}
+```
+**Conclusion:** Guard executed correctly—non-V1 job skipped with telemetry, no processing occurred.
 
 ---
 
