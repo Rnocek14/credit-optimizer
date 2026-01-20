@@ -126,7 +126,7 @@ Deno.serve(async (req) => {
     // 2) Fetch all canonical IDs for alias mapping
     const { data: allCanonicals, error: fetchError } = await supabaseAdmin
       .from("source_courses")
-      .select("id, canonical_code, provider_code_norm, canonical_code_norm")
+      .select("id, canonical_code, provider_code_norm, canonical_code_norm, canonical_url")
       .eq("provider_code_norm", "SOPHIA");
 
     if (fetchError) {
@@ -137,10 +137,12 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Build lookup map
+    // Build lookup maps: id + url
     const canonicalMap = new Map<string, string>();
+    const canonicalUrlMap = new Map<string, string>();
     for (const c of allCanonicals ?? []) {
       canonicalMap.set(c.canonical_code_norm, c.id);
+      canonicalUrlMap.set(c.canonical_code_norm, c.canonical_url ?? "https://sunyempire.sophia.org/");
     }
 
     // 3) Alias mappings (internal codes → canonical)
@@ -196,6 +198,7 @@ Deno.serve(async (req) => {
 
     const aliasRows = aliasMappings.map((m) => {
       const sourceId = canonicalMap.get(m.canonical_code.toUpperCase());
+      const evidenceUrl = canonicalUrlMap.get(m.canonical_code.toUpperCase()) ?? "https://sunyempire.sophia.org/";
       if (!sourceId) {
         result.errors.push(`Missing canonical for alias ${m.alias_code} -> ${m.canonical_code}`);
         return null;
@@ -206,7 +209,7 @@ Deno.serve(async (req) => {
         alias_code: m.alias_code,
         alias_kind: "internal_normalized",
         confidence: m.confidence,
-        evidence_url: "https://sunyempire.sophia.org/",
+        evidence_url: evidenceUrl,
         evidence_source_type: "institution_web",
         evidence_locator: `ACE ID ${m.canonical_code} on SUNY Empire Sophia list`,
       };
