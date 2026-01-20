@@ -94,11 +94,35 @@ The Transferability V1 system is **READY FOR LAUNCH** with:
 
 ### QA Regression Test (Skip-Guard)
 
-To verify skip-guard in QA environment:
-1. Insert job: `INSERT INTO evidence_jobs (target_institution_norm, source_institution_norm, source_course_code_norm, status, next_check_at, check_count, created_at, updated_at) VALUES ('SNHU', 'SOPHIA', 'QA-TEST-001', 'queued', NOW(), 0, NOW(), NOW())`
-2. Run worker: `POST /evidence-backfill-worker {"batch_size": 5}`
-3. Verify response: `skipped_non_v1 >= 1`, `processed = 0`
-4. Cleanup: Mark job `status = 'skipped'` or delete via service role
+**Insert synthetic job:**
+```sql
+INSERT INTO evidence_jobs (
+  target_institution_norm, source_institution_norm, source_course_code_norm,
+  status, next_check_at, check_count, created_at, updated_at
+) VALUES (
+  'SNHU', 'SOPHIA', 'QA-TEST-001', 'queued', NOW(), 0, NOW(), NOW()
+) RETURNING id;
+```
+
+**Run worker:**
+```bash
+curl -X POST "$SUPABASE_URL/functions/v1/evidence-backfill-worker" \
+  -H "apikey: $SUPABASE_ANON_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"batch_size": 5}'
+```
+
+**Verify response:** `skipped_non_v1 >= 1`, `processed = 0`, error contains `INSTITUTION_NOT_IN_V1_SCOPE`
+
+**Confirm cleanup:**
+```sql
+SELECT id, status, error_message, updated_at 
+FROM evidence_jobs 
+WHERE source_course_code_norm = 'QA-TEST-001';
+-- Then: UPDATE evidence_jobs SET status = 'skipped' WHERE id = '<job_id>';
+```
+
+**Log search hint:** Filter by `request_id = 019bdd20-ae6c-76bd-ac0d-ea4eb523d18c` or search `"Skipping non-V1 institution: SNHU"`
 
 ---
 
