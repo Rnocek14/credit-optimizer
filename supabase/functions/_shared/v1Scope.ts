@@ -27,7 +27,7 @@
  * V1 Allowed Institutions
  * Array format for easy iteration; converted to Set for O(1) lookup
  */
-export const V1_ALLOWED_INSTITUTIONS_LIST = ['TESU', 'COSC', 'WGU', 'EXCELSIOR'] as const;
+export const V1_ALLOWED_INSTITUTIONS_LIST = ['TESU', 'COSC', 'WGU', 'EXCELSIOR', 'EMPIRE'] as const;
 
 /**
  * V1 Allowed Institutions Set (for O(1) lookup)
