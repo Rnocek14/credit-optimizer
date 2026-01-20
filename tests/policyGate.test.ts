@@ -10,7 +10,7 @@ import { assertEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
 // V1 Scope definition (matches src/lib/degree/v1Scope.ts and supabase/functions/_shared/v1Scope.ts)
 // We duplicate here to avoid bundling issues with edge functions
 // IMPORTANT: Keep in sync with v1Scope.ts files
-const V1_ALLOWED_INSTITUTIONS_LIST = ['TESU', 'COSC', 'WGU'] as const;
+const V1_ALLOWED_INSTITUTIONS_LIST = ['TESU', 'COSC', 'WGU', 'EXCELSIOR'] as const;
 const V1_ALLOWED_INSTITUTIONS = new Set<string>(V1_ALLOWED_INSTITUTIONS_LIST);
 
 function checkV1InstitutionScope(institution: string): { allowed: true } | { allowed: false; reason: string } {
@@ -51,13 +51,9 @@ Deno.test("checkV1InstitutionScope - allows WGU", () => {
   assertEquals(result.allowed, true);
 });
 
-Deno.test("checkV1InstitutionScope - blocks EXCELSIOR", () => {
+Deno.test("checkV1InstitutionScope - allows EXCELSIOR", () => {
   const result = checkV1InstitutionScope("EXCELSIOR");
-  assertEquals(result.allowed, false);
-  if (!result.allowed) {
-    assertEquals(result.reason.includes("EXCELSIOR"), true);
-    assertEquals(result.reason.includes("not in V1 scope"), true);
-  }
+  assertEquals(result.allowed, true);
 });
 
 Deno.test("checkV1InstitutionScope - blocks EMPIRE", () => {
@@ -95,7 +91,7 @@ Deno.test("checkV1InstitutionScope - handles mixed case", () => {
 Deno.test("V1 scope sync check - list matches expected institutions", () => {
   // This test ensures the test file's V1 scope matches the expected institutions
   // If this fails, the v1Scope.ts files may have been updated without syncing tests
-  const expected = ['TESU', 'COSC', 'WGU'];
+  const expected = ['TESU', 'COSC', 'WGU', 'EXCELSIOR'];
   assertEquals(
     [...V1_ALLOWED_INSTITUTIONS].sort(),
     expected.sort(),
