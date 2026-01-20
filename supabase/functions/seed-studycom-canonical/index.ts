@@ -17,9 +17,12 @@ Deno.serve(async (req) => {
   }
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+  const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
   const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
   // ============ ADMIN AUTHENTICATION GUARD ============
+  // Use anon client for auth verification (proper trust boundary)
+  // Use service role client only for DB writes
   const authHeader = req.headers.get("authorization");
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
     console.error("[seed-studycom-canonical] SECURITY: Missing or invalid authorization header");
@@ -30,10 +33,14 @@ Deno.serve(async (req) => {
   }
 
   const token = authHeader.replace("Bearer ", "");
-  const supabase = createClient(supabaseUrl, supabaseServiceKey);
+  
+  // Anon client for auth verification only
+  const supabaseAnon = createClient(supabaseUrl, supabaseAnonKey);
+  // Service role client for privileged DB operations
+  const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
-  // Verify the user from the JWT
-  const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+  // Verify the user from the JWT using anon client
+  const { data: { user }, error: authError } = await supabaseAnon.auth.getUser(token);
   if (authError || !user) {
     console.error("[seed-studycom-canonical] SECURITY: Invalid token", authError);
     return new Response(
@@ -42,8 +49,8 @@ Deno.serve(async (req) => {
     );
   }
 
-  // Check if user has admin role
-  const { data: userRole, error: roleError } = await supabase.rpc("get_user_role", {
+  // Check if user has admin role (use admin client for RPC)
+  const { data: userRole, error: roleError } = await supabaseAdmin.rpc("get_user_role", {
     user_uuid: user.id,
   });
 
@@ -136,7 +143,7 @@ Deno.serve(async (req) => {
     ];
 
     // Insert canonicals with upsert
-    const { data: insertedCanonicals, error: canonicalError } = await supabase
+    const { data: insertedCanonicals, error: canonicalError } = await supabaseAdmin
       .from("source_courses")
       .upsert(canonicals, { 
         onConflict: "provider_code_norm,canonical_code_norm",
@@ -151,9 +158,9 @@ Deno.serve(async (req) => {
     }
 
     // 2) Fetch all canonical IDs for alias mapping
-    const { data: allCanonicals, error: fetchError } = await supabase
+    const { data: allCanonicals, error: fetchError } = await supabaseAdmin
       .from("source_courses")
-      .select("id, canonical_code, provider_code_norm, canonical_code_norm")
+      .select("id, canonical_code, provider_code_norm, canonical_code_norm, canonical_url")
       .eq("provider_code_norm", "STUDYCOM");
 
     if (fetchError) {
@@ -165,9 +172,12 @@ Deno.serve(async (req) => {
     }
 
     // Build lookup map
+    // Build lookup maps: id + url
     const canonicalMap = new Map<string, string>();
+    const canonicalUrlMap = new Map<string, string>();
     for (const c of allCanonicals ?? []) {
       canonicalMap.set(c.canonical_code_norm, c.id);
+      canonicalUrlMap.set(c.canonical_code_norm, c.canonical_url ?? "https://study.com/");
     }
 
     // 3) Alias mappings (handle variants)
@@ -228,6 +238,7 @@ Deno.serve(async (req) => {
 
     const aliasRows = aliasMappings.map((m) => {
       const sourceId = canonicalMap.get(m.canonical_code.toUpperCase());
+      const evidenceUrl = canonicalUrlMap.get(m.canonical_code.toUpperCase()) ?? "https://study.com/";
       if (!sourceId) {
         result.errors.push(`Missing canonical for alias ${m.alias_code} -> ${m.canonical_code}`);
         return null;
@@ -238,14 +249,14 @@ Deno.serve(async (req) => {
         alias_code: m.alias_code,
         alias_kind: "internal_normalized",
         confidence: m.confidence,
-        evidence_url: `https://study.com/academy/course/${m.canonical_code.toLowerCase().replace('sdc-', '')}.html`,
+        evidence_url: evidenceUrl,
         evidence_source_type: "provider_page",
         evidence_locator: `Study.com course page for ${m.canonical_code}`,
       };
     }).filter(Boolean);
 
     if (aliasRows.length > 0) {
-      const { data: insertedAliases, error: aliasError } = await supabase
+      const { data: insertedAliases, error: aliasError } = await supabaseAdmin
         .from("source_course_aliases")
         .upsert(aliasRows, {
           onConflict: "provider_code_norm,alias_code_norm",
@@ -261,7 +272,7 @@ Deno.serve(async (req) => {
     }
 
     // 4) Verify resolution
-    const { data: resolutionStats, error: statsError } = await supabase
+    const { data: resolutionStats, error: statsError } = await supabaseAdmin
       .from("transfer_rules_resolved")
       .select("canonical_resolution_status")
       .eq("source_institution", "STUDYCOM");
