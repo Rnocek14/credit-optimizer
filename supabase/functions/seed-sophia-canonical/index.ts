@@ -29,23 +29,33 @@ Deno.serve(async (req) => {
 
     // 1) Canonical courses (ACE IDs from SUNY Empire Sophia page)
     const canonicals = [
-      { provider_code: "SOPHIA", canonical_code: "SOPH-0006", canonical_title: "Art History I", canonical_url: "https://sunyempire.sophia.org/" },
-      { provider_code: "SOPHIA", canonical_code: "SOPH-0032", canonical_title: "Business Law", canonical_url: "https://sunyempire.sophia.org/" },
       { provider_code: "SOPHIA", canonical_code: "SOPH-0001", canonical_title: "College Algebra", canonical_url: "https://sunyempire.sophia.org/" },
-      { provider_code: "SOPHIA", canonical_code: "SOPH-0015", canonical_title: "English Composition I", canonical_url: "https://sunyempire.sophia.org/" },
-      { provider_code: "SOPHIA", canonical_code: "SOPH-0030", canonical_title: "English Composition II", canonical_url: "https://sunyempire.sophia.org/" },
-      { provider_code: "SOPHIA", canonical_code: "SOPH-0016", canonical_title: "Environmental Science", canonical_url: "https://sunyempire.sophia.org/" },
-      { provider_code: "SOPHIA", canonical_code: "SOPH-0010", canonical_title: "Financial Accounting", canonical_url: "https://sunyempire.sophia.org/" },
       { provider_code: "SOPHIA", canonical_code: "SOPH-0002", canonical_title: "Human Biology", canonical_url: "https://sunyempire.sophia.org/" },
+      { provider_code: "SOPHIA", canonical_code: "SOPH-0003", canonical_title: "Introduction to Chemistry", canonical_url: "https://sunyempire.sophia.org/" },
+      { provider_code: "SOPHIA", canonical_code: "SOPH-0006", canonical_title: "Art History I", canonical_url: "https://sunyempire.sophia.org/" },
+      { provider_code: "SOPHIA", canonical_code: "SOPH-0007", canonical_title: "Art History II", canonical_url: "https://sunyempire.sophia.org/" },
+      { provider_code: "SOPHIA", canonical_code: "SOPH-0010", canonical_title: "Financial Accounting", canonical_url: "https://sunyempire.sophia.org/" },
+      { provider_code: "SOPHIA", canonical_code: "SOPH-0011", canonical_title: "Microeconomics", canonical_url: "https://sunyempire.sophia.org/" },
+      { provider_code: "SOPHIA", canonical_code: "SOPH-0012", canonical_title: "Macroeconomics", canonical_url: "https://sunyempire.sophia.org/" },
       { provider_code: "SOPHIA", canonical_code: "SOPH-0014", canonical_title: "Introduction to Business", canonical_url: "https://sunyempire.sophia.org/" },
+      { provider_code: "SOPHIA", canonical_code: "SOPH-0015", canonical_title: "English Composition I", canonical_url: "https://sunyempire.sophia.org/" },
+      { provider_code: "SOPHIA", canonical_code: "SOPH-0016", canonical_title: "Environmental Science", canonical_url: "https://sunyempire.sophia.org/" },
       { provider_code: "SOPHIA", canonical_code: "SOPH-0020", canonical_title: "Introduction to Ethics", canonical_url: "https://sunyempire.sophia.org/" },
+      { provider_code: "SOPHIA", canonical_code: "SOPH-0021", canonical_title: "Introduction to Philosophy", canonical_url: "https://sunyempire.sophia.org/" },
+      { provider_code: "SOPHIA", canonical_code: "SOPH-0022", canonical_title: "U.S. History I", canonical_url: "https://sunyempire.sophia.org/" },
+      { provider_code: "SOPHIA", canonical_code: "SOPH-0023", canonical_title: "U.S. History II", canonical_url: "https://sunyempire.sophia.org/" },
+      { provider_code: "SOPHIA", canonical_code: "SOPH-0024", canonical_title: "Public Speaking", canonical_url: "https://sunyempire.sophia.org/" },
+      { provider_code: "SOPHIA", canonical_code: "SOPH-0025", canonical_title: "Principles of Management", canonical_url: "https://sunyempire.sophia.org/" },
+      { provider_code: "SOPHIA", canonical_code: "SOPH-0026", canonical_title: "Project Management", canonical_url: "https://sunyempire.sophia.org/" },
+      { provider_code: "SOPHIA", canonical_code: "SOPH-0027", canonical_title: "Introduction to Statistics", canonical_url: "https://sunyempire.sophia.org/" },
+      { provider_code: "SOPHIA", canonical_code: "SOPH-0028", canonical_title: "Critical Thinking", canonical_url: "https://sunyempire.sophia.org/" },
+      { provider_code: "SOPHIA", canonical_code: "SOPH-0029", canonical_title: "Introduction to Information Technology", canonical_url: "https://sunyempire.sophia.org/" },
+      { provider_code: "SOPHIA", canonical_code: "SOPH-0030", canonical_title: "English Composition II", canonical_url: "https://sunyempire.sophia.org/" },
+      { provider_code: "SOPHIA", canonical_code: "SOPH-0031", canonical_title: "Foundations of Leadership", canonical_url: "https://sunyempire.sophia.org/" },
+      { provider_code: "SOPHIA", canonical_code: "SOPH-0032", canonical_title: "Business Law", canonical_url: "https://sunyempire.sophia.org/" },
       { provider_code: "SOPHIA", canonical_code: "SOPH-0048", canonical_title: "Introduction to Psychology", canonical_url: "https://sunyempire.sophia.org/" },
       { provider_code: "SOPHIA", canonical_code: "SOPH-0051", canonical_title: "Introduction to Sociology", canonical_url: "https://sunyempire.sophia.org/" },
-      { provider_code: "SOPHIA", canonical_code: "SOPH-0012", canonical_title: "Macroeconomics", canonical_url: "https://sunyempire.sophia.org/" },
       { provider_code: "SOPHIA", canonical_code: "SOPH-0079", canonical_title: "Managerial Accounting", canonical_url: "https://sunyempire.sophia.org/" },
-      { provider_code: "SOPHIA", canonical_code: "SOPH-0011", canonical_title: "Microeconomics", canonical_url: "https://sunyempire.sophia.org/" },
-      { provider_code: "SOPHIA", canonical_code: "SOPH-0024", canonical_title: "Public Speaking", canonical_url: "https://sunyempire.sophia.org/" },
-      { provider_code: "SOPHIA", canonical_code: "SOPH-0022", canonical_title: "U.S. History I", canonical_url: "https://sunyempire.sophia.org/" },
     ];
 
     // Insert canonicals with upsert
@@ -84,11 +94,16 @@ Deno.serve(async (req) => {
     }
 
     // 3) Alias mappings (internal codes → canonical)
+    // Includes primary aliases + common variants found in legacy data
     const aliasMappings = [
+      // Primary aliases (SOPHIA-* format)
       { alias_code: "SOPHIA-ART-HIST-I", canonical_code: "SOPH-0006", confidence: 0.95 },
+      { alias_code: "SOPHIA-ART-HIST", canonical_code: "SOPH-0006", confidence: 0.90 }, // variant
+      { alias_code: "SOPHIA-ART-HIST-II", canonical_code: "SOPH-0007", confidence: 0.95 }, // Part II (add canonical if needed)
       { alias_code: "SOPHIA-BUS-LAW", canonical_code: "SOPH-0032", confidence: 0.95 },
       { alias_code: "SOPHIA-COLLEGE-ALG", canonical_code: "SOPH-0001", confidence: 0.95 },
-      { alias_code: "SOPHIA-ENG-COMP-I-II", canonical_code: "SOPH-0015", confidence: 0.70 }, // Maps to Comp I, add Comp II alias later
+      { alias_code: "SOPHIA-ENG-COMP-I-II", canonical_code: "SOPH-0015", confidence: 0.70 }, // Combined → Comp I
+      { alias_code: "SOPHIA-ENG-COMP-II", canonical_code: "SOPH-0030", confidence: 0.95 }, // Comp II explicit
       { alias_code: "SOPHIA-ENV-SCI", canonical_code: "SOPH-0016", confidence: 0.95 },
       { alias_code: "SOPHIA-FIN-ACCT", canonical_code: "SOPH-0010", confidence: 0.95 },
       { alias_code: "SOPHIA-HUMAN-BIO", canonical_code: "SOPH-0002", confidence: 0.95 },
@@ -97,10 +112,36 @@ Deno.serve(async (req) => {
       { alias_code: "SOPHIA-INTRO-PSYCH", canonical_code: "SOPH-0048", confidence: 0.95 },
       { alias_code: "SOPHIA-INTRO-SOC", canonical_code: "SOPH-0051", confidence: 0.95 },
       { alias_code: "SOPHIA-MACRO-ECON", canonical_code: "SOPH-0012", confidence: 0.95 },
+      { alias_code: "SOPHIA-MACROECON", canonical_code: "SOPH-0012", confidence: 0.90 }, // variant
+      { alias_code: "SOPHIA-MACROECONOMICS", canonical_code: "SOPH-0012", confidence: 0.90 }, // variant
       { alias_code: "SOPHIA-MGT-ACCT", canonical_code: "SOPH-0079", confidence: 0.95 },
       { alias_code: "SOPHIA-MICRO-ECON", canonical_code: "SOPH-0011", confidence: 0.95 },
+      { alias_code: "SOPHIA-MICROECON", canonical_code: "SOPH-0011", confidence: 0.90 }, // variant
+      { alias_code: "SOPHIA-MICROECONOMICS", canonical_code: "SOPH-0011", confidence: 0.90 }, // variant
       { alias_code: "SOPHIA-PUBLIC-SPEAK", canonical_code: "SOPH-0024", confidence: 0.95 },
       { alias_code: "SOPHIA-US-HIST-I", canonical_code: "SOPH-0022", confidence: 0.95 },
+      { alias_code: "SOPHIA-US-HIST-II", canonical_code: "SOPH-0023", confidence: 0.95 }, // Part II
+      { alias_code: "SOPHIA-STATISTICS", canonical_code: "SOPH-0027", confidence: 0.95 },
+      { alias_code: "SOPHIA-STATS", canonical_code: "SOPH-0027", confidence: 0.90 }, // variant
+      { alias_code: "SOPHIA-INTRO-STATS", canonical_code: "SOPH-0027", confidence: 0.90 }, // variant
+      { alias_code: "SOPHIA-PROJ-MGMT", canonical_code: "SOPH-0026", confidence: 0.95 },
+      { alias_code: "SOPHIA-PROJECT-MGMT", canonical_code: "SOPH-0026", confidence: 0.90 }, // variant
+      { alias_code: "SOPHIA-COMM", canonical_code: "SOPH-0024", confidence: 0.85 }, // likely public speaking
+      { alias_code: "SOPHIA-CRITICAL", canonical_code: "SOPH-0028", confidence: 0.90 }, // critical thinking
+      { alias_code: "SOPHIA-INTRO-PHILO", canonical_code: "SOPH-0021", confidence: 0.95 },
+      { alias_code: "SOPHIA-INFO-SYS", canonical_code: "SOPH-0029", confidence: 0.95 },
+      { alias_code: "SOPHIA-INTRO-IT", canonical_code: "SOPH-0029", confidence: 0.85 }, // likely same as info sys
+      { alias_code: "SOPHIA-INTRO-CHEM", canonical_code: "SOPH-0003", confidence: 0.95 },
+      { alias_code: "SOPHIA-LEADERSHIP", canonical_code: "SOPH-0031", confidence: 0.95 },
+      { alias_code: "SOPHIA-MGMT-PRIN", canonical_code: "SOPH-0025", confidence: 0.95 },
+      // Short code variants (legacy format)
+      { alias_code: "SOPH-COMM-101", canonical_code: "SOPH-0024", confidence: 0.85 },
+      { alias_code: "SOPH-ENG-101", canonical_code: "SOPH-0015", confidence: 0.90 },
+      { alias_code: "SOPH-ENG-102", canonical_code: "SOPH-0030", confidence: 0.90 },
+      { alias_code: "SOPH-STAT-201", canonical_code: "SOPH-0027", confidence: 0.90 },
+      { alias_code: "SOPH-ALG-101", canonical_code: "SOPH-0001", confidence: 0.90 },
+      { alias_code: "SOPH-PSY-101", canonical_code: "SOPH-0048", confidence: 0.90 },
+      { alias_code: "SOPH-SOC-101", canonical_code: "SOPH-0051", confidence: 0.90 },
     ];
 
     const aliasRows = aliasMappings.map((m) => {
