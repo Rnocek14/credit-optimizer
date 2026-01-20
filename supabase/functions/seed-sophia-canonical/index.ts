@@ -186,7 +186,7 @@ Deno.serve(async (req) => {
       { alias_code: "SOPHIA-INTRO-CHEM", canonical_code: "SOPH-0003", confidence: 0.95 },
       { alias_code: "SOPHIA-LEADERSHIP", canonical_code: "SOPH-0031", confidence: 0.95 },
       { alias_code: "SOPHIA-MGMT-PRIN", canonical_code: "SOPH-0025", confidence: 0.95 },
-      // Short code variants (legacy format)
+      // Short code variants (legacy format - SOPH-* prefix)
       { alias_code: "SOPH-COMM-101", canonical_code: "SOPH-0024", confidence: 0.85 },
       { alias_code: "SOPH-ENG-101", canonical_code: "SOPH-0015", confidence: 0.90 },
       { alias_code: "SOPH-ENG-102", canonical_code: "SOPH-0030", confidence: 0.90 },
@@ -194,6 +194,27 @@ Deno.serve(async (req) => {
       { alias_code: "SOPH-ALG-101", canonical_code: "SOPH-0001", confidence: 0.90 },
       { alias_code: "SOPH-PSY-101", canonical_code: "SOPH-0048", confidence: 0.90 },
       { alias_code: "SOPH-SOC-101", canonical_code: "SOPH-0051", confidence: 0.90 },
+      
+      // ========== BATCH B: Legacy short codes (ACC202, BUS100, etc.) ==========
+      // These appear in credit_transfer_rules.source_course_code with source_institution='SOPHIA'
+      { alias_code: "ACC202", canonical_code: "SOPH-0079", confidence: 0.98 },  // Managerial Accounting
+      { alias_code: "ART101", canonical_code: "SOPH-0006", confidence: 0.98 },  // Art History I
+      { alias_code: "BUS100", canonical_code: "SOPH-0014", confidence: 0.98 },  // Introduction to Business
+      { alias_code: "BUS340", canonical_code: "SOPH-0032", confidence: 0.98 },  // Business Law
+      { alias_code: "COMM101", canonical_code: "SOPH-0024", confidence: 0.98 }, // Public Speaking
+      { alias_code: "CRIT101", canonical_code: "SOPH-0028", confidence: 0.98 }, // Critical Thinking
+      { alias_code: "ECO201", canonical_code: "SOPH-0011", confidence: 0.98 },  // Microeconomics
+      { alias_code: "ECO202", canonical_code: "SOPH-0012", confidence: 0.98 },  // Macroeconomics
+      { alias_code: "ENG101", canonical_code: "SOPH-0015", confidence: 0.98 },  // English Composition I
+      { alias_code: "ENG102", canonical_code: "SOPH-0030", confidence: 0.98 },  // English Composition II
+      { alias_code: "ENV101", canonical_code: "SOPH-0016", confidence: 0.98 },  // Environmental Science
+      { alias_code: "HIS101", canonical_code: "SOPH-0022", confidence: 0.98 },  // U.S. History I
+      { alias_code: "HIS102", canonical_code: "SOPH-0023", confidence: 0.98 },  // U.S. History II
+      { alias_code: "MAT121", canonical_code: "SOPH-0001", confidence: 0.98 },  // College Algebra
+      { alias_code: "PHI101", canonical_code: "SOPH-0021", confidence: 0.98 },  // Introduction to Philosophy
+      { alias_code: "PSY101", canonical_code: "SOPH-0048", confidence: 0.98 },  // Introduction to Psychology
+      { alias_code: "SOC101", canonical_code: "SOPH-0051", confidence: 0.98 },  // Introduction to Sociology
+      { alias_code: "STA201", canonical_code: "SOPH-0027", confidence: 0.98 },  // Introduction to Statistics
     ];
 
     const aliasRows = aliasMappings.map((m) => {
