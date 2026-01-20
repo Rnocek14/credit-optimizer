@@ -59,7 +59,7 @@ The Transferability V1 system is **READY FOR LAUNCH** with:
 | promote-policy-pack | Resolved | pack_id → institution | ✅ Protected |
 | rerun-template-invariants | Resolved | template_id → institution | ✅ Protected |
 
-> **Note:** "User-exposed" refers to endpoints callable via the public application UI or unauthenticated client flows. Admin-only endpoints require authenticated admin JWT.
+> **Note:** 10/10 write-capable endpoints protected. The evidence-backfill-worker uses a skip-guard pattern (non-V1 institutions are skipped with telemetry, not 403'd) since it processes job queues rather than direct requests.
 
 ### Guard Implementation
 - **Location:** `supabase/functions/_shared/policyGate.ts`
