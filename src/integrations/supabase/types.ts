@@ -3928,6 +3928,7 @@ export type Database = {
           source_course_code: string | null
           source_course_code_canonical: string | null
           source_course_code_norm: string | null
+          source_course_id: string | null
           source_course_title_canonical: string | null
           source_institution: string
           source_institution_norm: string | null
@@ -3972,6 +3973,7 @@ export type Database = {
           source_course_code?: string | null
           source_course_code_canonical?: string | null
           source_course_code_norm?: string | null
+          source_course_id?: string | null
           source_course_title_canonical?: string | null
           source_institution: string
           source_institution_norm?: string | null
@@ -4016,6 +4018,7 @@ export type Database = {
           source_course_code?: string | null
           source_course_code_canonical?: string | null
           source_course_code_norm?: string | null
+          source_course_id?: string | null
           source_course_title_canonical?: string | null
           source_institution?: string
           source_institution_norm?: string | null
@@ -4030,6 +4033,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "credit_transfer_rules_source_course_id_fkey"
+            columns: ["source_course_id"]
+            isOneToOne: false
+            referencedRelation: "source_courses"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "credit_transfer_rules_superseded_by_fkey"
             columns: ["superseded_by"]
             isOneToOne: false
@@ -4041,6 +4051,13 @@ export type Database = {
             columns: ["superseded_by"]
             isOneToOne: false
             referencedRelation: "transfer_rule_freshness"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "credit_transfer_rules_superseded_by_fkey"
+            columns: ["superseded_by"]
+            isOneToOne: false
+            referencedRelation: "transfer_rules_resolved"
             referencedColumns: ["id"]
           },
           {
@@ -11245,6 +11262,104 @@ export type Database = {
         }
         Relationships: []
       }
+      source_course_aliases: {
+        Row: {
+          alias_code: string
+          alias_code_norm: string | null
+          alias_kind: string
+          alias_title: string | null
+          confidence: number | null
+          created_at: string
+          evidence_locator: string | null
+          evidence_source_type: string | null
+          evidence_url: string | null
+          id: string
+          provider_code: string
+          provider_code_norm: string | null
+          source_course_id: string
+          updated_at: string
+        }
+        Insert: {
+          alias_code: string
+          alias_code_norm?: string | null
+          alias_kind?: string
+          alias_title?: string | null
+          confidence?: number | null
+          created_at?: string
+          evidence_locator?: string | null
+          evidence_source_type?: string | null
+          evidence_url?: string | null
+          id?: string
+          provider_code: string
+          provider_code_norm?: string | null
+          source_course_id: string
+          updated_at?: string
+        }
+        Update: {
+          alias_code?: string
+          alias_code_norm?: string | null
+          alias_kind?: string
+          alias_title?: string | null
+          confidence?: number | null
+          created_at?: string
+          evidence_locator?: string | null
+          evidence_source_type?: string | null
+          evidence_url?: string | null
+          id?: string
+          provider_code?: string
+          provider_code_norm?: string | null
+          source_course_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "source_course_aliases_source_course_id_fkey"
+            columns: ["source_course_id"]
+            isOneToOne: false
+            referencedRelation: "source_courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      source_courses: {
+        Row: {
+          active: boolean
+          canonical_code: string
+          canonical_code_norm: string | null
+          canonical_title: string | null
+          canonical_url: string | null
+          created_at: string
+          id: string
+          provider_code: string
+          provider_code_norm: string | null
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          canonical_code: string
+          canonical_code_norm?: string | null
+          canonical_title?: string | null
+          canonical_url?: string | null
+          created_at?: string
+          id?: string
+          provider_code: string
+          provider_code_norm?: string | null
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          canonical_code?: string
+          canonical_code_norm?: string | null
+          canonical_title?: string | null
+          canonical_url?: string | null
+          created_at?: string
+          id?: string
+          provider_code?: string
+          provider_code_norm?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       step_equivalents: {
         Row: {
           created_at: string | null
@@ -12756,6 +12871,13 @@ export type Database = {
             columns: ["rule_id"]
             isOneToOne: false
             referencedRelation: "transfer_rule_freshness"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transfer_evidence_rule_id_fkey"
+            columns: ["rule_id"]
+            isOneToOne: false
+            referencedRelation: "transfer_rules_resolved"
             referencedColumns: ["id"]
           },
           {
@@ -14973,6 +15095,99 @@ export type Database = {
         }
         Relationships: []
       }
+      transfer_rules_resolved: {
+        Row: {
+          acceptance_status: string | null
+          canonical_code: string | null
+          canonical_provider_code: string | null
+          canonical_resolution_status: string | null
+          canonical_title: string | null
+          canonical_url: string | null
+          catalog_year_end: string | null
+          catalog_year_start: string | null
+          confidence: number | null
+          decay_after_months: number | null
+          degree_family: string | null
+          degree_program: string | null
+          effective_end: string | null
+          effective_from: string | null
+          effective_start: string | null
+          effective_to: string | null
+          evidence_locator: string | null
+          evidence_source_type: string | null
+          evidence_type: string | null
+          evidence_url: string | null
+          expires_at: string | null
+          id: string | null
+          last_confirmed_at: string | null
+          last_outcome_at: string | null
+          last_verified_at: string | null
+          last_verified_at_inferred: boolean | null
+          last_verified_at_inferred_from: string | null
+          precedence: number | null
+          provenance_notes: string | null
+          rejection_count: number | null
+          resolved_source_course_id: string | null
+          rule_course_code_norm: string | null
+          rule_payload: Json | null
+          rule_provider_norm: string | null
+          rule_source: string | null
+          rule_type: string | null
+          source_course_code: string | null
+          source_course_code_canonical: string | null
+          source_course_code_norm: string | null
+          source_course_id: string | null
+          source_course_identity: string | null
+          source_course_title_canonical: string | null
+          source_institution: string | null
+          source_institution_norm: string | null
+          status: string | null
+          success_count: number | null
+          superseded_by: string | null
+          target_course_code: string | null
+          target_institution: string | null
+          target_institution_norm: string | null
+          verification_source: string | null
+          verified_at: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "credit_transfer_rules_source_course_id_fkey"
+            columns: ["source_course_id"]
+            isOneToOne: false
+            referencedRelation: "source_courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "credit_transfer_rules_superseded_by_fkey"
+            columns: ["superseded_by"]
+            isOneToOne: false
+            referencedRelation: "credit_transfer_rules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "credit_transfer_rules_superseded_by_fkey"
+            columns: ["superseded_by"]
+            isOneToOne: false
+            referencedRelation: "transfer_rule_freshness"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "credit_transfer_rules_superseded_by_fkey"
+            columns: ["superseded_by"]
+            isOneToOne: false
+            referencedRelation: "transfer_rules_resolved"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "credit_transfer_rules_superseded_by_fkey"
+            columns: ["superseded_by"]
+            isOneToOne: false
+            referencedRelation: "transfer_rules_with_freshness"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       transfer_rules_with_freshness: {
         Row: {
           acceptance_status: string | null
@@ -15038,6 +15253,13 @@ export type Database = {
             columns: ["superseded_by"]
             isOneToOne: false
             referencedRelation: "transfer_rule_freshness"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "credit_transfer_rules_superseded_by_fkey"
+            columns: ["superseded_by"]
+            isOneToOne: false
+            referencedRelation: "transfer_rules_resolved"
             referencedColumns: ["id"]
           },
           {
