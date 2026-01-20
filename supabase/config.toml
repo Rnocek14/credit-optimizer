@@ -32,6 +32,15 @@ verify_jwt = false
 [functions.firecrawl-test]
 verify_jwt = false
 
+# Canonical Seeder Functions (admin-only via code-level auth)
+[functions.seed-sophia-canonical]
+verify_jwt = false
+
+[functions.seed-studycom-canonical]
+verify_jwt = false
+
+[functions.seed-clep-canonical]
+verify_jwt = false
 
 
 [functions.seed-data-2025]

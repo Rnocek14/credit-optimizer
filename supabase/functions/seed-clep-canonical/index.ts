@@ -16,11 +16,54 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  try {
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+  const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
+  // ============ ADMIN AUTHENTICATION GUARD ============
+  const authHeader = req.headers.get("authorization");
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    console.error("[seed-clep-canonical] SECURITY: Missing or invalid authorization header");
+    return new Response(
+      JSON.stringify({ error: "Unauthorized: Missing authorization header" }),
+      { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+
+  const token = authHeader.replace("Bearer ", "");
+  const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+  // Verify the user from the JWT
+  const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+  if (authError || !user) {
+    console.error("[seed-clep-canonical] SECURITY: Invalid token", authError);
+    return new Response(
+      JSON.stringify({ error: "Unauthorized: Invalid token" }),
+      { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+
+  // Check if user has admin role
+  const { data: userRole, error: roleError } = await supabase.rpc("get_user_role", {
+    user_uuid: user.id,
+  });
+
+  if (roleError || userRole !== "admin") {
+    console.warn(`[seed-clep-canonical] SECURITY: Non-admin user blocked`, {
+      userId: user.id,
+      email: user.email,
+      role: userRole,
+      timestamp: new Date().toISOString(),
+    });
+    return new Response(
+      JSON.stringify({ error: "Forbidden: Admin role required" }),
+      { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+
+  console.log(`[seed-clep-canonical] Admin ${user.email} authorized for canonical seeding`);
+  // ============ END ADMIN AUTHENTICATION GUARD ============
+
+  try {
     const result: SeedResult = {
       canonicals_inserted: 0,
       aliases_inserted: 0,
@@ -178,6 +221,7 @@ Deno.serve(async (req) => {
         success: result.errors.length === 0,
         ...result,
         resolution_stats: statusCounts,
+        executed_by: user.email,
       }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -185,8 +229,9 @@ Deno.serve(async (req) => {
       }
     );
   } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown error";
     return new Response(
-      JSON.stringify({ success: false, error: error.message }),
+      JSON.stringify({ success: false, error: message }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 500,
