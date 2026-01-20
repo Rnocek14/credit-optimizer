@@ -195,8 +195,8 @@ Deno.serve(async (req) => {
         alias_code: m.alias_code,
         alias_kind: "internal_normalized",
         confidence: m.confidence,
-        evidence_url: "https://study.com/",
-        evidence_source_type: "provider_web",
+        evidence_url: `https://study.com/academy/course/${m.canonical_code.toLowerCase().replace('sdc-', '')}.html`,
+        evidence_source_type: "provider_page",
         evidence_locator: `Study.com course page for ${m.canonical_code}`,
       };
     }).filter(Boolean);
