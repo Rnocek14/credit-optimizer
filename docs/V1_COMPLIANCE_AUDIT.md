@@ -24,12 +24,12 @@ The Transferability V1 system is **READY FOR LAUNCH** with:
 | Thomas Edison State University | TESU | 78.8% | ✅ Approved |
 | Charter Oak State College | COSC | 83.1% | ✅ Approved |
 | Western Governors University | WGU | 56.9% | ✅ Approved |
+| Excelsior University | EXCELSIOR | 50.8% | ✅ Approved |
 
 ### Excluded Institutions
 | Institution | Code | Evidence Coverage | Reason |
 |------------|------|-------------------|--------|
-| Excelsior University | EXCELSIOR | ~25% | Below 50% threshold |
-| Empire State University | EMPIRE | ~25% | Below 50% threshold |
+| Empire State University | EMPIRE | ~26% | Below 50% threshold |
 
 ### Scope Configuration Files
 - **Frontend:** `src/lib/degree/v1Scope.ts`
@@ -203,6 +203,7 @@ deno run --allow-net --allow-env tests/adminV1ScopeHarness.ts
 | Date | Change | Author |
 |------|--------|--------|
 | 2026-01-19 | Initial V1 compliance audit frozen | System |
+| 2026-01-20 | Added EXCELSIOR to V1 scope (evidence coverage ≥ 50%) | System |
 
 ---
 
