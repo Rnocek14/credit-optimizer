@@ -82,19 +82,23 @@ The Transferability V1 system is **READY FOR LAUNCH** with:
 
 ### Skip-Guard Verification Evidence
 
-**Date:** 2026-01-20  
-**Test:** Inserted synthetic job for SNHU (blocked institution)  
-**Result:**
-```json
-{
-  "skipped_non_v1": 1,
-  "processed": 0,
-  "status": "skipped",
-  "error": "INSTITUTION_NOT_IN_V1_SCOPE: SNHU",
-  "success": true
-}
-```
-**Conclusion:** Guard executed correctly—non-V1 job skipped with telemetry, no processing occurred.
+| Field | Value |
+|-------|-------|
+| Date | 2026-01-20 |
+| Endpoint | evidence-backfill-worker |
+| Injected Job | target_institution=SNHU (blocked), source=SOPHIA |
+| Expected | skip-guard triggers, no processing |
+| Observed | status=200, skipped_non_v1=1, processed=0 |
+| Error Code | INSTITUTION_NOT_IN_V1_SCOPE: SNHU |
+| Request ID | 019bdd20-ae6c-76bd-ac0d-ea4eb523d18c |
+
+### QA Regression Test (Skip-Guard)
+
+To verify skip-guard in QA environment:
+1. Insert job: `INSERT INTO evidence_jobs (target_institution_norm, source_institution_norm, source_course_code_norm, status, next_check_at, check_count, created_at, updated_at) VALUES ('SNHU', 'SOPHIA', 'QA-TEST-001', 'queued', NOW(), 0, NOW(), NOW())`
+2. Run worker: `POST /evidence-backfill-worker {"batch_size": 5}`
+3. Verify response: `skipped_non_v1 >= 1`, `processed = 0`
+4. Cleanup: Mark job `status = 'skipped'` or delete via service role
 
 ---
 
