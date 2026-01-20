@@ -14988,6 +14988,7 @@ export type Database = {
           effective_start: string | null
           effective_to: string | null
           evidence_locator: string | null
+          evidence_presence: string | null
           evidence_source_type: string | null
           evidence_type: string | null
           evidence_url: string | null
@@ -15002,6 +15003,7 @@ export type Database = {
           precedence: number | null
           provenance_notes: string | null
           rejection_count: number | null
+          rule_granularity: string | null
           rule_payload: Json | null
           rule_source: string | null
           rule_type: string | null
@@ -15018,6 +15020,7 @@ export type Database = {
           target_institution: string | null
           target_institution_norm: string | null
           ttl_days: number | null
+          unknown_reason: string | null
           verification_kind: string | null
           verification_source: string | null
           verified_at: string | null
