@@ -3,6 +3,7 @@ import { useOptimizerSeeder, FunctionHealthStatus } from '@/hooks/useOptimizerSe
 import { useClientSideSeeder } from '@/hooks/useClientSideSeeder';
 import { useMarketplaceSeeder } from '@/hooks/useMarketplaceSeeder';
 import { SeedingJobCard } from '@/components/admin/SeedingJobCard';
+import { CanonicalSeederHarness } from '@/components/admin/CanonicalSeederHarness';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
@@ -482,6 +483,15 @@ export default function OptimizerSeeding() {
             onRun={handleRunWguSeed}
             icon={<GraduationCap className="h-5 w-5 text-indigo-600" />}
           />
+        </div>
+
+        {/* Canonical Seeder Harness - for role gate testing */}
+        <div className="mt-8">
+          <h3 className="text-md font-semibold mb-4 flex items-center gap-2">
+            <Database className="h-5 w-5" />
+            Canonical Identity Seeders (Admin JWT Required)
+          </h3>
+          <CanonicalSeederHarness />
         </div>
         
         {/* Client-Side Seeders Section */}
