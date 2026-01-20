@@ -4030,6 +4030,13 @@ export type Database = {
             referencedRelation: "credit_transfer_rules"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "credit_transfer_rules_superseded_by_fkey"
+            columns: ["superseded_by"]
+            isOneToOne: false
+            referencedRelation: "transfer_rule_freshness"
+            referencedColumns: ["id"]
+          },
         ]
       }
       critical_field_definitions: {
@@ -12731,6 +12738,13 @@ export type Database = {
             referencedRelation: "credit_transfer_rules"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "transfer_evidence_rule_id_fkey"
+            columns: ["rule_id"]
+            isOneToOne: false
+            referencedRelation: "transfer_rule_freshness"
+            referencedColumns: ["id"]
+          },
         ]
       }
       transfer_outcomes: {
@@ -14890,6 +14904,51 @@ export type Database = {
             referencedColumns: ["track_id"]
           },
         ]
+      }
+      transfer_rule_freshness: {
+        Row: {
+          acceptance_status: string | null
+          days_since_verified: number | null
+          evidence_source_type: string | null
+          evidence_url: string | null
+          freshness_status: string | null
+          id: string | null
+          last_verified_at: string | null
+          source_course_code: string | null
+          source_institution: string | null
+          target_course_code: string | null
+          target_institution: string | null
+          ttl_days: number | null
+        }
+        Insert: {
+          acceptance_status?: string | null
+          days_since_verified?: never
+          evidence_source_type?: string | null
+          evidence_url?: string | null
+          freshness_status?: never
+          id?: string | null
+          last_verified_at?: string | null
+          source_course_code?: string | null
+          source_institution?: string | null
+          target_course_code?: string | null
+          target_institution?: string | null
+          ttl_days?: never
+        }
+        Update: {
+          acceptance_status?: string | null
+          days_since_verified?: never
+          evidence_source_type?: string | null
+          evidence_url?: string | null
+          freshness_status?: never
+          id?: string | null
+          last_verified_at?: string | null
+          source_course_code?: string | null
+          source_institution?: string | null
+          target_course_code?: string | null
+          target_institution?: string | null
+          ttl_days?: never
+        }
+        Relationships: []
       }
       user_track_progress_v: {
         Row: {
