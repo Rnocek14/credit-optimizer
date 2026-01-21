@@ -26,6 +26,7 @@ type ProviderRegistry = {
   canonical_url_pattern: string | null;
   title_min_length: number | null;
   forbidden_title_patterns: string[] | null;
+  enrichment_fetch_strategy: "pattern_only" | "fetch" | "firecrawl" | "manual" | null;
 };
 
 function jsonResponse(body: unknown, status = 200) {
@@ -275,6 +276,42 @@ Deno.serve(async (req) => {
         p_error_message: `No registry entry for provider ${job.provider_code}`,
       });
       results.push({ queue_id: job.queue_id, status: "failed", error: "REGISTRY_MISSING" });
+      continue;
+    }
+
+    const fetchStrategy = reg.enrichment_fetch_strategy ?? "fetch";
+
+    // ===== PATTERN_ONLY: Write URL from pattern, no fetch =====
+    if (fetchStrategy === "pattern_only") {
+      const mode = reg.canonical_url_mode ?? "root_only";
+      if (mode === "pattern" && reg.canonical_url_pattern) {
+        const generatedUrl = reg.canonical_url_pattern.replaceAll("{code}", job.canonical_code);
+        // Write URL directly to source_courses
+        await supabase
+          .from("source_courses")
+          .update({ canonical_url: generatedUrl, updated_at: new Date().toISOString() })
+          .eq("id", job.source_course_id)
+          .is("canonical_url", null);
+      }
+      // Mark success without fetching
+      await supabase.rpc("complete_enrichment_job", {
+        p_queue_id: job.queue_id,
+        p_success: true,
+      });
+      results.push({ queue_id: job.queue_id, status: "succeeded" });
+      console.log(`Pattern-only: ${job.provider_code}:${job.canonical_code} - no fetch needed`);
+      continue;
+    }
+
+    // ===== MANUAL: Skip, should not be in queue =====
+    if (fetchStrategy === "manual") {
+      await supabase.rpc("complete_enrichment_job", {
+        p_queue_id: job.queue_id,
+        p_success: false,
+        p_error_code: "MANUAL_ONLY",
+        p_error_message: `Provider ${job.provider_code} is manual-only, should not be queued`,
+      });
+      results.push({ queue_id: job.queue_id, status: "failed", error: "MANUAL_ONLY" });
       continue;
     }
 
