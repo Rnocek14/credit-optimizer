@@ -19,6 +19,11 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // Method validation
+  if (req.method !== "GET" && req.method !== "POST") {
+    return json(405, { error: "method_not_allowed" });
+  }
+
   try {
     // Auth gate: require x-cron-secret if OPS_CRON_SECRET is configured
     const opsSecret = Deno.env.get("OPS_CRON_SECRET");

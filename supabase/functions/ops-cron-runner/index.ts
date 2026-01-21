@@ -110,7 +110,13 @@ Deno.serve(async (req) => {
       console.error("Health query error:", healthError.message);
     }
 
-    return json(200, {
+    // Return 500 if worker was called but failed
+    const workerFailed =
+      workerCalled &&
+      ((workerHttpStatus && workerHttpStatus >= 400) ||
+       (workerResult && "error" in workerResult));
+
+    return json(workerFailed ? 500 : 200, {
       worker_called: workerCalled,
       queued_count: queuedCount,
       worker_http_status: workerHttpStatus,
