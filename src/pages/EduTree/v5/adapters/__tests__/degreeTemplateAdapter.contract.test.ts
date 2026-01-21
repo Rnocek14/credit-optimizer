@@ -458,8 +458,8 @@ describe('Pricing Determinism', () => {
     const calls = warn.mock.calls.map(c => String(c[0] ?? ''));
     expect(calls.some(m => m.includes('[degreeTemplateAdapter] Pricing fallback used'))).toBe(true);
 
-    // Assert the rate-limit gate key was set
-    expect(storage['pricing-fallback-logged-STUDYCOM']).toBe('true');
+    // Assert the rate-limit gate key was set (via public interface)
+    expect(sessionStorage.getItem('pricing-fallback-logged-STUDYCOM')).toBe('true');
 
     warn.mockClear();
 
