@@ -15084,13 +15084,12 @@ export type Database = {
       }
       provider_resolution_stats: {
         Row: {
-          computed_at: string | null
-          course_resolution_pct: number | null
           course_resolved: number | null
           course_total: number | null
           course_unmapped: number | null
-          policy_total: number | null
+          policy_rules: number | null
           provider: string | null
+          resolution_pct: number | null
         }
         Relationships: []
       }
@@ -15319,7 +15318,6 @@ export type Database = {
           effective_start: string | null
           effective_to: string | null
           evidence_locator: string | null
-          evidence_presence: string | null
           evidence_source_type: string | null
           evidence_type: string | null
           evidence_url: string | null
@@ -15333,9 +15331,9 @@ export type Database = {
           precedence: number | null
           provenance_notes: string | null
           rejection_count: number | null
+          resolution_method: string | null
           resolved_source_course_id: string | null
           rule_course_code_norm: string | null
-          rule_granularity: string | null
           rule_payload: Json | null
           rule_provider_norm: string | null
           rule_scope: string | null
@@ -15983,7 +15981,7 @@ export type Database = {
         Returns: boolean
       }
       is_mentor: { Args: never; Returns: boolean }
-      is_service_role: { Args: never; Returns: boolean }
+      is_service_or_admin: { Args: never; Returns: boolean }
       lock_phase6_components: {
         Args: { baseline_snapshot_id: string; target_user_id: string }
         Returns: string[]
