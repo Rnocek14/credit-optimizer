@@ -93,8 +93,13 @@ export default function EduTreeV5Page() {
   // Load equivalencies for TESU (needed for adapter)
   const { data: equivalencies } = useAltCreditEquivalenciesForInstitution('TESU');
   
+  // Derive institutionCode from template or default to TESU
+  // This ensures pricing cache is scoped per school
+  const institutionCodeFromTemplate = dbTemplates?.[0]?.institution_code ?? 'TESU';
+  
   // Load pricing maps from database (alt_provider_pricing_packs + institution_pricing_packs)
-  const { data: pricingMaps } = usePricingMaps();
+  // Pass institutionCode to scope cache correctly and prevent cross-school pricing leaks
+  const { data: pricingMaps } = usePricingMaps(institutionCodeFromTemplate);
   
   // Load marketplace template for fixture templates (non-database)
   const { data: fixtureTemplate, isLoading: fixtureLoading, error: fixtureError } = useMarketplaceTemplate(
