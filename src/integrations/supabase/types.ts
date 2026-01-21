@@ -15582,6 +15582,20 @@ export type Database = {
         }
         Relationships: []
       }
+      operational_health_dashboard: {
+        Row: {
+          checked_at: string | null
+          empty_norm_codes: number | null
+          invalid_writes: number | null
+          invariant_status: string | null
+          overall_gate: string | null
+          pattern_root_urls: number | null
+          pattern_url_mismatch: number | null
+          policy_never_resolve: number | null
+          stored_missing_urls: number | null
+        }
+        Relationships: []
+      }
       program_pipeline_health_v: {
         Row: {
           bachelor_programs: number | null
