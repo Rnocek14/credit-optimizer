@@ -8,8 +8,68 @@ import type { MarketplaceOption } from '../types/v5';
 import { normalizeOptimization } from '@/types/optimizationTypes';
 
 /**
+ * Provider pricing data from alt_provider_pricing_packs table
+ * This is the SINGLE SOURCE OF TRUTH for provider costs
+ */
+export interface ProviderPricingData {
+  providerCode: string;
+  model: 'subscription' | 'per_course' | 'per_exam' | 'per_credit';
+  perCourseCost?: number;
+  perExamCost?: number;
+  perCreditCost?: number;
+  monthlySubscription?: number;
+  avgCreditsPerMonth?: number;
+  effectiveCostPerCredit?: number;
+  notes?: string;
+}
+
+/**
+ * Institutional pricing data derived from policy packs
+ */
+export interface InstitutionalPricingData {
+  institutionCode: string;
+  perCreditCost: number;
+  avgCourseDurationWeeks: number;
+  notes?: string;
+}
+
+// Default fallbacks if data is missing (should rarely be used with complete data)
+const DEFAULT_PROVIDER_PRICING: Record<string, ProviderPricingData> = {
+  'SOPHIA': { providerCode: 'SOPHIA', model: 'subscription', monthlySubscription: 99, avgCreditsPerMonth: 3, effectiveCostPerCredit: 33 },
+  'CLEP': { providerCode: 'CLEP', model: 'per_exam', perExamCost: 90, effectiveCostPerCredit: 30 },
+  'DSST': { providerCode: 'DSST', model: 'per_exam', perExamCost: 85, effectiveCostPerCredit: 28 },
+  'STUDYCOM': { providerCode: 'STUDYCOM', model: 'per_course', perCourseCost: 199, effectiveCostPerCredit: 66 },
+  'STUDY_COM': { providerCode: 'STUDY_COM', model: 'per_course', perCourseCost: 199, effectiveCostPerCredit: 66 },
+  'STRAIGHTERLINE': { providerCode: 'STRAIGHTERLINE', model: 'subscription', monthlySubscription: 99, perCourseCost: 59, effectiveCostPerCredit: 50 },
+  'SAYLOR': { providerCode: 'SAYLOR', model: 'per_exam', perExamCost: 25, effectiveCostPerCredit: 8 },
+};
+
+const DEFAULT_INSTITUTIONAL_PRICING: Record<string, InstitutionalPricingData> = {
+  'TESU': { institutionCode: 'TESU', perCreditCost: 172, avgCourseDurationWeeks: 12 },
+  'WGU': { institutionCode: 'WGU', perCreditCost: 121, avgCourseDurationWeeks: 6 }, // ~$3,625/term ÷ 30 credits
+  'COSC': { institutionCode: 'COSC', perCreditCost: 330, avgCourseDurationWeeks: 12 },
+  'EMPIRE': { institutionCode: 'EMPIRE', perCreditCost: 280, avgCourseDurationWeeks: 15 },
+  'EXCELSIOR': { institutionCode: 'EXCELSIOR', perCreditCost: 535, avgCourseDurationWeeks: 15 },
+};
+
+// Duration estimates by provider type (in weeks per 3-credit course)
+const PROVIDER_DURATION_WEEKS: Record<string, number> = {
+  'SOPHIA': 4,
+  'CLEP': 2,
+  'DSST': 2,
+  'STUDYCOM': 6,
+  'STUDY_COM': 6,
+  'STRAIGHTERLINE': 6,
+  'SAYLOR': 4,
+};
+/**
  * Converts database DegreeTemplate format to MarketplaceDegreeTemplate format
  * used by the v5 page for rendering and optimization
+ * 
+ * @param dbTemplate - The database template to convert
+ * @param equivalencies - Course equivalency mappings for alt credits
+ * @param providerPricing - Real-time pricing data from alt_provider_pricing_packs
+ * @param institutionalPricing - Institutional pricing from policy packs
  */
 export function adaptDegreeTemplate(
   dbTemplate: DBDegreeTemplate,
@@ -22,7 +82,9 @@ export function adaptDegreeTemplate(
     credits_awarded: number;
     level: number;
     confidence: number;
-  }>
+  }>,
+  providerPricing?: Map<string, ProviderPricingData>,
+  institutionalPricing?: Map<string, InstitutionalPricingData>
 ): MarketplaceDegreeTemplate {
   const { template_data } = dbTemplate;
   
@@ -47,15 +109,25 @@ export function adaptDegreeTemplate(
       // Aggregate module templates from all terms in this year
       const moduleTemplates = terms.flatMap(term => 
         term.slots.map(slot => {
-          // Convert slot to MarketplaceOption format
+          // Convert slot to MarketplaceOption format with real pricing
           const preferredOption = convertSlotOptionToMarketplaceOption(
             slot.preferred,
             slot,
-            equivalencies
+            equivalencies,
+            dbTemplate.institution_code,
+            providerPricing,
+            institutionalPricing
           );
           
           const alternativeOptions = (slot.alternatives || []).map(alt =>
-            convertSlotOptionToMarketplaceOption(alt, slot, equivalencies)
+            convertSlotOptionToMarketplaceOption(
+              alt, 
+              slot, 
+              equivalencies,
+              dbTemplate.institution_code,
+              providerPricing,
+              institutionalPricing
+            )
           );
           
           // Detect cap-limited slots: institutional preferred but first alternative is alt_credit
@@ -184,29 +256,43 @@ export function adaptDegreeTemplate(
 
 /**
  * Convert a template slot option to MarketplaceOption format
+ * Uses real pricing data from database when available, falls back to defaults
  */
 function convertSlotOptionToMarketplaceOption(
   option: any,
   slot: any,
-  equivalencies?: Array<any>
+  equivalencies: Array<any> | undefined,
+  institutionCode: string,
+  providerPricing?: Map<string, ProviderPricingData>,
+  institutionalPricing?: Map<string, InstitutionalPricingData>
 ): MarketplaceOption {
+  const credits = slot.minCredits || 3;
+  
   if (option.type === 'institutional_course') {
-    // Institutional course
+    // Get institutional pricing from database or fallback
+    const instPricing = institutionalPricing?.get(institutionCode) 
+      || DEFAULT_INSTITUTIONAL_PRICING[institutionCode]
+      || DEFAULT_INSTITUTIONAL_PRICING['TESU'];
+    
+    const costPerCredit = instPricing.perCreditCost;
+    const durationWeeks = instPricing.avgCourseDurationWeeks;
+    
     return {
       id: `${option.courseCode}-institutional`,
       courseId: `${option.courseCode}-institutional`,
       title: `${option.courseCode} Course`,
-      credits: slot.minCredits,
+      credits,
       subject: slot.requirementArea,
-      provider: 'TESU',
+      provider: institutionCode,
       providerType: 'university' as const,
-      cost_usd: slot.minCredits * 400, // TESU ~$400/credit (2025)
-      duration_weeks: 16,
+      cost_usd: credits * costPerCredit,
+      duration_weeks: durationWeeks,
       workload_weekly_hours: 10,
       cri_score: 3.0,
       level: slot.kind === 'major' ? 300 : 100,
       start_windows: ['2025-01-15', '2025-05-15', '2025-09-01'],
-      providerCode: 'TESU',
+      providerCode: institutionCode,
+      isAltCredit: false,
     };
   } else {
     // Alt credit option (CLEP, DSST, Sophia, Study.com)
@@ -214,21 +300,57 @@ function convertSlotOptionToMarketplaceOption(
       e => e.alt_source_code === option.sourceCode && e.alt_identifier === option.identifier
     );
     
+    // Normalize provider code for lookup
+    const normalizedCode = option.sourceCode?.toUpperCase().replace('.', '');
+    
+    // Get provider pricing from database or fallback
+    const pricing = providerPricing?.get(normalizedCode) 
+      || DEFAULT_PROVIDER_PRICING[normalizedCode]
+      || DEFAULT_PROVIDER_PRICING[option.sourceCode];
+    
+    // Calculate cost based on pricing model
+    let costUsd: number;
+    if (pricing) {
+      if (pricing.model === 'per_exam') {
+        costUsd = pricing.perExamCost || 90;
+      } else if (pricing.model === 'per_course') {
+        costUsd = pricing.perCourseCost || 199;
+      } else if (pricing.model === 'subscription') {
+        // Subscription: monthly fee / typical courses per month
+        const avgCreditsPerMonth = pricing.avgCreditsPerMonth || 3;
+        const coursesPerMonth = avgCreditsPerMonth / credits;
+        costUsd = Math.round((pricing.monthlySubscription || 99) / coursesPerMonth);
+      } else if (pricing.effectiveCostPerCredit) {
+        costUsd = credits * pricing.effectiveCostPerCredit;
+      } else {
+        costUsd = 99; // Fallback
+      }
+    } else {
+      // Legacy hardcoded fallback (should rarely hit with complete data)
+      costUsd = getAltCreditCostLegacy(option.sourceCode);
+    }
+    
+    const durationWeeks = PROVIDER_DURATION_WEEKS[normalizedCode] 
+      || PROVIDER_DURATION_WEEKS[option.sourceCode]
+      || 4;
+    
     return {
       id: `${option.sourceCode}-${option.identifier}`,
       courseId: `${option.sourceCode}-${option.identifier}`,
       title: equiv?.institutional_course_name || formatAltCreditTitle(option.identifier),
-      credits: equiv?.credits_awarded || slot.minCredits,
+      credits: equiv?.credits_awarded || credits,
       subject: slot.requirementArea,
       provider: formatProviderName(option.sourceCode),
       providerType: getProviderType(option.sourceCode),
-      cost_usd: getAltCreditCost(option.sourceCode),
-      duration_weeks: getAltCreditDuration(option.sourceCode),
+      cost_usd: costUsd,
+      duration_weeks: durationWeeks,
       workload_weekly_hours: getAltCreditWorkload(option.sourceCode),
       cri_score: equiv?.confidence ? equiv.confidence * 5 : 3.5,
       level: equiv?.level || 100,
       start_windows: ['2025-01-01'], // Alt credits typically available anytime
       providerCode: option.sourceCode,
+      aceNccrs: ['SOPHIA', 'STUDYCOM', 'STUDY_COM', 'STRAIGHTERLINE', 'SAYLOR'].includes(normalizedCode),
+      isAltCredit: true,
     };
   }
 }
@@ -267,29 +389,23 @@ function getPrimaryCareerIds(programCode: string): string[] {
 
 function formatAltCreditTitle(identifier: string): string {
   return identifier
-    .split('_')
+    .split(/[-_]/)
     .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
     .join(' ');
 }
 
-function getAltCreditCost(sourceCode: string): number {
+/** Legacy cost lookup - used only when database pricing is unavailable */
+function getAltCreditCostLegacy(sourceCode: string): number {
   const costs: Record<string, number> = {
-    'SOPHIA': 99, // Monthly subscription
-    'CLEP': 95,   // Per exam
-    'DSST': 85,   // Per exam
-    'STUDY_COM': 199, // Monthly subscription
+    'SOPHIA': 99,
+    'CLEP': 90,
+    'DSST': 85,
+    'STUDY_COM': 199,
+    'STUDYCOM': 199,
+    'STRAIGHTERLINE': 159,
+    'SAYLOR': 25,
   };
-  return costs[sourceCode] || 100;
-}
-
-function getAltCreditDuration(sourceCode: string): number {
-  const durations: Record<string, number> = {
-    'SOPHIA': 4,  // 1 month per course
-    'CLEP': 2,    // 2 weeks prep
-    'DSST': 2,    // 2 weeks prep
-    'STUDY_COM': 4, // 1 month per course
-  };
-  return durations[sourceCode] || 4;
+  return costs[sourceCode?.toUpperCase()] || 100;
 }
 
 function getAltCreditWorkload(sourceCode: string): number {
@@ -298,12 +414,16 @@ function getAltCreditWorkload(sourceCode: string): number {
     'CLEP': 10,
     'DSST': 10,
     'STUDY_COM': 12,
+    'STUDYCOM': 12,
+    'STRAIGHTERLINE': 10,
+    'SAYLOR': 8,
   };
-  return workloads[sourceCode] || 10;
+  return workloads[sourceCode?.toUpperCase()] || 10;
 }
 
 function getProviderType(sourceCode: string): 'university' | 'mooc' | 'bootcamp' | 'testing_center' {
-  if (['CLEP', 'DSST'].includes(sourceCode)) return 'testing_center';
+  const code = sourceCode?.toUpperCase();
+  if (['CLEP', 'DSST'].includes(code)) return 'testing_center';
   return 'mooc';
 }
 
@@ -313,6 +433,72 @@ function formatProviderName(sourceCode: string): string {
     'CLEP': 'CLEP',
     'DSST': 'DSST',
     'STUDY_COM': 'Study.com',
+    'STUDYCOM': 'Study.com',
+    'STRAIGHTERLINE': 'StraighterLine',
+    'SAYLOR': 'Saylor Academy',
   };
-  return names[sourceCode] || sourceCode;
+  return names[sourceCode?.toUpperCase()] || sourceCode;
+}
+
+/**
+ * Helper to build provider pricing map from alt_provider_pricing_packs rows
+ */
+export function buildProviderPricingMap(
+  pricingPacks: Array<{
+    provider_code: string;
+    pricing_data: Record<string, any>;
+  }>
+): Map<string, ProviderPricingData> {
+  const map = new Map<string, ProviderPricingData>();
+  
+  for (const pack of pricingPacks) {
+    const code = pack.provider_code?.toUpperCase().replace('.', '');
+    const data = pack.pricing_data || {};
+    
+    map.set(code, {
+      providerCode: code,
+      model: data.model || 'per_course',
+      perCourseCost: data.per_course_usd,
+      perExamCost: data.per_exam_usd,
+      perCreditCost: data.per_credit_usd,
+      monthlySubscription: data.monthly_usd,
+      avgCreditsPerMonth: data.avg_credits_per_month,
+      effectiveCostPerCredit: data.effective_cost_per_credit_usd,
+      notes: data.notes,
+    });
+  }
+  
+  return map;
+}
+
+/**
+ * Helper to build institutional pricing map from policy packs
+ */
+export function buildInstitutionalPricingMap(
+  policies: Array<{
+    institution: string;
+    policy_data?: Record<string, any>;
+  }>
+): Map<string, InstitutionalPricingData> {
+  const map = new Map<string, InstitutionalPricingData>();
+  
+  for (const policy of policies) {
+    const code = policy.institution?.toUpperCase();
+    const data = policy.policy_data || {};
+    
+    // Try to extract per-credit cost from various policy fields
+    const perCreditCost = data.per_credit_cost 
+      || data.tuition_per_credit 
+      || DEFAULT_INSTITUTIONAL_PRICING[code]?.perCreditCost
+      || 300; // Generic fallback
+    
+    map.set(code, {
+      institutionCode: code,
+      perCreditCost,
+      avgCourseDurationWeeks: data.avg_course_duration_weeks || 12,
+      notes: data.notes,
+    });
+  }
+  
+  return map;
 }
