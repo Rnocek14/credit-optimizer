@@ -202,27 +202,27 @@ Deno.serve(async (req) => {
       { alias_code: "SOPH-PSY-101", canonical_code: "SOPH-0048", confidence: 0.90 },
       { alias_code: "SOPH-SOC-101", canonical_code: "SOPH-0051", confidence: 0.90 },
       
-      // ========== BATCH B: Legacy short codes (ACC202, BUS100, etc.) ==========
-      // These appear in credit_transfer_rules.source_course_code with source_institution='SOPHIA'
-      // Using distinct alias_kind for auditability and future cleanup
+      // ========== BATCH B: Legacy short codes (from actual credit_transfer_rules data) ==========
+      // Verified against: SELECT DISTINCT source_course_code FROM credit_transfer_rules WHERE source_institution='SOPHIA'
       { alias_code: "ACC202", canonical_code: "SOPH-0079", confidence: 0.98, kind: "legacy_short_code" },  // Managerial Accounting
       { alias_code: "ART101", canonical_code: "SOPH-0006", confidence: 0.98, kind: "legacy_short_code" },  // Art History I
       { alias_code: "BUS100", canonical_code: "SOPH-0014", confidence: 0.98, kind: "legacy_short_code" },  // Introduction to Business
-      { alias_code: "BUS340", canonical_code: "SOPH-0032", confidence: 0.98, kind: "legacy_short_code" },  // Business Law
       { alias_code: "COMM101", canonical_code: "SOPH-0024", confidence: 0.98, kind: "legacy_short_code" }, // Public Speaking
       { alias_code: "CRIT101", canonical_code: "SOPH-0028", confidence: 0.98, kind: "legacy_short_code" }, // Critical Thinking
-      { alias_code: "ECO201", canonical_code: "SOPH-0011", confidence: 0.98, kind: "legacy_short_code" },  // Microeconomics
-      { alias_code: "ECO202", canonical_code: "SOPH-0012", confidence: 0.98, kind: "legacy_short_code" },  // Macroeconomics
       { alias_code: "ENG101", canonical_code: "SOPH-0015", confidence: 0.98, kind: "legacy_short_code" },  // English Composition I
       { alias_code: "ENG102", canonical_code: "SOPH-0030", confidence: 0.98, kind: "legacy_short_code" },  // English Composition II
       { alias_code: "ENV101", canonical_code: "SOPH-0016", confidence: 0.98, kind: "legacy_short_code" },  // Environmental Science
-      { alias_code: "HIS101", canonical_code: "SOPH-0022", confidence: 0.98, kind: "legacy_short_code" },  // U.S. History I
-      { alias_code: "HIS102", canonical_code: "SOPH-0023", confidence: 0.98, kind: "legacy_short_code" },  // U.S. History II
-      { alias_code: "MAT121", canonical_code: "SOPH-0001", confidence: 0.98, kind: "legacy_short_code" },  // College Algebra
-      { alias_code: "PHI101", canonical_code: "SOPH-0021", confidence: 0.98, kind: "legacy_short_code" },  // Introduction to Philosophy
-      { alias_code: "PSY101", canonical_code: "SOPH-0048", confidence: 0.98, kind: "legacy_short_code" },  // Introduction to Psychology
       { alias_code: "SOC101", canonical_code: "SOPH-0051", confidence: 0.98, kind: "legacy_short_code" },  // Introduction to Sociology
-      { alias_code: "STA201", canonical_code: "SOPH-0027", confidence: 0.98, kind: "legacy_short_code" },  // Introduction to Statistics
+      // Fixed codes (matched to actual rule data):
+      { alias_code: "MAT101", canonical_code: "SOPH-0001", confidence: 0.98, kind: "legacy_short_code" },  // College Algebra (was MAT121)
+      { alias_code: "PHIL101", canonical_code: "SOPH-0021", confidence: 0.98, kind: "legacy_short_code" }, // Introduction to Philosophy (was PHI101)
+      { alias_code: "STAT101", canonical_code: "SOPH-0027", confidence: 0.98, kind: "legacy_short_code" }, // Introduction to Statistics (was STA201)
+      // Additional short codes found in rules:
+      { alias_code: "CS101", canonical_code: "SOPH-0029", confidence: 0.90, kind: "legacy_short_code" },   // Intro to IT (best match)
+      { alias_code: "ETH301", canonical_code: "SOPH-0020", confidence: 0.95, kind: "legacy_short_code" },  // Introduction to Ethics
+      { alias_code: "HUM101", canonical_code: "SOPH-0006", confidence: 0.85, kind: "legacy_short_code" },  // Humanities → Art History I (approximate)
+      { alias_code: "SCI101", canonical_code: "SOPH-0016", confidence: 0.85, kind: "legacy_short_code" },  // Science → Environmental Science (approximate)
+      { alias_code: "ELEC100", canonical_code: "SOPH-0014", confidence: 0.80, kind: "legacy_short_code" }, // Elective → Intro Business (loose match)
     ];
 
     const aliasRows = aliasMappings.map((m) => {
