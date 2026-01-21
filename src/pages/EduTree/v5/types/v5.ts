@@ -29,6 +29,8 @@ export interface MarketplaceOption {
   prereq_course_ids?: string[];
   unlocks_count?: number;
   equivalency_key?: string;
+  alt_identifier?: string; // Stable identifier for plan rehydration
+  alt_source_code?: string; // Normalized provider code for linking
   cri_score?: number; // Phase 1c: CRI quality score
   
   // CRI signals from provider registry
