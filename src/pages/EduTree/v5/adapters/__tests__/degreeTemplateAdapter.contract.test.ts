@@ -400,11 +400,19 @@ describe('Pricing Determinism', () => {
   it('uses default pricing when no map provided', () => {
     const template = createTestTemplate();
     // No pricing maps - should use DEFAULT_PROVIDER_PRICING fallback
-    const result = adaptDegreeTemplate(template, undefined, undefined, undefined);
+    // Signature: adaptDegreeTemplate(dbTemplate, equivalencies, providerPricing?, institutionalPricing?)
+    const result = adaptDegreeTemplate(
+      template,
+      /*equivalencies*/ undefined,
+      /*providerPricing*/ undefined,
+      /*institutionalPricing*/ undefined
+    );
     const option = getFirstOption(result);
     
+    // Ensure we're testing an alt-credit option, not accidentally an institutional slot
+    expect(option.isAltCredit).toBe(true);
     // STUDYCOM default is per_course: $199
-    expect(option.cost_usd).toBe(199);
     expect(option.providerCode).toBe('STUDYCOM');
+    expect(option.cost_usd).toBe(199);
   });
 });
