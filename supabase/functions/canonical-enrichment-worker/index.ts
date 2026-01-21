@@ -1,10 +1,11 @@
 // supabase/functions/canonical-enrichment-worker/index.ts
 // Deterministic enrichment worker - fetches evidence, validates, writes titles
+// v2: Added cron secret auth, stored-mode URL, finalUrl domain validation, missing_fields check
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-cron-secret',
 };
 
 type Job = {
@@ -65,7 +66,7 @@ function buildFetchUrl(reg: ProviderRegistry, canonicalCode: string): string | n
   const root = reg.root_url ?? null;
 
   if (mode === "stored") {
-    return null; // Worker uses source_courses.canonical_url if present
+    return null; // Caller must fetch from source_courses.canonical_url
   }
 
   if (mode === "pattern") {
@@ -78,21 +79,30 @@ function buildFetchUrl(reg: ProviderRegistry, canonicalCode: string): string | n
 }
 
 function extractTitleFromHtml(html: string): string | null {
-  // Try <title> first
-  const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
-  if (titleMatch?.[1]) {
-    const title = titleMatch[1].trim().replace(/\s+/g, ' ');
-    if (title.length > 0) return title;
-  }
-
-  // Try <h1>
-  const h1Match = html.match(/<h1[^>]*>([^<]+)<\/h1>/i);
+  // Try <h1> first (often more specific than <title>)
+  const h1Match = html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
   if (h1Match?.[1]) {
-    const h1 = h1Match[1].trim().replace(/\s+/g, ' ');
+    const h1 = h1Match[1].replace(/<[^>]+>/g, '').trim().replace(/\s+/g, ' ');
     if (h1.length > 0) return h1;
   }
 
+  // Fall back to <title>
+  const titleMatch = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
+  if (titleMatch?.[1]) {
+    const title = titleMatch[1].replace(/<[^>]+>/g, '').trim().replace(/\s+/g, ' ');
+    if (title.length > 0) return title;
+  }
+
   return null;
+}
+
+function detectBlocked(rawText: string): boolean {
+  const lower = rawText.toLowerCase();
+  return lower.includes("captcha") || 
+         lower.includes("cloudflare") || 
+         lower.includes("access denied") ||
+         lower.includes("please verify you are a human") ||
+         lower.includes("checking your browser");
 }
 
 function validateTitle(
@@ -120,6 +130,15 @@ Deno.serve(async (req) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
+  }
+
+  // ===== AUTH GATE: Require cron secret if configured =====
+  const cronSecret = Deno.env.get("ENRICHMENT_CRON_SECRET");
+  if (cronSecret) {
+    const providedSecret = req.headers.get("x-cron-secret");
+    if (!providedSecret || providedSecret !== cronSecret) {
+      return jsonResponse({ error: "unauthorized" }, 401);
+    }
   }
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
@@ -174,7 +193,6 @@ Deno.serve(async (req) => {
 
   if (regError) {
     console.error("provider_registry fetch error:", regError);
-    // Mark all jobs as failed
     for (const job of jobs) {
       await supabase.rpc("complete_enrichment_job", {
         p_queue_id: job.queue_id,
@@ -192,6 +210,59 @@ Deno.serve(async (req) => {
 
   const results: { queue_id: string; status: string; error?: string }[] = [];
 
+  // Helper to complete a job as failed and store evidence
+  async function completeFail(
+    job: Job,
+    reg: ProviderRegistry | null,
+    fetchUrl: string | null,
+    finalUrl: string | null,
+    httpStatus: number,
+    rawText: string | null,
+    contentHash: string | null,
+    errorCode: string,
+    errorMessage: string,
+    validation?: Record<string, unknown>
+  ) {
+    // Store evidence (with error check)
+    const { error: evErr } = await supabase.from("canonical_enrichment_evidence").insert({
+      queue_id: job.queue_id,
+      source_course_id: job.source_course_id,
+      provider_code: job.provider_code,
+      canonical_code: job.canonical_code,
+      fetch_url: fetchUrl ?? "",
+      final_url: finalUrl,
+      http_status: httpStatus,
+      content_sha256: contentHash,
+      raw_text: rawText?.slice(0, 50000) ?? null,
+      content_length: rawText?.length ?? 0,
+      extractor_version: "v2",
+      parse_result: { error: errorMessage },
+      validation: validation ?? { passed: false, reason: errorCode },
+      validation_passed: false,
+    });
+
+    if (evErr) {
+      console.error(`Evidence write failed for ${job.queue_id}:`, evErr);
+      // Still try to complete job, but with evidence error
+      await supabase.rpc("complete_enrichment_job", {
+        p_queue_id: job.queue_id,
+        p_success: false,
+        p_error_code: "EVIDENCE_WRITE_FAILED",
+        p_error_message: evErr.message,
+      });
+      results.push({ queue_id: job.queue_id, status: "failed", error: "EVIDENCE_WRITE_FAILED" });
+      return;
+    }
+
+    await supabase.rpc("complete_enrichment_job", {
+      p_queue_id: job.queue_id,
+      p_success: false,
+      p_error_code: errorCode,
+      p_error_message: errorMessage,
+    });
+    results.push({ queue_id: job.queue_id, status: "failed", error: errorCode });
+  }
+
   // 3) Process each job
   for (const job of jobs as Job[]) {
     const reg = regMap.get(job.provider_code);
@@ -207,32 +278,52 @@ Deno.serve(async (req) => {
       continue;
     }
 
-    // Build fetch URL
-    const fetchUrl = buildFetchUrl(reg, job.canonical_code);
+    // ===== CHECK: Does this job actually need canonical_title? =====
+    const needsTitle = (job.missing_fields ?? []).includes("canonical_title");
+    if (!needsTitle) {
+      // Nothing to do - mark as success
+      await supabase.rpc("complete_enrichment_job", {
+        p_queue_id: job.queue_id,
+        p_success: true,
+      });
+      results.push({ queue_id: job.queue_id, status: "succeeded" });
+      continue;
+    }
+
+    // ===== BUILD FETCH URL (with stored-mode support) =====
+    let fetchUrl = buildFetchUrl(reg, job.canonical_code);
+    const mode = reg.canonical_url_mode ?? "root_only";
+
+    // Handle stored-mode: fetch URL from source_courses
+    if (!fetchUrl && mode === "stored") {
+      const { data: sc, error: scErr } = await supabase
+        .from("source_courses")
+        .select("canonical_url")
+        .eq("id", job.source_course_id)
+        .maybeSingle();
+
+      if (scErr || !sc?.canonical_url) {
+        await completeFail(job, reg, null, null, 0, null, null, "NO_FETCH_URL", 
+          "stored mode but no source_courses.canonical_url");
+        continue;
+      }
+      fetchUrl = sc.canonical_url;
+    }
+
     if (!fetchUrl) {
-      await supabase.rpc("complete_enrichment_job", {
-        p_queue_id: job.queue_id,
-        p_success: false,
-        p_error_code: "NO_FETCH_URL",
-        p_error_message: "Could not build fetch URL from registry",
-      });
-      results.push({ queue_id: job.queue_id, status: "failed", error: "NO_FETCH_URL" });
+      await completeFail(job, reg, null, null, 0, null, null, "NO_FETCH_URL",
+        "Could not build fetch URL from registry");
       continue;
     }
 
-    // Validate domain
+    // ===== VALIDATE DOMAIN (initial URL) =====
     if (!domainAllowed(fetchUrl, reg.allowed_domains)) {
-      await supabase.rpc("complete_enrichment_job", {
-        p_queue_id: job.queue_id,
-        p_success: false,
-        p_error_code: "DOMAIN_NOT_ALLOWED",
-        p_error_message: `Domain not in allowed list: ${domainOf(fetchUrl)}`,
-      });
-      results.push({ queue_id: job.queue_id, status: "failed", error: "DOMAIN_NOT_ALLOWED" });
+      await completeFail(job, reg, fetchUrl, null, 0, null, null, "DOMAIN_NOT_ALLOWED",
+        `Domain not in allowed list: ${domainOf(fetchUrl)}`);
       continue;
     }
 
-    // Fetch with timeout
+    // ===== FETCH WITH TIMEOUT =====
     let response: Response;
     let finalUrl = fetchUrl;
     let rawText = "";
@@ -245,7 +336,7 @@ Deno.serve(async (req) => {
       response = await fetch(fetchUrl, {
         signal: controller.signal,
         headers: {
-          "User-Agent": "EnrichmentWorker/1.0 (+https://lovable.dev)",
+          "User-Agent": "EnrichmentWorker/2.0 (+https://lovable.dev)",
           "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
         },
         redirect: "follow",
@@ -268,39 +359,28 @@ Deno.serve(async (req) => {
       }
     } catch (fetchErr) {
       const errMsg = fetchErr instanceof Error ? fetchErr.message : String(fetchErr);
-      
-      // Log evidence of failed fetch
-      await supabase.from("canonical_enrichment_evidence").insert({
-        queue_id: job.queue_id,
-        source_course_id: job.source_course_id,
-        provider_code: job.provider_code,
-        canonical_code: job.canonical_code,
-        fetch_url: fetchUrl,
-        final_url: null,
-        http_status: 0,
-        content_sha256: null,
-        raw_text: null,
-        content_length: 0,
-        extractor_version: "v1",
-        parse_result: { error: errMsg },
-        validation: { passed: false, reason: "FETCH_FAILED" },
-        validation_passed: false,
-      });
-
-      await supabase.rpc("complete_enrichment_job", {
-        p_queue_id: job.queue_id,
-        p_success: false,
-        p_error_code: "FETCH_FAILED",
-        p_error_message: errMsg,
-      });
-      results.push({ queue_id: job.queue_id, status: "failed", error: "FETCH_FAILED" });
+      await completeFail(job, reg, fetchUrl, null, 0, null, null, "FETCH_FAILED", errMsg);
       continue;
     }
 
-    // Calculate content hash
-    const contentHash = rawText.length > 0 ? await sha256Hex(rawText) : null;
+    // ===== VALIDATE FINAL URL DOMAIN (after redirects) =====
+    if (!domainAllowed(finalUrl, reg.allowed_domains)) {
+      const contentHash = rawText.length > 0 ? await sha256Hex(rawText) : null;
+      await completeFail(job, reg, fetchUrl, finalUrl, httpStatus, rawText, contentHash,
+        "FINAL_URL_DOMAIN_NOT_ALLOWED", `Redirect to non-allowed domain: ${domainOf(finalUrl)}`);
+      continue;
+    }
 
-    // Extract title
+    // ===== DETECT BLOCKED (captcha, cloudflare, etc.) =====
+    if (rawText && detectBlocked(rawText)) {
+      const contentHash = rawText.length > 0 ? await sha256Hex(rawText) : null;
+      await completeFail(job, reg, fetchUrl, finalUrl, httpStatus, rawText, contentHash,
+        "BLOCKED", "Detected captcha/cloudflare/access-denied page");
+      continue;
+    }
+
+    // ===== EXTRACT + VALIDATE TITLE =====
+    const contentHash = rawText.length > 0 ? await sha256Hex(rawText) : null;
     const extractedTitle = extractTitleFromHtml(rawText);
     const minLen = reg.title_min_length ?? 6;
     const forbidden = reg.forbidden_title_patterns ?? ["404", "not found", "access denied", "sign in", "captcha", "error"];
@@ -309,8 +389,8 @@ Deno.serve(async (req) => {
       ? validateTitle(extractedTitle, minLen, forbidden)
       : { valid: false, reason: `HTTP_STATUS:${httpStatus}` };
 
-    // Store evidence
-    await supabase.from("canonical_enrichment_evidence").insert({
+    // ===== STORE EVIDENCE (with error check) =====
+    const { error: evErr } = await supabase.from("canonical_enrichment_evidence").insert({
       queue_id: job.queue_id,
       source_course_id: job.source_course_id,
       provider_code: job.provider_code,
@@ -319,15 +399,27 @@ Deno.serve(async (req) => {
       final_url: finalUrl,
       http_status: httpStatus,
       content_sha256: contentHash,
-      raw_text: rawText.slice(0, 50000), // Limit stored text
+      raw_text: rawText.slice(0, 50000),
       content_length: rawText.length,
-      extractor_version: "v1",
+      extractor_version: "v2",
       parse_result: { title_extracted: extractedTitle },
       validation: validation,
       validation_passed: validation.valid,
       field_written: validation.valid ? "canonical_title" : null,
       value_written: validation.valid ? extractedTitle : null,
     });
+
+    if (evErr) {
+      console.error(`Evidence write failed for ${job.queue_id}:`, evErr);
+      await supabase.rpc("complete_enrichment_job", {
+        p_queue_id: job.queue_id,
+        p_success: false,
+        p_error_code: "EVIDENCE_WRITE_FAILED",
+        p_error_message: evErr.message,
+      });
+      results.push({ queue_id: job.queue_id, status: "failed", error: "EVIDENCE_WRITE_FAILED" });
+      continue;
+    }
 
     if (!validation.valid) {
       await supabase.rpc("complete_enrichment_job", {
@@ -340,7 +432,7 @@ Deno.serve(async (req) => {
       continue;
     }
 
-    // Write to source_courses (only if title was missing)
+    // ===== WRITE TO SOURCE_COURSES (only if title was missing) =====
     const { error: updateError } = await supabase
       .from("source_courses")
       .update({ canonical_title: extractedTitle, updated_at: new Date().toISOString() })
@@ -358,7 +450,7 @@ Deno.serve(async (req) => {
       continue;
     }
 
-    // Success!
+    // ===== SUCCESS! =====
     await supabase.rpc("complete_enrichment_job", {
       p_queue_id: job.queue_id,
       p_success: true,
