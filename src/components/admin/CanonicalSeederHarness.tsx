@@ -101,10 +101,23 @@ export function CanonicalSeederHarness() {
 
     setResults(seederResults);
 
-    // Analyze results
-    const successCount = seederResults.filter(r => r.status === 200).length;
+    // Analyze results - distinguish role gate behavior from other failures
+    const successCount = seederResults.filter(r => r.status === 200 || r.status === 207).length;
     const forbiddenCount = seederResults.filter(r => r.status === 403).length;
     const unauthorizedCount = seederResults.filter(r => r.status === 401).length;
+    const serverErrorCount = seederResults.filter(r => r.status >= 500).length;
+
+    // Check for 500 errors first (not role gate related)
+    if (serverErrorCount > 0) {
+      const failedSeeders = seederResults.filter(r => r.status >= 500).map(r => r.function);
+      tests.push({
+        testName: 'Server Error Detected',
+        expected: 200,
+        actual: 500,
+        passed: false,
+        details: `${serverErrorCount} seeder(s) failed with server error (not role gate): ${failedSeeders.join(', ')}. Check logs.`,
+      });
+    }
 
     if (successCount === CANONICAL_SEEDERS.length) {
       tests.push({
@@ -130,13 +143,14 @@ export function CanonicalSeederHarness() {
         passed: false,
         details: 'Authentication failed. Please log in and try again.',
       });
-    } else {
+    } else if (serverErrorCount === 0) {
+      // Mixed results without server errors = inconsistent role gating
       tests.push({
         testName: 'Admin Role Gate',
         expected: 200,
         actual: seederResults[0]?.status || 0,
         passed: false,
-        details: `Mixed results: ${successCount} success, ${forbiddenCount} forbidden, ${unauthorizedCount} unauthorized.`,
+        details: `Inconsistent role gating: ${successCount} success, ${forbiddenCount} forbidden. Check config.toml section names.`,
       });
     }
 
