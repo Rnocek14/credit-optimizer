@@ -6,6 +6,7 @@ import type {
 } from '../types/templates';
 import type { MarketplaceOption } from '../types/v5';
 import { normalizeOptimization } from '@/types/optimizationTypes';
+import { normalizeProviderCode } from '@/lib/providerNormalization';
 
 /**
  * Provider pricing data from alt_provider_pricing_packs table
@@ -300,16 +301,17 @@ function convertSlotOptionToMarketplaceOption(
       e => e.alt_source_code === option.sourceCode && e.alt_identifier === option.identifier
     );
     
-    // Normalize provider code for lookup
-    const normalizedCode = option.sourceCode?.toUpperCase().replace('.', '');
+    // Normalize provider code consistently using shared utility
+    const providerCode = normalizeProviderCode(option.sourceCode ?? option.providerCode ?? '');
     
-    // Get provider pricing from database or fallback
-    const pricing = providerPricing?.get(normalizedCode) 
-      || DEFAULT_PROVIDER_PRICING[normalizedCode]
-      || DEFAULT_PROVIDER_PRICING[option.sourceCode];
+    // Get provider pricing from database or fallback - use normalized code everywhere
+    const pricing = providerPricing?.get(providerCode) 
+      || DEFAULT_PROVIDER_PRICING[providerCode];
     
     // Calculate cost based on pricing model
     let costUsd: number;
+    let usedFallback = false;
+    
     if (pricing) {
       if (pricing.model === 'per_exam') {
         costUsd = pricing.perExamCost || 90;
@@ -325,32 +327,48 @@ function convertSlotOptionToMarketplaceOption(
         costUsd = credits * pricing.effectiveCostPerCredit;
       } else {
         costUsd = 99; // Fallback
+        usedFallback = true;
       }
     } else {
       // Legacy hardcoded fallback (should rarely hit with complete data)
       costUsd = getAltCreditCostLegacy(option.sourceCode);
+      usedFallback = true;
     }
     
-    const durationWeeks = PROVIDER_DURATION_WEEKS[normalizedCode] 
+    // Log fallback usage once per session for debugging data gaps
+    if (usedFallback && typeof window !== 'undefined') {
+      const fallbackKey = `pricing-fallback-logged-${providerCode}`;
+      if (!sessionStorage.getItem(fallbackKey)) {
+        console.warn(`[degreeTemplateAdapter] Pricing fallback used for provider: ${providerCode}`, {
+          originalCode: option.sourceCode,
+          normalizedCode: providerCode,
+          hasPricingMap: !!providerPricing,
+          mapSize: providerPricing?.size ?? 0,
+        });
+        sessionStorage.setItem(fallbackKey, 'true');
+      }
+    }
+    
+    const durationWeeks = PROVIDER_DURATION_WEEKS[providerCode] 
       || PROVIDER_DURATION_WEEKS[option.sourceCode]
       || 4;
     
     return {
-      id: `${option.sourceCode}-${option.identifier}`,
-      courseId: `${option.sourceCode}-${option.identifier}`,
+      id: `${providerCode}-${option.identifier}`,
+      courseId: `${providerCode}-${option.identifier}`,
       title: equiv?.institutional_course_name || formatAltCreditTitle(option.identifier),
       credits: equiv?.credits_awarded || credits,
       subject: slot.requirementArea,
-      provider: formatProviderName(option.sourceCode),
-      providerType: getProviderType(option.sourceCode),
+      provider: formatProviderName(providerCode),
+      providerType: getProviderType(providerCode),
       cost_usd: costUsd,
       duration_weeks: durationWeeks,
-      workload_weekly_hours: getAltCreditWorkload(option.sourceCode),
+      workload_weekly_hours: getAltCreditWorkload(providerCode),
       cri_score: equiv?.confidence ? equiv.confidence * 5 : 3.5,
       level: equiv?.level || 100,
       start_windows: ['2025-01-01'], // Alt credits typically available anytime
-      providerCode: option.sourceCode,
-      aceNccrs: ['SOPHIA', 'STUDYCOM', 'STUDY_COM', 'STRAIGHTERLINE', 'SAYLOR'].includes(normalizedCode),
+      providerCode, // Use normalized code everywhere
+      aceNccrs: ['SOPHIA', 'STUDYCOM', 'STRAIGHTERLINE', 'SAYLOR'].includes(providerCode),
       isAltCredit: true,
     };
   }
