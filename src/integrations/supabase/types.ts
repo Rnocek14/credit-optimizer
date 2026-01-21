@@ -15380,12 +15380,14 @@ export type Database = {
           passed_evidence: number | null
           placeholder_evidence: number | null
           provider: string | null
+          provider_name: string | null
           provider_status: string | null
           queue_blocked: number | null
           queue_failed: number | null
           queue_pending: number | null
           queue_running: number | null
           queue_succeeded: number | null
+          registry_missing: boolean | null
           resolution_pct: number | null
           resolved_rules: number | null
           title_pct: number | null
