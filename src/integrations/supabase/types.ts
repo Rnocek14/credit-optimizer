@@ -1455,6 +1455,7 @@ export type Database = {
           created_by: string
           creation_reason: string | null
           id: string
+          idempotency_key: string | null
           provider_code: string
           rule_count: number | null
           source_course_id: string | null
@@ -1465,6 +1466,7 @@ export type Database = {
           created_by?: string
           creation_reason?: string | null
           id?: string
+          idempotency_key?: string | null
           provider_code: string
           rule_count?: number | null
           source_course_id?: string | null
@@ -1475,6 +1477,7 @@ export type Database = {
           created_by?: string
           creation_reason?: string | null
           id?: string
+          idempotency_key?: string | null
           provider_code?: string
           rule_count?: number | null
           source_course_id?: string | null
@@ -9935,6 +9938,45 @@ export type Database = {
           },
         ]
       }
+      provider_registry: {
+        Row: {
+          active: boolean
+          created_at: string
+          display_name: string
+          enrichment_strategy: string
+          is_alt_credit_provider: boolean
+          is_institution: boolean
+          notes: string | null
+          provider_code_norm: string
+          root_url: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          display_name: string
+          enrichment_strategy?: string
+          is_alt_credit_provider?: boolean
+          is_institution?: boolean
+          notes?: string | null
+          provider_code_norm: string
+          root_url: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          display_name?: string
+          enrichment_strategy?: string
+          is_alt_credit_provider?: boolean
+          is_institution?: boolean
+          notes?: string | null
+          provider_code_norm?: string
+          root_url?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       providers: {
         Row: {
           accreditation: string | null
@@ -14887,6 +14929,7 @@ export type Database = {
           missing_evidence: number | null
           placeholder_evidence: number | null
           provider: string | null
+          provider_name: string | null
         }
         Relationships: []
       }
@@ -15017,6 +15060,7 @@ export type Database = {
           course_unmapped: number | null
           policy_rules: number | null
           provider: string | null
+          provider_name: string | null
           resolution_pct: number | null
           resolved_by_alias: number | null
           resolved_by_canonical_match: number | null
