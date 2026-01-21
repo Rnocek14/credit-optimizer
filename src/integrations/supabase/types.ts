@@ -1448,6 +1448,103 @@ export type Database = {
           },
         ]
       }
+      canonical_auto_create_log: {
+        Row: {
+          canonical_code: string
+          created_at: string
+          created_by: string
+          creation_reason: string | null
+          id: string
+          provider_code: string
+          rule_count: number | null
+          source_course_id: string | null
+        }
+        Insert: {
+          canonical_code: string
+          created_at?: string
+          created_by?: string
+          creation_reason?: string | null
+          id?: string
+          provider_code: string
+          rule_count?: number | null
+          source_course_id?: string | null
+        }
+        Update: {
+          canonical_code?: string
+          created_at?: string
+          created_by?: string
+          creation_reason?: string | null
+          id?: string
+          provider_code?: string
+          rule_count?: number | null
+          source_course_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "canonical_auto_create_log_source_course_id_fkey"
+            columns: ["source_course_id"]
+            isOneToOne: false
+            referencedRelation: "source_courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      canonical_enrichment_queue: {
+        Row: {
+          attempts: number
+          canonical_code: string
+          completed_at: string | null
+          created_at: string
+          enrichment_status: string
+          id: string
+          last_attempt_at: string | null
+          missing_fields: string[]
+          notes: string | null
+          priority: number
+          provider_code: string
+          source_course_id: string
+          updated_at: string
+        }
+        Insert: {
+          attempts?: number
+          canonical_code: string
+          completed_at?: string | null
+          created_at?: string
+          enrichment_status?: string
+          id?: string
+          last_attempt_at?: string | null
+          missing_fields?: string[]
+          notes?: string | null
+          priority?: number
+          provider_code: string
+          source_course_id: string
+          updated_at?: string
+        }
+        Update: {
+          attempts?: number
+          canonical_code?: string
+          completed_at?: string | null
+          created_at?: string
+          enrichment_status?: string
+          id?: string
+          last_attempt_at?: string | null
+          missing_fields?: string[]
+          notes?: string | null
+          priority?: number
+          provider_code?: string
+          source_course_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "canonical_enrichment_queue_source_course_id_fkey"
+            columns: ["source_course_id"]
+            isOneToOne: true
+            referencedRelation: "source_courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       canonical_requirement_map: {
         Row: {
           canon_req_code: string
@@ -14782,6 +14879,26 @@ export type Database = {
       }
     }
     Views: {
+      alias_evidence_health: {
+        Row: {
+          aliases_total: number | null
+          complete_evidence: number | null
+          evidence_complete_pct: number | null
+          missing_evidence: number | null
+          placeholder_evidence: number | null
+          provider: string | null
+        }
+        Relationships: []
+      }
+      enrichment_queue_summary: {
+        Row: {
+          avg_attempts: number | null
+          count: number | null
+          provider: string | null
+          status: string | null
+        }
+        Relationships: []
+      }
       institution_policy_packs_live: {
         Row: {
           academic_year: string | null
@@ -14890,6 +15007,20 @@ export type Database = {
           total_requirement_versions: number | null
           total_templates: number | null
           with_requirements: number | null
+        }
+        Relationships: []
+      }
+      provider_resolution_drift: {
+        Row: {
+          course_resolved: number | null
+          course_total: number | null
+          course_unmapped: number | null
+          policy_rules: number | null
+          provider: string | null
+          resolution_pct: number | null
+          resolved_by_alias: number | null
+          resolved_by_canonical_match: number | null
+          resolved_by_fk: number | null
         }
         Relationships: []
       }
@@ -15626,6 +15757,15 @@ export type Database = {
           user_rating_param?: number
         }
         Returns: string
+      }
+      ensure_canonicals_for_unmapped_rules: {
+        Args: { p_dry_run?: boolean; p_provider_filter?: string }
+        Returns: {
+          action: string
+          canonical_code: string
+          provider_code: string
+          rule_count: number
+        }[]
       }
       ensure_quota_row: {
         Args: { p_user: string }
