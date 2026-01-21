@@ -9,6 +9,19 @@ import { normalizeOptimization } from '@/types/optimizationTypes';
 import { normalizeProviderCode } from '@/lib/providerNormalization';
 
 /**
+ * ACE/NCCRS evaluated providers - centralized for maintainability
+ * These providers have nationally recognized credit recommendations
+ */
+const ACE_NCCRS_PROVIDERS = new Set([
+  'SOPHIA',
+  'STUDYCOM', 
+  'STRAIGHTERLINE',
+  'SAYLOR',
+  'DSST',
+  'CLEP',
+]);
+
+/**
  * Provider pricing data from alt_provider_pricing_packs table
  * This is the SINGLE SOURCE OF TRUTH for provider costs
  */
@@ -297,12 +310,14 @@ function convertSlotOptionToMarketplaceOption(
     };
   } else {
     // Alt credit option (CLEP, DSST, Sophia, Study.com)
-    const equiv = equivalencies?.find(
-      e => e.alt_source_code === option.sourceCode && e.alt_identifier === option.identifier
-    );
-    
     // Normalize provider code consistently using shared utility
     const providerCode = normalizeProviderCode(option.sourceCode ?? option.providerCode ?? '');
+    
+    // Find matching equivalency - normalize both sides to prevent STUDY_COM vs STUDYCOM mismatches
+    const equiv = equivalencies?.find(
+      e => normalizeProviderCode(e.alt_source_code) === providerCode && 
+           e.alt_identifier === option.identifier
+    );
     
     // Get provider pricing from database or fallback - use normalized code everywhere
     const pricing = providerPricing?.get(providerCode) 
@@ -368,7 +383,7 @@ function convertSlotOptionToMarketplaceOption(
       level: equiv?.level || 100,
       start_windows: ['2025-01-01'], // Alt credits typically available anytime
       providerCode, // Use normalized code everywhere
-      aceNccrs: ['SOPHIA', 'STUDYCOM', 'STRAIGHTERLINE', 'SAYLOR'].includes(providerCode),
+      aceNccrs: ACE_NCCRS_PROVIDERS.has(providerCode),
       isAltCredit: true,
     };
   }
