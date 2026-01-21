@@ -15321,6 +15321,32 @@ export type Database = {
         }
         Relationships: []
       }
+      operational_health_dashboard: {
+        Row: {
+          avg_resolution_pct: number | null
+          blocked_last_24h: number | null
+          checked_at: string | null
+          evidence_health_pct: number | null
+          has_titles: number | null
+          invariant_status: string | null
+          last_enrichment_at: string | null
+          min_resolution_pct: number | null
+          missing_titles: number | null
+          overall_gate: string | null
+          passed_evidence: number | null
+          placeholder_evidence_count: number | null
+          providers_drifting: number | null
+          queue_blocked: number | null
+          queue_failed: number | null
+          queue_pending: number | null
+          queue_running: number | null
+          queue_succeeded: number | null
+          registry_gap_count: number | null
+          title_coverage_pct: number | null
+          total_evidence_rows: number | null
+        }
+        Relationships: []
+      }
       program_pipeline_health_v: {
         Row: {
           bachelor_programs: number | null
