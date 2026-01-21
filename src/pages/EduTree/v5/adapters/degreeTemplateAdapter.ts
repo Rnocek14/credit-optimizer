@@ -11,8 +11,9 @@ import { normalizeProviderCode } from '@/lib/providerNormalization';
 /**
  * ACE/NCCRS evaluated providers - centralized for maintainability
  * These providers have nationally recognized credit recommendations
+ * Exported for use in classification tests
  */
-const ACE_NCCRS_PROVIDERS = new Set([
+export const ACE_NCCRS_PROVIDERS = new Set([
   'SOPHIA',
   'STUDYCOM', 
   'STRAIGHTERLINE',
@@ -20,6 +21,14 @@ const ACE_NCCRS_PROVIDERS = new Set([
   'DSST',
   'CLEP',
 ]);
+
+/**
+ * Check if a provider is ACE/NCCRS evaluated
+ * Uses normalized provider code for consistent matching
+ */
+export function isAceNccrsProvider(providerCode: string): boolean {
+  return ACE_NCCRS_PROVIDERS.has(normalizeProviderCode(providerCode));
+}
 
 /**
  * Provider pricing data from alt_provider_pricing_packs table
