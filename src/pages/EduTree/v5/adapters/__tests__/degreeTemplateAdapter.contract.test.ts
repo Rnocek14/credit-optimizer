@@ -423,4 +423,50 @@ describe('Pricing Determinism', () => {
     // STUDYCOM default is per_course: $199
     expect(option.cost_usd).toBe(199);
   });
+
+  it('falls back to defaults when provider missing from pricing map (logs once)', () => {
+    // Mock sessionStorage for rate-limit tracking
+    const storage: Record<string, string> = {};
+    vi.stubGlobal('sessionStorage', {
+      getItem: (key: string) => storage[key] ?? null,
+      setItem: (key: string, value: string) => { storage[key] = value; },
+      removeItem: (key: string) => { delete storage[key]; },
+      clear: () => { Object.keys(storage).forEach(k => delete storage[k]); },
+    });
+
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const template = createTestTemplate();
+    const equivalencies = createTestEquivalencies();
+
+    // Empty map -> forces fallback
+    const providerPricingMap = new Map();
+
+    const result = adaptDegreeTemplate(
+      template,
+      equivalencies,
+      /*providerPricing*/ providerPricingMap,
+      /*institutionalPricing*/ undefined
+    );
+    const option = getFirstOption(result);
+
+    expect(option.providerCode).toBe('STUDYCOM');
+    expect(option.cost_usd).toBe(199); // default fallback
+    expect(warn).toHaveBeenCalled();   // fallback log occurred
+
+    warn.mockClear();
+
+    // Run again: should NOT warn again due to sessionStorage gate
+    const result2 = adaptDegreeTemplate(
+      template,
+      equivalencies,
+      /*providerPricing*/ providerPricingMap,
+      /*institutionalPricing*/ undefined
+    );
+    const option2 = getFirstOption(result2);
+    expect(option2.cost_usd).toBe(199);
+    expect(warn).not.toHaveBeenCalled(); // rate-limited
+
+    warn.mockRestore();
+    vi.unstubAllGlobals();
+  });
 });
