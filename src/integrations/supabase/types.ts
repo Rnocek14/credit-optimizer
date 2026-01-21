@@ -15364,6 +15364,35 @@ export type Database = {
         }
         Relationships: []
       }
+      provider_health_breakdown: {
+        Row: {
+          aliases_total: number | null
+          blocked_last_24h: number | null
+          canonical_url_mode: string | null
+          complete_evidence: number | null
+          enrichment_strategy: string | null
+          evidence_pct: number | null
+          evidence_rows: number | null
+          has_titles: number | null
+          last_fetch: string | null
+          missing_titles: number | null
+          passed_evidence: number | null
+          placeholder_evidence: number | null
+          provider: string | null
+          provider_status: string | null
+          queue_blocked: number | null
+          queue_failed: number | null
+          queue_pending: number | null
+          queue_running: number | null
+          queue_succeeded: number | null
+          resolution_pct: number | null
+          resolved_rules: number | null
+          title_pct: number | null
+          total_rules: number | null
+          unresolved_rules: number | null
+        }
+        Relationships: []
+      }
       provider_registry_gaps: {
         Row: {
           provider: string | null
