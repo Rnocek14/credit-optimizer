@@ -9941,6 +9941,8 @@ export type Database = {
       provider_registry: {
         Row: {
           active: boolean
+          canonical_url_mode: string | null
+          canonical_url_pattern: string | null
           created_at: string
           display_name: string
           enrichment_strategy: string
@@ -9953,6 +9955,8 @@ export type Database = {
         }
         Insert: {
           active?: boolean
+          canonical_url_mode?: string | null
+          canonical_url_pattern?: string | null
           created_at?: string
           display_name: string
           enrichment_strategy?: string
@@ -9965,6 +9969,8 @@ export type Database = {
         }
         Update: {
           active?: boolean
+          canonical_url_mode?: string | null
+          canonical_url_pattern?: string | null
           created_at?: string
           display_name?: string
           enrichment_strategy?: string
@@ -14930,6 +14936,7 @@ export type Database = {
           placeholder_evidence: number | null
           provider: string | null
           provider_name: string | null
+          registry_missing: number | null
         }
         Relationships: []
       }
@@ -15050,6 +15057,13 @@ export type Database = {
           total_requirement_versions: number | null
           total_templates: number | null
           with_requirements: number | null
+        }
+        Relationships: []
+      }
+      provider_registry_gaps: {
+        Row: {
+          provider: string | null
+          rule_count: number | null
         }
         Relationships: []
       }
@@ -15969,6 +15983,7 @@ export type Database = {
         Returns: boolean
       }
       is_mentor: { Args: never; Returns: boolean }
+      is_service_role: { Args: never; Returns: boolean }
       lock_phase6_components: {
         Args: { baseline_snapshot_id: string; target_user_id: string }
         Returns: string[]
