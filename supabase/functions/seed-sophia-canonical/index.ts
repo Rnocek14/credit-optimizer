@@ -147,7 +147,14 @@ Deno.serve(async (req) => {
 
     // 3) Alias mappings (internal codes → canonical)
     // Includes primary aliases + common variants found in legacy data
-    const aliasMappings = [
+    type AliasMapping = {
+      alias_code: string;
+      canonical_code: string;
+      confidence: number;
+      kind?: "internal_normalized" | "legacy_short_code";
+    };
+
+    const aliasMappings: AliasMapping[] = [
       // Primary aliases (SOPHIA-* format)
       { alias_code: "SOPHIA-ART-HIST-I", canonical_code: "SOPH-0006", confidence: 0.95 },
       { alias_code: "SOPHIA-ART-HIST", canonical_code: "SOPH-0006", confidence: 0.90 }, // variant
@@ -226,7 +233,7 @@ Deno.serve(async (req) => {
         return null;
       }
       // Use explicit kind if provided, otherwise default to internal_normalized
-      const aliasKind = (m as any).kind ?? "internal_normalized";
+      const aliasKind = m.kind ?? "internal_normalized";
       return {
         source_course_id: sourceId,
         provider_code: "SOPHIA",
