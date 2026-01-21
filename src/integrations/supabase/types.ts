@@ -1568,6 +1568,13 @@ export type Database = {
             foreignKeyName: "canonical_enrichment_evidence_queue_id_fkey"
             columns: ["queue_id"]
             isOneToOne: false
+            referencedRelation: "enrichment_blocked"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "canonical_enrichment_evidence_queue_id_fkey"
+            columns: ["queue_id"]
+            isOneToOne: false
             referencedRelation: "enrichment_stuck"
             referencedColumns: ["id"]
           },
@@ -15072,6 +15079,77 @@ export type Database = {
           registry_missing: number | null
         }
         Relationships: []
+      }
+      enrichment_blocked: {
+        Row: {
+          attempts: number | null
+          canonical_code: string | null
+          completed_at: string | null
+          created_at: string | null
+          enrichment_status: string | null
+          id: string | null
+          last_attempt_at: string | null
+          last_error: string | null
+          last_error_code: string | null
+          locked_at: string | null
+          locked_by: string | null
+          missing_fields: string[] | null
+          next_attempt_at: string | null
+          notes: string | null
+          priority: number | null
+          provider_code: string | null
+          source_course_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          attempts?: number | null
+          canonical_code?: string | null
+          completed_at?: string | null
+          created_at?: string | null
+          enrichment_status?: string | null
+          id?: string | null
+          last_attempt_at?: string | null
+          last_error?: string | null
+          last_error_code?: string | null
+          locked_at?: string | null
+          locked_by?: string | null
+          missing_fields?: string[] | null
+          next_attempt_at?: string | null
+          notes?: string | null
+          priority?: number | null
+          provider_code?: string | null
+          source_course_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          attempts?: number | null
+          canonical_code?: string | null
+          completed_at?: string | null
+          created_at?: string | null
+          enrichment_status?: string | null
+          id?: string | null
+          last_attempt_at?: string | null
+          last_error?: string | null
+          last_error_code?: string | null
+          locked_at?: string | null
+          locked_by?: string | null
+          missing_fields?: string[] | null
+          next_attempt_at?: string | null
+          notes?: string | null
+          priority?: number | null
+          provider_code?: string | null
+          source_course_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "canonical_enrichment_queue_source_course_id_fkey"
+            columns: ["source_course_id"]
+            isOneToOne: true
+            referencedRelation: "source_courses"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       enrichment_evidence_freshness: {
         Row: {
