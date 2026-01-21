@@ -33,6 +33,7 @@ import { useMarketplaceTemplate } from '@/hooks/useMarketplaceTemplates';
 import { useDegreeTemplates } from '@/hooks/useDegreeTemplates';
 import { useAltCreditEquivalenciesForInstitution } from '@/hooks/useAltCreditEquivalencies';
 import { adaptDegreeTemplate } from './adapters/degreeTemplateAdapter';
+import { usePricingMaps } from './hooks/usePricingMaps';
 import SeedStatus from '@/components/SeedStatus';
 import { DragProvider } from './components/drag/DragProvider';
 import canonicalCourses from '@/fixtures/prereqs/canonical-courses.json';
@@ -92,6 +93,9 @@ export default function EduTreeV5Page() {
   // Load equivalencies for TESU (needed for adapter)
   const { data: equivalencies } = useAltCreditEquivalenciesForInstitution('TESU');
   
+  // Load pricing maps from database (alt_provider_pricing_packs + institution_pricing_packs)
+  const { data: pricingMaps } = usePricingMaps();
+  
   // Load marketplace template for fixture templates (non-database)
   const { data: fixtureTemplate, isLoading: fixtureLoading, error: fixtureError } = useMarketplaceTemplate(
     isDbTemplate ? '' : (templateId || '')
@@ -107,8 +111,17 @@ export default function EduTreeV5Page() {
           id: dbTemplate.id,
           trackType: dbTemplate.track_type,
           totalCredits: dbTemplate.total_credits,
+          hasPricingMaps: !!pricingMaps,
+          providerPricingCount: pricingMaps?.providerPricing?.size ?? 0,
+          institutionalPricingCount: pricingMaps?.institutionalPricing?.size ?? 0,
         });
-        return adaptDegreeTemplate(dbTemplate, equivalencies);
+        // Pass real pricing data to adapter
+        return adaptDegreeTemplate(
+          dbTemplate, 
+          equivalencies,
+          pricingMaps?.providerPricing,
+          pricingMaps?.institutionalPricing
+        );
       }
     }
     
@@ -121,7 +134,7 @@ export default function EduTreeV5Page() {
     }
     
     return null;
-  }, [isDbTemplate, dbTemplates, fixtureTemplate, templateId, equivalencies]);
+  }, [isDbTemplate, dbTemplates, fixtureTemplate, templateId, equivalencies, pricingMaps]);
   
   const templateLoading = isDbTemplate ? dbTemplateLoading : fixtureLoading;
   const templateError = isDbTemplate ? dbTemplateError : fixtureError;
