@@ -15572,6 +15572,14 @@ export type Database = {
         }
         Relationships: []
       }
+      invariant_registry: {
+        Row: {
+          definition: string | null
+          schemaname: unknown
+          viewname: unknown
+        }
+        Relationships: []
+      }
       invariant_stored_provider_missing_urls: {
         Row: {
           actual_url: string | null
@@ -15588,6 +15596,7 @@ export type Database = {
           empty_norm_codes: number | null
           invalid_writes: number | null
           invariant_status: string | null
+          missing_invariants: number | null
           overall_gate: string | null
           pattern_root_urls: number | null
           pattern_url_mismatch: number | null
