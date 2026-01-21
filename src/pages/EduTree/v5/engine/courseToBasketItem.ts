@@ -5,6 +5,16 @@
  * between basket-level validation (addItemGuarded) and semester-level validation.
  * 
  * INVARIANT: The same course must classify identically in both paths.
+ * 
+ * CLASSIFICATION ALIGNMENT:
+ * - providerType: passed through from MarketplaceOption
+ * - providerCode: passed through for provider cap checks
+ * - level: passed through for upper-division checks
+ * - aceNccrs: passed through for alt-credit classification
+ * - isAltCredit: passed through for explicit alt-credit flagging
+ * - equivalency_key: passed through for duplicate detection
+ * 
+ * These fields MUST match exactly how addItemGuarded creates BasketItems.
  */
 
 import type { BasketItem } from '../state/usePlanBasket';
@@ -15,6 +25,9 @@ import type { MarketplaceOption } from '../types/v5';
  * 
  * This mirrors the normalization in usePlanBasketWithToasts.addItemGuarded
  * but is used for pre-commit validation (e.g., semester drop checks).
+ * 
+ * CRITICAL: Any field used by countsTowardAltCap, isResidentCredit, or
+ * upper-division checks MUST be present here with the same derivation.
  */
 export function courseToBasketItem(
   option: MarketplaceOption,
@@ -35,5 +48,12 @@ export function courseToBasketItem(
     equivalency_key: option.equivalency_key,
     level: option.level, // Important for upper-division checks
     status: 'pinned',
+    
+    // Alt-credit classification flags - MUST match addItemGuarded
+    aceNccrs: option.aceNccrs,
+    isAltCredit: option.isAltCredit,
+    
+    // Transfer verification (if available from marketplace)
+    proctored: option.proctored,
   };
 }
