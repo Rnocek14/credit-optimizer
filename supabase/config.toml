@@ -1,5 +1,12 @@
 project_id = "vzpissitddpunkpythsb"
 
+# Ops Automation
+[functions.system-healthcheck]
+verify_jwt = false
+
+[functions.ops-cron-runner]
+verify_jwt = false
+
 # Edge Functions Configuration
 [functions.run-migrations]
 verify_jwt = false
