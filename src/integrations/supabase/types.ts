@@ -3923,6 +3923,7 @@ export type Database = {
           provenance_notes: string | null
           rejection_count: number | null
           rule_payload: Json | null
+          rule_scope: string | null
           rule_source: string | null
           rule_type: string | null
           source_course_code: string | null
@@ -3968,6 +3969,7 @@ export type Database = {
           provenance_notes?: string | null
           rejection_count?: number | null
           rule_payload?: Json | null
+          rule_scope?: string | null
           rule_source?: string | null
           rule_type?: string | null
           source_course_code?: string | null
@@ -4013,6 +4015,7 @@ export type Database = {
           provenance_notes?: string | null
           rejection_count?: number | null
           rule_payload?: Json | null
+          rule_scope?: string | null
           rule_source?: string | null
           rule_type?: string | null
           source_course_code?: string | null
@@ -15098,11 +15101,11 @@ export type Database = {
       transfer_rules_resolved: {
         Row: {
           acceptance_status: string | null
-          canonical_code: string | null
+          canonical_code_resolved: string | null
           canonical_provider_code: string | null
           canonical_resolution_status: string | null
-          canonical_title: string | null
-          canonical_url: string | null
+          canonical_title_resolved: string | null
+          canonical_url_resolved: string | null
           catalog_year_end: string | null
           catalog_year_start: string | null
           confidence: number | null
@@ -15111,9 +15114,11 @@ export type Database = {
           degree_program: string | null
           effective_end: string | null
           effective_from: string | null
+          effective_rule_scope: string | null
           effective_start: string | null
           effective_to: string | null
           evidence_locator: string | null
+          evidence_presence: string | null
           evidence_source_type: string | null
           evidence_type: string | null
           evidence_url: string | null
@@ -15129,8 +15134,10 @@ export type Database = {
           rejection_count: number | null
           resolved_source_course_id: string | null
           rule_course_code_norm: string | null
+          rule_granularity: string | null
           rule_payload: Json | null
           rule_provider_norm: string | null
+          rule_scope: string | null
           rule_source: string | null
           rule_type: string | null
           source_course_code: string | null
