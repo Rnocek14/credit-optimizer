@@ -1487,6 +1487,13 @@ export type Database = {
             foreignKeyName: "canonical_auto_create_log_source_course_id_fkey"
             columns: ["source_course_id"]
             isOneToOne: false
+            referencedRelation: "invariant_pattern_provider_root_urls"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "canonical_auto_create_log_source_course_id_fkey"
+            columns: ["source_course_id"]
+            isOneToOne: false
             referencedRelation: "source_courses"
             referencedColumns: ["id"]
           },
@@ -1642,6 +1649,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "canonical_enrichment_queue_source_course_id_fkey"
+            columns: ["source_course_id"]
+            isOneToOne: true
+            referencedRelation: "invariant_pattern_provider_root_urls"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "canonical_enrichment_queue_source_course_id_fkey"
             columns: ["source_course_id"]
@@ -4238,6 +4252,13 @@ export type Database = {
           verified_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "credit_transfer_rules_source_course_id_fkey"
+            columns: ["source_course_id"]
+            isOneToOne: false
+            referencedRelation: "invariant_pattern_provider_root_urls"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "credit_transfer_rules_source_course_id_fkey"
             columns: ["source_course_id"]
@@ -11590,6 +11611,13 @@ export type Database = {
             foreignKeyName: "source_course_aliases_source_course_id_fkey"
             columns: ["source_course_id"]
             isOneToOne: false
+            referencedRelation: "invariant_pattern_provider_root_urls"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "source_course_aliases_source_course_id_fkey"
+            columns: ["source_course_id"]
+            isOneToOne: false
             referencedRelation: "source_courses"
             referencedColumns: ["id"]
           },
@@ -15146,6 +15174,13 @@ export type Database = {
             foreignKeyName: "canonical_enrichment_queue_source_course_id_fkey"
             columns: ["source_course_id"]
             isOneToOne: true
+            referencedRelation: "invariant_pattern_provider_root_urls"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "canonical_enrichment_queue_source_course_id_fkey"
+            columns: ["source_course_id"]
+            isOneToOne: true
             referencedRelation: "source_courses"
             referencedColumns: ["id"]
           },
@@ -15301,12 +15336,111 @@ export type Database = {
           },
         ]
       }
+      invariant_enrichment_no_invalid_writes: {
+        Row: {
+          canonical_code: string | null
+          content_length: number | null
+          content_sha256: string | null
+          created_at: string | null
+          extractor_version: string | null
+          fetch_url: string | null
+          fetched_at: string | null
+          field_written: string | null
+          final_url: string | null
+          http_status: number | null
+          id: string | null
+          parse_result: Json | null
+          provider_code: string | null
+          queue_id: string | null
+          raw_text: string | null
+          source_course_id: string | null
+          validation: Json | null
+          validation_passed: boolean | null
+          value_written: string | null
+        }
+        Insert: {
+          canonical_code?: string | null
+          content_length?: number | null
+          content_sha256?: string | null
+          created_at?: string | null
+          extractor_version?: string | null
+          fetch_url?: string | null
+          fetched_at?: string | null
+          field_written?: string | null
+          final_url?: string | null
+          http_status?: number | null
+          id?: string | null
+          parse_result?: Json | null
+          provider_code?: string | null
+          queue_id?: string | null
+          raw_text?: string | null
+          source_course_id?: string | null
+          validation?: Json | null
+          validation_passed?: boolean | null
+          value_written?: string | null
+        }
+        Update: {
+          canonical_code?: string | null
+          content_length?: number | null
+          content_sha256?: string | null
+          created_at?: string | null
+          extractor_version?: string | null
+          fetch_url?: string | null
+          fetched_at?: string | null
+          field_written?: string | null
+          final_url?: string | null
+          http_status?: number | null
+          id?: string | null
+          parse_result?: Json | null
+          provider_code?: string | null
+          queue_id?: string | null
+          raw_text?: string | null
+          source_course_id?: string | null
+          validation?: Json | null
+          validation_passed?: boolean | null
+          value_written?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "canonical_enrichment_evidence_queue_id_fkey"
+            columns: ["queue_id"]
+            isOneToOne: false
+            referencedRelation: "canonical_enrichment_queue"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "canonical_enrichment_evidence_queue_id_fkey"
+            columns: ["queue_id"]
+            isOneToOne: false
+            referencedRelation: "enrichment_blocked"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "canonical_enrichment_evidence_queue_id_fkey"
+            columns: ["queue_id"]
+            isOneToOne: false
+            referencedRelation: "enrichment_stuck"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invariant_no_empty_norm_codes: {
         Row: {
           id: string | null
           rule_course_code_norm: string | null
           rule_provider_norm: string | null
           source_course_code: string | null
+        }
+        Relationships: []
+      }
+      invariant_pattern_provider_root_urls: {
+        Row: {
+          canonical_code: string | null
+          canonical_url: string | null
+          canonical_url_pattern: string | null
+          id: string | null
+          provider_code: string | null
+          root_url: string | null
         }
         Relationships: []
       }
@@ -15703,6 +15837,13 @@ export type Database = {
           verified_at: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "credit_transfer_rules_source_course_id_fkey"
+            columns: ["source_course_id"]
+            isOneToOne: false
+            referencedRelation: "invariant_pattern_provider_root_urls"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "credit_transfer_rules_source_course_id_fkey"
             columns: ["source_course_id"]
