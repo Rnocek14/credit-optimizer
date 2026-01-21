@@ -280,7 +280,8 @@ function convertSlotOptionToMarketplaceOption(
   providerPricing?: Map<string, ProviderPricingData>,
   institutionalPricing?: Map<string, InstitutionalPricingData>
 ): MarketplaceOption {
-  const credits = slot.minCredits || 3;
+  // Use option credits if explicit, otherwise fall back to slot requirement, then default
+  const credits = option.credits ?? slot.minCredits ?? 3;
   
   if (option.type === 'institutional_course') {
     // Get institutional pricing from database or fallback
@@ -385,6 +386,10 @@ function convertSlotOptionToMarketplaceOption(
       providerCode, // Use normalized code everywhere
       aceNccrs: ACE_NCCRS_PROVIDERS.has(providerCode),
       isAltCredit: true,
+      // Stable matching fields for plan rehydration and linking
+      equivalency_key: option.identifier,
+      alt_identifier: option.identifier,
+      alt_source_code: providerCode,
     };
   }
 }
