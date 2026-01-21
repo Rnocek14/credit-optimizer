@@ -1,4 +1,19 @@
 import type { MarketplaceOption } from '../types/v5';
+import type { BasketItem } from '../state/usePlanBasket';
+import { checkForDeadEnd, type DeadEndCheck, type RemainingModule } from './deadEndDetector';
+import { courseToBasketItem } from './courseToBasketItem';
+import { deadEndToUIMessage, type DeadEndUIMessage } from './deadEndToMessage';
+
+// ============================================
+// VALIDATION ERROR CODES
+// ============================================
+// 
+// DESIGN: These codes are for LOCAL semester validation (DnD UX errors).
+// For transfer engine violations (residency, alt-cap, dead-ends),
+// we delegate to checkForDeadEnd and map using deadEndToMessage.
+// 
+// This keeps the two systems aligned without introducing duplicate codes.
+// ============================================
 
 export type ValidationErrorCode = 
   | 'ALREADY_PLACED'
@@ -6,11 +21,19 @@ export type ValidationErrorCode =
   | 'YEAR_CAP' 
   | 'PREREQ' 
   | 'ACE_CAP' 
-  | 'EXCLUSION';
+  | 'EXCLUSION'
+  // Transfer engine violations (mapped from DeadEndCheck)
+  | 'DEAD_END';
 
 export interface ValidationError {
   code: ValidationErrorCode;
   message: string;
+  /** Additional context for UI (e.g., invariant code, snapshot data) */
+  details?: {
+    invariantCode?: string;
+    uiMessage?: DeadEndUIMessage;
+    deadEndCheck?: DeadEndCheck;
+  };
 }
 
 export interface ValidationFix {
@@ -24,6 +47,8 @@ export interface Validation {
   errors: ValidationError[];
   warnings: string[];
   fixes: ValidationFix[];
+  /** DeadEndCheck result if transfer engine validation was run */
+  deadEndCheck?: DeadEndCheck;
 }
 
 interface SemesterState {
@@ -36,10 +61,23 @@ interface PlanState {
   semesters: Record<string, SemesterState>;
 }
 
-interface Constraints {
+/**
+ * Extended constraints for unified validation
+ * 
+ * When basket context is provided, semester validation will also run
+ * checkForDeadEnd to enforce policy caps and degree feasibility.
+ */
+export interface Constraints {
+  // Semester-level constraints
   termCap?: number;
   yearCap?: number;
   aceCap?: number;
+  
+  // Transfer engine context (optional - enables dead-end checking)
+  targetSchool?: string;
+  basket?: BasketItem[];
+  remainingModules?: RemainingModule[];
+  moduleId?: string; // For courseToBasketItem conversion
 }
 
 /**
@@ -171,10 +209,44 @@ export function validateSemesterDrop({
     // TODO: Implement full ACE tracking when is_ace_approved field is added
   }
 
+  // =========================================================================
+  // 6. Transfer Engine Validation (Dead-End Check)
+  // =========================================================================
+  // When basket context is provided, run checkForDeadEnd for policy enforcement
+  let deadEndCheck: DeadEndCheck | undefined;
+  
+  if (constraints.basket && constraints.targetSchool) {
+    // Normalize course to BasketItem shape for consistent policy classification
+    const moduleId = constraints.moduleId || 'semester-drop';
+    const candidateItem = courseToBasketItem(course, moduleId);
+    
+    // Run dead-end detection with full transfer engine context
+    deadEndCheck = checkForDeadEnd(
+      course,
+      constraints.basket,
+      { target_school: constraints.targetSchool },
+      constraints.remainingModules
+    );
+    
+    if (deadEndCheck.isDeadEnd) {
+      const uiMessage = deadEndToUIMessage(deadEndCheck);
+      errors.push({
+        code: 'DEAD_END',
+        message: uiMessage.description,
+        details: {
+          invariantCode: uiMessage.invariantCode,
+          uiMessage,
+          deadEndCheck,
+        }
+      });
+    }
+  }
+
   return {
     valid: errors.length === 0,
     errors,
     warnings,
-    fixes
+    fixes,
+    deadEndCheck,
   };
 }

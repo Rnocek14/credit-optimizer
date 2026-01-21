@@ -1047,13 +1047,25 @@ export default function EduTreeV5Page() {
 
     const semesterId = String(over.id);
     
-    // Validate drop
+    // Validate drop with full transfer engine context
     const plan = usePlanStore.getState();
+    const basket = usePlanBasket.getState().items;
+    const constraints = usePlanBasket.getState().constraints;
+    const targetSchool = constraints.target_school || 'TESU';
+    
     const validation = validateSemesterDrop({
       course,
       semesterId,
       plan,
-      constraints: { termCap: 15, yearCap: 30, aceCap: 90 }
+      constraints: { 
+        termCap: 15, 
+        yearCap: 30, 
+        aceCap: 90,
+        // Transfer engine context for dead-end checking
+        targetSchool,
+        basket,
+        moduleId: course.moduleId || 'semester-drop',
+      }
     });
 
     if (!validation.valid) {
