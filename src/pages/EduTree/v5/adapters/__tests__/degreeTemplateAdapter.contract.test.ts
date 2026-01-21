@@ -411,8 +411,16 @@ describe('Pricing Determinism', () => {
     
     // Ensure we're testing an alt-credit option, not accidentally an institutional slot
     expect(option.isAltCredit).toBe(true);
-    // STUDYCOM default is per_course: $199
+    
+    // Full contract: normalization + classification + pricing + stable fields
     expect(option.providerCode).toBe('STUDYCOM');
+    expect(option.id).toBe('STUDYCOM-BUS-101');
+    expect(option.courseId).toBe('STUDYCOM-BUS-101');
+    expect(option.alt_source_code).toBe('STUDYCOM');
+    expect(option.alt_identifier).toBe('BUS-101');
+    expect(option.aceNccrs).toBe(true);
+    
+    // STUDYCOM default is per_course: $199
     expect(option.cost_usd).toBe(199);
   });
 });
