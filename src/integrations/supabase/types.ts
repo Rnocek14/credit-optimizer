@@ -1492,6 +1492,87 @@ export type Database = {
           },
         ]
       }
+      canonical_enrichment_evidence: {
+        Row: {
+          canonical_code: string
+          content_length: number | null
+          content_sha256: string | null
+          created_at: string
+          extractor_version: string
+          fetch_url: string
+          fetched_at: string
+          field_written: string | null
+          final_url: string | null
+          http_status: number | null
+          id: string
+          parse_result: Json | null
+          provider_code: string
+          queue_id: string | null
+          raw_text: string | null
+          source_course_id: string
+          validation: Json | null
+          validation_passed: boolean | null
+          value_written: string | null
+        }
+        Insert: {
+          canonical_code: string
+          content_length?: number | null
+          content_sha256?: string | null
+          created_at?: string
+          extractor_version?: string
+          fetch_url: string
+          fetched_at?: string
+          field_written?: string | null
+          final_url?: string | null
+          http_status?: number | null
+          id?: string
+          parse_result?: Json | null
+          provider_code: string
+          queue_id?: string | null
+          raw_text?: string | null
+          source_course_id: string
+          validation?: Json | null
+          validation_passed?: boolean | null
+          value_written?: string | null
+        }
+        Update: {
+          canonical_code?: string
+          content_length?: number | null
+          content_sha256?: string | null
+          created_at?: string
+          extractor_version?: string
+          fetch_url?: string
+          fetched_at?: string
+          field_written?: string | null
+          final_url?: string | null
+          http_status?: number | null
+          id?: string
+          parse_result?: Json | null
+          provider_code?: string
+          queue_id?: string | null
+          raw_text?: string | null
+          source_course_id?: string
+          validation?: Json | null
+          validation_passed?: boolean | null
+          value_written?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "canonical_enrichment_evidence_queue_id_fkey"
+            columns: ["queue_id"]
+            isOneToOne: false
+            referencedRelation: "canonical_enrichment_queue"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "canonical_enrichment_evidence_queue_id_fkey"
+            columns: ["queue_id"]
+            isOneToOne: false
+            referencedRelation: "enrichment_stuck"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       canonical_enrichment_queue: {
         Row: {
           attempts: number
@@ -1501,7 +1582,12 @@ export type Database = {
           enrichment_status: string
           id: string
           last_attempt_at: string | null
+          last_error: string | null
+          last_error_code: string | null
+          locked_at: string | null
+          locked_by: string | null
           missing_fields: string[]
+          next_attempt_at: string | null
           notes: string | null
           priority: number
           provider_code: string
@@ -1516,7 +1602,12 @@ export type Database = {
           enrichment_status?: string
           id?: string
           last_attempt_at?: string | null
+          last_error?: string | null
+          last_error_code?: string | null
+          locked_at?: string | null
+          locked_by?: string | null
           missing_fields?: string[]
+          next_attempt_at?: string | null
           notes?: string | null
           priority?: number
           provider_code: string
@@ -1531,7 +1622,12 @@ export type Database = {
           enrichment_status?: string
           id?: string
           last_attempt_at?: string | null
+          last_error?: string | null
+          last_error_code?: string | null
+          locked_at?: string | null
+          locked_by?: string | null
           missing_fields?: string[]
+          next_attempt_at?: string | null
           notes?: string | null
           priority?: number
           provider_code?: string
@@ -9955,44 +10051,53 @@ export type Database = {
       provider_registry: {
         Row: {
           active: boolean
+          allowed_domains: string[] | null
           canonical_url_mode: string | null
           canonical_url_pattern: string | null
           created_at: string
           display_name: string
           enrichment_strategy: string
+          forbidden_title_patterns: string[] | null
           is_alt_credit_provider: boolean
           is_institution: boolean
           notes: string | null
           provider_code_norm: string
           root_url: string
+          title_min_length: number | null
           updated_at: string
         }
         Insert: {
           active?: boolean
+          allowed_domains?: string[] | null
           canonical_url_mode?: string | null
           canonical_url_pattern?: string | null
           created_at?: string
           display_name: string
           enrichment_strategy?: string
+          forbidden_title_patterns?: string[] | null
           is_alt_credit_provider?: boolean
           is_institution?: boolean
           notes?: string | null
           provider_code_norm: string
           root_url: string
+          title_min_length?: number | null
           updated_at?: string
         }
         Update: {
           active?: boolean
+          allowed_domains?: string[] | null
           canonical_url_mode?: string | null
           canonical_url_pattern?: string | null
           created_at?: string
           display_name?: string
           enrichment_strategy?: string
+          forbidden_title_patterns?: string[] | null
           is_alt_credit_provider?: boolean
           is_institution?: boolean
           notes?: string | null
           provider_code_norm?: string
           root_url?: string
+          title_min_length?: number | null
           updated_at?: string
         }
         Relationships: []
@@ -14968,12 +15073,59 @@ export type Database = {
         }
         Relationships: []
       }
+      enrichment_evidence_freshness: {
+        Row: {
+          evidence_rows: number | null
+          first_fetch: string | null
+          last_fetch: string | null
+          provider_code: string | null
+          validated_rows: number | null
+          writes_made: number | null
+        }
+        Relationships: []
+      }
       enrichment_queue_summary: {
         Row: {
           avg_attempts: number | null
           count: number | null
           provider: string | null
           status: string | null
+        }
+        Relationships: []
+      }
+      enrichment_stuck: {
+        Row: {
+          attempts: number | null
+          canonical_code: string | null
+          created_at: string | null
+          enrichment_status: string | null
+          id: string | null
+          last_attempt_at: string | null
+          last_error_code: string | null
+          next_attempt_at: string | null
+          provider_code: string | null
+        }
+        Insert: {
+          attempts?: number | null
+          canonical_code?: string | null
+          created_at?: string | null
+          enrichment_status?: string | null
+          id?: string | null
+          last_attempt_at?: string | null
+          last_error_code?: string | null
+          next_attempt_at?: string | null
+          provider_code?: string | null
+        }
+        Update: {
+          attempts?: number | null
+          canonical_code?: string | null
+          created_at?: string | null
+          enrichment_status?: string | null
+          id?: string | null
+          last_attempt_at?: string | null
+          last_error_code?: string | null
+          next_attempt_at?: string | null
+          provider_code?: string | null
         }
         Relationships: []
       }
@@ -15759,6 +15911,17 @@ export type Database = {
         Returns: undefined
       }
       check_template_generation_health: { Args: never; Returns: Json }
+      claim_enrichment_jobs: {
+        Args: { p_batch_size?: number; p_worker_id?: string }
+        Returns: {
+          attempts: number
+          canonical_code: string
+          missing_fields: string[]
+          provider_code: string
+          queue_id: string
+          source_course_id: string
+        }[]
+      }
       claim_template_generation_jobs:
         | {
             Args: {
@@ -15842,6 +16005,15 @@ export type Database = {
           user_id_param: string
         }
         Returns: string
+      }
+      complete_enrichment_job: {
+        Args: {
+          p_error_code?: string
+          p_error_message?: string
+          p_queue_id: string
+          p_success: boolean
+        }
+        Returns: undefined
       }
       compute_baseline_from_pricing: {
         Args: {
