@@ -317,8 +317,9 @@ function convertSlotOptionToMarketplaceOption(
         costUsd = pricing.perCourseCost || 199;
       } else if (pricing.model === 'subscription') {
         // Subscription: monthly fee / typical courses per month
+        // Guard: ensure coursesPerMonth >= 1 to prevent crazy prices when avgCreditsPerMonth < credits
         const avgCreditsPerMonth = pricing.avgCreditsPerMonth || 3;
-        const coursesPerMonth = avgCreditsPerMonth / credits;
+        const coursesPerMonth = Math.max(1, avgCreditsPerMonth / credits);
         costUsd = Math.round((pricing.monthlySubscription || 99) / coursesPerMonth);
       } else if (pricing.effectiveCostPerCredit) {
         costUsd = credits * pricing.effectiveCostPerCredit;
