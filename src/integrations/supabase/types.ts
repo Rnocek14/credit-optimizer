@@ -15370,6 +15370,7 @@ export type Database = {
           blocked_last_24h: number | null
           canonical_url_mode: string | null
           complete_evidence: number | null
+          enrichment_activity: string | null
           enrichment_strategy: string | null
           evidence_pct: number | null
           evidence_rows: number | null
