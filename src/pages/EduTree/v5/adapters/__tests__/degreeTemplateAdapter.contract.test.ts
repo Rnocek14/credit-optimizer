@@ -136,22 +136,30 @@ function createTestPricingMap(): Map<string, ProviderPricingData> {
 // Helpers
 // ============================================================================
 
+/** Type alias for adapted template output - stays aligned if adapter evolves */
+type AdaptedTemplate = ReturnType<typeof adaptDegreeTemplate>;
+
 /**
  * Get the first option from the first module in year 1
  * (This is the slot's preferred option after adaptation)
+ * Resilient to courseId vs id format drift
  */
-function getFirstOption(result: ReturnType<typeof adaptDegreeTemplate>) {
+function getFirstOption(result: AdaptedTemplate) {
   const year1 = result.yearTemplates[0];
   const firstModule = year1.moduleTemplates[0];
-  // The options array contains all options, with recommendedCourseId pointing to preferred
   const recommendedId = firstModule.recommendedCourseId;
-  return firstModule.options.find(o => o.courseId === recommendedId) ?? firstModule.options[0];
+  // Check both courseId and id to handle potential format drift
+  const preferred =
+    firstModule.options.find(o => o.courseId === recommendedId) ??
+    firstModule.options.find(o => o.id === recommendedId) ??
+    firstModule.options[0];
+  return preferred;
 }
 
 /**
  * Get all options from the first module in year 1
  */
-function getFirstModuleOptions(result: ReturnType<typeof adaptDegreeTemplate>) {
+function getFirstModuleOptions(result: AdaptedTemplate) {
   const year1 = result.yearTemplates[0];
   return year1.moduleTemplates[0].options;
 }
@@ -159,7 +167,7 @@ function getFirstModuleOptions(result: ReturnType<typeof adaptDegreeTemplate>) {
 /**
  * Get options from the second module in year 1 (institutional course slot)
  */
-function getSecondModuleOptions(result: ReturnType<typeof adaptDegreeTemplate>) {
+function getSecondModuleOptions(result: AdaptedTemplate) {
   const year1 = result.yearTemplates[0];
   return year1.moduleTemplates[1]?.options ?? [];
 }
@@ -341,7 +349,7 @@ describe('Pricing Determinism', () => {
     const equivalencies = createTestEquivalencies();
     
     // Create pricing where avgCreditsPerMonth < course credits
-    const pricingMap = new Map([
+    const providerPricingMap = new Map([
       ['SOPHIA', { 
         providerCode: 'SOPHIA', 
         model: 'subscription' as const, 
@@ -358,7 +366,9 @@ describe('Pricing Determinism', () => {
       identifier: 'TEST-101',
     };
     
-    const result = adaptDegreeTemplate(sophiaTemplate, equivalencies, pricingMap);
+    // Explicitly pass undefined for institutionalPricing (4th arg) to document arg order
+    // Signature: adaptDegreeTemplate(dbTemplate, equivalencies, providerPricing?, institutionalPricing?)
+    const result = adaptDegreeTemplate(sophiaTemplate, equivalencies, providerPricingMap, undefined);
     const option = getFirstOption(result);
     
     // With guard: coursesPerMonth = max(1, 2/3) = 1, so cost = 99/1 = 99
@@ -371,7 +381,7 @@ describe('Pricing Determinism', () => {
     const equivalencies = createTestEquivalencies();
     
     // Override STUDYCOM pricing to something different from default
-    const customPricingMap = new Map([
+    const providerPricingMap = new Map([
       ['STUDYCOM', { 
         providerCode: 'STUDYCOM', 
         model: 'per_course' as const, 
@@ -379,10 +389,22 @@ describe('Pricing Determinism', () => {
       }],
     ]);
     
-    const result = adaptDegreeTemplate(template, equivalencies, customPricingMap);
+    // Explicitly pass undefined for institutionalPricing to document arg order
+    const result = adaptDegreeTemplate(template, equivalencies, providerPricingMap, undefined);
     const option = getFirstOption(result);
     
     // Should use map value, not default
     expect(option.cost_usd).toBe(149);
+  });
+  
+  it('uses default pricing when no map provided', () => {
+    const template = createTestTemplate();
+    // No pricing maps - should use DEFAULT_PROVIDER_PRICING fallback
+    const result = adaptDegreeTemplate(template, undefined, undefined, undefined);
+    const option = getFirstOption(result);
+    
+    // STUDYCOM default is per_course: $199
+    expect(option.cost_usd).toBe(199);
+    expect(option.providerCode).toBe('STUDYCOM');
   });
 });
