@@ -36,6 +36,9 @@ export interface MarketplaceOption {
   proctored?: boolean; // Proctored assessment
   providerRep?: number; // Provider reputation score
   
+  // Alt-credit classification (for policy cap enforcement)
+  isAltCredit?: boolean; // Explicit alt-credit flag for cap tracking
+  
   // Phase 1b: Scoring metadata (added by scoring engine)
   score?: number;
   scoreBreakdown?: {

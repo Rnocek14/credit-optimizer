@@ -1,35 +1,15 @@
 /**
  * Phase 1c: Convenience re-exports for engine and test files
- * Provides typed interfaces that match usePlanBasket state shape
+ * 
+ * CANONICAL SOURCE OF TRUTH: usePlanBasket.ts defines BasketItem
+ * This file re-exports to prevent type drift.
  */
 
-import type { ProviderType } from './v5';
+// Re-export canonical BasketItem from state (SINGLE SOURCE OF TRUTH)
+export type { BasketItem } from '../state/usePlanBasket';
 
-export interface BasketItem {
-  moduleId: string;
-  requirementArea?: string; // NEW: For cross-compatibility between structured and template-based IDs
-  courseId: string;
-  title?: string;
-  credits: number;
-  cost_usd: number | null;
-  duration_weeks: number | null;
-  workload_weekly_hours: number;
-  cri_score: number;
-  status: 'pinned' | 'auto-filled' | 'prereq';
-  providerType?: ProviderType;
-  
-  // Structured provenance (replaces autoFillReason string parsing)
-  source?: {
-    type: 'template' | 'manual' | 'prereq';
-    templateId?: string;
-    templateVersion?: number;
-    templateLabel?: string; // "Cheapest", "Fastest", etc.
-  };
-  
-  /** @deprecated Keep for backward compatibility, but use source instead */
-  autoFillReason?: string;
-}
-
+// Re-export Constraints - kept here for backward compatibility
+// TODO: Consider moving to usePlanBasket.ts for full consolidation
 export interface Constraints {
   max_budget_usd?: number;
   target_graduation_date?: Date;
