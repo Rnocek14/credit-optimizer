@@ -1508,6 +1508,13 @@ export type Database = {
             foreignKeyName: "canonical_auto_create_log_source_course_id_fkey"
             columns: ["source_course_id"]
             isOneToOne: false
+            referencedRelation: "invariant_stored_provider_missing_urls"
+            referencedColumns: ["course_id"]
+          },
+          {
+            foreignKeyName: "canonical_auto_create_log_source_course_id_fkey"
+            columns: ["source_course_id"]
+            isOneToOne: false
             referencedRelation: "source_courses"
             referencedColumns: ["id"]
           },
@@ -1682,6 +1689,13 @@ export type Database = {
             columns: ["source_course_id"]
             isOneToOne: true
             referencedRelation: "invariant_pattern_url_mismatch"
+            referencedColumns: ["course_id"]
+          },
+          {
+            foreignKeyName: "canonical_enrichment_queue_source_course_id_fkey"
+            columns: ["source_course_id"]
+            isOneToOne: true
+            referencedRelation: "invariant_stored_provider_missing_urls"
             referencedColumns: ["course_id"]
           },
           {
@@ -4299,6 +4313,13 @@ export type Database = {
             columns: ["source_course_id"]
             isOneToOne: false
             referencedRelation: "invariant_pattern_url_mismatch"
+            referencedColumns: ["course_id"]
+          },
+          {
+            foreignKeyName: "credit_transfer_rules_source_course_id_fkey"
+            columns: ["source_course_id"]
+            isOneToOne: false
+            referencedRelation: "invariant_stored_provider_missing_urls"
             referencedColumns: ["course_id"]
           },
           {
@@ -11670,6 +11691,13 @@ export type Database = {
             foreignKeyName: "source_course_aliases_source_course_id_fkey"
             columns: ["source_course_id"]
             isOneToOne: false
+            referencedRelation: "invariant_stored_provider_missing_urls"
+            referencedColumns: ["course_id"]
+          },
+          {
+            foreignKeyName: "source_course_aliases_source_course_id_fkey"
+            columns: ["source_course_id"]
+            isOneToOne: false
             referencedRelation: "source_courses"
             referencedColumns: ["id"]
           },
@@ -15240,6 +15268,13 @@ export type Database = {
             foreignKeyName: "canonical_enrichment_queue_source_course_id_fkey"
             columns: ["source_course_id"]
             isOneToOne: true
+            referencedRelation: "invariant_stored_provider_missing_urls"
+            referencedColumns: ["course_id"]
+          },
+          {
+            foreignKeyName: "canonical_enrichment_queue_source_course_id_fkey"
+            columns: ["source_course_id"]
+            isOneToOne: true
             referencedRelation: "source_courses"
             referencedColumns: ["id"]
           },
@@ -15534,6 +15569,16 @@ export type Database = {
           resolved_source_course_id: string | null
           rule_provider_norm: string | null
           source_course_code: string | null
+        }
+        Relationships: []
+      }
+      invariant_stored_provider_missing_urls: {
+        Row: {
+          actual_url: string | null
+          course_id: string | null
+          provider_root: string | null
+          src_code: string | null
+          src_provider: string | null
         }
         Relationships: []
       }
@@ -15902,6 +15947,13 @@ export type Database = {
             columns: ["source_course_id"]
             isOneToOne: false
             referencedRelation: "invariant_pattern_url_mismatch"
+            referencedColumns: ["course_id"]
+          },
+          {
+            foreignKeyName: "credit_transfer_rules_source_course_id_fkey"
+            columns: ["source_course_id"]
+            isOneToOne: false
+            referencedRelation: "invariant_stored_provider_missing_urls"
             referencedColumns: ["course_id"]
           },
           {
