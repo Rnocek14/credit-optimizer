@@ -4153,6 +4153,20 @@ export type Database = {
             foreignKeyName: "credit_transfer_rules_superseded_by_fkey"
             columns: ["superseded_by"]
             isOneToOne: false
+            referencedRelation: "invariant_no_empty_norm_codes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "credit_transfer_rules_superseded_by_fkey"
+            columns: ["superseded_by"]
+            isOneToOne: false
+            referencedRelation: "invariant_policy_rules_never_resolve"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "credit_transfer_rules_superseded_by_fkey"
+            columns: ["superseded_by"]
+            isOneToOne: false
             referencedRelation: "transfer_rule_freshness"
             referencedColumns: ["id"]
           },
@@ -13018,6 +13032,20 @@ export type Database = {
             foreignKeyName: "transfer_evidence_rule_id_fkey"
             columns: ["rule_id"]
             isOneToOne: false
+            referencedRelation: "invariant_no_empty_norm_codes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transfer_evidence_rule_id_fkey"
+            columns: ["rule_id"]
+            isOneToOne: false
+            referencedRelation: "invariant_policy_rules_never_resolve"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transfer_evidence_rule_id_fkey"
+            columns: ["rule_id"]
+            isOneToOne: false
             referencedRelation: "transfer_rule_freshness"
             referencedColumns: ["id"]
           },
@@ -15043,6 +15071,26 @@ export type Database = {
           },
         ]
       }
+      invariant_no_empty_norm_codes: {
+        Row: {
+          id: string | null
+          rule_course_code_norm: string | null
+          rule_provider_norm: string | null
+          source_course_code: string | null
+        }
+        Relationships: []
+      }
+      invariant_policy_rules_never_resolve: {
+        Row: {
+          canonical_resolution_status: string | null
+          effective_rule_scope: string | null
+          id: string | null
+          resolved_source_course_id: string | null
+          rule_provider_norm: string | null
+          source_course_code: string | null
+        }
+        Relationships: []
+      }
       program_pipeline_health_v: {
         Row: {
           bachelor_programs: number | null
@@ -15166,6 +15214,16 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      system_invariant_health: {
+        Row: {
+          empty_norm_violations: number | null
+          overall_status: string | null
+          policy_resolution_violations: number | null
+          registry_gap_count: number | null
+          unmapped_course_rules: number | null
+        }
+        Relationships: []
       }
       template_cost_latest: {
         Row: {
@@ -15375,6 +15433,20 @@ export type Database = {
             foreignKeyName: "credit_transfer_rules_superseded_by_fkey"
             columns: ["superseded_by"]
             isOneToOne: false
+            referencedRelation: "invariant_no_empty_norm_codes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "credit_transfer_rules_superseded_by_fkey"
+            columns: ["superseded_by"]
+            isOneToOne: false
+            referencedRelation: "invariant_policy_rules_never_resolve"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "credit_transfer_rules_superseded_by_fkey"
+            columns: ["superseded_by"]
+            isOneToOne: false
             referencedRelation: "transfer_rule_freshness"
             referencedColumns: ["id"]
           },
@@ -15452,6 +15524,20 @@ export type Database = {
             columns: ["superseded_by"]
             isOneToOne: false
             referencedRelation: "credit_transfer_rules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "credit_transfer_rules_superseded_by_fkey"
+            columns: ["superseded_by"]
+            isOneToOne: false
+            referencedRelation: "invariant_no_empty_norm_codes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "credit_transfer_rules_superseded_by_fkey"
+            columns: ["superseded_by"]
+            isOneToOne: false
+            referencedRelation: "invariant_policy_rules_never_resolve"
             referencedColumns: ["id"]
           },
           {
