@@ -118,5 +118,9 @@ verify_jwt = false
 [functions.get-bulk-rerun-job]
 verify_jwt = false
 
+# Canonical Enrichment Worker (service_role only via code-level auth)
+[functions.canonical-enrichment-worker]
+verify_jwt = false
+
 # promote-policy-pack uses default verify_jwt = true
 # Authorization is handled inside the function via role checks
