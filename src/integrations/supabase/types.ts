@@ -14893,6 +14893,18 @@ export type Database = {
         }
         Relationships: []
       }
+      provider_resolution_stats: {
+        Row: {
+          computed_at: string | null
+          course_resolution_pct: number | null
+          course_resolved: number | null
+          course_total: number | null
+          course_unmapped: number | null
+          policy_total: number | null
+          provider: string | null
+        }
+        Relationships: []
+      }
       requirement_option_counts: {
         Row: {
           has_ace_credit: boolean | null
