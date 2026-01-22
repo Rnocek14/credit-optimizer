@@ -98,7 +98,9 @@ export default function PolicyPackPromotion() {
       
       const map: Record<string, V1ScopeStatus> = {};
       (data ?? []).forEach((row) => {
-        map[row.institution_code] = row as V1ScopeStatus;
+        // Normalize key to uppercase for consistent lookups
+        const key = row.institution_code.toUpperCase().trim();
+        map[key] = row as V1ScopeStatus;
       });
       return map;
     },
@@ -122,6 +124,7 @@ export default function PolicyPackPromotion() {
       toast.success(`${institutionCode} enabled for V1 scope`);
       await refreshV1ScopeCache();
       queryClient.invalidateQueries({ queryKey: ['institution-v1-scope'] });
+      queryClient.invalidateQueries({ queryKey: ['policy-pack-promotion-candidates'] });
     },
     onError: (error: Error) => {
       toast.error(`Failed to enable V1: ${error.message}`);
@@ -143,6 +146,7 @@ export default function PolicyPackPromotion() {
       toast.success(`${institutionCode} removed from V1 scope`);
       await refreshV1ScopeCache();
       queryClient.invalidateQueries({ queryKey: ['institution-v1-scope'] });
+      queryClient.invalidateQueries({ queryKey: ['policy-pack-promotion-candidates'] });
     },
     onError: (error: Error) => {
       toast.error(`Failed to disable V1: ${error.message}`);
@@ -349,43 +353,64 @@ export default function PolicyPackPromotion() {
                           Active
                         </Badge>
                         
-                        {/* V1 Scope Toggle */}
-                        {v1ScopeMap[candidate.institution] ? (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="text-amber-600 border-amber-300 hover:bg-amber-50"
-                            onClick={() => handleDisableV1(candidate.institution)}
-                            disabled={disableV1Mutation.isPending}
-                          >
-                            {disableV1Mutation.isPending ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <>
-                                <ZapOff className="h-4 w-4 mr-1" />
-                                V1 Enabled
-                              </>
-                            )}
-                          </Button>
-                        ) : (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="text-primary border-primary/30 hover:bg-primary/10"
-                            onClick={() => handleEnableV1(candidate)}
-                            disabled={enableV1Mutation.isPending || (candidate.confidence_score ?? 0) < 50}
-                            title={(candidate.confidence_score ?? 0) < 50 ? 'Evidence coverage must be ≥50%' : 'Enable V1 scope'}
-                          >
-                            {enableV1Mutation.isPending ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <>
-                                <Zap className="h-4 w-4 mr-1" />
-                                Enable V1
-                              </>
-                            )}
-                          </Button>
-                        )}
+                        {/* V1 Scope Toggle - normalize key for lookup */}
+                        {(() => {
+                          const v1Key = candidate.institution.toUpperCase().trim();
+                          const v1Status = v1ScopeMap[v1Key];
+                          
+                          if (v1Status) {
+                            const enabledDate = v1Status.enabled_at 
+                              ? new Date(v1Status.enabled_at).toLocaleDateString()
+                              : null;
+                            
+                            return (
+                              <div className="flex items-center gap-2">
+                                <div className="text-right text-xs">
+                                  {enabledDate && <div className="text-green-600">Enabled {enabledDate}</div>}
+                                  {v1Status.evidence_coverage_pct != null && (
+                                    <div className="text-muted-foreground">Evidence: {v1Status.evidence_coverage_pct}%</div>
+                                  )}
+                                </div>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="text-amber-600 border-amber-300 hover:bg-amber-50"
+                                  onClick={() => handleDisableV1(candidate.institution)}
+                                  disabled={disableV1Mutation.isPending}
+                                >
+                                  {disableV1Mutation.isPending ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                  ) : (
+                                    <>
+                                      <ZapOff className="h-4 w-4 mr-1" />
+                                      V1 Enabled
+                                    </>
+                                  )}
+                                </Button>
+                              </div>
+                            );
+                          }
+                          
+                          return (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="text-primary border-primary/30 hover:bg-primary/10"
+                              onClick={() => handleEnableV1(candidate)}
+                              disabled={enableV1Mutation.isPending || (candidate.confidence_score ?? 0) < 50}
+                              title={(candidate.confidence_score ?? 0) < 50 ? 'Confidence must be ≥50%' : 'Enable V1 scope'}
+                            >
+                              {enableV1Mutation.isPending ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <>
+                                  <Zap className="h-4 w-4 mr-1" />
+                                  Enable V1
+                                </>
+                              )}
+                            </Button>
+                          );
+                        })()}
                       </div>
                     ) : candidate.is_promotable ? (
                       <Button
