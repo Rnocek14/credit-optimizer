@@ -100,6 +100,22 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Self-healing: reset any stuck policy refresh runs (>60 min)
+    let stuckRunsReset: Array<{ run_id: string; new_status: string; reason: string }> = [];
+    try {
+      const { data: resetResult, error: resetError } = await supabase
+        .rpc("reset_stuck_policy_runs", { p_stuck_minutes: 60 });
+      
+      if (resetError) {
+        console.error("Stuck runs reset error:", resetError.message);
+      } else if (resetResult && resetResult.length > 0) {
+        stuckRunsReset = resetResult;
+        console.log(`Reset ${resetResult.length} stuck policy run(s)`);
+      }
+    } catch (resetErr) {
+      console.error("Stuck runs reset failed:", resetErr);
+    }
+
     // Always fetch operational health dashboard
     const { data: health, error: healthError } = await supabase
       .from("operational_health_dashboard")
@@ -121,6 +137,7 @@ Deno.serve(async (req) => {
       queued_count: queuedCount,
       worker_http_status: workerHttpStatus,
       worker_result: workerResult,
+      stuck_runs_reset: stuckRunsReset.length > 0 ? stuckRunsReset : null,
       health: health ?? { error: healthError?.message },
       checked_at: checkedAt,
     });

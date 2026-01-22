@@ -16901,6 +16901,15 @@ export type Database = {
         Args: { p_block_id: string; p_plan_id: string }
         Returns: Json
       }
+      reset_stuck_policy_runs: {
+        Args: { p_stuck_minutes?: number }
+        Returns: {
+          new_status: string
+          old_status: string
+          reason: string
+          run_id: string
+        }[]
+      }
       resolve_policy_conflict: {
         Args: {
           p_chosen_value: Json
