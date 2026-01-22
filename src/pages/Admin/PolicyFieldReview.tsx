@@ -131,7 +131,8 @@ export default function PolicyFieldReview() {
   const [reviewerNotes, setReviewerNotes] = useState<string>('');
   const [showPromoteDialog, setShowPromoteDialog] = useState(false);
   const [showPendingOnly, setShowPendingOnly] = useState(() => {
-    const stored = localStorage.getItem('admin_policy_review_pending_only');
+    if (typeof window === 'undefined') return true;
+    const stored = window.localStorage.getItem('admin_policy_review_pending_only');
     return stored !== null ? stored === 'true' : true; // Default true if not set
   });
 
@@ -376,7 +377,10 @@ export default function PolicyFieldReview() {
         <div className="flex gap-2">
           <Button 
             variant="outline" 
-            onClick={() => queryClient.invalidateQueries({ queryKey: ['field-extractions', selectedInstitution] })} 
+            onClick={() => {
+              queryClient.invalidateQueries({ queryKey: ['field-extractions', selectedInstitution] });
+              queryClient.invalidateQueries({ queryKey: ['promotion-candidate', selectedInstitution] });
+            }} 
             disabled={loadingExtractions}
           >
             <RefreshCw className={`h-4 w-4 mr-2 ${loadingExtractions ? 'animate-spin' : ''}`} />
