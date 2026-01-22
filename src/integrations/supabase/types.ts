@@ -6177,6 +6177,7 @@ export type Database = {
           content_hash: string | null
           created_at: string | null
           edge_id: string | null
+          evidence_domain: string | null
           evidence_url: string
           id: string
           notes: string | null
@@ -6188,6 +6189,7 @@ export type Database = {
           content_hash?: string | null
           created_at?: string | null
           edge_id?: string | null
+          evidence_domain?: string | null
           evidence_url: string
           id?: string
           notes?: string | null
@@ -6199,6 +6201,7 @@ export type Database = {
           content_hash?: string | null
           created_at?: string | null
           edge_id?: string | null
+          evidence_domain?: string | null
           evidence_url?: string
           id?: string
           notes?: string | null
@@ -6230,6 +6233,12 @@ export type Database = {
           from_entity_type: Database["public"]["Enums"]["transfer_entity_type"]
           id: string
           max_credits_accepted: number | null
+          promoted_at: string | null
+          promoted_by: string | null
+          promoted_reason: string | null
+          superseded_at: string | null
+          superseded_by_edge_id: string | null
+          superseded_reason: string | null
           to_institution: string
           updated_at: string | null
           verification_status: Database["public"]["Enums"]["transfer_verification_status"]
@@ -6247,6 +6256,12 @@ export type Database = {
           from_entity_type: Database["public"]["Enums"]["transfer_entity_type"]
           id?: string
           max_credits_accepted?: number | null
+          promoted_at?: string | null
+          promoted_by?: string | null
+          promoted_reason?: string | null
+          superseded_at?: string | null
+          superseded_by_edge_id?: string | null
+          superseded_reason?: string | null
           to_institution: string
           updated_at?: string | null
           verification_status?: Database["public"]["Enums"]["transfer_verification_status"]
@@ -6264,11 +6279,25 @@ export type Database = {
           from_entity_type?: Database["public"]["Enums"]["transfer_entity_type"]
           id?: string
           max_credits_accepted?: number | null
+          promoted_at?: string | null
+          promoted_by?: string | null
+          promoted_reason?: string | null
+          superseded_at?: string | null
+          superseded_by_edge_id?: string | null
+          superseded_reason?: string | null
           to_institution?: string
           updated_at?: string | null
           verification_status?: Database["public"]["Enums"]["transfer_verification_status"]
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "institution_transfer_edges_superseded_fk"
+            columns: ["superseded_by_edge_id"]
+            isOneToOne: false
+            referencedRelation: "institution_transfer_edges"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       institution_v1_scope: {
         Row: {
@@ -13614,6 +13643,27 @@ export type Database = {
           },
         ]
       }
+      transfer_evidence_domain_allowlist: {
+        Row: {
+          created_at: string
+          domain: string
+          is_allowed: boolean
+          notes: string | null
+        }
+        Insert: {
+          created_at?: string
+          domain: string
+          is_allowed?: boolean
+          notes?: string | null
+        }
+        Update: {
+          created_at?: string
+          domain?: string
+          is_allowed?: boolean
+          notes?: string | null
+        }
+        Relationships: []
+      }
       transfer_outcomes: {
         Row: {
           catalog_year: string | null
@@ -17070,6 +17120,18 @@ export type Database = {
       }
       predict_engagement_decline: {
         Args: { target_user_id: string }
+        Returns: Json
+      }
+      promote_eligible_edges: {
+        Args: {
+          p_dry_run?: boolean
+          p_limit?: number
+          p_min_confidence?: number
+          p_min_evidence_count?: number
+          p_promoted_by?: string
+          p_reason?: string
+          p_require_allowlisted_domain?: boolean
+        }
         Returns: Json
       }
       reap_stale_processing_jobs: {
