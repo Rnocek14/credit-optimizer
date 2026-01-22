@@ -99,6 +99,9 @@ Deno.serve(async (req) => {
 
     console.log(`[policy-change-scan] Starting run ${scanRunId}: institution=${institution || 'all'}, limit=${limit}, stale_days=${stale_days}, dry_run=${dry_run}, cooldown_hours=${cooldown_hours}`);
 
+    // Track scan start time for timing validation
+    const scanStartedAt = new Date();
+
     // Calculate stale threshold
     const staleThreshold = new Date();
     staleThreshold.setDate(staleThreshold.getDate() - stale_days);
@@ -246,14 +249,21 @@ Deno.serve(async (req) => {
 
         // Determine hash_after: fetch template row if content changed to get updated hash
         // transfer-scraper-crawl doesn't return new_hash, so we need to query it
+        // Validate timing to ensure we're reading the updated value, not stale data
         let hashAfter: string | null = null;
         if (isChange || isFirstHash) {
           const { data: updatedTemplate } = await supabase
             .from('scrape_url_templates')
-            .select('last_hash')
+            .select('last_hash, last_scraped_at')
             .eq('id', template.id)
             .maybeSingle();
-          hashAfter = updatedTemplate?.last_hash ?? null;
+          // Only trust the hash if it was updated during/after this scan started
+          if (updatedTemplate?.last_scraped_at && new Date(updatedTemplate.last_scraped_at) >= scanStartedAt) {
+            hashAfter = updatedTemplate.last_hash;
+          } else {
+            console.warn(`[policy-change-scan] hash_after not yet updated for template ${template.id}, last_scraped_at=${updatedTemplate?.last_scraped_at}`);
+            hashAfter = null;
+          }
         }
 
         // Initial skip_reason based on crawl result
@@ -419,10 +429,11 @@ Deno.serve(async (req) => {
     }
 
     // Write audit records in chunks to prevent single-row failures from nuking everything
+    let totalWritten = 0;
+    let totalFailed = 0;
+    
     if (auditRecords.length > 0) {
       const CHUNK_SIZE = 100;
-      let totalWritten = 0;
-      let totalFailed = 0;
 
       for (let i = 0; i < auditRecords.length; i += CHUNK_SIZE) {
         const chunk = auditRecords.slice(i, i + CHUNK_SIZE);
@@ -469,7 +480,8 @@ Deno.serve(async (req) => {
       skipped_active: skippedActive,
       skipped_cooldown: skippedCooldown,
       cooldown_hours,
-      audit_records_written: auditRecords.length,
+      audit_records_written: totalWritten,
+      audit_records_failed: totalFailed,
       scan_results: scanResults.slice(0, 20), // Limit results in response
     };
 
