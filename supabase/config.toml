@@ -36,6 +36,9 @@ verify_jwt = false
 [functions.policy-refresh-finalize]
 verify_jwt = false
 
+[functions.policy-change-scan]
+verify_jwt = false
+
 [functions.firecrawl-test]
 verify_jwt = false
 
