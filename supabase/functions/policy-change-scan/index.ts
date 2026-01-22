@@ -33,6 +33,17 @@ interface ScanRequest {
   cooldown_hours?: number;
 }
 
+interface CrawlResponse {
+  success: boolean;
+  content_changed?: boolean;
+  first_hash?: boolean;
+  old_hash_present?: boolean;
+  http_status?: number;
+  content_length?: number;
+  extracted_text_length?: number;
+  error?: string;
+}
+
 interface AuditRecord {
   template_id: string;
   institution_code: string;
@@ -51,19 +62,32 @@ interface AuditRecord {
   task_id?: string;
 }
 
+// Skip reason precedence (highest to lowest priority)
+type SkipReason = 
+  | 'crawl_failed' 
+  | 'error' 
+  | 'first_hash' 
+  | 'no_change' 
+  | 'active_task' 
+  | 'cooldown' 
+  | 'dry_run' 
+  | 'trigger_failed';
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
-  const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
-  const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
-  const supabase = createClient(supabaseUrl, serviceRoleKey);
-
-  // Generate a unique scan run ID for correlating audit records
-  const scanRunId = crypto.randomUUID();
+  // Initialize scanRunId inside handler for safety
+  let scanRunId = '';
 
   try {
+    scanRunId = crypto.randomUUID();
+
+    const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
+    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+    const supabase = createClient(supabaseUrl, serviceRoleKey);
+
     const body: ScanRequest = await req.json().catch(() => ({}));
     const {
       institution,
@@ -159,7 +183,6 @@ Deno.serve(async (req) => {
         console.log(`[policy-change-scan] Crawling: ${template.url}`);
 
         // Call transfer-scraper-crawl with template_id for hash comparison
-        // Include both Authorization and apikey headers for reliability
         const crawlResponse = await fetch(`${supabaseUrl}/functions/v1/transfer-scraper-crawl`, {
           method: 'POST',
           headers: {
@@ -186,7 +209,6 @@ Deno.serve(async (req) => {
             content_changed: false,
             error: errorText,
           });
-          // Still record audit for failed crawl
           auditRecords.push({
             template_id: template.id,
             institution_code: template.institution_code,
@@ -202,7 +224,7 @@ Deno.serve(async (req) => {
           continue;
         }
 
-        const crawlData = await crawlResponse.json();
+        const crawlData: CrawlResponse = await crawlResponse.json();
 
         // Check if content changed (first_hash means new template, don't trigger)
         const isFirstHash = crawlData.first_hash === true;
@@ -222,20 +244,39 @@ Deno.serve(async (req) => {
           first_hash: isFirstHash,
         });
 
-        // Build audit record (trigger info will be filled in later)
+        // Determine hash_after: fetch template row if content changed to get updated hash
+        // transfer-scraper-crawl doesn't return new_hash, so we need to query it
+        let hashAfter: string | null = null;
+        if (isChange || isFirstHash) {
+          const { data: updatedTemplate } = await supabase
+            .from('scrape_url_templates')
+            .select('last_hash')
+            .eq('id', template.id)
+            .maybeSingle();
+          hashAfter = updatedTemplate?.last_hash ?? null;
+        }
+
+        // Initial skip_reason based on crawl result
+        let skipReason: SkipReason | undefined;
+        if (isFirstHash) {
+          skipReason = 'first_hash';
+        } else if (!isChange) {
+          skipReason = 'no_change';
+        }
+
         auditRecords.push({
           template_id: template.id,
           institution_code: template.institution_code,
           url: template.url,
           hash_before: template.last_hash,
-          hash_after: crawlData.new_hash || crawlData.content_hash || null,
+          hash_after: hashAfter,
           content_changed: isChange,
           first_hash: isFirstHash,
           scan_run_id: scanRunId,
           http_status: crawlData.http_status,
-          content_length: crawlData.content_length,
+          content_length: crawlData.content_length || crawlData.extracted_text_length,
           trigger_attempted: false,
-          skip_reason: isFirstHash ? 'first_hash' : (isChange ? undefined : 'no_change'),
+          skip_reason: skipReason,
         });
 
         // Delay between crawls to avoid rate limiting (750ms for safety)
@@ -277,7 +318,6 @@ Deno.serve(async (req) => {
     // Debounce check: Only trigger if no active refresh for these institutions
     if (changedList.length > 0 && !dry_run) {
       // Check 1: Existing running/queued tasks (active refreshes)
-      // Note: actual statuses are 'queued', 'running', 'complete', 'blocked', 'failed'
       const { data: existingTasks } = await supabase
         .from('policy_refresh_tasks')
         .select('institution')
@@ -310,6 +350,7 @@ Deno.serve(async (req) => {
       triggeredInstitutions = toTrigger;
 
       // Update audit records with skip reasons for debounced institutions
+      // Use precedence: keep existing skip_reason if already set (crawl_failed, error, first_hash, no_change)
       for (const record of auditRecords) {
         if (record.content_changed && !record.skip_reason) {
           if (alreadyQueued.has(record.institution_code)) {
@@ -343,13 +384,13 @@ Deno.serve(async (req) => {
           batchRunId = refreshData.run_id || null;
           console.log(`[policy-change-scan] Successfully triggered refresh for ${toTrigger.length} institutions, run_id=${batchRunId}`);
           
-          // Update audit records for triggered institutions
+          // Update audit records for triggered institutions - clear skip_reason
           for (const record of auditRecords) {
             if (toTrigger.includes(record.institution_code) && record.content_changed) {
               record.trigger_attempted = true;
               record.trigger_succeeded = true;
               record.batch_run_id = batchRunId || undefined;
-              record.skip_reason = undefined;
+              record.skip_reason = undefined; // Triggered successfully, no skip
             }
           }
         } else {
@@ -369,7 +410,7 @@ Deno.serve(async (req) => {
         console.log(`[policy-change-scan] All changed institutions skipped (active: ${skippedActive.length}, cooldown: ${skippedCooldown.length})`);
       }
     } else if (dry_run && changedList.length > 0) {
-      // Mark dry run in audit records
+      // Mark dry run in audit records - only if not already skipped
       for (const record of auditRecords) {
         if (record.content_changed && !record.skip_reason) {
           record.skip_reason = 'dry_run';
@@ -377,32 +418,42 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Write audit records to database
+    // Write audit records in chunks to prevent single-row failures from nuking everything
     if (auditRecords.length > 0) {
-      const { error: auditError } = await supabase
-        .from('policy_change_audit')
-        .insert(auditRecords.map(r => ({
-          template_id: r.template_id,
-          institution_code: r.institution_code,
-          url: r.url,
-          hash_before: r.hash_before,
-          hash_after: r.hash_after,
-          content_changed: r.content_changed,
-          first_hash: r.first_hash,
-          scan_run_id: r.scan_run_id,
-          http_status: r.http_status,
-          content_length: r.content_length,
-          trigger_attempted: r.trigger_attempted,
-          trigger_succeeded: r.trigger_succeeded,
-          skip_reason: r.skip_reason,
-          batch_run_id: r.batch_run_id,
-        })));
-      
-      if (auditError) {
-        console.error('[policy-change-scan] Failed to write audit records:', auditError);
-      } else {
-        console.log(`[policy-change-scan] Wrote ${auditRecords.length} audit records`);
+      const CHUNK_SIZE = 100;
+      let totalWritten = 0;
+      let totalFailed = 0;
+
+      for (let i = 0; i < auditRecords.length; i += CHUNK_SIZE) {
+        const chunk = auditRecords.slice(i, i + CHUNK_SIZE);
+        const { error: auditError } = await supabase
+          .from('policy_change_audit')
+          .insert(chunk.map(r => ({
+            template_id: r.template_id,
+            institution_code: r.institution_code,
+            url: r.url,
+            hash_before: r.hash_before,
+            hash_after: r.hash_after,
+            content_changed: r.content_changed,
+            first_hash: r.first_hash,
+            scan_run_id: r.scan_run_id,
+            http_status: r.http_status,
+            content_length: r.content_length,
+            trigger_attempted: r.trigger_attempted,
+            trigger_succeeded: r.trigger_succeeded,
+            skip_reason: r.skip_reason,
+            batch_run_id: r.batch_run_id,
+          })));
+        
+        if (auditError) {
+          console.error(`[policy-change-scan] Failed to write audit chunk ${i}-${i + chunk.length}:`, auditError);
+          totalFailed += chunk.length;
+        } else {
+          totalWritten += chunk.length;
+        }
       }
+      
+      console.log(`[policy-change-scan] Wrote ${totalWritten} audit records (${totalFailed} failed)`);
     }
 
     const summary = {
