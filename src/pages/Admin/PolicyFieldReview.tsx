@@ -335,24 +335,21 @@ export default function PolicyFieldReview() {
 
   // Build pack mutation - trigger policy refresh for selected institution
   const buildPackMutation = useMutation({
-    mutationFn: async () => {
-      if (!selectedInstitution) throw new Error('No institution selected');
-      
+    mutationFn: async (institution: string) => {
       const { data, error } = await supabase.functions.invoke('policy-refresh-start', {
         body: { 
-          institutions: [selectedInstitution],
+          institutions: [institution],
           run_type: 'manual',
         },
       });
       
       if (error) throw error;
-      if (!data?.success) throw new Error(data?.error || 'Build failed');
       return data;
     },
-    onSuccess: () => {
-      toast.success('Build started — policy refresh queued');
-      queryClient.invalidateQueries({ queryKey: ['field-extractions', selectedInstitution] });
-      queryClient.invalidateQueries({ queryKey: ['promotion-candidate', selectedInstitution] });
+    onSuccess: (data, institution) => {
+      toast.success(`Build started — ${data?.tasks_created ?? 'refresh'} queued`);
+      queryClient.invalidateQueries({ queryKey: ['field-extractions', institution] });
+      queryClient.invalidateQueries({ queryKey: ['promotion-candidate', institution] });
       queryClient.invalidateQueries({ queryKey: ['policy-packs-pipeline'] });
     },
     onError: (error: Error) => {
@@ -405,8 +402,9 @@ export default function PolicyFieldReview() {
         <div className="flex gap-2">
           <Button 
             variant="default"
-            onClick={() => buildPackMutation.mutate()}
-            disabled={!selectedInstitution || buildPackMutation.isPending}
+            onClick={() => selectedInstitution && buildPackMutation.mutate(selectedInstitution)}
+            disabled={!selectedInstitution || buildPackMutation.isPending || loadingExtractions}
+            title="Triggers policy refresh pipeline for this institution"
           >
             {buildPackMutation.isPending ? (
               <Loader2 className="h-4 w-4 mr-2 animate-spin" />
