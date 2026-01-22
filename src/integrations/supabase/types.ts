@@ -6137,6 +6137,104 @@ export type Database = {
         }
         Relationships: []
       }
+      institution_transfer_edge_evidence: {
+        Row: {
+          content_hash: string | null
+          created_at: string | null
+          edge_id: string | null
+          evidence_url: string
+          id: string
+          notes: string | null
+          retrieved_at: string | null
+          source_type: string | null
+          verified_by: string | null
+        }
+        Insert: {
+          content_hash?: string | null
+          created_at?: string | null
+          edge_id?: string | null
+          evidence_url: string
+          id?: string
+          notes?: string | null
+          retrieved_at?: string | null
+          source_type?: string | null
+          verified_by?: string | null
+        }
+        Update: {
+          content_hash?: string | null
+          created_at?: string | null
+          edge_id?: string | null
+          evidence_url?: string
+          id?: string
+          notes?: string | null
+          retrieved_at?: string | null
+          source_type?: string | null
+          verified_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "institution_transfer_edge_evidence_edge_id_fkey"
+            columns: ["edge_id"]
+            isOneToOne: false
+            referencedRelation: "institution_transfer_edges"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      institution_transfer_edges: {
+        Row: {
+          acceptance_scope: string | null
+          conditions: Json | null
+          confidence: number | null
+          created_at: string | null
+          created_by: string | null
+          edge_basis: Database["public"]["Enums"]["transfer_edge_basis"]
+          effective_from: string | null
+          effective_to: string | null
+          from_entity_id: string
+          from_entity_type: Database["public"]["Enums"]["transfer_entity_type"]
+          id: string
+          max_credits_accepted: number | null
+          to_institution: string
+          updated_at: string | null
+          verification_status: Database["public"]["Enums"]["transfer_verification_status"]
+        }
+        Insert: {
+          acceptance_scope?: string | null
+          conditions?: Json | null
+          confidence?: number | null
+          created_at?: string | null
+          created_by?: string | null
+          edge_basis: Database["public"]["Enums"]["transfer_edge_basis"]
+          effective_from?: string | null
+          effective_to?: string | null
+          from_entity_id: string
+          from_entity_type: Database["public"]["Enums"]["transfer_entity_type"]
+          id?: string
+          max_credits_accepted?: number | null
+          to_institution: string
+          updated_at?: string | null
+          verification_status?: Database["public"]["Enums"]["transfer_verification_status"]
+        }
+        Update: {
+          acceptance_scope?: string | null
+          conditions?: Json | null
+          confidence?: number | null
+          created_at?: string | null
+          created_by?: string | null
+          edge_basis?: Database["public"]["Enums"]["transfer_edge_basis"]
+          effective_from?: string | null
+          effective_to?: string | null
+          from_entity_id?: string
+          from_entity_type?: Database["public"]["Enums"]["transfer_entity_type"]
+          id?: string
+          max_credits_accepted?: number | null
+          to_institution?: string
+          updated_at?: string | null
+          verification_status?: Database["public"]["Enums"]["transfer_verification_status"]
+        }
+        Relationships: []
+      }
       institution_v1_scope: {
         Row: {
           created_at: string
@@ -16543,6 +16641,10 @@ export type Database = {
         Args: { target_user_id: string }
         Returns: string
       }
+      check_institution_onboarding_readiness: {
+        Args: { p_institution_code: string }
+        Returns: Json
+      }
       check_mentor_achievements: {
         Args: { mentor_user_id: string }
         Returns: undefined
@@ -17016,7 +17118,23 @@ export type Database = {
         | "blocked_non_bachelor"
         | "needs_review"
         | "pending_extraction"
+      transfer_edge_basis:
+        | "policy_inferred"
+        | "articulation"
+        | "heuristic"
+        | "manual_entry"
+      transfer_entity_type:
+        | "institution"
+        | "accreditation"
+        | "provider"
+        | "credential_type"
+        | "unknown"
       transfer_source: "ACE" | "NCCRS" | "CLEP" | "XFER" | "HOME" | "DSST"
+      transfer_verification_status:
+        | "verified"
+        | "inferred"
+        | "deprecated"
+        | "unknown"
       user_plan_tier:
         | "free"
         | "single_school"
@@ -17191,7 +17309,26 @@ export const Constants = {
         "needs_review",
         "pending_extraction",
       ],
+      transfer_edge_basis: [
+        "policy_inferred",
+        "articulation",
+        "heuristic",
+        "manual_entry",
+      ],
+      transfer_entity_type: [
+        "institution",
+        "accreditation",
+        "provider",
+        "credential_type",
+        "unknown",
+      ],
       transfer_source: ["ACE", "NCCRS", "CLEP", "XFER", "HOME", "DSST"],
+      transfer_verification_status: [
+        "verified",
+        "inferred",
+        "deprecated",
+        "unknown",
+      ],
       user_plan_tier: [
         "free",
         "single_school",
