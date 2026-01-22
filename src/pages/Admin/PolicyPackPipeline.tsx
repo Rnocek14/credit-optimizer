@@ -208,9 +208,10 @@ export default function PolicyPackPipeline() {
       if (error) throw error;
       return data;
     },
-    onSuccess: (data) => {
+    onSuccess: (data, institution) => {
       toast.success(`Build started: ${data.tasks_created} tasks created`);
-      queryClient.invalidateQueries({ queryKey: ['refresh-tasks', selectedInstitution] });
+      // Use the mutation variable (institution) not selectedInstitution from closure
+      queryClient.invalidateQueries({ queryKey: ['refresh-tasks', institution] });
       queryClient.invalidateQueries({ queryKey: ['policy-packs-pipeline'] });
     },
     onError: (error: Error) => {
@@ -526,7 +527,17 @@ export default function PolicyPackPipeline() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {urlTemplates.map((template) => (
+                        {urlTemplates.map((template) => {
+                          // Safe URL parsing - avoid crash on malformed URLs
+                          let displayPath = template.url;
+                          try {
+                            const urlObj = new URL(template.url);
+                            displayPath = urlObj.pathname.slice(0, 50) + (urlObj.pathname.length > 50 ? '...' : '');
+                          } catch {
+                            displayPath = template.url.slice(0, 50) + (template.url.length > 50 ? '...' : '');
+                          }
+                          
+                          return (
                           <TableRow key={template.id}>
                             <TableCell className="max-w-[300px]">
                               <a 
@@ -536,8 +547,7 @@ export default function PolicyPackPipeline() {
                                 className="text-blue-600 hover:underline truncate block"
                                 title={template.url}
                               >
-                                {new URL(template.url).pathname.slice(0, 50)}
-                                {new URL(template.url).pathname.length > 50 ? '...' : ''}
+                                {displayPath}
                                 <ExternalLink className="h-3 w-3 inline ml-1" />
                               </a>
                             </TableCell>
@@ -559,7 +569,8 @@ export default function PolicyPackPipeline() {
                               </Button>
                             </TableCell>
                           </TableRow>
-                        ))}
+                          );
+                        })}
                       </TableBody>
                     </Table>
                   )}
