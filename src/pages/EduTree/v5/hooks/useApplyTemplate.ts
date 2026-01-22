@@ -1,11 +1,13 @@
 import { useCallback } from 'react';
 import { applyTemplate, type ApplyTemplateParams } from '../engine/applyTemplate';
 import type { ModuleTemplate } from '../types/templates';
-import { usePlanBasket } from '../state/usePlanBasket';
+import { usePlanBasket, type BasketItem } from '../state/usePlanBasket';
 import { toast } from 'sonner';
 import { trackTelemetryEvent } from '@/utils/telemetry';
 import { logEvent } from '@/lib/analytics';
 import { checkTransferRule } from '../engine/transferEngine';
+import { checkForDeadEnd } from '../engine/deadEndDetector';
+import { courseToBasketItem } from '../engine/courseToBasketItem';
 
 /**
  * Hook for applying templates with toast notifications, undo, and telemetry
@@ -98,6 +100,50 @@ export function useApplyTemplate() {
         }
         
         console.log('[ApplyTemplate] ✅ All courses passed transfer validation');
+      }
+
+      // ============ Phase 5: Aggregate Dead-End Validation ============
+      // Check if applying the FULL template would violate policy caps
+      // This prevents bulk-adding courses that collectively exceed limits
+      const simulatedItems: BasketItem[] = template.options.map(opt => 
+        courseToBasketItem(opt, template.moduleId)
+      );
+      
+      // Calculate aggregate totals after all template items would be added
+      const aggregateBasket = [...basket, ...simulatedItems];
+      
+      // Check against the last item (which represents the final state)
+      if (simulatedItems.length > 0) {
+        // Use basket WITHOUT the last item to check if adding it creates dead-end
+        const basketWithoutLast = aggregateBasket.slice(0, -1);
+        
+        const deadEndCheck = checkForDeadEnd(
+          template.options[template.options.length - 1],
+          basketWithoutLast,
+          constraints,
+          [] // No remaining modules for template bulk-apply check
+        );
+        
+        if (deadEndCheck.isDeadEnd) {
+          const primaryReason = deadEndCheck.reasons[0] || 'Would violate policy constraints';
+          
+          toast.error('Template exceeds policy limits', {
+            description: primaryReason,
+            duration: 9000,
+          });
+          
+          console.error('[ApplyTemplate] 🚫 Blocked: template would create dead-end', {
+            templateId: template.id,
+            reasons: deadEndCheck.reasons,
+            snapshot: deadEndCheck.snapshot,
+            totalCreditsInTemplate: simulatedItems.reduce((s, i) => s + i.credits, 0),
+            currentBasketCredits: basket.reduce((s, i) => s + i.credits, 0),
+          });
+          
+          return;
+        }
+        
+        console.log('[ApplyTemplate] ✅ Template passes aggregate dead-end check');
       }
 
       // Map template to apply params
