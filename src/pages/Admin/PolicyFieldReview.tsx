@@ -130,6 +130,7 @@ export default function PolicyFieldReview() {
   const [overrideValue, setOverrideValue] = useState<string>('');
   const [reviewerNotes, setReviewerNotes] = useState<string>('');
   const [showPromoteDialog, setShowPromoteDialog] = useState(false);
+  const [showPendingOnly, setShowPendingOnly] = useState(true); // Default to pending only
 
   // Fetch institutions from both policy packs AND scrape jobs (union for new schools)
   const { data: institutions = [] } = useQuery({
@@ -166,12 +167,14 @@ export default function PolicyFieldReview() {
       
       const jobIds = jobs.map(j => j.id);
       
-      // Now fetch extractions filtered by those job IDs
+      // Fetch extractions with deterministic ordering: field_path, then confidence desc, then newest
       const { data, error } = await supabase
         .from('policy_field_extractions')
         .select('*')
         .in('job_id', jobIds)
-        .order('field_path')
+        .order('field_path', { ascending: true })
+        .order('confidence', { ascending: false })
+        .order('created_at', { ascending: false })
         .limit(200);
       
       if (error) throw error;
@@ -231,7 +234,9 @@ export default function PolicyFieldReview() {
       setEditingField(null);
       setOverrideValue('');
       setReviewerNotes('');
-      refetchExtractions();
+      // Invalidate caches so UI stays fresh
+      queryClient.invalidateQueries({ queryKey: ['field-extractions', selectedInstitution] });
+      queryClient.invalidateQueries({ queryKey: ['promotion-candidate', selectedInstitution] });
     },
     onError: (error: Error) => {
       toast.error(`Update failed: ${error.message}`);
@@ -316,23 +321,29 @@ export default function PolicyFieldReview() {
       toast.success(data.message || 'Pack promoted successfully');
       setShowPromoteDialog(false);
       queryClient.invalidateQueries({ queryKey: ['promotion-candidate', selectedInstitution] });
+      queryClient.invalidateQueries({ queryKey: ['policy-packs-pipeline'] });
     },
     onError: (error: Error) => {
       toast.error(`Promotion failed: ${error.message}`);
     },
   });
 
-  // Group extractions by field path
+  // Filter and group extractions by field path
+  const filteredExtractions = useMemo(() => {
+    if (!showPendingOnly) return extractions;
+    return extractions.filter(e => e.review_status === 'pending');
+  }, [extractions, showPendingOnly]);
+
   const groupedExtractions = useMemo(() => {
     const groups: Record<string, FieldExtraction[]> = {};
-    extractions.forEach(ext => {
+    filteredExtractions.forEach(ext => {
       if (!groups[ext.field_path]) {
         groups[ext.field_path] = [];
       }
       groups[ext.field_path].push(ext);
     });
     return groups;
-  }, [extractions]);
+  }, [filteredExtractions]);
 
   // Stats
   const stats = {
@@ -414,7 +425,16 @@ export default function PolicyFieldReview() {
         </div>
 
         {selectedInstitution && (
-          <div className="flex gap-4 text-sm">
+          <div className="flex items-center gap-4 text-sm">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={showPendingOnly}
+                onChange={(e) => setShowPendingOnly(e.target.checked)}
+                className="rounded border-input"
+              />
+              <span className="text-muted-foreground">Pending only</span>
+            </label>
             <span className="text-muted-foreground">Total: {stats.total}</span>
             <span className="text-yellow-600">Pending: {stats.pending}</span>
             <span className="text-green-600">Approved: {stats.approved}</span>
