@@ -51,6 +51,8 @@ import DegreeIntegrityScan from "./pages/Admin/DegreeIntegrityScan";
 import PolicyRefreshAdmin from "./pages/Admin/PolicyRefreshAdmin";
 import TransferScraperDashboard from "./pages/Admin/TransferScraperDashboard";
 import PolicyPackPromotion from "./pages/Admin/PolicyPackPromotion";
+import PolicyPackPipeline from "./pages/Admin/PolicyPackPipeline";
+import PolicyFieldReview from "./pages/Admin/PolicyFieldReview";
 import GenerationJobs from "./pages/Admin/GenerationJobs";
 import MentorChat from "./pages/MentorChat";
 import AdminBadges from "./pages/AdminBadges";
@@ -889,6 +891,8 @@ const App = () => {
         <Route path="/admin/transfer-scraper" element={<TransferScraperDashboard />} />
         <Route path="/admin/policy-refresh" element={<PolicyRefreshAdmin />} />
         <Route path="/admin/policy-promotion" element={<PolicyPackPromotion />} />
+        <Route path="/admin/policy-pipeline" element={<PolicyPackPipeline />} />
+        <Route path="/admin/policy-field-review" element={<PolicyFieldReview />} />
         <Route path="/admin/generation-jobs" element={<GenerationJobs />} />
         <Route path="/embed-explorer" element={<EmbedExplorer />} />
           <Route 
