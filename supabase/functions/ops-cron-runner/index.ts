@@ -332,6 +332,45 @@ Deno.serve(async (req) => {
     }
 
     // =========================================
+    // 8. Golden Scan Report + Snapshot Storage
+    // =========================================
+    let goldenScanResult: Record<string, unknown> | null = null;
+    let snapshotStored = false;
+    try {
+      const { data: scanReport, error: scanError } = await supabase
+        .rpc("golden_scan_report", { p_include_institution_details: false });
+      
+      if (scanError) {
+        console.error("Golden scan report error:", scanError.message);
+      } else if (scanReport) {
+        goldenScanResult = scanReport as Record<string, unknown>;
+        console.log("Golden scan completed:", {
+          ok: scanReport.ok,
+          blockers: (scanReport.blockers as string[])?.length ?? 0,
+          warnings: (scanReport.warnings as string[])?.length ?? 0,
+        });
+        
+        // Store snapshot for historical tracking
+        const { error: insertError } = await supabase
+          .from("ops_audit_snapshots")
+          .insert({
+            report: scanReport,
+            snapshot_type: "golden_scan",
+            triggered_by: "ops-cron-runner",
+          });
+        
+        if (insertError) {
+          console.error("Snapshot insert error:", insertError.message);
+        } else {
+          snapshotStored = true;
+          console.log("Audit snapshot stored successfully");
+        }
+      }
+    } catch (goldenErr) {
+      console.error("Golden scan failed:", goldenErr);
+    }
+
+    // =========================================
     // Response
     // =========================================
     // Collect errors for clean monitoring
@@ -397,6 +436,10 @@ Deno.serve(async (req) => {
       // Health
       template_health: templateHealth,
       health: health ?? { error: healthError?.message },
+      
+      // Golden Scan (audit snapshot)
+      golden_scan: goldenScanResult,
+      golden_scan_snapshot_stored: snapshotStored,
       
       checked_at: checkedAt,
     });
