@@ -170,7 +170,7 @@ export function groupViolationsByBlock(violations: PlanViolation[]) {
  */
 /**
  * Check if a specific block/requirement has any incomplete violations
- * Works with both requirement_id and requirement_block_id for compatibility
+ * Works with both REQUIREMENT_INCOMPLETE and BLOCK_INCOMPLETE codes for compatibility
  */
 export function isBlockIncomplete(
   violations: PlanViolation[],
@@ -178,7 +178,7 @@ export function isBlockIncomplete(
 ): boolean {
   return violations.some(
     (v) =>
-      v.code === "BLOCK_INCOMPLETE" && 
+      (v.code === "REQUIREMENT_INCOMPLETE" || v.code === "BLOCK_INCOMPLETE") &&
       (v.requirement_id === blockId || v.requirement_block_id === blockId)
   );
 }
