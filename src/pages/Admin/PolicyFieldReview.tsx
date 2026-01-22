@@ -86,6 +86,39 @@ interface PromotionCandidate {
   is_promotable: boolean;
 }
 
+// Build status badge component
+function BuildStatusBadge({ status, createdAt }: { status: string | null; createdAt: string | null }) {
+  if (!status) return null;
+  
+  const config: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'success' | 'warning' | 'outline' }> = {
+    pending: { label: 'Queued', variant: 'warning' },
+    running: { label: 'Running', variant: 'default' },
+    completed: { label: 'Complete', variant: 'success' },
+    failed: { label: 'Failed', variant: 'destructive' },
+    blocked: { label: 'Blocked', variant: 'destructive' },
+  };
+  
+  const { label, variant } = config[status] || { label: status, variant: 'outline' as const };
+  const timeAgo = createdAt ? formatTimeAgo(new Date(createdAt)) : '';
+  
+  return (
+    <Badge variant={variant} size="sm" title={`Last build: ${timeAgo}`}>
+      {label}
+    </Badge>
+  );
+}
+
+function formatTimeAgo(date: Date): string {
+  const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
+  if (seconds < 60) return 'just now';
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
+}
+
 // Confidence badge component
 function ConfidenceBadge({ score }: { score: number }) {
   let color = 'bg-red-100 text-red-800 border-red-200';
@@ -201,6 +234,25 @@ export default function PolicyFieldReview() {
       
       if (error) throw error;
       return data as PromotionCandidate | null;
+    },
+    enabled: !!selectedInstitution,
+  });
+
+  // Fetch latest build status for institution
+  const { data: buildStatus } = useQuery({
+    queryKey: ['build-status', selectedInstitution],
+    queryFn: async () => {
+      if (!selectedInstitution) return null;
+      const { data, error } = await supabase
+        .from('policy_refresh_tasks')
+        .select('status, created_at')
+        .eq('institution', selectedInstitution)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      
+      if (error) throw error;
+      return data as { status: string; created_at: string } | null;
     },
     enabled: !!selectedInstitution,
   });
@@ -350,6 +402,7 @@ export default function PolicyFieldReview() {
       toast.success(`Build started — ${data?.tasks_created ?? 'refresh'} queued`);
       queryClient.invalidateQueries({ queryKey: ['field-extractions', institution] });
       queryClient.invalidateQueries({ queryKey: ['promotion-candidate', institution] });
+      queryClient.invalidateQueries({ queryKey: ['build-status', institution] });
       queryClient.invalidateQueries({ queryKey: ['policy-packs-pipeline'] });
     },
     onError: (error: Error) => {
@@ -393,11 +446,16 @@ export default function PolicyFieldReview() {
   return (
     <div className="container mx-auto p-6 space-y-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Policy Field Review</h1>
-          <p className="text-muted-foreground">
-            Review and approve AI-extracted policy fields with source evidence
-          </p>
+        <div className="flex items-center gap-3">
+          <div>
+            <h1 className="text-2xl font-bold">Policy Field Review</h1>
+            <p className="text-muted-foreground">
+              Review and approve AI-extracted policy fields with source evidence
+            </p>
+          </div>
+          {selectedInstitution && buildStatus && (
+            <BuildStatusBadge status={buildStatus.status} createdAt={buildStatus.created_at} />
+          )}
         </div>
         <div className="flex gap-2">
           <Button 
