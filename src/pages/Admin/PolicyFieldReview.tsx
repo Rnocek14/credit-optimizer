@@ -381,7 +381,7 @@ export default function PolicyFieldReview() {
               queryClient.invalidateQueries({ queryKey: ['field-extractions', selectedInstitution] });
               queryClient.invalidateQueries({ queryKey: ['promotion-candidate', selectedInstitution] });
             }} 
-            disabled={loadingExtractions}
+            disabled={!selectedInstitution || loadingExtractions}
           >
             <RefreshCw className={`h-4 w-4 mr-2 ${loadingExtractions ? 'animate-spin' : ''}`} />
             Refresh
@@ -444,7 +444,7 @@ export default function PolicyFieldReview() {
                 checked={showPendingOnly}
                 onChange={(e) => {
                   setShowPendingOnly(e.target.checked);
-                  localStorage.setItem('admin_policy_review_pending_only', String(e.target.checked));
+                  window.localStorage.setItem('admin_policy_review_pending_only', String(e.target.checked));
                 }}
                 className="rounded border-input"
               />
