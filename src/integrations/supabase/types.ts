@@ -5756,7 +5756,15 @@ export type Database = {
           notes?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "institution_attributes_institution_fk"
+            columns: ["institution"]
+            isOneToOne: true
+            referencedRelation: "institutions"
+            referencedColumns: ["code"]
+          },
+        ]
       }
       institution_credit_limits: {
         Row: {
@@ -17110,10 +17118,7 @@ export type Database = {
         Args: { p_limit?: number }
         Returns: Json
       }
-      scan_provider_rule_edge_gaps: {
-        Args: { p_limit?: number }
-        Returns: Json
-      }
+      scan_rule_edge_gaps: { Args: { p_limit?: number }; Returns: Json }
       scan_transfer_edge_conflicts: {
         Args: { p_limit?: number }
         Returns: Json
