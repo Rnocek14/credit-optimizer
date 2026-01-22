@@ -130,7 +130,10 @@ export default function PolicyFieldReview() {
   const [overrideValue, setOverrideValue] = useState<string>('');
   const [reviewerNotes, setReviewerNotes] = useState<string>('');
   const [showPromoteDialog, setShowPromoteDialog] = useState(false);
-  const [showPendingOnly, setShowPendingOnly] = useState(true); // Default to pending only
+  const [showPendingOnly, setShowPendingOnly] = useState(() => {
+    const stored = localStorage.getItem('admin_policy_review_pending_only');
+    return stored !== null ? stored === 'true' : true; // Default true if not set
+  });
 
   // Fetch institutions from both policy packs AND scrape jobs (union for new schools)
   const { data: institutions = [] } = useQuery({
@@ -345,14 +348,15 @@ export default function PolicyFieldReview() {
     return groups;
   }, [filteredExtractions]);
 
-  // Stats
-  const stats = {
+  // Stats - show both total and filtered counts
+  const statsAll = {
     total: extractions.length,
     pending: extractions.filter(e => e.review_status === 'pending').length,
     approved: extractions.filter(e => e.review_status === 'approved').length,
     rejected: extractions.filter(e => e.review_status === 'rejected').length,
     modified: extractions.filter(e => e.review_status === 'modified').length,
   };
+  const statsShown = filteredExtractions.length;
 
   const formatValue = (value: unknown): string => {
     if (value === null || value === undefined) return '-';
@@ -370,7 +374,11 @@ export default function PolicyFieldReview() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={() => refetchExtractions()} disabled={loadingExtractions}>
+          <Button 
+            variant="outline" 
+            onClick={() => queryClient.invalidateQueries({ queryKey: ['field-extractions', selectedInstitution] })} 
+            disabled={loadingExtractions}
+          >
             <RefreshCw className={`h-4 w-4 mr-2 ${loadingExtractions ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
@@ -430,16 +438,21 @@ export default function PolicyFieldReview() {
               <input
                 type="checkbox"
                 checked={showPendingOnly}
-                onChange={(e) => setShowPendingOnly(e.target.checked)}
+                onChange={(e) => {
+                  setShowPendingOnly(e.target.checked);
+                  localStorage.setItem('admin_policy_review_pending_only', String(e.target.checked));
+                }}
                 className="rounded border-input"
               />
               <span className="text-muted-foreground">Pending only</span>
             </label>
-            <span className="text-muted-foreground">Total: {stats.total}</span>
-            <span className="text-yellow-600">Pending: {stats.pending}</span>
-            <span className="text-green-600">Approved: {stats.approved}</span>
-            <span className="text-red-600">Rejected: {stats.rejected}</span>
-            <span className="text-blue-600">Modified: {stats.modified}</span>
+            <span className="text-muted-foreground">
+              Showing {statsShown} {showPendingOnly ? 'pending' : ''} ({statsAll.total} total)
+            </span>
+            <span className="text-yellow-600 dark:text-yellow-400">Pending: {statsAll.pending}</span>
+            <span className="text-green-600 dark:text-green-400">Approved: {statsAll.approved}</span>
+            <span className="text-destructive">Rejected: {statsAll.rejected}</span>
+            <span className="text-primary">Modified: {statsAll.modified}</span>
           </div>
         )}
       </div>
