@@ -214,17 +214,32 @@ Deno.serve(async (req) => {
     // =========================================
     // Response
     // =========================================
+    // Collect errors for clean monitoring
+    const errors: Array<{ scope: string; detail: string }> = [];
+    
     const workerFailed =
       workerCalled &&
       ((workerHttpStatus && workerHttpStatus >= 400) ||
        (workerResult && "error" in workerResult));
+    if (workerFailed) {
+      errors.push({ scope: "enrichment", detail: `HTTP ${workerHttpStatus}: ${JSON.stringify(workerResult)}` });
+    }
 
     const policyScanFailed = 
       policyScanTriggered &&
       ((policyScanHttpStatus && policyScanHttpStatus >= 400) ||
        (policyScanResult && "error" in policyScanResult));
+    if (policyScanFailed) {
+      errors.push({ scope: "policy_scan", detail: `HTTP ${policyScanHttpStatus}: ${JSON.stringify(policyScanResult)}` });
+    }
 
-    return json(workerFailed || policyScanFailed ? 500 : 200, {
+    const ok = errors.length === 0;
+
+    // Always return 200 so cron schedulers don't treat subtask failures as "cron broken"
+    return json(200, {
+      ok,
+      errors: errors.length > 0 ? errors : null,
+      
       // Self-healing
       stuck_runs_reset: stuckRunsReset.length > 0 ? stuckRunsReset : null,
       
