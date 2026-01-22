@@ -9,6 +9,7 @@
 // - limit?: number (optional; max templates to scan, default 50)
 // - stale_days?: number (optional; only scan templates not scraped in N days, default 7)
 // - dry_run?: boolean (optional; if true, don't trigger refresh, just report)
+// - cooldown_hours?: number (optional; skip institutions refreshed within N hours, default 6)
 //
 // Outputs:
 // - scanned: number of templates scanned
@@ -29,6 +30,7 @@ interface ScanRequest {
   limit?: number;
   stale_days?: number;
   dry_run?: boolean;
+  cooldown_hours?: number;
 }
 
 Deno.serve(async (req) => {
@@ -47,38 +49,59 @@ Deno.serve(async (req) => {
       limit = 50,
       stale_days = 7,
       dry_run = false,
+      cooldown_hours = 6,
     } = body;
 
-    console.log(`[policy-change-scan] Starting: institution=${institution || 'all'}, limit=${limit}, stale_days=${stale_days}, dry_run=${dry_run}`);
+    console.log(`[policy-change-scan] Starting: institution=${institution || 'all'}, limit=${limit}, stale_days=${stale_days}, dry_run=${dry_run}, cooldown_hours=${cooldown_hours}`);
 
     // Calculate stale threshold
     const staleThreshold = new Date();
     staleThreshold.setDate(staleThreshold.getDate() - stale_days);
 
-    // Build query for templates to scan
-    let query = supabase
+    // Build query for templates to scan - use two separate queries for reliability
+    // Query 1: Templates with null last_scraped_at
+    let nullQuery = supabase
       .from('scrape_url_templates')
       .select('id, institution_code, url, last_hash, last_scraped_at')
       .eq('status', 'active')
+      .is('last_scraped_at', null)
+      .order('priority', { ascending: true })
+      .limit(limit);
+
+    // Query 2: Templates with stale last_scraped_at
+    let staleQuery = supabase
+      .from('scrape_url_templates')
+      .select('id, institution_code, url, last_hash, last_scraped_at')
+      .eq('status', 'active')
+      .lt('last_scraped_at', staleThreshold.toISOString())
       .order('priority', { ascending: true })
       .limit(limit);
 
     // Filter by institution if specified
     if (institution) {
-      query = query.eq('institution_code', institution);
+      nullQuery = nullQuery.eq('institution_code', institution);
+      staleQuery = staleQuery.eq('institution_code', institution);
     }
 
-    // Filter to only stale templates (not scraped recently)
-    // Note: Templates with null last_scraped_at are always considered stale
-    query = query.or(`last_scraped_at.is.null,last_scraped_at.lt.${staleThreshold.toISOString()}`);
+    const [nullResult, staleResult] = await Promise.all([nullQuery, staleQuery]);
 
-    const { data: templates, error: templatesError } = await query;
-
-    if (templatesError) {
-      throw new Error(`Failed to load templates: ${templatesError.message}`);
+    if (nullResult.error) {
+      console.error('[policy-change-scan] Error fetching null templates:', nullResult.error);
+    }
+    if (staleResult.error) {
+      console.error('[policy-change-scan] Error fetching stale templates:', staleResult.error);
     }
 
-    if (!templates || templates.length === 0) {
+    // Merge and dedupe by id
+    const allTemplates = [...(nullResult.data || []), ...(staleResult.data || [])];
+    const seenIds = new Set<string>();
+    const templates = allTemplates.filter(t => {
+      if (seenIds.has(t.id)) return false;
+      seenIds.add(t.id);
+      return true;
+    }).slice(0, limit);
+
+    if (templates.length === 0) {
       console.log('[policy-change-scan] No stale templates found');
       return new Response(
         JSON.stringify({
@@ -102,6 +125,7 @@ Deno.serve(async (req) => {
       url: string;
       status: string;
       content_changed: boolean;
+      first_hash?: boolean;
       error?: string;
     }> = [];
 
@@ -111,11 +135,13 @@ Deno.serve(async (req) => {
         console.log(`[policy-change-scan] Crawling: ${template.url}`);
 
         // Call transfer-scraper-crawl with template_id for hash comparison
+        // Include both Authorization and apikey headers for reliability
         const crawlResponse = await fetch(`${supabaseUrl}/functions/v1/transfer-scraper-crawl`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${serviceRoleKey}`,
+            'apikey': serviceRoleKey,
           },
           body: JSON.stringify({
             url: template.url,
@@ -141,8 +167,10 @@ Deno.serve(async (req) => {
 
         const crawlData = await crawlResponse.json();
 
-        // Check if content changed
-        if (crawlData.content_changed) {
+        // Check if content changed (first_hash means new template, don't trigger)
+        const isChange = crawlData.content_changed === true && crawlData.first_hash !== true;
+        
+        if (isChange) {
           console.log(`[policy-change-scan] Change detected: ${template.institution_code} - ${template.url}`);
           changedInstitutions.add(template.institution_code);
         }
@@ -152,11 +180,12 @@ Deno.serve(async (req) => {
           institution_code: template.institution_code,
           url: template.url,
           status: 'success',
-          content_changed: crawlData.content_changed || false,
+          content_changed: isChange,
+          first_hash: crawlData.first_hash || false,
         });
 
-        // Small delay between crawls to avoid rate limiting
-        await new Promise(resolve => setTimeout(resolve, 500));
+        // Delay between crawls to avoid rate limiting (750ms for safety)
+        await new Promise(resolve => setTimeout(resolve, 750));
 
       } catch (e) {
         const errorMsg = e instanceof Error ? e.message : 'Unknown error';
@@ -174,10 +203,13 @@ Deno.serve(async (req) => {
 
     const changedList = Array.from(changedInstitutions);
     let triggered = false;
+    let skippedActive: string[] = [];
+    let skippedCooldown: string[] = [];
 
     // Debounce check: Only trigger if no active refresh for these institutions
     if (changedList.length > 0 && !dry_run) {
-      // Check for existing running tasks for any of the changed institutions
+      // Check 1: Existing running/queued tasks (active refreshes)
+      // Note: actual statuses are 'queued', 'running', 'complete', 'blocked', 'failed'
       const { data: existingTasks } = await supabase
         .from('policy_refresh_tasks')
         .select('institution')
@@ -185,7 +217,27 @@ Deno.serve(async (req) => {
         .in('status', ['queued', 'running']);
 
       const alreadyQueued = new Set((existingTasks || []).map(t => t.institution));
-      const toTrigger = changedList.filter(inst => !alreadyQueued.has(inst));
+      skippedActive = changedList.filter(inst => alreadyQueued.has(inst));
+
+      // Check 2: Recently refreshed institutions (cooldown period)
+      const cooldownThreshold = new Date();
+      cooldownThreshold.setHours(cooldownThreshold.getHours() - cooldown_hours);
+
+      const { data: recentTasks } = await supabase
+        .from('policy_refresh_tasks')
+        .select('institution')
+        .in('institution', changedList)
+        .gte('created_at', cooldownThreshold.toISOString());
+
+      const recentlyRefreshed = new Set((recentTasks || []).map(t => t.institution));
+      
+      // Filter out both active and recently refreshed
+      const toTrigger = changedList.filter(inst => 
+        !alreadyQueued.has(inst) && !recentlyRefreshed.has(inst)
+      );
+      skippedCooldown = changedList.filter(inst => 
+        !alreadyQueued.has(inst) && recentlyRefreshed.has(inst)
+      );
 
       if (toTrigger.length > 0) {
         console.log(`[policy-change-scan] Triggering refresh for: ${toTrigger.join(', ')}`);
@@ -196,6 +248,7 @@ Deno.serve(async (req) => {
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${serviceRoleKey}`,
+            'apikey': serviceRoleKey,
           },
           body: JSON.stringify({
             institutions: toTrigger,
@@ -211,7 +264,7 @@ Deno.serve(async (req) => {
           console.error(`[policy-change-scan] Failed to trigger refresh: ${errorText}`);
         }
       } else {
-        console.log(`[policy-change-scan] All changed institutions already have active refreshes`);
+        console.log(`[policy-change-scan] All changed institutions skipped (active: ${skippedActive.length}, cooldown: ${skippedCooldown.length})`);
       }
     }
 
@@ -222,10 +275,13 @@ Deno.serve(async (req) => {
       changed_count: changedList.length,
       triggered,
       dry_run,
+      skipped_active: skippedActive,
+      skipped_cooldown: skippedCooldown,
+      cooldown_hours,
       scan_results: scanResults.slice(0, 20), // Limit results in response
     };
 
-    console.log(`[policy-change-scan] Complete: scanned=${templates.length}, changed=${changedList.length}, triggered=${triggered}`);
+    console.log(`[policy-change-scan] Complete: scanned=${templates.length}, changed=${changedList.length}, triggered=${triggered}, skipped_active=${skippedActive.length}, skipped_cooldown=${skippedCooldown.length}`);
 
     return new Response(
       JSON.stringify(summary),
