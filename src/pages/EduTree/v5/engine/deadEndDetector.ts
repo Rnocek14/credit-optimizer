@@ -42,6 +42,37 @@ export interface RemainingModule {
  * 
  * Enhanced version that considers remaining modules and feasibility
  */
+/**
+ * Check if a course is a required residence course that cannot be substituted
+ * Currently: SOS-1100 (Cornerstone) and CAPSTONE for TESU
+ */
+function isRequiredResidenceCourse(
+  option: MarketplaceOption,
+  anchorSchool: string,
+  policy: ReturnType<typeof getPolicyOrDefault>
+): { isRequired: boolean; courseName?: string } {
+  if (!policy?.requiredResidenceCourses) {
+    return { isRequired: false };
+  }
+  
+  const courseId = option.courseId?.toUpperCase() || '';
+  const title = option.title?.toUpperCase() || '';
+  
+  for (const req of policy.requiredResidenceCourses) {
+    const code = req.code.toUpperCase();
+    // Match by code in courseId or title containing "capstone" for capstone courses
+    const isCapstoneReq = code === 'CAPSTONE';
+    const matchesByCode = courseId.includes(code) || courseId.includes(code.replace('-', ''));
+    const matchesByCapstoneTitle = isCapstoneReq && title.includes('CAPSTONE');
+    
+    if (matchesByCode || matchesByCapstoneTitle) {
+      return { isRequired: true, courseName: req.name };
+    }
+  }
+  
+  return { isRequired: false };
+}
+
 export function checkForDeadEnd(
   option: MarketplaceOption,
   currentBasket: BasketItem[],
@@ -58,6 +89,23 @@ export function checkForDeadEnd(
   const totalCreditsRequired = policy?.totalCreditsBachelor ?? 120;
   
   const reasons: string[] = [];
+  
+  // =========================================================================
+  // Check 0: Required residence course substitution (P0 enforcement)
+  // =========================================================================
+  const residenceCheck = isRequiredResidenceCourse(option, anchorSchool, policy);
+  if (residenceCheck.isRequired) {
+    const isNonInstitutional = option.providerType !== 'university';
+    // Also check if providerCode doesn't match target school
+    const providerCode = option.providerCode?.toUpperCase() || '';
+    const isNotFromTargetSchool = providerCode !== anchorSchool.toUpperCase();
+    
+    if (isNonInstitutional || isNotFromTargetSchool) {
+      reasons.push(
+        `${residenceCheck.courseName || option.courseId} must be taken in residence at ${anchorSchool} (cannot use ${option.providerType || 'external'} credit)`
+      );
+    }
+  }
   
   // Calculate current totals
   let currentNoncollegiate = 0;
