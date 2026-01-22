@@ -1,12 +1,14 @@
 /**
  * Hook to fetch available institutions from database
  * Falls back to static list if DB unavailable
+ * 
+ * V1 scope is now database-driven via institution_v1_scope table.
  */
 
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { getAvailableInstitutions as getStaticInstitutions } from './institutionPolicies';
-import { isV1Institution } from './v1Scope';
+import { isV1InstitutionAsync } from './v1Scope';
 
 export interface AvailableInstitution {
   code: string;
@@ -164,8 +166,9 @@ export function useAvailableInstitutions() {
             }
             
             // P0 Gate: V1 scope restriction - only approved institutions
-            // Uses isV1Institution from shared config (src/lib/degree/v1Scope.ts)
-            if (!isV1Institution(row.institution)) {
+            // Uses async DB-backed check from institution_v1_scope table
+            const isInV1Scope = await isV1InstitutionAsync(row.institution);
+            if (!isInV1Scope) {
               console.warn('[useAvailableInstitutions] Skipping %s: not in V1 allowed scope (evidence coverage below threshold)', 
                 row.institution);
               continue;

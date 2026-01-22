@@ -26,7 +26,8 @@ const FALLBACK_V1_INSTITUTIONS: string[] = ['TESU', 'COSC', 'WGU', 'EXCELSIOR', 
  */
 export async function isV1InstitutionAsync(
   institutionCode: string | null | undefined,
-  supabaseClient?: ReturnType<typeof createClient>
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabaseClient?: any
 ): Promise<boolean> {
   if (!institutionCode) return false;
   const normalized = institutionCode.toUpperCase().trim();
@@ -70,7 +71,8 @@ export function isV1Institution(institutionCode: string | null | undefined): boo
  * Get all V1 institutions from database
  */
 export async function getV1InstitutionsFromDB(
-  supabaseClient?: ReturnType<typeof createClient>
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabaseClient?: any
 ): Promise<string[]> {
   try {
     const client = supabaseClient ?? createClient(

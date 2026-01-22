@@ -1,6 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { isV1Institution } from '../_shared/v1Scope.ts';
+import { isV1InstitutionAsync } from '../_shared/v1Scope.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -131,8 +131,9 @@ serve(async (req) => {
     for (const job of jobs as EvidenceJob[]) {
       const tupleKey = `${job.target_institution_norm}|${job.source_institution_norm}|${job.source_course_code_norm}`;
       
-      // V1 SCOPE GUARD: Skip jobs for non-V1 institutions
-      if (!isV1Institution(job.target_institution_norm)) {
+      // V1 SCOPE GUARD: Skip jobs for non-V1 institutions (database-backed)
+      const isV1 = await isV1InstitutionAsync(job.target_institution_norm, supabase);
+      if (!isV1) {
         console.log(`[evidence-backfill-worker] Skipping non-V1 institution: ${job.target_institution_norm} (${tupleKey})`);
         results.skipped_non_v1++;
         results.details.push({
