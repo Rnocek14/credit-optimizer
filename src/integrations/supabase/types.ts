@@ -16984,6 +16984,10 @@ export type Database = {
           institution_code: string
         }[]
       }
+      golden_scan_report: {
+        Args: { p_include_institution_details?: boolean }
+        Returns: Json
+      }
       has_role: {
         Args: {
           check_role: Database["public"]["Enums"]["app_role"]
