@@ -192,17 +192,21 @@ Deno.serve(async (req) => {
     // =========================================
     let templateHealth: { null_last_scraped: number; total: number } | null = null;
     try {
-      const { data: templateStats } = await supabase
-        .from("scrape_url_templates")
-        .select("last_scraped_at", { count: "exact" });
+      // Use head-only counts for efficiency (no row fetch)
+      const [totalResult, nullResult] = await Promise.all([
+        supabase
+          .from("scrape_url_templates")
+          .select("id", { head: true, count: "exact" }),
+        supabase
+          .from("scrape_url_templates")
+          .select("id", { head: true, count: "exact" })
+          .is("last_scraped_at", null),
+      ]);
       
-      if (templateStats) {
-        const nullCount = templateStats.filter(t => t.last_scraped_at === null).length;
-        templateHealth = {
-          null_last_scraped: nullCount,
-          total: templateStats.length,
-        };
-      }
+      templateHealth = {
+        null_last_scraped: nullResult.count ?? 0,
+        total: totalResult.count ?? 0,
+      };
     } catch (templateErr) {
       console.error("Template health check failed:", templateErr);
     }
