@@ -13,6 +13,12 @@ function json(status: number, body: Record<string, unknown>) {
   });
 }
 
+function safeStringify(obj: unknown, maxLen = 1500): string {
+  let s = "";
+  try { s = JSON.stringify(obj); } catch { s = String(obj); }
+  return s.length > maxLen ? s.slice(0, maxLen) + "…(truncated)" : s;
+}
+
 Deno.serve(async (req) => {
   // CORS preflight
   if (req.method === "OPTIONS") {
@@ -222,7 +228,7 @@ Deno.serve(async (req) => {
       ((workerHttpStatus && workerHttpStatus >= 400) ||
        (workerResult && "error" in workerResult));
     if (workerFailed) {
-      errors.push({ scope: "enrichment", detail: `HTTP ${workerHttpStatus}: ${JSON.stringify(workerResult)}` });
+      errors.push({ scope: "enrichment", detail: `HTTP ${workerHttpStatus}: ${safeStringify(workerResult)}` });
     }
 
     const policyScanFailed = 
@@ -230,7 +236,7 @@ Deno.serve(async (req) => {
       ((policyScanHttpStatus && policyScanHttpStatus >= 400) ||
        (policyScanResult && "error" in policyScanResult));
     if (policyScanFailed) {
-      errors.push({ scope: "policy_scan", detail: `HTTP ${policyScanHttpStatus}: ${JSON.stringify(policyScanResult)}` });
+      errors.push({ scope: "policy_scan", detail: `HTTP ${policyScanHttpStatus}: ${safeStringify(policyScanResult)}` });
     }
 
     const ok = errors.length === 0;
