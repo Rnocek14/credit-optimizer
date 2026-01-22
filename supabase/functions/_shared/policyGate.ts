@@ -7,20 +7,47 @@
 import { 
   V1_ALLOWED_INSTITUTIONS, 
   isV1Institution,
-  getV1InstitutionsList 
+  isV1InstitutionAsync,
+  getV1InstitutionsList,
+  getV1InstitutionsFromDB
 } from './v1Scope.ts';
 
 // Re-export for backward compatibility with existing edge functions
-export { V1_ALLOWED_INSTITUTIONS, isV1Institution, getV1InstitutionsList };
+export { V1_ALLOWED_INSTITUTIONS, isV1Institution, isV1InstitutionAsync, getV1InstitutionsList, getV1InstitutionsFromDB };
 
 export type PolicyStatus = 'green' | 'yellow' | 'red';
 
 /**
- * Check if an institution is allowed in V1 scope.
+ * ASYNC: Check if an institution is allowed in V1 scope (database-backed).
  * Returns { allowed: true } or { allowed: false, reason: string }
  * 
- * This is the primary enforcement function used by edge functions.
- * Uses the shared V1 scope config for consistency with frontend.
+ * This is the PRIMARY enforcement function used by edge functions.
+ * Uses database for source of truth, fallback for resilience.
+ */
+export async function checkV1InstitutionScopeAsync(
+  institution: string,
+  supabaseClient?: ReturnType<typeof import('https://esm.sh/@supabase/supabase-js@2').createClient>
+): Promise<{ allowed: true } | { allowed: false; reason: string }> {
+  const normalized = institution?.toUpperCase()?.trim();
+  if (!normalized) {
+    return { allowed: false, reason: 'Institution code is required' };
+  }
+  
+  const isV1 = await isV1InstitutionAsync(normalized, supabaseClient);
+  if (!isV1) {
+    const v1List = await getV1InstitutionsFromDB(supabaseClient);
+    return { 
+      allowed: false, 
+      reason: `Institution '${normalized}' is not in V1 scope. Allowed: ${v1List.join(', ')}` 
+    };
+  }
+  return { allowed: true };
+}
+
+/**
+ * SYNC (DEPRECATED): Check if an institution is allowed in V1 scope.
+ * Uses fallback list only - prefer checkV1InstitutionScopeAsync for hard gates.
+ * @deprecated Use checkV1InstitutionScopeAsync for enforcement gates
  */
 export function checkV1InstitutionScope(institution: string): { allowed: true } | { allowed: false; reason: string } {
   const normalized = institution?.toUpperCase()?.trim();

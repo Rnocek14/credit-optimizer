@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { evaluatePolicyGate, checkV1InstitutionScope, PolicyData } from "../_shared/policyGate.ts";
+import { evaluatePolicyGate, checkV1InstitutionScopeAsync, PolicyData } from "../_shared/policyGate.ts";
 
 // Critical env vars - fail fast with explicit names if missing
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
@@ -195,9 +195,9 @@ serve(async (req) => {
     }
 
     // =========================================================================
-    // V1 SCOPE ENFORCEMENT: Verify pack's institution is in V1 scope
+    // V1 SCOPE ENFORCEMENT: Verify pack's institution is in V1 scope (DB-backed)
     // =========================================================================
-    const scopeCheck = checkV1InstitutionScope(pack.institution);
+    const scopeCheck = await checkV1InstitutionScopeAsync(pack.institution, serviceClient);
     if (!scopeCheck.allowed) {
       console.warn(`[promote-policy-pack] V1 scope block: ${scopeCheck.reason}`);
       return new Response(

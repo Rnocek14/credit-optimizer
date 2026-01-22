@@ -51,7 +51,7 @@ interface PolicyData {
 import { 
   evaluatePolicyGate, 
   getTemplateStatus,
-  checkV1InstitutionScope,
+  checkV1InstitutionScopeAsync,
   type PolicyStatus,
   type PolicyGateResult 
 } from '../_shared/policyGate.ts';
@@ -1085,9 +1085,9 @@ serve(async (req) => {
 
     const { institution_code, program_code = 'BSBA', force_refresh = false, job_id } = body;
 
-    // V1 SCOPE ENFORCEMENT: If specific institution provided, verify it's allowed
+    // V1 SCOPE ENFORCEMENT: If specific institution provided, verify it's allowed (DB-backed)
     if (institution_code) {
-      const scopeCheck = checkV1InstitutionScope(institution_code);
+      const scopeCheck = await checkV1InstitutionScopeAsync(institution_code, supabase);
       if (!scopeCheck.allowed) {
         console.warn(`[seed-bsba-templates] V1 scope block: ${scopeCheck.reason}`);
         return new Response(
