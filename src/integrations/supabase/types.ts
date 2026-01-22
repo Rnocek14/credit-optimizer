@@ -8923,6 +8923,72 @@ export type Database = {
           },
         ]
       }
+      plan_constraint_violations: {
+        Row: {
+          code: string
+          course_id: string | null
+          created_at: string
+          details: Json
+          id: string
+          is_current: boolean
+          message: string
+          plan_id: string
+          provider_code: string | null
+          requirement_block_id: string | null
+          requirement_id: string | null
+          scope_key: string
+          severity: string
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          course_id?: string | null
+          created_at?: string
+          details?: Json
+          id?: string
+          is_current?: boolean
+          message: string
+          plan_id: string
+          provider_code?: string | null
+          requirement_block_id?: string | null
+          requirement_id?: string | null
+          scope_key: string
+          severity: string
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          course_id?: string | null
+          created_at?: string
+          details?: Json
+          id?: string
+          is_current?: boolean
+          message?: string
+          plan_id?: string
+          provider_code?: string | null
+          requirement_block_id?: string | null
+          requirement_id?: string | null
+          scope_key?: string
+          severity?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plan_constraint_violations_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "user_plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "plan_constraint_violations_requirement_block_id_fkey"
+            columns: ["requirement_block_id"]
+            isOneToOne: false
+            referencedRelation: "requirement_blocks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       policy_change_audit: {
         Row: {
           batch_run_id: string | null
@@ -15665,6 +15731,66 @@ export type Database = {
         }
         Relationships: []
       }
+      plan_course_classification: {
+        Row: {
+          course_id: string | null
+          credits: number | null
+          grade: string | null
+          level: string | null
+          plan_course_id: string | null
+          plan_id: string | null
+          provider_code: string | null
+          provider_id: string | null
+          requirement_id: string | null
+          source_type: string | null
+          status: Database["public"]["Enums"]["plan_status"] | null
+          transfer_source: Database["public"]["Enums"]["transfer_source"] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_plan_courses_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "marketplace_courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_plan_courses_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "user_plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_plan_courses_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "providers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_plan_courses_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "requirement_options_view"
+            referencedColumns: ["provider_id"]
+          },
+          {
+            foreignKeyName: "user_plan_courses_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "requirement_options_view_by_block"
+            referencedColumns: ["provider_id"]
+          },
+          {
+            foreignKeyName: "user_plan_courses_requirement_id_fkey"
+            columns: ["requirement_id"]
+            isOneToOne: false
+            referencedRelation: "program_requirements"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       program_pipeline_health_v: {
         Row: {
           bachelor_programs: number | null
@@ -16702,6 +16828,10 @@ export type Database = {
         Args: { baseline_snapshot_id: string; target_user_id: string }
         Returns: string[]
       }
+      plan_invariant_checks: {
+        Args: { p_persist?: boolean; p_plan_id: string }
+        Returns: Json
+      }
       predict_engagement_decline: {
         Args: { target_user_id: string }
         Returns: Json
@@ -16720,6 +16850,10 @@ export type Database = {
       }
       refresh_career_steps_with_levels: { Args: never; Returns: undefined }
       refresh_requirement_option_counts: { Args: never; Returns: undefined }
+      requirement_eligibility: {
+        Args: { p_block_id: string; p_plan_id: string }
+        Returns: Json
+      }
       resolve_policy_conflict: {
         Args: {
           p_chosen_value: Json
