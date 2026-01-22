@@ -5731,6 +5731,33 @@ export type Database = {
           },
         ]
       }
+      institution_attributes: {
+        Row: {
+          accreditation_body: string | null
+          created_at: string
+          institution: string
+          is_regionally_accredited: boolean
+          notes: string | null
+          updated_at: string
+        }
+        Insert: {
+          accreditation_body?: string | null
+          created_at?: string
+          institution: string
+          is_regionally_accredited?: boolean
+          notes?: string | null
+          updated_at?: string
+        }
+        Update: {
+          accreditation_body?: string | null
+          created_at?: string
+          institution?: string
+          is_regionally_accredited?: boolean
+          notes?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       institution_credit_limits: {
         Row: {
           created_at: string | null
@@ -17073,6 +17100,22 @@ export type Database = {
           p_institution: string
           p_notes?: string
         }
+        Returns: Json
+      }
+      scan_accreditation_inference_candidates: {
+        Args: { p_limit?: number; p_to_institution: string }
+        Returns: Json
+      }
+      scan_institutions_missing_inbound_edges: {
+        Args: { p_limit?: number }
+        Returns: Json
+      }
+      scan_provider_rule_edge_gaps: {
+        Args: { p_limit?: number }
+        Returns: Json
+      }
+      scan_transfer_edge_conflicts: {
+        Args: { p_limit?: number }
         Returns: Json
       }
       slugify: { Args: { input: string }; Returns: string }
