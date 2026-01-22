@@ -6137,6 +6137,41 @@ export type Database = {
         }
         Relationships: []
       }
+      institution_v1_scope: {
+        Row: {
+          created_at: string
+          enabled_at: string
+          enabled_by: string | null
+          evidence_coverage_pct: number | null
+          institution_code: string
+          notes: string | null
+        }
+        Insert: {
+          created_at?: string
+          enabled_at?: string
+          enabled_by?: string | null
+          evidence_coverage_pct?: number | null
+          institution_code: string
+          notes?: string | null
+        }
+        Update: {
+          created_at?: string
+          enabled_at?: string
+          enabled_by?: string | null
+          evidence_coverage_pct?: number | null
+          institution_code?: string
+          notes?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "institution_v1_scope_enabled_by_fkey"
+            columns: ["enabled_by"]
+            isOneToOne: false
+            referencedRelation: "v_transcript_health"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
       institutions: {
         Row: {
           accreditation_level: string | null
@@ -16815,6 +16850,14 @@ export type Database = {
           validation_breakdown: Json
         }[]
       }
+      get_v1_institutions: {
+        Args: never
+        Returns: {
+          enabled_at: string
+          evidence_coverage_pct: number
+          institution_code: string
+        }[]
+      }
       has_role: {
         Args: {
           check_role: Database["public"]["Enums"]["app_role"]
@@ -16824,6 +16867,10 @@ export type Database = {
       }
       is_mentor: { Args: never; Returns: boolean }
       is_service_or_admin: { Args: never; Returns: boolean }
+      is_v1_institution: {
+        Args: { p_institution_code: string }
+        Returns: boolean
+      }
       lock_phase6_components: {
         Args: { baseline_snapshot_id: string; target_user_id: string }
         Returns: string[]
