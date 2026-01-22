@@ -131,17 +131,19 @@ export default function PolicyFieldReview() {
   const [reviewerNotes, setReviewerNotes] = useState<string>('');
   const [showPromoteDialog, setShowPromoteDialog] = useState(false);
 
-  // Fetch institutions from policy packs (since school_scrape_jobs uses institution_code differently)
+  // Fetch institutions from both policy packs AND scrape jobs (union for new schools)
   const { data: institutions = [] } = useQuery({
     queryKey: ['extraction-institutions'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('institution_policy_packs')
-        .select('institution')
-        .order('institution');
+      const [packsResult, jobsResult] = await Promise.all([
+        supabase.from('institution_policy_packs').select('institution'),
+        supabase.from('school_scrape_jobs').select('institution_code'),
+      ]);
       
-      if (error) throw error;
-      return Array.from(new Set((data || []).map(p => p.institution))).sort();
+      const packInstitutions = (packsResult.data || []).map(p => p.institution);
+      const jobInstitutions = (jobsResult.data || []).map(j => j.institution_code);
+      
+      return Array.from(new Set([...packInstitutions, ...jobInstitutions])).filter(Boolean).sort();
     },
   });
 
@@ -151,11 +153,13 @@ export default function PolicyFieldReview() {
     queryFn: async () => {
       if (!selectedInstitution) return [];
       
-      // First get job IDs for this institution
+      // Get recent job IDs for this institution (limit to prevent huge IN lists)
       const { data: jobs, error: jobsError } = await supabase
         .from('school_scrape_jobs')
         .select('id')
-        .eq('institution_code', selectedInstitution);
+        .eq('institution_code', selectedInstitution)
+        .order('created_at', { ascending: false })
+        .limit(50);
       
       if (jobsError) throw jobsError;
       if (!jobs || jobs.length === 0) return [];
@@ -607,14 +611,14 @@ export default function PolicyFieldReview() {
               onClick={() => {
                 if (!editingField) return;
                 
-                // Parse value appropriately
+                // Parse value appropriately - try JSON first for arrays/objects
                 let parsedValue: unknown = overrideValue;
-                if (!isNaN(Number(overrideValue))) {
-                  parsedValue = Number(overrideValue);
-                } else if (overrideValue === 'true') {
-                  parsedValue = true;
-                } else if (overrideValue === 'false') {
-                  parsedValue = false;
+                try {
+                  // Try JSON parsing first (handles arrays, objects, numbers, booleans, null)
+                  parsedValue = JSON.parse(overrideValue);
+                } catch {
+                  // Fallback: keep as string if not valid JSON
+                  parsedValue = overrideValue;
                 }
                 
                 updateExtractionMutation.mutate({
