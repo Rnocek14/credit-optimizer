@@ -8355,6 +8355,30 @@ export type Database = {
         }
         Relationships: []
       }
+      ops_audit_snapshots: {
+        Row: {
+          created_at: string
+          id: string
+          report: Json
+          snapshot_type: string
+          triggered_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          report: Json
+          snapshot_type?: string
+          triggered_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          report?: Json
+          snapshot_type?: string
+          triggered_by?: string | null
+        }
+        Relationships: []
+      }
       ops_kv: {
         Row: {
           key: string
