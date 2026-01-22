@@ -304,24 +304,31 @@ Deno.serve(async (req) => {
     // =========================================
     // 7. Auto-repair: Downgrade verified→review if missing evidence
     // =========================================
-    let autoRepairResult: { downgraded_count: number } | null = null;
+    let autoRepairResult: { downgraded_count: number; executed: boolean } | null = null;
     try {
-      // Only run repair if we detected the issue
-      const hasVerifiedNoEvidence = invariantChecks.some(
-        c => c.id === "verified_missing_evidence" && c.count > 0
-      );
+      // First check if repair is needed
+      const { data: needsRepairCount } = await supabase.rpc("count_verified_rules_missing_evidence");
+      const repairNeeded = typeof needsRepairCount === "number" && needsRepairCount > 0;
       
-      if (hasVerifiedNoEvidence) {
-        // Note: credit_transfer_rules uses acceptance_status not status
-        // We'll add a 'needs_review' flag or update to 'elective' as interim
-        // For now, log the issue - full repair requires schema decision
-        console.warn(
-          `[AUTO-REPAIR] Found accepted rules without evidence - manual review needed`
-        );
-        autoRepairResult = { downgraded_count: 0 }; // Placeholder until schema decision
+      if (repairNeeded) {
+        console.log(`[AUTO-REPAIR] Found ${needsRepairCount} verified rules without evidence - repairing`);
+        
+        // Execute the repair RPC
+        const { data: repairedCount, error: repairError } = await supabase.rpc("repair_verified_rules_missing_evidence");
+        
+        if (repairError) {
+          console.error("[AUTO-REPAIR] Repair failed:", repairError.message);
+          autoRepairResult = { downgraded_count: 0, executed: false };
+        } else {
+          console.log(`[AUTO-REPAIR] Downgraded ${repairedCount} rules to review status`);
+          autoRepairResult = { downgraded_count: repairedCount ?? 0, executed: true };
+        }
+      } else {
+        autoRepairResult = { downgraded_count: 0, executed: false };
       }
     } catch (repairErr) {
       console.error("Auto-repair failed:", repairErr);
+      autoRepairResult = { downgraded_count: 0, executed: false };
     }
 
     // =========================================
