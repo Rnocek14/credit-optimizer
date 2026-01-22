@@ -1,52 +1,120 @@
 /**
  * V1 Institution Scope Configuration (Frontend)
  * 
- * SYNCHRONIZED CONFIG for V1-allowed institutions.
- * This file MUST be kept in sync with:
- *   - Backend: supabase/functions/_shared/v1Scope.ts
- *   - Tests: tests/policyGate.test.ts (duplicates logic for bundling safety)
+ * NOW DATABASE-DRIVEN: Queries institution_v1_scope table instead of hardcoded list.
  * 
- * The test harness (tests/adminV1ScopeHarness.ts) helps detect drift.
+ * This file provides:
+ * - Async functions to check V1 scope from database
+ * - Cached query hook for React components
+ * - Fallback to hardcoded list if database unavailable
  * 
- * Evidence coverage audit (as of V1 lock):
- * - TESU: 78.8%
- * - COSC: 83.1%
- * - WGU: 56.9%
- * 
- * EXCELSIOR/EMPIRE excluded until evidence coverage reaches 50%+
- * 
- * To add an institution to V1 scope:
- * 1. Verify evidence coverage >= 50%
- * 2. Ensure policy pack is active with all required fields
- * 3. Update BOTH v1Scope.ts files (frontend + backend)
- * 4. Update tests/policyGate.test.ts sync check
- * 5. Run black-box tests to verify enforcement
+ * Backend sync: supabase/functions/_shared/v1Scope.ts uses same table
  */
 
-/**
- * V1 Allowed Institutions
- * Array format for easy iteration; converted to Set for O(1) lookup
- */
-export const V1_ALLOWED_INSTITUTIONS_LIST = ['TESU', 'COSC', 'WGU', 'EXCELSIOR', 'EMPIRE'] as const;
+import { supabase } from '@/integrations/supabase/client';
 
 /**
- * V1 Allowed Institutions Set (for O(1) lookup)
+ * Fallback list used when database is unavailable
+ * Keep in sync with initial seed in migration
  */
-export const V1_ALLOWED_INSTITUTIONS = new Set<string>(V1_ALLOWED_INSTITUTIONS_LIST);
+const FALLBACK_V1_INSTITUTIONS: string[] = ['TESU', 'COSC', 'WGU', 'EXCELSIOR', 'EMPIRE'];
+
+// Cache for V1 institutions (refreshed periodically)
+let v1InstitutionsCache: Set<string> | null = null;
+let cacheTimestamp: number = 0;
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
 /**
- * Check if an institution is in V1 scope
+ * Fetch V1 institutions from database
+ * Returns Set for O(1) lookup
+ */
+async function fetchV1Institutions(): Promise<Set<string>> {
+  try {
+    const { data, error } = await supabase
+      .from('institution_v1_scope')
+      .select('institution_code');
+    
+    if (error) {
+      console.warn('Failed to fetch V1 scope from database, using fallback:', error.message);
+      return new Set(FALLBACK_V1_INSTITUTIONS);
+    }
+    
+    const institutions = (data ?? []).map(row => row.institution_code.toUpperCase());
+    return new Set(institutions);
+  } catch (err) {
+    console.warn('V1 scope fetch error, using fallback:', err);
+    return new Set(FALLBACK_V1_INSTITUTIONS);
+  }
+}
+
+/**
+ * Get cached V1 institutions (refreshes if stale)
+ */
+async function getV1InstitutionsSet(): Promise<Set<string>> {
+  const now = Date.now();
+  
+  if (v1InstitutionsCache && (now - cacheTimestamp) < CACHE_TTL_MS) {
+    return v1InstitutionsCache;
+  }
+  
+  v1InstitutionsCache = await fetchV1Institutions();
+  cacheTimestamp = now;
+  return v1InstitutionsCache;
+}
+
+/**
+ * Check if an institution is in V1 scope (async, database-backed)
  * Handles case normalization and whitespace trimming
+ */
+export async function isV1InstitutionAsync(institutionCode: string | null | undefined): Promise<boolean> {
+  if (!institutionCode) return false;
+  const normalized = institutionCode.toUpperCase().trim();
+  const v1Set = await getV1InstitutionsSet();
+  return v1Set.has(normalized);
+}
+
+/**
+ * Synchronous check using cached data (fallback if cache empty)
+ * Use this for immediate UI decisions, but prefer async version
  */
 export function isV1Institution(institutionCode: string | null | undefined): boolean {
   if (!institutionCode) return false;
   const normalized = institutionCode.toUpperCase().trim();
-  return V1_ALLOWED_INSTITUTIONS.has(normalized);
+  
+  // Use cache if available, otherwise fallback
+  if (v1InstitutionsCache) {
+    return v1InstitutionsCache.has(normalized);
+  }
+  
+  // Trigger async refresh for next check
+  getV1InstitutionsSet().catch(() => {});
+  
+  // Use fallback for immediate response
+  return new Set(FALLBACK_V1_INSTITUTIONS).has(normalized);
 }
 
 /**
- * Get human-readable list of V1 institutions (for error messages)
+ * Get list of V1 institutions (async)
  */
-export function getV1InstitutionsList(): string {
-  return V1_ALLOWED_INSTITUTIONS_LIST.join(', ');
+export async function getV1InstitutionsList(): Promise<string[]> {
+  const v1Set = await getV1InstitutionsSet();
+  return Array.from(v1Set);
 }
+
+/**
+ * Force refresh the V1 scope cache
+ * Call after adding a new institution to V1 scope
+ */
+export async function refreshV1ScopeCache(): Promise<void> {
+  v1InstitutionsCache = null;
+  cacheTimestamp = 0;
+  await getV1InstitutionsSet();
+}
+
+/**
+ * Legacy exports for backward compatibility
+ * These will be phased out in future versions
+ * @deprecated Use isV1InstitutionAsync instead
+ */
+export const V1_ALLOWED_INSTITUTIONS_LIST = FALLBACK_V1_INSTITUTIONS as readonly string[];
+export const V1_ALLOWED_INSTITUTIONS = new Set<string>(FALLBACK_V1_INSTITUTIONS);

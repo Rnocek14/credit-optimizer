@@ -893,6 +893,7 @@ const App = () => {
         <Route path="/admin/policy-promotion" element={<PolicyPackPromotion />} />
         <Route path="/admin/policy-pipeline" element={<PolicyPackPipeline />} />
         <Route path="/admin/policy-field-review" element={<PolicyFieldReview />} />
+        <Route path="/admin/add-institution" element={<React.Suspense fallback={<PageLoader message="Loading..." />}>{React.createElement(React.lazy(() => import('./pages/Admin/AddInstitution')))}</React.Suspense>} />
         <Route path="/admin/generation-jobs" element={<GenerationJobs />} />
         <Route path="/embed-explorer" element={<EmbedExplorer />} />
           <Route 
