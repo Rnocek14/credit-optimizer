@@ -92,6 +92,7 @@ function BuildStatusBadge({ status, createdAt }: { status: string | null; create
   
   const config: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'success' | 'warning' | 'outline' }> = {
     pending: { label: 'Queued', variant: 'warning' },
+    queued: { label: 'Queued', variant: 'warning' },
     running: { label: 'Running', variant: 'default' },
     completed: { label: 'Complete', variant: 'success' },
     failed: { label: 'Failed', variant: 'destructive' },
