@@ -22,7 +22,8 @@ import {
   Save,
   X,
   Quote,
-  Shield
+  Shield,
+  Play
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import {
@@ -332,6 +333,33 @@ export default function PolicyFieldReview() {
     },
   });
 
+  // Build pack mutation - trigger policy refresh for selected institution
+  const buildPackMutation = useMutation({
+    mutationFn: async () => {
+      if (!selectedInstitution) throw new Error('No institution selected');
+      
+      const { data, error } = await supabase.functions.invoke('policy-refresh-start', {
+        body: { 
+          institutions: [selectedInstitution],
+          run_type: 'manual',
+        },
+      });
+      
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.error || 'Build failed');
+      return data;
+    },
+    onSuccess: () => {
+      toast.success('Build started — policy refresh queued');
+      queryClient.invalidateQueries({ queryKey: ['field-extractions', selectedInstitution] });
+      queryClient.invalidateQueries({ queryKey: ['promotion-candidate', selectedInstitution] });
+      queryClient.invalidateQueries({ queryKey: ['policy-packs-pipeline'] });
+    },
+    onError: (error: Error) => {
+      toast.error(`Build failed: ${error.message}`);
+    },
+  });
+
   // Filter and group extractions by field path
   const filteredExtractions = useMemo(() => {
     if (!showPendingOnly) return extractions;
@@ -375,6 +403,18 @@ export default function PolicyFieldReview() {
           </p>
         </div>
         <div className="flex gap-2">
+          <Button 
+            variant="default"
+            onClick={() => buildPackMutation.mutate()}
+            disabled={!selectedInstitution || buildPackMutation.isPending}
+          >
+            {buildPackMutation.isPending ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <Play className="h-4 w-4 mr-2" />
+            )}
+            Build Pack
+          </Button>
           <Button 
             variant="outline" 
             onClick={() => {
