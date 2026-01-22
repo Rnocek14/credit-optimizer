@@ -150,11 +150,12 @@ export function getViolationCounts(violations: PlanViolation[]) {
  */
 export function groupViolationsByBlock(violations: PlanViolation[]) {
   const grouped: Record<string, PlanViolation[]> = {
-    plan: [], // Plan-level violations (no block)
+    plan: [], // Plan-level violations (no block/requirement)
   };
 
   for (const v of violations) {
-    const key = v.requirement_block_id ?? "plan";
+    // Group by requirement_id first, then requirement_block_id, then plan
+    const key = v.requirement_id ?? v.requirement_block_id ?? "plan";
     if (!grouped[key]) {
       grouped[key] = [];
     }
@@ -167,13 +168,18 @@ export function groupViolationsByBlock(violations: PlanViolation[]) {
 /**
  * Check if a specific block has any incomplete violations
  */
+/**
+ * Check if a specific block/requirement has any incomplete violations
+ * Works with both requirement_id and requirement_block_id for compatibility
+ */
 export function isBlockIncomplete(
   violations: PlanViolation[],
   blockId: string
 ): boolean {
   return violations.some(
     (v) =>
-      v.code === "BLOCK_INCOMPLETE" && v.requirement_block_id === blockId
+      v.code === "BLOCK_INCOMPLETE" && 
+      (v.requirement_id === blockId || v.requirement_block_id === blockId)
   );
 }
 
