@@ -108,8 +108,9 @@ export function useRequirementEligibility(planId?: string, blockId?: string) {
 }
 
 /**
- * Hook to get validation state for a specific block
+ * Hook to get validation state for a specific block/requirement
  * Derives from the main invariants query
+ * Works with both requirement_id and requirement_block_id for compatibility
  */
 export function useBlockValidationState(planId?: string, blockId?: string) {
   const { data: invariants } = usePlanInvariants(planId);
@@ -122,12 +123,14 @@ export function useBlockValidationState(planId?: string, blockId?: string) {
     };
   }
 
+  // Filter violations by either requirement_id or requirement_block_id
   const blockViolations = invariants.violations.filter(
-    (v) => v.requirement_block_id === blockId
+    (v) => v.requirement_id === blockId || v.requirement_block_id === blockId
   );
 
+  // Check for incomplete using both code names for compatibility
   const isIncomplete = blockViolations.some(
-    (v) => v.code === "BLOCK_INCOMPLETE"
+    (v) => v.code === "REQUIREMENT_INCOMPLETE" || v.code === "BLOCK_INCOMPLETE"
   );
 
   return {
