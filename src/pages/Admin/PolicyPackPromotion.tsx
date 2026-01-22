@@ -112,7 +112,7 @@ export default function PolicyPackPromotion() {
       const { error } = await supabase
         .from('institution_v1_scope')
         .insert({
-          institution_code: institutionCode.toUpperCase(),
+          institution_code: institutionCode.toUpperCase().trim(),
           evidence_coverage_pct: evidenceCoverage,
           notes: 'Enabled via admin UI'
         });
@@ -137,7 +137,7 @@ export default function PolicyPackPromotion() {
       const { error } = await supabase
         .from('institution_v1_scope')
         .delete()
-        .eq('institution_code', institutionCode.toUpperCase());
+        .eq('institution_code', institutionCode.toUpperCase().trim());
       
       if (error) throw error;
       return { institutionCode };
@@ -360,7 +360,7 @@ export default function PolicyPackPromotion() {
                           
                           if (v1Status) {
                             const enabledDate = v1Status.enabled_at 
-                              ? new Date(v1Status.enabled_at).toLocaleDateString()
+                              ? new Date(v1Status.enabled_at).toISOString().slice(0, 10)
                               : null;
                             
                             return (
@@ -368,7 +368,7 @@ export default function PolicyPackPromotion() {
                                 <div className="text-right text-xs">
                                   {enabledDate && <div className="text-green-600">Enabled {enabledDate}</div>}
                                   {v1Status.evidence_coverage_pct != null && (
-                                    <div className="text-muted-foreground">Evidence: {v1Status.evidence_coverage_pct}%</div>
+                                    <div className="text-muted-foreground">Confidence: {v1Status.evidence_coverage_pct}%</div>
                                   )}
                                 </div>
                                 <Button
