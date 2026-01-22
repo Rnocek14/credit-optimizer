@@ -143,7 +143,14 @@ export function PolicyRefreshRunsList({ selectedRunId, onSelectRun }: PolicyRefr
                             </Badge>
                           </TooltipTrigger>
                           <TooltipContent>
-                            <p className="text-xs">Triggered by source content change</p>
+                            <p className="text-xs font-medium">Auto-triggered by change scan</p>
+                            {run.summary?.task_summary && (
+                              <p className="text-xs text-muted-foreground">
+                                Tasks: {run.summary.task_summary.complete || 0} complete
+                                {(run.summary.task_summary.blocked || 0) > 0 && ` / ${run.summary.task_summary.blocked} blocked`}
+                                {(run.summary.task_summary.failed || 0) > 0 && ` / ${run.summary.task_summary.failed} failed`}
+                              </p>
+                            )}
                           </TooltipContent>
                         </Tooltip>
                       )}
