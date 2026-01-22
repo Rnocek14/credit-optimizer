@@ -302,25 +302,25 @@ Deno.serve(async (req) => {
     }
 
     // =========================================
-    // 7. Auto-repair: Downgrade verified→review if missing evidence
+    // 7. Auto-repair: Downgrade active→draft if missing evidence
     // =========================================
     let autoRepairResult: { downgraded_count: number; executed: boolean } | null = null;
     try {
-      // First check if repair is needed
-      const { data: needsRepairCount } = await supabase.rpc("count_verified_rules_missing_evidence");
+      // First check if repair is needed (using corrected RPC)
+      const { data: needsRepairCount } = await supabase.rpc("count_active_rules_missing_evidence");
       const repairNeeded = typeof needsRepairCount === "number" && needsRepairCount > 0;
       
       if (repairNeeded) {
-        console.log(`[AUTO-REPAIR] Found ${needsRepairCount} verified rules without evidence - repairing`);
+        console.log(`[AUTO-REPAIR] Found ${needsRepairCount} active rules without evidence - repairing`);
         
-        // Execute the repair RPC
-        const { data: repairedCount, error: repairError } = await supabase.rpc("repair_verified_rules_missing_evidence");
+        // Execute the repair RPC (downgrades to draft)
+        const { data: repairedCount, error: repairError } = await supabase.rpc("repair_active_rules_missing_evidence");
         
         if (repairError) {
           console.error("[AUTO-REPAIR] Repair failed:", repairError.message);
           autoRepairResult = { downgraded_count: 0, executed: false };
         } else {
-          console.log(`[AUTO-REPAIR] Downgraded ${repairedCount} rules to review status`);
+          console.log(`[AUTO-REPAIR] Downgraded ${repairedCount} rules to draft status`);
           autoRepairResult = { downgraded_count: repairedCount ?? 0, executed: true };
         }
       } else {

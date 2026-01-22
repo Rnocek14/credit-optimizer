@@ -16782,7 +16782,7 @@ export type Database = {
         }[]
       }
       count_active_packs_missing_provenance: { Args: never; Returns: number }
-      count_verified_rules_missing_evidence: { Args: never; Returns: number }
+      count_active_rules_missing_evidence: { Args: never; Returns: number }
       create_celebration_moment: {
         Args: {
           celebration_data_param: Json
@@ -17023,7 +17023,7 @@ export type Database = {
       }
       refresh_career_steps_with_levels: { Args: never; Returns: undefined }
       refresh_requirement_option_counts: { Args: never; Returns: undefined }
-      repair_verified_rules_missing_evidence: { Args: never; Returns: number }
+      repair_active_rules_missing_evidence: { Args: never; Returns: number }
       requirement_eligibility: {
         Args: { p_block_id: string; p_plan_id: string }
         Returns: Json
