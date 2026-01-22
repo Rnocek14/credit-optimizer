@@ -16679,6 +16679,7 @@ export type Database = {
           weeks: number
         }[]
       }
+      count_active_packs_missing_provenance: { Args: never; Returns: number }
       create_celebration_moment: {
         Args: {
           celebration_data_param: Json

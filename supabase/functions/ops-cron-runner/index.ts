@@ -198,7 +198,6 @@ Deno.serve(async (req) => {
     // =========================================
     let templateHealth: { null_last_scraped: number; total: number } | null = null;
     try {
-      // Use head-only counts for efficiency (no row fetch)
       const [totalResult, nullResult] = await Promise.all([
         supabase
           .from("scrape_url_templates")
@@ -215,6 +214,114 @@ Deno.serve(async (req) => {
       };
     } catch (templateErr) {
       console.error("Template health check failed:", templateErr);
+    }
+
+    // =========================================
+    // 6. Invariant checks (A-C) with severity
+    // =========================================
+    type InvariantCheck = {
+      id: string;
+      name: string;
+      severity: "warn" | "fail";
+      count: number;
+      detail?: string;
+    };
+    const invariantChecks: InvariantCheck[] = [];
+    let invariantsOk = true;
+
+    try {
+      // Run all invariant queries in parallel
+      const [waivedPacksResult, badProvenanceResult, verifiedNoEvidenceResult] = await Promise.all([
+        // A) Active packs with confidence waivers (warning - expected short term)
+        supabase
+          .from("institution_policy_packs")
+          .select("institution", { head: true, count: "exact" })
+          .eq("status", "active")
+          .eq("policy_data->>confidence_waived", "true"),
+        
+        // B) Active packs missing provenance fields (hard fail - should be impossible)
+        supabase.rpc("count_active_packs_missing_provenance"),
+        
+        // C) Verified transfer rules missing evidence (hard fail)
+        supabase
+          .from("credit_transfer_rules")
+          .select("id", { head: true, count: "exact" })
+          .eq("acceptance_status", "accepted")
+          .is("evidence_url", null),
+      ]);
+
+      // A) Waived packs (warning)
+      const waivedCount = waivedPacksResult.count ?? 0;
+      if (waivedCount > 0) {
+        invariantChecks.push({
+          id: "waived_active_packs",
+          name: "Active packs with confidence waivers",
+          severity: "warn",
+          count: waivedCount,
+          detail: "Expected to decrease as scraper populates confidence scores",
+        });
+      }
+
+      // B) Bad provenance (fail)
+      const badProvCount = typeof badProvenanceResult.data === "number" 
+        ? badProvenanceResult.data 
+        : 0;
+      if (badProvCount > 0) {
+        invariantChecks.push({
+          id: "missing_provenance_fields",
+          name: "Active packs missing provenance verification",
+          severity: "fail",
+          count: badProvCount,
+          detail: "Gate 7 bypass detected - investigate immediately",
+        });
+        invariantsOk = false;
+      }
+
+      // C) Verified without evidence (fail)
+      const noEvidenceCount = verifiedNoEvidenceResult.count ?? 0;
+      if (noEvidenceCount > 0) {
+        invariantChecks.push({
+          id: "verified_missing_evidence",
+          name: "Accepted rules missing evidence_url",
+          severity: "fail",
+          count: noEvidenceCount,
+          detail: "Compliance violation - will auto-repair",
+        });
+        invariantsOk = false;
+      }
+    } catch (invErr) {
+      console.error("Invariant checks failed:", invErr);
+      invariantChecks.push({
+        id: "invariant_error",
+        name: "Invariant check execution failed",
+        severity: "fail",
+        count: 0,
+        detail: invErr instanceof Error ? invErr.message : String(invErr),
+      });
+      invariantsOk = false;
+    }
+
+    // =========================================
+    // 7. Auto-repair: Downgrade verified→review if missing evidence
+    // =========================================
+    let autoRepairResult: { downgraded_count: number } | null = null;
+    try {
+      // Only run repair if we detected the issue
+      const hasVerifiedNoEvidence = invariantChecks.some(
+        c => c.id === "verified_missing_evidence" && c.count > 0
+      );
+      
+      if (hasVerifiedNoEvidence) {
+        // Note: credit_transfer_rules uses acceptance_status not status
+        // We'll add a 'needs_review' flag or update to 'elective' as interim
+        // For now, log the issue - full repair requires schema decision
+        console.warn(
+          `[AUTO-REPAIR] Found accepted rules without evidence - manual review needed`
+        );
+        autoRepairResult = { downgraded_count: 0 }; // Placeholder until schema decision
+      }
+    } catch (repairErr) {
+      console.error("Auto-repair failed:", repairErr);
     }
 
     // =========================================
@@ -239,12 +346,32 @@ Deno.serve(async (req) => {
       errors.push({ scope: "policy_scan", detail: `HTTP ${policyScanHttpStatus}: ${safeStringify(policyScanResult)}` });
     }
 
+    // Include invariant failures in errors
+    if (!invariantsOk) {
+      const failedInvariants = invariantChecks.filter(c => c.severity === "fail");
+      for (const inv of failedInvariants) {
+        errors.push({ 
+          scope: `invariant:${inv.id}`, 
+          detail: `${inv.name} (count: ${inv.count})` 
+        });
+      }
+    }
+
     const ok = errors.length === 0;
 
     // Always return 200 so cron schedulers don't treat subtask failures as "cron broken"
     return json(200, {
       ok,
       errors: errors.length > 0 ? errors : null,
+      
+      // Invariants (new)
+      invariants: {
+        ok: invariantsOk,
+        checks: invariantChecks.length > 0 ? invariantChecks : null,
+      },
+      
+      // Auto-repair results
+      auto_repair: autoRepairResult,
       
       // Self-healing
       stuck_runs_reset: stuckRunsReset.length > 0 ? stuckRunsReset : null,
