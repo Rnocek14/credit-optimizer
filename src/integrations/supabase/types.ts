@@ -8923,6 +8923,66 @@ export type Database = {
           },
         ]
       }
+      policy_change_audit: {
+        Row: {
+          batch_run_id: string | null
+          content_changed: boolean
+          content_length: number | null
+          created_at: string
+          first_hash: boolean
+          hash_after: string | null
+          hash_before: string | null
+          http_status: number | null
+          id: string
+          institution_code: string
+          scan_run_id: string | null
+          skip_reason: string | null
+          task_id: string | null
+          template_id: string
+          trigger_attempted: boolean
+          trigger_succeeded: boolean | null
+          url: string
+        }
+        Insert: {
+          batch_run_id?: string | null
+          content_changed?: boolean
+          content_length?: number | null
+          created_at?: string
+          first_hash?: boolean
+          hash_after?: string | null
+          hash_before?: string | null
+          http_status?: number | null
+          id?: string
+          institution_code: string
+          scan_run_id?: string | null
+          skip_reason?: string | null
+          task_id?: string | null
+          template_id: string
+          trigger_attempted?: boolean
+          trigger_succeeded?: boolean | null
+          url: string
+        }
+        Update: {
+          batch_run_id?: string | null
+          content_changed?: boolean
+          content_length?: number | null
+          created_at?: string
+          first_hash?: boolean
+          hash_after?: string | null
+          hash_before?: string | null
+          http_status?: number | null
+          id?: string
+          institution_code?: string
+          scan_run_id?: string | null
+          skip_reason?: string | null
+          task_id?: string | null
+          template_id?: string
+          trigger_attempted?: boolean
+          trigger_succeeded?: boolean | null
+          url?: string
+        }
+        Relationships: []
+      }
       policy_field_extractions: {
         Row: {
           confidence: number
