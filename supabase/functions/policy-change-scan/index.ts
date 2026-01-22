@@ -68,12 +68,13 @@ Deno.serve(async (req) => {
       .order('priority', { ascending: true })
       .limit(limit);
 
-    // Query 2: Templates with stale last_scraped_at
+    // Query 2: Templates with stale last_scraped_at - order by stalest first for fairness
     let staleQuery = supabase
       .from('scrape_url_templates')
       .select('id, institution_code, url, last_hash, last_scraped_at')
       .eq('status', 'active')
       .lt('last_scraped_at', staleThreshold.toISOString())
+      .order('last_scraped_at', { ascending: true, nullsFirst: true }) // Stalest first for fairness
       .order('priority', { ascending: true })
       .limit(limit);
 
@@ -223,11 +224,12 @@ Deno.serve(async (req) => {
       const cooldownThreshold = new Date();
       cooldownThreshold.setHours(cooldownThreshold.getHours() - cooldown_hours);
 
-      const { data: recentTasks } = await supabase
-        .from('policy_refresh_tasks')
-        .select('institution')
-        .in('institution', changedList)
-        .gte('created_at', cooldownThreshold.toISOString());
+    const { data: recentTasks } = await supabase
+      .from('policy_refresh_tasks')
+      .select('institution')
+      .in('institution', changedList)
+      .gte('created_at', cooldownThreshold.toISOString())
+      .in('status', ['complete']); // Only successful refreshes count for cooldown
 
       const recentlyRefreshed = new Set((recentTasks || []).map(t => t.institution));
       
