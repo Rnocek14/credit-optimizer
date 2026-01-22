@@ -12,6 +12,23 @@ interface CrawlRequest {
   job_type: 'policy' | 'provider' | 'degree' | 'articulation';
   source_type?: 'catalog' | 'policy' | 'degree' | 'partner' | 'faq' | 'marketing';
   priority?: number;
+  template_id?: string; // Optional: for hash-based change detection
+}
+
+// Compute SHA-256 hash of normalized markdown content
+async function computeContentHash(markdown: string): Promise<string> {
+  // Normalize: trim, collapse whitespace, normalize newlines
+  const normalized = (markdown || '')
+    .trim()
+    .replace(/\r\n/g, '\n')
+    .replace(/[ \t]+/g, ' ')
+    .replace(/\n{3,}/g, '\n\n');
+  
+  const data = new TextEncoder().encode(normalized);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  return Array.from(new Uint8Array(hashBuffer))
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('');
 }
 
 function detectSourceType(url: string): 'catalog' | 'policy' | 'degree' | 'partner' | 'faq' | 'marketing' {
@@ -123,6 +140,7 @@ Deno.serve(async (req) => {
       job_type, 
       source_type: providedSourceType,
       priority = 5,
+      template_id,
     } = body;
 
     // Validate URL
@@ -266,6 +284,43 @@ Deno.serve(async (req) => {
         })
         .eq('id', scrapeJobId);
 
+      // Change detection: compute hash and compare to last_hash
+      let content_changed = false;
+      let first_hash = false;
+      let old_hash: string | null = null;
+      
+      if (template_id) {
+        const newHash = await computeContentHash(markdown);
+        
+        // Load existing template to compare hash
+        const { data: template } = await supabase
+          .from('scrape_url_templates')
+          .select('last_hash, status')
+          .eq('id', template_id)
+          .maybeSingle();
+        
+        if (template) {
+          old_hash = template.last_hash;
+          first_hash = !old_hash;
+          content_changed = !!old_hash && old_hash !== newHash;
+          
+          // Update template with new hash and last_scraped_at
+          // If content changed, set status to 'changed' for visibility
+          const nextStatus = content_changed ? 'changed' : (template.status === 'changed' ? 'active' : template.status);
+          
+          await supabase
+            .from('scrape_url_templates')
+            .update({
+              last_hash: newHash,
+              last_scraped_at: new Date().toISOString(),
+              status: nextStatus || 'active',
+            })
+            .eq('id', template_id);
+          
+          console.log(`Hash comparison: first=${first_hash}, changed=${content_changed}, template_id=${template_id}`);
+        }
+      }
+
       return new Response(
         JSON.stringify({
           success: true,
@@ -275,6 +330,11 @@ Deno.serve(async (req) => {
           extracted_text_length: markdown.length,
           source_type: sourceType,
           message: `Successfully crawled ${markdown.length} chars from ${url}`,
+          // Change detection fields
+          template_id: template_id || null,
+          content_changed,
+          first_hash,
+          old_hash_present: !!old_hash,
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
