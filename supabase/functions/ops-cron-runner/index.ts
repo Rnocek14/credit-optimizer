@@ -50,6 +50,31 @@ Deno.serve(async (req) => {
     });
 
     // =========================================
+    // 0. HEARTBEAT: Write "runner started" signal FIRST
+    // =========================================
+    // This guarantees we have a "cron attempted" breadcrumb even if
+    // subsequent steps fail. Allows golden_scan_report() to distinguish
+    // "cron never ran" vs "cron ran but step X failed".
+    let heartbeatWritten = false;
+    try {
+      const { error: heartbeatError } = await supabase
+        .from("ops_kv")
+        .upsert({
+          key: "ops_cron_runner_heartbeat",
+          value: { last_seen_at: checkedAt },
+        }, { onConflict: "key" });
+      
+      if (heartbeatError) {
+        console.error("Heartbeat write error:", heartbeatError.message);
+      } else {
+        heartbeatWritten = true;
+        console.log("Runner heartbeat written:", checkedAt);
+      }
+    } catch (hbErr) {
+      console.error("Heartbeat write failed:", hbErr);
+    }
+
+    // =========================================
     // 1. Self-healing: reset stuck policy runs
     // =========================================
     let stuckRunsReset: Array<{ run_id: string; new_status: string; reason: string }> = [];
@@ -440,6 +465,9 @@ Deno.serve(async (req) => {
       // Golden Scan (audit snapshot)
       golden_scan: goldenScanResult,
       golden_scan_snapshot_stored: snapshotStored,
+      
+      // Heartbeat (new)
+      heartbeat_written: heartbeatWritten,
       
       checked_at: checkedAt,
     });
