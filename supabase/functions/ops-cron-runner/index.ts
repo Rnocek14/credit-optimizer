@@ -131,17 +131,18 @@ Deno.serve(async (req) => {
     let promotionResult: Record<string, unknown> | null = null;
     let promotionExecuted = false;
     let promotionError: string | null = null;
+    let promotionConfig: PromotionConfig | null = null;
 
     try {
-      const cfg = await loadPromotionConfig(supabase);
-      console.log("[PROMOTION] starting with config:", cfg);
+      promotionConfig = await loadPromotionConfig(supabase);
+      console.log("[PROMOTION] starting with config:", promotionConfig);
 
       const { data, error } = await supabase.rpc("promote_eligible_edges", {
-        p_min_confidence: cfg.min_confidence,
-        p_min_evidence_count: cfg.min_evidence_count,
-        p_require_allowlisted_domain: cfg.require_allowlisted_domain,
-        p_limit: cfg.limit,
-        p_dry_run: cfg.dry_run,
+        p_min_confidence: promotionConfig.min_confidence,
+        p_min_evidence_count: promotionConfig.min_evidence_count,
+        p_require_allowlisted_domain: promotionConfig.require_allowlisted_domain,
+        p_limit: promotionConfig.limit,
+        p_dry_run: promotionConfig.dry_run,
         p_promoted_by: "auto:ops-cron-runner",
         p_reason: "Auto-promotion: allowlisted evidence + confidence thresholds met",
       });
@@ -477,10 +478,13 @@ Deno.serve(async (req) => {
         console.error("Golden scan report error:", scanError.message);
       } else if (scanReport) {
         goldenScanResult = scanReport as Record<string, unknown>;
+        // Safely count blockers/warnings (JSONB arrays from PostgREST)
+        const blockersCount = Array.isArray(scanReport.blockers) ? scanReport.blockers.length : 0;
+        const warningsCount = Array.isArray(scanReport.warnings) ? scanReport.warnings.length : 0;
         console.log("Golden scan completed:", {
           ok: scanReport.ok,
-          blockers: (scanReport.blockers as string[])?.length ?? 0,
-          warnings: (scanReport.warnings as string[])?.length ?? 0,
+          blockers: blockersCount,
+          warnings: warningsCount,
         });
         
         // Build composite report with promotion data
@@ -488,6 +492,7 @@ Deno.serve(async (req) => {
           golden_scan: scanReport,
           transfer_edge_promotion: {
             executed: promotionExecuted,
+            config: promotionConfig,  // Include config for audit trail
             result: promotionResult,
             error: promotionError,
           },
@@ -554,11 +559,15 @@ Deno.serve(async (req) => {
       });
     }
 
-    const ok = errors.length === 0;
+    // Dual-status: ok = core infra ran, subtasks_ok = all steps succeeded
+    // This prevents dashboards from going "red" when only one non-critical subtask failed
+    const coreOk = heartbeatWritten; // Core infra check: heartbeat must succeed
+    const subtasksOk = errors.length === 0;
 
     // Always return 200 so cron schedulers don't treat subtask failures as "cron broken"
     return json(200, {
-      ok,
+      ok: coreOk,           // Core infra ran successfully
+      subtasks_ok: subtasksOk, // All subtasks (including promotion) succeeded
       errors: errors.length > 0 ? errors : null,
       
       // Transfer edge promotion (new!)
