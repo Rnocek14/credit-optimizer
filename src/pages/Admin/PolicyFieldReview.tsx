@@ -145,16 +145,28 @@ export default function PolicyFieldReview() {
     },
   });
 
-  // Fetch field extractions - get all and filter/display by field
+  // Fetch field extractions - filter by institution via job_id join
   const { data: extractions = [], isLoading: loadingExtractions, refetch: refetchExtractions } = useQuery({
     queryKey: ['field-extractions', selectedInstitution],
     queryFn: async () => {
       if (!selectedInstitution) return [];
       
-      // Get extractions - we'll fetch all and display them grouped by field
+      // First get job IDs for this institution
+      const { data: jobs, error: jobsError } = await supabase
+        .from('school_scrape_jobs')
+        .select('id')
+        .eq('institution_code', selectedInstitution);
+      
+      if (jobsError) throw jobsError;
+      if (!jobs || jobs.length === 0) return [];
+      
+      const jobIds = jobs.map(j => j.id);
+      
+      // Now fetch extractions filtered by those job IDs
       const { data, error } = await supabase
         .from('policy_field_extractions')
         .select('*')
+        .in('job_id', jobIds)
         .order('field_path')
         .limit(200);
       
@@ -236,12 +248,15 @@ export default function PolicyFieldReview() {
       if (!selectedInstitution) throw new Error('No institution selected');
       
       // Map field_path to ground truth column names
+      // Normalize field_path by extracting the last segment (handles nested paths like policy.max_alt_credit)
       const fieldMapping: Record<string, string> = {
         'residency_credits': 'residency_credits',
+        'min_institutional_credits': 'residency_credits',
         'max_transfer_credits': 'max_transfer_credits',
         'max_alt_credit': 'max_ace_nccrs_credits',
         'max_ace_nccrs_credits': 'max_ace_nccrs_credits',
         'total_credits': 'total_credits_required_bachelors',
+        'total_credits_required': 'total_credits_required_bachelors',
         'degree_credit_total': 'total_credits_required_bachelors',
         'accepts_ap': 'accepts_ap',
         'accepts_clep': 'accepts_clep',
@@ -249,11 +264,14 @@ export default function PolicyFieldReview() {
         'capstone_required': 'capstone_required',
         'cornerstone_required': 'cornerstone_required',
         'min_upper_level_credits': 'min_upper_level_credits',
+        'upper_division_min': 'min_upper_level_credits',
       };
       
-      const columnName = fieldMapping[fieldName];
+      // Extract last segment of field path for matching
+      const normalizedKey = fieldName.split('.').slice(-1)[0];
+      const columnName = fieldMapping[normalizedKey] || fieldMapping[fieldName];
       if (!columnName) {
-        throw new Error(`Unknown field: ${fieldName}`);
+        throw new Error(`Unknown field: ${fieldName} (normalized: ${normalizedKey})`);
       }
       
       // Upsert to ground truth table
