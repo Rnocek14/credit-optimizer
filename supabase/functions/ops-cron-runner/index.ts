@@ -19,6 +19,57 @@ function safeStringify(obj: unknown, maxLen = 1500): string {
   return s.length > maxLen ? s.slice(0, maxLen) + "…(truncated)" : s;
 }
 
+// =========================================
+// PROMOTION CONFIG HELPERS
+// =========================================
+type PromotionConfig = {
+  min_confidence: number;
+  min_evidence_count: number;
+  require_allowlisted_domain: boolean;
+  limit: number;
+  dry_run: boolean;
+};
+
+const DEFAULT_PROMOTION_CONFIG: PromotionConfig = {
+  min_confidence: 0.85,
+  min_evidence_count: 1,
+  require_allowlisted_domain: true,
+  limit: 200,
+  dry_run: false,
+};
+
+// deno-lint-ignore no-explicit-any
+async function loadPromotionConfig(supabase: any): Promise<PromotionConfig> {
+  const { data, error } = await supabase
+    .from("ops_kv")
+    .select("value")
+    .eq("key", "transfer_edge_promotion_config")
+    .maybeSingle();
+
+  if (error) {
+    console.error("[PROMOTION] config read error:", error.message);
+    return DEFAULT_PROMOTION_CONFIG;
+  }
+
+  const v = (data?.value ?? {}) as Record<string, unknown>;
+  return {
+    min_confidence: typeof v.min_confidence === "number" ? v.min_confidence : DEFAULT_PROMOTION_CONFIG.min_confidence,
+    min_evidence_count: typeof v.min_evidence_count === "number" ? v.min_evidence_count : DEFAULT_PROMOTION_CONFIG.min_evidence_count,
+    require_allowlisted_domain: typeof v.require_allowlisted_domain === "boolean" ? v.require_allowlisted_domain : DEFAULT_PROMOTION_CONFIG.require_allowlisted_domain,
+    limit: typeof v.limit === "number" ? v.limit : DEFAULT_PROMOTION_CONFIG.limit,
+    dry_run: typeof v.dry_run === "boolean" ? v.dry_run : DEFAULT_PROMOTION_CONFIG.dry_run,
+  };
+}
+
+// deno-lint-ignore no-explicit-any
+async function writeOpsKv(supabase: any, key: string, value: unknown) {
+  const { error } = await supabase
+    .from("ops_kv")
+    .upsert({ key, value }, { onConflict: "key" });
+
+  if (error) console.error(`[OPS_KV] upsert failed for ${key}:`, error.message);
+}
+
 Deno.serve(async (req) => {
   // CORS preflight
   if (req.method === "OPTIONS") {
@@ -72,6 +123,63 @@ Deno.serve(async (req) => {
       }
     } catch (hbErr) {
       console.error("Heartbeat write failed:", hbErr);
+    }
+
+    // =========================================
+    // 0.5 TRANSFER EDGE PROMOTION (inferred → verified)
+    // =========================================
+    let promotionResult: Record<string, unknown> | null = null;
+    let promotionExecuted = false;
+    let promotionError: string | null = null;
+
+    try {
+      const cfg = await loadPromotionConfig(supabase);
+      console.log("[PROMOTION] starting with config:", cfg);
+
+      const { data, error } = await supabase.rpc("promote_eligible_edges", {
+        p_min_confidence: cfg.min_confidence,
+        p_min_evidence_count: cfg.min_evidence_count,
+        p_require_allowlisted_domain: cfg.require_allowlisted_domain,
+        p_limit: cfg.limit,
+        p_dry_run: cfg.dry_run,
+        p_promoted_by: "auto:ops-cron-runner",
+        p_reason: "Auto-promotion: allowlisted evidence + confidence thresholds met",
+      });
+
+      promotionExecuted = true;
+
+      if (error) {
+        console.error("[PROMOTION] RPC error:", error.message);
+        promotionError = error.message;
+        await writeOpsKv(supabase, "transfer_edge_promotion_last_error", {
+          at: checkedAt,
+          message: error.message,
+        });
+      } else {
+        promotionResult = data as Record<string, unknown>;
+        console.log("[PROMOTION] result:", {
+          dry_run: data?.dry_run,
+          promoted_count: data?.promoted_count,
+          would_promote_count: data?.would_promote_count,
+        });
+
+        await writeOpsKv(supabase, "transfer_edge_promotion_last_result", {
+          at: checkedAt,
+          result: data,
+        });
+        await writeOpsKv(supabase, "transfer_edge_promotion_last_ran_at", {
+          last_ran_at: checkedAt,
+        });
+      }
+    } catch (e: unknown) {
+      promotionExecuted = true;
+      const msg = e instanceof Error ? e.message : String(e);
+      console.error("[PROMOTION] failed:", msg);
+      promotionError = msg;
+      await writeOpsKv(supabase, "transfer_edge_promotion_last_error", {
+        at: checkedAt,
+        message: msg,
+      });
     }
 
     // =========================================
@@ -375,11 +483,21 @@ Deno.serve(async (req) => {
           warnings: (scanReport.warnings as string[])?.length ?? 0,
         });
         
+        // Build composite report with promotion data
+        const compositeReport = {
+          golden_scan: scanReport,
+          transfer_edge_promotion: {
+            executed: promotionExecuted,
+            result: promotionResult,
+            error: promotionError,
+          },
+        };
+        
         // Store snapshot for historical tracking
         const { error: insertError } = await supabase
           .from("ops_audit_snapshots")
           .insert({
-            report: scanReport,
+            report: compositeReport,
             snapshot_type: "golden_scan",
             triggered_by: "ops-cron-runner",
           });
@@ -428,6 +546,14 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Include promotion errors if any
+    if (promotionError) {
+      errors.push({ 
+        scope: "promotion", 
+        detail: `Edge promotion failed: ${promotionError}` 
+      });
+    }
+
     const ok = errors.length === 0;
 
     // Always return 200 so cron schedulers don't treat subtask failures as "cron broken"
@@ -435,7 +561,17 @@ Deno.serve(async (req) => {
       ok,
       errors: errors.length > 0 ? errors : null,
       
-      // Invariants (new)
+      // Transfer edge promotion (new!)
+      transfer_edge_promotion: {
+        executed: promotionExecuted,
+        promoted_count: (promotionResult as Record<string, unknown>)?.promoted_count ?? null,
+        would_promote_count: (promotionResult as Record<string, unknown>)?.would_promote_count ?? null,
+        dry_run: (promotionResult as Record<string, unknown>)?.dry_run ?? null,
+        skips: (promotionResult as Record<string, unknown>)?.skips ?? null,
+        error: promotionError,
+      },
+      
+      // Invariants
       invariants: {
         ok: invariantsOk,
         checks: invariantChecks.length > 0 ? invariantChecks : null,
@@ -466,7 +602,7 @@ Deno.serve(async (req) => {
       golden_scan: goldenScanResult,
       golden_scan_snapshot_stored: snapshotStored,
       
-      // Heartbeat (new)
+      // Heartbeat
       heartbeat_written: heartbeatWritten,
       
       checked_at: checkedAt,
