@@ -33,6 +33,24 @@ interface ScanRequest {
   cooldown_hours?: number;
 }
 
+interface AuditRecord {
+  template_id: string;
+  institution_code: string;
+  url: string;
+  hash_before: string | null;
+  hash_after: string | null;
+  content_changed: boolean;
+  first_hash: boolean;
+  scan_run_id: string;
+  http_status?: number;
+  content_length?: number;
+  trigger_attempted: boolean;
+  trigger_succeeded?: boolean;
+  skip_reason?: string;
+  batch_run_id?: string;
+  task_id?: string;
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -41,6 +59,9 @@ Deno.serve(async (req) => {
   const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
   const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
   const supabase = createClient(supabaseUrl, serviceRoleKey);
+
+  // Generate a unique scan run ID for correlating audit records
+  const scanRunId = crypto.randomUUID();
 
   try {
     const body: ScanRequest = await req.json().catch(() => ({}));
@@ -52,7 +73,7 @@ Deno.serve(async (req) => {
       cooldown_hours = 6,
     } = body;
 
-    console.log(`[policy-change-scan] Starting: institution=${institution || 'all'}, limit=${limit}, stale_days=${stale_days}, dry_run=${dry_run}, cooldown_hours=${cooldown_hours}`);
+    console.log(`[policy-change-scan] Starting run ${scanRunId}: institution=${institution || 'all'}, limit=${limit}, stale_days=${stale_days}, dry_run=${dry_run}, cooldown_hours=${cooldown_hours}`);
 
     // Calculate stale threshold
     const staleThreshold = new Date();
@@ -107,6 +128,7 @@ Deno.serve(async (req) => {
       return new Response(
         JSON.stringify({
           success: true,
+          scan_run_id: scanRunId,
           scanned: 0,
           changed: [],
           triggered: false,
@@ -118,8 +140,9 @@ Deno.serve(async (req) => {
 
     console.log(`[policy-change-scan] Found ${templates.length} stale templates to scan`);
 
-    // Track changed institutions
+    // Track changed institutions and audit records
     const changedInstitutions = new Set<string>();
+    const auditRecords: AuditRecord[] = [];
     const scanResults: Array<{
       template_id: string;
       institution_code: string;
@@ -163,13 +186,27 @@ Deno.serve(async (req) => {
             content_changed: false,
             error: errorText,
           });
+          // Still record audit for failed crawl
+          auditRecords.push({
+            template_id: template.id,
+            institution_code: template.institution_code,
+            url: template.url,
+            hash_before: template.last_hash,
+            hash_after: null,
+            content_changed: false,
+            first_hash: false,
+            scan_run_id: scanRunId,
+            trigger_attempted: false,
+            skip_reason: 'crawl_failed',
+          });
           continue;
         }
 
         const crawlData = await crawlResponse.json();
 
         // Check if content changed (first_hash means new template, don't trigger)
-        const isChange = crawlData.content_changed === true && crawlData.first_hash !== true;
+        const isFirstHash = crawlData.first_hash === true;
+        const isChange = crawlData.content_changed === true && !isFirstHash;
         
         if (isChange) {
           console.log(`[policy-change-scan] Change detected: ${template.institution_code} - ${template.url}`);
@@ -182,7 +219,23 @@ Deno.serve(async (req) => {
           url: template.url,
           status: 'success',
           content_changed: isChange,
-          first_hash: crawlData.first_hash || false,
+          first_hash: isFirstHash,
+        });
+
+        // Build audit record (trigger info will be filled in later)
+        auditRecords.push({
+          template_id: template.id,
+          institution_code: template.institution_code,
+          url: template.url,
+          hash_before: template.last_hash,
+          hash_after: crawlData.new_hash || crawlData.content_hash || null,
+          content_changed: isChange,
+          first_hash: isFirstHash,
+          scan_run_id: scanRunId,
+          http_status: crawlData.http_status,
+          content_length: crawlData.content_length,
+          trigger_attempted: false,
+          skip_reason: isFirstHash ? 'first_hash' : (isChange ? undefined : 'no_change'),
         });
 
         // Delay between crawls to avoid rate limiting (750ms for safety)
@@ -199,6 +252,18 @@ Deno.serve(async (req) => {
           content_changed: false,
           error: errorMsg,
         });
+        auditRecords.push({
+          template_id: template.id,
+          institution_code: template.institution_code,
+          url: template.url,
+          hash_before: template.last_hash,
+          hash_after: null,
+          content_changed: false,
+          first_hash: false,
+          scan_run_id: scanRunId,
+          trigger_attempted: false,
+          skip_reason: 'error',
+        });
       }
     }
 
@@ -206,6 +271,8 @@ Deno.serve(async (req) => {
     let triggered = false;
     let skippedActive: string[] = [];
     let skippedCooldown: string[] = [];
+    let triggeredInstitutions: string[] = [];
+    let batchRunId: string | null = null;
 
     // Debounce check: Only trigger if no active refresh for these institutions
     if (changedList.length > 0 && !dry_run) {
@@ -224,12 +291,12 @@ Deno.serve(async (req) => {
       const cooldownThreshold = new Date();
       cooldownThreshold.setHours(cooldownThreshold.getHours() - cooldown_hours);
 
-    const { data: recentTasks } = await supabase
-      .from('policy_refresh_tasks')
-      .select('institution')
-      .in('institution', changedList)
-      .gte('created_at', cooldownThreshold.toISOString())
-      .in('status', ['complete']); // Only successful refreshes count for cooldown
+      const { data: recentTasks } = await supabase
+        .from('policy_refresh_tasks')
+        .select('institution')
+        .in('institution', changedList)
+        .gte('created_at', cooldownThreshold.toISOString())
+        .in('status', ['complete']); // Only successful refreshes count for cooldown
 
       const recentlyRefreshed = new Set((recentTasks || []).map(t => t.institution));
       
@@ -240,6 +307,18 @@ Deno.serve(async (req) => {
       skippedCooldown = changedList.filter(inst => 
         !alreadyQueued.has(inst) && recentlyRefreshed.has(inst)
       );
+      triggeredInstitutions = toTrigger;
+
+      // Update audit records with skip reasons for debounced institutions
+      for (const record of auditRecords) {
+        if (record.content_changed && !record.skip_reason) {
+          if (alreadyQueued.has(record.institution_code)) {
+            record.skip_reason = 'active_task';
+          } else if (recentlyRefreshed.has(record.institution_code)) {
+            record.skip_reason = 'cooldown';
+          }
+        }
+      }
 
       if (toTrigger.length > 0) {
         console.log(`[policy-change-scan] Triggering refresh for: ${toTrigger.join(', ')}`);
@@ -260,26 +339,86 @@ Deno.serve(async (req) => {
 
         if (refreshResponse.ok) {
           triggered = true;
-          console.log(`[policy-change-scan] Successfully triggered refresh for ${toTrigger.length} institutions`);
+          const refreshData = await refreshResponse.json();
+          batchRunId = refreshData.run_id || null;
+          console.log(`[policy-change-scan] Successfully triggered refresh for ${toTrigger.length} institutions, run_id=${batchRunId}`);
+          
+          // Update audit records for triggered institutions
+          for (const record of auditRecords) {
+            if (toTrigger.includes(record.institution_code) && record.content_changed) {
+              record.trigger_attempted = true;
+              record.trigger_succeeded = true;
+              record.batch_run_id = batchRunId || undefined;
+              record.skip_reason = undefined;
+            }
+          }
         } else {
           const errorText = await refreshResponse.text();
           console.error(`[policy-change-scan] Failed to trigger refresh: ${errorText}`);
+          
+          // Mark as attempted but failed
+          for (const record of auditRecords) {
+            if (toTrigger.includes(record.institution_code) && record.content_changed) {
+              record.trigger_attempted = true;
+              record.trigger_succeeded = false;
+              record.skip_reason = 'trigger_failed';
+            }
+          }
         }
       } else {
         console.log(`[policy-change-scan] All changed institutions skipped (active: ${skippedActive.length}, cooldown: ${skippedCooldown.length})`);
+      }
+    } else if (dry_run && changedList.length > 0) {
+      // Mark dry run in audit records
+      for (const record of auditRecords) {
+        if (record.content_changed && !record.skip_reason) {
+          record.skip_reason = 'dry_run';
+        }
+      }
+    }
+
+    // Write audit records to database
+    if (auditRecords.length > 0) {
+      const { error: auditError } = await supabase
+        .from('policy_change_audit')
+        .insert(auditRecords.map(r => ({
+          template_id: r.template_id,
+          institution_code: r.institution_code,
+          url: r.url,
+          hash_before: r.hash_before,
+          hash_after: r.hash_after,
+          content_changed: r.content_changed,
+          first_hash: r.first_hash,
+          scan_run_id: r.scan_run_id,
+          http_status: r.http_status,
+          content_length: r.content_length,
+          trigger_attempted: r.trigger_attempted,
+          trigger_succeeded: r.trigger_succeeded,
+          skip_reason: r.skip_reason,
+          batch_run_id: r.batch_run_id,
+        })));
+      
+      if (auditError) {
+        console.error('[policy-change-scan] Failed to write audit records:', auditError);
+      } else {
+        console.log(`[policy-change-scan] Wrote ${auditRecords.length} audit records`);
       }
     }
 
     const summary = {
       success: true,
+      scan_run_id: scanRunId,
       scanned: templates.length,
       changed: changedList,
       changed_count: changedList.length,
       triggered,
+      triggered_institutions: triggeredInstitutions,
+      batch_run_id: batchRunId,
       dry_run,
       skipped_active: skippedActive,
       skipped_cooldown: skippedCooldown,
       cooldown_hours,
+      audit_records_written: auditRecords.length,
       scan_results: scanResults.slice(0, 20), // Limit results in response
     };
 
@@ -293,7 +432,7 @@ Deno.serve(async (req) => {
   } catch (error) {
     console.error('[policy-change-scan] Error:', error);
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
+      JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error', scan_run_id: scanRunId }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }

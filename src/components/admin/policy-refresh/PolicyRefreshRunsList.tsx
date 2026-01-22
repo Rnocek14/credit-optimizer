@@ -3,7 +3,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { RefreshCw, CheckCircle, AlertTriangle, Clock, XCircle } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { RefreshCw, CheckCircle, AlertTriangle, Clock, XCircle, Zap } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 
@@ -56,6 +57,21 @@ export function PolicyRefreshRunsList({ selectedRunId, onSelectRun }: PolicyRefr
     }
   };
 
+  const getRunTypeDisplay = (runType: string) => {
+    switch (runType) {
+      case 'auto_change': 
+        return { label: 'Auto (Change)', isAuto: true };
+      case 'full_refresh': 
+        return { label: 'Full Refresh', isAuto: false };
+      case 'single_institution': 
+        return { label: 'Single', isAuto: false };
+      case 'manual': 
+        return { label: 'Manual', isAuto: false };
+      default: 
+        return { label: runType, isAuto: false };
+    }
+  };
+
   const getTaskSummary = (run: BatchRun) => {
     const summary = run.summary?.task_summary;
     if (!summary) return null;
@@ -97,43 +113,60 @@ export function PolicyRefreshRunsList({ selectedRunId, onSelectRun }: PolicyRefr
           <div className="p-4 text-center text-muted-foreground">No runs found</div>
         ) : (
           <div className="p-2 space-y-1">
-            {runs?.map((run) => (
-              <button
-                key={run.id}
-                onClick={() => onSelectRun(run.id)}
-                className={cn(
-                  "w-full text-left p-3 rounded-lg transition-colors",
-                  selectedRunId === run.id
-                    ? "bg-primary/10 border border-primary/30"
-                    : "hover:bg-muted/50"
-                )}
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex items-center gap-2">
-                    {getStatusIcon(run.status)}
-                    <span className="text-xs font-mono text-muted-foreground">
-                      {run.id.slice(0, 8)}
-                    </span>
-                  </div>
-                  {run.tier && (
-                    <Badge variant="secondary" className="text-[10px]">
-                      {run.tier}
-                    </Badge>
+            {runs?.map((run) => {
+              const runTypeInfo = getRunTypeDisplay(run.run_type);
+              return (
+                <button
+                  key={run.id}
+                  onClick={() => onSelectRun(run.id)}
+                  className={cn(
+                    "w-full text-left p-3 rounded-lg transition-colors",
+                    selectedRunId === run.id
+                      ? "bg-primary/10 border border-primary/30"
+                      : "hover:bg-muted/50"
                   )}
-                </div>
-                
-                <div className="mt-1 text-sm">
-                  {run.run_type === 'full_refresh' ? 'Full Refresh' : 
-                   run.run_type === 'single_institution' ? 'Single' : run.run_type}
-                </div>
-                
-                <div className="text-xs text-muted-foreground">
-                  {formatDistanceToNow(new Date(run.created_at), { addSuffix: true })}
-                </div>
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      {getStatusIcon(run.status)}
+                      <span className="text-xs font-mono text-muted-foreground">
+                        {run.id.slice(0, 8)}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      {runTypeInfo.isAuto && (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-amber-500/10 text-amber-600 border-amber-500/30">
+                              <Zap className="h-3 w-3 mr-0.5" />
+                              Auto
+                            </Badge>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p className="text-xs">Triggered by source content change</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      )}
+                      {run.tier && (
+                        <Badge variant="secondary" className="text-[10px]">
+                          {run.tier}
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                  
+                  <div className="mt-1 text-sm">
+                    {runTypeInfo.label}
+                  </div>
+                  
+                  <div className="text-xs text-muted-foreground">
+                    {formatDistanceToNow(new Date(run.created_at), { addSuffix: true })}
+                  </div>
 
-                {getTaskSummary(run)}
-              </button>
-            ))}
+                  {getTaskSummary(run)}
+                </button>
+              );
+            })}
           </div>
         )}
       </ScrollArea>
