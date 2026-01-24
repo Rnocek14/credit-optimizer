@@ -33,19 +33,19 @@ export default function TodayDashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <Button className="justify-start" asChild>
+              <Button variant="ghost" className="justify-start border-0" asChild>
                 <Link to="/education-tree">
                   <BookOpen className="mr-2 h-4 w-4" />
                   Education Tree (New!)
                 </Link>
               </Button>
-              <Button variant="outline" className="justify-start" asChild>
+              <Button variant="ghost" className="justify-start border-0" asChild>
                 <Link to="/skilltree3">
                   <Route className="mr-2 h-4 w-4" />
                   Life Path Graph
                 </Link>
               </Button>
-              <Button variant="secondary" className="justify-start" asChild>
+              <Button variant="ghost" className="justify-start border-0" asChild>
                 <Link to="/edu-tree-v3-vertical">
                   <Workflow className="mr-2 h-4 w-4" />
                   EduTree V3 Vertical (Test)
