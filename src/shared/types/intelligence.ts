@@ -105,6 +105,7 @@ export interface RecommendationCandidate {
   progress?: number;             // 0–100
   href?: string;
   actions?: Array<{
+    kind: ActionKind;
     label: string;
     href?: string;
     on?: 'discover' | 'plan' | 'progress' | 'contribute';
@@ -112,6 +113,9 @@ export interface RecommendationCandidate {
   }>;
   meta?: MetaMap;
 }
+
+/** Stable discriminator for action routing — never switch on label text. */
+export type ActionKind = 'open' | 'save_to_plan' | 'add_to_edutree' | 'navigate';
 
 /**
  * Per-scorer contribution to the composite score.
@@ -157,6 +161,7 @@ export interface IntelligenceRecommendation {
   progress?: number;
   skills?: string[];
   actions: Array<{
+    kind: ActionKind;
     label: string;
     href?: string;
     on?: 'discover' | 'plan' | 'progress' | 'contribute';

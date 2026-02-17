@@ -31,6 +31,8 @@ export interface MarketplaceCourseForIntelligence {
   cost_usd: number | null;
   subject_area: string | null;
   provider_code: string | null;
+  /** FK to providers table — needed for user_plan_courses insert */
+  provider_id: string | null;
 }
 
 const safeNumber = (v: unknown, fallback = 0): number =>
@@ -71,6 +73,7 @@ export function courseToCandidate(
     provider: course.provider_code ?? undefined,
     // Action params for downstream executors (Add to Plan / Add to EduTree)
     providerCode: course.provider_code ?? undefined,
+    providerId: course.provider_id ?? undefined,
     subjectArea: course.subject_area ?? undefined,
   };
 }

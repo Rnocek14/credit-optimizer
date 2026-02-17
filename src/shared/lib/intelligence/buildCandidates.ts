@@ -29,8 +29,10 @@ export interface CourseCandidate {
   mayaExplanation?: string;
   href?: string;
   provider?: string;
-  /** Provider code for write-path actions (e.g. inserting into user_plan_courses) */
+  /** Provider code for display/filtering */
   providerCode?: string;
+  /** Provider UUID for write-path actions (e.g. inserting into user_plan_courses) */
+  providerId?: string;
   /** Subject area for requirement-block matching */
   subjectArea?: string;
 }
@@ -67,11 +69,13 @@ export function buildCandidates(
       criContribution: g.criImpact ? g.criImpact / 100 : undefined,
       actions: [
         {
+          kind: 'navigate' as const,
           label: 'Find Courses',
           on: 'discover' as const,
           href: `/discover?skills=${encodeURIComponent(g.skill)}&filter=skill-gaps`,
         },
         {
+          kind: 'navigate' as const,
           label: 'View Gap',
           on: 'progress' as const,
           href: `/progress?tab=skill-tree&skill=${encodeURIComponent(g.skill)}`,
@@ -100,11 +104,13 @@ export function buildCandidates(
       mayaExplanation: c.mayaExplanation,
       actions: [
         {
+          kind: 'open' as const,
           label: 'Open Course',
           on: 'discover' as const,
           href: c.href ?? `/discover?tab=courses&course=${encodeURIComponent(c.id)}`,
         },
         {
+          kind: 'save_to_plan' as const,
           label: 'Add to Plan',
           on: 'plan' as const,
           href: `/plan?addCourse=${encodeURIComponent(c.id)}`,
@@ -115,11 +121,13 @@ export function buildCandidates(
           },
         },
         {
+          kind: 'add_to_edutree' as const,
           label: 'Add to EduTree',
           on: 'plan' as const,
           params: {
             courseId: c.id,
             trackId: ctx.activeTrackId ?? '',
+            ...(c.providerId ? { providerId: c.providerId } : {}),
             ...(c.providerCode ? { providerCode: c.providerCode } : {}),
             ...(c.subjectArea ? { subjectArea: c.subjectArea } : {}),
           },
@@ -140,6 +148,7 @@ export function buildCandidates(
       durationHours: p.durationHours,
       actions: [
         {
+          kind: 'navigate' as const,
           label: 'View Project',
           on: 'plan' as const,
           href: `/plan?tab=proof&project=${encodeURIComponent(p.id)}`,
