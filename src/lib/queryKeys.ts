@@ -65,6 +65,10 @@ export const QUERY_KEYS = {
     ['providers', 'provider-alternates', skillTags?.slice().sort(), difficulty, estimatedHours] as const,
   CAREER_TRACKS: (userId?: string) => ['providers', 'career-tracks', userId] as const,
 
+  // ── User state ────────────────────────────────────────────────
+  USER_TRUST_METRICS: (userId?: string) => ['user-state', 'trust-metrics', userId] as const,
+  USER_EXPERIENCE_LEVEL: (userId?: string) => ['user-state', 'experience-level', userId] as const,
+
   // ── Course-aware nodes: batched options and transfer rules ────
   requirementOptionsBatch: (blockIds: string[], scope: string) =>
     ['edutree', 'requirement-options-batch', scope, ...blockIds.sort()] as const,

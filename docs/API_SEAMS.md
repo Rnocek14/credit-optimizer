@@ -138,3 +138,26 @@ When moving a query to the API layer:
 |--------|--------|
 | `userState.ts` | `fetchUserPreferences`, `fetchUserActivityCounts`, `upsertUserPreferences`, `upsertTrustMetrics`, `fetchTrustMetrics` |
 | `tracks.ts` | `fetchProfileId`, `fetchCareerTracks`, `fetchTrackSlugs`, `insertCareerTrack`, `updateCareerTrack`, `cloneCareerTrack` |
+
+### Known Debt: Query Key Fragmentation
+
+**Tracks data** uses three different query keys for the same conceptual dataset:
+
+| Key | Used by |
+|-----|---------|
+| `['career-tracks']` | `useTracks`, `TrackManager`, `CompareTracks` |
+| `['user-career-tracks']` | `CareerSwitchSimulator`, `pages/CompareTracks` |
+| `QUERY_KEYS.CAREER_TRACKS(userId)` → `['providers', 'career-tracks', userId]` | Canonical (unused by most consumers) |
+
+**Impact:** Invalidating one key does not refresh the others. Mutations in `useTracks`
+invalidate `['career-tracks']` only, so `CareerSwitchSimulator` may show stale data.
+
+**Resolution:** A dedicated "Query Key Canonicalization" PR should:
+1. Unify all consumers to `QUERY_KEYS.CAREER_TRACKS(userId)`
+2. Update all mutation invalidations to use the canonical key
+3. Verify that all consumers use identical filters/ordering (profile-scoped vs user-scoped)
+4. Smoke test: create/update/archive/clone across all UI surfaces
+
+**Trust metrics** and **experience level** keys (`['user-trust-metrics', userId]`) are not
+yet wired to `QUERY_KEYS.*` entries. Canonical entries added in `queryKeys.ts` but not
+yet adopted by consumers — defer to the same canonicalization PR.
