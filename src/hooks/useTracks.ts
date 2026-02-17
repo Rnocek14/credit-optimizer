@@ -1,10 +1,16 @@
-
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
 import type { CareerTrack, CreateTrackInput, UpdateTrackInput } from '@/types/tracks';
 import { useToast } from '@/hooks/use-toast';
 import { getCurrentUser } from '@/lib/authHelper';
 import { slugify, generateUniqueSlug } from '@/lib/slugify';
+import {
+  fetchProfileId,
+  fetchCareerTracks,
+  fetchTrackSlugs,
+  insertCareerTrack,
+  updateCareerTrack,
+  cloneCareerTrack,
+} from '@/shared/lib/api/tracks';
 
 export function useTracks() {
   const { toast } = useToast();
@@ -21,35 +27,16 @@ export function useTracks() {
         return [];
       }
 
-      // First get the profile ID for this auth user
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('user_id', user.id)
-        .maybeSingle();
-
-      if (!profile) {
+      const profileId = await fetchProfileId(user.id);
+      if (!profileId) {
         console.log('[useTracks] No profile found for user, returning empty array');
         return [];
       }
 
-      console.log('[useTracks] Profile ID:', profile.id);
-
-      // Now fetch tracks using the profile ID
-      const { data, error } = await supabase
-        .from('career_tracks')
-        .select('*')
-        .eq('user_id', profile.id)
-        .order('archived', { ascending: true })
-        .order('order_index', { ascending: true })
-        .order('created_at', { ascending: true });
-
-      if (error) {
-        console.error('[useTracks] Error fetching tracks:', error);
-        throw error;
-      }
-      console.log('[useTracks] Tracks fetched:', data?.length || 0, 'tracks');
-      return (data || []) as CareerTrack[];
+      console.log('[useTracks] Profile ID:', profileId);
+      const data = await fetchCareerTracks(profileId);
+      console.log('[useTracks] Tracks fetched:', data.length, 'tracks');
+      return data as CareerTrack[];
     },
   });
 
@@ -58,36 +45,22 @@ export function useTracks() {
       const user = await getCurrentUser();
       if (!user) throw new Error('Not authenticated');
 
-      // Generate slug from track name
       const baseSlug = slugify(input.track_name);
-      
-      // Get existing slugs to ensure uniqueness
-      const { data: existingTracks } = await supabase
-        .from('career_tracks')
-        .select('slug')
-        .eq('user_id', user.id)
-        .not('slug', 'is', null);
-      
-      const existingSlugs = existingTracks?.map(t => t.slug).filter(Boolean) || [];
+      const existingSlugs = await fetchTrackSlugs(user.id);
       const uniqueSlug = generateUniqueSlug(baseSlug, existingSlugs);
 
-      const { data, error } = await supabase
-        .from('career_tracks')
-        .insert({
-          user_id: user.id,
-          track_name: input.track_name,
-          title: input.track_name,
-          slug: uniqueSlug,
-          goal: input.goal || null,
-          icon: input.icon || null,
-          color: input.color || null,
-          archived: false,
-          order_index: 0,
-        })
-        .select()
-        .single();
+      const data = await insertCareerTrack({
+        user_id: user.id,
+        track_name: input.track_name,
+        title: input.track_name,
+        slug: uniqueSlug,
+        goal: input.goal || null,
+        icon: input.icon || null,
+        color: input.color || null,
+        archived: false,
+        order_index: 0,
+      });
 
-      if (error) throw error;
       return data as CareerTrack;
     },
     onSuccess: (data) => {
@@ -99,16 +72,9 @@ export function useTracks() {
     },
   });
 
-  const updateTrack = useMutation({
+  const updateTrackMut = useMutation({
     mutationFn: async ({ id, patch }: { id: string; patch: UpdateTrackInput }) => {
-      const { data, error } = await supabase
-        .from('career_tracks')
-        .update(patch)
-        .eq('id', id)
-        .select()
-        .single();
-
-      if (error) throw error;
+      const data = await updateCareerTrack(id, patch as Record<string, unknown>);
       return data as CareerTrack;
     },
     onSuccess: (data) => {
@@ -122,14 +88,7 @@ export function useTracks() {
 
   const archiveTrack = useMutation({
     mutationFn: async ({ id, archived = true }: { id: string; archived?: boolean }) => {
-      const { data, error } = await supabase
-        .from('career_tracks')
-        .update({ archived })
-        .eq('id', id)
-        .select()
-        .single();
-
-      if (error) throw error;
+      const data = await updateCareerTrack(id, { archived });
       return data as CareerTrack;
     },
     onSuccess: (data) => {
@@ -142,16 +101,9 @@ export function useTracks() {
     },
   });
 
-  const cloneTrack = useMutation({
+  const cloneTrackMut = useMutation({
     mutationFn: async ({ sourceTrackId, newName, icon, color }: { sourceTrackId: string; newName: string; icon?: string | null; color?: string | null; }) => {
-      const { data, error } = await supabase.rpc('clone_career_track', {
-        source_track_id: sourceTrackId,
-        new_track_name: newName,
-        new_icon: icon ?? null,
-        new_color: color ?? null,
-      });
-      if (error) throw error;
-      return data as string; // new track id
+      return cloneCareerTrack({ sourceTrackId, newName, icon, color });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['career-tracks'] });
@@ -168,12 +120,12 @@ export function useTracks() {
     error: tracksQuery.error,
     refetch: tracksQuery.refetch,
     createTrack: createTrack.mutateAsync,
-    updateTrack: updateTrack.mutateAsync,
+    updateTrack: updateTrackMut.mutateAsync,
     archiveTrack: archiveTrack.mutateAsync,
-    cloneTrack: cloneTrack.mutateAsync,
+    cloneTrack: cloneTrackMut.mutateAsync,
     isCreating: createTrack.isPending,
-    isUpdating: updateTrack.isPending,
+    isUpdating: updateTrackMut.isPending,
     isArchiving: archiveTrack.isPending,
-    isCloning: cloneTrack.isPending,
+    isCloning: cloneTrackMut.isPending,
   };
 }

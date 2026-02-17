@@ -14,3 +14,5 @@ export * from './mentorAnalytics';
 export * from './edutree';
 export * from './telemetry';
 export * from './marketIntelligence';
+export * from './userState';
+export * from './tracks';
