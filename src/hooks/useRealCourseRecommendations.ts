@@ -7,6 +7,11 @@ import { realCourseService, type RealCourse, type CourseSearchFilters } from '@/
 import { calculateCourseCRI } from '@/lib/criCourseIntegration';
 import { toast } from 'sonner';
 
+/** @deprecated Use useIntelligenceLayer instead. This hook will be removed after Phase 2 migration. */
+if (import.meta.env.DEV) {
+  console.warn('[DEPRECATED] useRealCourseRecommendations imported: migrate to useIntelligenceLayer.');
+}
+
 export const useRealCourseRecommendations = (
   skillGaps: string[] = [],
   targetCRI: number = 80

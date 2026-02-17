@@ -5,6 +5,11 @@ import { useMayaCRIIntegration } from './useMayaCRIIntegration';
 import { useMarketIntelligence } from './useMarketIntelligence';
 import { useUnifiedData } from '@/contexts/UnifiedDataContext';
 
+/** @deprecated Use useIntelligenceLayer instead. This hook will be removed after Phase 2/3 migration. */
+if (import.meta.env.DEV) {
+  console.warn('[DEPRECATED] usePredictiveCareerInsights imported: migrate to useIntelligenceLayer.');
+}
+
 interface PredictiveInsight {
   id: string;
   type: 'opportunity' | 'risk' | 'optimization' | 'milestone';

@@ -15,14 +15,14 @@ import {
 import { useIntelligenceLayer } from '@/hooks/useIntelligenceLayer';
 import { useActiveTrackStore } from '@/stores/useActiveTrackStore';
 import { useUser } from '@/hooks/useUser';
-import { toUnifiedRecommendations } from '@/shared/lib/intelligence/toUnifiedRecommendation';
+import { toUnifiedRecommendationsLegacy } from '@/shared/lib/intelligence/toUnifiedRecommendation';
 import { Link } from 'react-router-dom';
 
 export const AchievementsRail: React.FC = () => {
   const { user } = useUser();
   const { activeTrackId } = useActiveTrackStore();
   const { recommendations: intelligenceRecs, isLoading: loading } = useIntelligenceLayer(user?.id, activeTrackId ?? undefined);
-  const recommendations = toUnifiedRecommendations(intelligenceRecs);
+  const recommendations = toUnifiedRecommendationsLegacy(intelligenceRecs);
 
   // Mock recent achievements - in real implementation, fetch from backend
   const recentAchievements = [
