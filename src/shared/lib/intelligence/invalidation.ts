@@ -1,0 +1,96 @@
+/**
+ * Intelligence Layer — Cache Invalidation Utilities
+ *
+ * React Query does NOT support wildcard keys.
+ * All cross-key invalidation uses predicate-based matching.
+ */
+
+import type { QueryClient } from '@tanstack/react-query';
+
+/**
+ * Invalidate ALL intelligence queries for a specific user.
+ * Use after: milestone completion, course completion, profile update.
+ */
+export function invalidateUserIntelligence(qc: QueryClient, userId: string) {
+  qc.invalidateQueries({
+    predicate: (query) =>
+      query.queryKey[0] === 'intelligence' &&
+      query.queryKey.includes(userId),
+  });
+}
+
+/**
+ * Invalidate intelligence for a specific user + track.
+ * Use after: track-scoped progress changes, plan mutations.
+ */
+export function invalidateTrackIntelligence(
+  qc: QueryClient,
+  userId: string,
+  trackId: string,
+) {
+  qc.invalidateQueries({
+    predicate: (query) =>
+      query.queryKey[0] === 'intelligence' &&
+      query.queryKey.includes(userId) &&
+      query.queryKey.includes(trackId),
+  });
+}
+
+/**
+ * Invalidate all market signal queries (any user).
+ * Use after: market data refresh, external data sync.
+ */
+export function invalidateMarketSignals(qc: QueryClient) {
+  qc.invalidateQueries({
+    predicate: (query) =>
+      query.queryKey[0] === 'intelligence' &&
+      query.queryKey[1] === 'signals',
+  });
+}
+
+/**
+ * Invalidate on track switch — clears old track's intelligence
+ * and prepares for new track computation.
+ */
+export function invalidateOnTrackSwitch(
+  qc: QueryClient,
+  userId: string,
+  oldTrackId?: string,
+) {
+  // Invalidate all intelligence for user (covers both old & new track)
+  invalidateUserIntelligence(qc, userId);
+
+  // Also invalidate track-scoped input queries
+  if (oldTrackId) {
+    qc.invalidateQueries({
+      predicate: (query) =>
+        (query.queryKey[0] === 'progress' || query.queryKey[0] === 'crosshub') &&
+        query.queryKey.includes(userId) &&
+        query.queryKey.includes(oldTrackId),
+    });
+  }
+}
+
+/**
+ * Invalidate after save-to-plan or proof project completion.
+ * Touches plan + intelligence caches.
+ */
+export function invalidateOnPlanMutation(
+  qc: QueryClient,
+  userId: string,
+  trackId?: string,
+) {
+  // Plan queries
+  qc.invalidateQueries({
+    predicate: (query) =>
+      query.queryKey[0] === 'plan' &&
+      query.queryKey.includes(userId),
+  });
+
+  // Intelligence (recommendations may shift)
+  if (trackId) {
+    invalidateTrackIntelligence(qc, userId, trackId);
+  } else {
+    invalidateUserIntelligence(qc, userId);
+  }
+}
