@@ -62,7 +62,7 @@ export const QUERY_KEYS = {
   
   // ── Phase 6: Path Canvas & Provider system ────────────────────
   PROVIDER_ALTERNATES: (skillTags?: string[], difficulty?: string, estimatedHours?: number) => 
-    ['providers', 'provider-alternates', skillTags, difficulty, estimatedHours] as const,
+    ['providers', 'provider-alternates', skillTags?.slice().sort(), difficulty, estimatedHours] as const,
   CAREER_TRACKS: (userId?: string) => ['providers', 'career-tracks', userId] as const,
 
   // ── Course-aware nodes: batched options and transfer rules ────
