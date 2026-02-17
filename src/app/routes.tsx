@@ -112,8 +112,6 @@ import CRIDashboardPage from '@/pages/CRIDashboard';
 
 // ── Progress / Achievement pages ───────────────────────────────
 import BadgeDetail from '@/pages/BadgeDetail';
-import CourseHistory from '@/pages/CourseHistory';
-import LearningHistory from '@/pages/LearningHistory';
 
 // ── Maya / Mentor / AI ─────────────────────────────────────────
 import MayaPage from '@/pages/MayaPage';
@@ -126,8 +124,6 @@ import AIAnalyzer from '@/pages/AIAnalyzer';
 import ShareTrust from '@/pages/ShareTrust';
 import UploadCourse from '@/pages/UploadCourse';
 import Saved from '@/pages/Saved';
-import LearningPaths from '@/pages/LearningPaths';
-import Dashboard from '@/pages/Dashboard';
 
 // ── Sandbox (DEV-only) ────────────────────────────────────────
 import TrackOverlayPOCPage from '../../sandbox/TrackOverlayPOCPage';
