@@ -1,8 +1,18 @@
 import { useState } from 'react';
-import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
+import {
+  fetchEduCourses,
+  fetchProgramRequirements,
+  deleteProgramRequirements,
+  deleteRequirementOptions,
+  insertProgramRequirements,
+  insertRequirementOptions,
+  upsertProviders,
+  upsertEduCourses,
+  upsertMarketplaceCourses,
+} from '@/shared/lib/api/devTools';
 
 export default function SeedV5Database() {
   const [isSeeding, setIsSeeding] = useState(false);
@@ -13,14 +23,15 @@ export default function SeedV5Database() {
     setLog(prev => [...prev, message]);
   };
 
+  const logErr = (label: string, err: any) => {
+    const msg = typeof err?.message === 'string' ? err.message : JSON.stringify(err);
+    const code = err?.code ? ` [${err.code}]` : '';
+    addLog(`❌ ${label}:${code} ${msg}`);
+  };
+
   const seedLiteDatabase = async () => {
     setIsSeeding(true);
     setLog([]);
-    const logErr = (label: string, err: any) => {
-      const msg = typeof err?.message === 'string' ? err.message : JSON.stringify(err);
-      const code = err?.code ? ` [${err.code}]` : '';
-      addLog(`❌ ${label}:${code} ${msg}`);
-    };
 
     try {
       addLog('🌱 Starting **LITE** seed (requirements + options using existing edu_courses)…\n');
@@ -28,69 +39,39 @@ export default function SeedV5Database() {
       const programId = 'bs_cs';
       addLog('✓ Using program_id: bs_cs');
 
-      // 1) Fetch existing edu courses (we only use what already exists)
       addLog('→ Fetching existing edu_courses');
-      const { data: eduData, error: eduErr } = await supabase
-        .from('edu_courses' as any)
-        .select('id, code, title, credits')
-        .limit(8);
-      if (eduErr) { logErr('Fetch edu_courses', eduErr); throw eduErr; }
+      const eduData = await fetchEduCourses(8);
       if (!eduData || eduData.length < 2) {
         addLog('⚠️ Need at least 2 edu_courses to create options. Add a couple in Supabase and re-run.');
         return;
       }
       addLog(`✓ Found ${eduData.length} edu_courses`);
 
-      // 2) Clear existing reqs safely (options → requirements) for this program
       addLog('→ Clearing existing requirements for program (best effort)');
-      const { data: existingReqs } = await supabase
-        .from('program_requirements' as any)
-        .select('id')
-        .eq('program_id', programId);
-
-      const existingReqIds = (existingReqs as any)?.map((r: any) => r.id) ?? [];
+      const existingReqs = await fetchProgramRequirements(programId);
+      const existingReqIds = existingReqs.map((r: any) => r.id);
       if (existingReqIds.length) {
-        const { error: delOptsErr } = await supabase
-          .from('requirement_options' as any)
-          .delete()
-          .in('requirement_id', existingReqIds);
-        if (delOptsErr) addLog(`   (note) delete options: ${delOptsErr.message}`);
+        await deleteRequirementOptions(existingReqIds).catch((e: any) => addLog(`   (note) delete options: ${e.message}`));
       }
-
-      const { error: delReqsErr } = await supabase
-        .from('program_requirements' as any)
-        .delete()
-        .eq('program_id', programId);
-      if (delReqsErr) addLog(`   (note) delete requirements: ${delReqsErr.message}`);
-
+      await deleteProgramRequirements(programId).catch((e: any) => addLog(`   (note) delete requirements: ${e.message}`));
       addLog('✓ Cleared existing');
 
-      // 3) Insert 4 requirements (Years 1–4, 6 credits each)
       addLog('→ Inserting program_requirements (Years 1–4, 6 cr each)');
       const requirements = [
-        { id: crypto.randomUUID(), program_id: programId, year: 1, category: 'foundation',     name: 'Foundations',     credits_required: 6, description: 'Core programming foundations' },
-        { id: crypto.randomUUID(), program_id: programId, year: 2, category: 'core',           name: 'Core I',          credits_required: 6, description: 'Data structures and algorithms' },
-        { id: crypto.randomUUID(), program_id: programId, year: 3, category: 'specialization', name: 'Specialization',  credits_required: 6, description: 'Track-specific courses' },
-        { id: crypto.randomUUID(), program_id: programId, year: 4, category: 'capstone',       name: 'Capstone',        credits_required: 6, description: 'Final project and electives' },
+        { id: crypto.randomUUID(), program_id: programId, year: 1, category: 'foundation', name: 'Foundations', credits_required: 6, description: 'Core programming foundations' },
+        { id: crypto.randomUUID(), program_id: programId, year: 2, category: 'core', name: 'Core I', credits_required: 6, description: 'Data structures and algorithms' },
+        { id: crypto.randomUUID(), program_id: programId, year: 3, category: 'specialization', name: 'Specialization', credits_required: 6, description: 'Track-specific courses' },
+        { id: crypto.randomUUID(), program_id: programId, year: 4, category: 'capstone', name: 'Capstone', credits_required: 6, description: 'Final project and electives' },
       ];
-      const { data: reqData, error: reqErr } = await supabase
-        .from('program_requirements' as any)
-        .insert(requirements)
-        .select('id, year')
-        .order('year');
-      if (reqErr) { logErr('Insert requirements', reqErr); throw reqErr; }
+      const reqData = await insertProgramRequirements(requirements);
       addLog(`✓ Inserted ${reqData?.length ?? 0} requirements`);
 
-      // 4) Create options using ONLY edu courses (3 per requirement if available)
       addLog('→ Inserting requirement_options (3 edu options per requirement)');
-      
-      const edu = (eduData as any) as Array<{ id: string; credits?: number }>;
+      const edu = eduData as unknown as Array<{ id: string; credits?: number }>;
       const reqs = (reqData as any) as Array<{ id: string; year: number }>;
-      
-      const optionsPerReq = Math.min(3, edu.length); // if you only have 2 courses, we'll add 2
+      const optionsPerReq = Math.min(3, edu.length);
       const makeOptsForReq = (reqIndex: number, requirementId: string) => {
         const start = reqIndex % edu.length;
-        // pick distinct course IDs per requirement
         const picks = new Set<string>();
         let i = 0;
         while (picks.size < optionsPerReq && i < edu.length * 2) {
@@ -106,15 +87,9 @@ export default function SeedV5Database() {
           transfer_eligible: true,
         }));
       };
-      
       const opts = reqs.flatMap((req, idx) => makeOptsForReq(idx, req.id));
-      
-      const { data: optData, error: optErr } = await supabase
-        .from('requirement_options' as any)
-        .insert(opts)
-        .select('id');
-      if (optErr) { logErr('Insert options', optErr); throw optErr; }
-      addLog(`✓ Inserted ${(optData as any)?.length ?? 0} options`);
+      const optData = await insertRequirementOptions(opts);
+      addLog(`✓ Inserted ${optData?.length ?? 0} options`);
 
       addLog('\n✨ LITE seeding complete! Open /edu-tree-v5?db=1 and hard refresh.');
       toast({ title: 'Lite Seeded', description: 'Years 1–4 added with 6 credits each (edu only).' });
@@ -133,21 +108,15 @@ export default function SeedV5Database() {
     try {
       addLog('🌱 Starting V5 Database Seed...\n');
 
-      // Create providers
       const providers = [
         { id: crypto.randomUUID(), name: 'Coursera', website_url: 'https://coursera.org', accreditation: 'accredited', type: 'mooc' as const },
         { id: crypto.randomUUID(), name: 'edX', website_url: 'https://edx.org', accreditation: 'accredited', type: 'mooc' as const },
         { id: crypto.randomUUID(), name: 'Udacity', website_url: 'https://udacity.com', accreditation: 'recognized', type: 'mooc' as const }
       ];
 
-      const { error: provError } = await supabase.from('providers' as any).upsert(providers, { onConflict: 'name' });
-      if (provError) {
-        addLog(`❌ Provider seed error: ${provError.message || provError.code || JSON.stringify(provError)}`);
-        throw provError;
-      }
+      await upsertProviders(providers);
       addLog(`✓ Providers seeded: ${providers.length}`);
 
-      // Create edu courses
       const eduCourses = [
         { id: crypto.randomUUID(), code: 'CS101', title: 'Intro to Computer Science', credits: 3 },
         { id: crypto.randomUUID(), code: 'MATH201', title: 'Calculus I', credits: 3 },
@@ -155,73 +124,22 @@ export default function SeedV5Database() {
         { id: crypto.randomUUID(), code: 'CS301', title: 'Algorithms', credits: 3 }
       ];
 
-      const { error: eduError } = await supabase.from('edu_courses' as any).upsert(eduCourses, { onConflict: 'code' });
-      if (eduError) {
-        addLog(`❌ Edu courses seed error: ${eduError.message || eduError.code || JSON.stringify(eduError)}`);
-        throw eduError;
-      }
+      await upsertEduCourses(eduCourses);
       addLog(`✓ Edu courses seeded: ${eduCourses.length}`);
 
-      // Create marketplace courses
       const marketplaceCourses = [
-        { 
-          id: crypto.randomUUID(), 
-          code: 'COUR-CS-101', 
-          title: 'Programming Foundations', 
-          credits: 3, 
-          cost_usd: 49, 
-          duration_weeks: 6,
-          provider_id: providers[0].id 
-        },
-        { 
-          id: crypto.randomUUID(), 
-          code: 'EDX-MATH-101', 
-          title: 'Mathematical Thinking', 
-          credits: 3, 
-          cost_usd: 99, 
-          duration_weeks: 8,
-          provider_id: providers[1].id 
-        },
-        { 
-          id: crypto.randomUUID(), 
-          code: 'UDAC-DS-201', 
-          title: 'Data Structures Nanodegree', 
-          credits: 3, 
-          cost_usd: 399, 
-          duration_weeks: 12,
-          provider_id: providers[2].id 
-        },
-        { 
-          id: crypto.randomUUID(), 
-          code: 'COUR-ALG-301', 
-          title: 'Algorithm Design', 
-          credits: 3, 
-          cost_usd: 79, 
-          duration_weeks: 10,
-          provider_id: providers[0].id 
-        }
+        { id: crypto.randomUUID(), code: 'COUR-CS-101', title: 'Programming Foundations', credits: 3, cost_usd: 49, duration_weeks: 6, provider_id: providers[0].id },
+        { id: crypto.randomUUID(), code: 'EDX-MATH-101', title: 'Mathematical Thinking', credits: 3, cost_usd: 99, duration_weeks: 8, provider_id: providers[1].id },
+        { id: crypto.randomUUID(), code: 'UDAC-DS-201', title: 'Data Structures Nanodegree', credits: 3, cost_usd: 399, duration_weeks: 12, provider_id: providers[2].id },
+        { id: crypto.randomUUID(), code: 'COUR-ALG-301', title: 'Algorithm Design', credits: 3, cost_usd: 79, duration_weeks: 10, provider_id: providers[0].id }
       ];
 
-      const { error: mktError } = await supabase.from('marketplace_courses' as any).upsert(marketplaceCourses, { onConflict: 'code' });
-      if (mktError) {
-        addLog(`❌ Marketplace courses seed error: ${mktError.message || mktError.code || JSON.stringify(mktError)}`);
-        throw mktError;
-      }
+      await upsertMarketplaceCourses(marketplaceCourses);
       addLog(`✓ Marketplace courses seeded: ${marketplaceCourses.length}`);
 
-      // Delete existing requirements for bs_cs
-      const { error: deleteError } = await supabase
-        .from('program_requirements' as any)
-        .delete()
-        .eq('program_id', 'bs_cs');
-      
-      if (deleteError) {
-        addLog(`❌ Delete requirements error: ${deleteError.message || deleteError.code || JSON.stringify(deleteError)}`);
-        throw deleteError;
-      }
+      await deleteProgramRequirements('bs_cs');
       addLog('✓ Cleared existing bs_cs requirements');
 
-      // Create requirements
       const requirements = [
         { id: crypto.randomUUID(), program_id: 'bs_cs', year: 1, category: 'foundation', name: 'Foundations', description: 'Core programming foundations', credits_required: 6 },
         { id: crypto.randomUUID(), program_id: 'bs_cs', year: 2, category: 'core', name: 'Core I', description: 'Data structures and algorithms', credits_required: 6 },
@@ -229,14 +147,9 @@ export default function SeedV5Database() {
         { id: crypto.randomUUID(), program_id: 'bs_cs', year: 4, category: 'capstone', name: 'Capstone', description: 'Final project and electives', credits_required: 6 }
       ];
 
-      const { error: reqError } = await supabase.from('program_requirements' as any).insert(requirements);
-      if (reqError) {
-        addLog(`❌ Requirements seed error: ${reqError.message || reqError.code || JSON.stringify(reqError)}`);
-        throw reqError;
-      }
+      await insertProgramRequirements(requirements);
       addLog(`✓ Program requirements seeded: ${requirements.length}`);
 
-      // Create requirement options
       const options = requirements.flatMap((req, idx) => [
         {
           id: crypto.randomUUID(),
@@ -256,11 +169,7 @@ export default function SeedV5Database() {
         }
       ]);
 
-      const { error: optError } = await supabase.from('requirement_options' as any).upsert(options, { onConflict: 'requirement_id,option_ref_id' });
-      if (optError) {
-        addLog(`❌ Options seed error: ${optError.message || optError.code || JSON.stringify(optError)}`);
-        throw optError;
-      }
+      await insertRequirementOptions(options);
       addLog(`✓ Requirement options seeded: ${options.length}`);
 
       addLog('\n✨ Seeding complete!');
@@ -270,6 +179,7 @@ export default function SeedV5Database() {
         description: "All 4 years with 6 credits each are now in the database.",
       });
     } catch (error) {
+      logErr('Seeding failed', error);
       toast({
         title: "Seeding Failed",
         description: error instanceof Error ? error.message : "Unknown error occurred",

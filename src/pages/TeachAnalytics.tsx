@@ -5,21 +5,18 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Trophy, Star, Target, TrendingUp, Clock, Users, Award, MessageSquare } from 'lucide-react';
 import { HubNavigation } from '@/components/HubNavigation';
-import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-
-interface MentorMetrics {
-  courses_reviewed: number;
-  courses_approved: number;
-  courses_rejected: number;
-  approval_rate: number;
-  avg_review_time_hours: number;
-  impact_score: number;
-  quality_score: number;
-}
+import {
+  fetchMentorMetrics,
+  fetchMentorAchievements,
+  fetchMentorLeaderboard,
+  fetchMentorFeedback,
+  checkMentorAchievements,
+  type MentorMetrics,
+} from '@/shared/lib/api/mentorAnalytics';
 
 interface Achievement {
   id: string;
@@ -66,12 +63,10 @@ const TeachAnalytics: React.FC = () => {
     try {
       setLoading(true);
       
-      // Get current user (handles both real and dev users)
       const { getCurrentUser } = await import('@/lib/authHelper');
       const currentUser = await getCurrentUser();
       
       if (!currentUser) {
-        console.log('DEBUG: No authenticated user found');
         toast({
           title: "Authentication Required",
           description: "Please log in to view analytics",
@@ -80,9 +75,6 @@ const TeachAnalytics: React.FC = () => {
         return;
       }
 
-      console.log('DEBUG: Fetching analytics for user:', currentUser.id, currentUser.name);
-
-      // Calculate date range based on timeframe
       const endDate = new Date();
       const startDate = new Date();
       
@@ -91,52 +83,22 @@ const TeachAnalytics: React.FC = () => {
       } else if (timeframe === 'monthly') {
         startDate.setMonth(endDate.getMonth() - 1);
       } else {
-        startDate.setFullYear(2024, 0, 1); // All time
+        startDate.setFullYear(2024, 0, 1);
       }
 
-      // Fetch mentor metrics
-      const { data: metricsData, error: metricsError } = await supabase
-        .rpc('calculate_mentor_performance_metrics', {
-          mentor_user_id: currentUser.id,
-          start_date: startDate.toISOString(),
-          end_date: endDate.toISOString()
-        });
+      const periodType = timeframe === 'all_time' ? 'all_time' : timeframe;
 
-      if (metricsError) throw metricsError;
-      setMetrics(metricsData?.[0] || null);
+      const [metricsData, achievementsData, leaderboardData, feedbackData] = await Promise.all([
+        fetchMentorMetrics(currentUser.id, startDate.toISOString(), endDate.toISOString()),
+        fetchMentorAchievements(currentUser.id),
+        fetchMentorLeaderboard(periodType),
+        fetchMentorFeedback(currentUser.id, startDate.toISOString()),
+      ]);
 
-      // Fetch achievements
-      const { data: achievementsData, error: achievementsError } = await supabase
-        .from('mentor_achievements')
-        .select('*')
-        .eq('mentor_id', currentUser.id)
-        .order('earned_at', { ascending: false });
-
-      if (achievementsError) throw achievementsError;
-      setAchievements(achievementsData || []);
-
-      // Fetch leaderboard
-      const { data: leaderboardData, error: leaderboardError } = await supabase
-        .from('mentor_leaderboard')
-        .select('*')
-        .eq('period_type', timeframe === 'all_time' ? 'all_time' : timeframe)
-        .order('rank_position')
-        .limit(10);
-
-      if (leaderboardError) throw leaderboardError;
-      setLeaderboard(leaderboardData || []);
-
-      // Fetch student feedback
-      const { data: feedbackData, error: feedbackError } = await supabase
-        .from('mentor_course_feedback')
-        .select('*')
-        .eq('mentor_id', currentUser.id)
-        .gte('created_at', startDate.toISOString())
-        .order('created_at', { ascending: false })
-        .limit(20);
-
-      if (feedbackError) throw feedbackError;
-      setFeedback(feedbackData || []);
+      setMetrics(metricsData);
+      setAchievements(achievementsData);
+      setLeaderboard(leaderboardData);
+      setFeedback(feedbackData);
 
     } catch (error) {
       console.error('Error fetching analytics data:', error);
@@ -150,19 +112,13 @@ const TeachAnalytics: React.FC = () => {
     }
   };
 
-  const checkForNewAchievements = async () => {
+  const handleCheckAchievements = async () => {
     try {
       const { getCurrentUser } = await import('@/lib/authHelper');
       const currentUser = await getCurrentUser();
       if (!currentUser) return;
 
-      const { error } = await supabase.rpc('check_mentor_achievements', {
-        mentor_user_id: currentUser.id
-      });
-
-      if (error) throw error;
-
-      // Refresh achievements after checking
+      await checkMentorAchievements(currentUser.id);
       fetchAnalyticsData();
       
       toast({
@@ -211,7 +167,7 @@ const TeachAnalytics: React.FC = () => {
                 <SelectItem value="all_time">All Time</SelectItem>
               </SelectContent>
             </Select>
-            <Button onClick={checkForNewAchievements} variant="outline">
+            <Button onClick={handleCheckAchievements} variant="outline">
               <Award className="h-4 w-4 mr-2" />
               Check Achievements
             </Button>
@@ -312,7 +268,7 @@ const TeachAnalytics: React.FC = () => {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {leaderboard.map((entry, index) => (
+                  {leaderboard.map((entry) => (
                     <div key={entry.mentor_id} className="flex items-center justify-between p-4 rounded-lg border">
                       <div className="flex items-center gap-4">
                         <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10 text-primary font-bold">

@@ -1,9 +1,8 @@
 import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -20,7 +19,6 @@ import {
   AlertTriangle,
   Edit2,
   Save,
-  X,
   Quote,
   Shield,
   Play
@@ -52,39 +50,17 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-
-// Types
-interface FieldExtraction {
-  id: string;
-  job_id: string;
-  field_path: string;
-  extracted_value: unknown;
-  confidence: number;
-  source_quote: string | null;
-  source_url: string | null;
-  review_status: string;
-  reviewer_notes: string | null;
-  final_value: unknown | null;
-  created_at: string | null;
-}
-
-interface ScrapeJob {
-  id: string;
-  institution: string;
-  url: string;
-  job_type: string;
-  status: string;
-}
-
-interface PromotionCandidate {
-  pack_id: string;
-  institution: string;
-  status: string;
-  confidence_score: number;
-  has_ground_truth: boolean;
-  gate_status: 'green' | 'yellow' | 'red';
-  is_promotable: boolean;
-}
+import {
+  fetchExtractionInstitutions,
+  fetchFieldExtractions,
+  fetchPromotionCandidate,
+  fetchBuildStatus,
+  updateFieldExtraction,
+  upsertGroundTruth,
+  type FieldExtraction,
+  type PromotionCandidate,
+} from '@/shared/lib/api/policyPipeline';
+import { supabase } from '@/shared/lib/api/client';
 
 // Build status badge component
 function BuildStatusBadge({ status, createdAt }: { status: string | null; createdAt: string | null }) {
@@ -168,131 +144,51 @@ export default function PolicyFieldReview() {
   const [showPendingOnly, setShowPendingOnly] = useState(() => {
     if (typeof window === 'undefined') return true;
     const stored = window.localStorage.getItem('admin_policy_review_pending_only');
-    return stored !== null ? stored === 'true' : true; // Default true if not set
+    return stored !== null ? stored === 'true' : true;
   });
 
-  // Fetch institutions from both policy packs AND scrape jobs (union for new schools)
+  // Fetch institutions
   const { data: institutions = [] } = useQuery({
     queryKey: ['extraction-institutions'],
-    queryFn: async () => {
-      const [packsResult, jobsResult] = await Promise.all([
-        supabase.from('institution_policy_packs').select('institution'),
-        supabase.from('school_scrape_jobs').select('institution_code'),
-      ]);
-      
-      const packInstitutions = (packsResult.data || []).map(p => p.institution);
-      const jobInstitutions = (jobsResult.data || []).map(j => j.institution_code);
-      
-      return Array.from(new Set([...packInstitutions, ...jobInstitutions])).filter(Boolean).sort();
-    },
+    queryFn: fetchExtractionInstitutions,
   });
 
-  // Fetch field extractions - filter by institution via job_id join
-  const { data: extractions = [], isLoading: loadingExtractions, refetch: refetchExtractions } = useQuery({
+  // Fetch field extractions
+  const { data: extractions = [], isLoading: loadingExtractions } = useQuery({
     queryKey: ['field-extractions', selectedInstitution],
-    queryFn: async () => {
-      if (!selectedInstitution) return [];
-      
-      // Get recent job IDs for this institution (limit to prevent huge IN lists)
-      const { data: jobs, error: jobsError } = await supabase
-        .from('school_scrape_jobs')
-        .select('id')
-        .eq('institution_code', selectedInstitution)
-        .order('created_at', { ascending: false })
-        .limit(50);
-      
-      if (jobsError) throw jobsError;
-      if (!jobs || jobs.length === 0) return [];
-      
-      const jobIds = jobs.map(j => j.id);
-      
-      // Fetch extractions with deterministic ordering: field_path, then confidence desc, then newest
-      const { data, error } = await supabase
-        .from('policy_field_extractions')
-        .select('*')
-        .in('job_id', jobIds)
-        .order('field_path', { ascending: true })
-        .order('confidence', { ascending: false })
-        .order('created_at', { ascending: false })
-        .limit(200);
-      
-      if (error) throw error;
-      return (data ?? []) as FieldExtraction[];
-    },
+    queryFn: () => fetchFieldExtractions(selectedInstitution),
     enabled: !!selectedInstitution,
   });
 
-  // Fetch promotion candidate for institution
+  // Fetch promotion candidate
   const { data: promotionCandidate } = useQuery({
     queryKey: ['promotion-candidate', selectedInstitution],
-    queryFn: async () => {
-      if (!selectedInstitution) return null;
-      const { data, error } = await supabase
-        .from('v_policy_pack_promotion_candidates')
-        .select('*')
-        .eq('institution', selectedInstitution)
-        .maybeSingle();
-      
-      if (error) throw error;
-      return data as PromotionCandidate | null;
-    },
+    queryFn: () => fetchPromotionCandidate(selectedInstitution),
     enabled: !!selectedInstitution,
   });
 
-  // Fetch latest build status for institution
+  // Fetch build status
   const { data: buildStatus } = useQuery({
     queryKey: ['build-status', selectedInstitution],
-    queryFn: async () => {
-      if (!selectedInstitution) return null;
-      const { data, error } = await supabase
-        .from('policy_refresh_tasks')
-        .select('status, created_at')
-        .eq('institution', selectedInstitution)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      
-      if (error) throw error;
-      return data as { status: string; created_at: string } | null;
-    },
+    queryFn: () => fetchBuildStatus(selectedInstitution),
     enabled: !!selectedInstitution,
   });
 
   // Update extraction status mutation
   const updateExtractionMutation = useMutation({
-    mutationFn: async ({ 
-      id, 
-      status, 
-      finalValue, 
-      notes 
-    }: { 
+    mutationFn: async ({ id, status, finalValue, notes }: { 
       id: string; 
       status: 'approved' | 'rejected' | 'modified'; 
       finalValue?: unknown;
       notes?: string;
     }) => {
-      const updateData: Record<string, unknown> = {
-        review_status: status,
-        reviewer_notes: notes || null,
-      };
-      
-      if (status === 'modified' && finalValue !== undefined) {
-        updateData.final_value = finalValue;
-      }
-      
-      const { error } = await supabase
-        .from('policy_field_extractions')
-        .update(updateData)
-        .eq('id', id);
-      
-      if (error) throw error;
+      await updateFieldExtraction(id, status, finalValue, notes);
     },
     onSuccess: () => {
       toast.success('Field review updated');
       setEditingField(null);
       setOverrideValue('');
       setReviewerNotes('');
-      // Invalidate caches so UI stays fresh
       queryClient.invalidateQueries({ queryKey: ['field-extractions', selectedInstitution] });
       queryClient.invalidateQueries({ queryKey: ['promotion-candidate', selectedInstitution] });
     },
@@ -303,57 +199,13 @@ export default function PolicyFieldReview() {
 
   // Write to ground truth mutation
   const writeGroundTruthMutation = useMutation({
-    mutationFn: async ({ 
-      fieldName, 
-      value, 
-      sourceUrl 
-    }: { 
+    mutationFn: async ({ fieldName, value, sourceUrl }: { 
       fieldName: string; 
       value: unknown;
       sourceUrl?: string;
     }) => {
       if (!selectedInstitution) throw new Error('No institution selected');
-      
-      // Map field_path to ground truth column names
-      // Normalize field_path by extracting the last segment (handles nested paths like policy.max_alt_credit)
-      const fieldMapping: Record<string, string> = {
-        'residency_credits': 'residency_credits',
-        'min_institutional_credits': 'residency_credits',
-        'max_transfer_credits': 'max_transfer_credits',
-        'max_alt_credit': 'max_ace_nccrs_credits',
-        'max_ace_nccrs_credits': 'max_ace_nccrs_credits',
-        'total_credits': 'total_credits_required_bachelors',
-        'total_credits_required': 'total_credits_required_bachelors',
-        'degree_credit_total': 'total_credits_required_bachelors',
-        'accepts_ap': 'accepts_ap',
-        'accepts_clep': 'accepts_clep',
-        'accepts_dsst': 'accepts_dsst',
-        'capstone_required': 'capstone_required',
-        'cornerstone_required': 'cornerstone_required',
-        'min_upper_level_credits': 'min_upper_level_credits',
-        'upper_division_min': 'min_upper_level_credits',
-      };
-      
-      // Extract last segment of field path for matching
-      const normalizedKey = fieldName.split('.').slice(-1)[0];
-      const columnName = fieldMapping[normalizedKey] || fieldMapping[fieldName];
-      if (!columnName) {
-        throw new Error(`Unknown field: ${fieldName} (normalized: ${normalizedKey})`);
-      }
-      
-      // Upsert to ground truth table
-      const { error } = await supabase
-        .from('institution_policy_ground_truth')
-        .upsert({
-          institution: selectedInstitution,
-          [columnName]: value,
-          source_url: sourceUrl || null,
-          last_verified_at: new Date().toISOString(),
-        }, {
-          onConflict: 'institution',
-        });
-      
-      if (error) throw error;
+      await upsertGroundTruth(selectedInstitution, fieldName, value, sourceUrl);
     },
     onSuccess: () => {
       toast.success('Ground truth updated');
@@ -364,13 +216,12 @@ export default function PolicyFieldReview() {
     },
   });
 
-  // Promote pack mutation
+  // Promote pack mutation (edge function — kept inline since it's a one-off invoke)
   const promoteMutation = useMutation({
     mutationFn: async ({ packId, force }: { packId: string; force: boolean }) => {
       const { data, error } = await supabase.functions.invoke('promote-policy-pack', {
         body: { packId, forcePromotion: force },
       });
-      
       if (error) throw error;
       if (!data.success) throw new Error(data.error || 'Promotion failed');
       return data;
@@ -386,16 +237,12 @@ export default function PolicyFieldReview() {
     },
   });
 
-  // Build pack mutation - trigger policy refresh for selected institution
+  // Build pack mutation (edge function — kept inline)
   const buildPackMutation = useMutation({
     mutationFn: async (institution: string) => {
       const { data, error } = await supabase.functions.invoke('policy-refresh-start', {
-        body: { 
-          institutions: [institution],
-          run_type: 'manual',
-        },
+        body: { institutions: [institution], run_type: 'manual' },
       });
-      
       if (error) throw error;
       return data;
     },
@@ -428,7 +275,7 @@ export default function PolicyFieldReview() {
     return groups;
   }, [filteredExtractions]);
 
-  // Stats - show both total and filtered counts
+  // Stats
   const statsAll = {
     total: extractions.length,
     pending: extractions.filter(e => e.review_status === 'pending').length,
@@ -579,16 +426,16 @@ export default function PolicyFieldReview() {
         <div className="space-y-4">
           {Object.entries(groupedExtractions).map(([fieldPath, fieldExtractions]) => (
             <Card key={fieldPath}>
-              <CardHeader className="py-3">
+              <div className="py-3 px-6">
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-base font-mono">{fieldPath}</CardTitle>
+                  <span className="text-base font-mono font-semibold">{fieldPath}</span>
                   <div className="flex gap-2">
                     {fieldExtractions.map(ext => (
                       <ReviewStatusBadge key={ext.id} status={ext.review_status} />
                     ))}
                   </div>
                 </div>
-              </CardHeader>
+              </div>
               <CardContent className="pt-0">
                 <Table>
                   <TableHeader>
@@ -745,13 +592,10 @@ export default function PolicyFieldReview() {
               onClick={() => {
                 if (!editingField) return;
                 
-                // Parse value appropriately - try JSON first for arrays/objects
                 let parsedValue: unknown = overrideValue;
                 try {
-                  // Try JSON parsing first (handles arrays, objects, numbers, booleans, null)
                   parsedValue = JSON.parse(overrideValue);
                 } catch {
-                  // Fallback: keep as string if not valid JSON
                   parsedValue = overrideValue;
                 }
                 

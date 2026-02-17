@@ -1,5 +1,5 @@
 /**
- * API module for dev/admin tooling (SeedStatus, Phase1TestPanel, DemoCourseSeedTrigger, RepoScanTab).
+ * API module for dev/admin tooling (SeedStatus, Phase1TestPanel, DemoCourseSeedTrigger, RepoScanTab, SeedV5Database).
  */
 import { supabase } from './client';
 
@@ -95,4 +95,80 @@ export async function verifySeedCounts() {
     gates: chk3.data?.length ?? 0,
     edges: chk4.data?.length ?? 0,
   };
+}
+
+// ── SeedV5Database helpers ──────────────────────────────────────
+
+export async function fetchEduCourses(limit: number) {
+  const { data, error } = await supabase
+    .from('edu_courses' as any)
+    .select('id, code, title, credits')
+    .limit(limit);
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function fetchProgramRequirements(programId: string) {
+  const { data, error } = await supabase
+    .from('program_requirements' as any)
+    .select('id')
+    .eq('program_id', programId);
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function deleteProgramRequirements(programId: string) {
+  const { error } = await supabase
+    .from('program_requirements' as any)
+    .delete()
+    .eq('program_id', programId);
+  if (error) throw error;
+}
+
+export async function deleteRequirementOptions(requirementIds: string[]) {
+  const { error } = await supabase
+    .from('requirement_options' as any)
+    .delete()
+    .in('requirement_id', requirementIds);
+  if (error) throw error;
+}
+
+export async function insertProgramRequirements(requirements: any[]) {
+  const { data, error } = await supabase
+    .from('program_requirements' as any)
+    .insert(requirements)
+    .select('id, year')
+    .order('year');
+  if (error) throw error;
+  return data;
+}
+
+export async function insertRequirementOptions(options: any[]) {
+  const { data, error } = await supabase
+    .from('requirement_options' as any)
+    .insert(options)
+    .select('id');
+  if (error) throw error;
+  return data;
+}
+
+export async function upsertProviders(providers: any[]) {
+  const { error } = await supabase
+    .from('providers' as any)
+    .upsert(providers, { onConflict: 'name' });
+  if (error) throw error;
+}
+
+export async function upsertEduCourses(courses: any[]) {
+  const { error } = await supabase
+    .from('edu_courses' as any)
+    .upsert(courses, { onConflict: 'code' });
+  if (error) throw error;
+}
+
+export async function upsertMarketplaceCourses(courses: any[]) {
+  const { error } = await supabase
+    .from('marketplace_courses' as any)
+    .upsert(courses, { onConflict: 'code' });
+  if (error) throw error;
 }
