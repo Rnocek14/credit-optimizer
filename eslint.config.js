@@ -76,6 +76,16 @@ export default tseslint.config(
       ]
     },
   },
+  // ══════════════════════════════════════════════════════════════
+  // PLANNED: Module Boundary Rules (PR follow-up)
+  // ──────────────────────────────────────────────────────────────
+  // Phase 2 will add eslint-plugin-boundaries to enforce:
+  //   - shared/ cannot import from features/, pages/, or components/
+  //   - features/X cannot import from features/Y (no cross-feature imports)
+  //   - app/ can import from anywhere
+  //   - pages/ can import from features/ and shared/ (temporary)
+  // ══════════════════════════════════════════════════════════════
+
   // EXCEPTION: Allow admin module imports in admin pages
   {
     files: ["src/pages/admin/**/*.{ts,tsx}", "src/components/admin/**/*.{ts,tsx}", "src/features/admin/**/*.{ts,tsx}"],
