@@ -1,5 +1,12 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import {
+  fetchCareerPathTitle,
+  fetchLocationDetails,
+  fetchMarketTrendsRaw,
+  fetchTopGrowingCareers as apiFetchTopGrowing,
+  fetchSalaryInsightsRaw,
+} from '@/shared/lib/api/marketIntelligence';
 
 interface MarketTrend {
   id: string;
@@ -47,56 +54,34 @@ export const useMarketIntelligence = () => {
   const [error, setError] = useState<string | null>(null);
   const [marketData, setMarketData] = useState<MarketTrend[]>([]);
 
-  // Fetch market trends from database
   const fetchMarketTrends = useCallback(async (careerPathId?: string, locationId?: string) => {
     setLoading(true);
     setError(null);
     
     try {
-      console.log('🔍 Fetching market trends...', { careerPathId, locationId });
-      
-      // Query market_trends directly since career_path_id and location_id are null
-      // Use the string fields career_path and location instead
-      let query = supabase
-        .from('market_trends')
-        .select('*')
-        .order('created_at', { ascending: false });
+      let careerPathTitle: string | undefined;
+      let locationValue: string | undefined;
+      let locationLabel: string | undefined;
 
       if (careerPathId) {
-        // Get career path title to filter by
-        const { data: careerPath } = await supabase
-          .from('career_paths')
-          .select('title')
-          .eq('id', careerPathId)
-          .maybeSingle();
-        
-        if (careerPath) {
-          query = query.or(`career_path.eq.${careerPath.title},career_path.ilike.%${careerPath.title}%`);
-        }
+        const cp = await fetchCareerPathTitle(careerPathId);
+        careerPathTitle = cp?.title;
       }
-      
+
       if (locationId) {
-        // Get location value to filter by
-        const { data: location } = await supabase
-          .from('locations')
-          .select('value, label')
-          .eq('id', locationId)
-          .maybeSingle();
-        
-        if (location) {
-          query = query.or(`location.eq.${location.value},location.eq.${location.label},location.ilike.%${location.label}%`);
-        }
+        const loc = await fetchLocationDetails(locationId);
+        locationValue = loc?.value;
+        locationLabel = loc?.label;
       }
 
-      const { data, error: fetchError } = await query.limit(100);
+      const data = await fetchMarketTrendsRaw({
+        careerPathTitle,
+        locationValue,
+        locationLabel,
+      });
 
-      if (fetchError) {
-        throw new Error(`Failed to fetch market trends: ${fetchError.message}`);
-      }
-
-      console.log('✅ Market trends fetched:', data?.length || 0, 'records');
-      setMarketData(data as MarketTrend[] || []);
-      return data as MarketTrend[] || [];
+      setMarketData(data as MarketTrend[]);
+      return data as MarketTrend[];
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Unknown error occurred';
       setError(errorMsg);
@@ -107,33 +92,27 @@ export const useMarketIntelligence = () => {
     }
   }, []);
 
-  // Get AI-powered market analysis
+  // Edge function invocation — allowed exception per API_SEAMS.md
   const analyzeMarketTrends = useCallback(async (careerPathId: string, locationId: string, timeframe: string = '6months') => {
     setLoading(true);
     setError(null);
 
     try {
-      // Get career path and location details
-      const [careerPathResult, locationResult] = await Promise.all([
-        supabase.from('career_paths').select('title').eq('id', careerPathId).single(),
-        supabase.from('locations').select('value, label').eq('id', locationId).single()
+      const [cp, loc] = await Promise.all([
+        fetchCareerPathTitle(careerPathId),
+        fetchLocationDetails(locationId),
       ]);
 
-      if (careerPathResult.error || locationResult.error) {
+      if (!cp || !loc) {
         throw new Error('Invalid career path or location selected');
       }
 
-      const careerPath = careerPathResult.data.title;
-      const location = locationResult.data.value;
-
-      console.log(`📊 Requesting market analysis for ${careerPath} in ${location}`);
-      
       const { data, error: analysisError } = await supabase.functions.invoke('market-trend-analyzer', {
         body: {
           careerPathId,
           locationId,
-          careerPath,
-          location,
+          careerPath: cp.title,
+          location: loc.value,
           timeframe
         }
       });
@@ -142,7 +121,6 @@ export const useMarketIntelligence = () => {
         throw new Error(`Market analysis failed: ${analysisError.message}`);
       }
 
-      console.log('✅ Market analysis completed:', data);
       return data as MarketAnalysis;
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Market analysis failed';
@@ -154,28 +132,12 @@ export const useMarketIntelligence = () => {
     }
   }, []);
 
-  // Get top growing careers in a location
   const getTopGrowingCareers = useCallback(async (location?: string, limit: number = 10) => {
     setLoading(true);
     setError(null);
 
     try {
-      let query = supabase
-        .from('market_trends')
-        .select('career_path, growth_rate, demand_score, average_salary, competition_level')
-        .order('growth_rate', { ascending: false });
-
-      if (location) {
-        query = query.ilike('location', `%${location}%`);
-      }
-
-      const { data, error: fetchError } = await query.limit(limit);
-
-      if (fetchError) {
-        throw new Error(`Failed to fetch top careers: ${fetchError.message}`);
-      }
-
-      return data || [];
+      return await apiFetchTopGrowing(location, limit);
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Failed to fetch top careers';
       setError(errorMsg);
@@ -186,34 +148,24 @@ export const useMarketIntelligence = () => {
     }
   }, []);
 
-  // Get salary insights for a career path
   const getSalaryInsights = useCallback(async (careerPath: string) => {
     setLoading(true);
     setError(null);
 
     try {
-      const { data, error: fetchError } = await supabase
-        .from('market_trends')
-        .select('location, average_salary, growth_rate, demand_score')
-        .ilike('career_path', `%${careerPath}%`)
-        .order('average_salary', { ascending: false });
+      const data = await fetchSalaryInsightsRaw(careerPath);
 
-      if (fetchError) {
-        throw new Error(`Failed to fetch salary insights: ${fetchError.message}`);
-      }
-
-      // Calculate insights
-      const salaries = (data || []).map(d => d.average_salary).filter(s => s > 0);
+      const salaries = data.map(d => d.average_salary).filter(s => s > 0);
       const avgSalary = salaries.length ? salaries.reduce((a, b) => a + b, 0) / salaries.length : 0;
       const medianSalary = salaries.length ? salaries.sort((a, b) => a - b)[Math.floor(salaries.length / 2)] : 0;
-      const topLocation = data?.[0] || null;
+      const topLocation = data[0] || null;
 
       return {
         careerPath,
         averageSalary: Math.round(avgSalary),
         medianSalary: Math.round(medianSalary),
         topPayingLocation: topLocation,
-        locationData: data || [],
+        locationData: data,
         sampleSize: salaries.length
       };
     } catch (err) {
