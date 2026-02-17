@@ -66,6 +66,9 @@ function slotOptionToMarketplaceOption(
   // Institutional course
   const instOpt = opt as { courseCode?: string };
   const courseCode = instOpt.courseCode || '';
+  // Infer level from course code digits (e.g., "FIN-301" → 300, "ACC-201" → 200)
+  const levelMatch = courseCode.match(/(\d)\d{2}$/);
+  const inferredLevel = levelMatch ? parseInt(levelMatch[1], 10) * 100 : null;
   return {
     id: `${slotId}-inst-${index}`,
     courseId: courseCode,
@@ -75,12 +78,13 @@ function slotOptionToMarketplaceOption(
     provider: institutionCode || 'Institution',
     providerCode: institutionCode || null,
     providerType: 'university',
-    cost_usd: 300 * minCredits, // Estimated per-credit cost
+    cost_usd: 300 * minCredits,
     duration_weeks: 8,
     pace_type: 'cohort',
     satisfies_requirements: [requirementArea],
     cri_score: 85,
     isAltCredit: false,
+    level: inferredLevel,
   };
 }
 
@@ -124,6 +128,9 @@ function termsToYearTemplates(terms: TemplateTerm[], institutionCode?: string): 
         options,
         recommendedCourseId: options[0]?.courseId,
         targetCanonicalIds: [slot.requirementArea],
+        requirementArea: slot.requirementArea,
+        creditsRequired: slot.minCredits,
+        label: `${slot.requirementArea} (${slot.minCredits}cr)`,
       });
     }
   }

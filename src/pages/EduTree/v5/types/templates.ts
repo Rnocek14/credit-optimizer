@@ -108,6 +108,10 @@ export interface YearTemplate {
     recommendedCourseId?: string;
     targetCanonicalIds: CanonicalId[];
     isCapLimited?: boolean; // True when slot was flipped from alt-credit to institutional due to cap
+    requirementArea?: string;
+    creditsRequired?: number;
+    label?: string;
+    targetSchool?: string;
   }>;
   
   targetSchool?: string;
