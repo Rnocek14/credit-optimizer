@@ -41,7 +41,7 @@ export function useEduTreeData(): EduTreeDataResult {
 
   const blocksQuery = useQuery({
     queryKey: QUERY_KEYS.REQUIREMENT_BLOCKS(),
-    queryFn: fetchRequirementBlocks,
+    queryFn: () => fetchRequirementBlocks(),
   });
 
   const blockMembersQuery = useQuery({

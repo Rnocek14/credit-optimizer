@@ -38,13 +38,24 @@ outside `src/shared/lib/api/`:
 > **Future**: Consider wrapping these in `src/shared/lib/api/functions.ts`
 > for consistent error handling and logging.
 
-### 3. Infrastructure RPCs
+### 3. Infrastructure RPCs (Pages)
 
 | Usage | Where | Notes |
 |-------|-------|-------|
 | `supabase.rpc('get_user_role', ...)` | DevLogin.tsx | Role lookup for dev auth |
 
-### 4. Realtime Subscriptions (`supabase.channel()`)
+### 4. Infrastructure RPCs (Hooks)
+
+| Usage | Where | Notes |
+|-------|-------|-------|
+| `supabase.rpc('get_user_role', ...)` | `useUserRole.ts` | Role lookup for auth |
+| `supabase.rpc('get_user_role', ...)` | `useSecureAuth.ts` | Secure role validation |
+
+> These are auth-adjacent infrastructure calls. They will be wrapped
+> in `src/shared/lib/api/auth.ts` in a future PR, but are **not** data-access
+> violations — they query auth metadata, not business tables.
+
+### 5. Realtime Subscriptions (`supabase.channel()`)
 
 | Usage | Where | Notes |
 |-------|-------|-------|
@@ -63,7 +74,40 @@ supabase.from('some_table').delete(...)
 
 // ❌ Direct RPC for data fetching in components/pages
 supabase.rpc('calculate_something', ...)
+
+// ❌ Treating business tables as "infra"
+supabase.from('profiles').select(...)  // profiles = business table, use API layer
 ```
+
+## Naming Conventions
+
+| Context | Prefix | Example |
+|---------|--------|---------|
+| Canonical API functions | None | `fetchEduCourses()` |
+| Seed/dev-only helpers | `seed` or `dev` | `seedFetchEduCourses()` |
+| Query keys | Namespaced by domain | `['edutree', 'edu-courses']` |
+
+> Canonical exports live in `src/shared/lib/api/*` and must **never** be
+> prefixed. Dev/seed helpers in `devTools.ts` must always be prefixed
+> to avoid export collisions.
+
+## Refactor Safety Checklist
+
+When moving a query to the API layer:
+
+1. **Preserve query semantics**: `single()` vs `maybeSingle()`, `order()`, `limit()`, join type (`!inner` vs default)
+2. **Preserve error handling**: unique constraint (23505), idempotency, retry semantics
+3. **Key completeness**: every input to the `queryFn` must appear in the `queryKey`
+4. **Run smoke checks** before merging (see below)
+
+### Smoke Checks (6 paths)
+
+1. `/edu-tree-v5` loads with real data
+2. TranscriptQuickEntry: provider → course list → add completed course
+3. TeachAnalytics: metrics + leaderboard + "Check Achievements"
+4. PolicyPackPipeline: institutions list + add/delete URL template
+5. PolicyFieldReview: select institution → extractions → approve one
+6. SeedV5Database: Lite seed → load `/edu-tree-v5?db=1`
 
 ## Enforcement
 
@@ -71,22 +115,11 @@ supabase.rpc('calculate_something', ...)
 - **ESLint**: `no-restricted-syntax` warns on `supabase.from()` / `supabase.rpc()` in `src/pages/`
 - **Future (PR 11)**: Flip warnings → errors once migration is complete
 
-### 5. Infrastructure RPCs (Hooks Layer)
-
-| Usage | Where | Notes |
-|-------|-------|-------|
-| `supabase.rpc('get_user_role', ...)` | `useUserRole.ts` | Role lookup for auth |
-| `supabase.rpc('get_user_role', ...)` | `useSecureAuth.ts` | Secure role validation |
-
-> These are auth-adjacent infrastructure calls. They will be wrapped
-> in `src/shared/lib/api/auth.ts` in a future PR, but are **not** data-access
-> violations — they query auth metadata, not business tables.
-
 ## Migration Status
 
 | Layer | `.from()` calls | `.rpc()` calls | Status |
 |-------|----------------|----------------|--------|
 | `src/components/` | 0 | 0 | ✅ Clean |
 | `src/pages/` | 0 | 1 (DevLogin, infra) | ✅ Clean |
-| `src/hooks/` | ~10 `.from()` | ~12 `.rpc()` | 🔄 PR 10 target |
+| `src/hooks/` | ~8 `.from()` | ~12 `.rpc()` | 🔄 PR 10 target |
 | `src/shared/lib/api/` | All | All | ✅ Canonical home |

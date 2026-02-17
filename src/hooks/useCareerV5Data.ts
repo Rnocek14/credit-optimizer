@@ -3,7 +3,7 @@ import { QUERY_KEYS } from '@/lib/queryKeys';
 import { getAnchorPolicy } from '@/lib/degree/institutionPolicies';
 import {
   fetchProgramRequirements,
-  fetchAllRequirementBlocks,
+  fetchRequirementBlocks,
   fetchRequirementOptionsWithCourses,
 } from '@/shared/lib/api/edutree';
 
@@ -24,7 +24,7 @@ export function useCareerV5Data(programId: string, anchorSchool: string) {
     queryFn: async () => {
       const [modules, blocks, allOptions] = await Promise.all([
         fetchProgramRequirements(programId),
-        fetchAllRequirementBlocks(),
+        fetchRequirementBlocks({ ordered: false }),
         fetchRequirementOptionsWithCourses(),
       ]);
 
