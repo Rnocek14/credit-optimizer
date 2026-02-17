@@ -30,9 +30,9 @@ const SYNC_DEBOUNCE_MS = 1500;
 
 // ─── Helpers ────────────────────────────────────────────────────
 
-/** Deterministic key for a basket item (for diff comparison) */
-function itemKey(courseId: string, requirementId: string | null): string {
-  return `${courseId}::${requirementId ?? '__null__'}`;
+/** Deterministic key for a basket item — matches unique(plan_id, course_id) */
+function itemKey(courseId: string): string {
+  return courseId;
 }
 
 /** Hash basket content for change detection */
@@ -157,35 +157,27 @@ export function usePlanSync(planId: string | null | undefined) {
       // 1. Fetch current server state
       const serverRows = await fetchPlanCoursesWithProvider(planId);
       const serverKeys = new Map(
-        serverRows.map(r => [itemKey(r.course_id, r.requirement_id), r])
+        serverRows.map(r => [itemKey(r.course_id), r])
       );
 
       // 2. Build basket key map
       const basketRows = currentItems.map(item => basketItemToServerRow(item, planId));
       const basketKeys = new Set(
-        basketRows.map(r => itemKey(r.course_id, r.requirement_id))
+        basketRows.map(r => itemKey(r.course_id))
       );
 
       // 3. Upsert: items in basket (new or changed)
       const toUpsert = basketRows.filter(row => {
-        const key = itemKey(row.course_id, row.requirement_id);
-        const existing = serverKeys.get(key);
-        if (!existing) return true; // new item
-        // Changed if credits or cost differ
+        const existing = serverKeys.get(itemKey(row.course_id));
+        if (!existing) return true;
         return existing.credits_earned !== row.credits_earned
           || existing.cost_paid !== row.cost_paid
           || existing.provider_id !== row.provider_id;
       });
 
       if (toUpsert.length > 0) {
-        // Insert new rows (can't upsert on nullable unique constraint)
-        // So we insert only truly new ones, update changed ones
-        const newRows = toUpsert.filter(r =>
-          !serverKeys.has(itemKey(r.course_id, r.requirement_id))
-        );
-        const changedRows = toUpsert.filter(r =>
-          serverKeys.has(itemKey(r.course_id, r.requirement_id))
-        );
+        const newRows = toUpsert.filter(r => !serverKeys.has(itemKey(r.course_id)));
+        const changedRows = toUpsert.filter(r => serverKeys.has(itemKey(r.course_id)));
 
         if (newRows.length > 0) {
           const { error } = await supabase
@@ -198,7 +190,7 @@ export function usePlanSync(planId: string | null | undefined) {
         }
 
         for (const row of changedRows) {
-          const existing = serverKeys.get(itemKey(row.course_id, row.requirement_id));
+          const existing = serverKeys.get(itemKey(row.course_id));
           if (!existing) continue;
           const { error } = await supabase
             .from('user_plan_courses')
@@ -217,7 +209,7 @@ export function usePlanSync(planId: string | null | undefined) {
 
       // 4. Tombstone delete: items on server but not in basket
       const toDelete = serverRows.filter(
-        r => !basketKeys.has(itemKey(r.course_id, r.requirement_id))
+        r => !basketKeys.has(itemKey(r.course_id))
       );
 
       if (toDelete.length > 0) {
