@@ -62,6 +62,8 @@ export const useEnhancedMayaFeedback = () => {
   }, []);
 
   // Fetch feedback correlations
+  // NOTE: userId is resolved async in queryFn (getCurrentUserId), so the key is intentionally not user-scoped.
+  // Future PR can lift userId resolution out of queryFn and include it in QUERY_KEYS.MAYA_FEEDBACK_CORRELATIONS(userId).
   const { data: feedbackHistory, isLoading } = useQuery({
     queryKey: QUERY_KEYS.MAYA_FEEDBACK_CORRELATIONS(),
     queryFn: async () => {

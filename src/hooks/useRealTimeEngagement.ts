@@ -82,6 +82,8 @@ export const useRealTimeEngagement = () => {
   }, []);
 
   // Fetch recent learning sessions
+  // NOTE: userId is resolved async in queryFn (getCurrentUserId), so the key is intentionally not user-scoped.
+  // Future PR can lift userId resolution out of queryFn and include it in QUERY_KEYS.LEARNING_SESSIONS(userId).
   const { data: sessions, isLoading } = useQuery({
     queryKey: QUERY_KEYS.LEARNING_SESSIONS(),
     queryFn: async () => {
@@ -92,6 +94,7 @@ export const useRealTimeEngagement = () => {
   });
 
   // Fetch motivation interventions
+  // NOTE: userId is resolved async in queryFn — key intentionally not user-scoped (see API_SEAMS.md).
   const { data: interventions } = useQuery({
     queryKey: QUERY_KEYS.MOTIVATION_INTERVENTIONS(),
     queryFn: async () => {

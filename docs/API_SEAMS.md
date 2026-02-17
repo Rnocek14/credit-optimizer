@@ -171,30 +171,50 @@ When moving a query to the API layer:
 | `crosshub.ts` | `insertSavedPlanItem`, `insertUserAchievement`, `fetchUserAchievements`, `insertCelebrationMoment`, `insertCompletionTrigger` |
 | `mayaFeedback.ts` | `fetchMayaFeedbackCorrelations`, `fetchMayaFeedbackCorrelationById`, `insertMayaFeedbackCorrelation`, `updateMayaFeedbackCorrelation`, `rpcDevUserSubmitMayaFeedback` |
 
-### Known Debt: Query Key Fragmentation
+### Known Debt: Query Key Fragmentation (partially resolved)
 
-**Tracks data** uses three different query keys for the same conceptual dataset:
+**Tracks data** uses two legacy keys for the same conceptual dataset:
 
 | Key | Used by |
 |-----|---------|
-| `['career-tracks']` | `useTracks`, `TrackManager`, `CompareTracks` |
-| `['user-career-tracks']` | `CareerSwitchSimulator`, `pages/CompareTracks` |
+| `LEGACY_QUERY_KEYS.CAREER_TRACKS()` → `['career-tracks']` | `useTracks`, `TrackManager`, `CompareTracks` (component) |
+| `LEGACY_QUERY_KEYS.USER_CAREER_TRACKS()` → `['user-career-tracks']` | `CareerSwitchSimulator`, `pages/CompareTracks` |
 | `QUERY_KEYS.CAREER_TRACKS(userId)` → `['providers', 'career-tracks', userId]` | Canonical (unused by most consumers) |
 
-**Impact:** Invalidating one key does not refresh the others. Mutations in `useTracks`
-invalidate `['career-tracks']` only, so `CareerSwitchSimulator` may show stale data.
+**Impact:** Invalidating one legacy key does not refresh the other. Mutations in `useTracks`
+invalidate `LEGACY_QUERY_KEYS.CAREER_TRACKS()` only, so `CareerSwitchSimulator` may show stale data.
+All raw string keys have been replaced with legacy constants — fragmentation is now explicit.
 
-**Additional fragmented keys** (present in the codebase and intentionally preserved during migration):
-- `['learning-engagement-sessions']`, `['motivation-interventions']`
-- `['learning-streaks', userId]`, `['celebration-moments', userId]`, `['gamification-metrics', userId]`
-- `['maya-feedback-correlations']`
+**Resolved keys** (canonicalized in Query Key Canonicalization PR):
+- `['learning-streaks', userId]` → `QUERY_KEYS.LEARNING_STREAKS(userId, undefined)` ✅
+- `['celebration-moments', userId]` → `QUERY_KEYS.CELEBRATION_MOMENTS(userId, undefined)` ✅
+- `['gamification-metrics', userId]` → `QUERY_KEYS.GAMIFICATION_METRICS(userId, undefined)` ✅
+- `['learning-engagement-sessions']` → `QUERY_KEYS.LEARNING_SESSIONS()` ✅
+- `['motivation-interventions']` → `QUERY_KEYS.MOTIVATION_INTERVENTIONS()` ✅
+- `['maya-feedback-correlations']` → `QUERY_KEYS.MAYA_FEEDBACK_CORRELATIONS()` ✅
 
-**Resolution:** A dedicated "Query Key Canonicalization" PR should:
-1. Unify all consumers to `QUERY_KEYS.*` entries
-2. Update all mutation invalidations to use canonical keys
-3. Verify that all consumers use identical filters/ordering (profile-scoped vs user-scoped)
-4. Smoke test: create/update/archive/clone across all UI surfaces
+### Known Debt: Async userId Keying
 
-**Trust metrics** and **experience level** keys (`['user-trust-metrics', userId]`) are not
-yet wired to `QUERY_KEYS.*` entries. Canonical entries added in `queryKeys.ts` but not
-yet adopted by consumers — defer to the same canonicalization PR.
+`useRealTimeEngagement` and `useEnhancedMayaFeedback` resolve `userId` inside `queryFn`
+via `getCurrentUserId()` (async, with dev-user branching). Their canonical keys are
+intentionally called **without** `userId` to preserve current behavior and avoid
+query/invalidation mismatches.
+
+This means multi-user cache separation does not exist for engagement and maya data.
+For single-user apps this is safe; for multi-user scenarios it would need restructuring.
+
+**Follow-up PR** can lift `userId` resolution out of `queryFn` (via a shared
+`useResolvedUserId()` hook or `useState` + `useEffect`) and pass it into
+`QUERY_KEYS.*(userId)` to enable user-scoped caching.
+
+### Remaining Canonicalization Work
+
+**Tracks unification:** Collapse `LEGACY_QUERY_KEYS.CAREER_TRACKS()` and
+`LEGACY_QUERY_KEYS.USER_CAREER_TRACKS()` into a single canonical key once
+profile-vs-user scoping is resolved.
+
+**Trust metrics** and **experience level** keys (`['user-trust-metrics', userId]`) have
+canonical entries in `queryKeys.ts` but are not yet adopted by consumers.
+
+**EduTree keys:** `['edu-courses']`, `['user-plan-courses']`, `['user-plan-selections']`
+appear in progress/gamification invalidations and are another potential stale-data vector.
