@@ -12,11 +12,17 @@ import {
   ExternalLink,
   ArrowRight
 } from 'lucide-react';
-import { useUnifiedRecommendations } from '@/hooks/useUnifiedRecommendations';
+import { useIntelligenceLayer } from '@/hooks/useIntelligenceLayer';
+import { useActiveTrackStore } from '@/stores/useActiveTrackStore';
+import { useUser } from '@/hooks/useUser';
+import { toUnifiedRecommendations } from '@/shared/lib/intelligence/toUnifiedRecommendation';
 import { Link } from 'react-router-dom';
 
 export const AchievementsRail: React.FC = () => {
-  const { data: recommendations = [], isLoading: loading } = useUnifiedRecommendations();
+  const { user } = useUser();
+  const { activeTrackId } = useActiveTrackStore();
+  const { recommendations: intelligenceRecs, isLoading: loading } = useIntelligenceLayer(user?.id, activeTrackId ?? undefined);
+  const recommendations = toUnifiedRecommendations(intelligenceRecs);
 
   // Mock recent achievements - in real implementation, fetch from backend
   const recentAchievements = [

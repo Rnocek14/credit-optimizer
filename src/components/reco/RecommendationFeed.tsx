@@ -10,7 +10,9 @@ import { RecommendationCard } from './RecommendationCard';
 import { RecommendationEmptyState } from './RecommendationEmptyState';
 import { RecommendationSkeleton } from './RecommendationSkeleton';
 import { QuickActions } from './QuickActions';
-import { useUnifiedRecommendations } from '@/hooks/useUnifiedRecommendations';
+import { useIntelligenceLayer } from '@/hooks/useIntelligenceLayer';
+import { useActiveTrackStore } from '@/stores/useActiveTrackStore';
+import { toUnifiedRecommendations } from '@/shared/lib/intelligence/toUnifiedRecommendation';
 
 interface RecommendationFeedProps {
   userId?: string;
@@ -20,7 +22,9 @@ interface RecommendationFeedProps {
 export function RecommendationFeed({ userId, className }: RecommendationFeedProps) {
   const [activeTab, setActiveTab] = useState<string>('all');
   const [density, setDensity] = useState<RecommendationDensity>('cozy');
-  const { data: recommendations = [], isLoading } = useUnifiedRecommendations(userId);
+  const { activeTrackId } = useActiveTrackStore();
+  const { recommendations: intelligenceRecs, isLoading } = useIntelligenceLayer(userId, activeTrackId ?? undefined);
+  const recommendations = toUnifiedRecommendations(intelligenceRecs);
 
   // Load density preference from localStorage
   useEffect(() => {
