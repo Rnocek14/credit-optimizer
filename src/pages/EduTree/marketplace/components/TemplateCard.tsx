@@ -41,7 +41,7 @@ export function TemplateCard({ template, isSelected, onToggleSelect }: TemplateC
   
   const isMatchingAnchor = constraints.target_school === template.anchorSchool;
   const isIncomplete = !template.yearTemplates || template.yearTemplates.length === 0;
-  const isMultiSchool = template.optimization === 'multi-school';
+  const isExplicitMultiSchool = template.optimization === 'multi-school';
 
   const handleSelect = () => {
     if (isIncomplete) return;
@@ -152,7 +152,12 @@ export function TemplateCard({ template, isSelected, onToggleSelect }: TemplateC
     [providerMix]
   );
 
+  // A path is "multi-school" if explicitly tagged OR uses 2+ external providers
+  const isMultiSchool = isExplicitMultiSchool || providerMix.length >= 2;
+
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+
+
 
   // Calculate multi-school strategy savings if baseline exists
   const strategySavings = useMemo(() => 
