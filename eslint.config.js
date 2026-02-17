@@ -124,5 +124,60 @@ export default tseslint.config(
         // NOTE: Admin import restriction intentionally omitted for admin files
       ]
     }
+  },
+
+  // ══════════════════════════════════════════════════════════════
+  // PR 4: Data Access Rules — no direct supabase in components/pages
+  // ══════════════════════════════════════════════════════════════
+  {
+    files: ["src/components/**/*.{ts,tsx}", "src/pages/**/*.{ts,tsx}"],
+    rules: {
+      "no-restricted-syntax": [
+        "warn",
+        // Keep existing restrictions from the base config
+        {
+          selector: "Literal[value=/\\b(min-h|h)-(8|9|10|11)\\b/]",
+          message: "Interactive targets must be ≥48px (use h-12/min-h-12)."
+        },
+        {
+          selector: "AssignmentExpression[left.property.name='signature'][right.type='TemplateLiteral']",
+          message: "Use buildMarketplaceSig() for marketplace.signature — no template literals."
+        },
+        {
+          selector: "AssignmentExpression[left.property.name='signature'][right.type='BinaryExpression']",
+          message: "Use buildMarketplaceSig() for marketplace.signature — no string concatenation."
+        },
+        {
+          selector: "Literal[value=/hsl\\(var\\(--/]",
+          message: "❌ Don't wrap OKLCH variables in hsl(). Use var(--xxx) directly or color-mix() for opacity."
+        },
+        {
+          selector: "TemplateLiteral[quasis.0.value.raw=/hsl\\(var\\(--/]",
+          message: "❌ Don't wrap OKLCH variables in hsl(). Use var(--xxx) directly or color-mix() for opacity."
+        },
+        {
+          selector: "JSXAttribute[name.name='href'][value.expression.type='Identifier']",
+          message: "❌ Use SafeExternalLink or sanitizeCourseUrl() for dynamic href values."
+        },
+        {
+          selector: "JSXAttribute[name.name='href'][value.expression.type='MemberExpression']",
+          message: "❌ Use SafeExternalLink or sanitizeCourseUrl() for dynamic href values."
+        },
+        {
+          selector: "ImportDeclaration[source.value=/lib\\/admin/]",
+          message: "❌ Admin modules (src/lib/admin/*) can only be imported from admin pages/components."
+        },
+        // PR 4: Block direct supabase.from() in components/pages
+        {
+          selector: "CallExpression[callee.property.name='from'][callee.object.name='supabase']",
+          message: "❌ Do not call supabase.from() in components/pages. Use src/shared/lib/api + a hook instead."
+        },
+        // PR 4: Block direct supabase.rpc() in components/pages
+        {
+          selector: "CallExpression[callee.property.name='rpc'][callee.object.name='supabase']",
+          message: "❌ Do not call supabase.rpc() in components/pages. Use src/shared/lib/api + a hook instead."
+        }
+      ]
+    }
   }
 );

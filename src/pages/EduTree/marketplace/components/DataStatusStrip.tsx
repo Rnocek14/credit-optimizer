@@ -1,29 +1,16 @@
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { fetchTemplateStatusCounts } from '@/shared/lib/api';
 import { Badge } from '@/components/ui/badge';
 import { CheckCircle, Clock, XCircle, Database } from 'lucide-react';
 
 /**
  * Dev-only status strip showing template counts by status.
- * Makes the gating system self-explaining during development.
  */
 export function DataStatusStrip() {
   const { data: counts, isLoading } = useQuery({
     queryKey: ['template-status-counts'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('degree_templates')
-        .select('status');
-      
-      if (error) throw error;
-      
-      const active = data?.filter(t => t.status === 'active').length || 0;
-      const pending = data?.filter(t => t.status === 'pending_review').length || 0;
-      const blocked = data?.filter(t => t.status === 'blocked').length || 0;
-      
-      return { active, pending, blocked, total: data?.length || 0 };
-    },
-    staleTime: 30000, // 30 seconds
+    queryFn: fetchTemplateStatusCounts,
+    staleTime: 30000,
   });
 
   // Only show in development
