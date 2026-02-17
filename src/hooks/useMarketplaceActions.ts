@@ -20,6 +20,7 @@ import { invalidateEduTreePlan, invalidateUserIntelligence } from '@/shared/lib/
 import { QUERY_KEYS } from '@/lib/queryKeys';
 import { ensureValidSession } from '@/lib/auth';
 import type { ActionKind, ParamsMap } from '@/shared/types/intelligence';
+import { usePlanBasket } from '@/pages/EduTree/v5/state/usePlanBasket';
 
 // ─── Types ──────────────────────────────────────────────────────
 
@@ -105,6 +106,23 @@ export function useMarketplaceActions(userId?: string, defaultPlanId?: string) {
     onSuccess: (_, variables) => {
       invalidateEduTreePlan(queryClient, variables.resolvedPlanId);
       invalidateUserIntelligence(queryClient, userId!);
+
+      // ── Optimistic board update: add to Zustand basket so V5 board renders it instantly ──
+      const courseId = String(variables.action.params?.courseId ?? '');
+      usePlanBasket.getState().addItem({
+        moduleId: variables.requirementId ?? '__unassigned__',
+        courseId,
+        title: variables.title,
+        credits: 3, // best-effort default; sync will reconcile
+        cost_usd: null,
+        duration_weeks: null,
+        workload_weekly_hours: 9,
+        cri_score: 0,
+        status: 'pinned',
+        providerCode: String(variables.action.params?.providerId ?? ''),
+        source: { type: 'manual' },
+      });
+
       toast.success(`${variables.title} added to your EduTree plan!`);
     },
     onError: (err: Error) => {

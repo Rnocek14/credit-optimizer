@@ -19,6 +19,8 @@ import { MigrationTrigger } from '@/components/MigrationTrigger';
 import { SeedTrigger } from '@/components/SeedTrigger';
 import { AnchorSchoolSelector } from './components/AnchorSchoolSelector';
 import { AdminFAB } from './components/AdminFAB';
+import { PlanSelector } from './components/PlanSelector';
+import { UnassignedBucket } from './components/UnassignedBucket';
 import { PolicyCard } from './components/PolicyCard';
 import { TransferWarningBanner } from './components/TransferWarningBanner';
 import { TESUDisclaimerBanner } from './components/TESUDisclaimerBanner';
@@ -62,6 +64,8 @@ import { getAnchorPolicyFromConstraints } from './utils/anchorPolicyAdapter';
 import { useYearNodesVM } from '@/state/selectors/degreeNodes';
 import { useCascadeDegree } from '@/lib/degree/cascade';
 import { useOptimizationSuggestion } from './hooks/useOptimizationSuggestion';
+import { usePlanSync } from './hooks/usePlanSync';
+import { useActivePlan } from '@/hooks/useActivePlan';
 import './styles/v5.css';
 
 // Feature flag for quick rollback during demos
@@ -77,6 +81,17 @@ export default function EduTreeV5Page() {
   const [templateValidationDismissed, setTemplateValidationDismissed] = useState(false);
   const [optimizerMode, setOptimizerMode] = useState<OptimizerMode>('standard_like');
   
+  // ── Active plan + server sync ──
+  const { data: activePlanData } = useActivePlan();
+  const [localPlanId, setLocalPlanId] = useState<string | null>(null);
+  const resolvedPlanId = localPlanId ?? activePlanData?.id ?? null;
+  usePlanSync(resolvedPlanId);
+
+  const handlePlanChange = useCallback((planId: string) => {
+    setLocalPlanId(planId);
+    // Clear basket before rehydrating from new plan
+    usePlanBasket.getState().clearAll();
+  }, []);
   // Detect if this is a DATABASE template (starts with institution code like 'tesu-')
   // vs FIXTURE template (has institution in middle like 'bsba-tesu-cheapest-2025')
   const isDbTemplate = templateId?.toLowerCase().startsWith('tesu-') || false;
@@ -1151,16 +1166,18 @@ export default function EduTreeV5Page() {
       onDragEnd={handleDragEnd}
     >
       <div className="w-full min-h-screen bg-background p-8">
-      {/* Admin FAB - Groups all admin/dev controls */}
-      <AdminFAB
-        useDatabase={USE_DATABASE}
-        onToggleDatabase={handleToggleMode}
-        onResetPlan={() => {
-          if (confirm('Clear all course selections?')) {
-            clearAll();
-          }
-        }}
-      />
+      {/* Admin FAB - gate behind dev mode */}
+      {import.meta.env.DEV && (
+        <AdminFAB
+          useDatabase={USE_DATABASE}
+          onToggleDatabase={handleToggleMode}
+          onResetPlan={() => {
+            if (confirm('Clear all course selections?')) {
+              clearAll();
+            }
+          }}
+        />
+      )}
 
       {/* View as Graph button - only visible when basket has items */}
       {basket.length > 0 && (
@@ -1193,17 +1210,19 @@ export default function EduTreeV5Page() {
       <div className="mb-8">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold">EduTree V5 - Year Spine + Modules</h1>
+            <h1 className="text-2xl font-bold text-foreground">
+              {degreeSummary.degreeTitle || 'Degree Planner'}
+            </h1>
             <p className="text-sm text-muted-foreground">
-              Click degree node or years to collapse/expand
-              {USE_DATABASE && <span className="ml-2 text-primary">• Database Mode</span>}
+              {resolvedPlanId ? 'Building your degree plan' : 'Select or create a plan to get started'}
             </p>
           </div>
           
-          {/* Anchor Selector + Status */}
-          <div className="flex items-center gap-2">
+          {/* Plan Selector + Anchor Selector */}
+          <div className="flex items-center gap-3">
+            <PlanSelector activePlanId={resolvedPlanId} onPlanChange={handlePlanChange} />
             <AnchorSchoolSelector />
-            {USE_DATABASE && <SeedStatus />}
+            {import.meta.env.DEV && USE_DATABASE && <SeedStatus />}
           </div>
         </div>
       </div>
@@ -1314,7 +1333,8 @@ export default function EduTreeV5Page() {
             <PolicyStatusBanner violations={policyViolations} />
           </div>
           
-          {/* Dead-End Debug Toggle */}
+          {/* Dead-End Debug Toggle — dev only */}
+          {import.meta.env.DEV && (
           <div className="mt-3 flex items-center gap-2">
             <Button 
               variant={showDeadEndReasons ? "secondary" : "ghost"} 
@@ -1326,6 +1346,7 @@ export default function EduTreeV5Page() {
               {showDeadEndReasons ? 'Hide' : 'Show'} Dead-End Reasons
             </Button>
           </div>
+          )}
         </div>
       )}
 
@@ -1340,8 +1361,8 @@ export default function EduTreeV5Page() {
         </div>
       )}
       
-      {/* Credit Optimizer Debug Info */}
-      {ENABLE_CREDIT_OPTIMIZER && !showOptimizerBanner && basket.length > 0 && (
+      {/* Credit Optimizer Debug Info — dev only */}
+      {import.meta.env.DEV && ENABLE_CREDIT_OPTIMIZER && !showOptimizerBanner && basket.length > 0 && (
         <div className="mb-4 rounded-md bg-muted/50 border border-muted px-3 py-2 text-xs text-muted-foreground">
           <strong>Debug:</strong> Optimizer {optimizationSuggestion?.hasSuggestion ? 'has suggestions' : 'found no savings'} 
           • Basket: {basket.length} courses 
@@ -1405,6 +1426,9 @@ export default function EduTreeV5Page() {
         </div>
       )}
       
+      {/* Unassigned Bucket — courses added without a module/requirement */}
+      <UnassignedBucket />
+
       {/* Grid Layout: 4 columns for 4 years - hidden when degree collapsed */}
       <div 
         className={`year-spine-grid grid grid-cols-4 gap-6 items-start transition-opacity duration-300 ${
@@ -1593,8 +1617,8 @@ export default function EduTreeV5Page() {
         />
       )}
       
-      {/* Dev Tools for Credit Optimizer Testing */}
-      {ENABLE_CREDIT_OPTIMIZER && (
+      {/* Dev Tools for Credit Optimizer Testing — dev only */}
+      {import.meta.env.DEV && ENABLE_CREDIT_OPTIMIZER && (
         <CreditOptimizerDevTools />
       )}
       
@@ -1624,7 +1648,7 @@ export default function EduTreeV5Page() {
             anchorSchool: constraints.target_school,
           };
         })()}
-        visible={USE_DATABASE || searchParams.get('debug') === '1'}
+        visible={import.meta.env.DEV && (USE_DATABASE || searchParams.get('debug') === '1')}
       />
       </div>
     </DragProvider>
