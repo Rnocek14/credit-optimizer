@@ -152,8 +152,10 @@ export function TemplateCard({ template, isSelected, onToggleSelect }: TemplateC
     [providerMix]
   );
 
-  // A path is "multi-school" if explicitly tagged OR uses 2+ external providers
-  const isMultiSchool = isExplicitMultiSchool || providerMix.length >= 2;
+  // Multi-school = explicit tag or template_data strategy (multiple institutions)
+  // Multi-provider = 2+ external credit sources (Sophia/CLEP/etc), but single completion school
+  const isMultiSchool = isExplicitMultiSchool;
+  const isMultiProvider = !isMultiSchool && providerMix.length >= 2;
 
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
@@ -350,7 +352,9 @@ export function TemplateCard({ template, isSelected, onToggleSelect }: TemplateC
             <CardDescription className="text-sm">
               {isMultiSchool
                 ? `Low-cost credits first → finish at ${template.anchorSchool}`
-                : template.marketplace.tagline}
+                : isMultiProvider
+                  ? `Alt-credit pipeline → finish at ${template.anchorSchool}`
+                  : template.marketplace.tagline}
             </CardDescription>
           </div>
           <Checkbox
@@ -370,6 +374,12 @@ export function TemplateCard({ template, isSelected, onToggleSelect }: TemplateC
             <Badge variant="info" className="gap-1">
               <School className="h-3 w-3" />
               Multi-School
+            </Badge>
+          )}
+          {isMultiProvider && (
+            <Badge variant="secondary" className="gap-1">
+              <ArrowRight className="h-3 w-3" />
+              Multi-Provider
             </Badge>
           )}
           {isMatchingAnchor && (
@@ -431,8 +441,8 @@ export function TemplateCard({ template, isSelected, onToggleSelect }: TemplateC
           </TooltipProvider>
         </div>
 
-        {/* Multi-School Transfer Flow Summary */}
-        {isMultiSchool && providerMix.length > 0 && (
+        {/* Transfer Flow Summary - shown for both multi-school and multi-provider */}
+        {(isMultiSchool || isMultiProvider) && providerMix.length > 0 && (
           <div className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
             {providerMix.map((p, i) => (
               <span key={p.code} className="inline-flex items-center gap-1">
