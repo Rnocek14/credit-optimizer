@@ -1,12 +1,14 @@
 /**
  * PlanSelector — Shows active plan name, switch, create CTA.
  * Lives at the top of the V5 board so users always know context.
+ *
+ * Uses DAL (src/shared/lib/api/userPlans) — no direct supabase calls.
  */
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
 import { getCurrentUser } from '@/lib/auth';
+import { fetchUserPlans, createUserPlan } from '@/shared/lib/api/userPlans';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -18,13 +20,6 @@ import {
 import { ChevronDown, Plus, FileText } from 'lucide-react';
 import { toast } from 'sonner';
 
-interface Plan {
-  id: string;
-  name: string;
-  program_id: string;
-  is_active: boolean;
-}
-
 interface PlanSelectorProps {
   activePlanId: string | null;
   onPlanChange: (planId: string) => void;
@@ -34,44 +29,26 @@ export function PlanSelector({ activePlanId, onPlanChange }: PlanSelectorProps) 
   const queryClient = useQueryClient();
   const [creating, setCreating] = useState(false);
 
-  // Fetch all user plans
+  // Fetch all user plans via DAL
   const { data: plans = [], isLoading } = useQuery({
     queryKey: ['edutree', 'user-plans-list'],
-    queryFn: async (): Promise<Plan[]> => {
+    queryFn: async () => {
       const user = await getCurrentUser();
       if (!user?.id) return [];
-      const { data, error } = await supabase
-        .from('user_plans')
-        .select('id, name, program_id, is_active')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
-      if (error) throw error;
-      return data ?? [];
+      return fetchUserPlans(user.id);
     },
     staleTime: 60_000,
   });
 
   const activePlan = plans.find(p => p.id === activePlanId);
 
-  // Create new plan mutation
+  // Create new plan mutation via DAL
   const createPlanMutation = useMutation({
     mutationFn: async () => {
       const user = await getCurrentUser();
       if (!user?.id) throw new Error('Not authenticated');
-
       const name = `My Plan ${plans.length + 1}`;
-      const { data, error } = await supabase
-        .from('user_plans')
-        .insert({
-          user_id: user.id,
-          program_id: 'default',
-          name,
-          is_active: true,
-        })
-        .select('id')
-        .single();
-      if (error) throw error;
-      return { id: data.id, name };
+      return createUserPlan(user.id, name);
     },
     onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ['edutree', 'user-plans-list'] });
