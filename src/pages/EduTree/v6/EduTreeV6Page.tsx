@@ -403,9 +403,10 @@ export default function EduTreeV6Page() {
   }, [courseIndex, addCourseToSemester]);
 
   // ── V6 entry detection ──
-  const isPlanEmpty = basket.length === 0 && !templateLoading;
-  const hasNoPlan = !resolvedPlanId && !templateId;
-  const showGuidedEntry = isPlanEmpty && hasNoPlan;
+  // Show hero whenever basket is empty AND no template is loaded/loading.
+  // This covers both "no plan" and "plan exists but empty" cases,
+  // preventing the blank-spreadsheet feeling.
+  const showGuidedEntry = basket.length === 0 && !templateId && !templateLoading;
 
   // ── Render ──
   return (
@@ -431,11 +432,16 @@ export default function EduTreeV6Page() {
           <GuidedEntryHero
             degreeTitle={degreeSummary.degreeTitle}
             totalCredits={degreeSummary.totalCreditsRequired}
-            estimatedCost={degreeSummary.estimatedCost}
+            estimatedCost={selectedTemplate?.totals?.costUsd ?? undefined}
             onStartYear1={() => {
-              setExpandedYears({ 1: true });
-              // If there's a marketplace, navigate there to pick a template
-              navigate('/marketplace');
+              // Expand Year 1 in-place — do NOT navigate away.
+              // If no plan exists, create one first via PlanSelector's logic
+              // (for now we just expand; plan creation is handled by PlanSelector).
+              setExpandedYears({ 1: true, 2: false, 3: false, 4: false });
+              // Scroll to Year 1 after a tick so the section renders
+              setTimeout(() => {
+                document.querySelector('[data-year="1"]')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              }, 100);
             }}
             onBrowseTemplates={() => navigate('/marketplace')}
             onShowFullMap={() => {
