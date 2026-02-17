@@ -78,4 +78,13 @@ export const QUERY_KEYS = {
     ['edutree', 'course-equivalencies', ...courseIds.sort()] as const,
 } as const;
 
+/**
+ * Legacy query keys — pre-existing fragmented keys still used by multiple consumers.
+ * Do NOT add new usages. Consolidate toward QUERY_KEYS.* in the Key Canonicalization PR.
+ */
+export const LEGACY_QUERY_KEYS = {
+  CAREER_TRACKS: () => ['career-tracks'] as const,
+  USER_CAREER_TRACKS: () => ['user-career-tracks'] as const,
+} as const;
+
 export type QueryKey = keyof typeof QUERY_KEYS;
