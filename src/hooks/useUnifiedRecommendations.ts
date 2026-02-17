@@ -7,6 +7,12 @@ import type { SkillGap, UnifiedRecommendation } from '@/types'
 const debug = (...a: unknown[]) =>
   process.env.NODE_ENV === 'development' && console.debug('[unified-recos]', ...a)
 
+/** @deprecated Use useIntelligenceLayer instead. This hook will be removed after Phase 2 migration. */
+if (import.meta.env.DEV) {
+  // Log once at module load — not per render
+  console.warn('[DEPRECATED] useUnifiedRecommendations imported: migrate to useIntelligenceLayer.');
+}
+
 // Strongly-typed, readable dedupe
 function dedupeByKey<T>(arr: T[], key: (x: T) => string): T[] {
   const seen = new Set<string>()

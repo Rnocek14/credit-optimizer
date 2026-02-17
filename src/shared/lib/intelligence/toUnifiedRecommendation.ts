@@ -1,18 +1,20 @@
 /**
  * Intelligence Layer — Legacy Adapter
  *
+ * @deprecated Temporary adapter for Phase 1–2 migration.
+ * Delete after all UI consumers use IntelligenceRecommendation directly.
+ *
  * Maps IntelligenceRecommendation → UnifiedRecommendation
  * so existing UI components (RecommendationCard, QuickActions, etc.)
  * can consume intelligence output without modification.
- *
- * This adapter is temporary — it will be removed once all consumers
- * are updated to use IntelligenceRecommendation directly.
  */
 
 import type { IntelligenceRecommendation } from '@/shared/types/intelligence';
+import type { ParamsMap } from '@/shared/types/intelligence';
 import type { UnifiedRecommendation } from '@/types/recommendations';
 
-export function toUnifiedRecommendation(
+/** @deprecated Use IntelligenceRecommendation directly. */
+export function toUnifiedRecommendationLegacy(
   rec: IntelligenceRecommendation,
 ): UnifiedRecommendation {
   return {
@@ -31,15 +33,17 @@ export function toUnifiedRecommendation(
       on: a.on,
       params: a.params as Record<string, string | number | boolean> | undefined,
     })),
+    // NOTE: computedAt used until Phase 2 introduces source timestamps
     createdAt: rec.computedAt,
-    score: rec.compositeScore * 10, // normalize 0–1 → legacy 0–10 range
+    score: Math.max(0, Math.min(10, rec.compositeScore * 10)),
     criBoost: rec.criContribution ? Math.round(rec.criContribution * 100) : undefined,
     criExplanation: rec.criExplanation,
   };
 }
 
-export function toUnifiedRecommendations(
+/** @deprecated Use IntelligenceRecommendation[] directly. */
+export function toUnifiedRecommendationsLegacy(
   recs: IntelligenceRecommendation[],
 ): UnifiedRecommendation[] {
-  return recs.map(toUnifiedRecommendation);
+  return recs.map(toUnifiedRecommendationLegacy);
 }
