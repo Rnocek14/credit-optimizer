@@ -16,6 +16,8 @@ interface DbRequirement {
   credits_required: number | null;
 }
 
+const VALID_OPTION_KINDS = new Set(['course', 'exam', 'cert']);
+
 interface DbOption {
   id: string;
   requirement_id: string;
@@ -44,6 +46,42 @@ interface DbOption {
     website_url: string | null;
     provider_code?: string | null;
   } | null;
+}
+
+/**
+ * Runtime guard: detect broken join assumptions and unknown option_kind values.
+ * Warns in dev, degrades gracefully in prod.
+ */
+function validateOptions(options: DbOption[]): void {
+  const brokenJoinCount = options.filter(
+    (o) => (o as any).educational_courses !== undefined
+  ).length;
+  const unknownKinds = options.filter(
+    (o) => !VALID_OPTION_KINDS.has(o.option_kind)
+  );
+  const unresolvedCount = options.filter(
+    (o) => !o.marketplace_courses && !o.edu_courses
+  ).length;
+
+  if (brokenJoinCount > 0) {
+    const msg = `[transformDbToV5] ${brokenJoinCount} options have stale "educational_courses" nested join — this table does not exist. Check query aliases.`;
+    if (!ENV.PROD) throw new Error(msg);
+    console.warn(msg);
+  }
+
+  if (unknownKinds.length > 0) {
+    const kinds = [...new Set(unknownKinds.map((o) => o.option_kind))];
+    console.warn(
+      `[transformDbToV5] ${unknownKinds.length} options have unknown option_kind: ${kinds.join(', ')}. Update VALID_OPTION_KINDS + transform logic.`
+    );
+  }
+
+  if (!ENV.PROD && unresolvedCount > 0 && options.length > 0) {
+    const pct = Math.round((unresolvedCount / options.length) * 100);
+    console.debug(
+      `[transformDbToV5] ${unresolvedCount}/${options.length} options (${pct}%) have no resolved course — these will be filtered out.`
+    );
+  }
 }
 
 export function mapCategoryToIcon(category: string): string {
@@ -91,6 +129,9 @@ export function transformToModuleData(
     autoFillReason?: string;
   }> = []
 ): Record<number, ModuleData[]> {
+  // Runtime guard: catch broken joins + unknown option_kinds early
+  validateOptions(allOptions);
+
   const modulesByYear: Record<number, ModuleData[]> = {
     1: [],
     2: [],
