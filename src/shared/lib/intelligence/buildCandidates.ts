@@ -19,6 +19,7 @@ export interface CourseCandidate {
   description?: string;
   skillTags?: string[];
   durationHours?: number;
+  timeEstimate?: string;           // human-readable, e.g. "4 weeks"
   criContributionNormalized?: number;
   marketDemandScore?: number;
   marketGrowthRate?: number;
@@ -85,6 +86,7 @@ export function buildCandidates(
       description: c.description ?? '',
       skillTags: c.skillTags ?? [],
       durationHours: c.durationHours,
+      timeEstimate: c.timeEstimate,
       criContribution: c.criContributionNormalized,
       marketDemandScore: c.marketDemandScore,
       marketGrowthRate: c.marketGrowthRate,

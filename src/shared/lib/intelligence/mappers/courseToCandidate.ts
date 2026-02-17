@@ -2,13 +2,15 @@
  * Intelligence Layer — Marketplace Course → Candidate Mapper
  *
  * Pure mapping function: transforms marketplace course rows into
- * RecommendationCandidate shape for the scoring engine.
+ * CourseCandidate shape for the scoring engine.
  *
  * Normalization rules enforced here:
- * - criContribution: clamped to [0, 1]
- * - durationHours: converted from duration_weeks (×5h/week heuristic)
- * - instructorReputation: normalized from 0–5 to 0–1
- * - platformTrust: derived from completion_rate (0–100 → 0–1)
+ * - criContribution: 0–100 scale → 0–1 (clamped)
+ * - timeEstimate: human-readable string from duration_weeks
+ * - durationHours: left undefined (schema has weeks, not hours)
+ *   → prevents quickWins pollution with fake hour math
+ * - instructorReputation: 0–5 → 0–1 (clamped)
+ * - platformTrust: completion_rate 0–100 → 0–1 (clamped)
  */
 
 import type { CourseCandidate } from '@/shared/lib/intelligence/buildCandidates';
@@ -31,28 +33,40 @@ export interface MarketplaceCourseForIntelligence {
   provider_code: string | null;
 }
 
-const HOURS_PER_WEEK_HEURISTIC = 5;
+const safeNumber = (v: unknown, fallback = 0): number =>
+  typeof v === 'number' && Number.isFinite(v) ? v : fallback;
 
 export function courseToCandidate(
   course: MarketplaceCourseForIntelligence,
 ): CourseCandidate {
+  // CRI: DB stores 0–100 scale, intelligence expects 0–1
+  const criRaw = safeNumber(course.cri_score, 0);
+  const cri01 = criRaw > 1 ? clamp01(criRaw / 100) : clamp01(criRaw);
+
+  // Duration: keep as human-readable string; don't synthesize hours
+  const weeks = safeNumber(course.duration_weeks, 0);
+  const timeEstimate = weeks > 0 ? `${weeks} week${weeks !== 1 ? 's' : ''}` : undefined;
+
+  // Instructor: DB stores 0–5 scale
+  const instructorRaw = safeNumber(course.instructor_rating, 0);
+  const instructor01 = instructorRaw > 0 ? clamp01(instructorRaw / 5) : undefined;
+
+  // Platform trust from completion rate: DB stores 0–100
+  const completionRaw = safeNumber(course.completion_rate, 0);
+  const trust01 = completionRaw > 0 ? clamp01(completionRaw / 100) : undefined;
+
   return {
     id: course.id,
     title: course.title,
     description: course.description ?? undefined,
     skillTags: course.skill_tags ?? [],
-    durationHours: course.duration_weeks != null
-      ? course.duration_weeks * HOURS_PER_WEEK_HEURISTIC
-      : undefined,
-    criContributionNormalized: course.cri_score != null
-      ? clamp01(course.cri_score / 100)
-      : undefined,
-    instructorReputation: course.instructor_rating != null
-      ? clamp01(course.instructor_rating / 5)
-      : undefined,
-    platformTrust: course.completion_rate != null
-      ? clamp01(course.completion_rate / 100)
-      : undefined,
+    // durationHours intentionally undefined — schema has weeks, not hours
+    // This prevents quickWins from including multi-week courses
+    durationHours: undefined,
+    timeEstimate,
+    criContributionNormalized: cri01 > 0 ? cri01 : undefined,
+    instructorReputation: instructor01,
+    platformTrust: trust01,
     href: `/discover?tab=courses&course=${encodeURIComponent(course.id)}`,
     provider: course.provider_code ?? undefined,
   };

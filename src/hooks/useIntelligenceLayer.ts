@@ -56,15 +56,24 @@ export function useIntelligenceLayer(userId?: string, trackId?: string) {
   const skillGapsQ = useSkillGaps(userId);
   const readinessQ = useCareerReadiness({ userId, enabled: !!userId });
 
-  // Extract gap skill names for marketplace query key
+  // Extract gap skill names — sanitized, lowercased, sorted for stable cache keys
   const gapSkills = useMemo(
-    () => (skillGapsQ.data ?? []).map(g => g.skill).sort(),
+    () =>
+      (skillGapsQ.data ?? [])
+        .map(g => g.skill)
+        .filter((s): s is string => typeof s === 'string' && s.trim().length > 0)
+        .map(s => s.toLowerCase().trim())
+        .sort(),
     [skillGapsQ.data],
   );
+  const gapHash = gapSkills.join('|');
 
   // ── 2) Marketplace course candidates (DAL-compliant) ──────────
+  // Key ordering: ['intelligence', userId, trackId, 'marketplace', gapHash]
+  // This ensures invalidateUserIntelligence (pos 0+1) and
+  // invalidateTrackIntelligence (pos 0+1+2) both match.
   const marketplaceQ = useQuery({
-    queryKey: ['intelligence', 'marketplace', userId, trackId, gapSkills.join('|')],
+    queryKey: ['intelligence', userId, trackId, 'marketplace', gapHash],
     queryFn: () => fetchMarketplaceCoursesForIntelligence(gapSkills),
     enabled: !!userId && !skillGapsQ.isLoading,
     staleTime: 5 * 60_000,
