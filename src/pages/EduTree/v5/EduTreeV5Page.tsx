@@ -49,6 +49,7 @@ import { createTemplateModuleProvider } from './adapters/templateModuleAdapter';
 import { createProgramModulesProvider } from './adapters/programModulesAdapter';
 import { createDatabaseModulesProvider } from './adapters/databaseModulesAdapter';
 import type { DynamicModuleProvider } from './types/moduleProvider';
+import { healBasketForPolicy, formatHealSummary } from '@/lib/degree/autoHeal';
 import { usePlanStore } from './state/usePlanStore';
 import { usePlanBasket } from './state/usePlanBasket';
 import { YEAR_CREDIT_CAP } from './constants/v5';
@@ -295,6 +296,16 @@ export default function EduTreeV5Page() {
       
       applyTemplateToPlan(selectedTemplate);
       
+      // Auto-heal: fix providerCode gaps so residency/transfer counts are correct
+      const currentItems = usePlanBasket.getState().items;
+      if (currentItems.length > 0 && selectedTemplate.anchorSchool) {
+        
+        const healResult = healBasketForPolicy(currentItems, selectedTemplate.anchorSchool);
+        if (healResult.healed) {
+          const msg = formatHealSummary(healResult);
+          if (msg) console.log('[V5 AutoHeal]', msg);
+        }
+      }
       // Also set the anchor school constraint from template
       if (selectedTemplate.anchorSchool && !constraints.target_school) {
         console.log('[EduTreeV5] 🎓 Setting anchor from template:', selectedTemplate.anchorSchool);
