@@ -70,12 +70,32 @@ export function optimizeDegreePlan(params: CreditOptimizerParams): OptimizedPlan
     limits,
   } = params;
 
+  const terms = template.template_data?.terms;
+  if (!terms || !Array.isArray(terms)) {
+    console.warn('[Credit Optimizer] Skipping — template has no terms:', {
+      institution: institutionCode,
+      program: template.program_code,
+    });
+    return {
+      institutionCode,
+      programCode: template.program_code ?? '',
+      trackType: template.track_type ?? 'standard_like',
+      templateId: template.id ?? '',
+      template,
+      mode,
+      hydratedTerms: [],
+      terms: [],
+      metrics: initEmptyMetrics(buildLimitMap(limits)),
+      warnings: { messages: ['Template has no course data to optimize.'] },
+    } as unknown as OptimizedPlanResult;
+  }
+
   console.log('[Credit Optimizer] Starting optimization:', {
     institution: institutionCode,
     program: template.program_code,
     track: template.track_type,
     mode,
-    termsCount: template.template_data.terms.length,
+    termsCount: terms.length,
   });
 
   // 1) Precompute some maps
@@ -103,7 +123,7 @@ export function optimizeDegreePlan(params: CreditOptimizerParams): OptimizedPlan
     genedCreditsByCategory: {},
   };
 
-  for (const term of template.template_data.terms) {
+  for (const term of terms) {
     const termSelected: SelectedOption[] = [];
 
     for (const slot of term.slots) {
