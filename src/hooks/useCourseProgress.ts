@@ -1,8 +1,16 @@
-import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { QUERY_KEYS } from '@/lib/queryKeys';
+import {
+  fetchCourseProgress,
+  fetchRecommendedCoursesByIds,
+  rpcStartCourseProgress,
+  updateCourseProgressTrack,
+  rpcCompleteCourseProgress,
+  updateCourseProgressRow,
+  fetchLearningMilestones,
+} from '@/shared/lib/api/progress';
 
 export interface CourseProgress {
   id: string;
@@ -37,57 +45,34 @@ export function useCourseProgress(trackId?: string) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
+  // Helper to get userId (auth call is allowed exception per API_SEAMS.md)
+  const getUserId = async (): Promise<string> => {
+    const devUser = localStorage.getItem("devUser");
+    if (devUser) {
+      return JSON.parse(devUser).id;
+    }
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Not authenticated');
+    return user.id;
+  };
+
   // Get course progress for the current user, optionally filtered by track
   const { data: courseProgress, isLoading } = useQuery({
     queryKey: QUERY_KEYS.COURSE_PROGRESS(undefined, trackId),
     queryFn: async () => {
-      // Support both dev login and real auth
-      const devUser = localStorage.getItem("devUser");
-      let userId: string;
-      
-      if (devUser) {
-        const parsedDevUser = JSON.parse(devUser);
-        userId = parsedDevUser.id;
-      } else {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) throw new Error('Not authenticated');
-        userId = user.id;
-      }
+      const userId = await getUserId();
 
-      let query = supabase
-        .from('course_progress')
-        .select('*')
-        .eq('user_id', userId);
+      const progressData = await fetchCourseProgress(userId, trackId);
+      const courseIds = progressData.map((p: any) => p.course_id);
+      const coursesData = await fetchRecommendedCoursesByIds(courseIds);
 
-      // Filter by track if provided
-      if (trackId) {
-        query = query.eq('track_id', trackId);
-      }
+      const coursesMap = new Map(coursesData.map(course => [course.id, course]));
 
-      const { data: progressData, error } = await query
-        .order('last_accessed_at', { ascending: false });
-
-      if (error) throw error;
-
-      // Fetch course information for each course_id
-      const courseIds = progressData?.map(p => p.course_id) || [];
-      
-      const { data: coursesData } = await supabase
-        .from('recommended_courses')
-        .select('id, title, platform')
-        .in('id', courseIds);
-
-      // Create a map for quick course lookup
-      const coursesMap = new Map(coursesData?.map(course => [course.id, course]) || []);
-
-      // Transform the data to include course information
-      const transformedData = progressData?.map(progress => ({
+      return progressData.map((progress: any) => ({
         ...progress,
         title: coursesMap.get(progress.course_id)?.title,
-        platform: coursesMap.get(progress.course_id)?.platform
-      })) || [];
-      
-      return transformedData as CourseProgress[];
+        platform: coursesMap.get(progress.course_id)?.platform,
+      })) as CourseProgress[];
     },
     enabled: true
   });
@@ -96,27 +81,8 @@ export function useCourseProgress(trackId?: string) {
   const { data: milestones } = useQuery({
     queryKey: QUERY_KEYS.LEARNING_MILESTONES(undefined, trackId),
     queryFn: async () => {
-      // Support both dev login and real auth
-      const devUser = localStorage.getItem("devUser");
-      let userId: string;
-      
-      if (devUser) {
-        const parsedDevUser = JSON.parse(devUser);
-        userId = parsedDevUser.id;
-      } else {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) throw new Error('Not authenticated');
-        userId = user.id;
-      }
-
-      const { data, error } = await supabase
-        .from('learning_milestones')
-        .select('*')
-        .eq('user_id', userId)
-        .order('achieved_at', { ascending: false });
-
-      if (error) throw error;
-      return data as LearningMilestone[];
+      const userId = await getUserId();
+      return fetchLearningMilestones(userId) as Promise<LearningMilestone[]>;
     },
     enabled: true
   });
@@ -124,34 +90,14 @@ export function useCourseProgress(trackId?: string) {
   // Start course progress
   const startCourse = useMutation({
     mutationFn: async ({ courseId, trackId: courseTrackId }: { courseId: string; trackId?: string }) => {
-      // Support both dev login and real auth
-      const devUser = localStorage.getItem("devUser");
-      let userId: string;
-      
-      if (devUser) {
-        const parsedDevUser = JSON.parse(devUser);
-        userId = parsedDevUser.id;
-      } else {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) throw new Error('Not authenticated');
-        userId = user.id;
-      }
+      const userId = await getUserId();
 
-      const { data, error } = await supabase.rpc('start_course_progress', {
-        user_id_param: userId,
-        course_id_param: courseId
-      });
+      const data = await rpcStartCourseProgress(userId, courseId);
 
-      // Update with track_id if provided
       if (courseTrackId && data) {
-        await supabase
-          .from('course_progress')
-          .update({ track_id: courseTrackId })
-          .eq('user_id', userId)
-          .eq('course_id', courseId);
+        await updateCourseProgressTrack(userId, courseId, courseTrackId);
       }
 
-      if (error) throw error;
       return data;
     },
     onSuccess: (_, variables) => {
@@ -159,7 +105,6 @@ export function useCourseProgress(trackId?: string) {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.COURSE_PROGRESS(undefined, courseTrackId) });
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.USER_LEVEL(undefined, courseTrackId) });
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.USER_TRACK_XP(undefined, courseTrackId) });
-      // Invalidate EduTree queries for course changes
       queryClient.invalidateQueries({ queryKey: ['edu-courses'] });
       queryClient.invalidateQueries({ queryKey: ['user-plan-courses'] });
       toast({
@@ -180,33 +125,13 @@ export function useCourseProgress(trackId?: string) {
   // Complete course progress
   const completeCourse = useMutation({
     mutationFn: async ({ courseId, notes }: { courseId: string; notes?: string }) => {
-      // Support both dev login and real auth
-      const devUser = localStorage.getItem("devUser");
-      let userId: string;
-      
-      if (devUser) {
-        const parsedDevUser = JSON.parse(devUser);
-        userId = parsedDevUser.id;
-      } else {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) throw new Error('Not authenticated');
-        userId = user.id;
-      }
-
-      const { data, error } = await supabase.rpc('complete_course_progress', {
-        user_id_param: userId,
-        course_id_param: courseId,
-        completion_notes_param: notes || null
-      });
-
-      if (error) throw error;
-      return data;
+      const userId = await getUserId();
+      return rpcCompleteCourseProgress(userId, courseId, notes);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.COURSE_PROGRESS(undefined, trackId) });
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.LEARNING_MILESTONES(undefined, trackId) });
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.USER_LEVEL(undefined, trackId) });
-      // Invalidate EduTree queries for course completion
       queryClient.invalidateQueries({ queryKey: ['edu-courses'] });
       queryClient.invalidateQueries({ queryKey: ['user-plan-courses'] });
       queryClient.invalidateQueries({ queryKey: ['user-plan-selections'] });
@@ -233,20 +158,9 @@ export function useCourseProgress(trackId?: string) {
       progressPercentage?: number; 
       timeSpent?: number;
     }) => {
-      // Support both dev login and real auth
-      const devUser = localStorage.getItem("devUser");
-      let userId: string;
-      
-      if (devUser) {
-        const parsedDevUser = JSON.parse(devUser);
-        userId = parsedDevUser.id;
-      } else {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) throw new Error('Not authenticated');
-        userId = user.id;
-      }
+      const userId = await getUserId();
 
-      const updateData: any = {
+      const updateData: Record<string, unknown> = {
         last_accessed_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       };
@@ -259,16 +173,7 @@ export function useCourseProgress(trackId?: string) {
         updateData.time_spent_hours = timeSpent;
       }
 
-      const { data, error } = await supabase
-        .from('course_progress')
-        .update(updateData)
-        .eq('user_id', userId)
-        .eq('course_id', courseId)
-        .select()
-        .single();
-
-      if (error) throw error;
-      return data;
+      return updateCourseProgressRow(userId, courseId, updateData);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.COURSE_PROGRESS(undefined, trackId) });
@@ -295,7 +200,7 @@ export function useCourseProgress(trackId?: string) {
   const getTotalXPFromCourses = (): number => {
     return courseProgress?.reduce((total, p) => {
       if (p.status === 'completed') {
-        return total + 50; // XP_REWARDS.COURSE_COMPLETED
+        return total + 50;
       }
       return total + p.xp_awarded;
     }, 0) || 0;
