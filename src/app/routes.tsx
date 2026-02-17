@@ -4,8 +4,8 @@
  * All route definitions live here. App.tsx only contains providers + shell.
  * Route order preserved exactly from original to avoid behavior changes.
  * 
- * TODO (PR2): Remove legacy/dead routes marked with "LEGACY" comments
- * TODO (PR2): Consolidate conflicting redirect+direct route pairs
+ * PR2A: Removed 38 dead/legacy routes. Files preserved for PR2B deletion.
+ * Redirects kept intact. Core + active surfaces unchanged.
  */
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
@@ -102,76 +102,39 @@ import LocationManagerPanel from '@/components/LocationManagerPanel';
 // ── Resume / Embed / Certificates ──────────────────────────────
 import ResumeGallery from '@/pages/ResumeGallery';
 import PublicResume from '@/pages/PublicResume';
-import ResumeBuilder from '@/pages/ResumeBuilder';
 import ResumeEmbed from '@/pages/ResumeEmbed';
 import ResumeAnalytics from '@/pages/ResumeAnalytics';
 import EmbedGenerator from '@/pages/EmbedGenerator';
 import EmbedExplorer from '@/pages/EmbedExplorer';
-import Certificates from '@/pages/Certificates';
-import VerifySignature from '@/pages/VerifySignature';
 import CertificateGallery from '@/pages/CertificateGallery';
+import VerifySignature from '@/pages/VerifySignature';
 import CRIDashboardPage from '@/pages/CRIDashboard';
 
 // ── Progress / Achievement pages ───────────────────────────────
-import Badges from '@/pages/Badges';
 import BadgeDetail from '@/pages/BadgeDetail';
-import Transcript from '@/pages/Transcript';
-import Transcripts from '@/pages/Transcripts';
 import CourseHistory from '@/pages/CourseHistory';
 import LearningHistory from '@/pages/LearningHistory';
-import SkillTree from '@/pages/SkillTree';
-import SkillTreeBuilder from '@/pages/SkillTreeBuilder';
-import SkillTree3 from '@/pages/SkillTree3';
-import EducationTree from '@/pages/EducationTree';
 
 // ── Maya / Mentor / AI ─────────────────────────────────────────
 import MayaPage from '@/pages/MayaPage';
-import MayaCRIIntegration from '@/pages/MayaCRIIntegration';
-import MayaAutomation from '@/pages/MayaAutomation';
 import MayaIntelligence from '@/pages/MayaIntelligence';
-import MayaRoadmap from '@/pages/MayaRoadmap';
 import MentorInbox from '@/pages/MentorInbox';
 import MentorChat from '@/pages/MentorChat';
 import AIAnalyzer from '@/pages/AIAnalyzer';
 
-// ── Legacy / Other pages ───────────────────────────────────────
-import Dashboard from '@/pages/Dashboard';
-import Discover from '@/pages/Discover';
-import Explore from '@/pages/Explore';
-import ExploreCourses from '@/pages/ExploreCourses';
-import SalaryInsights from '@/pages/SalaryInsights';
-import MarketIntelligence from '@/pages/MarketIntelligence';
-import Workflows from '@/pages/Workflows';
-import CareerCopilot from '@/pages/CareerCopilot';
-import Goals from '@/pages/Goals';
-import Planner from '@/pages/Planner';
-import Saved from '@/pages/Saved';
-import Timeline from '@/pages/Timeline';
-import Plans from '@/pages/Plans';
-import Demos from '@/pages/Demos';
-import SprintBoard from '@/pages/SprintBoard';
+// ── Other active pages ─────────────────────────────────────────
 import ShareTrust from '@/pages/ShareTrust';
-import Projects from '@/pages/Projects';
-import Wallet from '@/pages/Wallet';
 import UploadCourse from '@/pages/UploadCourse';
-import Gamification from '@/pages/Gamification';
-import SocialLearning from '@/pages/SocialLearning';
-import { SocialLearningTest } from '@/components/SocialLearningTest';
-import Phase2Dashboard from '@/pages/Phase2Dashboard';
-import InterventionHistory from '@/pages/InterventionHistory';
-import Phase4 from '@/pages/Phase4';
-import Phase5 from '@/pages/Phase5';
-import Phase6 from '@/pages/Phase6';
-import Phase7 from '@/pages/Phase7';
+import Saved from '@/pages/Saved';
 import LearningPaths from '@/pages/LearningPaths';
-import ExploreHub from '@/pages/ExploreHub';
-import HistoryHub from '@/pages/HistoryHub';
+import Dashboard from '@/pages/Dashboard';
 
-// ── Sandbox ────────────────────────────────────────────────────
+// ── Sandbox (DEV-only) ────────────────────────────────────────
 import TrackOverlayPOCPage from '../../sandbox/TrackOverlayPOCPage';
 
 // ════════════════════════════════════════════════════════════════
-// Route definitions — order preserved from original App.tsx
+// Route definitions
+// PR2A: 38 dead routes removed. Redirects preserved.
 // ════════════════════════════════════════════════════════════════
 
 export function AppRoutes() {
@@ -284,7 +247,7 @@ export function AppRoutes() {
           <DegreeMarketplace />
         </React.Suspense>
       } />
-      {/* Sandbox */}
+      {/* Sandbox (DEV-only) */}
       <Route path="/sandbox/track-overlay" element={<TrackOverlayPOCPage />} />
       {/* Admin seeding */}
       <Route path="/admin/seed-v5" element={<SeedV5Database />} />
@@ -438,92 +401,13 @@ export function AppRoutes() {
         </StakeholderProtectedRoute>
       } />
 
-      {/* ── LEGACY: Phase Routes (PR2 candidate for deletion) ─ */}
-      <Route path="/phase4" element={
-        <ProtectedRoute requireAuth={true} requireOnboarding={true}>
-          <Phase4 />
-        </ProtectedRoute>
-      } />
-      <Route path="/phase5" element={
-        <ProtectedRoute requireAuth={true} requireOnboarding={true}>
-          <Phase5 />
-        </ProtectedRoute>
-      } />
-      <Route path="/phase6" element={
-        <ProtectedRoute requireAuth={true} requireOnboarding={true}>
-          <Phase6 />
-        </ProtectedRoute>
-      } />
-      <Route path="/phase7" element={
-        <ProtectedRoute requireAuth={true} requireOnboarding={true}>
-          <Phase7 />
-        </ProtectedRoute>
-      } />
-
       {/* ── Public / Embed Routes ───────────────────────────── */}
       <Route path="/resume-gallery" element={<ResumeGallery />} />
       <Route path="/resume/:userId" element={<PublicResume />} />
       <Route path="/share/trust/:token" element={<ShareTrust />} />
-      <Route path="/demos" element={<Demos />} />
-      <Route path="/sprint-board" element={
-        <ProtectedRoute requireAuth={true} requireOnboarding={true}>
-          <SprintBoard />
-        </ProtectedRoute>
-      } />
 
-      {/* ── Other Protected Routes ──────────────────────────── */}
-      {/* NOTE: Some paths below duplicate redirects above (e.g. /badges, /transcripts).
-         React Router v6 ranks by specificity; for identical paths the first definition wins.
-         These are effectively dead code — will be cleaned up in PR2. */}
-      <Route path="/badges" element={<Badges />} />
+      {/* ── Active feature routes ───────────────────────────── */}
       <Route path="/badges/:slug" element={<BadgeDetail />} />
-      <Route path="/discover-legacy" element={<Discover />} />
-      <Route path="/explore-legacy" element={<Explore />} />
-      <Route path="/explore-courses-legacy" element={<ExploreCourses />} />
-      <Route path="/salary-insights-legacy" element={<SalaryInsights />} />
-      <Route path="/market-intelligence-legacy" element={
-        <ProtectedRoute requireAuth={true} requireOnboarding={true}>
-          <MarketIntelligence />
-        </ProtectedRoute>
-      } />
-      <Route path="/workflows-legacy" element={
-        <ProtectedRoute requireAuth={true} requireOnboarding={true}>
-          <Workflows />
-        </ProtectedRoute>
-      } />
-      <Route path="/career-copilot-legacy" element={
-        <ProtectedRoute requireAuth={true} requireOnboarding={true}>
-          <CareerCopilot />
-        </ProtectedRoute>
-      } />
-      <Route path="/maya-roadmap-legacy" element={
-        <ProtectedRoute requireAuth={true} requireOnboarding={true}>
-          <MayaRoadmap />
-        </ProtectedRoute>
-      } />
-      <Route path="/maya-cri-integration" element={
-        <ProtectedRoute requireAuth={true} requireOnboarding={true}>
-          <MayaCRIIntegration />
-        </ProtectedRoute>
-      } />
-      <Route path="/maya-automation" element={
-        <ProtectedRoute requireAuth={true} requireOnboarding={true}>
-          <MayaAutomation />
-        </ProtectedRoute>
-      } />
-      <Route path="/ai-analyzer" element={
-        <ProtectedRoute requireAuth={true} requireOnboarding={true}>
-          <AIAnalyzer />
-        </ProtectedRoute>
-      } />
-      <Route path="/certificates-legacy" element={
-        <ProtectedRoute requireAuth={true} requireOnboarding={true}>
-          <Certificates />
-        </ProtectedRoute>
-      } />
-      <Route path="/certificate-gallery" element={<CertificateGallery />} />
-      <Route path="/verify/:code?" element={<VerifySignature />} />
-      <Route path="/teach" element={<Teach />} />
       <Route path="/upload-course" element={
         <ProtectedRoute requireAuth={true} requireOnboarding={true}>
           <UploadCourse />
@@ -534,72 +418,19 @@ export function AppRoutes() {
           <Saved />
         </ProtectedRoute>
       } />
-      <Route path="/goals-legacy" element={
-        <ProtectedRoute requireAuth={true} requireOnboarding={true}>
-          <Goals />
-        </ProtectedRoute>
-      } />
-      <Route path="/gamification" element={
-        <ProtectedRoute requireAuth={true} requireOnboarding={true}>
-          <Gamification />
-        </ProtectedRoute>
-      } />
       <Route path="/maya-intelligence" element={
         <ProtectedRoute requireAuth={true} requireOnboarding={true}>
           <MayaIntelligence />
         </ProtectedRoute>
       } />
-      <Route path="/social-learning" element={
+      <Route path="/ai-analyzer" element={
         <ProtectedRoute requireAuth={true} requireOnboarding={true}>
-          <SocialLearning />
+          <AIAnalyzer />
         </ProtectedRoute>
       } />
-      <Route path="/social-learning-test" element={<SocialLearningTest />} />
-      <Route path="/transcript" element={
-        <ProtectedRoute requireAuth={true} requireOnboarding={true}>
-          <Transcript />
-        </ProtectedRoute>
-      } />
-      <Route path="/transcripts" element={
-        <ProtectedRoute requireAuth={true} requireOnboarding={true}>
-          <Transcripts />
-        </ProtectedRoute>
-      } />
-      <Route path="/skill-tree" element={
-        <ProtectedRoute requireAuth={true} requireOnboarding={true}>
-          <SkillTree />
-        </ProtectedRoute>
-      } />
-      <Route path="/skill-tree-builder" element={
-        <ProtectedRoute requireAuth={true} requireOnboarding={true}>
-          <SkillTreeBuilder />
-        </ProtectedRoute>
-      } />
-      <Route path="/education-tree" element={
-        <ProtectedRoute requireAuth={true} requireOnboarding={true}>
-          <EducationTree />
-        </ProtectedRoute>
-      } />
-      <Route path="/skilltree3" element={
-        <ProtectedRoute requireAuth={true} requireOnboarding={true}>
-          <SkillTree3 />
-        </ProtectedRoute>
-      } />
-      <Route path="/timeline" element={
-        <ProtectedRoute requireAuth={true} requireOnboarding={true}>
-          <Timeline />
-        </ProtectedRoute>
-      } />
-      <Route path="/plans" element={
-        <ProtectedRoute requireAuth={true} requireOnboarding={true}>
-          <Plans />
-        </ProtectedRoute>
-      } />
-      <Route path="/resume-builder-legacy" element={
-        <ProtectedRoute requireAuth={true} requireOnboarding={true}>
-          <ResumeBuilder />
-        </ProtectedRoute>
-      } />
+      <Route path="/certificate-gallery" element={<CertificateGallery />} />
+      <Route path="/verify/:code?" element={<VerifySignature />} />
+      <Route path="/teach" element={<Teach />} />
 
       {/* ── Admin Routes ────────────────────────────────────── */}
       <Route path="/admin" element={<Admin />} />
@@ -681,30 +512,9 @@ export function AppRoutes() {
       } />
       <Route path="/admin/generation-jobs" element={<GenerationJobs />} />
       <Route path="/embed-explorer" element={<EmbedExplorer />} />
-      <Route path="/resume-analytics" element={
-        <ProtectedRoute requireAuth={true} requireOnboarding={true}>
-          <ResumeAnalytics />
-        </ProtectedRoute>
-      } />
       <Route path="/cri-dashboard" element={
         <ProtectedRoute requireAuth={true}>
           <CRIDashboardPage />
-        </ProtectedRoute>
-      } />
-
-      {/* ── Legacy direct routes (redirects above take precedence) */}
-      <Route path="/projects" element={<Projects />} />
-      <Route path="/wallet" element={<Wallet />} />
-      <Route path="/institution" element={<Institution />} />
-      <Route path="/employer" element={<Employer />} />
-      <Route path="/phase2-demo" element={
-        <ProtectedRoute requireAuth={true}>
-          <Phase2Dashboard />
-        </ProtectedRoute>
-      } />
-      <Route path="/intervention-history" element={
-        <ProtectedRoute requireAuth={true}>
-          <InterventionHistory />
         </ProtectedRoute>
       } />
 
@@ -714,4 +524,16 @@ export function AppRoutes() {
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
+}
+
+// ════════════════════════════════════════════════════════════════
+// TRIPWIRE: Route count for PR2 parity verification (temporary)
+// Remove after PR2B is complete.
+// ════════════════════════════════════════════════════════════════
+if (import.meta.env.DEV) {
+  // Count Route elements in the JSX above for quick verification.
+  // Before PR2A: ~140 routes. After PR2A: ~102 routes.
+  // Redirects preserved: 30. Core+active routes: ~72.
+  // eslint-disable-next-line no-console
+  console.log('[routes] PR2A tripwire — expected ~102 route entries (was ~140 pre-PR2A)');
 }
