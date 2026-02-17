@@ -6,6 +6,7 @@
  *
  * Architecture:
  * - Input queries fetched via existing hooks (DAL-compliant)
+ * - Marketplace courses fetched via DAL + mapped to candidates
  * - Composite output derived via useMemo (no double-caching)
  * - Scoring via pluggable scorer pipeline (0–1 normalized)
  *
@@ -13,6 +14,7 @@
  */
 
 import { useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import type {
   IntelligenceOutput,
   UserIntelligenceContext,
@@ -25,6 +27,8 @@ import { DEFAULT_SCORING_WEIGHTS } from '@/shared/lib/intelligence/constants';
 import { buildDefaultScorers } from '@/shared/lib/intelligence/scorers';
 import { buildCandidates } from '@/shared/lib/intelligence/buildCandidates';
 import { buildRecommendations } from '@/shared/lib/intelligence/buildRecommendations';
+import { fetchMarketplaceCoursesForIntelligence } from '@/shared/lib/api/marketplaceCourses';
+import { coursesToCandidates } from '@/shared/lib/intelligence/mappers/courseToCandidate';
 
 // ── Canonical input hooks (preserved, not replaced) ─────────────
 import { useSkillGaps } from '@/hooks/useSkillGaps';
@@ -52,10 +56,24 @@ export function useIntelligenceLayer(userId?: string, trackId?: string) {
   const skillGapsQ = useSkillGaps(userId);
   const readinessQ = useCareerReadiness({ userId, enabled: !!userId });
 
-  const isLoading = skillGapsQ.isLoading || readinessQ.isLoading;
-  const isError = skillGapsQ.isError || !!readinessQ.error;
+  // Extract gap skill names for marketplace query key
+  const gapSkills = useMemo(
+    () => (skillGapsQ.data ?? []).map(g => g.skill).sort(),
+    [skillGapsQ.data],
+  );
 
-  // ── 2) Build context ──────────────────────────────────────────
+  // ── 2) Marketplace course candidates (DAL-compliant) ──────────
+  const marketplaceQ = useQuery({
+    queryKey: ['intelligence', 'marketplace', userId, trackId, gapSkills.join('|')],
+    queryFn: () => fetchMarketplaceCoursesForIntelligence(gapSkills),
+    enabled: !!userId && !skillGapsQ.isLoading,
+    staleTime: 5 * 60_000,
+  });
+
+  const isLoading = skillGapsQ.isLoading || readinessQ.isLoading || marketplaceQ.isLoading;
+  const isError = skillGapsQ.isError || !!readinessQ.error || marketplaceQ.isError;
+
+  // ── 3) Build context ──────────────────────────────────────────
   const ctx: UserIntelligenceContext = useMemo(
     () => ({
       userId: userId ?? '',
@@ -66,7 +84,7 @@ export function useIntelligenceLayer(userId?: string, trackId?: string) {
     [userId, trackId, skillGapsQ.data, readinessQ.criScore],
   );
 
-  // ── 3) Derive composite output via useMemo ────────────────────
+  // ── 4) Derive composite output via useMemo ────────────────────
   const output: IntelligenceOutput = useMemo(() => {
     const computedAt = new Date().toISOString();
     const staleAt = new Date(Date.now() + 2 * 60_000).toISOString();
@@ -74,12 +92,14 @@ export function useIntelligenceLayer(userId?: string, trackId?: string) {
     const skillGaps: SkillGap[] = skillGapsQ.data ?? [];
     const cri = toCRISnapshot(readinessQ.criScore);
 
-    // Build candidates from available inputs
-    // Phase 1: skill gaps only. Phase 2 adds course/proof candidates.
+    // Map marketplace courses to CourseCandidate shape
+    const courseCandidates = coursesToCandidates(marketplaceQ.data ?? []);
+
+    // Build candidates from all available inputs
     const rawCandidates = buildCandidates(ctx, {
       skillGaps,
-      courseCandidates: [],   // Phase 2: wire marketplace courses
-      proofProjects: [],       // Phase 2: wire proof projects
+      courseCandidates,
+      proofProjects: [],       // Phase 2B: wire proof projects
     });
 
     // Score via plugin pipeline
@@ -91,7 +111,6 @@ export function useIntelligenceLayer(userId?: string, trackId?: string) {
 
     const quickWins = recommendations.filter((r) => {
       if (r.durationHours != null) return r.durationHours <= 1;
-      // Fallback: parse timeEstimate string for minutes or hours
       const mins = r.timeEstimate?.match(/(\d+)\s*(min|mins|minute|minutes|m)\b/i);
       if (mins) return Number(mins[1]) <= 60;
       const hrs = r.timeEstimate?.match(/(\d+(?:\.\d+)?)\s*(hr|hrs|hour|hours|h)\b/i);
@@ -105,7 +124,7 @@ export function useIntelligenceLayer(userId?: string, trackId?: string) {
       recommendations,
       skillGaps,
       cri,
-      marketSignals: [], // Phase 2: wire market signals
+      marketSignals: [], // Phase 2B: wire market signals
       meta: {
         computedAt,
         staleAt,
@@ -118,7 +137,7 @@ export function useIntelligenceLayer(userId?: string, trackId?: string) {
       quickWins,
       criticalGaps,
     };
-  }, [ctx, skillGapsQ.data, readinessQ.criScore, trackId]);
+  }, [ctx, skillGapsQ.data, readinessQ.criScore, trackId, marketplaceQ.data]);
 
   return {
     ...output,
