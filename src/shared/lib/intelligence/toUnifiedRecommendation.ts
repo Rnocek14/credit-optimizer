@@ -28,6 +28,7 @@ export function toUnifiedRecommendationLegacy(
     progress: rec.progress,
     skills: rec.skills,
     actions: rec.actions.map((a) => ({
+      kind: a.kind,
       label: a.label,
       href: a.href,
       on: a.on,

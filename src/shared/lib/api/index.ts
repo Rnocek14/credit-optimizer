@@ -2,7 +2,8 @@ export * from './transferRules';
 export * from './degreeTemplates';
 export * from './institutions';
 export * from './requirementOptions';
-export * from './userPlanSelections';
+export * from './userPlanCourses';
+// userPlanSelections re-exports from userPlanCourses for backward compat — skip to avoid duplicates
 export * from './marketplaceCourses';
 export * from './userAnalytics';
 export * from './userCompletedCourses';

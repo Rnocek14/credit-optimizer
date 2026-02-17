@@ -2,24 +2,27 @@
  * Marketplace Action Executor
  *
  * Translates recommendation action params into real writes:
- * - "Add to Plan"    → saved_plan_items (soft staging via CrossHub)
- * - "Add to EduTree" → user_plan_courses (hard placement)
+ * - kind: 'save_to_plan'   → saved_plan_items (soft staging via CrossHub)
+ * - kind: 'add_to_edutree' → user_plan_courses (hard placement via DAL)
+ * - kind: 'open' | 'navigate' → router navigation
  *
- * Single handler consumed by any UI that renders recommendation actions.
+ * Routes on action.kind (stable discriminator), never on label text.
  */
 
 import { useCallback } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { insertSavedPlanItem } from '@/shared/lib/api/crosshub';
-import { supabase } from '@/integrations/supabase/client';
+import { addCourseToUserPlan } from '@/shared/lib/api/userPlanCourses';
 import { QUERY_KEYS } from '@/lib/queryKeys';
 import { ensureValidSession } from '@/lib/auth';
-import type { ParamsMap } from '@/shared/types/intelligence';
+import type { ParamsMap, ActionKind } from '@/shared/types/intelligence';
 
 // ─── Types ──────────────────────────────────────────────────────
 
 export interface ActionPayload {
+  kind: ActionKind;
   label: string;
   on?: 'discover' | 'plan' | 'progress' | 'contribute';
   href?: string;
@@ -36,14 +39,19 @@ interface ExecuteActionInput {
   skillTags?: string[];
   /** Time estimate string */
   timeEstimate?: string;
+  /** Plan ID (required for add_to_edutree) */
+  planId?: string;
+  /** Requirement ID for targeted block placement */
+  requirementId?: string;
 }
 
 // ─── Hook ───────────────────────────────────────────────────────
 
 export function useMarketplaceActions(userId?: string) {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
-  // ── Add to Plan (soft staging → saved_plan_items) ──────────
+  // ── save_to_plan → saved_plan_items ────────────────────────
 
   const addToPlanMutation = useMutation({
     mutationFn: async (input: ExecuteActionInput) => {
@@ -81,37 +89,34 @@ export function useMarketplaceActions(userId?: string) {
     },
   });
 
-  // ── Add to EduTree (hard placement → user_plan_courses) ────
+  // ── add_to_edutree → user_plan_courses (via DAL) ──────────
 
   const addToEduTreeMutation = useMutation({
-    mutationFn: async (input: ExecuteActionInput & { planId: string; requirementId?: string; providerId: string }) => {
+    mutationFn: async (input: ExecuteActionInput) => {
       if (!userId) throw new Error('Authentication required');
       await ensureValidSession(userId);
 
       const courseId = String(input.action.params?.courseId ?? '');
+      const providerId = String(input.action.params?.providerId ?? '');
       if (!courseId) throw new Error('Missing courseId in action params');
+      if (!providerId) throw new Error('Missing providerId — course has no provider');
+      if (!input.planId) throw new Error('No active plan selected');
 
-      const { data, error } = await supabase
-        .from('user_plan_courses')
-        .insert({
-          plan_id: input.planId,
-          requirement_id: input.requirementId ?? null,
-          course_id: courseId,
-          provider_id: input.providerId,
-          status: 'planned',
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
-      return data;
+      return addCourseToUserPlan({
+        plan_id: input.planId,
+        course_id: courseId,
+        provider_id: providerId,
+        requirement_id: input.requirementId ?? null,
+        status: 'planned',
+      });
     },
     onSuccess: (_, variables) => {
-      // Invalidate EduTree queries
-      queryClient.invalidateQueries({ queryKey: ['user-plan-courses', variables.planId] });
-      queryClient.invalidateQueries({ queryKey: ['user-plan-selections', variables.planId] });
-      queryClient.invalidateQueries({ queryKey: ['batch-requirement-options'] });
-      queryClient.invalidateQueries({ queryKey: ['req-opt-batch'] });
+      // Invalidate EduTree queries via canonical keys
+      if (variables.planId) {
+        queryClient.invalidateQueries({ queryKey: QUERY_KEYS.USER_PLAN_COURSES(variables.planId) });
+        queryClient.invalidateQueries({ queryKey: QUERY_KEYS.USER_PLAN_SELECTIONS(variables.planId) });
+      }
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.BATCH_REQUIREMENT_OPTIONS([]) });
       // Invalidate intelligence
       queryClient.invalidateQueries({
         predicate: (q) =>
@@ -129,41 +134,42 @@ export function useMarketplaceActions(userId?: string) {
   // ── Unified executor ───────────────────────────────────────
 
   const executeAction = useCallback(
-    (input: ExecuteActionInput & { planId?: string; requirementId?: string; providerId?: string }) => {
+    (input: ExecuteActionInput) => {
       const { action } = input;
 
-      // Navigation-only actions (Open Course, View Gap, etc.)
-      if (action.href && !action.params) {
-        window.location.href = action.href;
-        return;
-      }
-
-      switch (action.label) {
-        case 'Add to Plan':
+      switch (action.kind) {
+        case 'save_to_plan':
           addToPlanMutation.mutate(input);
           break;
 
-        case 'Add to EduTree': {
-          if (!input.planId || !input.providerId) {
-            toast.error('Select a plan and provider before adding to EduTree');
+        case 'add_to_edutree':
+          if (!input.planId) {
+            toast.error('Select a plan before adding to EduTree');
             return;
           }
-          addToEduTreeMutation.mutate({
-            ...input,
-            planId: input.planId!,
-            providerId: input.providerId!,
-          });
+          if (!input.action.params?.providerId) {
+            toast.error('Course has no provider — cannot add to EduTree');
+            return;
+          }
+          addToEduTreeMutation.mutate(input);
           break;
-        }
 
-        default:
+        case 'open':
+        case 'navigate':
+          if (action.href) {
+            navigate(action.href);
+          }
+          break;
+
+        default: {
           // Fallback: navigate if href exists
           if (action.href) {
-            window.location.href = action.href;
+            navigate(action.href);
           }
+        }
       }
     },
-    [addToPlanMutation, addToEduTreeMutation],
+    [addToPlanMutation, addToEduTreeMutation, navigate],
   );
 
   return {

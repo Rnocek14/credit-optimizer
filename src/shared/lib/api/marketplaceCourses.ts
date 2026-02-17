@@ -57,6 +57,7 @@ export async function fetchMarketplaceCoursesForIntelligence(
       id, code, title, description, skill_tags, duration_weeks,
       cri_score, instructor_rating, completion_rate, level,
       cost_usd, subject_area,
+      provider_id,
       providers:provider_id ( provider_code )
     `)
     .eq('active', true);
@@ -96,5 +97,6 @@ export async function fetchMarketplaceCoursesForIntelligence(
     cost_usd: c.cost_usd,
     subject_area: c.subject_area,
     provider_code: c.providers?.provider_code ?? null,
+    provider_id: c.provider_id ?? null,
   }));
 }

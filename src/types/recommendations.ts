@@ -17,6 +17,7 @@ export interface UnifiedRecommendation {
   timeEstimate?: string;    // e.g., "45 min", "2–3 hrs"
   skills?: string[];        // ['SQL', 'Pandas']
   actions: Array<{
+    kind?: string;          // stable discriminator: 'open' | 'save_to_plan' | 'add_to_edutree' | 'navigate'
     label: string;          // e.g., "Find Courses", "Take Next Step"
     href?: string;          // deep link (preferred)
     on?: 'discover' | 'plan' | 'progress' | 'contribute';

@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { addCourseToUserPlan } from '@/shared/lib/api/userPlanCourses';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
@@ -75,20 +76,13 @@ export function useAddCourseToPlan() {
       courseId: string;
       providerId: string;
     }) => {
-      const { data, error } = await supabase
-        .from('user_plan_courses')
-        .insert({
-          plan_id: planId,
-          requirement_id: requirementId,
-          course_id: courseId,
-          provider_id: providerId,
-          status: 'planned',
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
-      return data;
+      return addCourseToUserPlan({
+        plan_id: planId,
+        course_id: courseId,
+        provider_id: providerId,
+        requirement_id: requirementId,
+        status: 'planned',
+      });
     },
     onSuccess: (_, variables) => {
       // Phase 3: Invalidate EduTree-related queries
