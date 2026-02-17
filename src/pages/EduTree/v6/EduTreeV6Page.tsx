@@ -420,8 +420,13 @@ export default function EduTreeV6Page() {
           onPlanChange={handlePlanChange}
           currentTemplateId={templateId}
           onDegreeChange={(newId) => {
+            if (basket.length > 0) {
+              const confirmed = window.confirm('Switching degrees will reset your current plan layout. Continue?');
+              if (!confirmed) return;
+            }
             navigate(`/edu-tree-v6?templateId=${newId}`);
             setExpandedYears({ 1: true, 2: false, 3: false, 4: false });
+            toast.success('Degree switched', { description: 'Your plan was updated to the new template.' });
           }}
         />
 
