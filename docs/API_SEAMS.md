@@ -71,11 +71,22 @@ supabase.rpc('calculate_something', ...)
 - **ESLint**: `no-restricted-syntax` warns on `supabase.from()` / `supabase.rpc()` in `src/pages/`
 - **Future (PR 11)**: Flip warnings → errors once migration is complete
 
+### 5. Infrastructure RPCs (Hooks Layer)
+
+| Usage | Where | Notes |
+|-------|-------|-------|
+| `supabase.rpc('get_user_role', ...)` | `useUserRole.ts` | Role lookup for auth |
+| `supabase.rpc('get_user_role', ...)` | `useSecureAuth.ts` | Secure role validation |
+
+> These are auth-adjacent infrastructure calls. They will be wrapped
+> in `src/shared/lib/api/auth.ts` in a future PR, but are **not** data-access
+> violations — they query auth metadata, not business tables.
+
 ## Migration Status
 
 | Layer | `.from()` calls | `.rpc()` calls | Status |
 |-------|----------------|----------------|--------|
 | `src/components/` | 0 | 0 | ✅ Clean |
 | `src/pages/` | 0 | 1 (DevLogin, infra) | ✅ Clean |
-| `src/hooks/` | ~20 | ~5 | 🔄 PR 10 target |
+| `src/hooks/` | ~10 `.from()` | ~12 `.rpc()` | 🔄 PR 10 target |
 | `src/shared/lib/api/` | All | All | ✅ Canonical home |
