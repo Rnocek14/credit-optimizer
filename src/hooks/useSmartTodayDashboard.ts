@@ -49,7 +49,7 @@ export interface UnstickData {
   type: 'skill_practice' | 'quick_learn' | 'micro_project';
 }
 
-export function useSmartTodayDashboard(userId?: string) {
+export function useSmartTodayDashboard(userId?: string, trackId?: string) {
   // ── Intelligence Layer replaces useUnifiedRecommendations + useSkillGaps ──
   const {
     recommendations,
@@ -58,7 +58,7 @@ export function useSmartTodayDashboard(userId?: string) {
     criticalGaps,
     skillGaps,
     isLoading: isLoadingIntelligence,
-  } = useIntelligenceLayer(userId);
+  } = useIntelligenceLayer(userId, trackId);
 
   const { saveToPlan } = useCrossHubIntegration();
   
