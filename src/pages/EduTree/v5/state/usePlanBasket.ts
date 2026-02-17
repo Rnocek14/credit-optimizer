@@ -24,7 +24,8 @@ export interface BasketItem {
   cri_score: number;
   status: 'pinned' | 'auto-filled' | 'prereq';
   providerType?: ProviderType;
-  providerCode?: string;
+  providerId?: string;     // UUID FK to providers.id (for DB writes)
+  providerCode?: string;   // Human-readable code like "Sophia", "ACE" (for display)
   level?: number;
   semester?: 'fall' | 'spring' | 'summer'; // Week 1.5: Track semester assignment for DnD
   equivalency_key?: string; // For grouping equivalent courses

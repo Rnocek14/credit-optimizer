@@ -108,9 +108,11 @@ export function useMarketplaceActions(userId?: string, defaultPlanId?: string) {
       invalidateUserIntelligence(queryClient, userId!);
 
       // ── Optimistic board update: add to Zustand basket so V5 board renders it instantly ──
+      // Safe interim: always __unassigned__ until proven requirement→module mapping exists
       const courseId = String(variables.action.params?.courseId ?? '');
+      const providerId = String(variables.action.params?.providerId ?? '');
       usePlanBasket.getState().addItem({
-        moduleId: variables.requirementId ?? '__unassigned__',
+        moduleId: '__unassigned__',
         courseId,
         title: variables.title,
         credits: 3, // best-effort default; sync will reconcile
@@ -119,7 +121,8 @@ export function useMarketplaceActions(userId?: string, defaultPlanId?: string) {
         workload_weekly_hours: 9,
         cri_score: 0,
         status: 'pinned',
-        providerCode: String(variables.action.params?.providerId ?? ''),
+        providerId,        // UUID for DB writes
+        providerCode: String(variables.action.params?.providerCode ?? ''),
         source: { type: 'manual' },
       });
 
