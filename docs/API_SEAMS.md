@@ -120,6 +120,10 @@ When moving a query to the API layer:
 
 ## Migration Status
 
+> **End-state:** No business `.from()` / `.rpc()` calls remain in `src/hooks/`.
+> Only infra exceptions remain (`supabase.auth.*`, `supabase.functions.invoke`,
+> and `get_user_role` RPCs in auth hooks/pages).
+
 | Layer | `.from()` calls | `.rpc()` calls | Status |
 |-------|----------------|----------------|--------|
 | `src/components/` | 0 | 0 | ✅ Clean |
@@ -139,30 +143,30 @@ When moving a query to the API layer:
 
 ### Batch D modules
 
-| Module | Covers |
-|--------|--------|
+| Module | Exports |
+|--------|---------|
 | `telemetry.ts` | `logAiModelUsage`, `fetchCiCourseSummaries` |
 | `marketIntelligence.ts` | `fetchMarketTrendsRaw`, `fetchTopGrowingCareers`, `fetchSalaryInsightsRaw`, `fetchCareerPathTitle`, `fetchLocationDetails` |
 | `mentorAnalytics.ts` | `fetchMentorMetrics`, `fetchMentorAchievements`, `fetchMentorLeaderboard`, `fetchMentorFeedback`, `checkMentorAchievements`, `submitMentorFeedback` |
 
 ### Batch E modules
 
-| Module | Covers |
-|--------|--------|
+| Module | Exports |
+|--------|---------|
 | `userState.ts` | `fetchUserPreferences`, `fetchUserActivityCounts`, `upsertUserPreferences`, `upsertTrustMetrics`, `fetchTrustMetrics` |
 | `tracks.ts` | `fetchProfileId`, `fetchCareerTracks`, `fetchTrackSlugs`, `insertCareerTrack`, `updateCareerTrack`, `cloneCareerTrack` |
 
 ### Batch G modules
 
-| Module | Covers |
-|--------|--------|
+| Module | Exports |
+|--------|---------|
 | `engagement.ts` | `rpcPredictEngagementDecline`, `rpcGenerateAutonomousIntervention`, `rpcUpdateMayaFeedbackModel`, `rpcDevUserSessionStart`, `rpcDevUserSessionEnd`, `fetchLearningSessions`, `fetchLearningSessionById`, `insertLearningSession`, `updateLearningSession`, `fetchMotivationInterventions`, `insertMotivationIntervention` |
 | `progress.ts` | `rpcStartCourseProgress`, `rpcCompleteCourseProgress`, `fetchCourseProgress`, `fetchLearningMilestones`, `fetchRecommendedCourses` |
 
 ### Batch H + I modules
 
-| Module | Covers |
-|--------|--------|
+| Module | Exports |
+|--------|---------|
 | `gamification.ts` | `fetchLearningStreaks`, `fetchCelebrationMoments`, `updateCelebrationMoment`, `fetchGamificationMetrics`, `rpcUpdateLearningStreak`, `rpcCreateCelebrationMoment` |
 | `crosshub.ts` | `insertSavedPlanItem`, `insertUserAchievement`, `fetchUserAchievements`, `insertCelebrationMoment`, `insertCompletionTrigger` |
 | `mayaFeedback.ts` | `fetchMayaFeedbackCorrelations`, `fetchMayaFeedbackCorrelationById`, `insertMayaFeedbackCorrelation`, `updateMayaFeedbackCorrelation`, `rpcDevUserSubmitMayaFeedback` |
@@ -180,7 +184,7 @@ When moving a query to the API layer:
 **Impact:** Invalidating one key does not refresh the others. Mutations in `useTracks`
 invalidate `['career-tracks']` only, so `CareerSwitchSimulator` may show stale data.
 
-**Additional fragmented keys** (introduced during Batch G–I, intentionally preserved):
+**Additional fragmented keys** (present in the codebase and intentionally preserved during migration):
 - `['learning-engagement-sessions']`, `['motivation-interventions']`
 - `['learning-streaks', userId]`, `['celebration-moments', userId]`, `['gamification-metrics', userId]`
 - `['maya-feedback-correlations']`
