@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { TreePine, AlertTriangle, RefreshCw, CheckCircle } from "lucide-react";
 import { CalmModeTestCanvas } from "@/components/calm/CalmModeTestCanvas";
-import { CalmModeErrorBoundary } from "@/components/calm/CalmModeErrorBoundary";
+import { EnhancedErrorBoundary } from "@/components/enhanced/EnhancedErrorBoundary";
 import { Link } from "react-router-dom";
 
 export default function CalmTest() {
@@ -116,11 +116,11 @@ export default function CalmTest() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <CalmModeErrorBoundary
+            <EnhancedErrorBoundary
+              name="calm-test"
               onError={(error) => {
                 console.error('🚨 Calm Mode Test Error:', error);
               }}
-              fallbackMessage="Calm mode test failed - this is expected for error testing"
             >
               <div className="bg-muted/20 rounded-lg p-4 w-full h-[600px]">
                 <CalmModeTestCanvas 
@@ -130,7 +130,7 @@ export default function CalmTest() {
                   }}
                 />
               </div>
-            </CalmModeErrorBoundary>
+            </EnhancedErrorBoundary>
           </CardContent>
         </Card>
 

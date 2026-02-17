@@ -521,15 +521,3 @@ export function AppRoutes() {
     </Routes>
   );
 }
-
-// ════════════════════════════════════════════════════════════════
-// TRIPWIRE: Route count for PR2 parity verification (temporary)
-// Remove after PR2B is complete.
-// ════════════════════════════════════════════════════════════════
-if (import.meta.env.DEV) {
-  // Count Route elements in the JSX above for quick verification.
-  // Before PR2A: ~140 routes. After PR2A: ~102 routes.
-  // Redirects preserved: 30. Core+active routes: ~72.
-  // eslint-disable-next-line no-console
-  console.log('[routes] PR2A tripwire — expected ~102 route entries (was ~140 pre-PR2A)');
-}

@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertTriangle, Brain, TrendingUp } from 'lucide-react';
 import { UnifiedCareerCanvas } from '@/components/UnifiedCareerCanvas';
-import { LearningPathErrorBoundary } from '@/components/LearningPathErrorBoundary';
+import { EnhancedErrorBoundary as LearningPathErrorBoundary } from '@/components/enhanced/EnhancedErrorBoundary';
 import { AIPlannerDataBridge, type GraphNode as BridgeGraphNode } from '@/lib/aiPlannerDataBridge';
 import type { LearningPath } from '@/hooks/useAIPlanningEngine';
 import type { GraphNode } from '@/lib/careerGraph';

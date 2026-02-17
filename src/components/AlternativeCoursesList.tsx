@@ -17,7 +17,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { SkillTagsFallback } from '@/components/SkillTagsFallback';
 import { AlternativeCourse, UserAltCourseUsage, AltCourseResolveResponse, Provider, SkillTag } from '@/types/alternativeCourses';
-import { AlternativeCoursesErrorBoundary } from './AlternativeCoursesErrorBoundary';
+import { EnhancedErrorBoundary as AlternativeCoursesErrorBoundary } from '@/components/enhanced/EnhancedErrorBoundary';
 import { safeOpenExternal } from '@/components/ui/SafeExternalLink';
 
 export function AlternativeCoursesList() {

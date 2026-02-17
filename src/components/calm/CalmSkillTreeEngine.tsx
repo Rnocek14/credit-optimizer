@@ -8,7 +8,7 @@ import { ReactFlowProvider } from '@xyflow/react';
 import { UnifiedCareerCanvas } from '@/components/UnifiedCareerCanvas';
 import { validateCalmModeData } from '@/lib/calmModeValidation';
 import { buildCalmSubgraph } from '@/lib/calmSubgraph';
-import { CalmErrorBoundary } from './CalmErrorBoundary';
+import { EnhancedErrorBoundary } from '@/components/enhanced/EnhancedErrorBoundary';
 
 export interface CalmSkillTreeEngineProps {
   nodes: any[];
@@ -339,27 +339,28 @@ export function CalmSkillTreeEngine({
   }
   
   return (
-    <CalmErrorBoundary 
-      fallbackMode="safe"
-      onFallbackToNormal={() => {
-        console.log('🔄 Calm Mode: Error boundary triggered fallback to normal');
-        const url = new URL(window.location.href);
-        url.searchParams.delete('st_calm');
-        window.history.replaceState({}, '', url.toString());
-        window.location.reload();
+    <EnhancedErrorBoundary 
+      name="calm-mode"
+      onError={() => {
+        console.error('🔄 Calm Mode: Error boundary triggered fallback to normal');
       }}
+      fallback={({ retry }) => (
+        <div className="p-8 text-center">
+          <p className="text-sm text-muted-foreground mb-4">Calm mode encountered an error.</p>
+          <div className="flex gap-2 justify-center">
+            <button onClick={retry} className="bg-primary text-primary-foreground px-4 py-2 rounded">Try Again</button>
+            <button onClick={() => { const url = new URL(window.location.href); url.searchParams.delete('st_calm'); window.history.replaceState({}, '', url.toString()); window.location.reload(); }} className="bg-secondary text-secondary-foreground px-4 py-2 rounded">Normal View</button>
+          </div>
+        </div>
+      )}
     >
       <div className="space-y-6">
         {/* Main Canvas with comprehensive error isolation - Fixed explicit dimensions */}
         <div className="w-full h-[600px] rounded-lg border bg-background">
-          <CalmErrorBoundary 
-            fallbackMode="safe"
-            onFallbackToNormal={() => {
-              console.log('🔄 Calm Mode: Canvas error boundary triggered fallback');
-              const url = new URL(window.location.href);
-              url.searchParams.delete('st_calm');
-              window.history.replaceState({}, '', url.toString());
-              window.location.reload();
+          <EnhancedErrorBoundary 
+            name="calm-canvas"
+            onError={() => {
+              console.error('🔄 Calm Mode: Canvas error');
             }}
           >
             <SafeCanvas 
@@ -367,10 +368,10 @@ export function CalmSkillTreeEngine({
               edges={processedData.edges}
               onNodeClick={onNodeClick}
             />
-          </CalmErrorBoundary>
+          </EnhancedErrorBoundary>
         </div>
       </div>
-    </CalmErrorBoundary>
+    </EnhancedErrorBoundary>
   );
 }
 

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { SkillTreeCanvas } from './SkillTreeCanvas';
-import { SkillTreeErrorBoundary } from './SkillTreeErrorBoundary';
+import { EnhancedErrorBoundary as SkillTreeErrorBoundary } from '@/components/enhanced/EnhancedErrorBoundary';
 import { LoadingSkeleton } from './LoadingSkeleton';
 import { PivotFlowManager } from './pivot/PivotFlowManager';
 import { usePivotRoadmaps } from '@/hooks/usePivotRoadmaps';

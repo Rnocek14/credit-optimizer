@@ -1,9 +1,8 @@
 import React, { useCallback, useMemo } from 'react';
 import { ReactFlowProvider } from '@xyflow/react';
 import { UnifiedCareerCanvas } from '@/components/UnifiedCareerCanvas';
-import { ErrorBoundaryWrapper } from '@/components/ErrorBoundaryWrapper';
+import { EnhancedErrorBoundary } from '@/components/enhanced/EnhancedErrorBoundary';
 import { CalmSkillTreeEngine } from '@/components/calm/CalmSkillTreeEngine';
-import { CalmModeErrorBoundary } from '@/components/calm/CalmModeErrorBoundary';
 import { validateCalmModeData } from '@/lib/calmModeValidation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -86,7 +85,7 @@ export const SkillTreeEngine: React.FC<SkillTreeEngineProps> = ({
     console.log('🧘 Activating calm mode with comprehensive error handling');
     
     return (
-      <ErrorBoundaryWrapper 
+      <EnhancedErrorBoundary 
         resetKeys={[calmMode ? 'calm' : 'normal', rawNodes?.length || 0, rawEdges?.length || 0]}
         onError={(error) => {
           console.error('🚨 Calm mode error:', error);
@@ -123,7 +122,7 @@ export const SkillTreeEngine: React.FC<SkillTreeEngineProps> = ({
             <div className="mt-6">{rightRailComponent}</div>
           )}
         </div>
-      </ErrorBoundaryWrapper>
+      </EnhancedErrorBoundary>
     );
   }
 
@@ -366,7 +365,7 @@ export const SkillTreeEngine: React.FC<SkillTreeEngineProps> = ({
                 className="min-h-[700px] h-[700px] relative bg-background rounded-lg"
                 data-testid="skill-tree-canvas"
               >
-                <ErrorBoundaryWrapper 
+                <EnhancedErrorBoundary 
                   resetKeys={[finalNodes.length, finalEdges.length, mode]}
                   onError={handleCanvasError}
                 >
@@ -381,7 +380,7 @@ export const SkillTreeEngine: React.FC<SkillTreeEngineProps> = ({
                       focusMode={mode === 'progress'}
                     />
                   </ReactFlowProvider>
-                </ErrorBoundaryWrapper>
+                </EnhancedErrorBoundary>
                 
                 {/* Debug Info (dev only) */}
                 {process.env.NODE_ENV === 'development' && (
