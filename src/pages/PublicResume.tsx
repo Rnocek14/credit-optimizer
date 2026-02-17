@@ -1,29 +1,27 @@
 import { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
-import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import SaveButton from "@/components/SaveButton";
 import { Separator } from "@/components/ui/separator";
 import { 
-  MapPin, 
-  Star, 
-  Eye, 
-  Trophy, 
-  Copy,
-  Share2,
-  GraduationCap,
-  ExternalLink,
-  Sparkles,
-  User,
-  CheckCircle,
-  AlertCircle
+  MapPin, Star, Eye, Trophy, Copy, Share2, GraduationCap, ExternalLink,
+  Sparkles, User, CheckCircle, AlertCircle
 } from "lucide-react";
 import { toast } from "sonner";
 import { SafeExternalLink, safeOpenExternal } from '@/components/ui/SafeExternalLink';
+import {
+  fetchPublicProfile,
+  fetchUserBadges,
+  fetchResumeViewCount,
+  fetchRecommendedCourses,
+  fetchPublishedResumeDraft,
+  trackResumeEvent,
+} from '@/shared/lib/api/publicResume';
 
+// Define interfaces for the data
 interface ProfileData {
   id: string;
   user_id: string;
@@ -100,87 +98,26 @@ const PublicResume = () => {
     try {
       console.log('Fetching profile data for user:', userId);
       
-      // Fetch profile data - try both user_id and id for demo compatibility
-      let profileData, profileError;
-      
-      // First try by user_id (normal case)
-      const userIdResult = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('user_id', userId)
-        .maybeSingle();
-      
-      if (userIdResult.data) {
-        profileData = userIdResult.data;
-        profileError = userIdResult.error;
-      } else {
-        // If not found by user_id, try by id (demo case)
-        const idResult = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', userId)
-          .maybeSingle();
-        
-        profileData = idResult.data;
-        profileError = idResult.error;
-      }
+      const profileData = await fetchPublicProfile(userId!);
 
-      console.log('Profile data:', profileData);
-      console.log('Profile error:', profileError);
-
-      if (profileError || !profileData) {
-        console.log('Profile not found or error:', profileError);
+      if (!profileData) {
+        console.log('Profile not found');
         setNotFound(true);
         return;
       }
 
       setProfile(profileData);
 
-      // Fetch user badges
-      const { data: badgesData } = await supabase
-        .from('user_badges')
-        .select(`
-          id,
-          badge:badges(
-            name,
-            emoji,
-            description,
-            slug
-          )
-        `)
-        .eq('user_id', userId);
-
+      const badgesData = await fetchUserBadges(userId!);
       setBadges(badgesData || []);
 
-      // Fetch view count
-      const { data: events } = await supabase
-        .from('resume_events')
-        .select('id')
-        .eq('user_id', userId)
-        .eq('event_type', 'view');
+      const count = await fetchResumeViewCount(userId!);
+      setViewCount(count);
 
-      setViewCount(events?.length || 0);
-
-      // Fetch recommended courses if this user is a mentor
-      const { data: coursesData } = await supabase
-        .from('recommended_courses')
-        .select('id, title, platform, difficulty, cost, skill_tags, url, is_ai_recommended')
-        .eq('mentor_id', userId)
-        .eq('active', true)
-        .limit(3);
-
+      const coursesData = await fetchRecommendedCourses(userId!);
       setRecommendedCourses(coursesData || []);
 
-      // Fetch latest published AI resume draft
-      const { data: resumeDraftData } = await supabase
-        .from('ai_resume_drafts')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('published_to_profile', true)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
+      const resumeDraftData = await fetchPublishedResumeDraft(userId!);
       if (resumeDraftData) {
         setAiResumeDraft({
           ...resumeDraftData,
@@ -198,14 +135,8 @@ const PublicResume = () => {
 
   const trackView = async () => {
     try {
-      await supabase.from('resume_events').insert({
-        user_id: userId,
-        event_type: 'view',
-        source: 'direct',
-        metadata: {
-          timestamp: new Date().toISOString(),
-          referrer: document.referrer || 'direct'
-        }
+      await trackResumeEvent(userId!, 'view', 'direct', {
+        referrer: document.referrer || 'direct'
       });
     } catch (error) {
       console.error('Error tracking view:', error);
@@ -273,7 +204,6 @@ const PublicResume = () => {
 
   const reviewData = getReviewData();
 
-  // Generate meta tag content
   const ogTitle = `${profile.name} – ${profile.role_title}`;
   const ogDescription = reviewData?.summary || 
     (reviewData?.taglines && reviewData.taglines.length > 0 
@@ -285,21 +215,16 @@ const PublicResume = () => {
   return (
     <>
       <Helmet>
-        {/* Open Graph Tags */}
         <meta property="og:title" content={ogTitle} />
         <meta property="og:description" content={ogDescription} />
         <meta property="og:image" content={ogImage} />
         <meta property="og:url" content={ogUrl} />
         <meta property="og:type" content="profile" />
         <meta property="og:site_name" content="Talent Gallery" />
-        
-        {/* Twitter Card Tags */}
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content={ogTitle} />
         <meta name="twitter:description" content={ogDescription} />
         <meta name="twitter:image" content={ogImage} />
-        
-        {/* Page Title */}
         <title>{ogTitle} | Talent Gallery</title>
         <meta name="description" content={ogDescription} />
       </Helmet>
@@ -388,7 +313,6 @@ const PublicResume = () => {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
-              {/* Resume Stats */}
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4 p-4 bg-muted/30 rounded-lg">
                 <div className="text-center">
                   <div className="text-lg font-bold text-primary">{aiResumeDraft.cri_average.toFixed(1)}</div>
@@ -403,7 +327,6 @@ const PublicResume = () => {
                 </div>
               </div>
 
-              {/* Professional Summary */}
               {aiResumeDraft.content.summary && (
                 <div>
                   <h4 className="font-semibold text-foreground mb-3">Professional Summary</h4>
@@ -413,7 +336,6 @@ const PublicResume = () => {
                 </div>
               )}
 
-              {/* Key Achievements */}
               {aiResumeDraft.content.bullets && aiResumeDraft.content.bullets.length > 0 && (
                 <div>
                   <h4 className="font-semibold text-foreground mb-3">Key Achievements</h4>
@@ -428,7 +350,6 @@ const PublicResume = () => {
                 </div>
               )}
 
-              {/* Skills Categories */}
               {aiResumeDraft.content.skills && Object.keys(aiResumeDraft.content.skills).length > 0 && (
                 <div>
                   <h4 className="font-semibold text-foreground mb-3">Skills & Competencies</h4>
@@ -439,10 +360,7 @@ const PublicResume = () => {
                         <div className="flex flex-wrap gap-2">
                           {Array.isArray(skills) ? (
                             skills.map((skill, index) => (
-                              <span
-                                key={index}
-                                className="px-2 py-1 text-xs bg-muted rounded-md border text-muted-foreground"
-                              >
+                              <span key={index} className="px-2 py-1 text-xs bg-muted rounded-md border text-muted-foreground">
                                 {skill}
                               </span>
                             ))
@@ -482,50 +400,40 @@ const PublicResume = () => {
                           {course.title}
                         </h3>
                         {course.is_ai_recommended && (
-                          <Badge className="bg-gradient-to-r from-yellow-500 to-orange-500 text-white text-xs shrink-0">
+                          <Badge variant="secondary" className="text-xs shrink-0">
                             <Sparkles className="h-3 w-3 mr-1" />
-                            AI
+                            AI Pick
                           </Badge>
                         )}
                       </div>
                       
-                      <div className="text-xs text-muted-foreground font-medium">
-                        {course.platform}
+                      <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+                        <span>📚 {course.platform}</span>
+                        {course.difficulty && <span>📊 {course.difficulty}</span>}
+                        {course.cost !== undefined && (
+                          <span>💰 {course.cost === 0 ? 'Free' : `$${course.cost}`}</span>
+                        )}
                       </div>
-                      
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <span className="font-medium">{course.difficulty}</span>
-                        <span>•</span>
-                        <span>{course.cost}</span>
-                      </div>
-                      
+
                       {course.skill_tags && course.skill_tags.length > 0 && (
                         <div className="flex flex-wrap gap-1">
-                          {course.skill_tags.slice(0, 3).map((skill: string, index: number) => (
-                            <Badge key={index} variant="secondary" className="text-xs">
-                              {skill}
+                          {course.skill_tags.slice(0, 3).map((tag: string, index: number) => (
+                            <Badge key={index} variant="outline" className="text-xs">
+                              {tag}
                             </Badge>
                           ))}
-                          {course.skill_tags.length > 3 && (
-                            <Badge variant="outline" className="text-xs">
-                              +{course.skill_tags.length - 3} more
-                            </Badge>
-                          )}
                         </div>
                       )}
-                      
-                      <div className="flex gap-2 pt-2">
-                        <SafeExternalLink 
-                          url={course.url} 
+
+                      {course.url && (
+                        <SafeExternalLink
+                          url={course.url}
                           mode="allowlisted"
-                          className="inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-8 rounded-md px-3 flex-1"
-                          fallback="hidden"
-                          showIcon={true}
+                          className="flex items-center gap-1 text-xs text-primary hover:underline"
                         >
-                          View Course
+                          View Course <ExternalLink className="h-3 w-3" />
                         </SafeExternalLink>
-                        <SaveButton courseId={course.id} size="sm" />
-                      </div>
+                      )}
                     </div>
                   </Card>
                 ))}
@@ -534,23 +442,39 @@ const PublicResume = () => {
           </Card>
         )}
 
-        {/* AI Review Summary */}
+        {/* Review Summary */}
         {reviewData && (
           <Card className="mb-8 shadow-lg hover:shadow-xl transition-all duration-300 rounded-2xl">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Sparkles className="h-5 w-5 text-primary" />
+                <Star className="h-5 w-5 text-primary" />
                 AI Review Summary
-                <Badge variant="outline" className="ml-auto text-lg font-bold bg-gradient-to-r from-primary/10 to-primary/5">
-                  {reviewData.overall_score}/100
-                </Badge>
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
+              {/* Overall Score */}
+              <div className="flex items-center gap-4">
+                <div className="w-20 h-20 rounded-full bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center">
+                  <span className="text-2xl font-bold text-primary-foreground">
+                    {reviewData.overall_score}
+                  </span>
+                </div>
+                <div>
+                  <h3 className="font-semibold text-lg">Overall Score</h3>
+                  <p className="text-muted-foreground">
+                    {reviewData.overall_score >= 90 ? 'Outstanding' :
+                     reviewData.overall_score >= 80 ? 'Excellent' :
+                     reviewData.overall_score >= 70 ? 'Very Good' : 'Good'} Profile
+                  </p>
+                </div>
+              </div>
+
+              <Separator />
+
               {/* Taglines */}
               {reviewData.taglines && reviewData.taglines.length > 0 && (
                 <div>
-                  <h4 className="font-semibold text-foreground mb-3">Professional Highlights</h4>
+                  <h4 className="font-semibold text-foreground mb-3">Key Highlights</h4>
                   <div className="flex flex-wrap gap-2">
                     {reviewData.taglines.map((tagline, index) => (
                       <Badge key={index} variant="secondary" className="text-sm px-3 py-1">
@@ -561,157 +485,100 @@ const PublicResume = () => {
                 </div>
               )}
 
-              {/* Summary */}
-              {reviewData.summary && (
+              {/* Strengths */}
+              {reviewData.strengths && reviewData.strengths.length > 0 && (
                 <div>
-                  <h4 className="font-semibold text-foreground mb-3">Summary</h4>
-                  <p className="text-muted-foreground leading-relaxed">
-                    {reviewData.summary}
-                  </p>
+                  <h4 className="font-semibold text-foreground mb-3 flex items-center gap-2">
+                    <CheckCircle className="h-4 w-4 text-green-500" />
+                    Strengths
+                  </h4>
+                  <ul className="space-y-2">
+                    {reviewData.strengths.map((strength, index) => (
+                      <li key={index} className="flex items-start gap-3 text-sm">
+                        <div className="w-2 h-2 bg-green-500 rounded-full mt-2 flex-shrink-0"></div>
+                        <span className="text-muted-foreground">{strength}</span>
+                      </li>
+                    ))}
+                  </ul>
                 </div>
               )}
 
-              <div className="grid md:grid-cols-2 gap-6">
-                {/* Strengths */}
-                {reviewData.strengths && reviewData.strengths.length > 0 && (
-                  <div>
-                    <h4 className="font-semibold text-foreground mb-3 flex items-center gap-2">
-                      <CheckCircle className="h-4 w-4 text-green-600" />
-                      Key Strengths
-                    </h4>
-                    <ul className="space-y-2">
-                      {reviewData.strengths.map((strength, index) => (
-                        <li key={index} className="flex items-start gap-2 text-sm">
-                          <div className="w-1.5 h-1.5 bg-green-500 rounded-full mt-2 flex-shrink-0"></div>
-                          <span className="text-muted-foreground">{strength}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-
-                {/* Gaps */}
-                {reviewData.gaps && reviewData.gaps.length > 0 && (
-                  <div>
-                    <h4 className="font-semibold text-foreground mb-3 flex items-center gap-2">
-                      <AlertCircle className="h-4 w-4 text-amber-600" />
-                      Growth Areas
-                    </h4>
-                    <ul className="space-y-2">
-                      {reviewData.gaps.map((gap, index) => (
-                        <li key={index} className="flex items-start gap-2 text-sm">
-                          <div className="w-1.5 h-1.5 bg-amber-500 rounded-full mt-2 flex-shrink-0"></div>
-                          <span className="text-muted-foreground">{gap}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </div>
+              {/* Gaps */}
+              {reviewData.gaps && reviewData.gaps.length > 0 && (
+                <div>
+                  <h4 className="font-semibold text-foreground mb-3 flex items-center gap-2">
+                    <AlertCircle className="h-4 w-4 text-amber-500" />
+                    Areas for Growth
+                  </h4>
+                  <ul className="space-y-2">
+                    {reviewData.gaps.map((gap, index) => (
+                      <li key={index} className="flex items-start gap-3 text-sm">
+                        <div className="w-2 h-2 bg-amber-500 rounded-full mt-2 flex-shrink-0"></div>
+                        <span className="text-muted-foreground">{gap}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </CardContent>
           </Card>
         )}
 
-        {/* Skills & Badges */}
-        <div className="grid md:grid-cols-2 gap-8 mb-8">
-          {/* Skills */}
-          {profile.skills && profile.skills.length > 0 && (
-            <Card className="shadow-lg hover:shadow-xl transition-all duration-300 rounded-2xl">
-              <CardHeader>
-                <CardTitle>Skills & Expertise</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex flex-wrap gap-2">
-                  {profile.skills.map((skill, index) => (
-                    <Badge key={index} variant="outline" className="text-sm">
-                      {skill}
-                    </Badge>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Badges */}
-          {badges.length > 0 && (
-            <Card className="shadow-lg hover:shadow-xl transition-all duration-300 rounded-2xl">
-              <CardHeader>
-                <CardTitle>Verified Achievements</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex flex-wrap gap-2">
-                  {badges.map((badge) => (
-                    <div key={badge.id} className="relative group">
-                      <Badge
-                        variant="secondary"
-                        className="text-xs bg-primary/10 text-primary hover:bg-primary/20 transition-colors cursor-help"
-                      >
-                        <span className="mr-1">{badge.badge.emoji}</span>
-                        {badge.badge.name}
-                      </Badge>
-                      <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-background border rounded shadow-lg text-xs w-max max-w-xs opacity-0 group-hover:opacity-100 transition-opacity z-10">
-                        {badge.badge.description}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-        </div>
-
-        {/* Additional Info */}
-        {(profile.career_goals || profile.education || profile.work_preferences) && (
-          <Card className="shadow-lg hover:shadow-xl transition-all duration-300 rounded-2xl">
+        {/* Badges Section */}
+        {badges.length > 0 && (
+          <Card className="mb-8 shadow-lg hover:shadow-xl transition-all duration-300 rounded-2xl">
             <CardHeader>
-              <CardTitle>Additional Information</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <Trophy className="h-5 w-5 text-primary" />
+                Verified Badges
+              </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-6">
-              {profile.career_goals && (
-                <div>
-                  <h4 className="font-semibold text-foreground mb-2">Career Goals</h4>
-                  <p className="text-muted-foreground">{profile.career_goals}</p>
-                </div>
-              )}
-
-              {profile.education && (
-                <div>
-                  <h4 className="font-semibold text-foreground mb-2">Education</h4>
-                  <p className="text-muted-foreground">{profile.education}</p>
-                </div>
-              )}
-
-              {profile.work_preferences && (
-                <div>
-                  <h4 className="font-semibold text-foreground mb-2">Work Preferences</h4>
-                  <p className="text-muted-foreground">{profile.work_preferences}</p>
-                </div>
-              )}
-
-              <Separator />
-
-              <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
-                {profile.years_experience && (
-                  <span>{profile.years_experience} years experience</span>
-                )}
-                {profile.experience_level && (
-                  <span>• {profile.experience_level} level</span>
-                )}
-                {profile.industry && (
-                  <span>• {profile.industry}</span>
-                )}
+            <CardContent>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                {badges.map((badge) => (
+                  <div key={badge.id} className="flex items-center gap-3 p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
+                    <span className="text-2xl">{badge.badge.emoji}</span>
+                    <div>
+                      <p className="font-medium text-sm">{badge.badge.name}</p>
+                      <p className="text-xs text-muted-foreground">{badge.badge.description}</p>
+                    </div>
+                  </div>
+                ))}
               </div>
             </CardContent>
           </Card>
         )}
 
-        {/* Footer CTA */}
-        <div className="text-center mt-12 py-8">
-          <Button size="lg" asChild>
-            <a href="/resume-gallery">
-              Discover More Talent
-            </a>
-          </Button>
+        {/* Skills Section */}
+        {profile.skills && profile.skills.length > 0 && (
+          <Card className="mb-8 shadow-lg hover:shadow-xl transition-all duration-300 rounded-2xl">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <GraduationCap className="h-5 w-5 text-primary" />
+                Skills & Expertise
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-wrap gap-2">
+                {profile.skills.map((skill, index) => (
+                  <Badge 
+                    key={index} 
+                    variant="secondary"
+                    className="px-3 py-1 text-sm bg-primary/10 text-primary border-primary/20"
+                  >
+                    {skill}
+                  </Badge>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Save Button */}
+        <div className="flex justify-center mt-8">
+          <SaveButton 
+            courseId={profile.user_id}
+          />
         </div>
       </div>
     </div>
