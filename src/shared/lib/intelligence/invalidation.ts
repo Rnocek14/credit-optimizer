@@ -46,6 +46,7 @@ export function invalidateTrackIntelligence(
 export function invalidateMarketSignals(qc: QueryClient) {
   qc.invalidateQueries({
     predicate: (query) =>
+      query.queryKey.length >= 4 &&
       query.queryKey[0] === 'intelligence' &&
       query.queryKey[3] === 'signals',
   });
