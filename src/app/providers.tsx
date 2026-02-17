@@ -10,13 +10,12 @@ import { UserJourneyProvider } from "@/contexts/UserJourneyContext";
 import { UnifiedDataProvider } from "@/contexts/UnifiedDataContext";
 import TutorialProvider from "@/tutorial/TutorialProvider";
 import { EnhancedErrorBoundary } from "@/components/enhanced/EnhancedErrorBoundary";
-import { ProductionErrorBoundary } from "@/components/enhanced/ProductionErrorBoundary";
 
 const queryClient = new QueryClient();
 
 export function AppProviders({ children }: { children: React.ReactNode }) {
   return (
-    <ProductionErrorBoundary>
+    <EnhancedErrorBoundary name="app-root">
       <QueryClientProvider client={queryClient}>
         <HelmetProvider>
           <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
@@ -26,6 +25,7 @@ export function AppProviders({ children }: { children: React.ReactNode }) {
                   <UserJourneyProvider>
                     <UnifiedDataProvider>
                       <EnhancedErrorBoundary
+                        name="app-content"
                         onError={(error) => {
                           console.error('App-level error:', error);
                         }}
@@ -42,6 +42,6 @@ export function AppProviders({ children }: { children: React.ReactNode }) {
           </ThemeProvider>
         </HelmetProvider>
       </QueryClientProvider>
-    </ProductionErrorBoundary>
+    </EnhancedErrorBoundary>
   );
 }

@@ -1,7 +1,7 @@
 import React from 'react';
 import { cn } from '@/lib/utils';
 import { validateCRIScore } from '@/utils/validation';
-import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { EnhancedErrorBoundary as ErrorBoundary } from '@/components/enhanced/EnhancedErrorBoundary';
 
 interface CRIGaugeProps {
   value: number;

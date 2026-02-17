@@ -12,7 +12,7 @@ import { TIPS } from '@/tutorial/tutorial-map';
 import type { CIRecommendation } from '@/types/course-intelligence';
 import { sanitizeUrl } from '@/utils/security';
 import { useToast } from '@/hooks/use-toast';
-import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { EnhancedErrorBoundary as ErrorBoundary } from '@/components/enhanced/EnhancedErrorBoundary';
 import { EmptyStateCard } from '@/components/LoadingStates';
 import { RecommendationsRailSkeleton } from '@/components/LoadingStates';
 import { validateDifficulty } from '@/utils/validation';
