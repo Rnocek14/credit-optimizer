@@ -90,9 +90,10 @@ export function useIntelligenceLayer(userId?: string, trackId?: string) {
       recommendations[0] ?? null;
 
     const quickWins = recommendations.filter((r) => {
-      const match = r.timeEstimate?.match(/(\d+)/);
-      const hrs = match ? Number(match[1]) : NaN;
-      return Number.isFinite(hrs) && hrs <= 1;
+      if (r.durationHours != null) return r.durationHours <= 1;
+      // Fallback: parse timeEstimate string
+      const match = r.timeEstimate?.match(/(\d+)\s*(min|m)\b/i);
+      return match ? Number(match[1]) <= 60 : false;
     });
 
     const criticalGaps = skillGaps.filter((g) => g.priority === 'critical');
