@@ -79,6 +79,7 @@ export function buildRecommendations(
       criContribution: c.criContribution,
       marketDemandScore: c.marketDemandScore,
       marketGrowthRate: c.marketGrowthRate,
+      durationHours: c.durationHours,
       timeEstimate: c.timeEstimate,
       progress: c.progress,
       skills: c.skillTags,

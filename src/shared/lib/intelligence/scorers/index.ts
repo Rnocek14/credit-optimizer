@@ -7,12 +7,17 @@ import { mayaScorer } from './mayaScorer';
 import { reputationScorer } from './reputationScorer';
 
 export function buildDefaultScorers(weights: ScoringWeights): ScorerPlugin[] {
+  // Guard against weight drift: normalize so weights always sum to 1.
+  const raw = weights;
+  const sum = raw.cri + raw.market + raw.skillGap + raw.maya + raw.reputation;
+  const d = sum > 0 ? sum : 1; // fallback: treat as equal if all zero
+
   return [
-    { name: 'cri', weight: weights.cri, score: criScorer },
-    { name: 'market', weight: weights.market, score: (c) => marketScorer(c) },
-    { name: 'skillGap', weight: weights.skillGap, score: skillGapScorer },
-    { name: 'maya', weight: weights.maya, score: (c) => mayaScorer(c) },
-    { name: 'reputation', weight: weights.reputation, score: (c) => reputationScorer(c) },
+    { name: 'cri', weight: raw.cri / d, score: criScorer },
+    { name: 'market', weight: raw.market / d, score: (c) => marketScorer(c) },
+    { name: 'skillGap', weight: raw.skillGap / d, score: skillGapScorer },
+    { name: 'maya', weight: raw.maya / d, score: (c) => mayaScorer(c) },
+    { name: 'reputation', weight: raw.reputation / d, score: (c) => reputationScorer(c) },
   ];
 }
 

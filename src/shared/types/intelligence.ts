@@ -152,6 +152,7 @@ export interface IntelligenceRecommendation {
   marketGrowthRate?: number;
 
   // UI rendering
+  durationHours?: number;
   timeEstimate?: string;
   progress?: number;
   skills?: string[];
