@@ -2,7 +2,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Clock, DollarSign, Laptop, MapPin, TrendingUp, AlertCircle, GraduationCap, CheckCircle2, Shield, ShieldCheck, AlertTriangle } from 'lucide-react';
+import { Clock, DollarSign, Laptop, MapPin, TrendingUp, AlertCircle, GraduationCap, CheckCircle2, Shield, ShieldCheck, AlertTriangle, ArrowRight, School } from 'lucide-react';
 import type { MarketplaceDegreeTemplate } from '@/pages/EduTree/v5/types/templates';
 import { isAltCreditOptimization } from '@/types/optimizationTypes';
 import { useNavigate } from 'react-router-dom';
@@ -41,6 +41,7 @@ export function TemplateCard({ template, isSelected, onToggleSelect }: TemplateC
   
   const isMatchingAnchor = constraints.target_school === template.anchorSchool;
   const isIncomplete = !template.yearTemplates || template.yearTemplates.length === 0;
+  const isMultiSchool = template.optimization === 'multi-school';
 
   const handleSelect = () => {
     if (isIncomplete) return;
@@ -337,10 +338,14 @@ export function TemplateCard({ template, isSelected, onToggleSelect }: TemplateC
         <div className="flex items-start justify-between gap-2">
           <div className="flex-1">
             <CardTitle className="text-lg leading-tight mb-1">
-              {template.marketplace.title}
+              {isMultiSchool 
+                ? `Multi-School ${template.programId || 'Degree'} Path`
+                : template.marketplace.title}
             </CardTitle>
             <CardDescription className="text-sm">
-              {template.marketplace.tagline}
+              {isMultiSchool
+                ? `Low-cost credits first → finish at ${template.anchorSchool}`
+                : template.marketplace.tagline}
             </CardDescription>
           </div>
           <Checkbox
@@ -350,12 +355,18 @@ export function TemplateCard({ template, isSelected, onToggleSelect }: TemplateC
           />
         </div>
 
-        {/* Anchor School Badge + Safety Indicators */}
+        {/* Anchor School Badge + Multi-School Badge + Safety Indicators */}
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <Badge variant={isMatchingAnchor ? "default" : "outline"} className="gap-1">
             <GraduationCap className="h-3 w-3" />
             {template.anchorSchool}
           </Badge>
+          {isMultiSchool && (
+            <Badge variant="info" className="gap-1">
+              <School className="h-3 w-3" />
+              Multi-School
+            </Badge>
+          )}
           {isMatchingAnchor && (
             <TooltipProvider>
               <Tooltip>
@@ -414,6 +425,20 @@ export function TemplateCard({ template, isSelected, onToggleSelect }: TemplateC
             </Tooltip>
           </TooltipProvider>
         </div>
+
+        {/* Multi-School Transfer Flow Summary */}
+        {isMultiSchool && providerMix.length > 0 && (
+          <div className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
+            {providerMix.map((p, i) => (
+              <span key={p.code} className="inline-flex items-center gap-1">
+                {i > 0 && <span>+</span>}
+                <span className="font-medium text-foreground">{PROVIDER_CONFIG[p.code]?.label ?? p.code}</span>
+              </span>
+            ))}
+            <ArrowRight className="h-3 w-3 mx-0.5" />
+            <span className="font-medium text-foreground">{template.anchorSchool}</span>
+          </div>
+        )}
 
         {/* Key Metrics */}
         <div className="grid grid-cols-2 gap-3 mt-4">
