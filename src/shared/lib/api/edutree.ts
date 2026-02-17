@@ -84,9 +84,14 @@ export async function fetchProgramRequirements(programId: string) {
 /**
  * Fetch requirement options (flat — no join).
  *
- * `option_ref_id` is a polymorphic reference resolved by `option_kind`,
- * so Supabase nested selects won't work here. Consumers should resolve
- * courses via separate lookups (e.g. fetchEduCourses) and join in-memory.
+ * `option_ref_id` is a polymorphic reference resolved by `option_kind`
+ * (enum: 'course' | 'exam' | 'cert'), so Supabase nested selects won't
+ * work here. Consumers should resolve referenced entities via separate
+ * lookups and join in-memory. The V5 engine does this via
+ * `transformDbToV5.transformToModuleData()`.
+ *
+ * IMPORTANT: Polymorphic reference columns (no FK) must never use nested
+ * joins — always resolve via explicit batched lookups.
  */
 export async function fetchAllRequirementOptions() {
   const { data, error } = await supabase
