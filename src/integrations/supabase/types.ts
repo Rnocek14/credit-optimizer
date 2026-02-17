@@ -16694,6 +16694,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      backfill_inferred_edges_from_rules: {
+        Args: { p_limit?: number }
+        Returns: Json
+      }
       calculate_alert_accuracy: {
         Args: { config_id: string; days_back?: number }
         Returns: number
