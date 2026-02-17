@@ -124,10 +124,20 @@ When moving a query to the API layer:
 |-------|----------------|----------------|--------|
 | `src/components/` | 0 | 0 | ✅ Clean |
 | `src/pages/` | 0 | 1 (DevLogin, infra) | ✅ Clean |
-| `src/hooks/` | 0 | 0 | ✅ Clean (Batch E complete) |
+| `src/hooks/` | 0 | 2 (`get_user_role`, infra) | ✅ Clean — documented exceptions only |
 | `src/shared/lib/api/` | All | All | ✅ Canonical home |
 
-### Batch D modules added
+### Documented Infra Exceptions (hooks layer)
+
+| Hook | Call | Rationale |
+|------|------|-----------|
+| `useSecureAuth` | `supabase.rpc('get_user_role', ...)` | Auth-adjacent identity check |
+| `useUserRole` | `supabase.rpc('get_user_role', ...)` | Auth-adjacent role lookup |
+
+> These are **not** data-access violations — they query auth metadata, not business
+> tables. Future wrap in `src/shared/lib/api/auth.ts` is optional but not required.
+
+### Batch D modules
 
 | Module | Covers |
 |--------|--------|
@@ -135,12 +145,27 @@ When moving a query to the API layer:
 | `marketIntelligence.ts` | `fetchMarketTrendsRaw`, `fetchTopGrowingCareers`, `fetchSalaryInsightsRaw`, `fetchCareerPathTitle`, `fetchLocationDetails` |
 | `mentorAnalytics.ts` | `fetchMentorMetrics`, `fetchMentorAchievements`, `fetchMentorLeaderboard`, `fetchMentorFeedback`, `checkMentorAchievements`, `submitMentorFeedback` |
 
-### Batch E modules added
+### Batch E modules
 
 | Module | Covers |
 |--------|--------|
 | `userState.ts` | `fetchUserPreferences`, `fetchUserActivityCounts`, `upsertUserPreferences`, `upsertTrustMetrics`, `fetchTrustMetrics` |
 | `tracks.ts` | `fetchProfileId`, `fetchCareerTracks`, `fetchTrackSlugs`, `insertCareerTrack`, `updateCareerTrack`, `cloneCareerTrack` |
+
+### Batch G modules
+
+| Module | Covers |
+|--------|--------|
+| `engagement.ts` | `rpcPredictEngagementDecline`, `rpcGenerateAutonomousIntervention`, `rpcUpdateMayaFeedbackModel`, `rpcDevUserSessionStart`, `rpcDevUserSessionEnd`, `fetchLearningSessions`, `fetchLearningSessionById`, `insertLearningSession`, `updateLearningSession`, `fetchMotivationInterventions`, `insertMotivationIntervention` |
+| `progress.ts` | `rpcStartCourseProgress`, `rpcCompleteCourseProgress`, `fetchCourseProgress`, `fetchLearningMilestones`, `fetchRecommendedCourses` |
+
+### Batch H + I modules
+
+| Module | Covers |
+|--------|--------|
+| `gamification.ts` | `fetchLearningStreaks`, `fetchCelebrationMoments`, `updateCelebrationMoment`, `fetchGamificationMetrics`, `rpcUpdateLearningStreak`, `rpcCreateCelebrationMoment` |
+| `crosshub.ts` | `insertSavedPlanItem`, `insertUserAchievement`, `fetchUserAchievements`, `insertCelebrationMoment`, `insertCompletionTrigger` |
+| `mayaFeedback.ts` | `fetchMayaFeedbackCorrelations`, `fetchMayaFeedbackCorrelationById`, `insertMayaFeedbackCorrelation`, `updateMayaFeedbackCorrelation`, `rpcDevUserSubmitMayaFeedback` |
 
 ### Known Debt: Query Key Fragmentation
 
@@ -155,9 +180,14 @@ When moving a query to the API layer:
 **Impact:** Invalidating one key does not refresh the others. Mutations in `useTracks`
 invalidate `['career-tracks']` only, so `CareerSwitchSimulator` may show stale data.
 
+**Additional fragmented keys** (introduced during Batch G–I, intentionally preserved):
+- `['learning-engagement-sessions']`, `['motivation-interventions']`
+- `['learning-streaks', userId]`, `['celebration-moments', userId]`, `['gamification-metrics', userId]`
+- `['maya-feedback-correlations']`
+
 **Resolution:** A dedicated "Query Key Canonicalization" PR should:
-1. Unify all consumers to `QUERY_KEYS.CAREER_TRACKS(userId)`
-2. Update all mutation invalidations to use the canonical key
+1. Unify all consumers to `QUERY_KEYS.*` entries
+2. Update all mutation invalidations to use canonical keys
 3. Verify that all consumers use identical filters/ordering (profile-scoped vs user-scoped)
 4. Smoke test: create/update/archive/clone across all UI surfaces
 
