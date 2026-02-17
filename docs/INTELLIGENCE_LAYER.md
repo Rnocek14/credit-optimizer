@@ -1,6 +1,6 @@
 # Unified Intelligence Layer — Architecture Spec
 
-> **Status:** Approved design — implementation begins after this document is reviewed.
+> **Status:** Approved with required edits applied (invalidation, types, cache model, Maya role).
 > **Owner:** Intelligence unification (Phase 1 of strategic plan)
 > **Last updated:** 2026-02-17
 
@@ -86,36 +86,55 @@ The platform currently computes intelligence through **8 fragmented surfaces**:
                        ▼
 ┌──────────────────────────────────────────────────────────────┐
 │              UNIFIED OUTPUT (IntelligenceOutput)              │
+│  (derived via useMemo — NOT its own useQuery)                │
 │                                                              │
 │  recommendations: IntelligenceRecommendation[]               │
 │  skillGaps: SkillGap[]                                       │
 │  criSnapshot: CRISnapshot                                    │
 │  marketSignals: MarketSignal[]                               │
-│  predictiveInsights: PredictiveInsight[]                     │
-│  userContext: ResolvedUserContext                             │
 │  meta: { computedAt, staleAt, scoringWeights, trackId }     │
+│                                                              │
+│  Maya is a SIGNAL LAYER, not a candidate source.             │
+│  Maya provides boosts/penalties via mayaConfidence on         │
+│  existing candidates — it does NOT generate its own.         │
 └──────────────────────────────────────────────────────────────┘
 ```
 
 ### 3.2 Query Key Strategy
 
 ```typescript
+// In src/lib/queryKeys.ts:
 QUERY_KEYS.INTELLIGENCE = (userId?: string, trackId?: string) =>
   ['intelligence', userId, trackId] as const;
 
-// Sub-keys for granular invalidation:
-QUERY_KEYS.INTELLIGENCE_RECS = (userId?: string, trackId?: string) =>
-  ['intelligence', 'recommendations', userId, trackId] as const;
 QUERY_KEYS.INTELLIGENCE_SIGNALS = (userId?: string, trackId?: string) =>
   ['intelligence', 'signals', userId, trackId] as const;
 ```
 
-**Invalidation strategy:**
-- Milestone completion → invalidate `['intelligence', userId, trackId]`
-- Track switch → invalidate `['intelligence', userId, '*']`
-- Market data refresh → invalidate `['intelligence', 'signals', '*']`
+**Invalidation strategy (predicate-based — NO wildcards):**
+
+React Query does NOT support `'*'` in query keys. All cross-key invalidation
+uses predicates. See `src/shared/lib/intelligence/invalidation.ts` for utilities.
+
+```typescript
+// Milestone completion → invalidate user's intelligence
+invalidateUserIntelligence(queryClient, userId);
+
+// Track switch → invalidate old track + all user intelligence
+invalidateOnTrackSwitch(queryClient, userId, oldTrackId);
+
+// Market data refresh → invalidate all signal queries
+invalidateMarketSignals(queryClient);
+
+// Save-to-plan / proof project → plan + intelligence
+invalidateOnPlanMutation(queryClient, userId, trackId);
+```
 
 ### 3.3 Cache Model
+
+Composite output is **derived via `useMemo`** from cached input queries.
+It does NOT have its own `useQuery` — this prevents double-caching and
+incoherent invalidation. Only the input queries have cache entries:
 
 | Data | staleTime | gcTime | Rationale |
 |------|-----------|--------|-----------|
@@ -123,7 +142,7 @@ QUERY_KEYS.INTELLIGENCE_SIGNALS = (userId?: string, trackId?: string) =>
 | CRI score | 5min | 15min | Expensive to compute, slow-changing |
 | Market trends | 10min | 30min | External data, infrequent updates |
 | Course candidates | 5min | 15min | Based on skill gaps (derived) |
-| Composite output | 2min | 10min | Re-scored from cached inputs |
+| **Composite output** | — | — | `useMemo` from above caches, not its own query |
 
 ---
 
@@ -187,7 +206,31 @@ See `src/shared/types/intelligence.ts` for the canonical type definitions.
 | `mayaScorer` | 0.10 | Maya AI contextual boost — personalization signal |
 | `reputationScorer` | 0.05 | Trust & reputation (future plug-in, defaults to 1.0) |
 
-Weights are configurable per-user and per-track. Default weights sum to 1.0.
+Weights sum to 1.0. Currently client-side constants in `DEFAULT_SCORING_WEIGHTS`.
+Per-user/per-track configurability is deferred until a `user_intelligence_weights`
+table is implemented (keyed by `user_id, track_id`). Do NOT scatter weight overrides
+in components — all weight resolution must go through the intelligence layer.
+
+---
+
+## 6.5 Scorer Normalization Contract
+
+Every scorer MUST normalize its inputs to [0, 1] and clamp the output.
+Use `clamp01()` and `normalize()` from `src/shared/types/intelligence.ts`.
+
+| Input Field | Raw Range | Normalization |
+|-------------|-----------|---------------|
+| `criContribution` | 0–1 | passthrough |
+| `marketDemandScore` | 0–1 | passthrough |
+| `marketGrowthRate` | -1 to +1 | `normalize(v, -1, 1)` |
+| `instructorReputation` | 0–5 | `normalize(v, 0, 5)` |
+| `platformTrust` | 0–1 | passthrough |
+| `mayaConfidence` | 0–1 | passthrough |
+| `priority` (SkillPriority) | 1–4 | `normalize(PRIORITY_SCORE[p], 1, 4)` |
+| `difficulty` | 1–5 | `normalize(v, 1, 5)` |
+
+Scorers that receive `undefined` for an optional input MUST return a neutral
+score (0.5) for that dimension, not 0 — to avoid penalizing missing data.
 
 ---
 

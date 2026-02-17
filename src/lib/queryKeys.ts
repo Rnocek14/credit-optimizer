@@ -61,6 +61,10 @@ export const QUERY_KEYS = {
   // ── Analytics (track-aware) ───────────────────────────────────
   ANALYTICS_EVENTS: (userId?: string, trackId?: string) => ['analytics', 'analytics-events', userId, trackId],
 
+  // ── Intelligence Layer (unified) ───────────────────────────────
+  INTELLIGENCE: (userId?: string, trackId?: string) => ['intelligence', userId, trackId] as const,
+  INTELLIGENCE_SIGNALS: (userId?: string, trackId?: string) => ['intelligence', 'signals', userId, trackId] as const,
+
   // ── Multi-institution data ────────────────────────────────────
   INSTITUTIONS: () => ['institutions', 'list'],
   TEACHERS: (institutionId?: string) => ['institutions', 'teachers', institutionId],
