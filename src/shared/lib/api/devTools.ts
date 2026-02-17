@@ -78,3 +78,21 @@ export async function upsertDemoChunks(chunks: Array<{
 }>) {
   await supabase.from('ai_analyzer_chunks').upsert(chunks);
 }
+
+// ── EduTree Seed Verification ───────────────────────────────────
+
+export async function verifySeedCounts() {
+  const [chk1, chk2, chk3, chk4] = await Promise.all([
+    supabase.from('requirement_blocks').select('id'),
+    supabase.from('block_members').select('id'),
+    supabase.from('block_gates').select('id'),
+    supabase.from('prereq_to_block').select('id'),
+  ]);
+
+  return {
+    blocks: chk1.data?.length ?? 0,
+    members: chk2.data?.length ?? 0,
+    gates: chk3.data?.length ?? 0,
+    edges: chk4.data?.length ?? 0,
+  };
+}

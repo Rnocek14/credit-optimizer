@@ -8,3 +8,6 @@ export * from './userAnalytics';
 export * from './userCompletedCourses';
 export * from './devTools';
 export * from './errors';
+export * from './policyPipeline';
+export * from './publicResume';
+export * from './mentorAnalytics';

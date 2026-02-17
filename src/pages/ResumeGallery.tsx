@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -7,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Eye, Star, Clock, Search, Filter, TrendingUp } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { fetchGalleryProfiles, trackResumeEvent } from '@/shared/lib/api/publicResume';
 
 interface GalleryProfile {
   id: string;
@@ -45,70 +45,17 @@ const ResumeGallery = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    fetchGalleryProfiles();
+    loadGalleryProfiles();
   }, []);
 
   useEffect(() => {
     filterAndSortProfiles();
   }, [profiles, searchTerm, industryFilter, roleFilter, badgeFilter, sortBy, minScore]);
 
-  const fetchGalleryProfiles = async () => {
+  const loadGalleryProfiles = async () => {
     try {
-      // Get profiles that are gallery enabled with AI reviews
-      const { data: profilesData, error: profilesError } = await supabase
-        .from('profiles')
-        .select(`
-          id,
-          user_id,
-          name,
-          role_title,
-          location,
-          industry,
-          resume_review_summary,
-          gallery_featured,
-          skills,
-          created_at
-        `)
-        .eq('gallery_enabled', true)
-        .not('resume_review_summary', 'is', null);
-
-      if (profilesError) throw profilesError;
-
-      // Get badges for each profile and view counts
-      const profilesWithStats = await Promise.all(
-        (profilesData || []).map(async (profile) => {
-          // Get badges
-          const { data: badgesData } = await supabase
-            .from('user_badges')
-            .select(`
-              id,
-              badge:badges (
-                name,
-                emoji,
-                description,
-                slug
-              )
-            `)
-            .eq('user_id', profile.user_id);
-
-          // Get view counts
-          const { data: events } = await supabase
-            .from('resume_events')
-            .select('created_at')
-            .eq('user_id', profile.user_id)
-            .eq('event_type', 'view')
-            .order('created_at', { ascending: false });
-
-          return {
-            ...profile,
-            badges: badgesData || [],
-            view_count: events?.length || 0,
-            latest_view: events?.[0]?.created_at || profile.created_at
-          };
-        })
-      );
-
-      setProfiles(profilesWithStats);
+      const data = await fetchGalleryProfiles();
+      setProfiles(data);
     } catch (error) {
       console.error('Error fetching gallery profiles:', error);
     } finally {
@@ -118,34 +65,22 @@ const ResumeGallery = () => {
 
   const filterAndSortProfiles = () => {
     let filtered = profiles.filter((profile) => {
-      // Search filter
       const searchMatch = !searchTerm || 
         profile.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         profile.role_title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         profile.skills?.some(skill => skill.toLowerCase().includes(searchTerm.toLowerCase()));
-
-      // Industry filter
       const industryMatch = industryFilter === "all" || profile.industry === industryFilter;
-
-      // Role filter
       const roleMatch = !roleFilter || profile.role_title?.toLowerCase().includes(roleFilter.toLowerCase());
-
-      // Badge filter
       const badgeMatch = badgeFilter === "all" || 
         profile.badges.some(badge => badge.badge.name === badgeFilter);
-
-      // Score filter
       const reviewData = getReviewData(profile.resume_review_summary);
       const scoreMatch = !reviewData || (reviewData.overall_score || 0) >= minScore;
-
       return searchMatch && industryMatch && roleMatch && badgeMatch && scoreMatch;
     });
 
-    // Sort profiles
     filtered.sort((a, b) => {
       switch (sortBy) {
-        case 'most_viewed':
-          return b.view_count - a.view_count;
+        case 'most_viewed': return b.view_count - a.view_count;
         case 'top_rated':
           const aScore = getReviewData(a.resume_review_summary)?.overall_score || 0;
           const bScore = getReviewData(b.resume_review_summary)?.overall_score || 0;
@@ -154,59 +89,38 @@ const ResumeGallery = () => {
           return new Date(b.latest_view).getTime() - new Date(a.latest_view).getTime();
         case 'featured':
           return (b.gallery_featured ? 1 : 0) - (a.gallery_featured ? 1 : 0);
-        default:
-          return 0;
+        default: return 0;
       }
     });
-
     setFilteredProfiles(filtered);
   };
 
   const getReviewData = (resumeReviewSummary: string) => {
-    try {
-      return JSON.parse(resumeReviewSummary);
-    } catch {
-      return null;
-    }
+    try { return JSON.parse(resumeReviewSummary); } catch { return null; }
   };
 
-  const getUniqueIndustries = () => {
-    return [...new Set(profiles.map(p => p.industry).filter(Boolean))];
-  };
+  const getUniqueIndustries = () => [...new Set(profiles.map(p => p.industry).filter(Boolean))];
 
   const getUniqueBadges = () => {
     const badges = new Set<string>();
-    profiles.forEach(profile => {
-      profile.badges.forEach(badge => {
-        badges.add(badge.badge.name);
-      });
-    });
+    profiles.forEach(profile => profile.badges.forEach(badge => badges.add(badge.badge.name)));
     return Array.from(badges);
-  };
-
-  const handleViewResume = async (profile: GalleryProfile) => {
-    // Track analytics event
-    try {
-      await supabase.from('resume_events').insert({
-        user_id: profile.user_id,
-        event_type: 'resume_click',
-        source: 'gallery',
-        metadata: {
-          profile_id: profile.id,
-          timestamp: new Date().toISOString()
-        }
-      });
-    } catch (error) {
-      console.error('Error tracking resume click:', error);
-    }
-
-    // Navigate to resume
-    navigate(`/resume/${profile.user_id}`);
   };
 
   const truncateText = (text: string, maxLength: number) => {
     if (!text) return '';
     return text.length > maxLength ? text.substring(0, maxLength) + '...' : text;
+  };
+
+  const handleViewResume = async (profile: GalleryProfile) => {
+    try {
+      await trackResumeEvent(profile.user_id, 'resume_click', 'gallery', {
+        profile_id: profile.id,
+      });
+    } catch (error) {
+      console.error('Error tracking resume click:', error);
+    }
+    navigate(`/resume/${profile.user_id}`);
   };
 
   if (loading) {
@@ -225,7 +139,6 @@ const ResumeGallery = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-muted/20">
       <div className="container mx-auto px-4 py-8">
-        {/* Header */}
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent mb-4">
             Resume Gallery
@@ -235,88 +148,42 @@ const ResumeGallery = () => {
           </p>
         </div>
 
-        {/* Filters */}
         <div className="bg-card/50 backdrop-blur-sm rounded-lg border p-6 mb-8">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
             <div className="relative">
               <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search by name, role, or skill..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
+              <Input placeholder="Search by name, role, or skill..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-10" />
             </div>
-
             <Select value={industryFilter} onValueChange={setIndustryFilter}>
-              <SelectTrigger>
-                <SelectValue placeholder="All Industries" />
-              </SelectTrigger>
+              <SelectTrigger><SelectValue placeholder="All Industries" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Industries</SelectItem>
-                {getUniqueIndustries().map((industry) => (
-                  <SelectItem key={industry} value={industry}>
-                    {industry}
-                  </SelectItem>
-                ))}
+                {getUniqueIndustries().map((industry) => (<SelectItem key={industry} value={industry}>{industry}</SelectItem>))}
               </SelectContent>
             </Select>
-
             <Select value={badgeFilter} onValueChange={setBadgeFilter}>
-              <SelectTrigger>
-                <SelectValue placeholder="All Badges" />
-              </SelectTrigger>
+              <SelectTrigger><SelectValue placeholder="All Badges" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Badges</SelectItem>
-                {getUniqueBadges().map((badge) => (
-                  <SelectItem key={badge} value={badge}>
-                    {badge}
-                  </SelectItem>
-                ))}
+                {getUniqueBadges().map((badge) => (<SelectItem key={badge} value={badge}>{badge}</SelectItem>))}
               </SelectContent>
             </Select>
-
             <Select value={sortBy} onValueChange={setSortBy}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
+              <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="most_viewed">
-                  <div className="flex items-center gap-2">
-                    <Eye className="h-4 w-4" />
-                    Most Viewed
-                  </div>
-                </SelectItem>
-                <SelectItem value="top_rated">
-                  <div className="flex items-center gap-2">
-                    <Star className="h-4 w-4" />
-                    Top Rated
-                  </div>
-                </SelectItem>
-                <SelectItem value="recently_added">
-                  <div className="flex items-center gap-2">
-                    <Clock className="h-4 w-4" />
-                    Recently Added
-                  </div>
-                </SelectItem>
-                <SelectItem value="featured">
-                  <div className="flex items-center gap-2">
-                    <TrendingUp className="h-4 w-4" />
-                    Featured
-                  </div>
-                </SelectItem>
+                <SelectItem value="most_viewed"><div className="flex items-center gap-2"><Eye className="h-4 w-4" />Most Viewed</div></SelectItem>
+                <SelectItem value="top_rated"><div className="flex items-center gap-2"><Star className="h-4 w-4" />Top Rated</div></SelectItem>
+                <SelectItem value="recently_added"><div className="flex items-center gap-2"><Clock className="h-4 w-4" />Recently Added</div></SelectItem>
+                <SelectItem value="featured"><div className="flex items-center gap-2"><TrendingUp className="h-4 w-4" />Featured</div></SelectItem>
               </SelectContent>
             </Select>
           </div>
-
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
               <Filter className="h-4 w-4 text-muted-foreground" />
               <span className="text-sm text-muted-foreground">Min AI Score:</span>
               <Select value={minScore.toString()} onValueChange={(value) => setMinScore(parseInt(value))}>
-                <SelectTrigger className="w-24">
-                  <SelectValue />
-                </SelectTrigger>
+                <SelectTrigger className="w-24"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="70">70+</SelectItem>
                   <SelectItem value="80">80+</SelectItem>
@@ -325,14 +192,10 @@ const ResumeGallery = () => {
                 </SelectContent>
               </Select>
             </div>
-            
-            <div className="text-sm text-muted-foreground">
-              {filteredProfiles.length} of {profiles.length} resumes
-            </div>
+            <div className="text-sm text-muted-foreground">{filteredProfiles.length} of {profiles.length} resumes</div>
           </div>
         </div>
 
-        {/* Results Grid */}
         {filteredProfiles.length === 0 ? (
           <div className="text-center py-12">
             <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
@@ -346,94 +209,44 @@ const ResumeGallery = () => {
             {filteredProfiles.map((profile) => {
               const reviewData = getReviewData(profile.resume_review_summary);
               const score = reviewData?.overall_score || 0;
-
               return (
                 <Card key={profile.id} className="hover-quiet transition-all duration-300 border-2 hover:border-primary/30">
                   <CardContent className="p-6">
                     <div className="flex items-start justify-between mb-4">
                       <div className="flex-1 min-w-0">
-                        <h3 className="font-semibold text-lg transition-colors">
-                          {truncateText(profile.name, 20)}
-                        </h3>
-                        <p className="text-muted-foreground text-sm">
-                          {truncateText(profile.role_title, 30)}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {truncateText(profile.location, 25)}
-                        </p>
+                        <h3 className="font-semibold text-lg transition-colors">{truncateText(profile.name, 20)}</h3>
+                        <p className="text-muted-foreground text-sm">{truncateText(profile.role_title, 30)}</p>
+                        <p className="text-xs text-muted-foreground">{truncateText(profile.location, 25)}</p>
                       </div>
-                      
                       {profile.gallery_featured && (
                         <Badge variant="secondary" className="bg-gradient-to-r from-primary/10 to-primary/5 text-xs">
-                          <TrendingUp className="h-3 w-3 mr-1" />
-                          Featured
+                          <TrendingUp className="h-3 w-3 mr-1" />Featured
                         </Badge>
                       )}
                     </div>
-
-                    {/* Badges */}
                     {profile.badges.length > 0 && (
                       <div className="flex flex-wrap gap-1 mb-4">
-                         {profile.badges.slice(0, 3).map((badge) => (
-                          <Badge
-                            key={badge.id}
-                            variant="secondary"
-                            className="text-xs px-2 py-0.5 bg-primary/10 text-primary"
-                          >
-                            <span className="mr-1">{badge.badge.emoji}</span>
-                            {badge.badge.name}
+                        {profile.badges.slice(0, 3).map((badge) => (
+                          <Badge key={badge.id} variant="secondary" className="text-xs px-2 py-0.5 bg-primary/10 text-primary">
+                            <span className="mr-1">{badge.badge.emoji}</span>{badge.badge.name}
                           </Badge>
                         ))}
-                        {profile.badges.length > 3 && (
-                          <Badge variant="outline" className="text-xs px-2 py-0.5">
-                            +{profile.badges.length - 3}
-                          </Badge>
-                        )}
+                        {profile.badges.length > 3 && (<Badge variant="outline" className="text-xs px-2 py-0.5">+{profile.badges.length - 3}</Badge>)}
                       </div>
                     )}
-
-                    {/* Stats */}
                     <div className="flex items-center justify-between text-xs text-muted-foreground mb-4">
-                      <div className="flex items-center gap-1">
-                        <Eye className="h-3 w-3" />
-                        {profile.view_count} views
-                      </div>
-                      {score > 0 && (
-                        <div className="flex items-center gap-1">
-                          <Star className="h-3 w-3" />
-                          {score}/100 AI Score
-                        </div>
-                      )}
+                      <div className="flex items-center gap-1"><Eye className="h-3 w-3" />{profile.view_count} views</div>
+                      {score > 0 && (<div className="flex items-center gap-1"><Star className="h-3 w-3" />{score}/100 AI Score</div>)}
                     </div>
-
-                    {/* Skills Preview */}
                     {profile.skills && profile.skills.length > 0 && (
                       <div className="mb-4">
                         <div className="flex flex-wrap gap-1">
-                          {profile.skills.slice(0, 4).map((skill, index) => (
-                            <span
-                              key={index}
-                              className="text-xs bg-muted px-2 py-1 rounded-md"
-                            >
-                              {truncateText(skill, 15)}
-                            </span>
-                          ))}
-                          {profile.skills.length > 4 && (
-                            <span className="text-xs text-muted-foreground">
-                              +{profile.skills.length - 4}
-                            </span>
-                          )}
+                          {profile.skills.slice(0, 4).map((skill, index) => (<span key={index} className="text-xs bg-muted px-2 py-1 rounded-md">{truncateText(skill, 15)}</span>))}
+                          {profile.skills.length > 4 && (<span className="text-xs text-muted-foreground">+{profile.skills.length - 4}</span>)}
                         </div>
                       </div>
                     )}
-
-                    <Button
-                      onClick={() => handleViewResume(profile)}
-                      className="w-full group-hover:bg-primary group-hover:text-primary-foreground transition-colors"
-                      variant="outline"
-                    >
-                      View Resume
-                    </Button>
+                    <Button onClick={() => handleViewResume(profile)} className="w-full group-hover:bg-primary group-hover:text-primary-foreground transition-colors" variant="outline">View Resume</Button>
                   </CardContent>
                 </Card>
               );

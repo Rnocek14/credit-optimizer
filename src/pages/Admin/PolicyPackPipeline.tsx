@@ -1,5 +1,16 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import {
+  fetchPipelineInstitutions,
+  fetchPolicyPacks,
+  fetchUrlTemplates,
+  fetchRefreshTasks,
+  addUrlTemplate,
+  deleteUrlTemplate,
+  type InstitutionPack,
+  type UrlTemplate,
+  type RefreshTask,
+} from '@/shared/lib/api/policyPipeline';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -43,41 +54,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-
-// Types for pipeline data
-interface InstitutionPack {
-  id: string;
-  institution: string;
-  status: string;
-  confidence_score: number | null;
-  completeness_score: number | null;
-  has_ground_truth: boolean;
-  updated_at: string;
-  policy_data: Record<string, unknown> | null;
-  blocked_reason: string | null;
-}
-
-interface UrlTemplate {
-  id: string;
-  institution_code: string;
-  url: string;
-  page_type: string;
-  priority: number;
-  status: string;
-  last_scraped_at: string | null;
-  created_at: string;
-}
-
-interface RefreshTask {
-  id: string;
-  run_id: string | null;
-  institution: string;
-  status: string | null;
-  reason: string | null;
-  started_at: string | null;
-  completed_at: string | null;
-  created_at: string | null;
-}
 
 // Gate status badge component
 function GateStatusBadge({ score, hasGroundTruth }: { score: number | null; hasGroundTruth: boolean }) {
@@ -132,66 +108,26 @@ export default function PolicyPackPipeline() {
   // Fetch all institutions with packs or templates
   const { data: institutions = [], isLoading: loadingInstitutions } = useQuery({
     queryKey: ['pipeline-institutions'],
-    queryFn: async () => {
-      // Get unique institutions from both packs and templates
-      const [packsResult, templatesResult] = await Promise.all([
-        supabase.from('institution_policy_packs').select('institution').order('institution'),
-        supabase.from('scrape_url_templates').select('institution_code').order('institution_code'),
-      ]);
-      
-      const packInstitutions = new Set((packsResult.data || []).map(p => p.institution));
-      const templateInstitutions = new Set((templatesResult.data || []).map(t => t.institution_code));
-      
-      return Array.from(new Set([...packInstitutions, ...templateInstitutions])).sort();
-    },
+    queryFn: fetchPipelineInstitutions,
   });
 
   // Fetch packs with gate scores
   const { data: packs = [], isLoading: loadingPacks, refetch: refetchPacks } = useQuery({
     queryKey: ['policy-packs-pipeline'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('institution_policy_packs')
-        .select('id, institution, status, confidence_score, completeness_score, has_ground_truth, updated_at, policy_data, blocked_reason')
-        .order('institution');
-      
-      if (error) throw error;
-      return (data ?? []) as InstitutionPack[];
-    },
+    queryFn: fetchPolicyPacks,
   });
 
   // Fetch URL templates for selected institution
   const { data: urlTemplates = [], isLoading: loadingTemplates, refetch: refetchTemplates } = useQuery({
     queryKey: ['url-templates', selectedInstitution],
-    queryFn: async () => {
-      if (!selectedInstitution) return [];
-      const { data, error } = await supabase
-        .from('scrape_url_templates')
-        .select('*')
-        .eq('institution_code', selectedInstitution)
-        .order('priority');
-      
-      if (error) throw error;
-      return (data ?? []) as UrlTemplate[];
-    },
+    queryFn: () => fetchUrlTemplates(selectedInstitution!),
     enabled: !!selectedInstitution,
   });
 
   // Fetch recent refresh tasks for selected institution
   const { data: recentTasks = [], isLoading: loadingTasks } = useQuery({
     queryKey: ['refresh-tasks', selectedInstitution],
-    queryFn: async () => {
-      if (!selectedInstitution) return [];
-      const { data, error } = await supabase
-        .from('policy_refresh_tasks')
-        .select('*')
-        .eq('institution', selectedInstitution)
-        .order('created_at', { ascending: false })
-        .limit(5);
-      
-      if (error) throw error;
-      return (data ?? []) as RefreshTask[];
-    },
+    queryFn: () => fetchRefreshTasks(selectedInstitution!),
     enabled: !!selectedInstitution,
   });
 
@@ -223,21 +159,7 @@ export default function PolicyPackPipeline() {
   const addUrlMutation = useMutation({
     mutationFn: async ({ url, pageType }: { url: string; pageType: string }) => {
       if (!selectedInstitution) throw new Error('No institution selected');
-      
-      const { data, error } = await supabase
-        .from('scrape_url_templates')
-        .insert({
-          institution_code: selectedInstitution,
-          url: url.trim(),
-          page_type: pageType,
-          priority: 5,
-          status: 'active',
-        })
-        .select()
-        .single();
-      
-      if (error) throw error;
-      return data;
+      return addUrlTemplate(selectedInstitution, url, pageType);
     },
     onSuccess: () => {
       toast.success('URL template added');
@@ -253,14 +175,7 @@ export default function PolicyPackPipeline() {
 
   // Delete URL template mutation
   const deleteUrlMutation = useMutation({
-    mutationFn: async (templateId: string) => {
-      const { error } = await supabase
-        .from('scrape_url_templates')
-        .delete()
-        .eq('id', templateId);
-      
-      if (error) throw error;
-    },
+    mutationFn: deleteUrlTemplate,
     onSuccess: () => {
       toast.success('URL template deleted');
       refetchTemplates();
