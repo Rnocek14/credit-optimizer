@@ -152,9 +152,11 @@ export function TemplateCard({ template, isSelected, onToggleSelect }: TemplateC
     [providerMix]
   );
 
-  // Multi-school = explicit tag or template_data strategy (multiple institutions)
-  // Multi-provider = 2+ external credit sources (Sophia/CLEP/etc), but single completion school
-  const isMultiSchool = isExplicitMultiSchool;
+  // Multi-school = explicit tag OR strategy metadata in template_data
+  const strategyType = (template as any)?.templateData?.strategy?.type
+    ?? (template as any)?.template_data?.strategy?.type;
+  const isMultiSchool = isExplicitMultiSchool || strategyType === 'multi_school';
+  // Multi-provider = 2+ external credit sources, single completion school
   const isMultiProvider = !isMultiSchool && providerMix.length >= 2;
 
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
@@ -379,7 +381,7 @@ export function TemplateCard({ template, isSelected, onToggleSelect }: TemplateC
           {isMultiProvider && (
             <Badge variant="secondary" className="gap-1">
               <ArrowRight className="h-3 w-3" />
-              Multi-Provider
+              Alt-Credit
             </Badge>
           )}
           {isMatchingAnchor && (
