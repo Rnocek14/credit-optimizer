@@ -1,5 +1,5 @@
 // Matches your Phase 1 schema
-export type TrackType = 'standard' | 'fastest' | 'cheapest' | 'alt_max' | 'hybrid';
+export type TrackType = 'standard' | 'fastest' | 'cheapest' | 'alt_max' | 'hybrid' | 'multi-school';
 
 export type InstitutionCode =
   | 'TESU'
