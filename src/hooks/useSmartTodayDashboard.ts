@@ -60,8 +60,8 @@ export function useSmartTodayDashboard(userId?: string, trackId?: string) {
     isLoading: isLoadingIntelligence,
   } = useIntelligenceLayer(userId, trackId);
 
-  // Dev-only: confirm track-scoped intelligence pipe at runtime
-  if (import.meta.env.DEV) {
+  // Dev-only diagnostic: gate behind ?debug=1 to reduce noise
+  if (import.meta.env.DEV && new URLSearchParams(window.location.search).get('debug') === '1') {
     console.debug('[Today:Intelligence]', {
       userId,
       trackId,
