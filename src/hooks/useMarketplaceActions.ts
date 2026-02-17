@@ -2,11 +2,12 @@
  * Marketplace Action Executor
  *
  * Translates recommendation action params into real writes:
- * - kind: 'save_to_plan'   → saved_plan_items (soft staging via CrossHub)
+ * - kind: 'save_to_plan'   → saved_plan_items (soft staging via CrossHub DAL)
  * - kind: 'add_to_edutree' → user_plan_courses (hard placement via DAL)
  * - kind: 'open' | 'navigate' → router navigation
  *
  * Routes on action.kind (stable discriminator), never on label text.
+ * Accepts optional defaultPlanId so callers don't need to thread planId.
  */
 
 import { useCallback } from 'react';
@@ -15,9 +16,10 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { insertSavedPlanItem } from '@/shared/lib/api/crosshub';
 import { addCourseToUserPlan } from '@/shared/lib/api/userPlanCourses';
+import { invalidateEduTreePlan, invalidateUserIntelligence } from '@/shared/lib/intelligence/invalidation';
 import { QUERY_KEYS } from '@/lib/queryKeys';
 import { ensureValidSession } from '@/lib/auth';
-import type { ParamsMap, ActionKind } from '@/shared/types/intelligence';
+import type { ActionKind, ParamsMap } from '@/shared/types/intelligence';
 
 // ─── Types ──────────────────────────────────────────────────────
 
@@ -31,23 +33,19 @@ export interface ActionPayload {
 
 interface ExecuteActionInput {
   action: ActionPayload;
-  /** Course title for toast messages & saved_plan_items */
   title: string;
-  /** Optional description */
   description?: string;
-  /** Skill tags for CRI analysis */
   skillTags?: string[];
-  /** Time estimate string */
   timeEstimate?: string;
-  /** Plan ID (required for add_to_edutree) */
+  /** Override planId for this specific action (else uses defaultPlanId). */
   planId?: string;
-  /** Requirement ID for targeted block placement */
+  /** Target requirement block for placement (null = elective/unassigned). */
   requirementId?: string;
 }
 
 // ─── Hook ───────────────────────────────────────────────────────
 
-export function useMarketplaceActions(userId?: string) {
+export function useMarketplaceActions(userId?: string, defaultPlanId?: string) {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
 
@@ -76,12 +74,7 @@ export function useMarketplaceActions(userId?: string) {
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.PLAN_ITEMS(userId!, undefined) });
-      queryClient.invalidateQueries({
-        predicate: (q) =>
-          q.queryKey.length >= 4 &&
-          q.queryKey[0] === 'intelligence' &&
-          q.queryKey[1] === userId,
-      });
+      invalidateUserIntelligence(queryClient, userId!);
       toast.success(`${variables.title} saved to your Plan!`);
     },
     onError: (err: Error) => {
@@ -92,7 +85,7 @@ export function useMarketplaceActions(userId?: string) {
   // ── add_to_edutree → user_plan_courses (via DAL) ──────────
 
   const addToEduTreeMutation = useMutation({
-    mutationFn: async (input: ExecuteActionInput) => {
+    mutationFn: async (input: ExecuteActionInput & { resolvedPlanId: string }) => {
       if (!userId) throw new Error('Authentication required');
       await ensureValidSession(userId);
 
@@ -100,10 +93,9 @@ export function useMarketplaceActions(userId?: string) {
       const providerId = String(input.action.params?.providerId ?? '');
       if (!courseId) throw new Error('Missing courseId in action params');
       if (!providerId) throw new Error('Missing providerId — course has no provider');
-      if (!input.planId) throw new Error('No active plan selected');
 
       return addCourseToUserPlan({
-        plan_id: input.planId,
+        plan_id: input.resolvedPlanId,
         course_id: courseId,
         provider_id: providerId,
         requirement_id: input.requirementId ?? null,
@@ -111,19 +103,8 @@ export function useMarketplaceActions(userId?: string) {
       });
     },
     onSuccess: (_, variables) => {
-      // Invalidate EduTree queries via canonical keys
-      if (variables.planId) {
-        queryClient.invalidateQueries({ queryKey: QUERY_KEYS.USER_PLAN_COURSES(variables.planId) });
-        queryClient.invalidateQueries({ queryKey: QUERY_KEYS.USER_PLAN_SELECTIONS(variables.planId) });
-      }
-      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.BATCH_REQUIREMENT_OPTIONS([]) });
-      // Invalidate intelligence
-      queryClient.invalidateQueries({
-        predicate: (q) =>
-          q.queryKey.length >= 4 &&
-          q.queryKey[0] === 'intelligence' &&
-          q.queryKey[1] === userId,
-      });
+      invalidateEduTreePlan(queryClient, variables.resolvedPlanId);
+      invalidateUserIntelligence(queryClient, userId!);
       toast.success(`${variables.title} added to your EduTree plan!`);
     },
     onError: (err: Error) => {
@@ -142,17 +123,19 @@ export function useMarketplaceActions(userId?: string) {
           addToPlanMutation.mutate(input);
           break;
 
-        case 'add_to_edutree':
-          if (!input.planId) {
-            toast.error('Select a plan before adding to EduTree');
+        case 'add_to_edutree': {
+          const resolvedPlanId = input.planId ?? defaultPlanId;
+          if (!resolvedPlanId) {
+            toast.error('No active plan — create or select a plan first');
             return;
           }
           if (!input.action.params?.providerId) {
             toast.error('Course has no provider — cannot add to EduTree');
             return;
           }
-          addToEduTreeMutation.mutate(input);
+          addToEduTreeMutation.mutate({ ...input, resolvedPlanId });
           break;
+        }
 
         case 'open':
         case 'navigate':
@@ -161,15 +144,13 @@ export function useMarketplaceActions(userId?: string) {
           }
           break;
 
-        default: {
-          // Fallback: navigate if href exists
+        default:
           if (action.href) {
             navigate(action.href);
           }
-        }
       }
     },
-    [addToPlanMutation, addToEduTreeMutation, navigate],
+    [addToPlanMutation, addToEduTreeMutation, navigate, defaultPlanId],
   );
 
   return {
