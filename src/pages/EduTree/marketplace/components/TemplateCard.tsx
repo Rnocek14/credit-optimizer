@@ -156,8 +156,8 @@ export function TemplateCard({ template, isSelected, onToggleSelect }: TemplateC
   const strategyType = (template as any)?.templateData?.strategy?.type
     ?? (template as any)?.template_data?.strategy?.type;
   const isMultiSchool = isExplicitMultiSchool || strategyType === 'multi_school';
-  // Multi-provider = 2+ external credit sources, single completion school
-  const isMultiProvider = !isMultiSchool && providerMix.length >= 2;
+  // Alt-credit = 2+ external credit sources, single completion school
+  const isAltCredit = !isMultiSchool && providerMix.length >= 2;
 
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
@@ -354,7 +354,7 @@ export function TemplateCard({ template, isSelected, onToggleSelect }: TemplateC
             <CardDescription className="text-sm">
               {isMultiSchool
                 ? `Low-cost credits first → finish at ${template.anchorSchool}`
-                : isMultiProvider
+                : isAltCredit
                   ? `Alt-credit pipeline → finish at ${template.anchorSchool}`
                   : template.marketplace.tagline}
             </CardDescription>
@@ -378,7 +378,7 @@ export function TemplateCard({ template, isSelected, onToggleSelect }: TemplateC
               Multi-School
             </Badge>
           )}
-          {isMultiProvider && (
+          {isAltCredit && (
             <Badge variant="secondary" className="gap-1">
               <ArrowRight className="h-3 w-3" />
               Alt-Credit
@@ -444,12 +444,12 @@ export function TemplateCard({ template, isSelected, onToggleSelect }: TemplateC
         </div>
 
         {/* Transfer Flow Summary - shown for both multi-school and multi-provider */}
-        {(isMultiSchool || isMultiProvider) && providerMix.length > 0 && (
+        {(isMultiSchool || isAltCredit) && providerMix.length > 0 && (
           <div className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
             {providerMix.map((p, i) => (
               <span key={p.code} className="inline-flex items-center gap-1">
                 {i > 0 && <span>+</span>}
-                <span className="font-medium text-foreground">{PROVIDER_CONFIG[p.code]?.label ?? p.code}</span>
+                <span className="font-medium text-foreground">{PROVIDER_CONFIG[p.code.toUpperCase() as ProviderCode]?.label ?? p.code}</span>
               </span>
             ))}
             <ArrowRight className="h-3 w-3 mx-0.5" />
