@@ -1,21 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { fetchTransferRuleMaybeSingle } from '@/shared/lib/api';
 import { normalizeProviderCode } from '@/lib/providerNormalization';
 import { ENV } from '@/config/env';
 
+export type { TransferRule } from '@/shared/lib/api';
 export type Acceptance = 'accepted' | 'elective' | 'rejected';
-
-export interface TransferRule {
-  id?: string;
-  source_institution: string;
-  source_course_code: string;
-  target_institution: string;
-  target_course_code: string | null;
-  acceptance_status: Acceptance;
-  rule_source?: string;
-  confidence?: number | null;
-  evidence_url?: string | null;
-}
 
 // Debug flag: only log in dev or with ?debug=1
 const isDebug = () => 
@@ -31,30 +20,22 @@ export function useTransferRule(
     queryFn: async () => {
       if (!providerCode || !courseCode || !targetSchool) return null;
 
-      // Use canonical normalization for consistent matching
       const normalizedProvider = normalizeProviderCode(providerCode);
       const normalizedTarget = targetSchool.toUpperCase();
 
-      // Instrumentation: log transfer rule lookup (dev only)
       if (isDebug()) {
+        // eslint-disable-next-line no-console
         console.log('[TransferRule] lookup', {
           raw: { providerCode, courseCode, targetSchool },
           normalized: { provider: normalizedProvider, target: normalizedTarget },
         });
       }
 
-      // Use normalized columns for deterministic, index-optimized joins
-      const { data, error } = await supabase
-        .from('credit_transfer_rules' as any)
-        .select('*')
-        .eq('source_institution_norm', normalizedProvider)
-        .eq('source_course_code_norm', courseCode.toLowerCase())
-        .eq('target_institution_norm', normalizedTarget)
-        .maybeSingle();
-
-      // PostgREST no-rows code is fine
-      if (error && error.code !== 'PGRST116') throw error;
-      return (data as unknown as TransferRule) || null;
+      return fetchTransferRuleMaybeSingle({
+        sourceInstitutionNorm: normalizedProvider,
+        sourceCourseCodeNorm: courseCode.toLowerCase(),
+        targetInstitutionNorm: normalizedTarget,
+      });
     },
     staleTime: 60_000,
   });
