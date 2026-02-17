@@ -39,6 +39,7 @@ import Build from '@/pages/Build';
 import { CompareTracks } from '@/pages/CompareTracks';
 import TrackComparePage from '@/components/compare/TrackComparePage';
 import EduTreeV5Route from '@/pages/EduTree/v5';
+import EduTreeV6Route from '@/pages/EduTree/v6';
 import MarketplacePage from '@/pages/EduTree/marketplace/MarketplacePage';
 import DegreeMarketplace from '@/pages/DegreeMarketplace';
 import OptimizerSetup from '@/pages/OptimizerSetup';
@@ -221,11 +222,19 @@ export function AppRoutes() {
       <Route path="/edu-tree-v3-vertical" element={<Navigate to="/edu-tree-v5" replace />} />
       <Route path="/edu-tree-v3-harness" element={<Navigate to="/edu-tree-v5" replace />} />
       <Route path="/edu-tree-v4" element={<Navigate to="/edu-tree-v5" replace />} />
-      {/* EduTree V5 — canonical version */}
+      {/* EduTree V5 — power user / dev mode */}
       <Route path="/edu-tree-v5" element={
         <EnhancedErrorBoundary fallback={<EduTreeError />}>
           <React.Suspense fallback={<PageLoader message="Loading V5 testbed..." />}>
             <EduTreeV5Route />
+          </React.Suspense>
+        </EnhancedErrorBoundary>
+      } />
+      {/* EduTree V6 — guided experience layer */}
+      <Route path="/edu-tree-v6" element={
+        <EnhancedErrorBoundary fallback={<EduTreeError />}>
+          <React.Suspense fallback={<PageLoader message="Loading degree planner..." />}>
+            <EduTreeV6Route />
           </React.Suspense>
         </EnhancedErrorBoundary>
       } />
