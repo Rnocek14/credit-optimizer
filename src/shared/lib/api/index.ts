@@ -11,3 +11,4 @@ export * from './errors';
 export * from './policyPipeline';
 export * from './publicResume';
 export * from './mentorAnalytics';
+export * from './edutree';

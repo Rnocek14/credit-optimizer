@@ -11,6 +11,10 @@ export const QUERY_KEYS = {
   // EduTree V2 data - Live course/block data with real-time subscriptions
   EDU_COURSES: () => ['edu-courses'] as const,
   REQUIREMENT_BLOCKS: () => ['requirement-blocks'] as const,
+  BLOCK_MEMBERS: () => ['block-members'] as const,
+  BLOCK_GATES: () => ['block-gates'] as const,
+  GATE_EDGES: () => ['prereq-to-block'] as const,
+  CAREER_V5_DATA: (programId: string, anchorSchool: string) => ['career-v5-data', programId, anchorSchool] as const,
   BATCH_REQUIREMENT_OPTIONS: (requirementIds: string[]) => ['req-opt-batch', ...requirementIds.sort()] as const,
   USER_PLAN_SELECTIONS: (planId?: string) => ['user-plan-selections', planId] as const,
   USER_PLAN_COURSES: (planId?: string) => ['user-plan-courses', planId] as const,

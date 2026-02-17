@@ -1,11 +1,18 @@
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
-import { 
-  EduCourse, 
-  RequirementBlock, 
-  BlockMember, 
-  BlockGate, 
-  GateEdge 
+import { QUERY_KEYS } from '@/lib/queryKeys';
+import {
+  fetchEduCourses,
+  fetchRequirementBlocks,
+  fetchBlockMembers,
+  fetchBlockGates,
+  fetchGateEdges,
+} from '@/shared/lib/api/edutree';
+import type {
+  EduCourse,
+  RequirementBlock,
+  BlockMember,
+  BlockGate,
+  GateEdge,
 } from '@/lib/types/eduTree';
 
 export interface EduTreeDataResult {
@@ -28,69 +35,30 @@ export interface EduTreeDataResult {
 
 export function useEduTreeData(): EduTreeDataResult {
   const coursesQuery = useQuery({
-    queryKey: ['edu-courses'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('edu_courses')
-        .select('*')
-        .order('code', { ascending: true });
-      
-      if (error) throw error;
-      return (data as EduCourse[]) || [];
-    },
+    queryKey: QUERY_KEYS.EDU_COURSES(),
+    queryFn: fetchEduCourses,
   });
 
   const blocksQuery = useQuery({
-    queryKey: ['requirement-blocks'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('requirement_blocks')
-        .select('*')
-        .order('level_year', { ascending: true })
-        .order('title', { ascending: true });
-      
-      if (error) throw error;
-      return (data as RequirementBlock[]) || [];
-    },
+    queryKey: QUERY_KEYS.REQUIREMENT_BLOCKS(),
+    queryFn: fetchRequirementBlocks,
   });
 
   const blockMembersQuery = useQuery({
-    queryKey: ['block-members'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('block_members')
-        .select('*');
-      
-      if (error) throw error;
-      return (data as BlockMember[]) || [];
-    },
+    queryKey: QUERY_KEYS.BLOCK_MEMBERS(),
+    queryFn: fetchBlockMembers,
   });
 
   const gatesQuery = useQuery({
-    queryKey: ['block-gates'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('block_gates')
-        .select('*');
-      
-      if (error) throw error;
-      return (data as BlockGate[]) || [];
-    },
+    queryKey: QUERY_KEYS.BLOCK_GATES(),
+    queryFn: fetchBlockGates,
   });
 
   const gateEdgesQuery = useQuery({
-    queryKey: ['prereq-to-block'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('prereq_to_block')
-        .select('*');
-      
-      if (error) throw error;
-      return (data as GateEdge[]) || [];
-    },
+    queryKey: QUERY_KEYS.GATE_EDGES(),
+    queryFn: fetchGateEdges,
   });
 
-  // Check for any loading state
   const anyLoading =
     coursesQuery.isLoading ||
     blocksQuery.isLoading ||
@@ -98,44 +66,19 @@ export function useEduTreeData(): EduTreeDataResult {
     gatesQuery.isLoading ||
     gateEdgesQuery.isLoading;
 
-  // Collect all errors
   const errors = [
     coursesQuery.error,
     blocksQuery.error,
     blockMembersQuery.error,
     gatesQuery.error,
-    gateEdgesQuery.error
+    gateEdgesQuery.error,
   ].filter(Boolean);
 
-  // Core data (courses and blocks) must be available
   const coreSuccess = coursesQuery.isSuccess && blocksQuery.isSuccess;
-  const coreData = {
-    courses: coursesQuery.data ?? [],
-    blocks: blocksQuery.data ?? [],
-  };
 
-  // Debug logging
-  console.log('[useEduTreeData] Query States:', {
-    courses: { loading: coursesQuery.isLoading, success: coursesQuery.isSuccess, error: !!coursesQuery.error, dataLength: coursesQuery.data?.length },
-    blocks: { loading: blocksQuery.isLoading, success: blocksQuery.isSuccess, error: !!blocksQuery.error, dataLength: blocksQuery.data?.length },
-    blockMembers: { loading: blockMembersQuery.isLoading, success: blockMembersQuery.isSuccess, error: !!blockMembersQuery.error },
-    gates: { loading: gatesQuery.isLoading, success: gatesQuery.isSuccess, error: !!gatesQuery.error },
-    gateEdges: { loading: gateEdgesQuery.isLoading, success: gateEdgesQuery.isSuccess, error: !!gateEdgesQuery.error },
-    anyLoading,
-    coreSuccess,
-    errorCount: errors.length
-  });
-
-  // Still loading core data
   if (anyLoading) {
     return {
-      data: { 
-        courses: [], 
-        blocks: [], 
-        blockMembers: [], 
-        gates: [], 
-        gateEdges: [] 
-      },
+      data: { courses: [], blocks: [], blockMembers: [], gates: [], gateEdges: [] },
       loading: true,
       error: null,
       hasData: false,
@@ -147,18 +90,10 @@ export function useEduTreeData(): EduTreeDataResult {
     };
   }
 
-  // Core data failed
   if (!coreSuccess) {
     const firstError = coursesQuery.error || blocksQuery.error;
-    console.error('[useEduTreeData] Core data failed:', firstError);
     return {
-      data: { 
-        courses: [], 
-        blocks: [], 
-        blockMembers: [], 
-        gates: [], 
-        gateEdges: [] 
-      },
+      data: { courses: [], blocks: [], blockMembers: [], gates: [], gateEdges: [] },
       loading: false,
       error: firstError as Error,
       hasData: false,
@@ -170,26 +105,15 @@ export function useEduTreeData(): EduTreeDataResult {
     };
   }
 
-  // Core data available, return with optional data (allow partial success)
   const data = {
-    courses: coreData.courses,
-    blocks: coreData.blocks,
+    courses: coursesQuery.data ?? [],
+    blocks: blocksQuery.data ?? [],
     blockMembers: blockMembersQuery.data ?? [],
     gates: gatesQuery.data ?? [],
     gateEdges: gateEdgesQuery.data ?? [],
   };
 
   const hasData = data.courses.length > 0 || data.blocks.length > 0;
-  
-  console.log('[useEduTreeData] Final Result:', {
-    courses: data.courses.length,
-    blocks: data.blocks.length,
-    blockMembers: data.blockMembers.length,
-    gates: data.gates.length,
-    gateEdges: data.gateEdges.length,
-    hasData,
-    errorCount: errors.length
-  });
 
   return {
     data,

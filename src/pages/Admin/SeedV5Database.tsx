@@ -3,8 +3,8 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import {
-  fetchEduCourses,
-  fetchProgramRequirements,
+  seedFetchEduCourses,
+  seedFetchProgramRequirements,
   deleteProgramRequirements,
   deleteRequirementOptions,
   insertProgramRequirements,
@@ -40,7 +40,7 @@ export default function SeedV5Database() {
       addLog('✓ Using program_id: bs_cs');
 
       addLog('→ Fetching existing edu_courses');
-      const eduData = await fetchEduCourses(8);
+      const eduData = await seedFetchEduCourses(8);
       if (!eduData || eduData.length < 2) {
         addLog('⚠️ Need at least 2 edu_courses to create options. Add a couple in Supabase and re-run.');
         return;
@@ -48,7 +48,7 @@ export default function SeedV5Database() {
       addLog(`✓ Found ${eduData.length} edu_courses`);
 
       addLog('→ Clearing existing requirements for program (best effort)');
-      const existingReqs = await fetchProgramRequirements(programId);
+      const existingReqs = await seedFetchProgramRequirements(programId);
       const existingReqIds = existingReqs.map((r: any) => r.id);
       if (existingReqIds.length) {
         await deleteRequirementOptions(existingReqIds).catch((e: any) => addLog(`   (note) delete options: ${e.message}`));

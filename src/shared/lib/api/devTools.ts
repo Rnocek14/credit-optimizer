@@ -99,7 +99,7 @@ export async function verifySeedCounts() {
 
 // ── SeedV5Database helpers ──────────────────────────────────────
 
-export async function fetchEduCourses(limit: number) {
+export async function seedFetchEduCourses(limit: number) {
   const { data, error } = await supabase
     .from('edu_courses' as any)
     .select('id, code, title, credits')
@@ -108,7 +108,7 @@ export async function fetchEduCourses(limit: number) {
   return data ?? [];
 }
 
-export async function fetchProgramRequirements(programId: string) {
+export async function seedFetchProgramRequirements(programId: string) {
   const { data, error } = await supabase
     .from('program_requirements' as any)
     .select('id')
