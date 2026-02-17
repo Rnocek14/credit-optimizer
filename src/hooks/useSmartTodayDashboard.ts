@@ -4,7 +4,7 @@ import { useIntelligenceLayer } from './useIntelligenceLayer';
 import { useGamification } from './useGamification';
 import type { IntelligenceRecommendation } from '@/shared/types/intelligence';
 import { SaveToPlanItem } from '@/types/plan';
-import { parseTimeEstimateToMinutes } from '@/utils/time';
+import type { RecoType } from '@/types/recommendations';
 import { telemetry } from '@/lib/telemetry';
 
 export interface QuickWin {
@@ -70,11 +70,11 @@ export function useSmartTodayDashboard(userId?: string) {
 
   const [lastActivityDate, setLastActivityDate] = useState<Date | null>(null);
 
-  // Calculate next step from top recommendation
+  // Calculate next step from top recommendation (use layer's precomputed topRecommendation)
   const nextStep = useMemo((): SmartNextStep | null => {
-    if (!recommendations || recommendations.length === 0) return null;
-    
-    const topRec = recommendations[0];
+    const topRec = topRecommendation ?? recommendations[0] ?? null;
+    if (!topRec) return null;
+
     return {
       id: topRec.id,
       title: topRec.title,
@@ -83,37 +83,27 @@ export function useSmartTodayDashboard(userId?: string) {
       timeEstimate: topRec.timeEstimate,
       difficulty: topRec.priority === 'critical' ? 'advanced' : 
                  topRec.priority === 'high' ? 'intermediate' : 'beginner',
-      type: topRec.type as SmartNextStep['type'],
-      actions: getActionsForType(topRec.type as SmartNextStep['type'], topRec.actions),
+      type: topRec.type,
+      actions: getActionsForType(topRec.type, topRec.actions),
       criBoost: topRec.criContribution ? Math.round(topRec.criContribution * 100) : undefined,
       criExplanation: topRec.criExplanation,
     };
-  }, [recommendations]);
+  }, [topRecommendation, recommendations]);
 
-  // Filter and rank quick wins (30-60 min tasks)
+  // Quick wins — delegate to intelligence layer, just truncate + map shape
   const quickWins = useMemo((): QuickWin[] => {
-    if (!recommendations) return [];
-    
-    return recommendations
-      .filter((rec, i) => {
-        if (i === 0) return false; // skip Next Step
-        if (rec.durationHours != null) return rec.durationHours <= 1;
-        const mins = parseTimeEstimateToMinutes(rec.timeEstimate);
-        return mins !== null && mins >= 30 && mins <= 60;
-      })
-      .slice(0, 3)
-      .map(rec => ({
-        id: rec.id,
-        title: rec.title,
-        description: rec.description,
-        timeEstimate: rec.timeEstimate || '30 min',
-        priority: rec.priority,
-        type: rec.type as QuickWin['type'],
-        actions: rec.actions,
-        criBoost: rec.criContribution ? Math.round(rec.criContribution * 100) : undefined,
-        criExplanation: rec.criExplanation,
-      }));
-  }, [recommendations]);
+    return intelligenceQuickWins.slice(0, 3).map(rec => ({
+      id: rec.id,
+      title: rec.title,
+      description: rec.description,
+      timeEstimate: rec.timeEstimate || '30 min',
+      priority: rec.priority,
+      type: rec.type,
+      actions: rec.actions,
+      criBoost: rec.criContribution ? Math.round(rec.criContribution * 100) : undefined,
+      criExplanation: rec.criExplanation,
+    }));
+  }, [intelligenceQuickWins]);
 
   // Check for inactivity and generate unstick suggestions
   const unstickData = useMemo((): UnstickData | null => {
@@ -277,7 +267,7 @@ export function useSmartTodayDashboard(userId?: string) {
 }
 
 function getActionsForType(
-  type: SmartNextStep['type'], 
+  type: RecoType, 
   originalActions: IntelligenceRecommendation['actions']
 ): SmartNextStep['actions'] {
   switch (type) {
