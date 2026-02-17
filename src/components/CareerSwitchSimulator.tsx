@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Loader2, TrendingUp, AlertTriangle, Clock, Users, MapPin, RefreshCw } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { getUserCareerTracks } from '@/lib/switching';
+import { LEGACY_QUERY_KEYS } from '@/lib/queryKeys';
 import { useSwitchingEngine } from '@/hooks/useSwitchingEngine';
 import { useLocationSwitchOptimizer } from '@/hooks/useLocationSwitchOptimizer';
 import { LocationOptimizerDrawer } from '@/components/LocationOptimizerDrawer';
@@ -40,7 +41,7 @@ export const CareerSwitchSimulator: React.FC<CareerSwitchSimulatorProps> = ({
   ];
 
   const { data: tracks, isLoading: tracksLoading, error: tracksError } = useQuery({
-    queryKey: ['user-career-tracks'], // Match the key used in CompareTracks
+    queryKey: LEGACY_QUERY_KEYS.USER_CAREER_TRACKS(),
     queryFn: getUserCareerTracks,
     retry: 2,
     staleTime: 5 * 60 * 1000, // 5 minutes

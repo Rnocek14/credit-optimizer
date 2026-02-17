@@ -11,6 +11,7 @@ import { useCareerProfileCard } from '@/hooks/useCareerProfileCard';
 import { useBacktrackAnalyzer } from '@/hooks/useBacktrackAnalyzer';
 import { getUserCareerTracks } from '@/lib/switching';
 import { useQuery } from '@tanstack/react-query';
+import { LEGACY_QUERY_KEYS } from '@/lib/queryKeys';
 import { 
   ArrowRightLeft, 
   TrendingUp, 
@@ -37,7 +38,7 @@ export const CompareTracks: React.FC = () => {
 
   // Fetch user tracks
   const { data: tracks = [], isLoading: tracksLoading } = useQuery({
-    queryKey: ['user-career-tracks'],
+    queryKey: LEGACY_QUERY_KEYS.USER_CAREER_TRACKS(),
     queryFn: getUserCareerTracks,
     staleTime: 5 * 60 * 1000
   });

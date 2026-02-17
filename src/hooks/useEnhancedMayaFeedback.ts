@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { getCurrentDevUser } from '@/lib/devUserSetup';
+import { QUERY_KEYS } from '@/lib/queryKeys';
 import {
   fetchMayaFeedbackCorrelations,
   fetchMayaFeedbackCorrelationById,
@@ -62,7 +63,7 @@ export const useEnhancedMayaFeedback = () => {
 
   // Fetch feedback correlations
   const { data: feedbackHistory, isLoading } = useQuery({
-    queryKey: ['maya-feedback-correlations'],
+    queryKey: QUERY_KEYS.MAYA_FEEDBACK_CORRELATIONS(),
     queryFn: async () => {
       const userId = await getCurrentUserId();
       return fetchMayaFeedbackCorrelations(userId, 50) as Promise<MayaFeedbackCorrelation[]>;
@@ -112,7 +113,7 @@ export const useEnhancedMayaFeedback = () => {
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['maya-feedback-correlations'] });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.MAYA_FEEDBACK_CORRELATIONS() });
       setPendingFeedback(null);
       toast({
         title: "Feedback Submitted",
@@ -159,7 +160,7 @@ export const useEnhancedMayaFeedback = () => {
       return data as MayaFeedbackCorrelation;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['maya-feedback-correlations'] });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.MAYA_FEEDBACK_CORRELATIONS() });
     }
   });
 

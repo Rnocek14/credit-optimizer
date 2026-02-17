@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Plus, Settings, Archive, Copy, Trash2, Hammer } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
+import { LEGACY_QUERY_KEYS } from '@/lib/queryKeys';
 import { supabase } from '@/integrations/supabase/client';
 import { getCurrentUser } from '@/lib/authHelper';
 import { useSecureAuth } from '@/hooks/useSecureAuth';
@@ -36,7 +37,7 @@ export function TrackManager({ currentTrackId, onTrackSelect, open, onOpenChange
   const { setActiveTrackId } = useActiveTrackStore();
 
   const { data: tracks = [], isLoading } = useQuery({
-    queryKey: ['career-tracks'],
+    queryKey: LEGACY_QUERY_KEYS.CAREER_TRACKS(),
     queryFn: async () => {
       console.log('[TrackManagerModal] Fetching tracks...');
       const user = await getCurrentUser();
@@ -90,7 +91,7 @@ export function TrackManager({ currentTrackId, onTrackSelect, open, onOpenChange
       return data;
     },
     onSuccess: (newTrack) => {
-      queryClient.invalidateQueries({ queryKey: ['career-tracks'] });
+      queryClient.invalidateQueries({ queryKey: LEGACY_QUERY_KEYS.CAREER_TRACKS() });
       console.log('[track-builder] created track', newTrack.id, 'and set activeTrackId');
       
       // CRITICAL: Set activeTrackId in the store for Alternative Courses to work
@@ -122,7 +123,7 @@ export function TrackManager({ currentTrackId, onTrackSelect, open, onOpenChange
       return trackId;
     },
     onSuccess: (archivedId) => {
-      queryClient.invalidateQueries({ queryKey: ['career-tracks'] });
+      queryClient.invalidateQueries({ queryKey: LEGACY_QUERY_KEYS.CAREER_TRACKS() });
       toast.success('Track archived');
       
       // Archive safety guard - clear stale references from active track store
@@ -159,7 +160,7 @@ export function TrackManager({ currentTrackId, onTrackSelect, open, onOpenChange
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['career-tracks'] });
+      queryClient.invalidateQueries({ queryKey: LEGACY_QUERY_KEYS.CAREER_TRACKS() });
       toast.success('Track cloned successfully');
     },
     onError: () => {

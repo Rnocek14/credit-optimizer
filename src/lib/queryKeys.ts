@@ -46,6 +46,14 @@ export const QUERY_KEYS = {
   
   // ── Gamification (track-aware) ────────────────────────────────
   GAMIFICATION_DATA: (userId?: string, trackId?: string) => ['gamification', 'gamification-data', userId, trackId],
+  GAMIFICATION_METRICS: (userId?: string, trackId?: string) => ['gamification', 'gamification-metrics', userId, trackId],
+
+  // ── Engagement ────────────────────────────────────────────────
+  LEARNING_SESSIONS: (userId?: string) => ['engagement', 'learning-sessions', userId] as const,
+  MOTIVATION_INTERVENTIONS: (userId?: string) => ['engagement', 'motivation-interventions', userId] as const,
+
+  // ── Maya ───────────────────────────────────────────────────────
+  MAYA_FEEDBACK_CORRELATIONS: (userId?: string) => ['maya', 'feedback-correlations', userId] as const,
   
   // ── Feed data (track-aware) ───────────────────────────────────
   SMART_DASHBOARD: (userId?: string, trackId?: string) => ['feed', 'smart-dashboard', userId, trackId],
