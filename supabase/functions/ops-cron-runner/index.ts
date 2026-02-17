@@ -126,6 +126,45 @@ Deno.serve(async (req) => {
     }
 
     // =========================================
+    // 0.4 BACKFILL: rules → inferred edges (auto-create)
+    // =========================================
+    let backfillResult: Record<string, unknown> | null = null;
+    let backfillExecuted = false;
+    let backfillError: string | null = null;
+
+    try {
+      console.log("[BACKFILL] starting: rules → inferred edges");
+
+      const { data, error } = await supabase.rpc("backfill_inferred_edges_from_rules", {
+        p_limit: 100,
+      });
+
+      backfillExecuted = true;
+
+      if (error) {
+        console.error("[BACKFILL] RPC error:", error.message);
+        backfillError = error.message;
+      } else {
+        backfillResult = data as Record<string, unknown>;
+        console.log("[BACKFILL] result:", {
+          inserted_count: data?.inserted_count,
+          evidence_inserted: data?.evidence_inserted,
+          skipped_existing: data?.skipped_existing,
+        });
+
+        await writeOpsKv(supabase, "backfill_last_result", {
+          at: checkedAt,
+          result: data,
+        });
+      }
+    } catch (e: unknown) {
+      backfillExecuted = true;
+      const msg = e instanceof Error ? e.message : String(e);
+      console.error("[BACKFILL] failed:", msg);
+      backfillError = msg;
+    }
+
+    // =========================================
     // 0.5 TRANSFER EDGE PROMOTION (inferred → verified)
     // =========================================
     let promotionResult: Record<string, unknown> | null = null;
@@ -490,9 +529,14 @@ Deno.serve(async (req) => {
         // Build composite report with promotion data
         const compositeReport = {
           golden_scan: scanReport,
+          backfill: {
+            executed: backfillExecuted,
+            result: backfillResult,
+            error: backfillError,
+          },
           transfer_edge_promotion: {
             executed: promotionExecuted,
-            config: promotionConfig,  // Include config for audit trail
+            config: promotionConfig,
             result: promotionResult,
             error: promotionError,
           },
@@ -551,6 +595,14 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Include backfill errors if any
+    if (backfillError) {
+      errors.push({ 
+        scope: "backfill", 
+        detail: `Edge backfill failed: ${backfillError}` 
+      });
+    }
+
     // Include promotion errors if any
     if (promotionError) {
       errors.push({ 
@@ -566,11 +618,20 @@ Deno.serve(async (req) => {
 
     // Always return 200 so cron schedulers don't treat subtask failures as "cron broken"
     return json(200, {
-      ok: coreOk,           // Core infra ran successfully
-      subtasks_ok: subtasksOk, // All subtasks (including promotion) succeeded
+      ok: coreOk,
+      subtasks_ok: subtasksOk,
       errors: errors.length > 0 ? errors : null,
       
-      // Transfer edge promotion (new!)
+      // Backfill: rules → inferred edges
+      backfill: {
+        executed: backfillExecuted,
+        inserted_count: (backfillResult as Record<string, unknown>)?.inserted_count ?? null,
+        evidence_inserted: (backfillResult as Record<string, unknown>)?.evidence_inserted ?? null,
+        skipped_existing: (backfillResult as Record<string, unknown>)?.skipped_existing ?? null,
+        error: backfillError,
+      },
+      
+      // Transfer edge promotion
       transfer_edge_promotion: {
         executed: promotionExecuted,
         promoted_count: (promotionResult as Record<string, unknown>)?.promoted_count ?? null,
