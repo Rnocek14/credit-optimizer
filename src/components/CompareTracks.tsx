@@ -8,6 +8,7 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { useQuery } from '@tanstack/react-query';
 import { getUserCareerTracks } from '@/lib/switching';
+import { LEGACY_QUERY_KEYS } from '@/lib/queryKeys';
 import { useCareerProfileCard } from '@/hooks/useCareerProfileCard';
 import { useToast } from '@/hooks/use-toast';
 import { 
@@ -39,7 +40,7 @@ export const CompareTracks = () => {
   }, [searchParams, trackAId, trackBId]);
 
   const { data: tracks, isLoading: tracksLoading, error: tracksError } = useQuery({
-    queryKey: ['career-tracks'],
+    queryKey: LEGACY_QUERY_KEYS.CAREER_TRACKS(),
     queryFn: getUserCareerTracks,
     retry: 1,
   });

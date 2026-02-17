@@ -3,6 +3,7 @@ import type { CareerTrack, CreateTrackInput, UpdateTrackInput } from '@/types/tr
 import { useToast } from '@/hooks/use-toast';
 import { getCurrentUser } from '@/lib/authHelper';
 import { slugify, generateUniqueSlug } from '@/lib/slugify';
+import { LEGACY_QUERY_KEYS } from '@/lib/queryKeys';
 import {
   fetchProfileId,
   fetchCareerTracks,
@@ -17,7 +18,7 @@ export function useTracks() {
   const queryClient = useQueryClient();
 
   const tracksQuery = useQuery({
-    queryKey: ['career-tracks'],
+    queryKey: LEGACY_QUERY_KEYS.CAREER_TRACKS(),
     queryFn: async (): Promise<CareerTrack[]> => {
       console.log('[useTracks] Fetching tracks...');
       const user = await getCurrentUser();
@@ -64,7 +65,7 @@ export function useTracks() {
       return data as CareerTrack;
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['career-tracks'] });
+      queryClient.invalidateQueries({ queryKey: LEGACY_QUERY_KEYS.CAREER_TRACKS() });
       toast({ title: 'Track created', description: `Created "${data.track_name || data.title}"` });
     },
     onError: (err: any) => {
@@ -78,7 +79,7 @@ export function useTracks() {
       return data as CareerTrack;
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['career-tracks'] });
+      queryClient.invalidateQueries({ queryKey: LEGACY_QUERY_KEYS.CAREER_TRACKS() });
       toast({ title: 'Track updated', description: `Updated "${data.track_name || data.title}"` });
     },
     onError: (err: any) => {
@@ -92,7 +93,7 @@ export function useTracks() {
       return data as CareerTrack;
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['career-tracks'] });
+      queryClient.invalidateQueries({ queryKey: LEGACY_QUERY_KEYS.CAREER_TRACKS() });
       const verb = data.archived ? 'archived' : 'restored';
       toast({ title: `Track ${verb}`, description: `"${data.track_name || data.title}" ${verb}` });
     },
@@ -106,7 +107,7 @@ export function useTracks() {
       return cloneCareerTrack({ sourceTrackId, newName, icon, color });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['career-tracks'] });
+      queryClient.invalidateQueries({ queryKey: LEGACY_QUERY_KEYS.CAREER_TRACKS() });
       toast({ title: 'Track cloned', description: 'Your track has been cloned.' });
     },
     onError: (err: any) => {

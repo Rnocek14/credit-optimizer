@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
+import { QUERY_KEYS } from "@/lib/queryKeys";
 import {
   fetchLearningStreaks,
   fetchCelebrationMoments,
@@ -50,19 +51,19 @@ export function useGamification(userId?: string) {
 
   // Fetch learning streaks
   const { data: streaks, isLoading: streaksLoading } = useQuery({
-    queryKey: ['learning-streaks', currentUserId],
+    queryKey: QUERY_KEYS.LEARNING_STREAKS(currentUserId, undefined),
     queryFn: () => fetchLearningStreaks(currentUserId),
   });
 
   // Fetch celebration moments
   const { data: celebrations, isLoading: celebrationsLoading } = useQuery({
-    queryKey: ['celebration-moments', currentUserId],
+    queryKey: QUERY_KEYS.CELEBRATION_MOMENTS(currentUserId, undefined),
     queryFn: () => fetchCelebrationMoments(currentUserId, 20),
   });
 
   // Fetch gamification metrics
   const { data: metrics, isLoading: metricsLoading } = useQuery({
-    queryKey: ['gamification-metrics', currentUserId],
+    queryKey: QUERY_KEYS.GAMIFICATION_METRICS(currentUserId, undefined),
     queryFn: async () => {
       const endDate = new Date();
       const startDate = new Date();
@@ -100,8 +101,8 @@ export function useGamification(userId?: string) {
           description: `You've maintained a ${data.current_streak}-day learning streak!`,
         });
       }
-      queryClient.invalidateQueries({ queryKey: ['learning-streaks'] });
-      queryClient.invalidateQueries({ queryKey: ['celebration-moments'] });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.LEARNING_STREAKS(currentUserId, undefined) });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.CELEBRATION_MOMENTS(currentUserId, undefined) });
     },
     onError: (error) => {
       console.error('Error updating streak:', error);
@@ -120,7 +121,7 @@ export function useGamification(userId?: string) {
         displayed_at: new Date().toISOString(),
       }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['celebration-moments'] });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.CELEBRATION_MOMENTS(currentUserId, undefined) });
     },
   });
 
@@ -131,7 +132,7 @@ export function useGamification(userId?: string) {
         dismissed_at: new Date().toISOString(),
       }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['celebration-moments'] });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.CELEBRATION_MOMENTS(currentUserId, undefined) });
     },
   });
 
@@ -143,7 +144,7 @@ export function useGamification(userId?: string) {
       celebrationData: any;
     }) => rpcCreateCelebrationMoment(currentUserId, type, triggerData, celebrationData),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['celebration-moments'] });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.CELEBRATION_MOMENTS(currentUserId, undefined) });
     },
   });
 

@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { getCurrentDevUser } from '@/lib/devUserSetup';
+import { QUERY_KEYS } from '@/lib/queryKeys';
 import {
   fetchLearningSessions,
   fetchLearningSessionById,
@@ -82,7 +83,7 @@ export const useRealTimeEngagement = () => {
 
   // Fetch recent learning sessions
   const { data: sessions, isLoading } = useQuery({
-    queryKey: ['learning-engagement-sessions'],
+    queryKey: QUERY_KEYS.LEARNING_SESSIONS(),
     queryFn: async () => {
       const userId = await getCurrentUserId();
       return fetchLearningSessions(userId) as Promise<LearningSession[]>;
@@ -92,7 +93,7 @@ export const useRealTimeEngagement = () => {
 
   // Fetch motivation interventions
   const { data: interventions } = useQuery({
-    queryKey: ['motivation-interventions'],
+    queryKey: QUERY_KEYS.MOTIVATION_INTERVENTIONS(),
     queryFn: async () => {
       const userId = await getCurrentUserId();
       return fetchMotivationInterventions(userId) as Promise<MotivationIntervention[]>;
@@ -138,7 +139,7 @@ export const useRealTimeEngagement = () => {
     },
     onSuccess: (data) => {
       setActiveSession(data);
-      queryClient.invalidateQueries({ queryKey: ['learning-engagement-sessions'] });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.LEARNING_SESSIONS() });
       toast({
         title: "Learning Session Started",
         description: "Your progress is now being tracked for personalized insights."
@@ -231,7 +232,7 @@ export const useRealTimeEngagement = () => {
     onSuccess: (data) => {
       setActiveSession(null);
       setSessionMetrics({});
-      queryClient.invalidateQueries({ queryKey: ['learning-engagement-sessions'] });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.LEARNING_SESSIONS() });
       
       generateMotivationIntervention(data);
       
@@ -264,7 +265,7 @@ export const useRealTimeEngagement = () => {
           intervention_data: shouldIntervent.suggestion as Json,
           confidence_score: shouldIntervent.confidence,
         });
-        queryClient.invalidateQueries({ queryKey: ['motivation-interventions'] });
+        queryClient.invalidateQueries({ queryKey: QUERY_KEYS.MOTIVATION_INTERVENTIONS() });
       }
     } catch (error) {
       console.error('Error generating intervention:', error);
