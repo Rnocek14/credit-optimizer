@@ -15,7 +15,7 @@ export const V6_COPY = {
   
   // Module card language
   quickPick: 'Recommended Course',
-  optionsAvailable: (n: number) => `${n} verified ${n === 1 ? 'option' : 'options'}`,
+  optionsAvailable: (n: number) => `View ${n} approved ${n === 1 ? 'equivalency' : 'equivalencies'}`,
   openPanel: 'View Fulfillment Options',
   
   // Year sections
