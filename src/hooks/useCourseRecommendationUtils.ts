@@ -32,7 +32,7 @@ export function useCourseRecommendationUtils() {
   const fetchCourseSummaries = useCallback(async (courseIds: string[]): Promise<CourseDetails[]> => {
     if (!courseIds.length) return [];
     
-    const cacheKey = courseIds.sort().join(',');
+    const cacheKey = [...courseIds].sort().join(',');
     if (courseCache[cacheKey]) {
       return courseCache[cacheKey];
     }
@@ -105,7 +105,7 @@ export function useCourseRecommendationUtils() {
   }, []);
 
   const isCourseLoading = useCallback((courseIds: string[]) => {
-    const cacheKey = courseIds.sort().join(',');
+    const cacheKey = [...courseIds].sort().join(',');
     return loadingCourses[cacheKey] || false;
   }, [loadingCourses]);
 
