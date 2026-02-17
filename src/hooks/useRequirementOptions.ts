@@ -3,6 +3,7 @@ import {
   fetchRequirementOptionSummary,
   fetchRequirementOptions,
 } from '@/shared/lib/api';
+import { QUERY_KEYS } from '@/lib/queryKeys';
 import type { CourseOption, CourseSearchFilters } from '@/shared/lib/api';
 
 export type { CourseOption, CourseSearchFilters };
@@ -34,7 +35,7 @@ export function useRequirementOptions(
   options?: { enabled?: boolean }
 ) {
   return useQuery({
-    queryKey: ['requirement-options', requirementId, JSON.stringify(filters)],
+    queryKey: QUERY_KEYS.BATCH_REQUIREMENT_OPTIONS([requirementId]),
     queryFn: () => fetchRequirementOptions(requirementId, filters),
     enabled: options?.enabled ?? !!requirementId,
   });

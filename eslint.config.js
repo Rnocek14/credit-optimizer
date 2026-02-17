@@ -24,9 +24,7 @@ export default tseslint.config(
         { allowConstantExport: true },
       ],
       "@typescript-eslint/no-unused-vars": "off",
-      // Restrict console in production builds (allow in development)
       "no-console": ["error", { "allow": ["warn", "error"] }],
-      // Block undersized touch targets in interactive elements
       "no-restricted-syntax": [
         "error",
         {
@@ -41,7 +39,6 @@ export default tseslint.config(
           selector: "AssignmentExpression[left.property.name='signature'][right.type='BinaryExpression']",
           message: "Use buildMarketplaceSig() for marketplace.signature — no string concatenation."
         },
-        // OKLCH Color System Guards - prevent hsl() wrapping of OKLCH variables
         {
           selector: "Literal[value=/hsl\\(var\\(--/]",
           message: "❌ Don't wrap OKLCH variables in hsl(). Use var(--xxx) directly or color-mix() for opacity. See src/design/COLOR_SYSTEM.md"
@@ -50,7 +47,6 @@ export default tseslint.config(
           selector: "TemplateLiteral[quasis.0.value.raw=/hsl\\(var\\(--/]",
           message: "❌ Don't wrap OKLCH variables in hsl(). Use var(--xxx) directly or color-mix() for opacity. See src/design/COLOR_SYSTEM.md"
         },
-        // URL Sanitization Guards - prevent direct use of dynamic URLs in href
         {
           selector: "JSXAttribute[name.name='href'][value.expression.type='Identifier']",
           message: "❌ Use SafeExternalLink or sanitizeCourseUrl() for dynamic href values. Direct URL variables are unsafe. See src/components/ui/SafeExternalLink.tsx"
@@ -59,13 +55,11 @@ export default tseslint.config(
           selector: "JSXAttribute[name.name='href'][value.expression.type='MemberExpression']",
           message: "❌ Use SafeExternalLink or sanitizeCourseUrl() for dynamic href values. Direct URL variables are unsafe. See src/components/ui/SafeExternalLink.tsx"
         },
-        // BOUNDARY GUARD: Prevent admin module imports outside admin routes
         {
           selector: "ImportDeclaration[source.value=/lib\\/admin/]",
           message: "❌ Admin modules (src/lib/admin/*) can only be imported from admin pages/components. See src/lib/admin/README.md"
         }
       ],
-      // Block new usage of deprecated V3NodeData.year field
       "no-restricted-properties": [
         "error",
         {
@@ -76,15 +70,6 @@ export default tseslint.config(
       ]
     },
   },
-  // ══════════════════════════════════════════════════════════════
-  // PLANNED: Module Boundary Rules (PR follow-up)
-  // ──────────────────────────────────────────────────────────────
-  // Phase 2 will add eslint-plugin-boundaries to enforce:
-  //   - shared/ cannot import from features/, pages/, or components/
-  //   - features/X cannot import from features/Y (no cross-feature imports)
-  //   - app/ can import from anywhere
-  //   - pages/ can import from features/ and shared/ (temporary)
-  // ══════════════════════════════════════════════════════════════
 
   // EXCEPTION: Allow admin module imports in admin pages
   {
@@ -92,7 +77,6 @@ export default tseslint.config(
     rules: {
       "no-restricted-syntax": [
         "error",
-        // Keep other restrictions but remove admin import restriction for admin files
         {
           selector: "Literal[value=/\\b(min-h|h)-(8|9|10|11)\\b/]",
           message: "Interactive targets must be ≥48px (use h-12/min-h-12)."
@@ -127,14 +111,35 @@ export default tseslint.config(
   },
 
   // ══════════════════════════════════════════════════════════════
-  // PR 4: Data Access Rules — no direct supabase in components/pages
+  // PR 6: Data Access Rules — enforced in shared/features, warn in legacy
   // ══════════════════════════════════════════════════════════════
+
+  // ERROR in shared/ and features/ (the "new world" — must be clean)
+  {
+    files: ["src/shared/**/*.{ts,tsx}", "src/features/**/*.{ts,tsx}"],
+    rules: {
+      "no-restricted-imports": ["error", {
+        paths: [
+          {
+            name: "@/integrations/supabase/client",
+            importNames: ["supabase"],
+            message: "In shared/features, import supabase from '@/shared/lib/api/client' instead."
+          }
+        ],
+        patterns: [{
+          group: ["@/integrations/supabase/client"],
+          message: "In shared/features, import supabase from '@/shared/lib/api/client' instead."
+        }]
+      }]
+    }
+  },
+
+  // WARN in pages/components (legacy — being migrated)
   {
     files: ["src/components/**/*.{ts,tsx}", "src/pages/**/*.{ts,tsx}"],
     rules: {
       "no-restricted-syntax": [
         "warn",
-        // Keep existing restrictions from the base config
         {
           selector: "Literal[value=/\\b(min-h|h)-(8|9|10|11)\\b/]",
           message: "Interactive targets must be ≥48px (use h-12/min-h-12)."
@@ -167,17 +172,31 @@ export default tseslint.config(
           selector: "ImportDeclaration[source.value=/lib\\/admin/]",
           message: "❌ Admin modules (src/lib/admin/*) can only be imported from admin pages/components."
         },
-        // PR 4: Block direct supabase.from() in components/pages
+        // Block direct supabase.from() in components/pages
         {
           selector: "CallExpression[callee.property.name='from'][callee.object.name='supabase']",
           message: "❌ Do not call supabase.from() in components/pages. Use src/shared/lib/api + a hook instead."
         },
-        // PR 4: Block direct supabase.rpc() in components/pages
+        // Block direct supabase.rpc() in components/pages
         {
           selector: "CallExpression[callee.property.name='rpc'][callee.object.name='supabase']",
           message: "❌ Do not call supabase.rpc() in components/pages. Use src/shared/lib/api + a hook instead."
         }
-      ]
+      ],
+      // Ban importing supabase client directly in pages/components
+      "no-restricted-imports": ["warn", {
+        paths: [
+          {
+            name: "@/integrations/supabase/client",
+            importNames: ["supabase"],
+            message: "Do not import supabase client in pages/components. Use src/shared/lib/api + hooks instead."
+          }
+        ],
+        patterns: [{
+          group: ["@/integrations/supabase/client"],
+          message: "Do not import supabase client in pages/components. Use src/shared/lib/api + hooks instead."
+        }]
+      }]
     }
   }
 );
