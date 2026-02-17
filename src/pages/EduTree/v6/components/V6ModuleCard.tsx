@@ -55,7 +55,9 @@ export function V6ModuleCard({ module, onOpenPanel }: V6ModuleCardProps) {
     return total;
   }, [basket, id, requirementArea]);
 
-  const earned = liveEarned || creditsEarned || 0;
+  // Always use live basket count as single source of truth.
+  // Avoid fallback to creditsEarned which may be stale or computed differently.
+  const earned = liveEarned;
   const required = creditsRequired || 0;
   const progress = required > 0 ? Math.min(100, (earned / required) * 100) : 0;
   const status = getStatus(earned, required);
