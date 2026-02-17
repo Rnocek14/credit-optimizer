@@ -1,6 +1,9 @@
 /**
  * API module for EduTree data (courses, blocks, members, gates, edges).
  * Consumed by useEduTreeData and useCareerV5Data hooks.
+ *
+ * TODO(types): replace `as X` casts after `supabase gen types` refresh
+ * so return types are inferred directly from Database['public']['Tables'].
  */
 import { supabase } from './client';
 import type {
@@ -20,18 +23,23 @@ export async function fetchEduCourses(): Promise<EduCourse[]> {
     .order('code', { ascending: true });
 
   if (error) throw error;
-  return (data as EduCourse[]) || [];
+  return (data as EduCourse[]) ?? [];
 }
 
-export async function fetchRequirementBlocks(): Promise<RequirementBlock[]> {
-  const { data, error } = await supabase
-    .from('requirement_blocks')
-    .select('*')
-    .order('level_year', { ascending: true })
-    .order('title', { ascending: true });
-
+/**
+ * Fetch requirement blocks. By default ordered by level_year + title.
+ * Pass `{ ordered: false }` for unordered results (e.g. career V5).
+ */
+export async function fetchRequirementBlocks(opts?: {
+  ordered?: boolean;
+}): Promise<RequirementBlock[]> {
+  let q = supabase.from('requirement_blocks').select('*');
+  if (opts?.ordered !== false) {
+    q = q.order('level_year', { ascending: true }).order('title', { ascending: true });
+  }
+  const { data, error } = await q;
   if (error) throw error;
-  return (data as RequirementBlock[]) || [];
+  return (data as RequirementBlock[]) ?? [];
 }
 
 export async function fetchBlockMembers(): Promise<BlockMember[]> {
@@ -40,7 +48,7 @@ export async function fetchBlockMembers(): Promise<BlockMember[]> {
     .select('*');
 
   if (error) throw error;
-  return (data as BlockMember[]) || [];
+  return (data as BlockMember[]) ?? [];
 }
 
 export async function fetchBlockGates(): Promise<BlockGate[]> {
@@ -49,7 +57,7 @@ export async function fetchBlockGates(): Promise<BlockGate[]> {
     .select('*');
 
   if (error) throw error;
-  return (data as BlockGate[]) || [];
+  return (data as BlockGate[]) ?? [];
 }
 
 export async function fetchGateEdges(): Promise<GateEdge[]> {
@@ -58,7 +66,7 @@ export async function fetchGateEdges(): Promise<GateEdge[]> {
     .select('*');
 
   if (error) throw error;
-  return (data as GateEdge[]) || [];
+  return (data as GateEdge[]) ?? [];
 }
 
 // ── Career V5 queries ───────────────────────────────────────────
@@ -68,15 +76,6 @@ export async function fetchProgramRequirements(programId: string) {
     .from('program_requirements')
     .select('*')
     .eq('program_id', programId);
-
-  if (error) throw error;
-  return data ?? [];
-}
-
-export async function fetchAllRequirementBlocks() {
-  const { data, error } = await supabase
-    .from('requirement_blocks')
-    .select('*');
 
   if (error) throw error;
   return data ?? [];
