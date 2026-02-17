@@ -512,41 +512,46 @@ export function useMarketplaceTemplates(filters?: Partial<MarketplaceFilters>) {
       };
       
       // Transform DB rows, using fixture data when available for rich content
-      let templates: MarketplaceDegreeTemplate[] = (dbRows || []).map((row) => {
-        const typedRow = row as unknown as DegreeTemplateRow;
-        const optimization = normalizeOptimization(typedRow.track_type);
-        const fixtureKey = `${typedRow.institution_code}-${optimization}`;
-        const fixture = fixtureMap.get(fixtureKey);
-        
-        let template: MarketplaceDegreeTemplate;
-        
-        if (fixture) {
-          // Use rich fixture data but update with DB values for cost/credits/weeks
-          // Compute weeks from template_data.planWeeks (pricing-model-aware) or fall back to estimated_duration_months
-          const templateData = typedRow.template_data || {};
-          const computedWeeks = (templateData.planWeeks as number) || (typedRow.estimated_duration_months || 24) * 4.33;
+      let templates: MarketplaceDegreeTemplate[] = [];
+      for (const row of (dbRows || [])) {
+        try {
+          const typedRow = row as unknown as DegreeTemplateRow;
+          const optimization = normalizeOptimization(typedRow.track_type);
+          const fixtureKey = `${typedRow.institution_code}-${optimization}`;
+          const fixture = fixtureMap.get(fixtureKey);
           
-          template = {
-            ...fixture,
-            id: typedRow.id, // Use DB id for consistency
-            totals: {
-              ...fixture.totals,
-              credits: typedRow.total_credits,
-              costUsd: typedRow.estimated_cost || fixture.totals.costUsd,
-              weeks: computedWeeks, // CRITICAL: Use computed weeks, not fixture hardcoded value
-            },
-          };
-        } else {
-          // No fixture - transform DB row directly
-          template = transformToMarketplaceTemplate(typedRow);
+          let template: MarketplaceDegreeTemplate;
+          
+          if (fixture) {
+            // Use rich fixture data but update with DB values for cost/credits/weeks
+            // Compute weeks from template_data.planWeeks (pricing-model-aware) or fall back to estimated_duration_months
+            const templateData = typedRow.template_data || {};
+            const computedWeeks = (templateData.planWeeks as number) || (typedRow.estimated_duration_months || 24) * 4.33;
+            
+            template = {
+              ...fixture,
+              id: typedRow.id, // Use DB id for consistency
+              totals: {
+                ...fixture.totals,
+                credits: typedRow.total_credits,
+                costUsd: typedRow.estimated_cost || fixture.totals.costUsd,
+                weeks: computedWeeks, // CRITICAL: Use computed weeks, not fixture hardcoded value
+              },
+            };
+          } else {
+            // No fixture - transform DB row directly
+            template = transformToMarketplaceTemplate(typedRow);
+          }
+          
+          // Merge baseline from snapshot (not from template_data)
+          template = mergeBaseline(template, typedRow.id);
+          
+          // Hydrate provider pricing provenance
+          templates.push(hydrateProviderPricing(template));
+        } catch (err) {
+          console.error('[useMarketplaceTemplates] Failed to transform template:', (row as any)?.id, err);
         }
-        
-        // Merge baseline from snapshot (not from template_data)
-        template = mergeBaseline(template, typedRow.id);
-        
-        // Hydrate provider pricing provenance
-        return hydrateProviderPricing(template);
-      });
+      }
       
       
       console.log('[useMarketplaceTemplates] Loaded', templates.length, 'templates with baselines');
