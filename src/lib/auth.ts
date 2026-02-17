@@ -33,8 +33,8 @@ export const toAppRole = (role: string | null | undefined): AppRole => {
 };
 
 // Environment checks
-export const isDevAuthEnabled = (): boolean => !isProduction() && process.env.NEXT_PUBLIC_DEV_AUTH === '1';
-export const isProduction = (): boolean => process.env.NODE_ENV === 'production';
+export const isDevAuthEnabled = (): boolean => !isProduction() && (import.meta.env.VITE_DEV_AUTH === '1' || import.meta.env.NEXT_PUBLIC_DEV_AUTH === '1');
+export const isProduction = (): boolean => import.meta.env.PROD;
 
 // Get user role securely from database
 export const getSecureUserRole = async (userId: string): Promise<AppRole | null> => {
