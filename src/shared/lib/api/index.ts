@@ -18,3 +18,6 @@ export * from './userState';
 export * from './tracks';
 export * from './engagement';
 export * from './progress';
+export * from './gamification';
+export * from './crosshub';
+export * from './mayaFeedback';

@@ -154,19 +154,19 @@ export function GamificationDashboard({ userId }: GamificationDashboardProps) {
                   className="flex items-start space-x-3 p-3 rounded-lg border bg-card/50"
                 >
                   <div className="text-2xl">
-                    {celebration.celebration_data.emoji}
+                    {(celebration.celebration_data as any)?.emoji}
                   </div>
                   <div className="flex-1 space-y-1">
                     <div className="flex items-center justify-between">
                       <p className="font-medium">
-                        {celebration.celebration_data.title}
+                        {(celebration.celebration_data as any)?.title}
                       </p>
                       <Badge variant="outline" className="text-xs">
                         {celebration.celebration_type}
                       </Badge>
                     </div>
                     <p className="text-sm text-muted-foreground">
-                      {celebration.celebration_data.message}
+                      {(celebration.celebration_data as any)?.message}
                     </p>
                     <p className="text-xs text-muted-foreground">
                       {format(new Date(celebration.created_at), 'MMM d, yyyy • h:mm a')}

@@ -1,6 +1,13 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import {
+  fetchLearningStreaks,
+  fetchCelebrationMoments,
+  fetchGamificationMetrics,
+  updateCelebrationMoment,
+  rpcUpdateLearningStreak,
+  rpcCreateCelebrationMoment,
+} from "@/shared/lib/api/gamification";
 
 export interface LearningStreak {
   id: string;
@@ -44,32 +51,13 @@ export function useGamification(userId?: string) {
   // Fetch learning streaks
   const { data: streaks, isLoading: streaksLoading } = useQuery({
     queryKey: ['learning-streaks', currentUserId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('learning_streaks')
-        .select('*')
-        .eq('user_id', currentUserId)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      return data as LearningStreak[];
-    },
+    queryFn: () => fetchLearningStreaks(currentUserId),
   });
 
   // Fetch celebration moments
   const { data: celebrations, isLoading: celebrationsLoading } = useQuery({
     queryKey: ['celebration-moments', currentUserId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('celebration_moments')
-        .select('*')
-        .eq('user_id', currentUserId)
-        .order('created_at', { ascending: false })
-        .limit(20);
-
-      if (error) throw error;
-      return data as CelebrationMoment[];
-    },
+    queryFn: () => fetchCelebrationMoments(currentUserId, 20),
   });
 
   // Fetch gamification metrics
@@ -80,14 +68,11 @@ export function useGamification(userId?: string) {
       const startDate = new Date();
       startDate.setDate(startDate.getDate() - 30);
 
-      const { data, error } = await supabase
-        .from('gamification_metrics')
-        .select('*')
-        .eq('user_id', currentUserId)
-        .gte('created_at', startDate.toISOString())
-        .lte('created_at', endDate.toISOString());
-
-      if (error) throw error;
+      const data = await fetchGamificationMetrics(
+        currentUserId,
+        startDate.toISOString(),
+        endDate.toISOString()
+      );
 
       // Calculate aggregate metrics
       const dailyXP = data.filter(m => m.metric_type === 'daily_xp').reduce((sum, m) => sum + Number(m.metric_value), 0);
@@ -107,14 +92,7 @@ export function useGamification(userId?: string) {
 
   // Update streak mutation
   const updateStreak = useMutation({
-    mutationFn: async () => {
-      const { data, error } = await supabase.rpc('update_learning_streak', {
-        user_id_param: currentUserId
-      });
-
-      if (error) throw error;
-      return data as any;
-    },
+    mutationFn: () => rpcUpdateLearningStreak(currentUserId),
     onSuccess: (data: any) => {
       if (data?.milestone_reached) {
         toast({
@@ -137,16 +115,10 @@ export function useGamification(userId?: string) {
 
   // Mark celebration as displayed
   const markCelebrationDisplayed = useMutation({
-    mutationFn: async (celebrationId: string) => {
-      const { data, error } = await supabase
-        .from('celebration_moments')
-        .update({ displayed_at: new Date().toISOString() })
-        .eq('id', celebrationId)
-        .eq('user_id', currentUserId);
-
-      if (error) throw error;
-      return data;
-    },
+    mutationFn: (celebrationId: string) =>
+      updateCelebrationMoment(celebrationId, currentUserId, {
+        displayed_at: new Date().toISOString(),
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['celebration-moments'] });
     },
@@ -154,16 +126,10 @@ export function useGamification(userId?: string) {
 
   // Dismiss celebration
   const dismissCelebration = useMutation({
-    mutationFn: async (celebrationId: string) => {
-      const { data, error } = await supabase
-        .from('celebration_moments')
-        .update({ dismissed_at: new Date().toISOString() })
-        .eq('id', celebrationId)
-        .eq('user_id', currentUserId);
-
-      if (error) throw error;
-      return data;
-    },
+    mutationFn: (celebrationId: string) =>
+      updateCelebrationMoment(celebrationId, currentUserId, {
+        dismissed_at: new Date().toISOString(),
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['celebration-moments'] });
     },
@@ -175,17 +141,7 @@ export function useGamification(userId?: string) {
       type: string;
       triggerData: any;
       celebrationData: any;
-    }) => {
-      const { data, error } = await supabase.rpc('create_celebration_moment', {
-        user_id_param: currentUserId,
-        celebration_type_param: type,
-        trigger_data_param: triggerData,
-        celebration_data_param: celebrationData
-      });
-
-      if (error) throw error;
-      return data;
-    },
+    }) => rpcCreateCelebrationMoment(currentUserId, type, triggerData, celebrationData),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['celebration-moments'] });
     },
