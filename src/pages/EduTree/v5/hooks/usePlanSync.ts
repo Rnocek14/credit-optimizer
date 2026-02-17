@@ -172,7 +172,8 @@ export function usePlanSync(planId: string | null | undefined) {
         if (!existing) return true;
         return existing.credits_earned !== row.credits_earned
           || existing.cost_paid !== row.cost_paid
-          || existing.provider_id !== row.provider_id;
+          || existing.provider_id !== row.provider_id
+          || existing.requirement_id !== row.requirement_id;
       });
 
       if (toUpsert.length > 0) {
@@ -195,6 +196,7 @@ export function usePlanSync(planId: string | null | undefined) {
           const { error } = await supabase
             .from('user_plan_courses')
             .update({
+              requirement_id: row.requirement_id,
               credits_earned: row.credits_earned,
               cost_paid: row.cost_paid,
               provider_id: row.provider_id,
