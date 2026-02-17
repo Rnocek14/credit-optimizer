@@ -21,12 +21,14 @@ export async function fetchUserPlanSelections(
 
   if (error) throw error;
 
+  type Row = NonNullable<typeof data>[number];
+
   return new Map(
-    (data ?? []).map((d: any) => [d.requirement_id, {
-      id: d.course?.id,
-      title: d.course?.title,
-      cost: d.course?.cost_usd,
-      provider: d.provider?.name,
+    (data ?? []).map((d: Row) => [d.requirement_id, {
+      id: (d.course as any)?.id,
+      title: (d.course as any)?.title,
+      cost: (d.course as any)?.cost_usd,
+      provider: (d.provider as any)?.name,
     }])
   );
 }
