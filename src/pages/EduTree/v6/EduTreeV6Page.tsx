@@ -46,6 +46,7 @@ import { flattenModules, extractAllOptions, calculateCoverage } from '@/pages/Ed
 import { useYearNodesVM } from '@/state/selectors/degreeNodes';
 import { useCascadeDegree } from '@/lib/degree/cascade';
 import { logEvent } from '@/lib/analytics';
+import { healBasketForPolicy, formatHealSummary } from '@/lib/degree/autoHeal';
 import { toast } from 'sonner';
 import canonicalCourses from '@/fixtures/prereqs/canonical-courses.json';
 
@@ -182,6 +183,21 @@ export default function EduTreeV6Page() {
     if (selectedTemplate && templateId) {
       clearBasket();
       applyTemplateToPlan(selectedTemplate);
+
+      // Auto-heal: fix providerCode gaps so residency/transfer counts are correct
+      const currentItems = usePlanBasket.getState().items;
+      if (currentItems.length > 0 && selectedTemplate.anchorSchool) {
+        
+        const healResult = healBasketForPolicy(currentItems, selectedTemplate.anchorSchool);
+        if (healResult.healed) {
+          const msg = formatHealSummary(healResult);
+          if (msg) {
+            console.log('[V6 AutoHeal]', msg);
+            toast.info('Template adjusted', { description: msg });
+          }
+        }
+      }
+
       if (selectedTemplate.anchorSchool && !constraints.target_school) {
         setConstraints({ target_school: selectedTemplate.anchorSchool });
       }

@@ -37,7 +37,8 @@ function slotOptionToMarketplaceOption(
   slotId: string, 
   requirementArea: string,
   minCredits: number,
-  index: number
+  index: number,
+  institutionCode?: string
 ): MarketplaceOption {
   if (opt.type === 'alt_credit') {
     const altOpt = opt as { sourceCode?: string; identifier?: string };
@@ -71,14 +72,15 @@ function slotOptionToMarketplaceOption(
     title: courseCode.replace(/-/g, ' '),
     credits: minCredits,
     subject: requirementArea,
-    provider: 'Institution',
-    providerCode: null,
+    provider: institutionCode || 'Institution',
+    providerCode: institutionCode || null,
     providerType: 'university',
     cost_usd: 300 * minCredits, // Estimated per-credit cost
     duration_weeks: 8,
     pace_type: 'cohort',
     satisfies_requirements: [requirementArea],
     cri_score: 85,
+    isAltCredit: false,
   };
 }
 
@@ -86,7 +88,7 @@ function slotOptionToMarketplaceOption(
  * Convert database terms (from seed-bsba-templates) to YearTemplate format for UI
  * Groups terms by year and converts slots to modules
  */
-function termsToYearTemplates(terms: TemplateTerm[]): YearTemplate[] {
+function termsToYearTemplates(terms: TemplateTerm[], institutionCode?: string): YearTemplate[] {
   if (!terms || terms.length === 0) return [];
   
   // Group terms by year (y1-t1, y1-t2 → Year 1, etc.)
@@ -114,7 +116,7 @@ function termsToYearTemplates(terms: TemplateTerm[]): YearTemplate[] {
     for (const slot of term.slots) {
       const allOptions = [slot.preferred, ...(slot.alternatives || [])];
       const options: MarketplaceOption[] = allOptions.map((opt, idx) => 
-        slotOptionToMarketplaceOption(opt, slot.slotId, slot.requirementArea, slot.minCredits, idx)
+        slotOptionToMarketplaceOption(opt, slot.slotId, slot.requirementArea, slot.minCredits, idx, institutionCode)
       );
       
       yearMap.get(yearKey)!.moduleTemplates.push({
@@ -163,7 +165,7 @@ function transformToMarketplaceTemplate(row: DegreeTemplateRow): MarketplaceDegr
   let yearTemplates = (templateData.yearTemplates as YearTemplate[]) || [];
   
   if (yearTemplates.length === 0 && templateData.terms) {
-    yearTemplates = termsToYearTemplates(templateData.terms as TemplateTerm[]);
+    yearTemplates = termsToYearTemplates(templateData.terms as TemplateTerm[], row.institution_code);
     // Set targetSchool on each year/module
     yearTemplates = yearTemplates.map(yt => ({
       ...yt,
