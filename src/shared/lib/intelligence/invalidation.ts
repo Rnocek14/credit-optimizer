@@ -39,12 +39,15 @@ export function invalidateTrackIntelligence(
 /**
  * Invalidate all market signal queries (any user).
  * Use after: market data refresh, external data sync.
+ *
+ * Signals key: ['intelligence', userId, trackId, 'signals']
+ * Match on position 3 to stay compatible with positional predicates.
  */
 export function invalidateMarketSignals(qc: QueryClient) {
   qc.invalidateQueries({
     predicate: (query) =>
       query.queryKey[0] === 'intelligence' &&
-      query.queryKey[1] === 'signals',
+      query.queryKey[3] === 'signals',
   });
 }
 
