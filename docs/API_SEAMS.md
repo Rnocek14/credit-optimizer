@@ -121,7 +121,7 @@ When moving a query to the API layer:
 |-------|----------------|----------------|--------|
 | `src/components/` | 0 | 0 | ✅ Clean |
 | `src/pages/` | 0 | 1 (DevLogin, infra) | ✅ Clean |
-| `src/hooks/` | ~3 `.from()` | ~4 `.rpc()` | 🔄 Batch E target |
+| `src/hooks/` | 0 | 0 | ✅ Clean (Batch E complete) |
 | `src/shared/lib/api/` | All | All | ✅ Canonical home |
 
 ### Batch D modules added
@@ -131,3 +131,10 @@ When moving a query to the API layer:
 | `telemetry.ts` | `logAiModelUsage`, `fetchCiCourseSummaries` |
 | `marketIntelligence.ts` | `fetchMarketTrendsRaw`, `fetchTopGrowingCareers`, `fetchSalaryInsightsRaw`, `fetchCareerPathTitle`, `fetchLocationDetails` |
 | `mentorAnalytics.ts` | `fetchMentorMetrics`, `fetchMentorAchievements`, `fetchMentorLeaderboard`, `fetchMentorFeedback`, `checkMentorAchievements`, `submitMentorFeedback` |
+
+### Batch E modules added
+
+| Module | Covers |
+|--------|--------|
+| `userState.ts` | `fetchUserPreferences`, `fetchUserActivityCounts`, `upsertUserPreferences`, `upsertTrustMetrics`, `fetchTrustMetrics` |
+| `tracks.ts` | `fetchProfileId`, `fetchCareerTracks`, `fetchTrackSlugs`, `insertCareerTrack`, `updateCareerTrack`, `cloneCareerTrack` |

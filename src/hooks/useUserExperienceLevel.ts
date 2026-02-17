@@ -1,6 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '@/integrations/supabase/client';
 import { useUnifiedData } from '@/contexts/UnifiedDataContext';
+import {
+  fetchUserPreferences,
+  fetchUserActivityCounts,
+  upsertUserPreferences,
+} from '@/shared/lib/api/userState';
 
 export type ExperienceLevel = 'beginner' | 'intermediate' | 'advanced';
 
@@ -26,16 +30,7 @@ export function useUserExperienceLevel() {
 
     const loadUserPreferences = async () => {
       try {
-        const { data, error } = await supabase
-          .from('user_preferences')
-          .select('*')
-          .eq('user_id', state.user.id)
-          .maybeSingle();
-
-        if (error && error.code !== 'PGRST116') {
-          console.error('Error loading user preferences:', error);
-          return;
-        }
+        const data = await fetchUserPreferences(state.user.id);
 
         if (data) {
           const experienceLevel = data.experience_level as ExperienceLevel;
@@ -68,16 +63,11 @@ export function useUserExperienceLevel() {
     if (!state.user) return 'beginner';
 
     try {
-      // Check various activity indicators
-      const [skillProgress, courseHistory, goalCount] = await Promise.all([
-        supabase.from('user_skill_progress').select('*').eq('user_id', state.user.id),
-        supabase.from('course_progress').select('*').eq('user_id', state.user.id),
-        supabase.from('user_goals').select('*').eq('user_id', state.user.id)
-      ]);
+      const { skills, courses, goals } = await fetchUserActivityCounts(state.user.id);
 
-      const totalSkills = skillProgress.data?.length || 0;
-      const completedCourses = courseHistory.data?.filter(c => c.status === 'completed').length || 0;
-      const activeGoals = goalCount.data?.length || 0;
+      const totalSkills = skills.length;
+      const completedCourses = courses.filter((c: any) => c.status === 'completed').length;
+      const activeGoals = goals.length;
 
       // Scoring system for experience level
       let score = 0;
@@ -104,19 +94,10 @@ export function useUserExperienceLevel() {
 
     try {
       setExperienceLevel(newLevel);
-
-      const { error } = await supabase
-        .from('user_preferences')
-        .upsert({
-          user_id: state.user.id,
-          experience_level: newLevel,
-          last_active_date: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        });
-
-      if (error) {
-        console.error('Error updating experience level:', error);
-      }
+      await upsertUserPreferences(state.user.id, {
+        experience_level: newLevel,
+        last_active_date: new Date().toISOString(),
+      });
     } catch (error) {
       console.error('Error in updateExperienceLevel:', error);
     }
@@ -127,20 +108,11 @@ export function useUserExperienceLevel() {
     if (!state.user) return;
 
     try {
-      const { error } = await supabase
-        .from('user_preferences')
-        .upsert({
-          user_id: state.user.id,
-          has_completed_onboarding: true,
-          last_active_date: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        });
-
-      if (error) {
-        console.error('Error completing onboarding:', error);
-      } else {
-        setPreferences(prev => prev ? { ...prev, hasCompletedOnboarding: true } : null);
-      }
+      await upsertUserPreferences(state.user.id, {
+        has_completed_onboarding: true,
+        last_active_date: new Date().toISOString(),
+      });
+      setPreferences(prev => prev ? { ...prev, hasCompletedOnboarding: true } : null);
     } catch (error) {
       console.error('Error in completeOnboarding:', error);
     }

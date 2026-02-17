@@ -1,6 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import {
+  upsertTrustMetrics,
+  fetchTrustMetrics,
+} from '@/shared/lib/api/userState';
 
 export interface TrustMetrics {
   id?: string;
@@ -24,21 +27,13 @@ export function useTrustMetrics(userId?: string) {
       if (!userId) return { metrics: null };
 
       // Ensure up-to-date aggregate (safe SECURITY DEFINER function)
-      const { error: rpcError } = await supabase.rpc('upsert_user_trust_metrics', {
-        user_id_param: userId,
-        days_back: 90
-      });
-      if (rpcError) {
+      try {
+        await upsertTrustMetrics(userId, 90);
+      } catch (rpcError) {
         console.error('Trust metrics upsert error:', rpcError);
       }
 
-      const { data: row, error: selectError } = await supabase
-        .from('user_trust_metrics')
-        .select('*')
-        .eq('user_id', userId)
-        .maybeSingle();
-
-      if (selectError) throw selectError;
+      const row = await fetchTrustMetrics(userId);
       return { metrics: (row as unknown as TrustMetrics) || null };
     }
   });
@@ -46,11 +41,7 @@ export function useTrustMetrics(userId?: string) {
   const refresh = useMutation({
     mutationFn: async () => {
       if (!userId) throw new Error('No user');
-      const { error } = await supabase.rpc('upsert_user_trust_metrics', {
-        user_id_param: userId,
-        days_back: 90
-      });
-      if (error) throw error;
+      await upsertTrustMetrics(userId, 90);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['user-trust-metrics', userId] });
