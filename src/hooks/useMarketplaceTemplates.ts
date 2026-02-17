@@ -345,7 +345,6 @@ export function useMarketplaceTemplates(filters?: Partial<MarketplaceFilters>) {
       const { data: dbRows, error } = await supabase
         .from('degree_templates')
         .select('id, institution_code, program_code, track_type, total_credits, estimated_cost, estimated_duration_months, template_data, status')
-        .eq('program_code', 'BSBA')
         .eq('status', 'active') // CRITICAL: Only show verified templates
         .order('updated_at', { ascending: false }); // Ensure newest templates appear first
       

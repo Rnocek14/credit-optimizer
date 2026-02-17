@@ -10,6 +10,7 @@ export const OPTIMIZATION = {
   ALT_CREDIT: 'alt-credit',
   BALANCED: 'balanced',
   FASTEST: 'fastest',
+  MULTI_SCHOOL: 'multi-school',
 } as const;
 
 export type Optimization = typeof OPTIMIZATION[keyof typeof OPTIMIZATION];
@@ -23,6 +24,7 @@ export const OPTIMIZATION_LABEL: Record<Optimization, string> = {
   [OPTIMIZATION.ALT_CREDIT]: 'Alt Credit Max',
   [OPTIMIZATION.BALANCED]: 'Balanced',
   [OPTIMIZATION.FASTEST]: 'Fastest',
+  [OPTIMIZATION.MULTI_SCHOOL]: 'Multi-School',
 };
 
 /**
@@ -52,6 +54,11 @@ export function normalizeOptimization(trackType: string | null | undefined): Opt
     case 'balanced':
       return OPTIMIZATION.BALANCED;
     
+    case 'multi-school':
+    case 'multischool':
+    case 'multi-school-cheapest':
+      return OPTIMIZATION.MULTI_SCHOOL;
+    
     case 'standard':
     case 'standard-like':
     case 'standardlike':
@@ -64,5 +71,5 @@ export function normalizeOptimization(trackType: string | null | undefined): Opt
  * Check if an optimization type is alt-credit based (uses external credits)
  */
 export function isAltCreditOptimization(optimization: Optimization): boolean {
-  return optimization === OPTIMIZATION.ALT_CREDIT;
+  return optimization === OPTIMIZATION.ALT_CREDIT || optimization === OPTIMIZATION.MULTI_SCHOOL;
 }
