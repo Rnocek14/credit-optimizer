@@ -14,7 +14,7 @@ export const V6_COPY = {
   statusComplete: 'Complete',
   
   // Module card language
-  quickPick: 'Recommended Course',
+  recommendedLabel: 'Top Recommendation',
   optionsAvailable: (n: number) => `View ${n} approved ${n === 1 ? 'equivalency' : 'equivalencies'}`,
   openPanel: 'View Fulfillment Options',
   

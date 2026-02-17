@@ -47,6 +47,11 @@ const CREDIT_TYPE_LABELS: Record<string, { label: string; icon: typeof Graduatio
     icon: FileText,
     className: 'bg-muted text-muted-foreground border-border',
   },
+  transfer: {
+    label: 'Transfer Credit',
+    icon: Shield,
+    className: 'bg-info/10 text-info border-info/20',
+  },
 };
 
 function CreditTypeBadge({ providerType }: { providerType?: ProviderType }) {
@@ -232,8 +237,8 @@ export function V6ModulePanel({
             {topOption && !isComplete && (
               <div className="rounded-lg border-2 border-primary/30 bg-primary/5 p-4 space-y-2">
                 <div className="flex items-center gap-2">
-                  <Star className="h-4 w-4 text-primary fill-primary" />
-                  <span className="text-sm font-semibold text-foreground">{V6_COPY.quickPick}</span>
+                   <Star className="h-4 w-4 text-primary fill-primary" />
+                  <span className="text-sm font-semibold text-foreground">{V6_COPY.recommendedLabel}</span>
                 </div>
                 <div className="text-sm font-medium">{topOption.title}</div>
                 <div className="flex items-center gap-2 flex-wrap">
