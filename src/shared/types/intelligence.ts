@@ -43,6 +43,10 @@ export interface UserIntelligenceContext {
   };
   experienceLevel?: string;
   industry?: string;
+
+  // Resolved input data (populated by useIntelligenceLayer)
+  skillGaps?: SkillGap[];
+  cri?: CRISnapshot | null;
 }
 
 // ─── Scoring Engine ─────────────────────────────────────────────
