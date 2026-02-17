@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { insertUserCompletedCourse, fetchMarketplaceCoursesForEntry, type MarketplaceCourseForEntry } from "@/shared/lib/api";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -158,26 +159,16 @@ export function TranscriptQuickEntry({
       if (!user) throw new Error('Not authenticated');
       if (!selectedCourse || !grade || !selectedProvider) throw new Error('Missing required fields');
 
-      // Use already-normalized values (computed above)
-      // Insert into user_completed_courses (canonical completion table)
-      const { error } = await supabase.from('user_completed_courses').insert({
-        user_id: user.id,
-        provider_code: normalizedProvider,
-        course_code: normalizedCourse,
-        course_title: selectedCourse.title,
+      await insertUserCompletedCourse({
+        userId: user.id,
+        providerCode: normalizedProvider,
+        courseCode: normalizedCourse,
+        courseTitle: selectedCourse.title,
         credits: selectedCourse.credits,
         grade,
         source: 'manual',
-        marketplace_course_id: selectedCourse.id
+        marketplaceCourseId: selectedCourse.id,
       });
-
-      if (error) {
-        // Handle unique constraint violation
-        if (error.code === '23505') {
-          throw new Error('This course has already been added');
-        }
-        throw error;
-      }
       
       return { 
         code: selectedCourse.code, 

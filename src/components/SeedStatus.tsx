@@ -1,26 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { fetchSeedStatusCounts } from '@/shared/lib/api';
 
 export default function SeedStatus() {
   const { data, isLoading, error } = useQuery({
     queryKey: ['seed-status'],
-    queryFn: async () => {
-      const [providers, reqs, anchors, rules, exclusions] = await Promise.all([
-        supabase.from('providers' as any).select('*', { count: 'exact', head: true }),
-        supabase.from('requirement_catalog' as any).select('*', { count: 'exact', head: true }),
-        supabase.from('partner_policies' as any).select('*', { count: 'exact', head: true }),
-        supabase.from('credit_transfer_rules' as any).select('*', { count: 'exact', head: true }),
-        supabase.from('option_exclusions' as any).select('*', { count: 'exact', head: true }),
-      ]);
-
-      return {
-        providers: providers.count ?? 0,
-        requirements: reqs.count ?? 0,
-        anchors: anchors.count ?? 0,
-        rules: rules.count ?? 0,
-        exclusions: exclusions.count ?? 0,
-      };
-    },
+    queryFn: fetchSeedStatusCounts,
     staleTime: 30_000,
     refetchInterval: 30_000,
   });

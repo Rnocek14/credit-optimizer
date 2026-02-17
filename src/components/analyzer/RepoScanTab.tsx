@@ -5,6 +5,7 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Scan, FileText, Code, AlertTriangle, CheckCircle2, TestTube, Info } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { upsertDemoRepo, upsertDemoChunks } from '@/shared/lib/api';
 import { useToast } from "@/hooks/use-toast";
 import { pickAndReadWorkspace } from "@/lib/collectFiles";
 import { getDemoFiles, generateDemoScanResult } from "@/lib/demoFiles";
@@ -123,20 +124,7 @@ export function RepoScanTab({ repoId }: RepoScanTabProps) {
         const repoId = "current-repo-demo";
         
         // Insert demo repository
-        await supabase.from("ai_analyzer_repos").upsert({
-          id: repoId,
-          user_id: "demo-user",
-          name: "Demo Project (Lovable)",
-          repo_type: "demo",
-          file_count: files.length,
-          language_breakdown: {
-            "TypeScript": 75,
-            "JavaScript": 15,
-            "CSS": 7,
-            "JSON": 3
-          },
-          indexed_at: new Date().toISOString()
-        });
+        await upsertDemoRepo(repoId, files.length);
         
         // Create demo chunks for other tabs to access
         const demoChunks = files.map((file, index) => {
@@ -160,7 +148,7 @@ export function RepoScanTab({ repoId }: RepoScanTabProps) {
           };
         });
         
-        await supabase.from("ai_analyzer_chunks").upsert(demoChunks);
+        await upsertDemoChunks(demoChunks);
         
         clearInterval(progressInterval);
         setScanProgress(100);

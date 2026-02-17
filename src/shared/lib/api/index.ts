@@ -4,4 +4,7 @@ export * from './institutions';
 export * from './requirementOptions';
 export * from './userPlanSelections';
 export * from './marketplaceCourses';
+export * from './userAnalytics';
+export * from './userCompletedCourses';
+export * from './devTools';
 export * from './errors';
