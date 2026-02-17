@@ -86,6 +86,9 @@ supabase.from('profiles').select(...)  // profiles = business table, use API lay
 | Canonical API functions | None | `fetchEduCourses()` |
 | Seed/dev-only helpers | `seed` or `dev` | `seedFetchEduCourses()` |
 | Query keys | Namespaced by domain | `['edutree', 'edu-courses']` |
+| Legacy query keys | `LEGACY_QUERY_KEYS.*` | `LEGACY_QUERY_KEYS.CAREER_TRACKS()` |
+
+> Legacy keys live in `LEGACY_QUERY_KEYS` and must not be expanded; new code should prefer `QUERY_KEYS.*`.
 
 > Canonical exports live in `src/shared/lib/api/*` and must **never** be
 > prefixed. Dev/seed helpers in `devTools.ts` must always be prefixed
