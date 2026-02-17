@@ -1,15 +1,18 @@
 import { GraduationCap } from 'lucide-react';
 import { PlanSelector } from '@/pages/EduTree/v5/components/PlanSelector';
 import { AnchorSchoolSelector } from '@/pages/EduTree/v5/components/AnchorSchoolSelector';
+import { V6DegreeSelector } from './V6DegreeSelector';
 import { V6_COPY } from '../copy';
 
 interface V6HeaderProps {
   degreeTitle: string;
   activePlanId: string | null;
   onPlanChange: (planId: string) => void;
+  currentTemplateId: string | null;
+  onDegreeChange: (templateId: string) => void;
 }
 
-export function V6Header({ degreeTitle, activePlanId, onPlanChange }: V6HeaderProps) {
+export function V6Header({ degreeTitle, activePlanId, onPlanChange, currentTemplateId, onDegreeChange }: V6HeaderProps) {
   return (
     <div className="mb-8">
       <div className="flex items-center justify-between">
@@ -28,6 +31,7 @@ export function V6Header({ degreeTitle, activePlanId, onPlanChange }: V6HeaderPr
         </div>
         
         <div className="flex items-center gap-3">
+          <V6DegreeSelector currentTemplateId={currentTemplateId} onDegreeChange={onDegreeChange} />
           <PlanSelector activePlanId={activePlanId} onPlanChange={onPlanChange} />
           <AnchorSchoolSelector />
         </div>

@@ -16,7 +16,8 @@ import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { X, Star, ChevronDown, CheckCircle2, GraduationCap, Globe, Zap, FileText, Shield } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { X, Star, ChevronDown, ChevronUp, CheckCircle2, GraduationCap, Globe, Zap, FileText, Shield, Info } from 'lucide-react';
 import { toast } from 'sonner';
 import { usePlanBasket } from '@/pages/EduTree/v5/state/usePlanBasket';
 import { usePlanBasketWithToasts } from '@/pages/EduTree/v5/hooks/usePlanBasketWithToasts';
@@ -67,34 +68,36 @@ function CreditTypeBadge({ providerType }: { providerType?: ProviderType }) {
 }
 
 // ── "Why recommended" logic ─────────────────────────────────
-function getRecommendationReason(option: MarketplaceOption, moduleLabel: string, anchorSchool?: string): string {
-  const parts: string[] = [];
+function getRecommendationReasons(option: MarketplaceOption, moduleLabel: string, anchorSchool?: string): string[] {
+  const reasons: string[] = [];
 
   if (option.providerType === 'university' && anchorSchool) {
-    parts.push(`direct institutional credit at ${anchorSchool}`);
-  } else if (option.cost_usd === 0) {
-    parts.push('no cost');
+    reasons.push(`Direct institutional credit at ${anchorSchool}`);
+  }
+
+  if (option.cost_usd === 0) {
+    reasons.push('No cost to complete');
   } else if (option.cost_usd != null && option.cost_usd < 200) {
-    parts.push(`only $${option.cost_usd}`);
+    reasons.push(`Low cost — only $${option.cost_usd}`);
   }
 
   if (option.aceNccrs) {
-    parts.push('ACE/NCCRS accredited');
+    reasons.push('ACE/NCCRS accredited');
   }
 
   if (option.duration_weeks != null && option.duration_weeks <= 8) {
-    parts.push(`completable in ${option.duration_weeks} weeks`);
+    reasons.push(`Completable in ${option.duration_weeks} weeks`);
   }
 
   if (option.cri_score && option.cri_score >= 80) {
-    parts.push(`high quality score (${option.cri_score}/100)`);
+    reasons.push(`High quality score (${option.cri_score}/100)`);
   }
 
-  if (parts.length === 0) {
-    parts.push('best overall match for this requirement');
+  if (reasons.length === 0) {
+    reasons.push('Best overall match for this requirement');
   }
 
-  return `Recommended because: ${parts.join(', ')}.`;
+  return reasons;
 }
 
 // ── Main panel component ────────────────────────────────────
@@ -252,8 +255,21 @@ export function V6ModulePanel({
                   )}
                 </div>
                 <p className="text-xs text-muted-foreground italic">
-                  {getRecommendationReason(topOption, moduleLabel, anchorSchool)}
+                  Recommended because: {getRecommendationReasons(topOption, moduleLabel, anchorSchool)[0]?.toLowerCase()}.
                 </p>
+                <Collapsible>
+                  <CollapsibleTrigger className="flex items-center gap-1 text-xs text-primary hover:underline mt-1">
+                    <Info className="h-3 w-3" />
+                    {V6_COPY.whyThisRanking}
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="mt-2">
+                    <ul className="space-y-1 text-xs text-muted-foreground list-disc list-inside">
+                      {getRecommendationReasons(topOption, moduleLabel, anchorSchool).map((reason, i) => (
+                        <li key={i}>{reason}</li>
+                      ))}
+                    </ul>
+                  </CollapsibleContent>
+                </Collapsible>
                 {!basket.some(b => b.courseId === topOption.courseId) && (
                   <Button size="sm" className="w-full mt-2" onClick={() => handleAdd(topOption)}>
                     Add to Plan
