@@ -418,6 +418,11 @@ export default function EduTreeV6Page() {
           degreeTitle={degreeSummary.degreeTitle}
           activePlanId={resolvedPlanId}
           onPlanChange={handlePlanChange}
+          currentTemplateId={templateId}
+          onDegreeChange={(newId) => {
+            navigate(`/edu-tree-v6?templateId=${newId}`);
+            setExpandedYears({ 1: true, 2: false, 3: false, 4: false });
+          }}
         />
 
         {/* Loading */}

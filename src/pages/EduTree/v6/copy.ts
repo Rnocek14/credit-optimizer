@@ -44,4 +44,11 @@ export const V6_COPY = {
   // Banner stack
   showDetails: 'Show details',
   hideDetails: 'Hide details',
+
+  // Header degree selector
+  degreeLabel: 'Degree',
+  selectDegree: 'Select Degree',
+
+  // Why this ranking
+  whyThisRanking: 'Why this recommendation?',
 } as const;
