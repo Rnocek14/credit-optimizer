@@ -91,9 +91,12 @@ export function useIntelligenceLayer(userId?: string, trackId?: string) {
 
     const quickWins = recommendations.filter((r) => {
       if (r.durationHours != null) return r.durationHours <= 1;
-      // Fallback: parse timeEstimate string
-      const match = r.timeEstimate?.match(/(\d+)\s*(min|m)\b/i);
-      return match ? Number(match[1]) <= 60 : false;
+      // Fallback: parse timeEstimate string for minutes or hours
+      const mins = r.timeEstimate?.match(/(\d+)\s*(min|mins|minute|minutes|m)\b/i);
+      if (mins) return Number(mins[1]) <= 60;
+      const hrs = r.timeEstimate?.match(/(\d+(?:\.\d+)?)\s*(hr|hrs|hour|hours|h)\b/i);
+      if (hrs) return Number(hrs[1]) <= 1;
+      return false;
     });
 
     const criticalGaps = skillGaps.filter((g) => g.priority === 'critical');
