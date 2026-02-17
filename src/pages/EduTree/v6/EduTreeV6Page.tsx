@@ -70,6 +70,7 @@ import { V6Header } from './components/V6Header';
 import { V6BannerStack } from './components/V6BannerStack';
 import { V6YearSection } from './components/V6YearSection';
 import { V6DegreeNode } from './components/V6DegreeNode';
+import { V6ModulePanel } from './components/V6ModulePanel';
 
 import '@/pages/EduTree/v5/styles/v5.css';
 
@@ -558,34 +559,40 @@ export default function EduTreeV6Page() {
             <GraphView open={graphDialogOpen} onOpenChange={setGraphDialogOpen} />
             <SmartReplaceModal open={replaceModalOpen} onClose={() => setReplaceModalOpen(false)} violations={replaceViolations} targetSchool={constraints.target_school || ''} />
 
-            {/* Scoped Panel System (reused) */}
-            <ScopePanelRouter
-              scope={panelState.scope}
-              nodeId={panelState.nodeId}
-              nodeData={panelState.nodeData}
-              activeTab={panelState.tab}
-              onClose={closePanel}
-              onNavigate={openPanel}
-              onTabChange={setTab}
-              degreeSummary={degreeSummary}
-              year={panelState.scope === 'year' ? Number(panelState.nodeId) : undefined}
-              yearModules={panelState.scope === 'year' ? panelState.nodeData?.modules : undefined}
-              onOpenModulePanel={(module: ModuleData) => {
-                const yr = panelState.nodeData?.year;
-                if (yr) openPanel('module', module.id, { module, year: yr });
-              }}
-              allOptions={allOptions}
-              moduleId={panelState.scope === 'module' ? panelState.nodeId : undefined}
-              moduleLabel={panelState.scope === 'module' ? (panelState.nodeData?.module?.label ?? '') : undefined}
-              creditsEarned={panelState.scope === 'module' ? (panelState.nodeData?.module?.creditsEarned ?? 0) : 0}
-              creditsRequired={panelState.scope === 'module' ? (panelState.nodeData?.module?.creditsRequired ?? 0) : 0}
-              options={panelState.scope === 'module' ? (panelState.nodeData?.module?.marketplaceOptions ?? []) : []}
-              sortBy={panelSortBy}
-              setSortBy={setPanelSortBy}
-              yearEarned={panelState.scope === 'module' ? getYearEarnedCredits(panelState.nodeData?.year || 1) : 0}
-              yearCap={YEAR_CREDIT_CAP}
-              allModules={allModules}
-            />
+            {/* V6: Module panel with trust signals */}
+            {panelState.scope === 'module' && panelState.nodeData?.module && (
+              <V6ModulePanel
+                open={true}
+                onClose={closePanel}
+                module={panelState.nodeData.module}
+                moduleLabel={panelState.nodeData.module.label ?? ''}
+                anchorSchool={constraints.target_school || undefined}
+                yearEarned={getYearEarnedCredits(panelState.nodeData?.year || 1)}
+                yearCap={YEAR_CREDIT_CAP}
+              />
+            )}
+
+            {/* Degree + Year panels — delegate to V5's ScopePanelRouter */}
+            {(panelState.scope === 'degree' || panelState.scope === 'year') && (
+              <ScopePanelRouter
+                scope={panelState.scope}
+                nodeId={panelState.nodeId}
+                nodeData={panelState.nodeData}
+                activeTab={panelState.tab}
+                onClose={closePanel}
+                onNavigate={openPanel}
+                onTabChange={setTab}
+                degreeSummary={degreeSummary}
+                year={panelState.scope === 'year' ? Number(panelState.nodeId) : undefined}
+                yearModules={panelState.scope === 'year' ? panelState.nodeData?.modules : undefined}
+                onOpenModulePanel={(module: ModuleData) => {
+                  const yr = panelState.nodeData?.year;
+                  if (yr) openPanel('module', module.id, { module, year: yr });
+                }}
+                allOptions={allOptions}
+                allModules={allModules}
+              />
+            )}
 
             {/* Credit Optimizer Modal */}
             {showOptimizerModal && optimizationSuggestion?.summary && (
