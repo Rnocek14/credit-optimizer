@@ -69,6 +69,9 @@ export function courseToCandidate(
     platformTrust: trust01,
     href: `/discover?tab=courses&course=${encodeURIComponent(course.id)}`,
     provider: course.provider_code ?? undefined,
+    // Action params for downstream executors (Add to Plan / Add to EduTree)
+    providerCode: course.provider_code ?? undefined,
+    subjectArea: course.subject_area ?? undefined,
   };
 }
 

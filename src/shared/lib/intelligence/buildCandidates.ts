@@ -29,6 +29,10 @@ export interface CourseCandidate {
   mayaExplanation?: string;
   href?: string;
   provider?: string;
+  /** Provider code for write-path actions (e.g. inserting into user_plan_courses) */
+  providerCode?: string;
+  /** Subject area for requirement-block matching */
+  subjectArea?: string;
 }
 
 /** Lightweight proof-project shape fed into the builder. */
@@ -104,6 +108,21 @@ export function buildCandidates(
           label: 'Add to Plan',
           on: 'plan' as const,
           href: `/plan?addCourse=${encodeURIComponent(c.id)}`,
+          params: {
+            courseId: c.id,
+            trackId: ctx.activeTrackId ?? '',
+            ...(c.providerCode ? { providerCode: c.providerCode } : {}),
+          },
+        },
+        {
+          label: 'Add to EduTree',
+          on: 'plan' as const,
+          params: {
+            courseId: c.id,
+            trackId: ctx.activeTrackId ?? '',
+            ...(c.providerCode ? { providerCode: c.providerCode } : {}),
+            ...(c.subjectArea ? { subjectArea: c.subjectArea } : {}),
+          },
         },
       ],
       meta: { provider: c.provider ?? null, trackId: ctx.activeTrackId ?? null },
