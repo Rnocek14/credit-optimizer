@@ -1,8 +1,19 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { getCurrentDevUser } from '@/lib/devUserSetup';
+import {
+  fetchLearningSessions,
+  fetchLearningSessionById,
+  insertLearningSession,
+  updateLearningSession,
+  rpcDevUserSessionStart,
+  rpcDevUserSessionEnd,
+  fetchMotivationInterventions,
+  insertMotivationIntervention,
+} from '@/shared/lib/api/engagement';
+import type { Json } from '@/integrations/supabase/types';
 
 export interface LearningSession {
   id: string;
@@ -57,6 +68,7 @@ export const useRealTimeEngagement = () => {
   const [sessionMetrics, setSessionMetrics] = useState<Partial<LearningSession>>({});
 
   // Get current user ID with dev support
+  // Auth call is an allowed exception per API_SEAMS.md
   const getCurrentUserId = useCallback(async () => {
     const devUser = getCurrentDevUser();
     if (devUser) {
@@ -73,16 +85,7 @@ export const useRealTimeEngagement = () => {
     queryKey: ['learning-engagement-sessions'],
     queryFn: async () => {
       const userId = await getCurrentUserId();
-      
-      const { data, error } = await supabase
-        .from('learning_engagement_sessions')
-        .select('*')
-        .eq('user_id', userId)
-        .order('started_at', { ascending: false })
-        .limit(20);
-
-      if (error) throw error;
-      return data as LearningSession[];
+      return fetchLearningSessions(userId) as Promise<LearningSession[]>;
     },
     enabled: true
   });
@@ -92,16 +95,7 @@ export const useRealTimeEngagement = () => {
     queryKey: ['motivation-interventions'],
     queryFn: async () => {
       const userId = await getCurrentUserId();
-      
-      const { data, error } = await supabase
-        .from('motivation_interventions')
-        .select('*')
-        .eq('user_id', userId)
-        .order('suggested_at', { ascending: false })
-        .limit(10);
-
-      if (error) throw error;
-      return data as MotivationIntervention[];
+      return fetchMotivationInterventions(userId) as Promise<MotivationIntervention[]>;
     },
     enabled: true
   });
@@ -112,32 +106,14 @@ export const useRealTimeEngagement = () => {
       const userId = await getCurrentUserId();
       const devUser = getCurrentDevUser();
       
-      // Generate a valid UUID for courseId if needed
       const validCourseId = courseId && courseId.length === 36 && courseId.includes('-') 
         ? courseId 
         : crypto.randomUUID();
       
       if (devUser) {
-        // Use dev user function for dev users
-        const { data, error } = await supabase.rpc('dev_user_session_start', {
-          dev_user_id: userId,
-          course_id_param: validCourseId,
-          session_type_param: sessionType
-        });
-
-        if (error) throw error;
-        
-        // Fetch the created session
-        const { data: sessionData, error: fetchError } = await supabase
-          .from('learning_engagement_sessions')
-          .select('*')
-          .eq('id', data)
-          .single();
-          
-        if (fetchError) throw fetchError;
-        return sessionData as LearningSession;
+        const sessionId = await rpcDevUserSessionStart(userId, validCourseId, sessionType);
+        return fetchLearningSessionById(sessionId) as Promise<LearningSession>;
       } else {
-        // Regular authenticated user flow
         const sessionData = {
           user_id: userId,
           course_id: validCourseId,
@@ -149,22 +125,15 @@ export const useRealTimeEngagement = () => {
             scrolls: 0,
             pauses: [],
             navigation_events: []
-          },
+          } as Json,
           engagement_score: 0.0,
           completion_percentage: 0,
-          focus_events: [],
+          focus_events: [] as Json,
           learning_velocity: 0.0,
-          retention_indicators: {}
+          retention_indicators: {} as Json,
         };
 
-        const { data, error } = await supabase
-          .from('learning_engagement_sessions')
-          .insert(sessionData)
-          .select()
-          .single();
-
-        if (error) throw error;
-        return data as LearningSession;
+        return insertLearningSession(sessionData) as Promise<LearningSession>;
       }
     },
     onSuccess: (data) => {
@@ -200,14 +169,12 @@ export const useRealTimeEngagement = () => {
       focus_events = []
     } = metrics;
 
-    // Base engagement factors
-    const durationFactor = Math.min(duration_minutes / 45, 1); // Optimal 45 min sessions
+    const durationFactor = Math.min(duration_minutes / 45, 1);
     const activityFactor = Math.min((activity_data.clicks || 0) / (duration_minutes || 1), 1);
     const completionFactor = completion_percentage / 100;
     const difficultyFactor = difficulty_feedback ? Math.max(0, 1 - Math.abs(difficulty_feedback - 3) / 2) : 0.5;
     const focusFactor = Math.max(0, 1 - (focus_events.length / (duration_minutes || 1)));
 
-    // Weighted engagement score
     const score = (
       durationFactor * 0.2 +
       activityFactor * 0.2 +
@@ -240,33 +207,16 @@ export const useRealTimeEngagement = () => {
 
       const sessionMetricsData = {
         difficulty: finalMetrics.difficulty_feedback || 3,
-        engagement: Math.round(finalEngagementScore * 5), // Convert to 1-5 scale
+        engagement: Math.round(finalEngagementScore * 5),
         mastered_topics: finalMetrics.session_notes?.split('Mastered: ')[1]?.split('Struggled:')[0]?.trim(),
         struggled_topics: finalMetrics.session_notes?.split('Struggled: ')[1]?.trim(),
         ...finalMetrics
       };
 
       if (devUser) {
-        // Use dev user function for dev users
-        const { data, error } = await supabase.rpc('dev_user_session_end', {
-          dev_user_id: userId,
-          session_id_param: activeSession.id,
-          session_metrics: sessionMetricsData
-        });
-
-        if (error) throw error;
-        
-        // Fetch the updated session
-        const { data: sessionData, error: fetchError } = await supabase
-          .from('learning_engagement_sessions')
-          .select('*')
-          .eq('id', data)
-          .single();
-          
-        if (fetchError) throw fetchError;
-        return sessionData as LearningSession;
+        const updatedId = await rpcDevUserSessionEnd(userId, activeSession.id, sessionMetricsData as unknown as Json);
+        return fetchLearningSessionById(updatedId) as Promise<LearningSession>;
       } else {
-        // Regular authenticated user flow
         const updateData = {
           ended_at: endTime,
           duration_minutes: durationMinutes,
@@ -275,15 +225,7 @@ export const useRealTimeEngagement = () => {
           ...finalMetrics
         };
 
-        const { data, error } = await supabase
-          .from('learning_engagement_sessions')
-          .update(updateData)
-          .eq('id', activeSession.id)
-          .select()
-          .single();
-
-        if (error) throw error;
-        return data as LearningSession;
+        return updateLearningSession(activeSession.id, updateData) as Promise<LearningSession>;
       }
     },
     onSuccess: (data) => {
@@ -291,7 +233,6 @@ export const useRealTimeEngagement = () => {
       setSessionMetrics({});
       queryClient.invalidateQueries({ queryKey: ['learning-engagement-sessions'] });
       
-      // Generate motivation intervention if needed
       generateMotivationIntervention(data);
       
       toast({
@@ -313,24 +254,17 @@ export const useRealTimeEngagement = () => {
   const generateMotivationIntervention = useCallback(async (session: LearningSession) => {
     try {
       const userId = await getCurrentUserId();
-      
-      // Analyze session for intervention triggers
       const shouldIntervent = analyzeInterventionNeeds(session);
       
       if (shouldIntervent.intervention) {
-        const { data, error } = await supabase
-          .from('motivation_interventions')
-          .insert({
-            user_id: userId,
-            intervention_type: shouldIntervent.type,
-            trigger_conditions: shouldIntervent.triggers,
-            intervention_data: shouldIntervent.suggestion,
-            confidence_score: shouldIntervent.confidence
-          });
-
-        if (!error) {
-          queryClient.invalidateQueries({ queryKey: ['motivation-interventions'] });
-        }
+        await insertMotivationIntervention({
+          user_id: userId,
+          intervention_type: shouldIntervent.type,
+          trigger_conditions: shouldIntervent.triggers as Json,
+          intervention_data: shouldIntervent.suggestion as Json,
+          confidence_score: shouldIntervent.confidence,
+        });
+        queryClient.invalidateQueries({ queryKey: ['motivation-interventions'] });
       }
     } catch (error) {
       console.error('Error generating intervention:', error);
@@ -339,7 +273,6 @@ export const useRealTimeEngagement = () => {
 
   // Analyze if intervention is needed
   const analyzeInterventionNeeds = (session: LearningSession) => {
-    // Low engagement intervention
     if (session.engagement_score < 0.4) {
       return {
         intervention: true,
@@ -354,7 +287,6 @@ export const useRealTimeEngagement = () => {
       };
     }
 
-    // Session too long intervention
     if (session.duration_minutes > 90) {
       return {
         intervention: true,
@@ -369,7 +301,6 @@ export const useRealTimeEngagement = () => {
       };
     }
 
-    // Difficulty feedback intervention
     if (session.difficulty_feedback && (session.difficulty_feedback > 4 || session.difficulty_feedback < 2)) {
       return {
         intervention: true,
@@ -388,7 +319,7 @@ export const useRealTimeEngagement = () => {
       };
     }
 
-    return { intervention: false };
+    return { intervention: false } as const;
   };
 
   // Calculate current engagement metrics
@@ -411,7 +342,6 @@ export const useRealTimeEngagement = () => {
     const avgEngagement = recentSessions.reduce((sum, s) => sum + s.engagement_score, 0) / recentSessions.length;
     const avgCompletion = recentSessions.reduce((sum, s) => sum + s.completion_percentage, 0) / recentSessions.length;
 
-    // Calculate trends
     const recent5 = recentSessions.slice(0, 5);
     const previous5 = recentSessions.slice(5, 10);
     
@@ -425,7 +355,6 @@ export const useRealTimeEngagement = () => {
 
     const motivationTrend = recentAvgEngagement - previousAvgEngagement;
 
-    // Burnout risk calculation
     const longSessions = recentSessions.filter(s => s.duration_minutes > 120).length;
     const lowEngagementSessions = recentSessions.filter(s => s.engagement_score < 0.4).length;
     const burnoutRisk = Math.min(1, (longSessions * 0.3 + lowEngagementSessions * 0.2));
@@ -459,21 +388,16 @@ export const useRealTimeEngagement = () => {
   }, [activeSession, sessionMetrics, updateSessionMetrics]);
 
   return {
-    // Data
     sessions,
     interventions,
     activeSession,
     sessionMetrics,
     isLoading,
-    
-    // Actions
     startSession,
     endSession,
     updateSessionMetrics,
     trackActivity,
     calculateEngagementScore,
-    
-    // Computed
     engagementMetrics: calculateEngagementMetrics()
   };
 };

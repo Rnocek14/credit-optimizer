@@ -1,6 +1,10 @@
 import { useState, useCallback } from 'react';
-import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import {
+  rpcPredictEngagementDecline,
+  rpcGenerateAutonomousIntervention,
+  rpcUpdateMayaFeedbackModel,
+} from '@/shared/lib/api/engagement';
 
 interface RiskAssessment {
   risk_level: 'low' | 'medium' | 'high';
@@ -29,16 +33,10 @@ export function usePredictiveEngagement() {
   const predictEngagementDecline = useCallback(async (userId: string) => {
     setLoading(true);
     try {
-      const { data, error } = await supabase.rpc('predict_engagement_decline', {
-        target_user_id: userId
-      });
-
-      if (error) throw error;
-
+      const data = await rpcPredictEngagementDecline(userId);
       const riskAssessment = data as unknown as RiskAssessment;
       setLastRiskAssessment(riskAssessment);
 
-      // Show toast based on risk level
       const toastConfig = {
         low: { title: "Engagement Status: Healthy", description: "Learning patterns look good!", variant: "default" as const },
         medium: { title: "Engagement Status: Monitor", description: "Some concerning patterns detected", variant: "default" as const },
@@ -46,7 +44,6 @@ export function usePredictiveEngagement() {
       };
 
       toast(toastConfig[riskAssessment.risk_level]);
-
       return riskAssessment;
     } catch (error) {
       console.error('Error predicting engagement decline:', error);
@@ -63,12 +60,7 @@ export function usePredictiveEngagement() {
 
   const generateAutonomousIntervention = useCallback(async (userId: string, riskAssessment: RiskAssessment) => {
     try {
-      const { data, error } = await supabase.rpc('generate_autonomous_intervention', {
-        target_user_id: userId,
-        risk_assessment: riskAssessment as any
-      });
-
-      if (error) throw error;
+      const data = await rpcGenerateAutonomousIntervention(userId, riskAssessment);
 
       if (data) {
         toast({
@@ -97,12 +89,7 @@ export function usePredictiveEngagement() {
   const updateMayaFeedbackModel = useCallback(async (userId: string) => {
     setLoading(true);
     try {
-      const { data, error } = await supabase.rpc('update_maya_feedback_model', {
-        target_user_id: userId
-      });
-
-      if (error) throw error;
-
+      const data = await rpcUpdateMayaFeedbackModel(userId);
       const modelUpdate = data as unknown as ModelUpdate;
       setLastModelUpdate(modelUpdate);
 
@@ -128,24 +115,17 @@ export function usePredictiveEngagement() {
   const runFullPredictiveAnalysis = useCallback(async (userId: string) => {
     setLoading(true);
     try {
-      // Step 1: Predict engagement decline
       const riskAssessment = await predictEngagementDecline(userId);
       if (!riskAssessment) return null;
 
-      // Step 2: Generate intervention if needed
       let interventionId = null;
       if (riskAssessment.risk_level === 'high' || riskAssessment.risk_level === 'medium') {
         interventionId = await generateAutonomousIntervention(userId, riskAssessment);
       }
 
-      // Step 3: Update feedback model
       const modelUpdate = await updateMayaFeedbackModel(userId);
 
-      return {
-        riskAssessment,
-        interventionId,
-        modelUpdate
-      };
+      return { riskAssessment, interventionId, modelUpdate };
     } catch (error) {
       console.error('Error in full predictive analysis:', error);
       return null;

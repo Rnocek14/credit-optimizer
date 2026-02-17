@@ -16,3 +16,5 @@ export * from './telemetry';
 export * from './marketIntelligence';
 export * from './userState';
 export * from './tracks';
+export * from './engagement';
+export * from './progress';
