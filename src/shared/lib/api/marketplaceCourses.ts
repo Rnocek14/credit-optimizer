@@ -1,17 +1,7 @@
 import { supabase } from './client';
+import type { MarketplaceOptionLite } from '@/shared/types/domain/marketplace';
 
-export interface MarketplaceOptionLite {
-  id: string;
-  code: string;
-  title: string;
-  credits: number;
-  cost_usd?: number | null;
-  duration_weeks?: number | null;
-  cri_score?: number | null;
-  providerCode?: string | null;
-  providerType?: string | null;
-  level?: number | null;
-}
+export type { MarketplaceOptionLite };
 
 export async function fetchMarketplaceCoursesByTransferRules(
   acceptedCodes: string[]
@@ -28,11 +18,16 @@ export async function fetchMarketplaceCoursesByTransferRules(
   if (error) throw error;
   if (!courses?.length) return [];
 
-  const matchingCourses = (courses as any[]).filter((c: any) =>
+  // Filter to matching codes and map to lite shape
+  type CourseWithProvider = (typeof courses)[number] & {
+    providers: { provider_code: string; type: string } | null;
+  };
+
+  const matching = (courses as CourseWithProvider[]).filter(c =>
     acceptedCodes.includes(c.code)
   );
 
-  return matchingCourses.map((c: any) => ({
+  return matching.map(c => ({
     id: c.id,
     code: c.code,
     title: c.title,
@@ -40,8 +35,8 @@ export async function fetchMarketplaceCoursesByTransferRules(
     cost_usd: c.cost_usd,
     duration_weeks: c.duration_weeks,
     cri_score: c.cri_score ?? 0,
-    providerCode: c.providers?.provider_code,
-    providerType: c.providers?.type,
+    providerCode: c.providers?.provider_code ?? null,
+    providerType: c.providers?.type ?? null,
     level: c.level ?? 100,
   }));
 }
