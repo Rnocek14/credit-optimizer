@@ -71,3 +71,24 @@ export async function checkMentorAchievements(userId: string) {
 
   if (error) throw error;
 }
+
+export async function submitMentorFeedback(feedbackData: {
+  course_id: string;
+  student_id: string;
+  mentor_id: string;
+  rating: number;
+  feedback_text?: string;
+  course_quality_rating?: number;
+  learning_outcome_rating?: number;
+  would_recommend?: boolean;
+  completed_course?: boolean;
+}) {
+  const { data, error } = await supabase
+    .from('mentor_course_feedback')
+    .insert([feedbackData])
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}

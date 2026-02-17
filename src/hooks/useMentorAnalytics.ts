@@ -1,6 +1,14 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import {
+  fetchMentorMetrics as apiFetchMentorMetrics,
+  fetchMentorAchievements as apiFetchAchievements,
+  fetchMentorLeaderboard as apiFetchLeaderboard,
+  fetchMentorFeedback as apiFetchFeedback,
+  checkMentorAchievements as apiCheckAchievements,
+  submitMentorFeedback as apiSubmitFeedback,
+} from '@/shared/lib/api/mentorAnalytics';
 
 interface MentorMetrics {
   courses_reviewed: number;
@@ -56,80 +64,24 @@ export const useMentorAnalytics = () => {
   const { toast } = useToast();
 
   const fetchMentorMetrics = async (userId: string, startDate: Date, endDate: Date) => {
-    try {
-      const { data, error } = await supabase
-        .rpc('calculate_mentor_performance_metrics', {
-          mentor_user_id: userId,
-          start_date: startDate.toISOString(),
-          end_date: endDate.toISOString()
-        });
-
-      if (error) throw error;
-      return data?.[0] || null;
-    } catch (error) {
-      console.error('Error fetching mentor metrics:', error);
-      throw error;
-    }
+    return apiFetchMentorMetrics(userId, startDate.toISOString(), endDate.toISOString());
   };
 
   const fetchAchievements = async (userId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('mentor_achievements')
-        .select('*')
-        .eq('mentor_id', userId)
-        .order('earned_at', { ascending: false });
-
-      if (error) throw error;
-      return data || [];
-    } catch (error) {
-      console.error('Error fetching achievements:', error);
-      throw error;
-    }
+    return apiFetchAchievements(userId);
   };
 
-  const fetchLeaderboard = async (periodType: string = 'monthly', limit: number = 10) => {
-    try {
-      const { data, error } = await supabase
-        .from('mentor_leaderboard')
-        .select('*')
-        .eq('period_type', periodType)
-        .order('rank_position')
-        .limit(limit);
-
-      if (error) throw error;
-      return data || [];
-    } catch (error) {
-      console.error('Error fetching leaderboard:', error);
-      throw error;
-    }
+  const fetchLeaderboard = async (periodType: string = 'monthly') => {
+    return apiFetchLeaderboard(periodType);
   };
 
-  const fetchStudentFeedback = async (userId: string, startDate: Date, limit: number = 20) => {
-    try {
-      const { data, error } = await supabase
-        .from('mentor_course_feedback')
-        .select('*')
-        .eq('mentor_id', userId)
-        .gte('created_at', startDate.toISOString())
-        .order('created_at', { ascending: false })
-        .limit(limit);
-
-      if (error) throw error;
-      return data || [];
-    } catch (error) {
-      console.error('Error fetching feedback:', error);
-      throw error;
-    }
+  const fetchStudentFeedback = async (userId: string, startDate: Date) => {
+    return apiFetchFeedback(userId, startDate.toISOString());
   };
 
   const checkMentorAchievements = async (userId: string) => {
     try {
-      const { error } = await supabase.rpc('check_mentor_achievements', {
-        mentor_user_id: userId
-      });
-
-      if (error) throw error;
+      await apiCheckAchievements(userId);
 
       toast({
         title: "Achievements Updated",
@@ -151,10 +103,10 @@ export const useMentorAnalytics = () => {
   const fetchAllAnalyticsData = async (timeframe: string = 'monthly') => {
     try {
       setLoading(true);
+      // Auth call is an allowed exception per API_SEAMS.md
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
-      // Calculate date range based on timeframe
       const endDate = new Date();
       const startDate = new Date();
       
@@ -163,10 +115,9 @@ export const useMentorAnalytics = () => {
       } else if (timeframe === 'monthly') {
         startDate.setMonth(endDate.getMonth() - 1);
       } else {
-        startDate.setFullYear(2024, 0, 1); // All time
+        startDate.setFullYear(2024, 0, 1);
       }
 
-      // Fetch all data concurrently
       const [metricsData, achievementsData, leaderboardData, feedbackData] = await Promise.all([
         fetchMentorMetrics(user.id, startDate, endDate),
         fetchAchievements(user.id),
@@ -193,13 +144,7 @@ export const useMentorAnalytics = () => {
 
   const submitStudentFeedback = async (feedbackData: Omit<StudentFeedback, 'id' | 'created_at'>) => {
     try {
-      const { data, error } = await supabase
-        .from('mentor_course_feedback')
-        .insert([feedbackData])
-        .select()
-        .single();
-
-      if (error) throw error;
+      const data = await apiSubmitFeedback(feedbackData);
 
       toast({
         title: "Feedback Submitted",
@@ -219,14 +164,11 @@ export const useMentorAnalytics = () => {
   };
 
   return {
-    // State
     metrics,
     achievements,
     leaderboard,
     feedback,
     loading,
-
-    // Methods
     fetchAllAnalyticsData,
     fetchMentorMetrics,
     fetchAchievements,
@@ -234,8 +176,6 @@ export const useMentorAnalytics = () => {
     fetchStudentFeedback,
     checkMentorAchievements,
     submitStudentFeedback,
-
-    // Computed values
     totalPoints: achievements.reduce((sum, achievement) => sum + achievement.points_awarded, 0),
     latestAchievement: achievements[0] || null,
     approvalRate: metrics?.approval_rate || 0,

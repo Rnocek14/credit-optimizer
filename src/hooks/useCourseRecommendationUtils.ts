@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
-import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useCourseIntelligence } from './useCourseIntelligence';
+import { fetchCiCourseSummaries, logAiModelUsage } from '@/shared/lib/api/telemetry';
 
 interface CourseDetails {
   id: string;
@@ -40,19 +40,7 @@ export function useCourseRecommendationUtils() {
     setLoadingCourses(prev => ({ ...prev, [cacheKey]: true }));
 
     try {
-      const { data, error } = await supabase
-        .from('ci_courses')
-        .select(`
-          id, title, slug, url, difficulty, duration_hours,
-          platform:ci_platforms(id, slug, name, website_url),
-          instructor:ci_instructors(id, name, reputation)
-        `)
-        .in('id', courseIds)
-        .eq('active', true);
-
-      if (error) throw error;
-
-      const courses = data || [];
+      const courses = await fetchCiCourseSummaries(courseIds);
       setCourseCache(prev => ({ ...prev, [cacheKey]: courses }));
       return courses;
     } catch (error) {
@@ -80,14 +68,11 @@ export function useCourseRecommendationUtils() {
           duration: 4000,
         });
         
-        // Log telemetry event
-        await supabase.from('ai_model_usage').insert({
-          user_id: userId,
+        await logAiModelUsage({
+          userId,
           task: 'maya_course_save',
           route: 'maya_recommendations',
-          success: true,
-          function_name: 'course_save_action',
-          created_at: new Date().toISOString()
+          functionName: 'course_save_action',
         });
       }
       
@@ -105,24 +90,18 @@ export function useCourseRecommendationUtils() {
   }, [recordCourseEvent, toast]);
 
   const logRecommendationView = useCallback(async (userId: string, insightId: string, courseIds: string[], trackId?: string) => {
-    try {
-      await supabase.from('ai_model_usage').insert({
-        user_id: userId,
-        task: 'maya_reco_view',
-        route: 'maya_insights_card',
-        success: true,
-        function_name: 'recommendation_display',
-        complexity: JSON.stringify({
-          insight_id: insightId,
-          course_ids: courseIds,
-          track_id: trackId,
-          course_count: courseIds.length
-        }),
-        created_at: new Date().toISOString()
-      });
-    } catch (error) {
-      console.error('Failed to log recommendation view:', error);
-    }
+    await logAiModelUsage({
+      userId,
+      task: 'maya_reco_view',
+      route: 'maya_insights_card',
+      functionName: 'recommendation_display',
+      complexity: JSON.stringify({
+        insight_id: insightId,
+        course_ids: courseIds,
+        track_id: trackId,
+        course_count: courseIds.length,
+      }),
+    });
   }, []);
 
   const isCourseLoading = useCallback((courseIds: string[]) => {

@@ -59,9 +59,6 @@ function validateOptions(options: DbOption[]): void {
   const unknownKinds = options.filter(
     (o) => !VALID_OPTION_KINDS.has(o.option_kind)
   );
-  const unresolvedCount = options.filter(
-    (o) => !o.marketplace_courses && !o.edu_courses
-  ).length;
 
   if (brokenJoinCount > 0) {
     const msg = `[transformDbToV5] ${brokenJoinCount} options have stale "educational_courses" nested join — this table does not exist. Check query aliases.`;
@@ -76,11 +73,19 @@ function validateOptions(options: DbOption[]): void {
     );
   }
 
-  if (!ENV.PROD && unresolvedCount > 0 && options.length > 0) {
-    const pct = Math.round((unresolvedCount / options.length) * 100);
-    console.debug(
-      `[transformDbToV5] ${unresolvedCount}/${options.length} options (${pct}%) have no resolved course — these will be filtered out.`
-    );
+  // Only warn about unresolved refs when some options *were* hydrated
+  // (flat-fetch callers like useCareerV5Data intentionally pass unhydrated rows)
+  const hydratedAny = options.some((o) => o.edu_courses || o.marketplace_courses);
+  if (!ENV.PROD && hydratedAny) {
+    const unresolvedCount = options.filter(
+      (o) => !o.marketplace_courses && !o.edu_courses
+    ).length;
+    if (unresolvedCount > 0) {
+      const pct = Math.round((unresolvedCount / options.length) * 100);
+      console.debug(
+        `[transformDbToV5] ${unresolvedCount}/${options.length} options (${pct}%) have no resolved course — these will be filtered out.`
+      );
+    }
   }
 }
 
