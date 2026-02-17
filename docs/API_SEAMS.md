@@ -121,5 +121,13 @@ When moving a query to the API layer:
 |-------|----------------|----------------|--------|
 | `src/components/` | 0 | 0 | ✅ Clean |
 | `src/pages/` | 0 | 1 (DevLogin, infra) | ✅ Clean |
-| `src/hooks/` | ~8 `.from()` | ~12 `.rpc()` | 🔄 PR 10 target |
+| `src/hooks/` | ~3 `.from()` | ~4 `.rpc()` | 🔄 Batch E target |
 | `src/shared/lib/api/` | All | All | ✅ Canonical home |
+
+### Batch D modules added
+
+| Module | Covers |
+|--------|--------|
+| `telemetry.ts` | `logAiModelUsage`, `fetchCiCourseSummaries` |
+| `marketIntelligence.ts` | `fetchMarketTrendsRaw`, `fetchTopGrowingCareers`, `fetchSalaryInsightsRaw`, `fetchCareerPathTitle`, `fetchLocationDetails` |
+| `mentorAnalytics.ts` | `fetchMentorMetrics`, `fetchMentorAchievements`, `fetchMentorLeaderboard`, `fetchMentorFeedback`, `checkMentorAchievements`, `submitMentorFeedback` |
