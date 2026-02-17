@@ -50,5 +50,5 @@ export const V6_COPY = {
   selectDegree: 'Select Degree',
 
   // Why this ranking
-  whyThisRanking: 'Why this recommendation?',
+  whyThisRecommendation: 'Why this recommendation?',
 } as const;

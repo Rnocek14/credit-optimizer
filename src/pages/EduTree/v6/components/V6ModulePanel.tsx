@@ -100,7 +100,67 @@ function getRecommendationReasons(option: MarketplaceOption, moduleLabel: string
   return reasons;
 }
 
-// ── Main panel component ────────────────────────────────────
+// ── Top Recommendation Card (memoized reasons) ──────────────
+function TopRecommendationCard({
+  option,
+  moduleLabel,
+  anchorSchool,
+  isInBasket,
+  onAdd,
+}: {
+  option: MarketplaceOption;
+  moduleLabel: string;
+  anchorSchool?: string;
+  isInBasket: boolean;
+  onAdd: () => void;
+}) {
+  const reasons = useMemo(
+    () => getRecommendationReasons(option, moduleLabel, anchorSchool),
+    [option, moduleLabel, anchorSchool]
+  );
+
+  return (
+    <div className="rounded-lg border-2 border-primary/30 bg-primary/5 p-4 space-y-2">
+      <div className="flex items-center gap-2">
+        <Star className="h-4 w-4 text-primary fill-primary" />
+        <span className="text-sm font-semibold text-foreground">{V6_COPY.recommendedLabel}</span>
+      </div>
+      <div className="text-sm font-medium">{option.title}</div>
+      <div className="flex items-center gap-2 flex-wrap">
+        <CreditTypeBadge providerType={option.providerType} />
+        <span className="text-xs text-muted-foreground">{option.provider}</span>
+        <span className="text-xs font-semibold">
+          {option.cost_usd != null ? (option.cost_usd === 0 ? 'Free' : `$${option.cost_usd}`) : '—'}
+        </span>
+        {option.duration_weeks && (
+          <span className="text-xs text-muted-foreground">{option.duration_weeks} weeks</span>
+        )}
+      </div>
+      <p className="text-xs text-muted-foreground italic">
+        Recommended because: {reasons[0]?.toLowerCase()}.
+      </p>
+      <Collapsible>
+        <CollapsibleTrigger className="flex items-center gap-1 text-xs text-primary hover:underline mt-1">
+          <Info className="h-3 w-3" />
+          {V6_COPY.whyThisRecommendation}
+        </CollapsibleTrigger>
+        <CollapsibleContent className="mt-2">
+          <ul className="space-y-1 text-xs text-muted-foreground list-disc list-inside">
+            {reasons.map((reason, i) => (
+              <li key={i}>{reason}</li>
+            ))}
+          </ul>
+        </CollapsibleContent>
+      </Collapsible>
+      {!isInBasket && (
+        <Button size="sm" className="w-full mt-2" onClick={onAdd}>
+          Add to Plan
+        </Button>
+      )}
+    </div>
+  );
+}
+
 interface V6ModulePanelProps {
   open: boolean;
   onClose: () => void;
@@ -238,44 +298,13 @@ export function V6ModulePanel({
 
             {/* Top recommendation card */}
             {topOption && !isComplete && (
-              <div className="rounded-lg border-2 border-primary/30 bg-primary/5 p-4 space-y-2">
-                <div className="flex items-center gap-2">
-                   <Star className="h-4 w-4 text-primary fill-primary" />
-                  <span className="text-sm font-semibold text-foreground">{V6_COPY.recommendedLabel}</span>
-                </div>
-                <div className="text-sm font-medium">{topOption.title}</div>
-                <div className="flex items-center gap-2 flex-wrap">
-                  <CreditTypeBadge providerType={topOption.providerType} />
-                  <span className="text-xs text-muted-foreground">{topOption.provider}</span>
-                  <span className="text-xs font-semibold">
-                    {topOption.cost_usd != null ? (topOption.cost_usd === 0 ? 'Free' : `$${topOption.cost_usd}`) : '—'}
-                  </span>
-                  {topOption.duration_weeks && (
-                    <span className="text-xs text-muted-foreground">{topOption.duration_weeks} weeks</span>
-                  )}
-                </div>
-                <p className="text-xs text-muted-foreground italic">
-                  Recommended because: {getRecommendationReasons(topOption, moduleLabel, anchorSchool)[0]?.toLowerCase()}.
-                </p>
-                <Collapsible>
-                  <CollapsibleTrigger className="flex items-center gap-1 text-xs text-primary hover:underline mt-1">
-                    <Info className="h-3 w-3" />
-                    {V6_COPY.whyThisRanking}
-                  </CollapsibleTrigger>
-                  <CollapsibleContent className="mt-2">
-                    <ul className="space-y-1 text-xs text-muted-foreground list-disc list-inside">
-                      {getRecommendationReasons(topOption, moduleLabel, anchorSchool).map((reason, i) => (
-                        <li key={i}>{reason}</li>
-                      ))}
-                    </ul>
-                  </CollapsibleContent>
-                </Collapsible>
-                {!basket.some(b => b.courseId === topOption.courseId) && (
-                  <Button size="sm" className="w-full mt-2" onClick={() => handleAdd(topOption)}>
-                    Add to Plan
-                  </Button>
-                )}
-              </div>
+              <TopRecommendationCard
+                option={topOption}
+                moduleLabel={moduleLabel}
+                anchorSchool={anchorSchool}
+                isInBasket={basket.some(b => b.courseId === topOption.courseId)}
+                onAdd={() => handleAdd(topOption)}
+              />
             )}
 
             {/* Sort control */}
