@@ -1,9 +1,8 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useCrossHubIntegration } from './useCrossHubIntegration';
-import { useUnifiedRecommendations } from './useUnifiedRecommendations';
-import { useSkillGaps } from './useSkillGaps';
+import { useIntelligenceLayer } from './useIntelligenceLayer';
 import { useGamification } from './useGamification';
-import { UnifiedRecommendation } from '@/types/recommendations';
+import type { IntelligenceRecommendation } from '@/shared/types/intelligence';
 import { SaveToPlanItem } from '@/types/plan';
 import { parseTimeEstimateToMinutes } from '@/utils/time';
 import { telemetry } from '@/lib/telemetry';
@@ -51,8 +50,16 @@ export interface UnstickData {
 }
 
 export function useSmartTodayDashboard(userId?: string) {
-  const { data: recommendations = [], isLoading: isLoadingRecommendations } = useUnifiedRecommendations(userId);
-  const { data: skillGaps = [] } = useSkillGaps(userId);
+  // ── Intelligence Layer replaces useUnifiedRecommendations + useSkillGaps ──
+  const {
+    recommendations,
+    topRecommendation,
+    quickWins: intelligenceQuickWins,
+    criticalGaps,
+    skillGaps,
+    isLoading: isLoadingIntelligence,
+  } = useIntelligenceLayer(userId);
+
   const { saveToPlan } = useCrossHubIntegration();
   
   const { 
@@ -76,10 +83,10 @@ export function useSmartTodayDashboard(userId?: string) {
       timeEstimate: topRec.timeEstimate,
       difficulty: topRec.priority === 'critical' ? 'advanced' : 
                  topRec.priority === 'high' ? 'intermediate' : 'beginner',
-      type: topRec.type,
-      actions: getActionsForType(topRec.type, topRec.actions),
-      criBoost: topRec.criBoost,
-      criExplanation: topRec.criExplanation
+      type: topRec.type as SmartNextStep['type'],
+      actions: getActionsForType(topRec.type as SmartNextStep['type'], topRec.actions),
+      criBoost: topRec.criContribution ? Math.round(topRec.criContribution * 100) : undefined,
+      criExplanation: topRec.criExplanation,
     };
   }, [recommendations]);
 
@@ -90,6 +97,7 @@ export function useSmartTodayDashboard(userId?: string) {
     return recommendations
       .filter((rec, i) => {
         if (i === 0) return false; // skip Next Step
+        if (rec.durationHours != null) return rec.durationHours <= 1;
         const mins = parseTimeEstimateToMinutes(rec.timeEstimate);
         return mins !== null && mins >= 30 && mins <= 60;
       })
@@ -100,10 +108,10 @@ export function useSmartTodayDashboard(userId?: string) {
         description: rec.description,
         timeEstimate: rec.timeEstimate || '30 min',
         priority: rec.priority,
-        type: rec.type,
+        type: rec.type as QuickWin['type'],
         actions: rec.actions,
-        criBoost: rec.criBoost,
-        criExplanation: rec.criExplanation
+        criBoost: rec.criContribution ? Math.round(rec.criContribution * 100) : undefined,
+        criExplanation: rec.criExplanation,
       }));
   }, [recommendations]);
 
@@ -259,7 +267,7 @@ export function useSmartTodayDashboard(userId?: string) {
     quickWins,
     currentStreak,
     unstickData,
-    isLoading: isLoadingRecommendations || isLoadingGamification,
+    isLoading: isLoadingIntelligence || isLoadingGamification,
     actions: {
       handleNextStepAction,
       handleQuickWinAction,
@@ -269,8 +277,8 @@ export function useSmartTodayDashboard(userId?: string) {
 }
 
 function getActionsForType(
-  type: UnifiedRecommendation['type'], 
-  originalActions: UnifiedRecommendation['actions']
+  type: SmartNextStep['type'], 
+  originalActions: IntelligenceRecommendation['actions']
 ): SmartNextStep['actions'] {
   switch (type) {
     case 'skill_gap':
