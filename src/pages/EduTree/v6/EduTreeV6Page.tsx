@@ -420,13 +420,18 @@ export default function EduTreeV6Page() {
           onPlanChange={handlePlanChange}
           currentTemplateId={templateId}
           onDegreeChange={(newId) => {
-            if (basket.length > 0) {
-              const confirmed = window.confirm('Switching degrees will reset your current plan layout. Continue?');
+            const hasItems = basket.length > 0;
+            if (hasItems) {
+              const confirmed = window.confirm('Switching degrees will replace your current plan layout with the new degree template. Continue?');
               if (!confirmed) return;
             }
             navigate(`/edu-tree-v6?templateId=${newId}`);
             setExpandedYears({ 1: true, 2: false, 3: false, 4: false });
-            toast.success('Degree switched', { description: 'Your plan was updated to the new template.' });
+            toast.success('Degree switched', {
+              description: hasItems
+                ? 'Your plan was replaced with the new degree template.'
+                : 'Your selected courses are still in your plan.',
+            });
           }}
         />
 

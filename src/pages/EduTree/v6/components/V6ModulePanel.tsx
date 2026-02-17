@@ -100,6 +100,13 @@ function getRecommendationReasons(option: MarketplaceOption, moduleLabel: string
   return reasons;
 }
 
+// ── Sort-aware label for top card ────────────────────────────
+const SORT_LABELS: Record<string, string> = {
+  'best-match': 'Top Recommendation',
+  cheapest: 'Lowest Cost Option',
+  shortest: 'Fastest Option',
+};
+
 // ── Top Recommendation Card (memoized reasons) ──────────────
 function TopRecommendationCard({
   option,
@@ -107,23 +114,27 @@ function TopRecommendationCard({
   anchorSchool,
   isInBasket,
   onAdd,
+  sortBy,
 }: {
   option: MarketplaceOption;
   moduleLabel: string;
   anchorSchool?: string;
   isInBasket: boolean;
   onAdd: () => void;
+  sortBy: string;
 }) {
   const reasons = useMemo(
     () => getRecommendationReasons(option, moduleLabel, anchorSchool),
     [option, moduleLabel, anchorSchool]
   );
 
+  const cardLabel = SORT_LABELS[sortBy] ?? V6_COPY.recommendedLabel;
+
   return (
     <div className="rounded-lg border-2 border-primary/30 bg-primary/5 p-4 space-y-2">
       <div className="flex items-center gap-2">
         <Star className="h-4 w-4 text-primary fill-primary" />
-        <span className="text-sm font-semibold text-foreground">{V6_COPY.recommendedLabel}</span>
+        <span className="text-sm font-semibold text-foreground">{cardLabel}</span>
       </div>
       <div className="text-sm font-medium">{option.title}</div>
       <div className="flex items-center gap-2 flex-wrap">
@@ -304,6 +315,7 @@ export function V6ModulePanel({
                 anchorSchool={anchorSchool}
                 isInBasket={basket.some(b => b.courseId === topOption.courseId)}
                 onAdd={() => handleAdd(topOption)}
+                sortBy={sortBy}
               />
             )}
 
