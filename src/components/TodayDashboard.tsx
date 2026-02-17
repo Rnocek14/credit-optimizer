@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Calendar, Clock, Target, TrendingUp, Zap, Users, BookOpen, Award, Flame, AlertCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { useActiveTrackStore } from '@/stores/useActiveTrackStore';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSecureAuth } from '@/hooks/useSecureAuth';
 import { useSmartTodayDashboard } from '@/hooks/useSmartTodayDashboard';
@@ -48,6 +49,7 @@ export function TodayDashboard({ onNextStepClick }: TodayDashboardProps) {
   
   // Use secure authentication with proper session management
   const { user, isLoading: authLoading, hasPermission } = useSecureAuth();
+  const { activeTrackId } = useActiveTrackStore();
   
   // All hooks must be called before any conditional returns to maintain consistent hook order
   const {
@@ -57,7 +59,7 @@ export function TodayDashboard({ onNextStepClick }: TodayDashboardProps) {
     unstickData,
     isLoading: smartDashboardLoading,
     actions
-  } = useSmartTodayDashboard(user?.id);
+  } = useSmartTodayDashboard(user?.id, activeTrackId);
 
   const { getCurrentStreak, getLongestStreak, metrics } = useGamification(user?.id);
   const { data: userLevel } = useQuery({
