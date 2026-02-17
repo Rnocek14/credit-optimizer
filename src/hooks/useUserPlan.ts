@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { addCourseToUserPlan } from '@/shared/lib/api/userPlanCourses';
+import { invalidateEduTreePlan } from '@/shared/lib/intelligence/invalidation';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
@@ -85,14 +86,7 @@ export function useAddCourseToPlan() {
       });
     },
     onSuccess: (_, variables) => {
-      // Phase 3: Invalidate EduTree-related queries
-      queryClient.invalidateQueries({ queryKey: ['user-plan-courses', variables.planId] });
-      queryClient.invalidateQueries({ queryKey: ['user-plan-selections', variables.planId] });
-      queryClient.invalidateQueries({ queryKey: ['edu-courses'] });
-      queryClient.invalidateQueries({ queryKey: ['requirement-blocks'] });
-      queryClient.invalidateQueries({ queryKey: ['batch-requirement-options'] });
-      queryClient.invalidateQueries({ queryKey: ['req-opt-batch'] });
-      
+      invalidateEduTreePlan(queryClient, variables.planId);
       console.log('[Course Mutation] Invalidated EduTree queries after adding course');
       
       toast({
@@ -124,14 +118,7 @@ export function useRemoveCourseFromPlan() {
       if (error) throw error;
     },
     onSuccess: () => {
-      // Phase 3: Invalidate EduTree-related queries
-      queryClient.invalidateQueries({ queryKey: ['user-plan-courses'] });
-      queryClient.invalidateQueries({ queryKey: ['user-plan-selections'] });
-      queryClient.invalidateQueries({ queryKey: ['edu-courses'] });
-      queryClient.invalidateQueries({ queryKey: ['requirement-blocks'] });
-      queryClient.invalidateQueries({ queryKey: ['batch-requirement-options'] });
-      queryClient.invalidateQueries({ queryKey: ['req-opt-batch'] });
-      
+      invalidateEduTreePlan(queryClient);
       console.log('[Course Mutation] Invalidated EduTree queries after removing course');
       
       toast({

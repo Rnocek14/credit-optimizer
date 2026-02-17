@@ -6,6 +6,7 @@
  */
 
 import type { QueryClient } from '@tanstack/react-query';
+import { QUERY_KEYS } from '@/lib/queryKeys';
 
 /**
  * Invalidate ALL intelligence queries for a specific user.
@@ -98,4 +99,20 @@ export function invalidateOnPlanMutation(
   } else {
     invalidateUserIntelligence(qc, userId);
   }
+}
+
+/**
+ * Invalidate EduTree plan data after course add/remove.
+ * Single source of truth — used by useAddCourseToPlan, useMarketplaceActions,
+ * useRemoveCourseFromPlan, etc.
+ */
+export function invalidateEduTreePlan(qc: QueryClient, planId?: string) {
+  if (planId) {
+    qc.invalidateQueries({ queryKey: QUERY_KEYS.USER_PLAN_COURSES(planId) });
+    qc.invalidateQueries({ queryKey: QUERY_KEYS.USER_PLAN_SELECTIONS(planId) });
+  }
+  // Prefix match: ['edutree', 'req-opt-batch'] clears all batch queries
+  qc.invalidateQueries({ queryKey: QUERY_KEYS.BATCH_REQUIREMENT_OPTIONS([]) });
+  qc.invalidateQueries({ queryKey: QUERY_KEYS.EDU_COURSES() });
+  qc.invalidateQueries({ queryKey: QUERY_KEYS.REQUIREMENT_BLOCKS() });
 }
