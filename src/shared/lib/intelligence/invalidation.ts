@@ -15,7 +15,7 @@ export function invalidateUserIntelligence(qc: QueryClient, userId: string) {
   qc.invalidateQueries({
     predicate: (query) =>
       query.queryKey[0] === 'intelligence' &&
-      query.queryKey.includes(userId),
+      query.queryKey[1] === userId,
   });
 }
 
@@ -31,8 +31,8 @@ export function invalidateTrackIntelligence(
   qc.invalidateQueries({
     predicate: (query) =>
       query.queryKey[0] === 'intelligence' &&
-      query.queryKey.includes(userId) &&
-      query.queryKey.includes(trackId),
+      query.queryKey[1] === userId &&
+      query.queryKey[2] === trackId,
   });
 }
 
@@ -60,13 +60,14 @@ export function invalidateOnTrackSwitch(
   // Invalidate all intelligence for user (covers both old & new track)
   invalidateUserIntelligence(qc, userId);
 
-  // Also invalidate track-scoped input queries
+  // Also invalidate track-scoped input queries (positional)
   if (oldTrackId) {
     qc.invalidateQueries({
       predicate: (query) =>
         (query.queryKey[0] === 'progress' || query.queryKey[0] === 'crosshub') &&
-        query.queryKey.includes(userId) &&
-        query.queryKey.includes(oldTrackId),
+        query.queryKey[1] !== undefined &&
+        query.queryKey[2] === userId &&
+        query.queryKey[3] === oldTrackId,
     });
   }
 }
@@ -84,7 +85,7 @@ export function invalidateOnPlanMutation(
   qc.invalidateQueries({
     predicate: (query) =>
       query.queryKey[0] === 'plan' &&
-      query.queryKey.includes(userId),
+      query.queryKey[2] === userId,
   });
 
   // Intelligence (recommendations may shift)

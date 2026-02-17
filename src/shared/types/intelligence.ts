@@ -8,6 +8,23 @@
 import type { SkillGap, SkillPriority } from '@/types/skill';
 import type { RecoPriority, RecoType } from '@/types/recommendations';
 
+// ─── Typed Maps (no raw Record) ─────────────────────────────────
+
+export type JsonPrimitive = string | number | boolean | null;
+export type JsonValue = JsonPrimitive | JsonValue[] | { [k: string]: JsonValue };
+
+/** Typed params for action buttons — no `any` leakage. */
+export type ParamsMap = Record<string, JsonPrimitive>;
+
+/** Typed metadata bag — structured but flexible. */
+export type MetaMap = Record<string, JsonValue>;
+
+/** Scoring weight keys are fixed — typo-proof and exhaustive. */
+export type ScoringWeights = Record<'cri' | 'market' | 'skillGap' | 'maya' | 'reputation', number>;
+
+/** Priority → numeric score map, keyed by RecoPriority. */
+export type PriorityScoreMap = Record<RecoPriority, number>;
+
 // ─── User Context (assembled once per computation) ──────────────
 
 export interface UserIntelligenceContext {
@@ -87,9 +104,9 @@ export interface RecommendationCandidate {
     label: string;
     href?: string;
     on?: 'discover' | 'plan' | 'progress' | 'contribute';
-    params?: Record<string, string | number | boolean>;
+    params?: ParamsMap;
   }>;
-  meta?: Record<string, unknown>;
+  meta?: MetaMap;
 }
 
 /**
@@ -138,7 +155,7 @@ export interface IntelligenceRecommendation {
     label: string;
     href?: string;
     on?: 'discover' | 'plan' | 'progress' | 'contribute';
-    params?: Record<string, string | number | boolean>;
+    params?: ParamsMap;
   }>;
 
   // Timestamps
@@ -178,7 +195,7 @@ export interface IntelligenceMeta {
   computedAt: string;
   staleAt: string;
   trackId?: string;
-  scoringWeights: Record<string, number>;
+  scoringWeights: ScoringWeights;
   candidateCount: number;
   selectedCount: number;
 }
@@ -214,7 +231,7 @@ export const normalize = (v: number, min: number, max: number): number =>
 
 // ─── Default Scoring Weights ────────────────────────────────────
 
-export const DEFAULT_SCORING_WEIGHTS: Record<string, number> = {
+export const DEFAULT_SCORING_WEIGHTS: ScoringWeights = {
   cri: 0.35,
   market: 0.25,
   skillGap: 0.25,
@@ -225,7 +242,7 @@ export const DEFAULT_SCORING_WEIGHTS: Record<string, number> = {
 /**
  * Maps a RecoPriority to a numeric value for scoring.
  */
-export const PRIORITY_SCORE: Record<RecoPriority, number> = {
+export const PRIORITY_SCORE: PriorityScoreMap = {
   critical: 4,
   high: 3,
   medium: 2,
