@@ -81,13 +81,17 @@ export async function fetchProgramRequirements(programId: string) {
   return data ?? [];
 }
 
-export async function fetchRequirementOptionsWithCourses() {
+/**
+ * Fetch requirement options (flat — no join).
+ *
+ * `option_ref_id` is a polymorphic reference resolved by `option_kind`,
+ * so Supabase nested selects won't work here. Consumers should resolve
+ * courses via separate lookups (e.g. fetchEduCourses) and join in-memory.
+ */
+export async function fetchAllRequirementOptions() {
   const { data, error } = await supabase
     .from('requirement_options')
-    .select(`
-      *,
-      educational_courses (*)
-    `);
+    .select('*');
 
   if (error) throw error;
   return data ?? [];

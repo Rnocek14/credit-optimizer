@@ -4,7 +4,7 @@ import { getAnchorPolicy } from '@/lib/degree/institutionPolicies';
 import {
   fetchProgramRequirements,
   fetchRequirementBlocks,
-  fetchRequirementOptionsWithCourses,
+  fetchAllRequirementOptions,
 } from '@/shared/lib/api/edutree';
 
 /**
@@ -25,7 +25,7 @@ export function useCareerV5Data(programId: string, anchorSchool: string) {
       const [modules, blocks, allOptions] = await Promise.all([
         fetchProgramRequirements(programId),
         fetchRequirementBlocks({ ordered: false }),
-        fetchRequirementOptionsWithCourses(),
+        fetchAllRequirementOptions(),
       ]);
 
       const anchorPolicy = getAnchorPolicy(anchorSchool);
