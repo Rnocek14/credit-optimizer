@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState, useMemo, Component, ReactNode, startTransition } from 'react';
+import React, { useRef, useEffect, useState, useMemo, startTransition } from 'react';
 import { Drawer as DrawerPrimitive } from "vaul";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
@@ -42,37 +42,8 @@ import { buildYearPlan, YEAR_PRESETS } from '../engine/yearPlanner';
 import { getAnchorPolicyFromConstraints } from '../utils/anchorPolicyAdapter';
 import { useRequirementBlocks } from '../hooks/useRequirementBlocks';
 
-// Fix 1A: Error Boundary Component
-class ErrorBoundary extends Component<{ children: ReactNode; fallback: ReactNode }> {
-  state = { hasError: false, error: null as Error | null };
-
-  static getDerivedStateFromError(error: Error) {
-    return { hasError: true, error };
-  }
-
-  componentDidCatch(error: Error, errorInfo: any) {
-    console.error('[ErrorBoundary] Caught error:', error, errorInfo);
-    try {
-      void trackTelemetryEvent({
-        task: 'module_templates_crash',
-        scope: 'error',
-        complexity: {
-          message: error.message,
-          stack: error.stack?.substring(0, 200)
-        }
-      });
-    } catch (telemetryError) {
-      console.warn('[Telemetry] Failed to track error:', telemetryError);
-    }
-  }
-
-  render() {
-    if (this.state.hasError) {
-      return this.props.fallback;
-    }
-    return this.props.children;
-  }
-}
+// Error boundary — uses canonical EnhancedErrorBoundary (imported at top of file)
+import { EnhancedErrorBoundary } from '@/components/enhanced/EnhancedErrorBoundary';
 
 interface MarketplaceOption {
   id: string;
@@ -1862,30 +1833,34 @@ function MarketplaceContent(props: DecisionDockRouterProps) {
           </TabsList>
           
           <TabsContent value="templates" className="mt-4">
-            <ErrorBoundary
-              fallback={
+            <EnhancedErrorBoundary
+              name="module-templates"
+              fallback={({ retry }) => (
                 <div className="text-center py-8 border border-destructive/50 rounded-lg bg-destructive/5">
                   <p className="text-sm font-medium text-destructive mb-2">Templates temporarily unavailable</p>
-                  <p className="text-xs text-muted-foreground mb-3">Try the Individual Courses tab instead</p>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => {
-                      const coursesTab = document.querySelector('[value="courses"]') as HTMLElement;
-                      coursesTab?.click();
-                    }}
-                  >
-                    Switch to Courses
-                  </Button>
+                  <p className="text-xs text-muted-foreground mb-3">Try again, or switch to Individual Courses</p>
+                  <div className="flex gap-2 justify-center">
+                    <Button size="sm" variant="outline" onClick={retry}>Try Again</Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        const coursesTab = document.querySelector('[value="courses"]') as HTMLElement;
+                        coursesTab?.click();
+                      }}
+                    >
+                      Switch to Courses
+                    </Button>
+                  </div>
                 </div>
-              }
+              )}
             >
               <ModuleTemplatesPanel
                 module={moduleData}
                 allModules={allModules}
                 onAddTemplate={handleAddTemplate}
               />
-            </ErrorBoundary>
+            </EnhancedErrorBoundary>
           </TabsContent>
           
           <TabsContent value="courses" className="mt-4">

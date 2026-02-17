@@ -1,6 +1,9 @@
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import {
+  fetchUserStats, fetchROIInsight, fetchTimelineEvents, fetchSkillSnapshot,
+  type UserStats, type ROIInsight, type TimelineEvent, type SkillSnapshot,
+} from "@/shared/lib/api";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -31,36 +34,7 @@ import { testPivotToRoadmapWorkflow, testMultiplePivotScenarios } from "@/lib/pi
 import { testPivotRoadmapIdUniqueness, validateVisualUniqueness } from "@/lib/skillTreeValidation";
 import TutorialTip from "@/tutorial/TutorialTip";
 
-interface UserStats {
-  totalXp: number;
-  badgeCount: number;
-  activeGoals: number;
-  transcriptCount: number;
-  savedCoursesCount: number;
-}
-
-interface ROIInsight {
-  careerTitle: string;
-  locationName: string;
-  locationEmoji: string;
-  projectedSalary: number;
-  salaryUplift: number;
-  roi: number;
-  lqi: number;
-}
-
-interface TimelineEvent {
-  date: string;
-  type: 'xp' | 'badge' | 'goal';
-  title: string;
-  value: number;
-}
-
-interface SkillSnapshot {
-  topSkills: string[];
-  recommendedSkills: string[];
-  completedCourseTags: string[];
-}
+// Types now imported from shared/lib/api
 
 export default function ResumeAnalyticsDashboard() {
   const [userId, setUserId] = useState<string | null>(null);
@@ -81,25 +55,7 @@ export default function ResumeAnalyticsDashboard() {
   // Fetch user stats
   const { data: userStats, isLoading: statsLoading } = useQuery({
     queryKey: ["userStats", userId],
-    queryFn: async (): Promise<UserStats> => {
-      if (!userId) throw new Error("No user ID");
-
-      const [xpData, badgesData, goalsData, transcriptsData, coursesData] = await Promise.all([
-        supabase.from("user_xp").select("total_xp").eq("user_id", userId).maybeSingle(),
-        supabase.from("user_badges").select("id").eq("user_id", userId),
-        supabase.from("career_goals").select("id").eq("user_id", userId).eq("active", true),
-        supabase.from("transcripts").select("id").eq("user_id", userId),
-        supabase.from("saved_courses").select("id").eq("user_id", userId)
-      ]);
-
-      return {
-        totalXp: xpData.data?.total_xp || 0,
-        badgeCount: badgesData.data?.length || 0,
-        activeGoals: goalsData.data?.length || 0,
-        transcriptCount: transcriptsData.data?.length || 0,
-        savedCoursesCount: coursesData.data?.length || 0
-      };
-    },
+    queryFn: () => fetchUserStats(userId!),
     enabled: !!userId
   });
 
@@ -107,33 +63,10 @@ export default function ResumeAnalyticsDashboard() {
   const { data: roiInsight, isLoading: roiLoading } = useQuery({
     queryKey: ["roiInsight", userId],
     queryFn: async (): Promise<ROIInsight | null> => {
-      if (!userId) throw new Error("No user ID");
-
+      if (!userId) return null;
       const profile = await getUserProfile(userId);
       if (!profile?.location) return null;
-
-      // Get user's selected career and location
-      const [careerData, locationData] = await Promise.all([
-        supabase.from("career_tracks").select("title").eq("user_id", userId).limit(1).maybeSingle(),
-        supabase.from("locations").select("label, emoji").ilike("label", `%${profile.location}%`).limit(1).maybeSingle()
-      ]);
-
-      if (!careerData.data || !locationData.data) return null;
-
-      // Mock ROI calculation (would be more sophisticated in production)
-      const baseSalary = 60000;
-      const projectedSalary = baseSalary * 1.3; // 30% uplift assumption
-      const salaryUplift = projectedSalary - baseSalary;
-
-      return {
-        careerTitle: careerData.data.title,
-        locationName: locationData.data.label,
-        locationEmoji: locationData.data.emoji,
-        projectedSalary,
-        salaryUplift,
-        roi: 250, // Mock ROI percentage
-        lqi: 85    // Mock Location Quality Index
-      };
+      return fetchROIInsight(userId, profile.location);
     },
     enabled: !!userId
   });
@@ -141,96 +74,14 @@ export default function ResumeAnalyticsDashboard() {
   // Fetch timeline events
   const { data: timelineEvents, isLoading: timelineLoading } = useQuery({
     queryKey: ["timelineEvents", userId],
-    queryFn: async (): Promise<TimelineEvent[]> => {
-      if (!userId) throw new Error("No user ID");
-
-      const [xpEvents, badgeEvents, goalEvents] = await Promise.all([
-        supabase.from("xp_events").select("created_at, xp_amount, reason").eq("user_id", userId).order("created_at", { ascending: false }).limit(10),
-        supabase.from("user_badges").select("earned_at, badges(name)").eq("user_id", userId).order("earned_at", { ascending: false }).limit(5),
-        supabase.from("career_goals").select("created_at, title").eq("user_id", userId).order("created_at", { ascending: false }).limit(5)
-      ]);
-
-      const events: TimelineEvent[] = [];
-
-      // Add XP events
-      xpEvents.data?.forEach(event => {
-        events.push({
-          date: event.created_at,
-          type: 'xp',
-          title: event.reason || 'XP earned',
-          value: event.xp_amount
-        });
-      });
-
-      // Add badge events
-      badgeEvents.data?.forEach(event => {
-        events.push({
-          date: event.earned_at,
-          type: 'badge',
-          title: `Earned: ${(event.badges as any)?.name || 'Badge'}`,
-          value: 1
-        });
-      });
-
-      // Add goal events
-      goalEvents.data?.forEach(event => {
-        events.push({
-          date: event.created_at,
-          type: 'goal',
-          title: `Goal set: ${event.title}`,
-          value: 1
-        });
-      });
-
-      return events.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 10);
-    },
+    queryFn: () => fetchTimelineEvents(userId!),
     enabled: !!userId
   });
 
   // Fetch skill snapshot
   const { data: skillSnapshot, isLoading: skillsLoading } = useQuery({
     queryKey: ["skillSnapshot", userId],
-    queryFn: async (): Promise<SkillSnapshot> => {
-      if (!userId) throw new Error("No user ID");
-
-      const [transcriptsData, coursesData] = await Promise.all([
-        supabase.from("transcripts").select("skill_tags").eq("user_id", userId),
-        supabase.from("saved_courses").select("recommended_courses(skill_tags)").eq("user_id", userId)
-      ]);
-
-      // Extract top skills from transcripts
-      const allSkills: string[] = [];
-      transcriptsData.data?.forEach(transcript => {
-        if (transcript.skill_tags) {
-          allSkills.push(...transcript.skill_tags);
-        }
-      });
-
-      const skillCounts = allSkills.reduce((acc, skill) => {
-        acc[skill] = (acc[skill] || 0) + 1;
-        return acc;
-      }, {} as Record<string, number>);
-
-      const topSkills = Object.entries(skillCounts)
-        .sort(([,a], [,b]) => b - a)
-        .slice(0, 5)
-        .map(([skill]) => skill);
-
-      // Extract course tags
-      const courseTags: string[] = [];
-      coursesData.data?.forEach(course => {
-        const courseData = course.recommended_courses as any;
-        if (courseData?.skill_tags) {
-          courseTags.push(...courseData.skill_tags);
-        }
-      });
-
-      return {
-        topSkills,
-        recommendedSkills: ['React', 'TypeScript', 'Node.js', 'Python', 'AWS'], // Mock data
-        completedCourseTags: [...new Set(courseTags)].slice(0, 8)
-      };
-    },
+    queryFn: () => fetchSkillSnapshot(userId!),
     enabled: !!userId
   });
 

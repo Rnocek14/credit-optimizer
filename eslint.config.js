@@ -198,5 +198,22 @@ export default tseslint.config(
         }]
       }]
     }
+  },
+
+  // ══════════════════════════════════════════════════════════════
+  // PR 7: Prevent rogue ErrorBoundary class definitions
+  // ══════════════════════════════════════════════════════════════
+  {
+    files: ["src/**/*.{ts,tsx}"],
+    ignores: ["src/components/enhanced/EnhancedErrorBoundary.tsx"],
+    rules: {
+      "no-restricted-syntax": [
+        "warn",
+        {
+          selector: "ClassDeclaration[id.name='ErrorBoundary']",
+          message: "Do not create new ErrorBoundary classes. Use EnhancedErrorBoundary from @/components/enhanced/EnhancedErrorBoundary."
+        }
+      ]
+    }
   }
 );

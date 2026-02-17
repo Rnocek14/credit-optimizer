@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
+import { fetchPhase1TestResults } from '@/shared/lib/api';
 import { useToast } from '@/hooks/use-toast';
 
 interface SmartGoal {
@@ -62,21 +63,16 @@ export function Phase1TestPanel() {
 
   const testDatabaseSetup = async () => {
     try {
-      const { data, error } = await supabase.from('phase1_test_results').select('*');
-      
-      if (error) {
-        console.error('Database test error:', error);
-        toast({ title: 'Database Error', description: error.message, variant: 'destructive' });
-        return;
-      }
+      const data = await fetchPhase1TestResults();
 
       console.log('Database test results:', data);
       toast({ 
         title: 'Database Connected', 
-        description: `Found ${data?.length || 0} test records` 
+        description: `Found ${data.length} test records` 
       });
     } catch (error) {
       console.error('Database connection error:', error);
+      toast({ title: 'Database Error', description: (error as Error).message, variant: 'destructive' });
     }
   };
 
