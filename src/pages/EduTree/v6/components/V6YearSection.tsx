@@ -27,6 +27,7 @@ export function V6YearSection({
     // Collapsed state — compact summary
     return (
       <button
+        data-year={year}
         onClick={onToggle}
         className="w-full text-left px-6 py-4 rounded-lg border-2 border-dashed border-muted-foreground/20 bg-muted/30 hover:bg-muted/50 hover:border-muted-foreground/30 transition-all group cursor-pointer"
       >
@@ -55,5 +56,5 @@ export function V6YearSection({
   }
 
   // Expanded — render children (YearCard + ModuleCards from V5)
-  return <div>{children}</div>;
+  return <div data-year={year}>{children}</div>;
 }
