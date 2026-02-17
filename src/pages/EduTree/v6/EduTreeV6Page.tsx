@@ -52,6 +52,7 @@ import canonicalCourses from '@/fixtures/prereqs/canonical-courses.json';
 // ── V5 components (reused as-is) ────────────────────────────
 import { YearCard } from '@/pages/EduTree/v5/components/YearCard';
 import { ModuleCard } from '@/pages/EduTree/v5/components/ModuleCard';
+import { V6ModuleCard } from './components/V6ModuleCard';
 import { ScopePanelRouter } from '@/pages/EduTree/v5/components/ScopePanelRouter';
 import { GraphView } from '@/pages/EduTree/v5/components/GraphView';
 import { UnassignedBucket } from '@/pages/EduTree/v5/components/UnassignedBucket';
@@ -530,18 +531,11 @@ export default function EduTreeV6Page() {
                           modulesSummary={yearData.modulesSummary}
                         />
                         <div className="modules-stack mt-4 space-y-3">
-                          {yearModules.map((module, idx) => (
-                            <ModuleCard
+                          {yearModules.map((module) => (
+                            <V6ModuleCard
                               key={module.id}
-                              {...module}
-                              onToggle={() => toggleModule(module.id)}
-                              onCourseClick={() => {}}
+                              module={module}
                               onOpenPanel={() => handleOpenPanel(module, year)}
-                              yearEarned={getYearEarnedCredits(year)}
-                              yearCap={YEAR_CREDIT_CAP}
-                              allModules={yearModules}
-                              moduleIndex={idx}
-                              showDeadEndReasons={false}
                             />
                           ))}
                         </div>
