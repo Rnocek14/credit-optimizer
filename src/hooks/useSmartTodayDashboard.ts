@@ -60,6 +60,17 @@ export function useSmartTodayDashboard(userId?: string, trackId?: string) {
     isLoading: isLoadingIntelligence,
   } = useIntelligenceLayer(userId, trackId);
 
+  // Dev-only: confirm track-scoped intelligence pipe at runtime
+  if (import.meta.env.DEV) {
+    console.debug('[Today:Intelligence]', {
+      userId,
+      trackId,
+      recCount: recommendations.length,
+      quickWins: intelligenceQuickWins.length,
+      criticalGaps: criticalGaps.length,
+    });
+  }
+
   const { saveToPlan } = useCrossHubIntegration();
   
   const { 
