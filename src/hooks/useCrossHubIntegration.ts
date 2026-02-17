@@ -8,7 +8,7 @@ import { useUnifiedData } from '@/contexts/UnifiedDataContext';
 import { useEnhancedGoals } from '@/hooks/useEnhancedGoals';
 import { useEnhancedMaya } from '@/hooks/useEnhancedMaya';
 import { useMayaCRIIntegration } from '@/hooks/useMayaCRIIntegration';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { UnifiedRecommendation, RecoPriority } from '@/types/recommendations';
@@ -17,6 +17,13 @@ import { QUERY_KEYS } from '@/lib/queryKeys';
 import { useSkillGaps } from '@/hooks/useSkillGaps';
 import { getCurrentUser, ensureValidSession } from '@/lib/auth';
 import type { SkillGap } from '@/types/skill';
+import {
+  insertSavedPlanItem,
+  insertUserAchievement,
+  fetchUserAchievements,
+  insertCelebrationMoment,
+  insertCompletionTrigger,
+} from '@/shared/lib/api/crosshub';
 
 // Re-export SkillGap type for components
 export type { SkillGap };
@@ -68,27 +75,21 @@ export const useCrossHubIntegration = (userId?: string) => {
       const criBoost = item.criBoost || 0;
       const criExplanation = item.criExplanation || '';
 
-      const { data, error } = await supabase
-        .from('saved_plan_items')
-        .insert({
-          user_id: userId,
-          item_type: item.type,
-          item_id: item.id,
-          title: item.title,
-          description: item.description,
-          metadata: item.metadata || {},
-          priority: item.priority || 'medium',
-          estimated_time_to_complete: item.timeEstimate,
-          skill_tags: item.skillTags || [],
-          added_from_hub: 'discover',
-          status: 'pending',
-          cri_boost_score: criBoost,
-          cri_explanation: criExplanation
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
+      const data = await insertSavedPlanItem({
+        user_id: userId,
+        item_type: item.type,
+        item_id: item.id,
+        title: item.title,
+        description: item.description,
+        metadata: item.metadata || {},
+        priority: item.priority || 'medium',
+        estimated_time_to_complete: item.timeEstimate,
+        skill_tags: item.skillTags || [],
+        added_from_hub: 'discover',
+        status: 'pending',
+        cri_boost_score: criBoost,
+        cri_explanation: criExplanation
+      });
 
       // The micro-goal creation is now handled by the database trigger
       // But we still need to trigger Maya analysis for recommendations
@@ -171,7 +172,7 @@ export const useCrossHubIntegration = (userId?: string) => {
 
     try {
       // Award XP and update progress
-      await supabase.from('user_achievements').insert({
+      await insertUserAchievement({
         user_id: userId,
         achievement_type: 'milestone_completed',
         milestone_id: milestoneData.id,
@@ -180,7 +181,7 @@ export const useCrossHubIntegration = (userId?: string) => {
       });
 
       // Create celebration moment
-      await supabase.from('celebration_moments').insert({
+      await insertCelebrationMoment({
         user_id: userId,
         celebration_type: 'milestone_completed',
         trigger_data: {
@@ -196,7 +197,7 @@ export const useCrossHubIntegration = (userId?: string) => {
       });
 
       // Create completion trigger for next step recommendations
-      await supabase.from('completion_triggers').insert({
+      await insertCompletionTrigger({
         user_id: userId,
         trigger_type: 'milestone_completed',
         source_data: {
@@ -229,10 +230,7 @@ export const useCrossHubIntegration = (userId?: string) => {
   const checkContributeAccess = useCallback(async () => {
     if (!userId) return false;
 
-    const { data: achievements } = await supabase
-      .from('user_achievements')
-      .select('*')
-      .eq('user_id', userId);
+    const achievements = await fetchUserAchievements(userId);
 
     const totalXP = achievements?.reduce((sum, ach) => sum + (ach.xp_awarded || 0), 0) || 0;
     const completedGoals = userGoals?.filter(g => 

@@ -3,6 +3,13 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { getCurrentDevUser } from '@/lib/devUserSetup';
+import {
+  fetchMayaFeedbackCorrelations,
+  fetchMayaFeedbackCorrelationById,
+  insertMayaFeedbackCorrelation,
+  updateMayaFeedbackCorrelation,
+  rpcDevUserSubmitMayaFeedback,
+} from '@/shared/lib/api/mayaFeedback';
 
 export interface MayaFeedbackCorrelation {
   id: string;
@@ -58,16 +65,7 @@ export const useEnhancedMayaFeedback = () => {
     queryKey: ['maya-feedback-correlations'],
     queryFn: async () => {
       const userId = await getCurrentUserId();
-      
-      const { data, error } = await supabase
-        .from('maya_feedback_correlations')
-        .select('*')
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false })
-        .limit(50);
-
-      if (error) throw error;
-      return data as MayaFeedbackCorrelation[];
+      return fetchMayaFeedbackCorrelations(userId, 50) as Promise<MayaFeedbackCorrelation[]>;
     },
     enabled: true
   });
@@ -80,29 +78,21 @@ export const useEnhancedMayaFeedback = () => {
       
       if (devUser) {
         // Use dev user function for dev users
-        const { data, error } = await supabase.rpc('dev_user_submit_maya_feedback', {
-          dev_user_id: userId,
-          feedback_type_param: feedback.type,
-          feedback_data_param: feedback.data,
-          user_rating_param: feedback.rating || null
-        });
+        const id = await rpcDevUserSubmitMayaFeedback(
+          userId,
+          feedback.type,
+          feedback.data,
+          feedback.rating || null
+        );
 
-        if (error) throw error;
-        
         // Fetch the created feedback
-        const { data: feedbackData, error: fetchError } = await supabase
-          .from('maya_feedback_correlations')
-          .select('*')
-          .eq('id', data)
-          .single();
-          
-        if (fetchError) throw fetchError;
+        const feedbackData = await fetchMayaFeedbackCorrelationById(id);
         return feedbackData as MayaFeedbackCorrelation;
       } else {
         // Regular authenticated user flow
         const initialEffectiveness = feedback.rating ? feedback.rating / 5.0 : 0.5;
         
-        const correlationData = {
+        const data = await insertMayaFeedbackCorrelation({
           user_id: userId,
           feedback_type: feedback.type,
           feedback_data: feedback.data,
@@ -112,19 +102,12 @@ export const useEnhancedMayaFeedback = () => {
             user_feedback: feedback.feedback,
             submission_timestamp: new Date().toISOString()
           },
-          correlation_score: 0.0, // Will be calculated later with more data
+          correlation_score: 0.0,
           feedback_effectiveness: initialEffectiveness,
           time_to_action_hours: null,
           long_term_impact: {}
-        };
+        });
 
-        const { data, error } = await supabase
-          .from('maya_feedback_correlations')
-          .insert(correlationData)
-          .select()
-          .single();
-
-        if (error) throw error;
         return data as MayaFeedbackCorrelation;
       }
     },
@@ -172,14 +155,7 @@ export const useEnhancedMayaFeedback = () => {
         updateData.correlation_score = correlationScore;
       }
 
-      const { data, error } = await supabase
-        .from('maya_feedback_correlations')
-        .update(updateData)
-        .eq('id', correlationId)
-        .select()
-        .single();
-
-      if (error) throw error;
+      const data = await updateMayaFeedbackCorrelation(correlationId, updateData);
       return data as MayaFeedbackCorrelation;
     },
     onSuccess: () => {
@@ -189,34 +165,29 @@ export const useEnhancedMayaFeedback = () => {
 
   // Calculate correlation score based on outcome metrics
   const calculateCorrelationScore = (outcomeMetrics: Record<string, any>): number | null => {
-    // Base correlation on measurable outcomes
     let score = 0;
     let factors = 0;
 
-    // User rating correlation
     if (outcomeMetrics.user_rating) {
       score += outcomeMetrics.user_rating / 5.0;
       factors++;
     }
 
-    // Course completion improvement
     if (outcomeMetrics.completion_rate_before && outcomeMetrics.completion_rate_after) {
       const improvement = outcomeMetrics.completion_rate_after - outcomeMetrics.completion_rate_before;
-      score += Math.max(0, Math.min(1, improvement / 0.2)); // 20% improvement = full score
+      score += Math.max(0, Math.min(1, improvement / 0.2));
       factors++;
     }
 
-    // Engagement improvement
     if (outcomeMetrics.engagement_before && outcomeMetrics.engagement_after) {
       const improvement = outcomeMetrics.engagement_after - outcomeMetrics.engagement_before;
-      score += Math.max(0, Math.min(1, improvement / 0.3)); // 30% improvement = full score
+      score += Math.max(0, Math.min(1, improvement / 0.3));
       factors++;
     }
 
-    // Learning velocity improvement
     if (outcomeMetrics.velocity_before && outcomeMetrics.velocity_after) {
       const improvement = outcomeMetrics.velocity_after - outcomeMetrics.velocity_before;
-      score += Math.max(0, Math.min(1, improvement / 0.25)); // 25% improvement = full score
+      score += Math.max(0, Math.min(1, improvement / 0.25));
       factors++;
     }
 
@@ -230,7 +201,6 @@ export const useEnhancedMayaFeedback = () => {
     const totalFeedback = feedbackHistory.length;
     const avgEffectiveness = feedbackHistory.reduce((sum, f) => sum + f.feedback_effectiveness, 0) / totalFeedback;
 
-    // Group by feedback type and calculate effectiveness
     const typeGroups = feedbackHistory.reduce((groups, feedback) => {
       const type = feedback.feedback_type;
       if (!groups[type]) groups[type] = [];
@@ -245,19 +215,16 @@ export const useEnhancedMayaFeedback = () => {
       }))
       .sort((a, b) => b.effectiveness - a.effectiveness);
 
-    // Calculate engagement rate (feedback with outcomes vs total)
     const feedbackWithOutcomes = feedbackHistory.filter(f => 
-      Object.keys(f.outcome_metrics).length > 1 // More than just initial submission
+      Object.keys(f.outcome_metrics).length > 1
     );
     const engagementRate = feedbackWithOutcomes.length / totalFeedback;
 
-    // Calculate average response time for feedbacks with time_to_action
     const feedbackWithResponseTime = feedbackHistory.filter(f => f.time_to_action_hours !== null);
     const avgResponseTime = feedbackWithResponseTime.length > 0
       ? feedbackWithResponseTime.reduce((sum, f) => sum + (f.time_to_action_hours || 0), 0) / feedbackWithResponseTime.length
       : 0;
 
-    // Calculate improvement trends (compare last 30 days vs previous 30 days)
     const now = new Date();
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
     const sixtyDaysAgo = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
@@ -299,14 +266,12 @@ export const useEnhancedMayaFeedback = () => {
     try {
       const userId = await getCurrentUserId();
 
-      // Find existing feedback correlation or create new one
       const existingFeedback = feedbackHistory?.find(f => 
         f.feedback_type === 'recommendation' &&
         JSON.stringify(f.feedback_data) === JSON.stringify(recommendationData)
       );
 
       if (existingFeedback) {
-        // Update existing correlation with outcome
         await updateFeedbackOutcome.mutateAsync({
           correlationId: existingFeedback.id,
           outcomeMetrics: {
@@ -316,7 +281,6 @@ export const useEnhancedMayaFeedback = () => {
           }
         });
       } else {
-        // Create new correlation entry
         await submitFeedback.mutateAsync({
           type: 'recommendation',
           data: recommendationData,
