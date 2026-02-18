@@ -10949,10 +10949,12 @@ export type Database = {
           extracted_json: Json | null
           id: string
           institution_code: string
+          is_truncated: boolean | null
           page_hash: string | null
           page_markdown: string | null
           program_catalog_id: string
           program_slug: string
+          prompt_chars_used: number | null
           started_at: string | null
           status: string
           token_count: number | null
@@ -10968,10 +10970,12 @@ export type Database = {
           extracted_json?: Json | null
           id?: string
           institution_code: string
+          is_truncated?: boolean | null
           page_hash?: string | null
           page_markdown?: string | null
           program_catalog_id: string
           program_slug: string
+          prompt_chars_used?: number | null
           started_at?: string | null
           status?: string
           token_count?: number | null
@@ -10987,10 +10991,12 @@ export type Database = {
           extracted_json?: Json | null
           id?: string
           institution_code?: string
+          is_truncated?: boolean | null
           page_hash?: string | null
           page_markdown?: string | null
           program_catalog_id?: string
           program_slug?: string
+          prompt_chars_used?: number | null
           started_at?: string | null
           status?: string
           token_count?: number | null
