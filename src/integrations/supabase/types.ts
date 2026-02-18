@@ -4672,14 +4672,18 @@ export type Database = {
         Row: {
           area: string | null
           code: string
+          code_norm: string | null
           created_at: string
           credits: number
           description: string | null
+          extracted_at: string | null
           id: string
+          institution_code: string
           is_capstone: boolean
           is_core: boolean
           learning_outcomes: string[] | null
           level_year: number
+          source_url: string | null
           term: string | null
           title: string
           updated_at: string
@@ -4687,14 +4691,18 @@ export type Database = {
         Insert: {
           area?: string | null
           code: string
+          code_norm?: string | null
           created_at?: string
           credits?: number
           description?: string | null
+          extracted_at?: string | null
           id?: string
+          institution_code?: string
           is_capstone?: boolean
           is_core?: boolean
           learning_outcomes?: string[] | null
           level_year?: number
+          source_url?: string | null
           term?: string | null
           title: string
           updated_at?: string
@@ -4702,14 +4710,18 @@ export type Database = {
         Update: {
           area?: string | null
           code?: string
+          code_norm?: string | null
           created_at?: string
           credits?: number
           description?: string | null
+          extracted_at?: string | null
           id?: string
+          institution_code?: string
           is_capstone?: boolean
           is_core?: boolean
           learning_outcomes?: string[] | null
           level_year?: number
+          source_url?: string | null
           term?: string | null
           title?: string
           updated_at?: string
@@ -10717,6 +10729,7 @@ export type Database = {
           credits_needed: number | null
           hidden: boolean | null
           id: string
+          is_residency_required: boolean
           is_virtual: boolean | null
           k: number | null
           level_year: number
@@ -10736,6 +10749,7 @@ export type Database = {
           credits_needed?: number | null
           hidden?: boolean | null
           id?: string
+          is_residency_required?: boolean
           is_virtual?: boolean | null
           k?: number | null
           level_year: number
@@ -10755,6 +10769,7 @@ export type Database = {
           credits_needed?: number | null
           hidden?: boolean | null
           id?: string
+          is_residency_required?: boolean
           is_virtual?: boolean | null
           k?: number | null
           level_year?: number
@@ -10919,6 +10934,74 @@ export type Database = {
             columns: ["parent_block_id"]
             isOneToOne: false
             referencedRelation: "requirement_placeholders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      requirements_scrape_runs: {
+        Row: {
+          blocks_written: number | null
+          catalog_url: string
+          completed_at: string | null
+          courses_written: number | null
+          created_at: string
+          error_message: string | null
+          extracted_json: Json | null
+          id: string
+          institution_code: string
+          page_hash: string | null
+          page_markdown: string | null
+          program_catalog_id: string
+          program_slug: string
+          started_at: string | null
+          status: string
+          token_count: number | null
+          warnings: Json | null
+        }
+        Insert: {
+          blocks_written?: number | null
+          catalog_url: string
+          completed_at?: string | null
+          courses_written?: number | null
+          created_at?: string
+          error_message?: string | null
+          extracted_json?: Json | null
+          id?: string
+          institution_code: string
+          page_hash?: string | null
+          page_markdown?: string | null
+          program_catalog_id: string
+          program_slug: string
+          started_at?: string | null
+          status?: string
+          token_count?: number | null
+          warnings?: Json | null
+        }
+        Update: {
+          blocks_written?: number | null
+          catalog_url?: string
+          completed_at?: string | null
+          courses_written?: number | null
+          created_at?: string
+          error_message?: string | null
+          extracted_json?: Json | null
+          id?: string
+          institution_code?: string
+          page_hash?: string | null
+          page_markdown?: string | null
+          program_catalog_id?: string
+          program_slug?: string
+          started_at?: string | null
+          status?: string
+          token_count?: number | null
+          warnings?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "requirements_scrape_runs_program_catalog_id_fkey"
+            columns: ["program_catalog_id"]
+            isOneToOne: false
+            referencedRelation: "program_catalog"
             referencedColumns: ["id"]
           },
         ]
