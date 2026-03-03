@@ -6,6 +6,8 @@ import { CheckCircle, AlertTriangle, TrendingUp, ArrowRight } from 'lucide-react
 import { Link } from 'react-router-dom';
 import { useSkillGaps } from '@/hooks/useSkillGaps';
 import { useCareerReadiness } from '@/hooks/useCareerReadiness';
+import { useActivePlan } from '@/hooks/useActivePlan';
+import { useTargetCareer } from '@/hooks/useTargetCareer';
 import { useMemo, useState } from 'react';
 import type { SkillGap } from '@/types/skill';
 
@@ -30,8 +32,14 @@ interface SkillsSummaryProps {
 }
 
 export function SkillsSummary({ courseHistory = [], userId }: SkillsSummaryProps) {
+  const { data: activePlan } = useActivePlan();
+  const { data: targetCareer } = useTargetCareer(activePlan?.target_career_id);
   const { data: skillGaps = [], isLoading: gapsLoading } = useSkillGaps(userId);
-  const { criScore, isLoading: criLoading } = useCareerReadiness({ userId, enabled: !!userId });
+  const { criScore, isLoading: criLoading } = useCareerReadiness({
+    userId,
+    targetJobId: activePlan?.target_career_id ?? undefined,
+    enabled: !!userId,
+  });
   const [showAll, setShowAll] = useState(false);
 
   const completedCount = courseHistory.filter(c => isCompleted(c.status)).length;
@@ -70,7 +78,7 @@ export function SkillsSummary({ courseHistory = [], userId }: SkillsSummaryProps
           <CardHeader className="pb-2">
             <CardTitle className="text-base flex items-center gap-2">
               <TrendingUp className="h-4 w-4 text-primary" />
-              Readiness Score
+              {targetCareer ? `${targetCareer.title} Readiness` : 'Readiness Score'}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -78,9 +86,11 @@ export function SkillsSummary({ courseHistory = [], userId }: SkillsSummaryProps
               <>
                 <p className="text-3xl font-bold">{criScore.overall}%</p>
                 <p className="text-sm text-muted-foreground mt-1">
-                  {criScore.overall >= 70
-                    ? "You're on track for your target role"
-                    : 'Keep building skills to improve your score'}
+                  {targetCareer
+                    ? `${criScore.overall >= 70 ? 'On track' : 'Building toward'} ${targetCareer.title}`
+                    : criScore.overall >= 70
+                      ? "You're on track for your target role"
+                      : 'Keep building skills to improve your score'}
                 </p>
               </>
             ) : (

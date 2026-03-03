@@ -10,9 +10,16 @@ interface V6HeaderProps {
   onPlanChange: (planId: string) => void;
   currentTemplateId: string | null;
   onDegreeChange: (templateId: string) => void;
+  targetCareerName?: string | null;
 }
 
-export function V6Header({ degreeTitle, activePlanId, onPlanChange, currentTemplateId, onDegreeChange }: V6HeaderProps) {
+export function V6Header({ degreeTitle, activePlanId, onPlanChange, currentTemplateId, onDegreeChange, targetCareerName }: V6HeaderProps) {
+  const subtitle = !activePlanId
+    ? V6_COPY.noPlan
+    : targetCareerName
+      ? V6_COPY.buildingPlanForCareer(targetCareerName)
+      : V6_COPY.buildingPlan;
+
   return (
     <div className="mb-8">
       <div className="flex items-center justify-between">
@@ -25,7 +32,7 @@ export function V6Header({ degreeTitle, activePlanId, onPlanChange, currentTempl
               {degreeTitle || 'Degree Planner'}
             </h1>
             <p className="text-sm text-muted-foreground">
-              {activePlanId ? V6_COPY.buildingPlan : V6_COPY.noPlan}
+              {subtitle}
             </p>
           </div>
         </div>

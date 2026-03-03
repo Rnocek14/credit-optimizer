@@ -14856,6 +14856,7 @@ export type Database = {
           metadata: Json | null
           name: string
           program_id: string
+          target_career_id: string | null
           target_graduation: string | null
           track_id: string | null
           updated_at: string | null
@@ -14868,6 +14869,7 @@ export type Database = {
           metadata?: Json | null
           name: string
           program_id: string
+          target_career_id?: string | null
           target_graduation?: string | null
           track_id?: string | null
           updated_at?: string | null
@@ -14880,12 +14882,21 @@ export type Database = {
           metadata?: Json | null
           name?: string
           program_id?: string
+          target_career_id?: string | null
           target_graduation?: string | null
           track_id?: string | null
           updated_at?: string | null
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "user_plans_target_career_id_fkey"
+            columns: ["target_career_id"]
+            isOneToOne: false
+            referencedRelation: "career_paths"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_preferences: {
         Row: {

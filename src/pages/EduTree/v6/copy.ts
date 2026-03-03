@@ -39,6 +39,7 @@ export const V6_COPY = {
   
   // Header
   buildingPlan: 'Building your degree plan',
+  buildingPlanForCareer: (careerName: string) => `Building your path to ${careerName}`,
   noPlan: 'Select or create a plan to get started',
   
   // Banner stack

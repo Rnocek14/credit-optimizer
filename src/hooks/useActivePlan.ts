@@ -14,6 +14,7 @@ interface ActivePlan {
   id: string;
   name: string;
   program_id: string;
+  target_career_id: string | null;
 }
 
 export function useActivePlan() {
@@ -25,7 +26,7 @@ export function useActivePlan() {
 
       const { data, error } = await supabase
         .from('user_plans')
-        .select('id, name, program_id')
+        .select('id, name, program_id, target_career_id')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
         .limit(1)
