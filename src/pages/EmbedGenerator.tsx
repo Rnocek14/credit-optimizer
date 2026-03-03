@@ -11,7 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Copy, ExternalLink, Eye, Code } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { HubNavigation } from '@/components/HubNavigation';
+// HubNavigation now provided by AppShell at route level
 
 export default function EmbedGenerator() {
   const navigate = useNavigate();
@@ -145,7 +145,7 @@ export default function EmbedGenerator() {
   if (loading) {
     return (
       <div className="min-h-screen bg-background">
-        <HubNavigation />
+        
         <div className="container mx-auto px-4 py-8">
           <div className="text-center">Loading...</div>
         </div>
@@ -156,7 +156,7 @@ export default function EmbedGenerator() {
   if (!profile) {
     return (
       <div className="min-h-screen bg-background">
-        <HubNavigation />
+        
         <div className="container mx-auto px-4 py-8">
           <Card>
             <CardContent className="text-center py-8">
@@ -176,7 +176,7 @@ export default function EmbedGenerator() {
 
   return (
     <div className="min-h-screen bg-background">
-      <HubNavigation />
+      
       <div className="container mx-auto px-4 py-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold mb-2">Embed Your Resume</h1>

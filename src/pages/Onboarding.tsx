@@ -13,7 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Loader2, User, Target, MapPin } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { HubNavigation } from "@/components/HubNavigation";
+// HubNavigation now provided by AppShell at route level
 import OnboardingConfirmation from "@/components/OnboardingConfirmation";
 import { LinkedInImport } from "@/components/LinkedInImport";
 
@@ -202,7 +202,7 @@ export default function Onboarding() {
 
   return (
     <>
-      <HubNavigation />
+      
       <div className="min-h-screen bg-background py-4 md:py-8">
         <div className="container max-w-2xl mx-auto px-4">
           <div className="text-center mb-6 md:mb-8">

@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 import { Building, Users, BarChart3, GraduationCap, Settings, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { HubNavigation } from "@/components/HubNavigation";
+// HubNavigation now provided by AppShell at route level
 
 const institutionFeatures = [
   { id: "overview", title: "Institution Overview", description: "View institutional metrics and KPIs", icon: BarChart3, href: "/institution/overview", color: "text-blue-600" },
@@ -16,7 +16,7 @@ const institutionFeatures = [
 export default function InstitutionHub() {
   return (
     <div className="min-h-screen bg-background">
-      <HubNavigation />
+      
       <main className="container mx-auto px-4 py-8">
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold text-foreground mb-4">Institution Hub</h1>

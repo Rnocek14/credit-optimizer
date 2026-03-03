@@ -20,7 +20,7 @@ import {
 } from 'lucide-react';
 import { useCourseIntelligence, type DiscoveredCourse } from '@/hooks/useCourseIntelligence';
 import { useUnifiedData } from '@/contexts/UnifiedDataContext';
-import { HubNavigation } from '@/components/HubNavigation';
+// HubNavigation now provided by AppShell at route level
 import { safeOpenExternal } from '@/components/ui/SafeExternalLink';
 
 export default function CourseDiscovery() {
@@ -70,7 +70,7 @@ export default function CourseDiscovery() {
 
   return (
     <div className="min-h-screen bg-background">
-      <HubNavigation />
+      
       
       <main className="container mx-auto px-4 py-8">
         <div className="text-center mb-8">

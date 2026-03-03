@@ -1,4 +1,3 @@
-import { HubNavigation } from "@/components/HubNavigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -54,11 +53,10 @@ export default function PlanHub() {
   return (
     <div className="min-h-screen bg-background">
       <Helmet>
-        <title>Degree Plan – Your Saved Plan | PathfindAI</title>
+        <title>Degree Plan – Your Saved Plan | Pivot</title>
         <meta name="description" content="Manage your degree plan, track credits, costs, and progress toward graduation." />
         <link rel="canonical" href={`${window.location.origin}/plan`} />
       </Helmet>
-      <HubNavigation />
 
       <div className="container mx-auto px-4 py-8 max-w-4xl">
         <div className="mb-8">

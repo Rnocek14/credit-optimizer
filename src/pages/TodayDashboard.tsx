@@ -1,4 +1,3 @@
-import { HubNavigation } from "@/components/HubNavigation";
 import { TodayDashboard } from "@/components/TodayDashboard";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,11 +9,10 @@ export default function TodayDashboardPage() {
   return (
     <>
       <Helmet>
-        <title>Today Dashboard – Personalized Focus | PathfindAI</title>
+        <title>Today – Your Daily Focus | Pivot</title>
         <meta name="description" content="View your personalized daily recommendations, quick wins, and learning streak on the Today dashboard." />
         <link rel="canonical" href={`${window.location.origin}/today`} />
       </Helmet>
-      <HubNavigation />
       <div className="container mx-auto px-4 py-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold mb-2">Today's Focus</h1>

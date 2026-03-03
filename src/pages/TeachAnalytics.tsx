@@ -7,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Trophy, Star, Target, TrendingUp, Clock, Users, Award, MessageSquare } from 'lucide-react';
-import { HubNavigation } from '@/components/HubNavigation';
+// HubNavigation now provided by AppShell at route level
 import { useToast } from '@/hooks/use-toast';
 import {
   fetchMentorMetrics,
@@ -133,7 +133,7 @@ const TeachAnalytics: React.FC = () => {
   if (loading) {
     return (
       <div className="min-h-screen bg-background">
-        <HubNavigation />
+        
         <div className="container mx-auto px-4 py-8">
           <div className="flex items-center justify-center h-64">
             <div className="text-center">
@@ -148,7 +148,7 @@ const TeachAnalytics: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <HubNavigation />
+      
 
       <div className="container mx-auto px-4 py-8">
         <div className="flex justify-between items-center mb-6">

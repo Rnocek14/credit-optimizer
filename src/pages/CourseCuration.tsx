@@ -20,7 +20,7 @@ import {
 } from 'lucide-react';
 import { useCourseIntelligence, type CurationQueueItem } from '@/hooks/useCourseIntelligence';
 import { useUnifiedData } from '@/contexts/UnifiedDataContext';
-import { HubNavigation } from '@/components/HubNavigation';
+// HubNavigation now provided by AppShell at route level
 import { supabase } from '@/integrations/supabase/client';
 import { sanitizeCourseUrl } from '@/lib/urlValidation';
 
@@ -146,7 +146,7 @@ export default function CourseCuration() {
 
   return (
     <div className="min-h-screen bg-background">
-      <HubNavigation />
+      
       
       <main className="container mx-auto px-4 py-8">
         <div className="text-center mb-8">

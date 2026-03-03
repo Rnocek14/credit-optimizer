@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { HubNavigation } from "@/components/HubNavigation";
+// HubNavigation now provided by AppShell at route level
 import { useTeaching, type TeachingCourse } from "@/hooks/useTeaching";
 import { toast } from "sonner";
 
@@ -56,7 +56,7 @@ export default function TeachCourses() {
   if (loading) {
     return (
       <div className="min-h-screen bg-background">
-        <HubNavigation />
+        
         <div className="container mx-auto px-4 py-8">
           <div className="animate-pulse space-y-4">
             <div className="h-8 bg-muted rounded w-1/4"></div>
@@ -73,7 +73,7 @@ export default function TeachCourses() {
 
   return (
     <div className="min-h-screen bg-background">
-      <HubNavigation />
+      
       <main className="container mx-auto px-4 py-8">
         <div className="flex justify-between items-center mb-8">
           <div>

@@ -1,6 +1,6 @@
 import React from 'react';
 import { useSecureAuth } from '@/hooks/useSecureAuth';
-import { HubNavigation } from '@/components/HubNavigation';
+// HubNavigation now provided by AppShell at route level
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
@@ -92,7 +92,7 @@ export default function TrackComparePage() {
   if (authLoading || isLoading) {
     return (
       <div className="min-h-screen bg-background">
-        <HubNavigation />
+        
         <div className="container mx-auto px-4 py-6">
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {[1, 2, 3].map(i => (
@@ -118,7 +118,7 @@ export default function TrackComparePage() {
   if (trackMetrics.length === 0) {
     return (
       <div className="min-h-screen bg-background">
-        <HubNavigation />
+        
         <div className="container mx-auto px-4 py-6">
           <Card>
             <CardContent className="text-center py-12">
@@ -136,7 +136,7 @@ export default function TrackComparePage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <HubNavigation />
+      
       <div className="container mx-auto px-4 py-6">
         <div className="space-y-6">
           {/* Header */}

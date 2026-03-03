@@ -151,44 +151,46 @@ export function AppRoutes() {
       <Route path="/dev-login" element={<DevLogin />} />
       <Route path="/onboarding" element={
         <ProtectedRoute requireAuth={true} redirectIfComplete={true}>
-          <Onboarding />
+          <AppShell><Onboarding /></AppShell>
         </ProtectedRoute>
       } />
 
-      {/* ── 4-Hub Routes ────────────────────────────────────── */}
+      {/* ── 4-Hub Routes (all wrapped in AppShell) ──────────── */}
       <Route path="/discover" element={
         <ProtectedRoute requireAuth={true} requireOnboarding={true}>
-          <DiscoverHub />
+          <AppShell><DiscoverHub /></AppShell>
         </ProtectedRoute>
       } />
       <Route path="/plan" element={
         <ProtectedRoute requireAuth={true} requireOnboarding={true}>
-          <EnhancedErrorBoundary>
-            <PlanHub />
-          </EnhancedErrorBoundary>
+          <AppShell>
+            <EnhancedErrorBoundary>
+              <PlanHub />
+            </EnhancedErrorBoundary>
+          </AppShell>
         </ProtectedRoute>
       } />
       <Route path="/progress" element={
         <ProtectedRoute requireAuth={true} requireOnboarding={true}>
-          <ProgressHub />
+          <AppShell><ProgressHub /></AppShell>
         </ProtectedRoute>
       } />
       <Route path="/today" element={
         <ProtectedRoute requireAuth={true} requireOnboarding={true}>
-          <TodayDashboard />
+          <AppShell><TodayDashboard /></AppShell>
         </ProtectedRoute>
       } />
       <Route path="/contribute" element={
         <ProtectedRoute requireAuth={true} requireOnboarding={true}>
-          <ContributeTabbed />
+          <AppShell><ContributeTabbed /></AppShell>
         </ProtectedRoute>
       } />
       <Route path="/calm-test" element={<Navigate to="/today" replace />} />
 
       {/* ── DISCOVER Hub Redirects ──────────────────────────── */}
       <Route path="/explore" element={<Navigate to="/discover?tab=career" replace />} />
-      <Route path="/explore/careers" element={<CareerListPage />} />
-      <Route path="/explore/careers/:careerPathId" element={<CareerDetailPage />} />
+      <Route path="/explore/careers" element={<AppShell><CareerListPage /></AppShell>} />
+      <Route path="/explore/careers/:careerPathId" element={<AppShell><CareerDetailPage /></AppShell>} />
       <Route path="/diagnostic/career-data" element={<Navigate to="/discover" replace />} />
       <Route path="/explore-hub" element={<Navigate to="/discover" replace />} />
       <Route path="/explore-courses" element={<Navigate to="/discover?tab=courses" replace />} />
@@ -206,7 +208,7 @@ export function AppRoutes() {
       {/* ── EduTree & Marketplace ───────────────────────────── */}
       <Route path="/build" element={
         <ProtectedRoute requireAuth={true} requireOnboarding={true}>
-          <Build />
+          <AppShell><Build /></AppShell>
         </ProtectedRoute>
       } />
       {/* Legacy EduTree routes - all redirect to V5 */}
@@ -264,12 +266,12 @@ export function AppRoutes() {
       } />
       <Route path="/compare" element={
         <ProtectedRoute requireAuth={true} requireOnboarding={true}>
-          <TrackComparePage />
+          <AppShell><TrackComparePage /></AppShell>
         </ProtectedRoute>
       } />
       <Route path="/plan/compare" element={
         <ProtectedRoute requireAuth={true} requireOnboarding={true}>
-          <CompareTracks />
+          <AppShell><CompareTracks /></AppShell>
         </ProtectedRoute>
       } />
 
@@ -304,37 +306,37 @@ export function AppRoutes() {
       {/* ── Teach Feature Routes ────────────────────────────── */}
       <Route path="/teach/discovery" element={
         <StakeholderProtectedRoute stakeholderType="teach" requiredRole="mentor">
-          <CourseDiscovery />
+          <AppShell><CourseDiscovery /></AppShell>
         </StakeholderProtectedRoute>
       } />
       <Route path="/teach/curation" element={
         <StakeholderProtectedRoute stakeholderType="teach" requiredRole="mentor">
-          <CourseCuration />
+          <AppShell><CourseCuration /></AppShell>
         </StakeholderProtectedRoute>
       } />
       <Route path="/teach/paths" element={
         <StakeholderProtectedRoute stakeholderType="teach" requiredRole="mentor">
-          <TeachPaths />
+          <AppShell><TeachPaths /></AppShell>
         </StakeholderProtectedRoute>
       } />
       <Route path="/teach/validation" element={
         <StakeholderProtectedRoute stakeholderType="teach" requiredRole="mentor">
-          <TeachValidation />
+          <AppShell><TeachValidation /></AppShell>
         </StakeholderProtectedRoute>
       } />
       <Route path="/teach/marketplace" element={
         <StakeholderProtectedRoute stakeholderType="teach" requiredRole="mentor">
-          <CourseMarketplace />
+          <AppShell><CourseMarketplace /></AppShell>
         </StakeholderProtectedRoute>
       } />
       <Route path="/teach/analytics" element={
         <StakeholderProtectedRoute stakeholderType="teach" requiredRole="mentor">
-          <TeachAnalytics />
+          <AppShell><TeachAnalytics /></AppShell>
         </StakeholderProtectedRoute>
       } />
       <Route path="/teach/courses" element={
         <StakeholderProtectedRoute stakeholderType="teach" requiredRole="mentor">
-          <TeachCourses />
+          <AppShell><TeachCourses /></AppShell>
         </StakeholderProtectedRoute>
       } />
 
@@ -421,16 +423,16 @@ export function AppRoutes() {
       } />
       <Route path="/maya-intelligence" element={<Navigate to="/plan" replace />} />
       <Route path="/ai-analyzer" element={<Navigate to="/plan" replace />} />
-      <Route path="/certificate-gallery" element={<CertificateGallery />} />
+      <Route path="/certificate-gallery" element={<AppShell><CertificateGallery /></AppShell>} />
       <Route path="/verify/:code?" element={<VerifySignature />} />
-      <Route path="/teach" element={<Teach />} />
+      <Route path="/teach" element={<AppShell><Teach /></AppShell>} />
 
       {/* ── Admin Routes ────────────────────────────────────── */}
       <Route path="/admin" element={<Admin />} />
       <Route path="/mentor" element={<Navigate to="/discover" replace />} />
       <Route path="/maya" element={
         <ProtectedRoute requireAuth={true} requireOnboarding={true}>
-          <MayaPage />
+          <AppShell><MayaPage /></AppShell>
         </ProtectedRoute>
       } />
       <Route path="/mentor-inbox" element={<Navigate to="/discover" replace />} />
@@ -438,7 +440,7 @@ export function AppRoutes() {
       <Route path="/embed-generator" element={<EmbedGenerator />} />
       <Route path="/analytics" element={
         <ProtectedRoute requireAuth={true} requireOnboarding={true}>
-          <Analytics />
+          <AppShell><Analytics /></AppShell>
         </ProtectedRoute>
       } />
       <Route path="/analytics/exploration" element={<ExplorationDashboard />} />

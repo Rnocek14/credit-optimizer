@@ -9,7 +9,7 @@ import { MayaOnboarding } from "@/components/MayaOnboarding";
 import { AdaptiveDashboard } from "@/components/AdaptiveDashboard";
 import SecureLandingPage from "@/components/SecureLandingPage";
 import SecurityMonitor from "@/components/SecurityMonitor";
-import { HubNavigation } from "@/components/HubNavigation";
+// HubNavigation now provided by AppShell at route level
 import { EnhancedMayaDemo } from "@/components/EnhancedMayaDemo";
 import { RoadmapTester } from "@/components/RoadmapTester";
 import { getCurrentUser } from "@/lib/authHelper";
@@ -100,7 +100,6 @@ export default function Index() {
   return (
     <>
       <SecurityMonitor />
-      <HubNavigation />
       <div className="min-h-screen bg-background">
         {/* Hero Section */}
         <div className="flex flex-col items-center justify-center p-4 md:p-8 min-h-[60vh]">

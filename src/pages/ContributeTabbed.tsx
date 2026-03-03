@@ -1,4 +1,3 @@
-import { HubNavigation } from "@/components/HubNavigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -125,8 +124,6 @@ export default function ContributeTabbed() {
   if (availableTabs.length === 0) {
     return (
       <div className="min-h-screen bg-background">
-        <HubNavigation />
-        
         <div className="container mx-auto px-4 py-6">
           <div className="text-center py-12">
             <Shield className="h-16 w-16 text-muted-foreground mx-auto mb-6" />
@@ -158,8 +155,6 @@ export default function ContributeTabbed() {
 
   return (
     <div className="min-h-screen bg-background">
-      <HubNavigation />
-      
       <div className="container mx-auto px-4 py-6">
         {/* Header */}
         <div className="mb-8">
