@@ -12,13 +12,14 @@ export interface UserPlanRow {
   program_id: string;
   is_active: boolean;
   created_at: string;
+  target_career_id: string | null;
 }
 
 /** Fetch all plans for a user, newest first. */
 export async function fetchUserPlans(userId: string): Promise<UserPlanRow[]> {
   const { data, error } = await supabase
     .from('user_plans')
-    .select('id, name, program_id, is_active, created_at')
+    .select('id, name, program_id, is_active, created_at, target_career_id')
     .eq('user_id', userId)
     .order('created_at', { ascending: false });
 
@@ -31,6 +32,7 @@ export async function createUserPlan(
   userId: string,
   name: string,
   programId = 'default',
+  targetCareerId?: string | null,
 ): Promise<{ id: string; name: string }> {
   const { data, error } = await supabase
     .from('user_plans')
@@ -39,12 +41,26 @@ export async function createUserPlan(
       program_id: programId,
       name,
       is_active: true,
+      ...(targetCareerId ? { target_career_id: targetCareerId } : {}),
     })
     .select('id')
     .single();
 
   if (error) throw error;
   return { id: data.id, name };
+}
+
+/** Set or update the target career on an existing plan. */
+export async function setTargetCareer(
+  planId: string,
+  careerId: string | null,
+): Promise<void> {
+  const { error } = await supabase
+    .from('user_plans')
+    .update({ target_career_id: careerId })
+    .eq('id', planId);
+
+  if (error) throw error;
 }
 
 /** Fetch plan courses for a plan, including provider name via join. */

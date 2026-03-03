@@ -12,6 +12,7 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { useSearchParams, useLocation } from 'react-router-dom';
 import { useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 
 // ── V5 engine reuse (zero modifications) ────────────────────
 import { usePlanBasket } from '@/pages/EduTree/v5/state/usePlanBasket';
@@ -23,6 +24,8 @@ import { useV5DatabaseData } from '@/pages/EduTree/v5/hooks/useV5DatabaseData';
 import { useRequirementBlocks } from '@/pages/EduTree/v5/hooks/useRequirementBlocks';
 import { useOptimizationSuggestion } from '@/pages/EduTree/v5/hooks/useOptimizationSuggestion';
 import { useActivePlan } from '@/hooks/useActivePlan';
+import { useTargetCareer } from '@/hooks/useTargetCareer';
+import { setTargetCareer } from '@/shared/lib/api/userPlans';
 import { useMarketplaceTemplate } from '@/hooks/useMarketplaceTemplates';
 import { useDegreeTemplates } from '@/hooks/useDegreeTemplates';
 import { useAltCreditEquivalenciesForInstitution } from '@/hooks/useAltCreditEquivalencies';
@@ -78,14 +81,26 @@ import '@/pages/EduTree/v5/styles/v5.css';
 export default function EduTreeV6Page() {
   const location = useLocation();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
   const templateId = searchParams.get('templateId');
+  const careerPathId = searchParams.get('careerPathId');
 
   // ── Active plan + server sync ──
   const { data: activePlanData } = useActivePlan();
   const [localPlanId, setLocalPlanId] = useState<string | null>(null);
   const resolvedPlanId = localPlanId ?? activePlanData?.id ?? null;
+  const { data: targetCareer } = useTargetCareer(activePlanData?.target_career_id);
   usePlanSync(resolvedPlanId);
+
+  // Persist career context when entering planner from a career path
+  useEffect(() => {
+    if (careerPathId && resolvedPlanId && activePlanData?.target_career_id !== careerPathId) {
+      setTargetCareer(resolvedPlanId, careerPathId).catch(console.error);
+      // Invalidate so useActivePlan picks up the new target_career_id
+      queryClient.invalidateQueries({ queryKey: ['edutree', 'active-plan'] });
+    }
+  }, [careerPathId, resolvedPlanId, activePlanData?.target_career_id]);
 
   const handlePlanChange = useCallback((planId: string) => {
     setLocalPlanId(planId);
@@ -435,6 +450,7 @@ export default function EduTreeV6Page() {
           activePlanId={resolvedPlanId}
           onPlanChange={handlePlanChange}
           currentTemplateId={templateId}
+          targetCareerName={targetCareer?.title}
           onDegreeChange={(newId) => {
             const hasItems = basket.length > 0;
             if (hasItems) {

@@ -5,12 +5,14 @@ import { Badge } from "@/components/ui/badge";
 import { GraduationCap, ArrowRight, BookOpen, AlertTriangle, DollarSign, Clock, ExternalLink } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useActivePlan } from "@/hooks/useActivePlan";
+import { useTargetCareer } from "@/hooks/useTargetCareer";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Helmet } from "react-helmet-async";
 
 export default function PlanHub() {
   const { data: activePlan, isLoading: planLoading } = useActivePlan();
+  const { data: targetCareer } = useTargetCareer(activePlan?.target_career_id);
 
   // Fetch plan course stats if user has an active plan
   const { data: planStats } = useQuery({
@@ -69,7 +71,9 @@ export default function PlanHub() {
                     </div>
                     <div>
                       <CardTitle>{activePlan.name}</CardTitle>
-                      <CardDescription>Active degree plan</CardDescription>
+                      <CardDescription>
+                        {targetCareer ? `Path to ${targetCareer.title}` : 'Active degree plan'}
+                      </CardDescription>
                     </div>
                   </div>
                   <Badge variant="default">Active</Badge>
