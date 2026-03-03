@@ -33,6 +33,17 @@ export default function MarketplacePage() {
     staleTime: 5 * 60_000,
   });
 
+  // Fetch career name for banner display
+  const { data: careerName } = useQuery({
+    queryKey: ['career-name', careerPathId],
+    queryFn: async () => {
+      const { fetchCareerPathName } = await import('@/shared/lib/api/careerTemplates');
+      return fetchCareerPathName(careerPathId!);
+    },
+    enabled: !!careerPathId,
+    staleTime: 10 * 60_000,
+  });
+
   const [filters, setFilters] = useState<MarketplaceFilters>({
     careerIds: careerPathId ? [careerPathId] : [],
     budgetRange: [0, 50000],
@@ -61,13 +72,19 @@ export default function MarketplacePage() {
     return filtered.length > 0 ? filtered : allTemplates;
   })();
 
-  const isCareerFiltered = careerPathId && careerBridge?.matches?.length
-    ? careerFilteredTemplates.length < allTemplates.length
-    : false;
+  // Compute banner state from bridge data, not filtered list length
+  const hasMappings = (careerBridge?.matches?.length ?? 0) > 0;
+  const hasMatchingTemplates = (() => {
+    if (!careerPathId || !hasMappings) return false;
+    const pairSet = new Set(
+      (careerBridge?.matches ?? []).map(m => `${m.anchor_school}::${m.program_id}`)
+    );
+    return allTemplates.some(t => pairSet.has(`${t.anchorSchool}::${t.programId}`));
+  })();
 
   // Sort by career strength when filtered
   const strengthSorted = (() => {
-    if (!isCareerFiltered || !careerBridge?.strengthMap) return careerFilteredTemplates;
+    if (!hasMatchingTemplates || !careerBridge?.strengthMap) return careerFilteredTemplates;
     return [...careerFilteredTemplates].sort((a, b) => {
       const sa = careerBridge.strengthMap!.get(`${a.anchorSchool}::${a.programId}`) ?? 0;
       const sb = careerBridge.strengthMap!.get(`${b.anchorSchool}::${b.programId}`) ?? 0;
@@ -188,8 +205,10 @@ export default function MarketplacePage() {
                 <div className="flex items-center gap-2">
                   <Sparkles className="h-4 w-4 text-primary" />
                   <span className="text-sm">
-                    {isCareerFiltered ? (
-                      <>Showing degree plans aligned to this career <Badge variant="secondary" size="sm">Best fit first</Badge></>
+                   {hasMappings && hasMatchingTemplates ? (
+                      <>Showing degree plans aligned to {careerName ? <strong>{careerName}</strong> : 'this career'} <Badge variant="secondary">Best fit first</Badge></>
+                    ) : hasMappings && !hasMatchingTemplates ? (
+                      <>Mappings found for {careerName ? <strong>{careerName}</strong> : 'this career'}, but no templates match current filters — showing all</>
                     ) : (
                       <>No direct career mappings found — showing all templates</>
                     )}

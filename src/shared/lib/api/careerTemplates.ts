@@ -58,3 +58,21 @@ export async function fetchDegreeTemplatesForCareer(careerPathId: string) {
 
   return { matches, programCodes, institutionCodes, strengthMap };
 }
+
+/**
+ * Fetch a career path's display name by ID.
+ */
+export async function fetchCareerPathName(careerPathId: string): Promise<string | null> {
+  const { data, error } = await supabase
+    .from('career_paths' as any)
+    .select('title')
+    .eq('id', careerPathId)
+    .single();
+
+  if (error) {
+    if ((error as any)?.code === '42P01') return null;
+    console.warn('[careerTemplates] Failed to fetch career name:', error.message);
+    return null;
+  }
+  return (data as any)?.title ?? null;
+}
