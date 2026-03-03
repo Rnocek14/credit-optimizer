@@ -91,3 +91,28 @@ export async function rpcCreateCelebrationMoment(
   if (error) throw error;
   return data;
 }
+
+// ─── User Level (RPC) ─────────────────────────────────────────────
+
+export async function fetchUserLevel(userId: string) {
+  const { data, error } = await supabase.rpc('get_user_level', {
+    user_id_param: userId,
+  });
+  if (error) throw error;
+  // RPC may return array or object — normalize
+  const row = Array.isArray(data) ? data[0] : data;
+  return row ?? null;
+}
+
+// ─── User Badges ──────────────────────────────────────────────────
+
+export async function fetchUserBadgesWithMeta(userId: string) {
+  const { data, error } = await supabase
+    .from('user_badges')
+    .select('id, badge_id, awarded_at, badges(name, description, emoji)')
+    .eq('user_id', userId)
+    .order('awarded_at', { ascending: false });
+
+  if (error) throw error;
+  return data ?? [];
+}

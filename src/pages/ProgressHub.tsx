@@ -13,9 +13,11 @@ import { SkillTreeProgress } from "@/components/progress/SkillTreeProgress";
 import { useEffect, useState } from "react";
 import { useUser } from "@/hooks/useUser";
 import { useQuery } from "@tanstack/react-query";
-import { fetchCourseProgress } from "@/shared/lib/api/progress";
+import { fetchCourseProgress, fetchRecommendedCoursesByIds } from "@/shared/lib/api/progress";
 import { fetchLearningStreaks } from "@/shared/lib/api/gamification";
+import { fetchUserLevel, fetchUserBadgesWithMeta } from "@/shared/lib/api/gamification";
 import { Helmet } from "react-helmet-async";
+import { useMemo } from "react";
 
 export default function ProgressHub() {
   const { activeTrackId } = useActiveTrackStore();
@@ -36,15 +38,10 @@ export default function ProgressHub() {
     setActiveTab(tab);
   }, [searchParams]);
 
-  // Real data: user level + XP from RPC
+  // Real data: user level + XP via DAL
   const { data: userLevel } = useQuery({
     queryKey: ['user-level', user?.id],
-    queryFn: async () => {
-      if (!user?.id) return null;
-      const { supabase } = await import('@/integrations/supabase/client');
-      const { data } = await supabase.rpc('get_user_level', { user_id_param: user.id });
-      return data?.[0] || null;
-    },
+    queryFn: () => fetchUserLevel(user!.id),
     enabled: !!user?.id,
   });
 
@@ -55,6 +52,21 @@ export default function ProgressHub() {
     enabled: !!user?.id,
   });
 
+  // Resolve course titles from recommended_courses
+  const courseIds = useMemo(
+    () => [...new Set(courseHistory.map(c => c.course_id))],
+    [courseHistory]
+  );
+  const { data: courseTitles = [] } = useQuery({
+    queryKey: ['course-titles', courseIds],
+    queryFn: () => fetchRecommendedCoursesByIds(courseIds),
+    enabled: courseIds.length > 0,
+  });
+  const titleMap = useMemo(
+    () => new Map(courseTitles.map(c => [c.id, c.title])),
+    [courseTitles]
+  );
+
   // Real data: streaks
   const { data: streaks = [] } = useQuery({
     queryKey: ['learning-streaks', user?.id],
@@ -62,20 +74,10 @@ export default function ProgressHub() {
     enabled: !!user?.id,
   });
 
-  // Real data: badges earned
+  // Real data: badges earned via DAL
   const { data: earnedBadges = [] } = useQuery({
     queryKey: ['user-badges', user?.id],
-    queryFn: async () => {
-      if (!user?.id) return [];
-      const { supabase } = await import('@/integrations/supabase/client');
-      const { data, error } = await supabase
-        .from('user_badges')
-        .select('id, badge_id, awarded_at, badges(name, description, emoji)')
-        .eq('user_id', user.id)
-        .order('awarded_at', { ascending: false });
-      if (error) return [];
-      return data ?? [];
-    },
+    queryFn: () => fetchUserBadgesWithMeta(user!.id),
     enabled: !!user?.id,
   });
 
@@ -202,7 +204,7 @@ export default function ProgressHub() {
                         <div className={`h-2 w-2 rounded-full ${item.status === 'completed' ? 'bg-primary' : 'bg-muted-foreground/40'}`} />
                         <div className="flex-1">
                           <div className="flex items-center justify-between">
-                            <h4 className="font-medium">{item.course_id}</h4>
+                            <h4 className="font-medium">{titleMap.get(item.course_id) ?? `Course ${item.course_id.slice(0, 8)}…`}</h4>
                             <Badge variant={item.status === 'completed' ? 'default' : 'outline'}>
                               {item.status}
                             </Badge>
@@ -231,7 +233,10 @@ export default function ProgressHub() {
                   <div className="text-center py-12">
                     <Award className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
                     <h3 className="text-lg font-medium mb-2">No badges earned yet</h3>
-                    <p className="text-muted-foreground">Complete challenges and courses to earn badges.</p>
+                    <p className="text-muted-foreground mb-4">Complete challenges and courses to earn badges.</p>
+                    <Button asChild variant="outline">
+                      <Link to="/plan">Start Your Degree Plan</Link>
+                    </Button>
                   </div>
                 ) : (
                   <div className="grid gap-4 md:grid-cols-2">
