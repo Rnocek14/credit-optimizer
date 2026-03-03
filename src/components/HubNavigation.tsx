@@ -42,10 +42,9 @@ export function HubNavigation() {
   const [showTrackManager, setShowTrackManager] = useState(false);
   const { data: activePlan } = useActivePlan();
 
-  // Dynamic plan hub: if user has a plan, go straight to planner; otherwise marketplace
-  const planHubHref = activePlan?.id
-    ? `/edu-tree-v6?planId=${activePlan.id}`
-    : '/edu-tree-v5/marketplace';
+  // Safety net: always link to /plan (the stable workspace).
+  // /plan then provides "Open Planner" with the right params for V6.
+  const planHubHref = '/plan';
   const planHub = { id: "plan", label: "DEGREE PLAN", icon: GraduationCap, href: planHubHref };
 
   const primaryHubs = [

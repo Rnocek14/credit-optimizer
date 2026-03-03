@@ -12,10 +12,8 @@ export function MobileNavigation({ className }: MobileNavigationProps) {
   const currentPath = location.pathname;
   const { data: activePlan } = useActivePlan();
 
-  // Dynamic plan link: continue planner if plan exists, otherwise marketplace
-  const planPath = activePlan?.id
-    ? `/edu-tree-v6?planId=${activePlan.id}`
-    : '/edu-tree-v5/marketplace';
+  // Always route to /plan — it handles both "has plan" and "no plan" states
+  const planPath = '/plan';
 
   const navigationItems = [
     { icon: CalendarDays, label: "Today", path: "/today" },

@@ -102,7 +102,11 @@ export default function PlanHub() {
                     </div>
                   </div>
                 )}
-
+                {planStats && (
+                  <p className="text-sm text-muted-foreground mb-6">
+                    {planStats.totalCourses} total courses in plan
+                  </p>
+                )}
                 <div className="flex flex-col sm:flex-row gap-3">
                   <Button asChild className="flex-1">
                     <Link to={`/edu-tree-v6?planId=${activePlan.id}`}>
