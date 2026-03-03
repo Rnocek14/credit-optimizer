@@ -27,8 +27,7 @@ const TrackManager = lazy(() => import("@/components/multi-track/TrackManager").
 const primaryHubs = [
   { id: "today", label: "TODAY", icon: CalendarDays, href: "/today" },
   { id: "discover", label: "DISCOVER", icon: Search, href: "/discover" },
-  { id: "plan", label: "PLAN", icon: Target, href: "/plan" },
-  { id: "degree", label: "DEGREE PLANNER", icon: GraduationCap, href: "/edu-tree-v5/marketplace" },
+  { id: "plan", label: "DEGREE PLAN", icon: GraduationCap, href: "/plan" },
   { id: "progress", label: "PROGRESS", icon: BookOpen, href: "/progress" },
 ];
 
@@ -70,16 +69,12 @@ export function HubNavigation() {
     }
     if (href === "/plan") {
       return location.pathname.startsWith("/plan") || 
+             location.pathname.startsWith("/edu-tree-v5") ||
+             location.pathname.startsWith("/edu-tree-v6") ||
              location.pathname === "/goals" || 
              location.pathname === "/planner" ||
-             location.pathname === "/maya-roadmap" ||
-             location.pathname === "/workflows" ||
+             location.pathname === "/marketplace" ||
              location.pathname === "/build";
-    }
-    if (href === "/edu-tree-v5/marketplace") {
-      return location.pathname.startsWith("/edu-tree-v5") ||
-             location.pathname.startsWith("/edu-tree-v6") ||
-             location.pathname === "/marketplace";
     }
     if (href === "/progress") {
       return location.pathname.startsWith("/progress") ||
@@ -106,9 +101,8 @@ export function HubNavigation() {
   const visibleHubs = [
     primaryHubs[0], // TODAY - always shown
     primaryHubs[1], // DISCOVER - always shown
-    primaryHubs[2], // PLAN - always shown
-    primaryHubs[3], // DEGREE PLANNER - always shown
-    ...(showProgress ? [primaryHubs[4]] : []), // PROGRESS - shown after onboarding
+    primaryHubs[2], // DEGREE PLAN - always shown
+    ...(showProgress ? [primaryHubs[3]] : []), // PROGRESS - shown after onboarding
   ];
 
   return (
