@@ -9,6 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 
 interface PlanProgress {
   completed: number;
+  enrolled: number;
   total: number;
   percent: number;
 }
@@ -27,10 +28,11 @@ export function usePlanProgress(planId: string | null | undefined) {
       const courses = data ?? [];
       const active = courses.filter((c) => c.status !== 'dropped');
       const completed = active.filter((c) => c.status === 'complete').length;
+      const enrolled = active.filter((c) => c.status === 'enrolled').length;
       const total = active.length;
       const percent = total > 0 ? Math.round((completed / total) * 100) : 0;
 
-      return { completed, total, percent };
+      return { completed, enrolled, total, percent };
     },
     enabled: !!planId,
     staleTime: 5 * 60 * 1000,
