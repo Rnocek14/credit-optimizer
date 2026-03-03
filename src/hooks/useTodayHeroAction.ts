@@ -29,10 +29,14 @@ export function useTodayHeroAction(): { hero: HeroAction; isLoading: boolean } {
 
   if (activePlan) {
     const planName = activePlan.name || 'your degree plan';
-    const progressLabel =
-      progress && progress.total > 0
-        ? `${progress.percent}% complete · ${progress.completed}/${progress.total} courses`
-        : undefined;
+    let progressLabel: string | undefined;
+    if (progress && progress.total > 0) {
+      if (progress.completed === 0 && progress.enrolled > 0) {
+        progressLabel = `In progress · 0/${progress.total} complete`;
+      } else {
+        progressLabel = `${progress.percent}% complete · ${progress.completed}/${progress.total} courses`;
+      }
+    }
 
     hero = {
       title: `Continue ${planName}`,
