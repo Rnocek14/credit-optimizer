@@ -1,16 +1,16 @@
-import { Home, Target, Compass, User, Settings } from "lucide-react";
+import { CalendarDays, Target, Compass, User, GraduationCap } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { MobileThemeToggle } from "./MobileThemeToggle";
 
 interface MobileNavigationProps {
   className?: string;
 }
 
 const navigationItems = [
-  { icon: Home, label: "Home", path: "/" },
-  { icon: Target, label: "Plan", path: "/plan" },
+  { icon: CalendarDays, label: "Today", path: "/today" },
   { icon: Compass, label: "Discover", path: "/discover" },
+  { icon: Target, label: "Plan", path: "/plan" },
+  { icon: GraduationCap, label: "Degree", path: "/edu-tree-v5/marketplace" },
   { icon: User, label: "Progress", path: "/progress" },
 ];
 
@@ -50,11 +50,6 @@ export function MobileNavigation({ className }: MobileNavigationProps) {
           );
         })}
         
-        {/* Theme Toggle in Navigation */}
-        <div className="flex flex-col items-center justify-center p-3 min-w-[56px] min-h-[56px] rounded-xl hover:bg-muted/50 transition-all duration-200">
-          <MobileThemeToggle className="w-6 h-6" />
-          <span className="text-ui-small font-medium text-muted-foreground mt-1 leading-tight">Theme</span>
-        </div>
       </div>
     </nav>
   );

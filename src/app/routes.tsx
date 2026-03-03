@@ -32,7 +32,7 @@ import PlanHub from '@/pages/PlanHub';
 import ProgressHub from '@/pages/ProgressHub';
 import TodayDashboard from '@/pages/TodayDashboard';
 import ContributeTabbed from '@/pages/ContributeTabbed';
-import CalmTest from '@/pages/CalmTest';
+// CalmTest removed — redirects to /today
 
 // ── Feature pages ──────────────────────────────────────────────
 import Build from '@/pages/Build';
@@ -41,13 +41,13 @@ import TrackComparePage from '@/components/compare/TrackComparePage';
 import EduTreeV5Route from '@/pages/EduTree/v5';
 import EduTreeV6Route from '@/pages/EduTree/v6';
 import MarketplacePage from '@/pages/EduTree/marketplace/MarketplacePage';
-import DegreeMarketplace from '@/pages/DegreeMarketplace';
+// DegreeMarketplace removed — /marketplace redirects to /edu-tree-v5/marketplace
 import OptimizerSetup from '@/pages/OptimizerSetup';
 
 // ── Career pages ───────────────────────────────────────────────
 import { CareerDetailPage } from '@/pages/CareerDetailPage';
 import { CareerListPage } from '@/pages/CareerListPage';
-import DiagnosticCareerData from '@/pages/DiagnosticCareerData';
+// DiagnosticCareerData removed — redirects to /discover
 
 // ── Teach pages ────────────────────────────────────────────────
 import Teach from '@/pages/Teach';
@@ -109,17 +109,14 @@ import EmbedGenerator from '@/pages/EmbedGenerator';
 import EmbedExplorer from '@/pages/EmbedExplorer';
 import CertificateGallery from '@/pages/CertificateGallery';
 import VerifySignature from '@/pages/VerifySignature';
-import CRIDashboardPage from '@/pages/CRIDashboard';
+// CRIDashboardPage removed — redirects to /plan
 
 // ── Progress / Achievement pages ───────────────────────────────
 import BadgeDetail from '@/pages/BadgeDetail';
 
-// ── Maya / Mentor / AI ─────────────────────────────────────────
+// Maya/Mentor/AI standalone pages removed — redirected
+// MayaPage kept for /maya route
 import MayaPage from '@/pages/MayaPage';
-import MayaIntelligence from '@/pages/MayaIntelligence';
-import MentorInbox from '@/pages/MentorInbox';
-import MentorChat from '@/pages/MentorChat';
-import AIAnalyzer from '@/pages/AIAnalyzer';
 
 // ── Other active pages ─────────────────────────────────────────
 import ShareTrust from '@/pages/ShareTrust';
@@ -185,17 +182,13 @@ export function AppRoutes() {
           <ContributeTabbed />
         </ProtectedRoute>
       } />
-      <Route path="/calm-test" element={
-        <ProtectedRoute requireAuth={true} requireOnboarding={true}>
-          <CalmTest />
-        </ProtectedRoute>
-      } />
+      <Route path="/calm-test" element={<Navigate to="/today" replace />} />
 
       {/* ── DISCOVER Hub Redirects ──────────────────────────── */}
       <Route path="/explore" element={<Navigate to="/discover?tab=career" replace />} />
       <Route path="/explore/careers" element={<CareerListPage />} />
       <Route path="/explore/careers/:careerPathId" element={<CareerDetailPage />} />
-      <Route path="/diagnostic/career-data" element={<DiagnosticCareerData />} />
+      <Route path="/diagnostic/career-data" element={<Navigate to="/discover" replace />} />
       <Route path="/explore-hub" element={<Navigate to="/discover" replace />} />
       <Route path="/explore-courses" element={<Navigate to="/discover?tab=courses" replace />} />
       <Route path="/market-intelligence" element={<Navigate to="/discover?tab=intel" replace />} />
@@ -246,12 +239,8 @@ export function AppRoutes() {
           </React.Suspense>
         </EnhancedErrorBoundary>
       } />
-      {/* Standalone Marketplace */}
-      <Route path="/marketplace" element={
-        <React.Suspense fallback={<PageLoader message="Loading marketplace..." />}>
-          <DegreeMarketplace />
-        </React.Suspense>
-      } />
+      {/* Legacy standalone marketplace → redirect to real marketplace */}
+      <Route path="/marketplace" element={<Navigate to="/edu-tree-v5/marketplace" replace />} />
       {/* Sandbox (DEV-only) */}
       <Route path="/sandbox/track-overlay" element={<TrackOverlayPOCPage />} />
       {/* Admin seeding */}
@@ -423,33 +412,21 @@ export function AppRoutes() {
           <Saved />
         </ProtectedRoute>
       } />
-      <Route path="/maya-intelligence" element={
-        <ProtectedRoute requireAuth={true} requireOnboarding={true}>
-          <MayaIntelligence />
-        </ProtectedRoute>
-      } />
-      <Route path="/ai-analyzer" element={
-        <ProtectedRoute requireAuth={true} requireOnboarding={true}>
-          <AIAnalyzer />
-        </ProtectedRoute>
-      } />
+      <Route path="/maya-intelligence" element={<Navigate to="/plan" replace />} />
+      <Route path="/ai-analyzer" element={<Navigate to="/plan" replace />} />
       <Route path="/certificate-gallery" element={<CertificateGallery />} />
       <Route path="/verify/:code?" element={<VerifySignature />} />
       <Route path="/teach" element={<Teach />} />
 
       {/* ── Admin Routes ────────────────────────────────────── */}
       <Route path="/admin" element={<Admin />} />
-      <Route path="/mentor" element={
-        <ProtectedRoute requireAuth={true} requireOnboarding={true}>
-          <MentorChat />
-        </ProtectedRoute>
-      } />
+      <Route path="/mentor" element={<Navigate to="/discover" replace />} />
       <Route path="/maya" element={
         <ProtectedRoute requireAuth={true} requireOnboarding={true}>
           <MayaPage />
         </ProtectedRoute>
       } />
-      <Route path="/mentor-inbox" element={<MentorInbox />} />
+      <Route path="/mentor-inbox" element={<Navigate to="/discover" replace />} />
       <Route path="/embed/:resumeId" element={<ResumeEmbed />} />
       <Route path="/embed-generator" element={<EmbedGenerator />} />
       <Route path="/analytics" element={
@@ -517,11 +494,7 @@ export function AppRoutes() {
       } />
       <Route path="/admin/generation-jobs" element={<GenerationJobs />} />
       <Route path="/embed-explorer" element={<EmbedExplorer />} />
-      <Route path="/cri-dashboard" element={
-        <ProtectedRoute requireAuth={true}>
-          <CRIDashboardPage />
-        </ProtectedRoute>
-      } />
+      <Route path="/cri-dashboard" element={<Navigate to="/plan" replace />} />
 
       {/* ── Error / Catch-all ───────────────────────────────── */}
       <Route path="/500" element={<InternalError />} />
