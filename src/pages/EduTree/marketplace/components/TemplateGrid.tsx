@@ -8,13 +8,15 @@ interface TemplateGridProps {
   isLoading: boolean;
   selectedTemplates: string[];
   onToggleSelect: (templateId: string) => void;
+  strengthMap?: Map<string, number>;
 }
 
 export function TemplateGrid({ 
   templates, 
   isLoading, 
   selectedTemplates, 
-  onToggleSelect 
+  onToggleSelect,
+  strengthMap,
 }: TemplateGridProps) {
   if (isLoading) {
     return (
@@ -40,14 +42,19 @@ export function TemplateGrid({
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      {templates.map(template => (
-        <TemplateCard
-          key={template.id}
-          template={template}
-          isSelected={selectedTemplates.includes(template.id)}
-          onToggleSelect={onToggleSelect}
-        />
-      ))}
+      {templates.map((template, index) => {
+        const strength = strengthMap?.get(`${template.anchorSchool}::${template.programId}`);
+        return (
+          <TemplateCard
+            key={template.id}
+            template={template}
+            isSelected={selectedTemplates.includes(template.id)}
+            onToggleSelect={onToggleSelect}
+            careerFitRank={strengthMap ? (index === 0 && strength != null ? 'best' : undefined) : undefined}
+            careerFitPercent={strength != null ? Math.round(strength * 100) : undefined}
+          />
+        );
+      })}
     </div>
   );
 }

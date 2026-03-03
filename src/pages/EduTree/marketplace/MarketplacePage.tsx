@@ -270,6 +270,7 @@ export default function MarketplacePage() {
               isLoading={isLoading}
               selectedTemplates={selectedTemplates}
               onToggleSelect={handleToggleSelect}
+              strengthMap={hasMappings ? careerBridge?.strengthMap : undefined}
             />
           </main>
         </div>

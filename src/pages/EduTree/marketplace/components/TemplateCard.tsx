@@ -2,7 +2,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Clock, DollarSign, Laptop, MapPin, TrendingUp, AlertCircle, GraduationCap, CheckCircle2, Shield, ShieldCheck, AlertTriangle, ArrowRight, School } from 'lucide-react';
+import { Clock, DollarSign, Laptop, MapPin, TrendingUp, AlertCircle, GraduationCap, CheckCircle2, Shield, ShieldCheck, AlertTriangle, ArrowRight, School, Flame } from 'lucide-react';
 import type { MarketplaceDegreeTemplate } from '@/pages/EduTree/v5/types/templates';
 import { isAltCreditOptimization } from '@/types/optimizationTypes';
 import { useNavigate } from 'react-router-dom';
@@ -33,9 +33,11 @@ interface TemplateCardProps {
   template: MarketplaceDegreeTemplate;
   isSelected: boolean;
   onToggleSelect: (templateId: string) => void;
+  careerFitRank?: 'best';
+  careerFitPercent?: number;
 }
 
-export function TemplateCard({ template, isSelected, onToggleSelect }: TemplateCardProps) {
+export function TemplateCard({ template, isSelected, onToggleSelect, careerFitRank, careerFitPercent }: TemplateCardProps) {
   const navigate = useNavigate();
   const { constraints } = usePlanBasket();
   
@@ -331,7 +333,7 @@ export function TemplateCard({ template, isSelected, onToggleSelect }: TemplateC
       )}
       
       {/* Badge */}
-      {template.marketplace.badge && !isIncomplete && (
+      {template.marketplace.badge && !isIncomplete && !careerFitRank && (
         <div className="absolute -top-3 -right-3 z-10">
           <Badge className="shadow-md" variant={
             template.marketplace.badge === 'Cheapest' ? 'default' :
@@ -339,6 +341,23 @@ export function TemplateCard({ template, isSelected, onToggleSelect }: TemplateC
             template.marketplace.badge === 'Most Popular' ? 'default' : 'outline'
           }>
             {template.marketplace.badge}
+          </Badge>
+        </div>
+      )}
+
+      {/* Career Fit Badge */}
+      {careerFitRank === 'best' && (
+        <div className="absolute -top-3 -right-3 z-10">
+          <Badge variant="default" className="shadow-md gap-1 bg-primary">
+            <Flame className="h-3 w-3" />
+            Best Fit
+          </Badge>
+        </div>
+      )}
+      {!careerFitRank && careerFitPercent != null && (
+        <div className="absolute -top-3 -right-3 z-10">
+          <Badge variant="secondary" className="shadow-md">
+            {careerFitPercent}% Fit
           </Badge>
         </div>
       )}
