@@ -101,30 +101,20 @@ export default function MarketplacePage() {
   const selectedTemplateData = templates.filter(t => selectedTemplates.includes(t.id));
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b bg-card/50 backdrop-blur supports-[backdrop-filter]:bg-card/50">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center gap-4">
-            <Link to="/edu-tree-v5">
-              <Button variant="ghost" size="sm">
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Back to Planner
-              </Button>
-            </Link>
-            <div className="flex-1">
-              <h1 className="text-2xl font-bold">Degree Path Marketplace</h1>
-              <p className="text-sm text-muted-foreground">
-                Find the perfect degree path for your goals
-              </p>
-            </div>
-            <div className="flex items-center gap-2 border-l border-border pl-4">
-              <span className="text-sm font-medium text-muted-foreground">Graduation school:</span>
-              <AnchorSchoolSelector />
-            </div>
+    <div className="min-h-[calc(100vh-4rem)] bg-background">
+      {/* Inline page title — global nav provided by AppShell */}
+      <div className="container mx-auto px-4 pt-4 pb-2">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold">Degree Path Marketplace</h1>
+            <p className="text-sm text-muted-foreground">Find the perfect degree path for your goals</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium text-muted-foreground">Graduation school:</span>
+            <AnchorSchoolSelector />
           </div>
         </div>
-      </header>
+      </div>
 
       {/* Main Content */}
       <div className="container mx-auto px-4 py-6">
@@ -149,7 +139,7 @@ export default function MarketplacePage() {
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           {/* Filters Sidebar */}
           <aside className="lg:col-span-1">
-            <div className="sticky top-6 border rounded-lg p-4 bg-card max-h-[calc(100vh-4rem)] overflow-y-auto">
+            <div className="sticky top-20 border rounded-lg p-4 bg-card max-h-[calc(100vh-6rem)] overflow-y-auto">
               <TemplateFilters filters={filters} onFiltersChange={setFilters} />
             </div>
           </aside>
