@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 import { Brain, Search, TrendingUp, Award, Route, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { HubNavigation } from "@/components/HubNavigation";
+// HubNavigation now provided by AppShell at route level
 import { DemoSeedingPanel } from "@/components/DemoSeedingPanel";
 import { DemoCourseSeedTrigger } from "@/components/DemoCourseSeedTrigger";
 import { CourseIntelligenceSystemValidator } from "@/components/CourseIntelligenceSystemValidator";
@@ -22,7 +22,7 @@ const curationFeatures = [
 export default function TeachHub() {
   return (
     <div className="min-h-screen bg-background">
-      <HubNavigation />
+      
       <main className="container mx-auto px-4 py-8">
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold text-foreground mb-4">Intelligent Curation Hub</h1>

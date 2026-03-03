@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 import { Briefcase, Users, Target, TrendingUp, Search, Building } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { HubNavigation } from "@/components/HubNavigation";
+// HubNavigation now provided by AppShell at route level
 
 const employerFeatures = [
   { id: "talent", title: "Talent Pipeline", description: "Browse and recruit top candidates", icon: Search, href: "/employer/talent", color: "text-blue-600" },
@@ -16,7 +16,7 @@ const employerFeatures = [
 export default function EmployerHub() {
   return (
     <div className="min-h-screen bg-background">
-      <HubNavigation />
+      
       <main className="container mx-auto px-4 py-8">
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold text-foreground mb-4">Employer Hub</h1>

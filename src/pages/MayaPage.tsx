@@ -1,4 +1,4 @@
-import { HubNavigation } from "@/components/HubNavigation";
+// HubNavigation now provided by AppShell at route level
 import { MayaChatInterface } from "@/components/maya/MayaChatInterface";
 import { MayaInsightsCard } from "@/components/dashboard/MayaInsightsCard";
 import { MayaIntelligenceCore } from "@/components/MayaIntelligenceCore";
@@ -31,11 +31,10 @@ export default function MayaPage() {
   return (
     <>
       <Helmet>
-        <title>Maya AI Assistant – Career Intelligence | PathfindAI</title>
+        <title>Maya AI Assistant – Career Intelligence | Pivot</title>
         <meta name="description" content="Chat with Maya, your AI career intelligence assistant. Get personalized insights, market analysis, and career guidance powered by real-time data." />
         <link rel="canonical" href={`${window.location.origin}/maya`} />
       </Helmet>
-      <HubNavigation />
       
       <div className="container mx-auto px-4 py-8">
         <div className="mb-8">

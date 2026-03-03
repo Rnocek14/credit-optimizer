@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { HubNavigation } from '@/components/HubNavigation';
+// HubNavigation now provided by AppShell at route level
 import { useCourseIntelligence, type CurationQueueItem } from '@/hooks/useCourseIntelligence';
 import { useSecureAuth } from '@/hooks/useSecureAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -262,7 +262,7 @@ export default function TeachValidation() {
   if (loading) {
     return (
       <div className="min-h-screen bg-background">
-        <HubNavigation />
+        
         <div className="container mx-auto px-4 py-8">
           <div className="flex items-center justify-center h-64">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -274,7 +274,7 @@ export default function TeachValidation() {
 
   return (
     <div className="min-h-screen bg-background">
-      <HubNavigation />
+      
       <main className="container mx-auto px-4 py-8">
         <div className="flex items-center gap-3 mb-6">
           <Shield className="h-8 w-8 text-orange-600" />

@@ -29,7 +29,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { HubNavigation } from '@/components/HubNavigation';
+// HubNavigation now provided by AppShell at route level
 import TutorialTip from '@/tutorial/TutorialTip';
 
 interface Message {
@@ -447,7 +447,7 @@ export default function MentorChat() {
 
   return (
     <div className="min-h-screen bg-background">
-      <HubNavigation />
+      
       
       {/* Plan Completion Celebration */}
       {showPlanCelebration && (

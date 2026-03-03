@@ -1,4 +1,4 @@
-import { HubNavigation } from "@/components/HubNavigation";
+// HubNavigation now provided by AppShell at route level
 import ResumeAnalyticsDashboard from "@/components/ResumeAnalyticsDashboard";
 import { useTutorialDeeplink } from "@/tutorial/useTutorialDeeplink";
 
@@ -7,7 +7,7 @@ export default function ResumeAnalytics() {
   
   return (
     <>
-      <HubNavigation />
+      
       <div className="min-h-screen bg-background">
         <div className="container mx-auto px-4 py-6 md:py-8">
           <div className="mb-6 md:mb-8">

@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { HubNavigation } from "@/components/HubNavigation";
+// HubNavigation now provided by AppShell at route level
 import { CourseIntelligenceCard } from "@/components/CourseIntelligenceCard";
 import { useState, useEffect, useMemo } from "react";
 import { Search, Star, Clock, DollarSign, ExternalLink, Filter, Award, Users, TrendingUp, BookOpen, X, ChevronLeft, ChevronRight } from "lucide-react";
@@ -154,7 +154,7 @@ export default function CourseMarketplace() {
   if (loading) {
     return (
       <div className="min-h-screen bg-background">
-        <HubNavigation />
+        
         <LoadingState message="Loading marketplace courses..." />
       </div>
     );
@@ -162,7 +162,7 @@ export default function CourseMarketplace() {
 
   return (
     <div className="min-h-screen bg-background">
-      <HubNavigation />
+      
       
       <div className="container mx-auto px-4 py-8">
         <div className="mb-8">

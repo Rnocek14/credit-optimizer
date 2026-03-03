@@ -21,7 +21,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useUnifiedData } from '@/contexts/UnifiedDataContext';
-import { HubNavigation } from '@/components/HubNavigation';
+// HubNavigation now provided by AppShell at route level
 import { useToast } from '@/hooks/use-toast';
 
 interface PathDashboardStats {
@@ -173,7 +173,7 @@ export default function TeachPaths() {
   if (loading) {
     return (
       <div className="min-h-screen bg-background">
-        <HubNavigation />
+        
         <main className="container mx-auto px-4 py-8">
           <div className="text-center py-12">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
@@ -186,7 +186,7 @@ export default function TeachPaths() {
 
   return (
     <div className="min-h-screen bg-background">
-      <HubNavigation />
+      
       
       <main className="container mx-auto px-4 py-8">
         <div className="text-center mb-8">

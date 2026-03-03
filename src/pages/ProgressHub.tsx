@@ -1,4 +1,3 @@
-import { HubNavigation } from "@/components/HubNavigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -94,10 +93,9 @@ export default function ProgressHub() {
   return (
     <div className="min-h-screen bg-background">
       <Helmet>
-        <title>Progress – Track Your Journey | PathfindAI</title>
+        <title>Progress – Track Your Journey | Pivot</title>
         <meta name="description" content="Track your learning progress, skill tree, and achievements." />
       </Helmet>
-      <HubNavigation />
       
       <div className="container mx-auto px-4 py-6">
         <div className="mb-6">

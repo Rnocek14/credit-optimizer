@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useSecureAuth } from '@/hooks/useSecureAuth';
-import { HubNavigation } from '@/components/HubNavigation';
+// HubNavigation now provided by AppShell at route level
 import { PathCanvas } from '@/components/path/PathCanvas';
 import { LoadingState } from '@/components/LoadingState';
 import { EmptyBuildState } from '@/components/EmptyBuildState';
@@ -48,7 +48,7 @@ export default function Build() {
   if (!safeTrackId) {
     return (
       <>
-        <HubNavigation />
+        
         <EmptyBuildState
           onOpenTrackManager={() => setShowTrackManager(true)}
           onCreateTrack={() => setShowTrackManager(true)}
@@ -69,7 +69,7 @@ export default function Build() {
   if (!currentTrack) {
     return (
       <>
-        <HubNavigation />
+        
         <TrackNotFoundState
           reason="not-found"
           onOpenTrackManager={() => setShowTrackManager(true)}
@@ -88,7 +88,7 @@ export default function Build() {
 
   return (
     <div className="min-h-screen bg-background">
-      <HubNavigation />
+      
       <div className="h-[calc(100vh-60px)]">
         <PathCanvas userId={user.id} trackId={safeTrackId} />
       </div>

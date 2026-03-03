@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
-import { HubNavigation } from '@/components/HubNavigation';
+// HubNavigation now provided by AppShell at route level
 import { useCertificateEngine } from '@/hooks/useCertificateEngine';
 import { useQuery } from '@tanstack/react-query';
 import { 
@@ -168,7 +168,7 @@ export default function CertificateGallery() {
   if (publicLoading || isLoading) {
     return (
       <>
-        <HubNavigation />
+        
         <div className="container mx-auto py-6">
           <div className="flex items-center justify-center h-64">
             <div className="text-center">
@@ -183,7 +183,7 @@ export default function CertificateGallery() {
 
   return (
     <>
-      <HubNavigation />
+      
       <div className="container mx-auto py-6 space-y-6">
         {/* Header */}
         <div className="text-center space-y-2">

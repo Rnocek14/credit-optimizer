@@ -1,5 +1,5 @@
 import React from 'react';
-import { HubNavigation } from '@/components/HubNavigation';
+// HubNavigation now provided by AppShell at route level
 import { MayaIntelligenceCore } from '@/components/MayaIntelligenceCore';
 import { GamificationInformedIntelligence } from '@/components/GamificationInformedIntelligence';
 import { MayaPredictiveTransparency } from '@/components/MayaPredictiveTransparency';
@@ -8,7 +8,7 @@ import { MayaDecisionTransparency } from '@/components/MayaDecisionTransparency'
 export default function MayaIntelligence() {
   return (
     <div className="min-h-screen bg-background">
-      <HubNavigation />
+      
       <main className="container mx-auto px-4 py-8">
         <div className="max-w-6xl mx-auto space-y-8">
           <div className="text-center mb-8">

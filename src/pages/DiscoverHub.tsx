@@ -1,4 +1,3 @@
-import { HubNavigation } from "@/components/HubNavigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -64,10 +63,9 @@ export default function DiscoverHub() {
   return (
     <div className="min-h-screen bg-background">
       <Helmet>
-        <title>Discover Careers & Courses | PathfindAI</title>
+        <title>Discover Careers & Courses | Pivot</title>
         <meta name="description" content="Explore career paths, browse courses, and find your direction with real market data." />
       </Helmet>
-      <HubNavigation />
       
       <div className="container mx-auto px-4 py-6">
         <div className="mb-6">
