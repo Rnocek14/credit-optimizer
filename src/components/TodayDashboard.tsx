@@ -5,7 +5,6 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Calendar, Clock, Target, TrendingUp, Zap, Users, BookOpen, Award, Flame, AlertCircle } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
 import { useActiveTrackStore } from '@/stores/useActiveTrackStore';
 import { fetchUserLevel } from '@/shared/lib/api/gamification';
 import { fetchHasActivePlan } from '@/shared/lib/api/userPlans';
@@ -211,7 +210,9 @@ export function TodayDashboard({ onNextStepClick }: TodayDashboardProps) {
 
   // Redundant skillGaps query removed — SkillGapsSection handles its own data via useSkillGaps
 
-  console.log('TodayDashboard render:', { userId: user?.id, isLoading: smartDashboardLoading, nextStep: !!nextStep, quickWins: quickWins?.length });
+  if (import.meta.env.DEV) {
+    console.log('TodayDashboard render:', { userId: user?.id, isLoading: smartDashboardLoading, nextStep: !!nextStep, quickWins: quickWins?.length });
+  }
 
   // Determine what to render based on state - no early returns to maintain hook order
   const shouldShowAuthLoading = isAuthLoading;
