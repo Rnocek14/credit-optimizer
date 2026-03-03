@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Search, BookOpen, Users, Briefcase, DollarSign, TrendingUp } from "lucide-react";
+import { Search, BookOpen, Users, Briefcase, DollarSign, TrendingUp, Target } from "lucide-react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useActiveTrackStore } from "@/stores/useActiveTrackStore";
 import { MarketEnhancedCourseCard } from "@/components/discover/MarketEnhancedCourseCard";
@@ -32,11 +32,12 @@ export default function DiscoverHub() {
     staleTime: 5 * 60_000,
   });
 
-  // Skill gaps for course recommendations
+  // Skill gaps for course recommendations — no fake fallback
   const { data: userSkillGaps = [], isLoading: skillGapsLoading } = useSkillGaps(user?.id);
-  const skillGapsForRecommendations = userSkillGaps.length > 0 
+  const hasRealGaps = userSkillGaps.length > 0;
+  const skillGapsForRecommendations = hasRealGaps
     ? userSkillGaps.map(gap => gap.skill)
-    : ['React', 'Python', 'JavaScript', 'Data Analysis', 'Cloud Computing', 'Machine Learning'];
+    : []; // empty = show trending only, no fake personalization
 
   // Market intelligence
   const { marketData, fetchMarketTrends, loading: marketLoading } = useMarketIntelligence();
@@ -183,6 +184,21 @@ export default function DiscoverHub() {
               </Card>
             )}
             
+            {!hasRealGaps && !skillGapsLoading && (
+              <Card className="mb-4 border-dashed border-2 border-primary/20">
+                <CardContent className="flex items-center gap-4 p-4">
+                  <Target className="h-8 w-8 text-primary shrink-0" />
+                  <div className="flex-1">
+                    <p className="font-medium">Set a career goal for personalized recommendations</p>
+                    <p className="text-sm text-muted-foreground">Showing trending courses. Set a target role to get tailored suggestions.</p>
+                  </div>
+                  <Button asChild variant="outline" size="sm">
+                    <Link to="/plan?tab=goals">Set Goal</Link>
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
+
             {(isLoadingRecommendations || isLoadingTrending || skillGapsLoading) ? (
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {[...Array(6)].map((_, i) => (
@@ -195,14 +211,14 @@ export default function DiscoverHub() {
             ) : (
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {(() => {
-                  const coursesToShow = recommendations.length > 0 ? recommendations : trendingCourses;
+                  const coursesToShow = hasRealGaps && recommendations.length > 0 ? recommendations : trendingCourses;
                   if (coursesToShow.length === 0) {
                     return (
                       <Card className="col-span-full p-6 text-center">
                         <CardContent>
                           <BookOpen className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
                           <h3 className="text-lg font-medium mb-2">No courses available</h3>
-                          <p className="text-muted-foreground">Check back soon for personalized recommendations.</p>
+                          <p className="text-muted-foreground">Check back soon for course listings.</p>
                         </CardContent>
                       </Card>
                     );
