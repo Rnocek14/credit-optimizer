@@ -2,6 +2,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { GraduationCap, ArrowRight, BookOpen, AlertTriangle, DollarSign, Clock, ExternalLink, Compass, X } from "lucide-react";
+import { PlanCourseList } from "@/components/plan/PlanCourseList";
 import { Link } from "react-router-dom";
 import { useActivePlan } from "@/hooks/useActivePlan";
 import { useTargetCareer } from "@/hooks/useTargetCareer";
@@ -138,6 +139,11 @@ export default function PlanHub() {
                       Browse Templates
                     </Link>
                   </Button>
+                </div>
+
+                {/* Course list with status controls */}
+                <div className="mt-6 pt-6 border-t">
+                  <PlanCourseList planId={activePlan.id} />
                 </div>
 
                 {/* Career context actions */}

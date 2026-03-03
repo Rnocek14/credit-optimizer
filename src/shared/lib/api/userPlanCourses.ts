@@ -85,3 +85,16 @@ export async function fetchUserPlanSelections(
     ]),
   );
 }
+
+/** Update the status of a plan course row. */
+export async function updatePlanCourseStatus(
+  planCourseId: string,
+  status: PlanStatus,
+): Promise<void> {
+  const { error } = await supabase
+    .from('user_plan_courses')
+    .update({ status })
+    .eq('id', planCourseId);
+
+  if (error) throw error;
+}
