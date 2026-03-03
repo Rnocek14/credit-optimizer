@@ -95,12 +95,19 @@ export default function EduTreeV6Page() {
 
   // Persist career context when entering planner from a career path
   useEffect(() => {
-    if (careerPathId && resolvedPlanId && activePlanData?.target_career_id !== careerPathId) {
-      setTargetCareer(resolvedPlanId, careerPathId).catch(console.error);
-      // Invalidate so useActivePlan picks up the new target_career_id
-      queryClient.invalidateQueries({ queryKey: ['edutree', 'active-plan'] });
+    if (
+      careerPathId &&
+      activePlanData?.id &&
+      resolvedPlanId &&
+      activePlanData.target_career_id !== careerPathId
+    ) {
+      setTargetCareer(resolvedPlanId, careerPathId)
+        .then(() => queryClient.invalidateQueries({ queryKey: ['edutree', 'active-plan'] }))
+        .catch((err) => {
+          if (import.meta.env.DEV) console.error('[CareerContext] Failed to persist:', err);
+        });
     }
-  }, [careerPathId, resolvedPlanId, activePlanData?.target_career_id]);
+  }, [careerPathId, resolvedPlanId, activePlanData?.id, activePlanData?.target_career_id, queryClient]);
 
   const handlePlanChange = useCallback((planId: string) => {
     setLocalPlanId(planId);
