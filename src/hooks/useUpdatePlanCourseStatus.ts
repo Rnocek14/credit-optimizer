@@ -38,8 +38,15 @@ export function useUpdatePlanCourseStatus() {
           ? ` toward ${targetCareer.title}`
           : '';
 
+      const titles: Record<PlanStatus, string> = {
+        planned: 'Course set to planned',
+        enrolled: 'Course set to enrolled',
+        complete: 'Course marked complete',
+        dropped: 'Course removed (dropped)',
+      };
+
       toast({
-        title: `Course marked ${status}`,
+        title: titles[status],
         description: `Plan progress updated${careerSuffix}`,
       });
     },
