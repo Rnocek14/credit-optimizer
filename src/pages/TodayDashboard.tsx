@@ -60,7 +60,10 @@ export default function TodayDashboardPage() {
         <TodaySupportingCards
           userId={user.id}
           quickWins={quickWins}
-          onQuickWinAction={(win) => actions.handleQuickWinAction(win, win.actions[0])}
+          onQuickWinAction={(win) => {
+            const primary = win.actions?.[0];
+            if (primary) actions.handleQuickWinAction(win, primary);
+          }}
         />
       </div>
     </>
