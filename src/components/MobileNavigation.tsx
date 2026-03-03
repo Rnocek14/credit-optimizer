@@ -1,4 +1,4 @@
-import { CalendarDays, Target, Compass, User, GraduationCap } from "lucide-react";
+import { CalendarDays, Compass, User, GraduationCap } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 
@@ -9,8 +9,7 @@ interface MobileNavigationProps {
 const navigationItems = [
   { icon: CalendarDays, label: "Today", path: "/today" },
   { icon: Compass, label: "Discover", path: "/discover" },
-  { icon: Target, label: "Plan", path: "/plan" },
-  { icon: GraduationCap, label: "Degree", path: "/edu-tree-v5/marketplace" },
+  { icon: GraduationCap, label: "Degree", path: "/plan" },
   { icon: User, label: "Progress", path: "/progress" },
 ];
 

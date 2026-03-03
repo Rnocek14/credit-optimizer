@@ -35,6 +35,42 @@ import { MayaIntelligencePanel } from '@/components/MayaIntelligencePanel';
 import { MayaInsightDebugPanel } from '@/components/debug/MayaInsightDebugPanel';
 import { DbHealthBadge } from '@/components/DbHealthBadge';
 import { AlternativeCoursesList } from '@/components/AlternativeCoursesList';
+import { useSkillGaps } from '@/hooks/useSkillGaps';
+
+/** Small inline component to show real skill gaps from DB */
+function SkillGapsSection({ userId }: { userId: string }) {
+  const { data: gaps, isLoading } = useSkillGaps(userId);
+  if (isLoading) return <div className="h-16 bg-muted rounded animate-pulse" />;
+  if (!gaps || gaps.length === 0) {
+    return (
+      <div className="text-center py-6 text-muted-foreground">
+        <BookOpen className="h-8 w-8 mx-auto mb-2 opacity-50" />
+        <p className="text-sm">No skill gaps detected</p>
+      </div>
+    );
+  }
+  const priorityColor: Record<string, string> = {
+    critical: 'text-destructive',
+    high: 'text-primary',
+    medium: 'text-muted-foreground',
+    low: 'text-muted-foreground',
+  };
+  return (
+    <div className="space-y-3">
+      {gaps.slice(0, 3).map((gap) => (
+        <div key={gap.skill} className="flex items-center justify-between p-3 rounded-lg border bg-card/50">
+          <div>
+            <p className="font-medium text-sm capitalize">{gap.skill}</p>
+            <p className="text-readable-xs text-muted-foreground capitalize">{gap.priority} priority</p>
+          </div>
+          <Badge variant="outline" className={priorityColor[gap.priority] ?? ''}>
+            Level {gap.currentLevel} → {gap.targetLevel}
+          </Badge>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 interface TodayDashboardProps {
   onNextStepClick?: () => void;
@@ -166,12 +202,25 @@ export function TodayDashboard({ onNextStepClick }: TodayDashboardProps) {
     }
   };
 
-  // Mock focus skills for display
-  const focusSkills = [
-    { name: 'React Hooks', progress: 75, level: 'Advanced' },
-    { name: 'TypeScript', progress: 60, level: 'Intermediate' },
-    { name: 'Node.js', progress: 45, level: 'Beginner' }
-  ];
+  // Real skill gaps from DB instead of hardcoded mock
+  const { data: skillGaps } = useQuery({
+    queryKey: ['skill-gaps-today', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return [];
+      // Import dynamically to avoid circular deps
+      const { supabase } = await import('@/integrations/supabase/client');
+      const { data: goals } = await supabase
+        .from('career_goals')
+        .select('target_role')
+        .eq('user_id', user.id)
+        .eq('active', true)
+        .limit(1);
+      // Return empty if no goals — the SkillGaps hook handles fallback
+      return goals ?? [];
+    },
+    enabled: !!user?.id,
+    staleTime: 5 * 60_000,
+  });
 
   console.log('TodayDashboard render:', { userId: user?.id, isLoading: smartDashboardLoading, nextStep: !!nextStep, quickWins: quickWins?.length });
 
@@ -305,11 +354,13 @@ export function TodayDashboard({ onNextStepClick }: TodayDashboardProps) {
             }}
             compact={true}
           />
-          <div className="flex justify-center">
-            <DbHealthBadge />
-          </div>
+          {import.meta.env.DEV && (
+            <div className="flex justify-center">
+              <DbHealthBadge />
+            </div>
+          )}
         </div>
-        <MayaInsightDebugPanel />
+        {import.meta.env.DEV && <MayaInsightDebugPanel />}
       </div>
 
       {/* Main Dashboard Grid */}
@@ -420,37 +471,16 @@ export function TodayDashboard({ onNextStepClick }: TodayDashboardProps) {
           </CardContent>
         </Card>
 
-        {/* Focus Skills Card */}
+        {/* Focus Skills Card — from useSkillGaps */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <BookOpen className="h-5 w-5 text-blue-500" />
-              Focus Skills
+              <BookOpen className="h-5 w-5 text-primary" />
+              Skill Gaps
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3">
-              {focusSkills.map((skill, index) => (
-                <div key={skill.name} className="flex items-center justify-between p-3 rounded-lg border bg-card/50">
-                  <div>
-                    <p className="font-medium text-sm">{skill.name}</p>
-          <p className="text-readable-xs text-muted-foreground">{skill.level}</p>
-                  </div>
-                   <div className="text-right">
-                     <p className="text-sm font-medium">{skill.progress}%</p>
-                     <Progress 
-                       value={skill.progress} 
-                       className="h-1 w-16"
-                       role="progressbar"
-                       aria-valuenow={skill.progress}
-                       aria-valuemin={0}
-                       aria-valuemax={100}
-                       aria-label={`${skill.name} progress: ${skill.progress}%`}
-                     />
-                   </div>
-                </div>
-              ))}
-            </div>
+            <SkillGapsSection userId={user.id} />
           </CardContent>
         </Card>
 
