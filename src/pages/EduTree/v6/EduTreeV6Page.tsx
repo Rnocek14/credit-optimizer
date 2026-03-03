@@ -428,7 +428,7 @@ export default function EduTreeV6Page() {
   // ── Render ──
   return (
     <DragProvider onDragStart={handleDragStart} onDragOver={handleDragOver} onDragEnd={handleDragEnd}>
-      <div className="w-full flex-1 bg-background p-6">
+      <div className="w-full flex-1 bg-background p-6 overflow-hidden">
         {/* V6 Header — clean, no debug */}
         <V6Header
           degreeTitle={degreeSummary.degreeTitle}
