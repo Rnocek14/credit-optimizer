@@ -28,7 +28,7 @@ export default function PlanHub() {
         completed: courses.filter(c => c.status === 'complete').length,
         enrolled: courses.filter(c => c.status === 'enrolled').length,
         planned: courses.filter(c => c.status === 'planned').length,
-        totalCredits: courses.reduce((sum, c) => sum + (c.credits_earned ?? 0), 0),
+        creditsEarned: courses.reduce((sum, c) => sum + (c.credits_earned ?? 0), 0),
         totalCost: courses.reduce((sum, c) => sum + (c.cost_paid ?? 0), 0),
       };
     },
@@ -89,9 +89,9 @@ export default function PlanHub() {
                     <div className="text-center p-3 rounded-lg bg-muted/50">
                       <div className="flex items-center justify-center gap-1">
                         <BookOpen className="h-4 w-4 text-muted-foreground" />
-                        <p className="text-2xl font-bold">{planStats.totalCredits}</p>
+                        <p className="text-2xl font-bold">{planStats.creditsEarned}</p>
                       </div>
-                      <p className="text-sm text-muted-foreground">Credits</p>
+                      <p className="text-sm text-muted-foreground">Credits Earned</p>
                     </div>
                     <div className="text-center p-3 rounded-lg bg-muted/50">
                       <div className="flex items-center justify-center gap-1">
