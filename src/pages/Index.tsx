@@ -10,8 +10,6 @@ import { AdaptiveDashboard } from "@/components/AdaptiveDashboard";
 import SecureLandingPage from "@/components/SecureLandingPage";
 import SecurityMonitor from "@/components/SecurityMonitor";
 // HubNavigation now provided by AppShell at route level
-import { EnhancedMayaDemo } from "@/components/EnhancedMayaDemo";
-import { RoadmapTester } from "@/components/RoadmapTester";
 import { getCurrentUser } from "@/lib/authHelper";
 import { Button } from "@/components/ui/button";
 import { Link, Navigate } from "react-router-dom";
