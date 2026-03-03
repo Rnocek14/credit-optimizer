@@ -11,13 +11,6 @@ import { useTargetCareer } from '@/hooks/useTargetCareer';
 
 type PlanStatus = 'planned' | 'enrolled' | 'complete' | 'dropped';
 
-const STATUS_LABELS: Record<PlanStatus, string> = {
-  planned: 'Planned',
-  enrolled: 'Enrolled',
-  complete: 'Completed',
-  dropped: 'Dropped',
-};
-
 export function useUpdatePlanCourseStatus() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -35,20 +28,18 @@ export function useUpdatePlanCourseStatus() {
     }) => updatePlanCourseStatus(planCourseId, status),
 
     onSuccess: (_, { status, planId }) => {
-      // Invalidate plan-related caches
       invalidateEduTreePlan(queryClient, planId);
-
-      // Invalidate progress cache so hero updates
       queryClient.invalidateQueries({ queryKey: ['plan-progress', planId] });
+      // Also refresh the course list
+      queryClient.invalidateQueries({ queryKey: ['plan-courses-with-provider', planId] });
 
-      // Toast with career context
-      const label = STATUS_LABELS[status];
-      const careerSuffix = status === 'complete' && targetCareer?.title
-        ? ` — progress updated toward ${targetCareer.title}`
-        : '';
+      const careerSuffix =
+        status === 'complete' && targetCareer?.title
+          ? ` toward ${targetCareer.title}`
+          : '';
 
       toast({
-        title: `Course marked ${label.toLowerCase()}`,
+        title: `Course marked ${status}`,
         description: `Plan progress updated${careerSuffix}`,
       });
     },
