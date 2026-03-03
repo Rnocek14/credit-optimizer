@@ -158,13 +158,17 @@ export function AppRoutes() {
       {/* ── 4-Hub Routes (all wrapped in AppShell) ──────────── */}
       <Route path="/discover" element={
         <ProtectedRoute requireAuth={true} requireOnboarding={true}>
-          <AppShell><DiscoverHub /></AppShell>
+          <AppShell>
+            <EnhancedErrorBoundary name="discover-hub">
+              <DiscoverHub />
+            </EnhancedErrorBoundary>
+          </AppShell>
         </ProtectedRoute>
       } />
       <Route path="/plan" element={
         <ProtectedRoute requireAuth={true} requireOnboarding={true}>
           <AppShell>
-            <EnhancedErrorBoundary>
+            <EnhancedErrorBoundary name="plan-hub">
               <PlanHub />
             </EnhancedErrorBoundary>
           </AppShell>
@@ -172,12 +176,20 @@ export function AppRoutes() {
       } />
       <Route path="/progress" element={
         <ProtectedRoute requireAuth={true} requireOnboarding={true}>
-          <AppShell><ProgressHub /></AppShell>
+          <AppShell>
+            <EnhancedErrorBoundary name="progress-hub">
+              <ProgressHub />
+            </EnhancedErrorBoundary>
+          </AppShell>
         </ProtectedRoute>
       } />
       <Route path="/today" element={
         <ProtectedRoute requireAuth={true} requireOnboarding={true}>
-          <AppShell><TodayDashboard /></AppShell>
+          <AppShell>
+            <EnhancedErrorBoundary name="today-hub">
+              <TodayDashboard />
+            </EnhancedErrorBoundary>
+          </AppShell>
         </ProtectedRoute>
       } />
       <Route path="/contribute" element={
