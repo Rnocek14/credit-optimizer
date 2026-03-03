@@ -4,6 +4,9 @@ import type { MarketplaceDegreeTemplate } from '@/pages/EduTree/v5/types/templat
 import { Skeleton } from '@/components/ui/skeleton';
 import { GraduationCap } from 'lucide-react';
 
+const toFitPercent = (s: number) =>
+  Math.max(0, Math.min(100, Math.round(s * 100)));
+
 interface TemplateGridProps {
   templates: MarketplaceDegreeTemplate[];
   isLoading: boolean;
@@ -65,7 +68,7 @@ export function TemplateGrid({
             isSelected={selectedTemplates.includes(template.id)}
             onToggleSelect={onToggleSelect}
             careerFitRank={isBest ? 'best' : undefined}
-            careerFitPercent={strength != null ? (strength <= 1 ? Math.round(strength * 100) : Math.round(strength)) : undefined}
+            careerFitPercent={!isBest && strength != null ? toFitPercent(strength) : undefined}
           />
         );
       })}
