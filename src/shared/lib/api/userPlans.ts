@@ -87,3 +87,15 @@ export async function fetchPlanCoursesWithProvider(planId: string) {
 }
 
 export type PlanCourseWithProvider = Awaited<ReturnType<typeof fetchPlanCoursesWithProvider>>[number];
+
+/** Check if user has any active plan */
+export async function fetchHasActivePlan(userId: string): Promise<boolean> {
+  const { count, error } = await supabase
+    .from('user_plans')
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', userId)
+    .eq('is_active', true);
+
+  if (error) throw error;
+  return (count ?? 0) > 0;
+}
