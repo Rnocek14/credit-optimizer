@@ -1,46 +1,67 @@
-import { TodayDashboard } from "@/components/TodayDashboard";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { GraduationCap, ArrowRight } from "lucide-react";
-import { Link } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
+import { TodayHeroCard } from "@/components/today/TodayHeroCard";
+import { TodayStatsStrip } from "@/components/today/TodayStatsStrip";
+import { TodaySupportingCards } from "@/components/today/TodaySupportingCards";
+import { useTodayHeroAction } from "@/hooks/useTodayHeroAction";
+import { useSecureAuth } from "@/hooks/useSecureAuth";
+import { useGamification } from "@/hooks/useGamification";
+import { useSmartTodayDashboard } from "@/hooks/useSmartTodayDashboard";
+import { useActiveTrackStore } from "@/stores/useActiveTrackStore";
+import { useQuery } from "@tanstack/react-query";
+import { fetchUserLevel } from "@/shared/lib/api/gamification";
+import { Loader2 } from "lucide-react";
 
 export default function TodayDashboardPage() {
+  const { user, isLoading: authLoading } = useSecureAuth();
+  const { activeTrackId } = useActiveTrackStore();
+  const { hero, isLoading: heroLoading } = useTodayHeroAction();
+  const { currentStreak, quickWins, actions } = useSmartTodayDashboard(user?.id, activeTrackId);
+  const { getCurrentStreak: getGamStreak } = useGamification(user?.id);
+
+  const { data: userLevel } = useQuery({
+    queryKey: ['user-level', user?.id],
+    queryFn: () => fetchUserLevel(user!.id),
+    enabled: !!user?.id,
+  });
+
+  const streak = getGamStreak ? getGamStreak() : currentStreak;
+
+  if (authLoading || !user) {
+    return (
+      <div className="min-h-[50vh] flex items-center justify-center">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
   return (
     <>
       <Helmet>
         <title>Today – Your Daily Focus | Pivot</title>
-        <meta name="description" content="View your personalized daily recommendations, quick wins, and learning streak on the Today dashboard." />
+        <meta name="description" content="Your personalized daily recommendations, quick wins, and learning streak." />
         <link rel="canonical" href={`${window.location.origin}/today`} />
       </Helmet>
-      <div className="container mx-auto px-4 py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold mb-2">Today's Focus</h1>
-          <p className="text-muted-foreground">
-            Your personalized daily recommendations and progress
-          </p>
+
+      <div className="container mx-auto px-4 py-8 space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold mb-1">Today's Focus</h1>
+          <p className="text-muted-foreground">What should you do next?</p>
         </div>
 
-        {/* Degree Plan CTA */}
-        <Card className="mb-6 border-primary/20 bg-primary/5">
-          <CardContent className="flex items-center justify-between py-4">
-            <div className="flex items-center gap-3">
-              <GraduationCap className="h-6 w-6 text-primary" />
-              <div>
-                <p className="font-medium text-foreground">Start your degree plan</p>
-                <p className="text-sm text-muted-foreground">Browse optimized templates and build your path</p>
-              </div>
-            </div>
-            <Button asChild size="sm">
-              <Link to="/edu-tree-v5/marketplace">
-                Browse Plans
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Link>
-            </Button>
-          </CardContent>
-        </Card>
+        <TodayHeroCard hero={hero} isLoading={heroLoading} />
 
-        <TodayDashboard />
+        <TodayStatsStrip
+          currentLevel={userLevel?.current_level ?? 1}
+          totalXP={userLevel?.total_xp ?? 0}
+          currentStreak={streak}
+          readinessPercent={null}
+        />
+
+        <TodaySupportingCards
+          userId={user.id}
+          quickWins={quickWins}
+          onQuickWinAction={(win) => actions.handleQuickWinAction(win, win.actions[0])}
+        />
       </div>
     </>
   );
