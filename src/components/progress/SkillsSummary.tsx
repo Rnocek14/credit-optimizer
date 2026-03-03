@@ -5,10 +5,9 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { CheckCircle, AlertTriangle, TrendingUp, ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useSkillGaps } from '@/hooks/useSkillGaps';
-import { useUser } from '@/hooks/useUser';
-import { useQuery } from '@tanstack/react-query';
-import { fetchCourseProgress } from '@/shared/lib/api/progress';
 import { useCareerReadiness } from '@/hooks/useCareerReadiness';
+import { useMemo, useState } from 'react';
+import type { SkillGap } from '@/types/skill';
 
 const priorityColor: Record<string, string> = {
   critical: 'bg-destructive text-destructive-foreground',
@@ -17,22 +16,42 @@ const priorityColor: Record<string, string> = {
   low: 'bg-muted text-muted-foreground',
 };
 
-export function SkillsSummary() {
-  const { user } = useUser();
-  const { data: skillGaps = [], isLoading: gapsLoading } = useSkillGaps(user?.id);
-  const { criScore, isLoading: criLoading } = useCareerReadiness({ userId: user?.id, enabled: !!user?.id });
+// Status normalizer — keeps counts accurate even if DB values drift
+const COMPLETED_STATUSES = ['completed', 'complete'];
+const IN_PROGRESS_STATUSES = ['in_progress', 'enrolled', 'started'];
+const isCompleted = (s: string) => COMPLETED_STATUSES.includes(s);
+const isInProgress = (s: string) => IN_PROGRESS_STATUSES.includes(s);
 
-  const { data: courseHistory = [], isLoading: historyLoading } = useQuery({
-    queryKey: ['course-progress', user?.id],
-    queryFn: () => fetchCourseProgress(user!.id),
-    enabled: !!user?.id,
-  });
+const MAX_VISIBLE_GAPS = 8;
 
-  const completedCount = courseHistory.filter(c => c.status === 'completed').length;
-  const inProgressCount = courseHistory.filter(c => c.status === 'in_progress').length;
-  const isLoading = gapsLoading || criLoading || historyLoading;
+interface SkillsSummaryProps {
+  courseHistory?: Array<{ status: string; [k: string]: unknown }>;
+  userId?: string;
+}
 
-  if (isLoading) {
+export function SkillsSummary({ courseHistory = [], userId }: SkillsSummaryProps) {
+  const { data: skillGaps = [], isLoading: gapsLoading } = useSkillGaps(userId);
+  const { criScore, isLoading: criLoading } = useCareerReadiness({ userId, enabled: !!userId });
+  const [showAll, setShowAll] = useState(false);
+
+  const completedCount = courseHistory.filter(c => isCompleted(c.status)).length;
+  const inProgressCount = courseHistory.filter(c => isInProgress(c.status)).length;
+
+  // Sort: critical → high → medium → low (already sorted by hook, but enforce for display grouping)
+  const sortedGaps = useMemo(() => {
+    const order: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 };
+    return [...skillGaps].sort((a, b) =>
+      (order[a.priority] ?? 4) - (order[b.priority] ?? 4) ||
+      (b.criImpact ?? 0) - (a.criImpact ?? 0)
+    );
+  }, [skillGaps]);
+
+  const visibleGaps = showAll ? sortedGaps : sortedGaps.slice(0, MAX_VISIBLE_GAPS);
+  const hasMore = sortedGaps.length > MAX_VISIBLE_GAPS;
+  const criticalCount = skillGaps.filter(g => g.priority === 'critical').length;
+  const hasCRI = criScore?.overall != null;
+
+  if (gapsLoading || criLoading) {
     return (
       <div className="grid gap-4 md:grid-cols-3">
         {[...Array(3)].map((_, i) => (
@@ -42,28 +61,39 @@ export function SkillsSummary() {
     );
   }
 
-  const criticalGaps = skillGaps.filter(g => g.priority === 'critical');
-  const highGaps = skillGaps.filter(g => g.priority === 'high');
-  const otherGaps = skillGaps.filter(g => g.priority !== 'critical' && g.priority !== 'high');
-
   return (
     <div className="space-y-4">
-      {/* CRI + Progress summary row */}
+      {/* Summary row */}
       <div className="grid gap-4 md:grid-cols-3">
+        {/* CRI card — graceful when not calculated */}
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-base flex items-center gap-2">
               <TrendingUp className="h-4 w-4 text-primary" />
-              Career Readiness
+              Readiness Score
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold">{criScore?.overall ?? 0}%</p>
-            <p className="text-sm text-muted-foreground mt-1">
-              {criScore?.overall && criScore.overall >= 70
-                ? "You're on track for your target role"
-                : 'Keep building skills to improve your score'}
-            </p>
+            {hasCRI ? (
+              <>
+                <p className="text-3xl font-bold">{criScore.overall}%</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  {criScore.overall >= 70
+                    ? "You're on track for your target role"
+                    : 'Keep building skills to improve your score'}
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="text-lg font-medium text-muted-foreground">Not calculated yet</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Set a career goal to see your readiness score.
+                </p>
+                <Button asChild variant="outline" size="sm" className="mt-2">
+                  <Link to="/plan?tab=goals">Set Goal</Link>
+                </Button>
+              </>
+            )}
           </CardContent>
         </Card>
 
@@ -71,7 +101,7 @@ export function SkillsSummary() {
           <CardHeader className="pb-2">
             <CardTitle className="text-base flex items-center gap-2">
               <CheckCircle className="h-4 w-4 text-primary" />
-              Courses Progress
+              Course Progress
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -98,20 +128,22 @@ export function SkillsSummary() {
           <CardContent>
             <p className="text-3xl font-bold">{skillGaps.length}</p>
             <p className="text-sm text-muted-foreground mt-1">
-              {criticalGaps.length > 0
-                ? `${criticalGaps.length} critical gap${criticalGaps.length > 1 ? 's' : ''} to address`
-                : 'No critical gaps — keep going!'}
+              {criticalCount > 0
+                ? `${criticalCount} critical gap${criticalCount > 1 ? 's' : ''} to address`
+                : skillGaps.length > 0
+                  ? 'No critical gaps — keep going!'
+                  : 'Set a goal to detect gaps'}
             </p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Skill gaps detail */}
+      {/* Skill gaps detail — sorted, capped */}
       <Card>
         <CardHeader>
           <CardTitle>Skill Gaps to Close</CardTitle>
           <CardDescription>
-            Skills needed for your target role, sorted by priority
+            Prioritized skills needed for your target role
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -128,7 +160,7 @@ export function SkillsSummary() {
             </div>
           ) : (
             <div className="space-y-2">
-              {skillGaps.map((gap) => (
+              {visibleGaps.map((gap) => (
                 <div
                   key={gap.skill}
                   className="flex items-center justify-between p-3 rounded-lg border"
@@ -140,7 +172,7 @@ export function SkillsSummary() {
                     <span className="font-medium capitalize">{gap.skill}</span>
                   </div>
                   <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                    {gap.criImpact && (
+                    {gap.criImpact != null && (
                       <span>+{gap.criImpact}% CRI</span>
                     )}
                     {gap.estimatedTimeToClose && (
@@ -149,6 +181,11 @@ export function SkillsSummary() {
                   </div>
                 </div>
               ))}
+              {hasMore && !showAll && (
+                <Button variant="ghost" size="sm" className="w-full" onClick={() => setShowAll(true)}>
+                  View all {sortedGaps.length} gaps
+                </Button>
+              )}
             </div>
           )}
         </CardContent>

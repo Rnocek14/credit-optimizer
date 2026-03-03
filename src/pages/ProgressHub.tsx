@@ -23,10 +23,10 @@ export default function ProgressHub() {
   const { activeTrackId } = useActiveTrackStore();
   const { user } = useUser();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [activeTab, setActiveTab] = useState(() => searchParams.get('tab') || 'skills');
+  const [activeTab, setActiveTab] = useState(() => searchParams.get('tab') || 'history');
 
   useEffect(() => {
-    if (activeTab !== 'skills') {
+    if (activeTab !== 'history') {
       setSearchParams({ tab: activeTab });
     } else {
       setSearchParams({});
@@ -34,7 +34,7 @@ export default function ProgressHub() {
   }, [activeTab, setSearchParams]);
 
   useEffect(() => {
-    const tab = searchParams.get('tab') || 'skills';
+    const tab = searchParams.get('tab') || 'history';
     setActiveTab(tab);
   }, [searchParams]);
 
@@ -171,7 +171,7 @@ export default function ProgressHub() {
 
           {/* ── Skills Summary — clean, structured ────────── */}
           <TabsContent value="skills" className="mt-6">
-            <SkillsSummary />
+            <SkillsSummary courseHistory={courseHistory} userId={user?.id} />
           </TabsContent>
 
           {/* ── History — real course_progress ───────────────── */}
