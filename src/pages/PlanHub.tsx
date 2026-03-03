@@ -10,6 +10,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Helmet } from "react-helmet-async";
 import { toast } from "sonner";
+import { CareerContextBanner } from "@/components/CareerContextBanner";
 
 export default function PlanHub() {
   const { data: activePlan, isLoading: planLoading } = useActivePlan();
@@ -64,6 +65,7 @@ export default function PlanHub() {
           <p className="text-muted-foreground">
             Your saved degree plan and progress toward graduation
           </p>
+          <CareerContextBanner />
         </div>
 
         {planLoading ? (

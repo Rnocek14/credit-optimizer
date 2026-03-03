@@ -17,6 +17,7 @@ import { fetchCareerPaths } from "@/shared/lib/api/marketIntelligence";
 import { useQuery } from "@tanstack/react-query";
 import { useState, useEffect } from "react";
 import { Helmet } from "react-helmet-async";
+import { CareerContextBanner } from "@/components/CareerContextBanner";
 
 export default function DiscoverHub() {
   const { activeTrackId } = useActiveTrackStore();
@@ -73,6 +74,7 @@ export default function DiscoverHub() {
           <p className="text-muted-foreground">
             Explore career opportunities and courses backed by real market data
           </p>
+          <CareerContextBanner />
         </div>
 
         <SortingControls 

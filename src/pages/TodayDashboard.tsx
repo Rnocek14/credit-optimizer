@@ -2,6 +2,7 @@ import { Helmet } from "react-helmet-async";
 import { TodayHeroCard } from "@/components/today/TodayHeroCard";
 import { TodayStatsStrip } from "@/components/today/TodayStatsStrip";
 import { TodaySupportingCards } from "@/components/today/TodaySupportingCards";
+import { CareerContextBanner } from "@/components/CareerContextBanner";
 import { useTodayHeroAction } from "@/hooks/useTodayHeroAction";
 import { useSecureAuth } from "@/hooks/useSecureAuth";
 import { useGamification } from "@/hooks/useGamification";
@@ -50,6 +51,7 @@ export default function TodayDashboardPage() {
         <div>
           <h1 className="text-3xl font-bold mb-1">Today's Focus</h1>
           <p className="text-muted-foreground">What should you do next?</p>
+          <CareerContextBanner />
         </div>
 
         <TodayHeroCard hero={hero} isLoading={heroLoading} />

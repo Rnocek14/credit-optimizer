@@ -9,6 +9,7 @@ import { DataStatusStrip } from './components/DataStatusStrip';
 import { useMarketplaceTemplates } from '@/hooks/useMarketplaceTemplates';
 import { usePlanBasket } from '@/pages/EduTree/v5/state/usePlanBasket';
 import { AnchorSchoolSelector } from '@/pages/EduTree/v5/components/AnchorSchoolSelector';
+import { useActivePlan } from '@/hooks/useActivePlan';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, GitCompare, Filter, X, Sparkles } from 'lucide-react';
@@ -24,6 +25,7 @@ export default function MarketplacePage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const careerPathId = searchParams.get('careerPathId');
   const { constraints, setConstraints } = usePlanBasket();
+  const { data: activePlan } = useActivePlan();
 
   // Career→template bridge: fetch matching program/institution pairs
   const { data: careerBridge } = useQuery({
@@ -155,11 +157,26 @@ export default function MarketplacePage() {
       {/* Inline page title — global nav provided by AppShell */}
       <div className="container mx-auto px-4 pt-4 pb-2">
         <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold">Degree Path Marketplace</h1>
-            <p className="text-sm text-muted-foreground">Find the perfect degree path for your goals</p>
+          <div className="flex items-center gap-3">
+            {activePlan && (
+              <Button variant="ghost" size="sm" asChild className="gap-1">
+                <Link to="/plan">
+                  <ArrowLeft className="h-4 w-4" />
+                  Back to Plan
+                </Link>
+              </Button>
+            )}
+            <div>
+              <h1 className="text-2xl font-bold">Degree Path Marketplace</h1>
+              <p className="text-sm text-muted-foreground">Find the perfect degree path for your goals</p>
+            </div>
           </div>
           <div className="flex items-center gap-2">
+            {activePlan && (
+              <Badge variant="outline" className="text-xs">
+                Editing: {activePlan.name}
+              </Badge>
+            )}
             <span className="text-sm font-medium text-muted-foreground">Graduation school:</span>
             <AnchorSchoolSelector />
           </div>
