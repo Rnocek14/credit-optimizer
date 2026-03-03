@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { TemplateCard } from './TemplateCard';
 import type { MarketplaceDegreeTemplate } from '@/pages/EduTree/v5/types/templates';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -18,6 +19,15 @@ export function TemplateGrid({
   onToggleSelect,
   strengthMap,
 }: TemplateGridProps) {
+  const bestKey = useMemo(() => {
+    if (!strengthMap) return null;
+    let best: { key: string; strength: number } | null = null;
+    for (const [k, s] of strengthMap.entries()) {
+      if (best == null || s > best.strength) best = { key: k, strength: s };
+    }
+    return best?.key ?? null;
+  }, [strengthMap]);
+
   if (isLoading) {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -40,18 +50,22 @@ export function TemplateGrid({
     );
   }
 
+
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      {templates.map((template, index) => {
-        const strength = strengthMap?.get(`${template.anchorSchool}::${template.programId}`);
+      {templates.map((template) => {
+        const key = `${template.anchorSchool}::${template.programId}`;
+        const strength = strengthMap?.get(key);
+        const isBest = bestKey != null && key === bestKey;
         return (
           <TemplateCard
             key={template.id}
             template={template}
             isSelected={selectedTemplates.includes(template.id)}
             onToggleSelect={onToggleSelect}
-            careerFitRank={strengthMap ? (index === 0 && strength != null ? 'best' : undefined) : undefined}
-            careerFitPercent={strength != null ? Math.round(strength * 100) : undefined}
+            careerFitRank={isBest ? 'best' : undefined}
+            careerFitPercent={strength != null ? (strength <= 1 ? Math.round(strength * 100) : Math.round(strength)) : undefined}
           />
         );
       })}
