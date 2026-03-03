@@ -6,7 +6,6 @@ import { fetchPlanCoursesWithProvider, type PlanCourseWithProvider } from '@/sha
 import { useUpdatePlanCourseStatus } from '@/hooks/useUpdatePlanCourseStatus';
 import { useQuery } from '@tanstack/react-query';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { BookOpen, CheckCircle2, Clock, XCircle } from 'lucide-react';
 
@@ -26,7 +25,7 @@ export function PlanCourseList({ planId }: { planId: string }) {
     enabled: !!planId,
   });
 
-  const { mutate: updateStatus } = useUpdatePlanCourseStatus();
+  const { mutate: updateStatus, isPending, variables: pendingVars } = useUpdatePlanCourseStatus();
 
   if (isLoading) {
     return <div className="text-sm text-muted-foreground py-4">Loading courses…</div>;
@@ -53,9 +52,10 @@ export function PlanCourseList({ planId }: { planId: string }) {
       <h3 className="text-sm font-medium text-muted-foreground mb-3">
         Courses ({courses.length})
       </h3>
-      {courses.map((course) => {
+      {courses.map((course, index) => {
         const status = (course.status as PlanStatus) || 'planned';
         const config = STATUS_CONFIG[status] || STATUS_CONFIG.planned;
+        const isThisRowPending = isPending && pendingVars?.planCourseId === course.id;
 
         return (
           <div
@@ -65,17 +65,15 @@ export function PlanCourseList({ planId }: { planId: string }) {
             <div className="flex items-center gap-2 min-w-0 flex-1">
               <config.icon className="h-4 w-4 text-muted-foreground shrink-0" />
               <span className="text-sm truncate">
-                {course.course_id?.slice(0, 8) ?? 'Course'}
+                {course.provider_code
+                  ? `${course.provider_code} — ${course.course_id ?? `Course ${index + 1}`}`
+                  : `Course ${index + 1}`}
               </span>
-              {course.provider_code && (
-                <Badge variant="outline" className="text-xs shrink-0">
-                  {course.provider_code}
-                </Badge>
-              )}
             </div>
             <Select
               value={status}
               onValueChange={(v) => handleStatusChange(course, v)}
+              disabled={isThisRowPending}
             >
               <SelectTrigger className="w-[120px] h-8 text-xs">
                 <SelectValue />
