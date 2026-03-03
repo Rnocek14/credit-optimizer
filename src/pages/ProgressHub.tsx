@@ -3,26 +3,26 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
 import { 
   History, Trophy, Award, FileText, Share, ExternalLink, 
-  CheckCircle, Calendar, Star, BookOpen, Target, TreePine
+  Star, BookOpen, Target, TreePine, Users
 } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { useActiveTrackStore } from "@/stores/useActiveTrackStore";
-import { MayaGuidancePanel } from "@/components/MayaGuidancePanel";
 import { SkillTreeProgress } from "@/components/progress/SkillTreeProgress";
-import { useSearchParams } from "react-router-dom";
 import { useEffect, useState } from "react";
+import { useUser } from "@/hooks/useUser";
+import { useQuery } from "@tanstack/react-query";
+import { fetchCourseProgress } from "@/shared/lib/api/progress";
+import { fetchLearningStreaks } from "@/shared/lib/api/gamification";
+import { Helmet } from "react-helmet-async";
 
 export default function ProgressHub() {
   const { activeTrackId } = useActiveTrackStore();
+  const { user } = useUser();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [activeTab, setActiveTab] = useState(() => {
-    return searchParams.get('tab') || 'skill-tree';
-  });
+  const [activeTab, setActiveTab] = useState(() => searchParams.get('tab') || 'skill-tree');
 
-  // Update URL when tab changes
   useEffect(() => {
     if (activeTab !== 'skill-tree') {
       setSearchParams({ tab: activeTab });
@@ -31,147 +31,84 @@ export default function ProgressHub() {
     }
   }, [activeTab, setSearchParams]);
 
-  // Handle incoming URL changes
   useEffect(() => {
     const tab = searchParams.get('tab') || 'skill-tree';
     setActiveTab(tab);
   }, [searchParams]);
 
-  const learningHistory = [
-    {
-      id: 1,
-      title: "Python Fundamentals",
-      type: "Course",
-      completedAt: "2024-01-15",
-      provider: "DataCamp",
-      duration: "20 hours",
-      xpEarned: 150,
-      progress: 100
+  // Real data: user level + XP from RPC
+  const { data: userLevel } = useQuery({
+    queryKey: ['user-level', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return null;
+      const { supabase } = await import('@/integrations/supabase/client');
+      const { data } = await supabase.rpc('get_user_level', { user_id_param: user.id });
+      return data?.[0] || null;
     },
-    {
-      id: 2,
-      title: "Statistics Basics",
-      type: "Course", 
-      completedAt: "2024-01-28",
-      provider: "Khan Academy",
-      duration: "15 hours",
-      xpEarned: 120,
-      progress: 100
-    },
-    {
-      id: 3,
-      title: "Data Analysis Project",
-      type: "Project",
-      completedAt: "2024-02-05",
-      provider: "Self-directed",
-      duration: "1 week",
-      xpEarned: 200,
-      progress: 100
-    }
-  ];
+    enabled: !!user?.id,
+  });
 
-  const portfolioProjects = [
-    {
-      id: 1,
-      title: "Customer Segmentation Analysis",
-      description: "Machine learning project analyzing customer behavior patterns",
-      technologies: ["Python", "Pandas", "Scikit-learn", "Matplotlib"],
-      status: "verified",
-      completedAt: "2024-02-05",
-      githubUrl: "https://github.com/user/customer-segmentation",
-      demoUrl: "https://customer-analysis-demo.com"
-    },
-    {
-      id: 2,
-      title: "Sales Forecasting Dashboard",
-      description: "Interactive dashboard predicting sales trends",
-      technologies: ["Python", "Streamlit", "Prophet", "Plotly"],
-      status: "pending",
-      completedAt: "2024-02-10",
-      githubUrl: "https://github.com/user/sales-forecasting",
-      demoUrl: null
-    }
-  ];
+  // Real data: course progress
+  const { data: courseHistory = [], isLoading: historyLoading } = useQuery({
+    queryKey: ['course-progress', user?.id],
+    queryFn: () => fetchCourseProgress(user!.id),
+    enabled: !!user?.id,
+  });
 
-  const credentials = [
-    {
-      id: 1,
-      type: "certificate",
-      title: "Python for Data Science",
-      issuer: "DataCamp",
-      issuedAt: "2024-01-20",
-      verificationCode: "DC-12345-PY",
-      badgeUrl: "/api/badge/python-cert"
-    },
-    {
-      id: 2,
-      type: "badge",
-      title: "Fast Learner",
-      description: "Completed 5 courses in one month",
-      earnedAt: "2024-02-01",
-      emoji: "⚡"
-    },
-    {
-      id: 3,
-      type: "certificate",
-      title: "Statistics Foundations",
-      issuer: "Khan Academy",
-      issuedAt: "2024-02-01",
-      verificationCode: "KA-67890-ST",
-      badgeUrl: "/api/badge/stats-cert"
-    }
-  ];
+  // Real data: streaks
+  const { data: streaks = [] } = useQuery({
+    queryKey: ['learning-streaks', user?.id],
+    queryFn: () => fetchLearningStreaks(user!.id),
+    enabled: !!user?.id,
+  });
 
-  const overallStats = {
-    totalXP: 1250,
-    currentLevel: 5,
-    coursesCompleted: 8,
-    projectsCompleted: 3,
-    certificatesEarned: 5,
-    badgesEarned: 3,
-    studyStreak: 15
-  };
+  // Real data: badges earned
+  const { data: earnedBadges = [] } = useQuery({
+    queryKey: ['user-badges', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return [];
+      const { supabase } = await import('@/integrations/supabase/client');
+      const { data, error } = await supabase
+        .from('user_badges')
+        .select('id, badge_id, awarded_at, badges(name, description, emoji)')
+        .eq('user_id', user.id)
+        .order('awarded_at', { ascending: false });
+      if (error) return [];
+      return data ?? [];
+    },
+    enabled: !!user?.id,
+  });
+
+  // Derived stats from real data
+  const completedCourses = courseHistory.filter(c => c.status === 'completed').length;
+  const currentStreak = streaks.length > 0 ? (streaks[0]?.current_streak ?? 0) : 0;
 
   return (
     <div className="min-h-screen bg-background">
+      <Helmet>
+        <title>Progress – Track Your Journey | PathfindAI</title>
+        <meta name="description" content="Track your learning progress, skill tree, and achievements." />
+      </Helmet>
       <HubNavigation />
       
       <div className="container mx-auto px-4 py-6">
-        {/* Header with Track Selector */}
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-3xl font-bold mb-2">Your Progress</h1>
-            <p className="text-muted-foreground">
-              Track your learning journey and showcase your achievements
-            </p>
-          </div>
-          <div className="flex items-center gap-4">
-            {activeTrackId && (
-              <Badge variant="outline" className="px-3 py-1">
-                Track: Active
-              </Badge>
-            )}
-            {/* <TrackSelector /> */}
-          </div>
+        <div className="mb-6">
+          <h1 className="text-3xl font-bold mb-2">Your Progress</h1>
+          <p className="text-muted-foreground">
+            Track your learning journey and showcase your achievements
+          </p>
         </div>
 
-        {/* Maya Guidance */}
-        <MayaGuidancePanel 
-          title="Congrats! This unlocks Data Analyst badge..."
-          message="You've completed 3 key milestones! Consider adding your Customer Segmentation project to your resume and sharing your Python certificate on LinkedIn."
-          className="mb-6"
-        />
-
-        {/* Stats Overview */}
+        {/* Stats Overview — real data */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-6">
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Total XP</p>
-                  <p className="text-2xl font-bold">{overallStats.totalXP}</p>
+                  <p className="text-2xl font-bold">{userLevel?.total_xp ?? 0}</p>
                 </div>
-                <Star className="h-8 w-8 text-warning-muted" />
+                <Star className="h-8 w-8 text-primary" />
               </div>
             </CardContent>
           </Card>
@@ -180,7 +117,7 @@ export default function ProgressHub() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Level</p>
-                  <p className="text-2xl font-bold">{overallStats.currentLevel}</p>
+                  <p className="text-2xl font-bold">{userLevel?.current_level ?? 1}</p>
                 </div>
                 <Trophy className="h-8 w-8 text-primary" />
               </div>
@@ -191,9 +128,9 @@ export default function ProgressHub() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Completed</p>
-                  <p className="text-2xl font-bold">{overallStats.coursesCompleted}</p>
+                  <p className="text-2xl font-bold">{completedCourses}</p>
                 </div>
-                <BookOpen className="h-8 w-8 text-success-muted" />
+                <BookOpen className="h-8 w-8 text-primary" />
               </div>
             </CardContent>
           </Card>
@@ -202,7 +139,7 @@ export default function ProgressHub() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Study Streak</p>
-                  <p className="text-2xl font-bold">{overallStats.studyStreak} days</p>
+                  <p className="text-2xl font-bold">{currentStreak} days</p>
                 </div>
                 <Target className="h-8 w-8 text-primary" />
               </div>
@@ -211,7 +148,7 @@ export default function ProgressHub() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="skill-tree" data-testid="tab-skill-tree" className="flex items-center gap-2">
               <TreePine className="h-4 w-4" />
               Skill Tree
@@ -220,13 +157,9 @@ export default function ProgressHub() {
               <History className="h-4 w-4" />
               History
             </TabsTrigger>
-            <TabsTrigger value="portfolio" data-testid="tab-portfolio" className="flex items-center gap-2">
-              <FileText className="h-4 w-4" />
-              Portfolio
-            </TabsTrigger>
             <TabsTrigger value="credentials" data-testid="tab-credentials" className="flex items-center gap-2">
               <Award className="h-4 w-4" />
-              Credentials
+              Badges
             </TabsTrigger>
             <TabsTrigger value="resume" data-testid="tab-resume" className="flex items-center gap-2">
               <FileText className="h-4 w-4" />
@@ -234,203 +167,101 @@ export default function ProgressHub() {
             </TabsTrigger>
           </TabsList>
 
+          {/* ── Skill Tree — already wired to real data ──────── */}
           <TabsContent value="skill-tree" className="mt-6">
             <SkillTreeProgress />
           </TabsContent>
 
+          {/* ── History — real course_progress ───────────────── */}
           <TabsContent value="history" className="mt-6">
             <Card>
               <CardHeader>
                 <CardTitle>Learning History</CardTitle>
-                <CardDescription>
-                  Your completed courses, projects, and learning milestones
-                </CardDescription>
+                <CardDescription>Your completed courses and learning milestones</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  {learningHistory.map((item) => (
-                    <div key={item.id} className="flex items-center gap-4 p-4 border rounded-lg">
-                      <CheckCircle className="h-5 w-5 text-green-600 flex-shrink-0" />
-                      <div className="flex-1">
-                        <div className="flex items-center justify-between">
-                          <h4 className="font-medium">{item.title}</h4>
-                          <Badge variant="outline">{item.type}</Badge>
-                        </div>
-                        <p className="text-readable-sm text-muted-foreground mt-1">
-                          {item.provider} • {item.duration} • +{item.xpEarned} XP
-                        </p>
-                        <p className="text-readable-xs text-muted-foreground">
-                          Completed on {new Date(item.completedAt).toLocaleDateString()}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                <Button asChild variant="outline" className="w-full mt-4">
-                  <Link to="/learning-history">
-                    View Full History
-                  </Link>
-                </Button>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="portfolio" className="mt-6">
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle>Portfolio Projects</CardTitle>
-                    <CardDescription>
-                      Showcase your practical skills and completed projects
-                    </CardDescription>
+                {historyLoading ? (
+                  <div className="space-y-3">
+                    {[...Array(3)].map((_, i) => (
+                      <div key={i} className="h-16 bg-muted rounded animate-pulse" />
+                    ))}
                   </div>
-                  <Button asChild>
-                    <Link to="/projects">
-                      Manage Projects
-                    </Link>
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {portfolioProjects.map((project) => (
-                    <div key={project.id} className="border rounded-lg p-4">
-                      <div className="flex items-start justify-between mb-3">
-                        <div>
-                          <h4 className="font-medium">{project.title}</h4>
-                          <p className="text-readable-sm text-muted-foreground mt-1">
-                            {project.description}
+                ) : courseHistory.length === 0 ? (
+                  <div className="text-center py-12">
+                    <BookOpen className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                    <h3 className="text-lg font-medium mb-2">No learning history yet</h3>
+                    <p className="text-muted-foreground mb-4">Start a course to begin tracking your progress.</p>
+                    <Button asChild variant="outline">
+                      <Link to="/discover?tab=courses">Browse Courses</Link>
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {courseHistory.map((item) => (
+                      <div key={item.id} className="flex items-center gap-4 p-4 border rounded-lg">
+                        <div className={`h-2 w-2 rounded-full ${item.status === 'completed' ? 'bg-primary' : 'bg-muted-foreground/40'}`} />
+                        <div className="flex-1">
+                          <div className="flex items-center justify-between">
+                            <h4 className="font-medium">{item.course_id}</h4>
+                            <Badge variant={item.status === 'completed' ? 'default' : 'outline'}>
+                              {item.status}
+                            </Badge>
+                          </div>
+                          <p className="text-sm text-muted-foreground">
+                            {item.last_accessed_at ? `Last active: ${new Date(item.last_accessed_at).toLocaleDateString()}` : ''}
                           </p>
                         </div>
-                        <Badge 
-                          variant={project.status === "verified" ? "default" : "secondary"}
-                        >
-                          {project.status}
-                        </Badge>
                       </div>
-                      <div className="flex flex-wrap gap-1 mb-3">
-                         {project.technologies.map((tech, i) => (
-                           <Badge key={i} variant="outline" size="sm">
-                             {tech}
-                           </Badge>
-                         ))}
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Button asChild variant="outline" size="sm" data-testid="add-to-resume">
-                          <Link to="/resume-builder">
-                            <Share className="h-4 w-4 mr-2" />
-                            Add to Resume
-                          </Link>
-                        </Button>
-                        {project.githubUrl && (
-                          <Button asChild variant="outline" size="sm">
-                            <a href={project.githubUrl} target="_blank" rel="noopener noreferrer">
-                              <ExternalLink className="h-4 w-4 mr-2" />
-                              GitHub
-                            </a>
-                          </Button>
-                        )}
-                        {project.demoUrl && (
-                          <Button asChild variant="outline" size="sm">
-                            <a href={project.demoUrl} target="_blank" rel="noopener noreferrer">
-                              <ExternalLink className="h-4 w-4 mr-2" />
-                              Demo
-                            </a>
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
 
+          {/* ── Badges — real user_badges ────────────────────── */}
           <TabsContent value="credentials" className="mt-6">
             <Card>
               <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle>Badges & Certificates</CardTitle>
-                    <CardDescription>
-                      Your verified achievements and credentials
-                    </CardDescription>
-                  </div>
-                  <Button asChild data-testid="manage-wallet">
-                    <Link to="/wallet">
-                      Manage Wallet
-                    </Link>
-                  </Button>
-                </div>
+                <CardTitle>Badges & Achievements</CardTitle>
+                <CardDescription>Your verified achievements</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="grid gap-4 md:grid-cols-2">
-                  {credentials.map((credential) => (
-                    <div key={credential.id} className="border rounded-lg p-4">
-                      <div className="flex items-start justify-between mb-2">
-                        <div className="flex items-center gap-2">
-                          {credential.type === "badge" ? (
-                            <span className="text-2xl">{credential.emoji}</span>
-                          ) : (
-                            <Award className="h-6 w-6 text-primary" />
-                          )}
-                          <div>
-                            <h4 className="font-medium">{credential.title}</h4>
-                            {credential.issuer && (
-                              <p className="text-readable-sm text-muted-foreground">
-                                {credential.issuer}
-                              </p>
-                            )}
-                          </div>
+                {earnedBadges.length === 0 ? (
+                  <div className="text-center py-12">
+                    <Award className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                    <h3 className="text-lg font-medium mb-2">No badges earned yet</h3>
+                    <p className="text-muted-foreground">Complete challenges and courses to earn badges.</p>
+                  </div>
+                ) : (
+                  <div className="grid gap-4 md:grid-cols-2">
+                    {earnedBadges.map((ub: any) => (
+                      <div key={ub.id} className="border rounded-lg p-4 flex items-start gap-3">
+                        <span className="text-2xl">{(ub.badges as any)?.emoji ?? '🏅'}</span>
+                        <div>
+                          <h4 className="font-medium">{(ub.badges as any)?.name ?? 'Badge'}</h4>
+                          <p className="text-sm text-muted-foreground">{(ub.badges as any)?.description}</p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Earned {new Date(ub.awarded_at).toLocaleDateString()}
+                          </p>
                         </div>
-                        <Badge variant="outline">
-                          {credential.type}
-                        </Badge>
                       </div>
-                      {credential.description && (
-                        <p className="text-readable-sm text-muted-foreground mb-2">
-                          {credential.description}
-                        </p>
-                      )}
-                      <div className="flex items-center justify-between">
-                        <p className="text-readable-xs text-muted-foreground">
-                          {credential.issuedAt ? 
-                            `Issued: ${new Date(credential.issuedAt).toLocaleDateString()}` :
-                            `Earned: ${new Date(credential.earnedAt).toLocaleDateString()}`
-                          }
-                        </p>
-                        <Button variant="outline" size="sm">
-                          <Share className="h-4 w-4 mr-2" />
-                          Share
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
 
+          {/* ── Resume ───────────────────────────────────────── */}
           <TabsContent value="resume" className="mt-6">
             <Card>
               <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle>Resume Builder</CardTitle>
-                    <CardDescription>
-                      Create and manage your professional resume
-                    </CardDescription>
-                  </div>
-                  <Button asChild>
-                    <Link to="/resume-builder">
-                      Open Resume Builder
-                    </Link>
-                  </Button>
-                </div>
+                <CardTitle>Resume Builder</CardTitle>
+                <CardDescription>Create and manage your professional resume</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="text-center py-8">
+                <div className="text-center py-12">
                   <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                   <h3 className="text-lg font-medium mb-2">Build Your Resume</h3>
                   <p className="text-muted-foreground mb-4">
@@ -438,14 +269,10 @@ export default function ProgressHub() {
                   </p>
                   <div className="flex justify-center gap-2">
                     <Button asChild>
-                      <Link to="/resume-builder">
-                        Create New Resume
-                      </Link>
+                      <Link to="/resume-builder">Create Resume</Link>
                     </Button>
                     <Button asChild variant="outline">
-                      <Link to="/resume-analytics">
-                        View Analytics
-                      </Link>
+                      <Link to="/resume-analytics">View Analytics</Link>
                     </Button>
                   </div>
                 </div>
