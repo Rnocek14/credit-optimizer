@@ -9,6 +9,7 @@ import { useState, Suspense, lazy } from "react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useActivePlan } from "@/hooks/useActivePlan";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -24,10 +25,11 @@ const TrackManager = lazy(() => import("@/components/multi-track/TrackManager").
   default: module.TrackManager 
 })));
 
-const primaryHubs = [
+// Plan hub href is dynamic — computed at render time
+const staticHubs = [
   { id: "today", label: "TODAY", icon: CalendarDays, href: "/today" },
   { id: "discover", label: "DISCOVER", icon: Search, href: "/discover" },
-  { id: "plan", label: "DEGREE PLAN", icon: GraduationCap, href: "/plan" },
+  // plan hub injected dynamically below
   { id: "progress", label: "PROGRESS", icon: BookOpen, href: "/progress" },
 ];
 
@@ -38,6 +40,20 @@ export function HubNavigation() {
   const { activeTrackId } = useActiveTrackStore();
   const [isMoreOpen, setIsMoreOpen] = useState(false);
   const [showTrackManager, setShowTrackManager] = useState(false);
+  const { data: activePlan } = useActivePlan();
+
+  // Dynamic plan hub: if user has a plan, go straight to planner; otherwise marketplace
+  const planHubHref = activePlan?.id
+    ? `/edu-tree-v6?planId=${activePlan.id}`
+    : '/edu-tree-v5/marketplace';
+  const planHub = { id: "plan", label: "DEGREE PLAN", icon: GraduationCap, href: planHubHref };
+
+  const primaryHubs = [
+    staticHubs[0], // TODAY
+    staticHubs[1], // DISCOVER
+    planHub,       // DEGREE PLAN (dynamic)
+    staticHubs[2], // PROGRESS
+  ];
 
   // Fetch current track details for display
   const { data: currentTrack } = useQuery({
@@ -56,18 +72,18 @@ export function HubNavigation() {
     enabled: !!activeTrackId && !!user,
   });
 
-  const isActive = (href: string) => {
-    if (href === "/today") {
+  const isActive = (hubId: string) => {
+    if (hubId === "today") {
       return location.pathname === "/today";
     }
-    if (href === "/discover") {
+    if (hubId === "discover") {
       return location.pathname.startsWith("/discover") || 
              location.pathname.startsWith("/explore") || 
              location.pathname === "/explore-courses" ||
              location.pathname === "/salary-insights" ||
              location.pathname === "/market-intelligence";
     }
-    if (href === "/plan") {
+    if (hubId === "plan") {
       return location.pathname.startsWith("/plan") || 
              location.pathname.startsWith("/edu-tree-v5") ||
              location.pathname.startsWith("/edu-tree-v6") ||
@@ -76,7 +92,7 @@ export function HubNavigation() {
              location.pathname === "/marketplace" ||
              location.pathname === "/build";
     }
-    if (href === "/progress") {
+    if (hubId === "progress") {
       return location.pathname.startsWith("/progress") ||
              location.pathname.startsWith("/history") ||
              location.pathname.startsWith("/learning-history") ||
@@ -88,7 +104,7 @@ export function HubNavigation() {
              location.pathname === "/resume-builder" ||
              location.pathname === "/resume-analytics";
     }
-    return location.pathname === href;
+    return false;
   };
 
   // Progressive disclosure based on journey stage
@@ -126,12 +142,12 @@ export function HubNavigation() {
               <div key={hub.id} className="flex items-center gap-1">
                 <Button
                   key={hub.id}
-                  variant={isActive(hub.href) ? "default" : "ghost"}
+                  variant={isActive(hub.id) ? "default" : "ghost"}
                   size="sm"
                   asChild
                   className={cn(
                     "gap-2 font-medium interactive",
-                    isActive(hub.href) && "bg-primary text-primary-foreground shadow-elevation"
+                    isActive(hub.id) && "bg-primary text-primary-foreground shadow-elevation"
                   )}
                 data-testid={`nav-${hub.id}`}
               >
