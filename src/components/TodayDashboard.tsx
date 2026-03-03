@@ -34,7 +34,7 @@ import { useMayaContextTracking } from '@/hooks/useMayaContextTracking';
 import { MayaIntelligencePanel } from '@/components/MayaIntelligencePanel';
 import { MayaInsightDebugPanel } from '@/components/debug/MayaInsightDebugPanel';
 import { DbHealthBadge } from '@/components/DbHealthBadge';
-import { AlternativeCoursesList } from '@/components/AlternativeCoursesList';
+// AlternativeCoursesList removed — belongs in Discover, not Today
 import { useSkillGaps } from '@/hooks/useSkillGaps';
 
 /** Small inline component to show real skill gaps from DB */
@@ -532,7 +532,7 @@ export function TodayDashboard({ onNextStepClick }: TodayDashboardProps) {
           </CardContent>
         </Card>
 
-         {/* Smart Progress & Streak Card */}
+         {/* Streak & Level Card — compact */}
          <Card data-testid="learning-streak">
            <CardHeader>
              <CardTitle className="flex items-center gap-2">
@@ -553,7 +553,7 @@ export function TodayDashboard({ onNextStepClick }: TodayDashboardProps) {
                 <div className="flex items-center justify-center mb-2">
                   <TrendingUp className="h-5 w-5 text-green-500" />
                 </div>
-                <p className="text-2xl font-bold">3</p>
+                <p className="text-2xl font-bold">{userLevel?.current_level || 1}</p>
                 <p className="text-readable-xs text-muted-foreground">Level</p>
               </div>
             </div>
@@ -578,115 +578,9 @@ export function TodayDashboard({ onNextStepClick }: TodayDashboardProps) {
                   </Button>
                </div>
              )}
-            
-            
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span>Weekly Goal</span>
-                <span>75%</span>
-              </div>
-              <Progress value={75} className="h-2" />
-               <p className="text-readable-xs text-muted-foreground text-center">
-                 2 more sessions this week
-               </p>
-            </div>
 
-        {process.env.NODE_ENV !== 'production' && user && currentStreak === 0 && (
-              <div className="pt-3">
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={async () => {
-                    try {
-                      await seedTodayDemoData();
-                      toast({ title: 'Demo data seeded', description: 'Refresh applied to your Today dashboard.' });
-                      // Refresh gamification queries
-                      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.LEARNING_STREAKS(undefined, undefined) });
-                      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.CELEBRATION_MOMENTS(undefined, undefined) });
-                      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.GAMIFICATION_DATA(undefined, undefined) });
-                    } catch (e: any) {
-                      toast({ title: 'Seeding failed', description: e.message || 'Please sign in first.', variant: 'destructive' });
-                    }
-                  }}
-                >
-                  Seed demo data for Today
-                </Button>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Unstick Prompt - Standalone if needed */}
-        {unstickData && (
-          <Card className="md:col-span-2 lg:col-span-3">
-            <CardContent className="pt-6">
-              <div className="p-4 rounded-lg border border-orange-200 bg-orange-50 dark:border-orange-800 dark:bg-orange-950/30" data-testid="unstick-prompt">
-                <div className="flex items-center gap-2 mb-3">
-                  <AlertCircle className="h-5 w-5 text-orange-600" />
-                  <h3 className="font-medium text-orange-800 dark:text-orange-200">
-                    Welcome back! Ready to get unstuck?
-                  </h3>
-                </div>
-                <p className="text-sm text-orange-700 dark:text-orange-300 mb-3">
-                  It's been {unstickData.daysSinceActivity} days since your last activity. Let's get you back on track with a quick win.
-                </p>
-                <Button 
-                  size="sm" 
-                  variant="default"
-                  onClick={actions.handleUnstickAction}
-                  data-testid="unstick-button"
-                  aria-label="Get me unstuck"
-                >
-                  Get me unstuck
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Demo Data Seeding */}
-        {process.env.NODE_ENV !== 'production' && user && currentStreak === 0 && (
-          <Card className="md:col-span-2 lg:col-span-3">
-            <CardContent className="pt-6 text-center">
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={async () => {
-                  try {
-                    await seedTodayDemoData();
-                    toast({ title: 'Demo data seeded', description: 'Refresh applied to your Today dashboard.' });
-                    // Refresh gamification queries
-                    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.LEARNING_STREAKS(undefined, undefined) });
-                    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.CELEBRATION_MOMENTS(undefined, undefined) });
-                    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.GAMIFICATION_DATA(undefined, undefined) });
-                  } catch (e: any) {
-                    toast({ title: 'Seeding failed', description: e.message || 'Please sign in first.', variant: 'destructive' });
-                  }
-                }}
-              >
-                Seed demo data for Today
-              </Button>
-            </CardContent>
-          </Card>
-        )}
-        
-        {/* Alternative Courses Section - Moved up for better visibility */}
-        <div className="md:col-span-2 lg:col-span-3" data-testid="alternative-courses">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <BookOpen className="h-5 w-5 text-primary" />
-                Alternative Learning Paths
-              </CardTitle>
-              <CardDescription>
-                Explore courses from multiple platforms to enhance your learning journey
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <AlternativeCoursesList />
-            </CardContent>
-          </Card>
-        </div>
+           </CardContent>
+         </Card>
         
         {/* Gamification Features */}
         {gamificationTimeline && (

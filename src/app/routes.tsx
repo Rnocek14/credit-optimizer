@@ -16,6 +16,7 @@ import { StakeholderProtectedRoute } from '@/components/StakeholderProtectedRout
 import { EnhancedErrorBoundary } from '@/components/enhanced/EnhancedErrorBoundary';
 import { EduTreeError } from '@/components/EduTreeError';
 import { PageLoader } from '@/components/PageLoader';
+import { AppShell } from '@/components/AppShell';
 
 // ── Core pages ─────────────────────────────────────────────────
 import Index from '@/pages/Index';
@@ -217,27 +218,33 @@ export function AppRoutes() {
       <Route path="/edu-tree-v4" element={<Navigate to="/edu-tree-v5" replace />} />
       {/* EduTree V5 — power user / dev mode */}
       <Route path="/edu-tree-v5" element={
-        <EnhancedErrorBoundary fallback={<EduTreeError />}>
-          <React.Suspense fallback={<PageLoader message="Loading V5 testbed..." />}>
-            <EduTreeV5Route />
-          </React.Suspense>
-        </EnhancedErrorBoundary>
+        <AppShell>
+          <EnhancedErrorBoundary fallback={<EduTreeError />}>
+            <React.Suspense fallback={<PageLoader message="Loading V5 testbed..." />}>
+              <EduTreeV5Route />
+            </React.Suspense>
+          </EnhancedErrorBoundary>
+        </AppShell>
       } />
       {/* EduTree V6 — guided experience layer */}
       <Route path="/edu-tree-v6" element={
-        <EnhancedErrorBoundary fallback={<EduTreeError />}>
-          <React.Suspense fallback={<PageLoader message="Loading degree planner..." />}>
-            <EduTreeV6Route />
-          </React.Suspense>
-        </EnhancedErrorBoundary>
+        <AppShell>
+          <EnhancedErrorBoundary fallback={<EduTreeError />}>
+            <React.Suspense fallback={<PageLoader message="Loading degree planner..." />}>
+              <EduTreeV6Route />
+            </React.Suspense>
+          </EnhancedErrorBoundary>
+        </AppShell>
       } />
       {/* Marketplace V1 */}
       <Route path="/edu-tree-v5/marketplace" element={
-        <EnhancedErrorBoundary fallback={<EduTreeError />}>
-          <React.Suspense fallback={<PageLoader message="Loading marketplace..." />}>
-            <MarketplacePage />
-          </React.Suspense>
-        </EnhancedErrorBoundary>
+        <AppShell>
+          <EnhancedErrorBoundary fallback={<EduTreeError />}>
+            <React.Suspense fallback={<PageLoader message="Loading marketplace..." />}>
+              <MarketplacePage />
+            </React.Suspense>
+          </EnhancedErrorBoundary>
+        </AppShell>
       } />
       {/* Legacy standalone marketplace → redirect to real marketplace */}
       <Route path="/marketplace" element={<Navigate to="/edu-tree-v5/marketplace" replace />} />
