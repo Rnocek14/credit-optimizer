@@ -20,10 +20,11 @@ export function TemplateGrid({
   strengthMap,
 }: TemplateGridProps) {
   const bestKey = useMemo(() => {
-    if (!strengthMap) return null;
+    if (!strengthMap || strengthMap.size === 0) return null;
     let best: { key: string; strength: number } | null = null;
-    for (const [k, s] of strengthMap.entries()) {
-      if (best == null || s > best.strength) best = { key: k, strength: s };
+    for (const [key, strength] of strengthMap.entries()) {
+      if (strength == null) continue;
+      if (best == null || strength > best.strength) best = { key, strength };
     }
     return best?.key ?? null;
   }, [strengthMap]);
@@ -49,7 +50,6 @@ export function TemplateGrid({
       </div>
     );
   }
-
 
 
   return (
