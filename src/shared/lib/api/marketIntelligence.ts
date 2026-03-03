@@ -15,6 +15,17 @@ export async function fetchCareerPathTitle(careerPathId: string) {
   return data;
 }
 
+/** Fetch all career paths for browsing (Discover hub). */
+export async function fetchCareerPaths() {
+  const { data, error } = await supabase
+    .from('career_paths')
+    .select('id, title, summary, industry, average_salary, growth_outlook, key_skills, level')
+    .order('title');
+
+  if (error) throw error;
+  return data ?? [];
+}
+
 export async function fetchLocationDetails(locationId: string) {
   const { data, error } = await supabase
     .from('locations')
