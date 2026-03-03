@@ -16,6 +16,7 @@ import { fetchCourseProgress, fetchRecommendedCoursesByIds } from "@/shared/lib/
 import { fetchLearningStreaks } from "@/shared/lib/api/gamification";
 import { fetchUserLevel, fetchUserBadgesWithMeta } from "@/shared/lib/api/gamification";
 import { Helmet } from "react-helmet-async";
+import { CareerContextBanner } from "@/components/CareerContextBanner";
 import { useMemo } from "react";
 
 export default function ProgressHub() {
@@ -103,6 +104,7 @@ export default function ProgressHub() {
           <p className="text-muted-foreground">
             Track your learning journey and showcase your achievements
           </p>
+          <CareerContextBanner />
         </div>
 
         {/* Stats Overview — real data */}

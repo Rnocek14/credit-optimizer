@@ -2,7 +2,7 @@ import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Plus, TrendingUp, DollarSign, MapPin, Info, ExternalLink } from 'lucide-react';
+import { Plus, TrendingUp, DollarSign, MapPin, Info, ExternalLink, GraduationCap } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { MarketBar } from './MarketBar';
 import { MarketTooltip } from './MarketTooltip';
@@ -169,6 +169,20 @@ export const MarketEnhancedCareerCard: React.FC<MarketEnhancedCareerCardProps> =
           
           <Button 
             variant="outline" 
+            size="default"
+            asChild
+          >
+            <Link 
+              to={`/edu-tree-v5/marketplace?careerPathId=${careerPath.id}`}
+              title="Browse degree plans for this career"
+            >
+              <GraduationCap className="h-4 w-4 mr-2" />
+              Browse Plans
+            </Link>
+          </Button>
+
+          <Button 
+            variant="ghost" 
             size="default"
             asChild
           >
