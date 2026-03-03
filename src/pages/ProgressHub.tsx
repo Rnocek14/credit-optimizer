@@ -25,17 +25,23 @@ export default function ProgressHub() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState(() => searchParams.get('tab') || 'history');
 
-  useEffect(() => {
-    if (activeTab !== 'history') {
-      setSearchParams({ tab: activeTab });
+  // Single effect: sync tab ↔ URL without fighting
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab);
+    if (tab !== 'history') {
+      setSearchParams({ tab });
     } else {
       setSearchParams({});
     }
-  }, [activeTab, setSearchParams]);
+  };
 
+  // On mount / external URL change only
   useEffect(() => {
-    const tab = searchParams.get('tab') || 'history';
-    setActiveTab(tab);
+    const urlTab = searchParams.get('tab') || 'history';
+    if (urlTab !== activeTab) {
+      setActiveTab(urlTab);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
   // Real data: user level + XP via DAL
@@ -149,7 +155,7 @@ export default function ProgressHub() {
           </Card>
         </div>
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
           <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="skills" data-testid="tab-skills" className="flex items-center gap-2">
               <BarChart3 className="h-4 w-4" />

@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -6,6 +7,8 @@ import { Progress } from '@/components/ui/progress';
 import { Calendar, Clock, Target, TrendingUp, Zap, Users, BookOpen, Award, Flame, AlertCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useActiveTrackStore } from '@/stores/useActiveTrackStore';
+import { fetchUserLevel } from '@/shared/lib/api/gamification';
+import { fetchHasActivePlan } from '@/shared/lib/api/userPlans';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSecureAuth } from '@/hooks/useSecureAuth';
 import { useSmartTodayDashboard } from '@/hooks/useSmartTodayDashboard';
@@ -100,12 +103,16 @@ export function TodayDashboard({ onNextStepClick }: TodayDashboardProps) {
   const { getCurrentStreak, getLongestStreak, metrics } = useGamification(user?.id);
   const { data: userLevel } = useQuery({
     queryKey: ['user-level', user?.id],
-    queryFn: async () => {
-      if (!user?.id) return null;
-      const { data } = await supabase.rpc('get_user_level', { user_id_param: user.id });
-      return data?.[0] || null;
-    },
+    queryFn: () => fetchUserLevel(user!.id),
     enabled: !!user?.id
+  });
+
+  // State-aware CTA: does user have an active degree plan?
+  const { data: hasActivePlan = false } = useQuery({
+    queryKey: ['has-active-plan', user?.id],
+    queryFn: () => fetchHasActivePlan(user!.id),
+    enabled: !!user?.id,
+    staleTime: 60_000,
   });
 
   // Gamification state
@@ -202,25 +209,7 @@ export function TodayDashboard({ onNextStepClick }: TodayDashboardProps) {
     }
   };
 
-  // Real skill gaps from DB instead of hardcoded mock
-  const { data: skillGaps } = useQuery({
-    queryKey: ['skill-gaps-today', user?.id],
-    queryFn: async () => {
-      if (!user?.id) return [];
-      // Import dynamically to avoid circular deps
-      const { supabase } = await import('@/integrations/supabase/client');
-      const { data: goals } = await supabase
-        .from('career_goals')
-        .select('target_role')
-        .eq('user_id', user.id)
-        .eq('active', true)
-        .limit(1);
-      // Return empty if no goals — the SkillGaps hook handles fallback
-      return goals ?? [];
-    },
-    enabled: !!user?.id,
-    staleTime: 5 * 60_000,
-  });
+  // Redundant skillGaps query removed — SkillGapsSection handles its own data via useSkillGaps
 
   console.log('TodayDashboard render:', { userId: user?.id, isLoading: smartDashboardLoading, nextStep: !!nextStep, quickWins: quickWins?.length });
 
@@ -362,6 +351,30 @@ export function TodayDashboard({ onNextStepClick }: TodayDashboardProps) {
         </div>
         {import.meta.env.DEV && <MayaInsightDebugPanel />}
       </div>
+
+      {/* State-aware Degree Plan CTA */}
+      <Card className="border-primary/20 bg-primary/5">
+        <CardContent className="flex items-center justify-between py-4">
+          <div className="flex items-center gap-3">
+            <Target className="h-6 w-6 text-primary" />
+            <div>
+              <p className="font-medium text-foreground">
+                {hasActivePlan ? 'Continue your degree plan' : 'Start your degree plan'}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                {hasActivePlan
+                  ? 'Pick up where you left off'
+                  : 'Browse optimized templates and build your path'}
+              </p>
+            </div>
+          </div>
+          <Button asChild size="sm">
+            <Link to={hasActivePlan ? '/plan' : '/edu-tree-v5/marketplace'}>
+              {hasActivePlan ? 'Open Plan' : 'Browse Plans'}
+            </Link>
+          </Button>
+        </CardContent>
+      </Card>
 
       {/* Main Dashboard Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
