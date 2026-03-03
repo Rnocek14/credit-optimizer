@@ -16,6 +16,8 @@ export interface HeroAction {
   ctaLabel: string;
   to: string;
   reasonCode: 'has-plan' | 'no-plan';
+  /** Optional progress string, e.g. "42% complete" */
+  progressLabel?: string;
 }
 
 export function useTodayHeroAction(): { hero: HeroAction; isLoading: boolean } {
@@ -24,11 +26,10 @@ export function useTodayHeroAction(): { hero: HeroAction; isLoading: boolean } {
   let hero: HeroAction;
 
   if (activePlan) {
+    const planName = activePlan.name || 'your degree plan';
     hero = {
-      title: 'Continue your degree plan',
-      subtitle: activePlan.name
-        ? `Pick up where you left off on "${activePlan.name}".`
-        : 'Pick up where you left off.',
+      title: `Continue ${planName}`,
+      subtitle: 'Pick up where you left off.',
       ctaLabel: 'Open Plan',
       to: '/plan',
       reasonCode: 'has-plan',

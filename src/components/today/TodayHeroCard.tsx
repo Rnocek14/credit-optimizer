@@ -30,10 +30,12 @@ export function TodayHeroCard({ hero, isLoading }: TodayHeroCardProps) {
           <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
             <GraduationCap className="h-5 w-5 text-primary" />
           </div>
-          <div className="min-w-0">
+           <div className="min-w-0">
             <p className="font-semibold text-foreground">{hero.title}</p>
             <p className="text-sm text-muted-foreground truncate">
-              {hero.subtitle}
+              {hero.progressLabel
+                ? `${hero.progressLabel} · ${hero.subtitle}`
+                : hero.subtitle}
             </p>
           </div>
         </div>
