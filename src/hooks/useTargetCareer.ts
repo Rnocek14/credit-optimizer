@@ -14,12 +14,12 @@ export function useTargetCareer(careerId: string | null | undefined) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('career_paths')
-        .select('id, title')
+        .select('id, title, key_skills')
         .eq('id', careerId!)
         .single();
 
       if (error) throw error;
-      return data as { id: string; title: string };
+      return data as { id: string; title: string; key_skills: string[] | null };
     },
     enabled: !!careerId,
     staleTime: 10 * 60 * 1000, // career names don't change

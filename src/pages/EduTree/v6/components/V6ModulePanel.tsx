@@ -17,7 +17,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { X, Star, ChevronDown, ChevronUp, CheckCircle2, GraduationCap, Globe, Zap, FileText, Shield, Info } from 'lucide-react';
+import { X, Star, ChevronDown, ChevronUp, CheckCircle2, GraduationCap, Globe, Zap, FileText, Shield, Info, Target } from 'lucide-react';
 import { toast } from 'sonner';
 import { usePlanBasket } from '@/pages/EduTree/v5/state/usePlanBasket';
 import { usePlanBasketWithToasts } from '@/pages/EduTree/v5/hooks/usePlanBasketWithToasts';
@@ -68,7 +68,7 @@ function CreditTypeBadge({ providerType }: { providerType?: ProviderType }) {
 }
 
 // ── "Why recommended" logic ─────────────────────────────────
-function getRecommendationReasons(option: MarketplaceOption, moduleLabel: string, anchorSchool?: string): string[] {
+function getRecommendationReasons(option: MarketplaceOption, moduleLabel: string, anchorSchool?: string, careerName?: string | null, isCareerAligned?: boolean): string[] {
   const reasons: string[] = [];
 
   if (option.providerType === 'university' && anchorSchool) {
@@ -93,6 +93,10 @@ function getRecommendationReasons(option: MarketplaceOption, moduleLabel: string
     reasons.push(`High quality score (${option.cri_score}/100)`);
   }
 
+  if (isCareerAligned && careerName) {
+    reasons.unshift(V6_COPY.careerAlignedReason(careerName));
+  }
+
   if (reasons.length === 0) {
     reasons.push('Best overall match for this requirement');
   }
@@ -105,6 +109,7 @@ const SORT_LABELS: Record<string, string> = {
   'best-match': 'Top Recommendation',
   cheapest: 'Lowest Cost Option',
   shortest: 'Fastest Option',
+  'career-fit': 'Best Career Fit',
 };
 
 // ── Top Recommendation Card (memoized reasons) ──────────────
@@ -115,6 +120,8 @@ function TopRecommendationCard({
   isInBasket,
   onAdd,
   sortBy,
+  careerName,
+  isCareerAligned,
 }: {
   option: MarketplaceOption;
   moduleLabel: string;
@@ -122,10 +129,12 @@ function TopRecommendationCard({
   isInBasket: boolean;
   onAdd: () => void;
   sortBy: string;
+  careerName?: string | null;
+  isCareerAligned?: boolean;
 }) {
   const reasons = useMemo(
-    () => getRecommendationReasons(option, moduleLabel, anchorSchool),
-    [option, moduleLabel, anchorSchool]
+    () => getRecommendationReasons(option, moduleLabel, anchorSchool, careerName, isCareerAligned),
+    [option, moduleLabel, anchorSchool, careerName, isCareerAligned]
   );
 
   const cardLabel = SORT_LABELS[sortBy] ?? V6_COPY.recommendedLabel;
@@ -180,6 +189,8 @@ interface V6ModulePanelProps {
   anchorSchool?: string;
   yearEarned?: number;
   yearCap?: number;
+  careerKeySkills?: string[];
+  targetCareerName?: string | null;
 }
 
 export function V6ModulePanel({
@@ -190,19 +201,39 @@ export function V6ModulePanel({
   anchorSchool,
   yearEarned = 0,
   yearCap = 30,
+  careerKeySkills = [],
+  targetCareerName,
 }: V6ModulePanelProps) {
   const basket = usePlanBasket(s => s.items);
   const { addItemWithToast, removeItemWithToast } = usePlanBasketWithToasts();
   const { weights } = useScoringPrefs();
-  const [sortBy, setSortBy] = useState<'best-match' | 'cheapest' | 'shortest'>('best-match');
+  const [sortBy, setSortBy] = useState<'best-match' | 'cheapest' | 'shortest' | 'career-fit'>('best-match');
 
   const options = module.marketplaceOptions ?? [];
+
+  // Normalize career key skills for matching
+  const normalizedCareerSkills = useMemo(
+    () => new Set(careerKeySkills.map(s => s.toLowerCase().trim())),
+    [careerKeySkills]
+  );
+
+  const hasCareerContext = normalizedCareerSkills.size > 0;
+
+  // Check if an option aligns with career skills (title/tags overlap)
+  const isCareerAligned = useCallback((option: MarketplaceOption): boolean => {
+    if (!hasCareerContext) return false;
+    const titleWords = option.title.toLowerCase().split(/[\s\-_,/]+/);
+    return titleWords.some(w => w.length > 2 && normalizedCareerSkills.has(w));
+  }, [hasCareerContext, normalizedCareerSkills]);
 
   // Score and sort options
   const scoredOptions = useMemo(() => {
     const enriched = options.map(o => {
       const breakdown = calculateOptionScore(o, options, weights);
-      return { ...o, score: breakdown.total, scoreBreakdown: breakdown };
+      const aligned = isCareerAligned(o);
+      // Boost career-aligned options by 15 points when sorting by career-fit
+      const careerBoost = aligned && sortBy === 'career-fit' ? 15 : 0;
+      return { ...o, score: breakdown.total + careerBoost, scoreBreakdown: breakdown, careerAligned: aligned };
     });
 
     const sorted = [...enriched];
@@ -210,11 +241,17 @@ export function V6ModulePanel({
       sorted.sort((a, b) => (a.cost_usd ?? Infinity) - (b.cost_usd ?? Infinity));
     } else if (sortBy === 'shortest') {
       sorted.sort((a, b) => (a.duration_weeks ?? Infinity) - (b.duration_weeks ?? Infinity));
+    } else if (sortBy === 'career-fit') {
+      // Career-aligned first, then by score
+      sorted.sort((a, b) => {
+        if (a.careerAligned !== b.careerAligned) return a.careerAligned ? -1 : 1;
+        return (b.score ?? 0) - (a.score ?? 0);
+      });
     } else {
       sorted.sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
     }
     return sorted;
-  }, [options, weights, sortBy]);
+  }, [options, weights, sortBy, isCareerAligned]);
 
   const topOption = scoredOptions[0] ?? null;
 
@@ -316,6 +353,8 @@ export function V6ModulePanel({
                 isInBasket={basket.some(b => b.courseId === topOption.courseId)}
                 onAdd={() => handleAdd(topOption)}
                 sortBy={sortBy}
+                careerName={targetCareerName}
+                isCareerAligned={isCareerAligned(topOption)}
               />
             )}
 
@@ -328,6 +367,7 @@ export function V6ModulePanel({
                 className="text-xs px-2 py-1 rounded border border-border bg-background"
               >
                 <option value="best-match">Best Match</option>
+                {hasCareerContext && <option value="career-fit">Career Fit</option>}
                 <option value="cheapest">Lowest Cost</option>
                 <option value="shortest">Shortest Duration</option>
               </select>
@@ -371,6 +411,12 @@ export function V6ModulePanel({
                     {/* Row 2: Badges */}
                     <div className="flex items-center gap-1.5 flex-wrap mt-2">
                       <CreditTypeBadge providerType={option.providerType} />
+                      {option.careerAligned && (
+                        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-accent text-accent-foreground border border-accent">
+                          <Target className="h-2.5 w-2.5" />
+                          {V6_COPY.careerAligned}
+                        </span>
+                      )}
                       <span className="text-[11px] text-muted-foreground tabular-nums">{option.credits} cr</span>
                       {option.aceNccrs && (
                         <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-primary/10 text-primary border border-primary/20">
