@@ -32,7 +32,7 @@ export function useTodayHeroAction(): { hero: HeroAction; isLoading: boolean } {
     let progressLabel: string | undefined;
     if (progress && progress.total > 0) {
       if (progress.completed === 0 && progress.enrolled > 0) {
-        progressLabel = `In progress · 0/${progress.total} complete`;
+        progressLabel = `In progress · 0/${progress.total} courses`;
       } else {
         progressLabel = `${progress.percent}% complete · ${progress.completed}/${progress.total} courses`;
       }
