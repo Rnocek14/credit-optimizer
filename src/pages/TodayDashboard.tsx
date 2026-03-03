@@ -1,8 +1,8 @@
 import { HubNavigation } from "@/components/HubNavigation";
 import { TodayDashboard } from "@/components/TodayDashboard";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { BookOpen, Route, Workflow } from "lucide-react";
+import { GraduationCap, ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 
@@ -22,39 +22,26 @@ export default function TodayDashboardPage() {
             Your personalized daily recommendations and progress
           </p>
         </div>
-        
-        {/* New Career Planning Tools */}
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <BookOpen className="w-5 h-5" />
-              Career Planning Tools
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <Button variant="ghost" className="justify-start border-0" asChild>
-                <Link to="/education-tree">
-                  <BookOpen className="mr-2 h-4 w-4" />
-                  Education Tree (New!)
-                </Link>
-              </Button>
-              <Button variant="ghost" className="justify-start border-0" asChild>
-                <Link to="/skilltree3">
-                  <Route className="mr-2 h-4 w-4" />
-                  Life Path Graph
-                </Link>
-              </Button>
-              <Button variant="ghost" className="justify-start border-0" asChild>
-                <Link to="/edu-tree-v3-vertical">
-                  <Workflow className="mr-2 h-4 w-4" />
-                  EduTree V3 Vertical (Test)
-                </Link>
-              </Button>
+
+        {/* Degree Plan CTA */}
+        <Card className="mb-6 border-primary/20 bg-primary/5">
+          <CardContent className="flex items-center justify-between py-4">
+            <div className="flex items-center gap-3">
+              <GraduationCap className="h-6 w-6 text-primary" />
+              <div>
+                <p className="font-medium text-foreground">Start your degree plan</p>
+                <p className="text-sm text-muted-foreground">Browse optimized templates and build your path</p>
+              </div>
             </div>
+            <Button asChild size="sm">
+              <Link to="/edu-tree-v5/marketplace">
+                Browse Plans
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Link>
+            </Button>
           </CardContent>
         </Card>
-        
+
         <TodayDashboard />
       </div>
     </>

@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import { Search, Target, BookOpen, Settings, ChevronDown } from "lucide-react";
+import { Search, Target, BookOpen, Settings, ChevronDown, CalendarDays, GraduationCap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useSecureAuth } from "@/hooks/useSecureAuth";
@@ -25,10 +25,11 @@ const TrackManager = lazy(() => import("@/components/multi-track/TrackManager").
 })));
 
 const primaryHubs = [
+  { id: "today", label: "TODAY", icon: CalendarDays, href: "/today" },
   { id: "discover", label: "DISCOVER", icon: Search, href: "/discover" },
   { id: "plan", label: "PLAN", icon: Target, href: "/plan" },
+  { id: "degree", label: "DEGREE PLANNER", icon: GraduationCap, href: "/edu-tree-v5/marketplace" },
   { id: "progress", label: "PROGRESS", icon: BookOpen, href: "/progress" },
-  { id: "marketplace", label: "MARKETPLACE", icon: BookOpen, href: "/marketplace" },
 ];
 
 export function HubNavigation() {
@@ -57,6 +58,9 @@ export function HubNavigation() {
   });
 
   const isActive = (href: string) => {
+    if (href === "/today") {
+      return location.pathname === "/today";
+    }
     if (href === "/discover") {
       return location.pathname.startsWith("/discover") || 
              location.pathname.startsWith("/explore") || 
@@ -71,6 +75,11 @@ export function HubNavigation() {
              location.pathname === "/maya-roadmap" ||
              location.pathname === "/workflows" ||
              location.pathname === "/build";
+    }
+    if (href === "/edu-tree-v5/marketplace") {
+      return location.pathname.startsWith("/edu-tree-v5") ||
+             location.pathname.startsWith("/edu-tree-v6") ||
+             location.pathname === "/marketplace";
     }
     if (href === "/progress") {
       return location.pathname.startsWith("/progress") ||
@@ -95,9 +104,11 @@ export function HubNavigation() {
 
   // Visible hubs based on progressive disclosure
   const visibleHubs = [
-    primaryHubs[0], // DISCOVER - always shown
-    primaryHubs[1], // PLAN - always shown
-    ...(showProgress ? [primaryHubs[2]] : []), // PROGRESS - shown after onboarding
+    primaryHubs[0], // TODAY - always shown
+    primaryHubs[1], // DISCOVER - always shown
+    primaryHubs[2], // PLAN - always shown
+    primaryHubs[3], // DEGREE PLANNER - always shown
+    ...(showProgress ? [primaryHubs[4]] : []), // PROGRESS - shown after onboarding
   ];
 
   return (
