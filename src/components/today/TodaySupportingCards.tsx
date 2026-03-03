@@ -20,10 +20,14 @@ export function TodaySupportingCards({
   quickWins,
   onQuickWinAction,
 }: TodaySupportingCardsProps) {
+  const cards = [
+    <SkillGapsCard key="gaps" userId={userId} />,
+    <QuickWinsCard key="wins" quickWins={quickWins} onAction={onQuickWinAction} />,
+  ];
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-      <SkillGapsCard userId={userId} />
-      <QuickWinsCard quickWins={quickWins} onAction={onQuickWinAction} />
+      {cards.slice(0, 2)}
     </div>
   );
 }
@@ -107,19 +111,21 @@ function QuickWinsCard({
                 key={win.id}
                 className="flex items-center justify-between p-2.5 rounded-lg border bg-card/50"
               >
-                <div className="min-w-0 flex-1 mr-2">
+              <div className="min-w-0 flex-1 mr-2">
                   <p className="font-medium text-sm truncate">{win.title}</p>
                   <p className="text-xs text-muted-foreground">
                     {win.timeEstimate}
                   </p>
                 </div>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => onAction(win)}
-                >
-                  Start
-                </Button>
+                {win.actions?.length > 0 && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => onAction(win)}
+                  >
+                    Start
+                  </Button>
+                )}
               </div>
             ))}
           </div>

@@ -2,49 +2,28 @@
  * useTodayHeroAction — deterministic "what should I do next?" decision tree.
  *
  * Priority order:
- *   A. No active plan → "Start your degree plan"
- *   B. Active plan exists → "Continue your plan"
- *   C. Fallback → "Explore careers"
+ *   A. activePlan exists → "Continue your plan"
+ *   B. No plan → "Start your degree plan" (marketplace)
  *
- * Returns a single hero action object for rendering.
+ * Note: Onboarding gating is handled by ProtectedRoute (requireOnboarding).
+ * We still include a defensive branch in case route guards change.
  */
-import { useQuery } from '@tanstack/react-query';
-import { fetchHasActivePlan } from '@/shared/lib/api/userPlans';
 import { useActivePlan } from '@/hooks/useActivePlan';
-import { useSecureAuth } from '@/hooks/useSecureAuth';
 
 export interface HeroAction {
   title: string;
   subtitle: string;
   ctaLabel: string;
   to: string;
-  reasonCode: 'no-plan' | 'has-plan' | 'fallback';
+  reasonCode: 'has-plan' | 'no-plan';
 }
 
 export function useTodayHeroAction(): { hero: HeroAction; isLoading: boolean } {
-  const { user } = useSecureAuth();
-  const { data: activePlan, isLoading: planLoading } = useActivePlan();
-
-  const { data: hasActivePlan = false, isLoading: checkLoading } = useQuery({
-    queryKey: ['has-active-plan', user?.id],
-    queryFn: () => fetchHasActivePlan(user!.id),
-    enabled: !!user?.id,
-    staleTime: 60_000,
-  });
-
-  const isLoading = planLoading || checkLoading;
+  const { data: activePlan, isLoading } = useActivePlan();
 
   let hero: HeroAction;
 
-  if (!hasActivePlan) {
-    hero = {
-      title: 'Start your degree plan',
-      subtitle: 'Browse optimized templates and build your path to graduation.',
-      ctaLabel: 'Browse Plans',
-      to: '/edu-tree-v5/marketplace',
-      reasonCode: 'no-plan',
-    };
-  } else if (activePlan) {
+  if (activePlan) {
     hero = {
       title: 'Continue your degree plan',
       subtitle: activePlan.name
@@ -56,11 +35,11 @@ export function useTodayHeroAction(): { hero: HeroAction; isLoading: boolean } {
     };
   } else {
     hero = {
-      title: 'Explore careers',
-      subtitle: 'Discover career paths and find the right fit for you.',
-      ctaLabel: 'Explore',
-      to: '/discover',
-      reasonCode: 'fallback',
+      title: 'Start your degree plan',
+      subtitle: 'Browse optimized templates and build your path to graduation.',
+      ctaLabel: 'Browse Plans',
+      to: '/edu-tree-v5/marketplace',
+      reasonCode: 'no-plan',
     };
   }
 
