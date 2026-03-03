@@ -52,4 +52,8 @@ export const V6_COPY = {
 
   // Why this ranking
   whyThisRecommendation: 'Why this recommendation?',
+
+  // Career alignment
+  careerAligned: 'Career Aligned',
+  careerAlignedReason: (careerName: string) => `Builds skills relevant to ${careerName}`,
 } as const;

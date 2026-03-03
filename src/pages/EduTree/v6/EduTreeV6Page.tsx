@@ -458,6 +458,15 @@ export default function EduTreeV6Page() {
           onPlanChange={handlePlanChange}
           currentTemplateId={templateId}
           targetCareerName={targetCareer?.title}
+          onClearCareer={activePlanData?.target_career_id ? () => {
+            if (!resolvedPlanId) return;
+            setTargetCareer(resolvedPlanId, null)
+              .then(() => {
+                queryClient.invalidateQueries({ queryKey: ['edutree', 'active-plan'] });
+                toast.success('Career goal cleared');
+              })
+              .catch(() => toast.error('Failed to clear career goal'));
+          } : undefined}
           onDegreeChange={(newId) => {
             const hasItems = basket.length > 0;
             if (hasItems) {
@@ -620,6 +629,8 @@ export default function EduTreeV6Page() {
                 anchorSchool={constraints.target_school || undefined}
                 yearEarned={getYearEarnedCredits(panelState.nodeData?.year || 1)}
                 yearCap={YEAR_CREDIT_CAP}
+                careerKeySkills={targetCareer?.key_skills ?? []}
+                targetCareerName={targetCareer?.title}
               />
             )}
 
