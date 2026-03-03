@@ -2,17 +2,31 @@ import { HubNavigation } from "@/components/HubNavigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { GraduationCap, ArrowRight, BookOpen, AlertTriangle, DollarSign, Clock, ExternalLink } from "lucide-react";
+import { GraduationCap, ArrowRight, BookOpen, AlertTriangle, DollarSign, Clock, ExternalLink, Compass, X } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useActivePlan } from "@/hooks/useActivePlan";
 import { useTargetCareer } from "@/hooks/useTargetCareer";
-import { useQuery } from "@tanstack/react-query";
+import { setTargetCareer } from "@/shared/lib/api/userPlans";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Helmet } from "react-helmet-async";
+import { toast } from "sonner";
 
 export default function PlanHub() {
   const { data: activePlan, isLoading: planLoading } = useActivePlan();
   const { data: targetCareer } = useTargetCareer(activePlan?.target_career_id);
+  const queryClient = useQueryClient();
+
+  const handleClearCareer = async () => {
+    if (!activePlan?.id) return;
+    try {
+      await setTargetCareer(activePlan.id, null);
+      queryClient.invalidateQueries({ queryKey: ['edutree', 'active-plan'] });
+      toast.success('Career context cleared');
+    } catch {
+      toast.error('Failed to clear career context');
+    }
+  };
 
   // Fetch plan course stats if user has an active plan
   const { data: planStats } = useQuery({
@@ -125,6 +139,32 @@ export default function PlanHub() {
                     </Link>
                   </Button>
                 </div>
+
+                {/* Career context actions */}
+                {targetCareer ? (
+                  <div className="mt-4 flex items-center gap-2 rounded-md border border-border bg-muted/30 px-3 py-2">
+                    <Compass className="h-4 w-4 text-primary shrink-0" />
+                    <span className="text-sm text-foreground flex-1">
+                      Targeting <span className="font-medium">{targetCareer.title}</span>
+                    </span>
+                    <Button asChild variant="ghost" size="sm" className="h-7 text-xs">
+                      <Link to="/discover">Change goal</Link>
+                    </Button>
+                    <Button variant="ghost" size="sm" className="h-7 text-xs text-muted-foreground" onClick={handleClearCareer}>
+                      <X className="h-3 w-3 mr-1" />
+                      Clear
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="mt-4">
+                    <Button asChild variant="ghost" size="sm" className="text-xs text-muted-foreground">
+                      <Link to="/discover">
+                        <Compass className="h-3 w-3 mr-1" />
+                        Set a career goal for personalized readiness tracking
+                      </Link>
+                    </Button>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
