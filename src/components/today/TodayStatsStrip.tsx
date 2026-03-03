@@ -11,6 +11,8 @@ interface TodayStatsStripProps {
   currentStreak: number;
   /** null = no target career set */
   readinessPercent: number | null;
+  /** Career title to display alongside readiness, e.g. "Data Analyst" */
+  targetCareerTitle?: string | null;
 }
 
 export function TodayStatsStrip({
@@ -18,6 +20,7 @@ export function TodayStatsStrip({
   totalXP,
   currentStreak,
   readinessPercent,
+  targetCareerTitle,
 }: TodayStatsStripProps) {
   return (
     <div className="grid grid-cols-3 gap-4" data-testid="today-stats-strip">
@@ -50,7 +53,9 @@ export function TodayStatsStrip({
           {readinessPercent !== null ? (
             <>
               <p className="text-2xl font-bold leading-none">{readinessPercent}%</p>
-              <p className="text-xs text-muted-foreground mt-1">Readiness</p>
+              <p className="text-xs text-muted-foreground mt-1 truncate">
+                {targetCareerTitle ? `Ready for ${targetCareerTitle}` : 'Readiness'}
+              </p>
             </>
           ) : (
             <Link
