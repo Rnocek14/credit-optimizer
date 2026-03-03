@@ -4,12 +4,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { 
-  History, Trophy, Award, FileText, Share, ExternalLink, 
-  Star, BookOpen, Target, TreePine, Users
+  History, Trophy, Award, FileText, 
+  Star, BookOpen, Target, BarChart3
 } from "lucide-react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useActiveTrackStore } from "@/stores/useActiveTrackStore";
-import { SkillTreeProgress } from "@/components/progress/SkillTreeProgress";
+import { SkillsSummary } from "@/components/progress/SkillsSummary";
 import { useEffect, useState } from "react";
 import { useUser } from "@/hooks/useUser";
 import { useQuery } from "@tanstack/react-query";
@@ -23,10 +23,10 @@ export default function ProgressHub() {
   const { activeTrackId } = useActiveTrackStore();
   const { user } = useUser();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [activeTab, setActiveTab] = useState(() => searchParams.get('tab') || 'skill-tree');
+  const [activeTab, setActiveTab] = useState(() => searchParams.get('tab') || 'skills');
 
   useEffect(() => {
-    if (activeTab !== 'skill-tree') {
+    if (activeTab !== 'skills') {
       setSearchParams({ tab: activeTab });
     } else {
       setSearchParams({});
@@ -34,7 +34,7 @@ export default function ProgressHub() {
   }, [activeTab, setSearchParams]);
 
   useEffect(() => {
-    const tab = searchParams.get('tab') || 'skill-tree';
+    const tab = searchParams.get('tab') || 'skills';
     setActiveTab(tab);
   }, [searchParams]);
 
@@ -151,9 +151,9 @@ export default function ProgressHub() {
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="skill-tree" data-testid="tab-skill-tree" className="flex items-center gap-2">
-              <TreePine className="h-4 w-4" />
-              Skill Tree
+            <TabsTrigger value="skills" data-testid="tab-skills" className="flex items-center gap-2">
+              <BarChart3 className="h-4 w-4" />
+              Skills
             </TabsTrigger>
             <TabsTrigger value="history" data-testid="tab-history" className="flex items-center gap-2">
               <History className="h-4 w-4" />
@@ -169,9 +169,9 @@ export default function ProgressHub() {
             </TabsTrigger>
           </TabsList>
 
-          {/* ── Skill Tree — already wired to real data ──────── */}
-          <TabsContent value="skill-tree" className="mt-6">
-            <SkillTreeProgress />
+          {/* ── Skills Summary — clean, structured ────────── */}
+          <TabsContent value="skills" className="mt-6">
+            <SkillsSummary />
           </TabsContent>
 
           {/* ── History — real course_progress ───────────────── */}
