@@ -22,3 +22,4 @@ export * from './progress';
 export * from './gamification';
 export * from './crosshub';
 export * from './mayaFeedback';
+export * from './careerTemplates';

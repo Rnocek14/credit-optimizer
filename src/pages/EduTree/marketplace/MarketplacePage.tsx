@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, Link } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { TemplateFilters } from './components/TemplateFilters';
 import { TemplateGrid } from './components/TemplateGrid';
 import { ComparisonModal } from './components/ComparisonModal';
@@ -10,9 +11,9 @@ import { usePlanBasket } from '@/pages/EduTree/v5/state/usePlanBasket';
 import { AnchorSchoolSelector } from '@/pages/EduTree/v5/components/AnchorSchoolSelector';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, GitCompare, Filter, X } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { ArrowLeft, GitCompare, Filter, X, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
+import { fetchDegreeTemplatesForCareer } from '@/shared/lib/api/careerTemplates';
 import type { MarketplaceFilters } from '@/pages/EduTree/v5/types/templates';
 
 // Debug flag: only log in dev or with ?debug=1
@@ -20,12 +21,20 @@ const isDebug = () =>
   import.meta.env.DEV || new URLSearchParams(window.location.search).get('debug') === '1';
 
 export default function MarketplacePage() {
-  const [searchParams] = useSearchParams();
-  const careerId = searchParams.get('career');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const careerPathId = searchParams.get('careerPathId');
   const { constraints, setConstraints } = usePlanBasket();
 
+  // Career→template bridge: fetch matching program/institution pairs
+  const { data: careerBridge } = useQuery({
+    queryKey: ['career-template-bridge', careerPathId],
+    queryFn: () => fetchDegreeTemplatesForCareer(careerPathId!),
+    enabled: !!careerPathId,
+    staleTime: 5 * 60_000,
+  });
+
   const [filters, setFilters] = useState<MarketplaceFilters>({
-    careerIds: careerId ? [careerId] : [],
+    careerIds: careerPathId ? [careerPathId] : [],
     budgetRange: [0, 50000],
     timeRange: [12, 60],
     weeklyHoursRange: [5, 40],
@@ -39,10 +48,37 @@ export default function MarketplacePage() {
 
   const { data: allTemplates = [], isLoading } = useMarketplaceTemplates(filters);
   
-  // Filter templates by selected anchor school
+  // Apply career filter: if bridge returned matching pairs, filter templates to those
+  const careerFilteredTemplates = (() => {
+    if (!careerPathId || !careerBridge?.programCodes?.length) return allTemplates;
+    const pairSet = new Set(
+      (careerBridge.matches ?? []).map(m => `${m.anchor_school}::${m.program_id}`)
+    );
+    const filtered = allTemplates.filter(t =>
+      pairSet.has(`${t.anchorSchool}::${t.programId}`)
+    );
+    // If no templates match the career filter, show all with a fallback message
+    return filtered.length > 0 ? filtered : allTemplates;
+  })();
+
+  const isCareerFiltered = careerPathId && careerBridge?.matches?.length
+    ? careerFilteredTemplates.length < allTemplates.length
+    : false;
+
+  // Sort by career strength when filtered
+  const strengthSorted = (() => {
+    if (!isCareerFiltered || !careerBridge?.strengthMap) return careerFilteredTemplates;
+    return [...careerFilteredTemplates].sort((a, b) => {
+      const sa = careerBridge.strengthMap!.get(`${a.anchorSchool}::${a.programId}`) ?? 0;
+      const sb = careerBridge.strengthMap!.get(`${b.anchorSchool}::${b.programId}`) ?? 0;
+      return sb - sa;
+    });
+  })();
+
+  // Filter by anchor school
   const templates = constraints.target_school 
-    ? allTemplates.filter(t => t.anchorSchool === constraints.target_school)
-    : allTemplates;
+    ? strengthSorted.filter(t => t.anchorSchool === constraints.target_school)
+    : strengthSorted;
   
   const filteredCount = allTemplates.length - templates.length;
 
@@ -146,8 +182,37 @@ export default function MarketplacePage() {
 
           {/* Template Grid */}
           <main className="lg:col-span-3">
+            {/* Career Filter Banner */}
+            {careerPathId && (
+              <div className="mb-4 rounded-lg border border-accent bg-accent/10 p-3 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 text-primary" />
+                  <span className="text-sm">
+                    {isCareerFiltered ? (
+                      <>Showing degree plans aligned to this career <Badge variant="secondary" size="sm">Best fit first</Badge></>
+                    ) : (
+                      <>No direct career mappings found — showing all templates</>
+                    )}
+                  </span>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    const next = new URLSearchParams(searchParams);
+                    next.delete('careerPathId');
+                    setSearchParams(next);
+                  }}
+                  className="h-7 gap-1"
+                >
+                  <X className="h-3 w-3" />
+                  Clear
+                </Button>
+              </div>
+            )}
+
             {/* Multi-School Savings Banner */}
-            {!constraints.target_school && (
+            {!constraints.target_school && !careerPathId && (
               <MultiSchoolSavingsBanner onCompareClick={handleBannerCompareClick} />
             )}
             

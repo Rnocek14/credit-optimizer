@@ -19,11 +19,9 @@ export function CareerDetailPage() {
     careerId?: string;
   } | null>(null);
 
-  console.log('[CareerDetailPage] Career ID:', careerPathId);
-  console.log('[CareerDetailPage] Career data:', career);
-  console.log('[CareerDetailPage] Degree options:', degreeOptions);
-  console.log('[CareerDetailPage] Is loading:', isLoading);
-  console.log('[CareerDetailPage] Error:', error);
+  if (import.meta.env.DEV) {
+    console.log('[CareerDetailPage]', { careerPathId, career: career?.title, degreeOptions: degreeOptions?.length, isLoading, error });
+  }
 
   if (isLoading) {
     return (
@@ -81,9 +79,16 @@ export function CareerDetailPage() {
             </p>
           )}
         </div>
-        <Button variant="outline" asChild>
-          <Link to="/explore/careers">Back to all careers</Link>
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="default" asChild>
+            <Link to={`/edu-tree-v5/marketplace?careerPathId=${careerPathId}`}>
+              See degree plans for this career
+            </Link>
+          </Button>
+          <Button variant="outline" asChild>
+            <Link to="/explore/careers">Back to all careers</Link>
+          </Button>
+        </div>
       </div>
 
       {/* Salary snapshot */}
