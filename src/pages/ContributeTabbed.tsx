@@ -158,7 +158,7 @@ export default function ContributeTabbed() {
       <div className="container mx-auto px-4 py-6">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold mb-2">Contribute to Life Path</h1>
+          <h1 className="text-3xl font-bold mb-2">Contribute to Pivot</h1>
           <p className="text-muted-foreground">
             Share your expertise and help others on their career journey
           </p>

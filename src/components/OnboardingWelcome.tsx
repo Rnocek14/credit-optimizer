@@ -86,7 +86,7 @@ export default function OnboardingWelcome({ onExperienceLevelSelect, onComplete 
         <div className="w-16 h-16 bg-gradient-to-br from-primary to-primary/60 rounded-full flex items-center justify-center mx-auto">
           <Star className="h-8 w-8 text-primary-foreground" />
         </div>
-        <h1 className="text-3xl font-bold">Welcome to PathfindAI!</h1>
+        <h1 className="text-3xl font-bold">Welcome to Pivot!</h1>
         <p className="text-muted-foreground max-w-md mx-auto">
           Let's personalize your experience to help you achieve your career goals more effectively.
         </p>
@@ -146,7 +146,7 @@ export default function OnboardingWelcome({ onExperienceLevelSelect, onComplete 
         </div>
         <h2 className="text-2xl font-bold">What You Can Expect</h2>
         <p className="text-muted-foreground">
-          Here's how PathfindAI will help accelerate your career growth:
+          Here's how Pivot will help accelerate your career growth:
         </p>
       </div>
 

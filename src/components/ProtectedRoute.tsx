@@ -78,7 +78,8 @@ export default function ProtectedRoute({
 
   // If onboarding is required but user hasn't completed it (skip for dev users)
   if (requireOnboarding && user && !user.isDevUser && !hasProfile) {
-    return <Navigate to="/onboarding" replace />;
+    const redirectParam = location.pathname !== "/onboarding" ? `?redirect=${encodeURIComponent(location.pathname + location.search)}` : "";
+    return <Navigate to={`/onboarding${redirectParam}`} replace />;
   }
 
   // If trying to access onboarding but already completed (skip for dev users)

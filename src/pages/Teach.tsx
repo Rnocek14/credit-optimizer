@@ -167,7 +167,7 @@ const Teach = () => {
             Teach & Share
           </h1>
           <p className="text-slate-400 text-lg max-w-2xl mx-auto">
-            Contribute to the Life Path learning ecosystem by sharing valuable resources, 
+            Contribute to the Pivot learning ecosystem by sharing valuable resources, 
             tutorials, and your personal learning experiences
           </p>
         </div>

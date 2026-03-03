@@ -181,7 +181,7 @@ export default function EmbedGenerator() {
         <div className="mb-8">
           <h1 className="text-3xl font-bold mb-2">Embed Your Resume</h1>
           <p className="text-muted-foreground">
-            Generate embeddable widgets to showcase your Life Path resume on any website
+            Generate embeddable widgets to showcase your Pivot resume on any website
           </p>
         </div>
 
