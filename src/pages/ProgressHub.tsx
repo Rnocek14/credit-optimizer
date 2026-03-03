@@ -17,6 +17,7 @@ import { fetchLearningStreaks } from "@/shared/lib/api/gamification";
 import { fetchUserLevel, fetchUserBadgesWithMeta } from "@/shared/lib/api/gamification";
 import { Helmet } from "react-helmet-async";
 import { CareerContextBanner } from "@/components/CareerContextBanner";
+import { DegreeProgressStrip } from "@/components/progress/DegreeProgressStrip";
 import { useMemo } from "react";
 
 export default function ProgressHub() {
@@ -106,6 +107,9 @@ export default function ProgressHub() {
           </p>
           <CareerContextBanner />
         </div>
+
+        {/* Degree Progress Strip — real plan data */}
+        <DegreeProgressStrip />
 
         {/* Stats Overview — real data */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-6">
