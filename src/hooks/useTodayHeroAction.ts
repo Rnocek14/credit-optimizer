@@ -9,6 +9,7 @@
  * We still include a defensive branch in case route guards change.
  */
 import { useActivePlan } from '@/hooks/useActivePlan';
+import { usePlanProgress } from '@/hooks/usePlanProgress';
 
 export interface HeroAction {
   title: string;
@@ -21,18 +22,25 @@ export interface HeroAction {
 }
 
 export function useTodayHeroAction(): { hero: HeroAction; isLoading: boolean } {
-  const { data: activePlan, isLoading } = useActivePlan();
+  const { data: activePlan, isLoading: planLoading } = useActivePlan();
+  const { data: progress } = usePlanProgress(activePlan?.id);
 
   let hero: HeroAction;
 
   if (activePlan) {
     const planName = activePlan.name || 'your degree plan';
+    const progressLabel =
+      progress && progress.total > 0
+        ? `${progress.percent}% complete · ${progress.completed}/${progress.total} courses`
+        : undefined;
+
     hero = {
       title: `Continue ${planName}`,
       subtitle: 'Pick up where you left off.',
       ctaLabel: 'Open Plan',
       to: '/plan',
       reasonCode: 'has-plan',
+      progressLabel,
     };
   } else {
     hero = {
@@ -44,5 +52,5 @@ export function useTodayHeroAction(): { hero: HeroAction; isLoading: boolean } {
     };
   }
 
-  return { hero, isLoading };
+  return { hero, isLoading: planLoading };
 }
