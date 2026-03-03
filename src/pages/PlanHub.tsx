@@ -79,8 +79,8 @@ export default function PlanHub() {
                 {planStats && (
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
                     <div className="text-center p-3 rounded-lg bg-muted/50">
-                      <p className="text-2xl font-bold">{planStats.totalCourses}</p>
-                      <p className="text-sm text-muted-foreground">Courses</p>
+                      <p className="text-2xl font-bold">{planStats.planned}</p>
+                      <p className="text-sm text-muted-foreground">Planned</p>
                     </div>
                     <div className="text-center p-3 rounded-lg bg-muted/50">
                       <p className="text-2xl font-bold">{planStats.completed}</p>

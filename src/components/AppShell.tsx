@@ -1,21 +1,21 @@
 /**
  * AppShell — ensures HubNavigation is present on all logged-in pages.
- * Wrap any route that should keep the global nav visible.
+ * Uses flex layout so children can fill remaining height without brittle calc().
  */
 import React from 'react';
 import { HubNavigation } from '@/components/HubNavigation';
 
 interface AppShellProps {
   children: React.ReactNode;
-  /** If true, renders a compact top bar instead of full nav (for full-screen tools) */
-  compact?: boolean;
 }
 
-export function AppShell({ children, compact }: AppShellProps) {
+export function AppShell({ children }: AppShellProps) {
   return (
-    <>
+    <div className="min-h-screen flex flex-col">
       <HubNavigation />
-      {children}
-    </>
+      <div className="flex-1 flex flex-col">
+        {children}
+      </div>
+    </div>
   );
 }

@@ -101,7 +101,7 @@ export default function MarketplacePage() {
   const selectedTemplateData = templates.filter(t => selectedTemplates.includes(t.id));
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] bg-background">
+    <div className="flex-1 bg-background">
       {/* Inline page title — global nav provided by AppShell */}
       <div className="container mx-auto px-4 pt-4 pb-2">
         <div className="flex items-center justify-between">
@@ -139,7 +139,7 @@ export default function MarketplacePage() {
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           {/* Filters Sidebar */}
           <aside className="lg:col-span-1">
-            <div className="sticky top-20 border rounded-lg p-4 bg-card max-h-[calc(100vh-6rem)] overflow-y-auto">
+            <div className="sticky top-4 border rounded-lg p-4 bg-card max-h-[calc(100vh-8rem)] overflow-y-auto">
               <TemplateFilters filters={filters} onFiltersChange={setFilters} />
             </div>
           </aside>
