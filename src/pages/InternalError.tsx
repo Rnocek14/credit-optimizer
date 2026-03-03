@@ -75,8 +75,8 @@ export default function InternalError() {
                 <div className="w-6 h-6 bg-gradient-to-br from-primary to-primary/60 rounded-md flex items-center justify-center">
                   <Target className="h-4 w-4 text-primary-foreground" />
                 </div>
-                <span className="text-sm font-medium bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
-                  PathfindAI
+                <span className="text-sm font-medium bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent whitespace-nowrap">
+                  Pivot
                 </span>
               </Link>
             </div>

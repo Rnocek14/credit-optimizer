@@ -138,7 +138,7 @@ export const CertificatePDF = ({ certificate, userName }: CertificatePDFProps) =
   <Document>
     <Page size="A4" style={styles.page} orientation="landscape">
       <View style={styles.header}>
-        <Text style={styles.logo}>PathfindAI</Text>
+        <Text style={styles.logo}>Pivot</Text>
         <Text style={styles.certificateTitle}>Maya Certified</Text>
         <Text style={styles.subtitle}>AI-Guided Career Development Achievement</Text>
       </View>
@@ -199,7 +199,7 @@ export const CertificatePDF = ({ certificate, userName }: CertificatePDFProps) =
         <View style={styles.footerRight}>
           <Text style={styles.signature}>Maya AI</Text>
           <Text style={styles.signature}>Chief Intelligence Officer</Text>
-          <Text style={styles.signature}>PathfindAI</Text>
+          <Text style={styles.signature}>Pivot</Text>
         </View>
       </View>
     </Page>

@@ -26,8 +26,8 @@ interface OnboardingStep {
 const ONBOARDING_STEPS: OnboardingStep[] = [
   {
     id: 'welcome',
-    title: 'Welcome to Life Path! 🚀',
-    description: 'Your AI-powered career navigation platform. Let\'s take a quick tour to get you started.',
+    title: 'Welcome to Pivot! 🚀',
+    description: 'Your AI-powered degree planning platform. Let\'s take a quick tour to get you started.',
     icon: <Target className="h-5 w-5" />,
     position: 'center'
   },

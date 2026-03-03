@@ -5,7 +5,7 @@ export default function TutorialSettings() {
   return (
     <div className="container mx-auto px-4 py-8 max-w-6xl">
       <Helmet>
-        <title>Tutorial Settings - Life Path</title>
+        <title>Tutorial Settings | Pivot</title>
         <meta name="description" content="Configure tutorial mode and explore available help features." />
       </Helmet>
       
