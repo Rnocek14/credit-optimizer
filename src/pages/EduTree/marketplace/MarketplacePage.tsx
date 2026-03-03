@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, GitCompare, Filter, X, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
-import { fetchDegreeTemplatesForCareer } from '@/shared/lib/api/careerTemplates';
+import { fetchDegreeTemplatesForCareer, fetchCareerPathName } from '@/shared/lib/api/careerTemplates';
 import type { MarketplaceFilters } from '@/pages/EduTree/v5/types/templates';
 
 // Debug flag: only log in dev or with ?debug=1
@@ -36,10 +36,7 @@ export default function MarketplacePage() {
   // Fetch career name for banner display
   const { data: careerName } = useQuery({
     queryKey: ['career-name', careerPathId],
-    queryFn: async () => {
-      const { fetchCareerPathName } = await import('@/shared/lib/api/careerTemplates');
-      return fetchCareerPathName(careerPathId!);
-    },
+    queryFn: () => fetchCareerPathName(careerPathId!),
     enabled: !!careerPathId,
     staleTime: 10 * 60_000,
   });
@@ -205,13 +202,16 @@ export default function MarketplacePage() {
                 <div className="flex items-center gap-2">
                   <Sparkles className="h-4 w-4 text-primary" />
                   <span className="text-sm">
-                   {hasMappings && hasMatchingTemplates ? (
-                      <>Showing degree plans aligned to {careerName ? <strong>{careerName}</strong> : 'this career'} <Badge variant="secondary">Best fit first</Badge></>
-                    ) : hasMappings && !hasMatchingTemplates ? (
-                      <>Mappings found for {careerName ? <strong>{careerName}</strong> : 'this career'}, but no templates match current filters — showing all</>
-                    ) : (
-                      <>No direct career mappings found — showing all templates</>
-                    )}
+                    {(() => {
+                      const displayCareer = careerName ?? 'this career';
+                      if (hasMappings && hasMatchingTemplates) {
+                        return <>Showing degree plans aligned to <strong>{displayCareer}</strong> — Best fit first</>;
+                      }
+                      if (hasMappings) {
+                        return <>Mappings found for <strong>{displayCareer}</strong>, but no templates match current filters — showing all</>;
+                      }
+                      return <>No direct career mappings found — showing all templates</>;
+                    })()}
                   </span>
                 </div>
                 <Button
