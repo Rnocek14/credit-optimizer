@@ -24,18 +24,20 @@ export interface DegreeProgress {
  */
 export async function fetchDegreeProgress(
   planId: string,
-  programId: string,
+  programId: string | null,
 ): Promise<DegreeProgress> {
-  // Parallel: plan courses + program requirements
+  // Parallel: plan courses + (optionally) program requirements
   const [coursesResult, reqResult] = await Promise.all([
     supabase
       .from('user_plan_courses')
       .select('status, credits_earned')
       .eq('plan_id', planId),
-    supabase
-      .from('program_requirements')
-      .select('credits_required')
-      .eq('program_id', programId),
+    programId
+      ? supabase
+          .from('program_requirements')
+          .select('credits_required')
+          .eq('program_id', programId)
+      : Promise.resolve({ data: [] as { credits_required: number | null }[], error: null }),
   ]);
 
   if (coursesResult.error) throw coursesResult.error;
