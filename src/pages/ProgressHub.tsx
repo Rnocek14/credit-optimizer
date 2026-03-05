@@ -175,7 +175,11 @@ export default function ProgressHub() {
                     {targetCareer ? `Ready for ${targetCareer.title}` : 'Career Readiness'}
                   </p>
                   <p className="text-2xl font-bold">
-                    {criScore?.overall != null ? `${Math.round(criScore.overall)}%` : 'Not set'}
+                    {isCriLoading ? '—' : criScore?.overall != null ? `${Math.round(criScore.overall)}%` : targetCareer ? 'Calculating…' : (
+                      <Link to="/discover" className="text-base font-medium text-primary hover:underline">
+                        Set target career →
+                      </Link>
+                    )}
                   </p>
                 </div>
                 <BarChart3 className="h-8 w-8 text-primary" />
