@@ -140,11 +140,14 @@ export default function EduTreeV6Page() {
 
   const templateLoading = isDbTemplate ? dbTemplateLoading : fixtureLoading;
 
-  // ── Data mode (fixtures by default) ──
+  // ── Data mode (auto-detect: DB templates → DB mode; otherwise fixtures) ──
   const USE_DATABASE = useMemo(() => {
-    if (typeof window === 'undefined') return false;
-    return new URLSearchParams(window.location.search).get('db') === '1';
-  }, []);
+    // DB template detected → auto-enable DB mode
+    if (isDbTemplate) return true;
+    // Manual override via URL param (for testing)
+    if (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('db') === '1') return true;
+    return false;
+  }, [isDbTemplate]);
 
   const { data: dbData, isLoading } = useV5DatabaseData({ programId: 'bs_cs', enabled: USE_DATABASE });
   const { data: dbBlocks = [] } = useRequirementBlocks('bs_cs', USE_DATABASE);
