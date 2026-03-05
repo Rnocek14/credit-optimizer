@@ -8,6 +8,9 @@ import {
 } from "lucide-react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useActiveTrackStore } from "@/stores/useActiveTrackStore";
+import { useCareerReadiness } from "@/hooks/useCareerReadiness";
+import { useActivePlan } from "@/hooks/useActivePlan";
+import { useTargetCareer } from "@/hooks/useTargetCareer";
 import { SkillsSummary } from "@/components/progress/SkillsSummary";
 import { useEffect, useState } from "react";
 import { useUser } from "@/hooks/useUser";
@@ -23,6 +26,13 @@ import { useMemo } from "react";
 export default function ProgressHub() {
   const { activeTrackId } = useActiveTrackStore();
   const { user } = useUser();
+  const { data: activePlan } = useActivePlan();
+  const { data: targetCareer } = useTargetCareer(activePlan?.target_career_id);
+  const { criScore, isCriLoading } = useCareerReadiness({
+    userId: user?.id,
+    targetJobId: activePlan?.target_career_id ?? undefined,
+    enabled: !!user?.id,
+  });
   const [searchParams, setSearchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState(() => searchParams.get('tab') || 'history');
 
@@ -112,7 +122,7 @@ export default function ProgressHub() {
         <DegreeProgressStrip />
 
         {/* Stats Overview — real data */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-6">
+        <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-5 mb-6">
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
@@ -154,6 +164,21 @@ export default function ProgressHub() {
                   <p className="text-2xl font-bold">{currentStreak} days</p>
                 </div>
                 <Target className="h-8 w-8 text-primary" />
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">
+                    {targetCareer ? `Ready for ${targetCareer.title}` : 'Career Readiness'}
+                  </p>
+                  <p className="text-2xl font-bold">
+                    {criScore?.overall != null ? `${Math.round(criScore.overall)}%` : 'Not set'}
+                  </p>
+                </div>
+                <BarChart3 className="h-8 w-8 text-primary" />
               </div>
             </CardContent>
           </Card>
