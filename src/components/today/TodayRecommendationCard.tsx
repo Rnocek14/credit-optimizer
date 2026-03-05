@@ -37,7 +37,7 @@ export function TodayRecommendationCard({ recommendation, isLoading }: TodayReco
   const reason = recommendation.breakdown?.[0]?.explanation
     ?? (recommendation.skills?.length
       ? `Addresses ${recommendation.skills.slice(0, 2).join(', ')}`
-      : recommendation.description);
+      : recommendation.description ?? 'Recommended based on your plan and target career');
 
   return (
     <Card className="border-accent/20 bg-accent/5" data-testid="today-recommendation">

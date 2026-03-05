@@ -28,7 +28,7 @@ export default function ProgressHub() {
   const { user } = useUser();
   const { data: activePlan } = useActivePlan();
   const { data: targetCareer } = useTargetCareer(activePlan?.target_career_id);
-  const { criScore, isCriLoading } = useCareerReadiness({
+  const { criScore, isCriLoading, criError } = useCareerReadiness({
     userId: user?.id,
     targetJobId: activePlan?.target_career_id ?? undefined,
     enabled: !!user?.id,
@@ -175,7 +175,7 @@ export default function ProgressHub() {
                     {targetCareer ? `Ready for ${targetCareer.title}` : 'Career Readiness'}
                   </p>
                   <p className="text-2xl font-bold">
-                    {isCriLoading ? '—' : criScore?.overall != null ? `${Math.round(criScore.overall)}%` : targetCareer ? 'Calculating…' : (
+                    {isCriLoading ? '—' : criError ? 'Unavailable' : criScore?.overall != null ? `${Math.round(criScore.overall)}%` : targetCareer ? 'Calculating…' : (
                       <Link to="/discover" className="text-base font-medium text-primary hover:underline">
                         Set target career →
                       </Link>
