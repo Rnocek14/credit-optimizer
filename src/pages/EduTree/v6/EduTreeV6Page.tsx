@@ -141,16 +141,23 @@ export default function EduTreeV6Page() {
   const templateLoading = isDbTemplate ? dbTemplateLoading : fixtureLoading;
 
   // ── Data mode (auto-detect: DB templates → DB mode; otherwise fixtures) ──
-  const USE_DATABASE = useMemo(() => {
-    // DB template detected → auto-enable DB mode
+  // Attempt DB mode if string heuristic matches OR manual ?db=1 override
+  const wantDatabase = useMemo(() => {
     if (isDbTemplate) return true;
-    // Manual override via URL param (for testing)
     if (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('db') === '1') return true;
     return false;
   }, [isDbTemplate]);
 
-  const { data: dbData, isLoading } = useV5DatabaseData({ programId: 'bs_cs', enabled: USE_DATABASE });
-  const { data: dbBlocks = [] } = useRequirementBlocks('bs_cs', USE_DATABASE);
+  const { data: dbData, isLoading: dbDataLoading } = useV5DatabaseData({ programId: 'bs_cs', enabled: wantDatabase });
+  const { data: dbBlocks = [], isLoading: dbBlocksLoading } = useRequirementBlocks('bs_cs', wantDatabase);
+
+  // Fallback guard: if we wanted DB mode but DB returned empty (and finished loading),
+  // fall back to fixtures so users never see a blank graph.
+  const dbReady = wantDatabase && !dbDataLoading && !dbBlocksLoading;
+  const dbHasData = dbBlocks.length > 0 || (dbData?.modulesByYear && Object.values(dbData.modulesByYear).some(arr => (arr as any[]).length > 0));
+  const USE_DATABASE = wantDatabase && (!dbReady || dbHasData);
+  const isLoading = wantDatabase && (dbDataLoading || dbBlocksLoading);
+
   const requirementBlocks = useMemo(() => USE_DATABASE ? dbBlocks : REQUIREMENT_BLOCKS as any[], [USE_DATABASE, dbBlocks]);
 
   // ── Module provider (same as V5) ──
