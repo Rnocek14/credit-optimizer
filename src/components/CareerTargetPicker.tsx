@@ -1,6 +1,6 @@
 /**
  * CareerTargetPicker — lightweight dialog for changing the user's target career.
- * Fetches career_paths, lets user pick one, updates user_plans.target_career_id.
+ * Uses DAL functions — no direct supabase imports.
  */
 import { useState } from 'react';
 import {
@@ -15,7 +15,8 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Check, Search, Briefcase } from 'lucide-react';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { fetchCareerOptions, updatePlanTargetCareer } from '@/shared/lib/api/careerTarget';
+import type { CareerOption } from '@/shared/lib/api/careerTarget';
 import { toast } from 'sonner';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -24,11 +25,6 @@ interface CareerTargetPickerProps {
   onOpenChange: (open: boolean) => void;
   planId: string;
   currentCareerId?: string | null;
-}
-
-interface CareerOption {
-  id: string;
-  title: string;
 }
 
 export function CareerTargetPicker({
@@ -42,28 +38,14 @@ export function CareerTargetPicker({
 
   const { data: careers = [], isLoading } = useQuery({
     queryKey: ['career-paths-picker'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('career_paths')
-        .select('id, title')
-        .order('title');
-      if (error) throw error;
-      return (data ?? []) as CareerOption[];
-    },
+    queryFn: fetchCareerOptions,
     enabled: open,
     staleTime: 10 * 60_000,
   });
 
   const updateMutation = useMutation({
-    mutationFn: async (careerId: string | null) => {
-      const { error } = await supabase
-        .from('user_plans')
-        .update({ target_career_id: careerId })
-        .eq('id', planId);
-      if (error) throw error;
-    },
+    mutationFn: (careerId: string | null) => updatePlanTargetCareer(planId, careerId),
     onSuccess: (_data, careerId) => {
-      // Invalidate all downstream consumers
       queryClient.invalidateQueries({ queryKey: ['edutree', 'active-plan'] });
       queryClient.invalidateQueries({ queryKey: ['target-career'] });
       queryClient.invalidateQueries({ queryKey: ['cri-score'] });
