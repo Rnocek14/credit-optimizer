@@ -1,5 +1,6 @@
 import { Helmet } from "react-helmet-async";
 import { TodayHeroCard } from "@/components/today/TodayHeroCard";
+import { TodayRecommendationCard } from "@/components/today/TodayRecommendationCard";
 import { TodayStatsStrip } from "@/components/today/TodayStatsStrip";
 import { TodaySupportingCards } from "@/components/today/TodaySupportingCards";
 import { CareerContextBanner } from "@/components/CareerContextBanner";
@@ -11,6 +12,7 @@ import { useActiveTrackStore } from "@/stores/useActiveTrackStore";
 import { useActivePlan } from "@/hooks/useActivePlan";
 import { useTargetCareer } from "@/hooks/useTargetCareer";
 import { useCareerReadiness } from "@/hooks/useCareerReadiness";
+import { useIntelligenceLayer } from "@/hooks/useIntelligenceLayer";
 import { useQuery } from "@tanstack/react-query";
 import { fetchUserLevel } from "@/shared/lib/api/gamification";
 import { Loader2 } from "lucide-react";
@@ -28,6 +30,7 @@ export default function TodayDashboardPage() {
     targetJobId: activePlan?.target_career_id ?? undefined,
     enabled: !!user?.id,
   });
+  const { topRecommendation, isLoading: intelligenceLoading } = useIntelligenceLayer(user?.id, activeTrackId);
 
   const { data: userLevel } = useQuery({
     queryKey: ['user-level', user?.id],
@@ -61,6 +64,8 @@ export default function TodayDashboardPage() {
         </div>
 
         <TodayHeroCard hero={hero} isLoading={heroLoading} />
+
+        <TodayRecommendationCard recommendation={topRecommendation} isLoading={intelligenceLoading} />
 
         <TodayStatsStrip
           currentLevel={userLevel?.current_level ?? 1}
