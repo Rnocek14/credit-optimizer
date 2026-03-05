@@ -10,6 +10,7 @@ import { useSmartTodayDashboard } from "@/hooks/useSmartTodayDashboard";
 import { useActiveTrackStore } from "@/stores/useActiveTrackStore";
 import { useActivePlan } from "@/hooks/useActivePlan";
 import { useTargetCareer } from "@/hooks/useTargetCareer";
+import { useCareerReadiness } from "@/hooks/useCareerReadiness";
 import { useQuery } from "@tanstack/react-query";
 import { fetchUserLevel } from "@/shared/lib/api/gamification";
 import { Loader2 } from "lucide-react";
@@ -22,6 +23,11 @@ export default function TodayDashboardPage() {
   const { getCurrentStreak: getGamStreak } = useGamification(user?.id);
   const { data: activePlan } = useActivePlan();
   const { data: targetCareer } = useTargetCareer(activePlan?.target_career_id);
+  const { criScore } = useCareerReadiness({
+    userId: user?.id,
+    targetJobId: activePlan?.target_career_id ?? undefined,
+    enabled: !!user?.id,
+  });
 
   const { data: userLevel } = useQuery({
     queryKey: ['user-level', user?.id],
@@ -60,7 +66,7 @@ export default function TodayDashboardPage() {
           currentLevel={userLevel?.current_level ?? 1}
           totalXP={userLevel?.total_xp ?? 0}
           currentStreak={streak}
-          readinessPercent={null}
+          readinessPercent={criScore?.overall ?? null}
           targetCareerTitle={targetCareer?.title}
         />
 
