@@ -65,9 +65,13 @@ export function PlanCourseList({ planId }: { planId: string }) {
             <div className="flex items-center gap-2 min-w-0 flex-1">
               <config.icon className="h-4 w-4 text-muted-foreground shrink-0" />
               <span className="text-sm truncate">
-                {course.provider_code
-                  ? `${course.provider_code} — ${course.course_id ?? `Course ${index + 1}`}`
-                  : `Course ${index + 1}`}
+                {course.provider_code && course.course_title
+                  ? `${course.provider_code} — ${course.course_title}`
+                  : course.course_title
+                    ? course.course_title
+                    : course.provider_code
+                      ? `${course.provider_code} — Course ${index + 1}`
+                      : `Course ${index + 1}`}
               </span>
             </div>
             <Select

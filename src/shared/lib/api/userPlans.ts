@@ -80,7 +80,8 @@ export async function fetchPlanCoursesWithProvider(planId: string) {
       cost_paid,
       grade,
       transfer_source,
-      providers!user_plan_courses_provider_id_fkey ( id, name )
+      providers!user_plan_courses_provider_id_fkey ( id, name ),
+      marketplace_courses!user_plan_courses_course_id_fkey ( title, credits )
     `)
     .eq('plan_id', planId);
 
@@ -91,6 +92,8 @@ export async function fetchPlanCoursesWithProvider(planId: string) {
     course_id: row.course_id as string,
     provider_id: row.provider_id as string,
     provider_code: (row.providers as any)?.name ?? null as string | null,
+    course_title: (row.marketplace_courses as any)?.title ?? null as string | null,
+    course_credits: (row.marketplace_courses as any)?.credits ?? null as number | null,
     requirement_id: row.requirement_id as string | null,
     planned_term: row.planned_term as string | null,
     status: row.status as string | null,

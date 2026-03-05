@@ -9,9 +9,9 @@ export function useDegreeProgress() {
   const { data: activePlan, isLoading: planLoading } = useActivePlan();
 
   const query = useQuery({
-    queryKey: ['degree-progress', activePlan?.id],
-    queryFn: () => fetchDegreeProgress(activePlan!.id, activePlan!.program_id),
-    enabled: !!activePlan?.id && !!activePlan?.program_id,
+    queryKey: ['degree-progress', activePlan?.id, activePlan?.program_id],
+    queryFn: () => fetchDegreeProgress(activePlan!.id, activePlan?.program_id ?? null),
+    enabled: !!activePlan?.id,
     staleTime: 5 * 60 * 1000,
   });
 
