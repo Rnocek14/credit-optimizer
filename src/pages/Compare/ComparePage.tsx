@@ -3,7 +3,7 @@
  * across the 5 verified schools. Re-ranks live as the user adjusts the credit
  * picker or the goal toggle. State syncs to ?query for shareability + refresh.
  */
-import { useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -17,7 +17,22 @@ import { CompareTable } from './components/CompareTable';
 import { CompareCards } from './components/CompareCards';
 import { GoalToggle } from './components/GoalToggle';
 import { useCompareUrlState, isPickerActive } from './hooks/useCompareUrlState';
+import { useDebouncedCallback } from './hooks/useDebouncedCallback';
 import { buildCompareRows } from './buildCompareRows';
+import {
+  trackCompareViewed,
+  trackCompareGoalChanged,
+  trackComparePickerChanged,
+  trackCompareRankingsUpdated,
+  trackCompareViewPlanClicked,
+} from './analytics';
+import {
+  CREDIT_SOURCES,
+  totalPickerCredits,
+  type CreditPickerState,
+  type CreditSource,
+} from './types';
+import type { GoalPreference } from '@/hooks/useQuickPlanGeneration';
 import type { MarketplaceDegreeTemplate } from '@/pages/EduTree/v5/types/templates';
 
 const VERIFIED_SET = new Set<string>(VERIFIED_SCHOOL_CODES);
@@ -63,6 +78,97 @@ export default function ComparePage() {
 
   const personalized = isPickerActive(state.picker);
 
+  // ─────────────────────── analytics ───────────────────────
+
+  // 1. compare_viewed — fire once per page load, after rows resolve.
+  const viewedFiredRef = useRef(false);
+  useEffect(() => {
+    if (viewedFiredRef.current) return;
+    if (isLoading) return;
+    if (rows.length === 0) return;
+    viewedFiredRef.current = true;
+    const source = document.referrer.includes('/get-started') ? 'get_started' : 'direct';
+    trackCompareViewed({
+      careerId: state.careerId,
+      goal: state.goal,
+      picker: state.picker,
+      schoolCount: rows.length,
+      source,
+    });
+  }, [isLoading, rows.length, state.careerId, state.goal, state.picker]);
+
+  // 4. compare_rankings_updated — debounced after re-score.
+  const debouncedRankings = useDebouncedCallback(trackCompareRankingsUpdated, 400);
+  // Skip the very first call so it doesn't double-fire with compare_viewed.
+  const rankingsInitRef = useRef(false);
+  useEffect(() => {
+    if (rows.length === 0) return;
+    if (!rankingsInitRef.current) {
+      rankingsInitRef.current = true;
+      return;
+    }
+    debouncedRankings({
+      goal: state.goal,
+      careerId: state.careerId,
+      picker: state.picker,
+      rows,
+      isPersonalized: personalized,
+    });
+  }, [rows, state.goal, state.careerId, state.picker, personalized, debouncedRankings]);
+
+  // 2. compare_goal_changed
+  const handleGoalChange = (next: GoalPreference) => {
+    if (next === state.goal) return;
+    trackCompareGoalChanged({
+      fromGoal: state.goal,
+      toGoal: next,
+      careerId: state.careerId,
+      picker: state.picker,
+    });
+    setGoal(next);
+  };
+
+  // 3. compare_picker_changed — debounced (slider drag is noisy).
+  const debouncedPickerEvent = useDebouncedCallback(trackComparePickerChanged, 400);
+  const handlePickerChange = (nextPicker: CreditPickerState) => {
+    // Detect which provider changed (single-source diff per call).
+    const changed = CREDIT_SOURCES.find(
+      (s: CreditSource) => nextPicker[s] !== state.picker[s]
+    );
+    if (changed) {
+      debouncedPickerEvent({
+        provider: changed,
+        newCredits: nextPicker[changed],
+        oldCredits: state.picker[changed],
+        picker: nextPicker,
+        careerId: state.careerId,
+        goal: state.goal,
+      });
+    }
+    setPicker(nextPicker);
+  };
+
+  // 5. compare_view_plan_clicked — handed to Table/Cards.
+  const handleViewPlan = (programId: string) => {
+    const idx = rows.findIndex((r) => r.template.id === programId);
+    if (idx === -1) {
+      navigate(`/edu-tree-v6/${programId}`);
+      return;
+    }
+    const row = rows[idx];
+    trackCompareViewPlanClicked({
+      school: row.school,
+      programId: row.template.id,
+      rankPosition: idx + 1,
+      goal: state.goal,
+      careerId: state.careerId,
+      picker: state.picker,
+      isPersonalized: personalized,
+      topSchoolAtClick: rows[0]?.school ?? null,
+    });
+    navigate(`/edu-tree-v6/${programId}`);
+  };
+
   return (
     <>
       <Helmet>
@@ -103,12 +209,12 @@ export default function ComparePage() {
                   : 'Add your existing credits below to personalize transfer fit, or switch how schools are ranked.'}
               </p>
             </div>
-            <GoalToggle value={state.goal} onChange={setGoal} />
+            <GoalToggle value={state.goal} onChange={handleGoalChange} />
           </div>
         </div>
 
         {/* Picker */}
-        <CreditPicker state={state.picker} onChange={setPicker} />
+        <CreditPicker state={state.picker} onChange={handlePickerChange} />
 
         {/* Comparison surface */}
         {isLoading ? (
@@ -127,9 +233,9 @@ export default function ComparePage() {
             </Button>
           </div>
         ) : isMobile ? (
-          <CompareCards rows={rows} picker={state.picker} />
+          <CompareCards rows={rows} picker={state.picker} onViewPlan={handleViewPlan} />
         ) : (
-          <CompareTable rows={rows} picker={state.picker} />
+          <CompareTable rows={rows} picker={state.picker} onViewPlan={handleViewPlan} />
         )}
 
         {/* Footer */}
