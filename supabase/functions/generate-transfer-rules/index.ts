@@ -239,52 +239,48 @@ Deno.serve(async (req) => {
       throw new Error(`Failed to insert candidates: ${insertErr.message}`);
     }
 
-    // Auto-promote high-confidence non-duplicate candidates
-    const toPromote = candidates.filter(
-      c => c.status === 'pending' && c.confidence_score >= auto_promote_threshold
-    );
+    // V2: Instead of auto-promoting directly, trigger the validation layer
+    // The validation layer will check catalog matches, format validity,
+    // and only promote rules that pass all checks.
+    const pendingCandidates = candidates.filter(c => c.status === 'pending');
+    const duplicateCount = candidates.filter(c => c.status === 'duplicate').length;
 
+    let validationResult: any = null;
     let promotedCount = 0;
-    if (toPromote.length > 0) {
-      const promotionRules = toPromote.map(c => ({
-        source_institution: c.source_institution,
-        source_course_code: c.source_course_code,
-        target_institution: c.target_institution,
-        target_course_code: c.target_course_code,
-        acceptance_status: c.acceptance_status,
-        rule_source: c.rule_source,
-        confidence: c.confidence_score,
-        evidence_url: c.evidence_url,
-      }));
 
-      const { error: promoteErr } = await supabase
-        .from('credit_transfer_rules')
-        .insert(promotionRules);
+    if (pendingCandidates.length > 0) {
+      try {
+        // Call validate-transfer-candidates internally
+        const validateUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/validate-transfer-candidates`;
+        const cronSecret = Deno.env.get('CRON_SECRET');
 
-      if (!promoteErr) {
-        promotedCount = toPromote.length;
-        // Mark as promoted
-        await supabase
-          .from('transfer_rule_candidates')
-          .update({ status: 'promoted' })
-          .eq('batch_id', batchId)
-          .gte('confidence_score', auto_promote_threshold)
-          .eq('status', 'pending');
+        const valResponse = await fetch(validateUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(cronSecret ? { 'x-cron-secret': cronSecret } : {}),
+          },
+          body: JSON.stringify({
+            batch_id: batchId,
+            auto_promote_threshold,
+          }),
+        });
 
-        console.log(`✅ Auto-promoted ${promotedCount} rules (threshold: ${auto_promote_threshold})`);
-      } else {
-        console.error('Promotion error:', promoteErr);
-        await supabase
-          .from('transfer_rule_candidates')
-          .update({ promotion_error: promoteErr.message })
-          .eq('batch_id', batchId)
-          .gte('confidence_score', auto_promote_threshold)
-          .eq('status', 'pending');
+        if (valResponse.ok) {
+          validationResult = await valResponse.json();
+          promotedCount = validationResult.promoted || 0;
+          console.log(`✅ Validation layer: ${validationResult.validated} validated, ${promotedCount} promoted, ${validationResult.flagged} flagged`);
+        } else {
+          const errText = await valResponse.text();
+          console.warn(`⚠️ Validation layer returned ${valResponse.status}: ${errText}`);
+          console.log('Candidates remain pending for manual validation.');
+        }
+      } catch (valErr) {
+        console.warn('⚠️ Validation layer call failed, candidates remain pending:', valErr);
       }
     }
 
-    const pendingCount = candidates.filter(c => c.status === 'pending').length - promotedCount;
-    const duplicateCount = candidates.filter(c => c.status === 'duplicate').length;
+    const pendingCount = pendingCandidates.length - promotedCount;
 
     console.log(`📊 Batch ${batchId}: ${candidates.length} total, ${promotedCount} promoted, ${pendingCount} pending, ${duplicateCount} duplicates`);
 

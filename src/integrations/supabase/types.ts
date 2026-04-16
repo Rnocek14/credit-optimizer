@@ -13868,6 +13868,10 @@ export type Database = {
           target_course_title: string | null
           target_institution: string
           updated_at: string
+          validated_at: string | null
+          validation_flags: string[] | null
+          validation_result: Json | null
+          validation_score: number | null
         }
         Insert: {
           acceptance_status: string
@@ -13890,6 +13894,10 @@ export type Database = {
           target_course_title?: string | null
           target_institution: string
           updated_at?: string
+          validated_at?: string | null
+          validation_flags?: string[] | null
+          validation_result?: Json | null
+          validation_score?: number | null
         }
         Update: {
           acceptance_status?: string
@@ -13912,6 +13920,10 @@ export type Database = {
           target_course_title?: string | null
           target_institution?: string
           updated_at?: string
+          validated_at?: string | null
+          validation_flags?: string[] | null
+          validation_result?: Json | null
+          validation_score?: number | null
         }
         Relationships: []
       }
