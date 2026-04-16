@@ -178,11 +178,14 @@ Deno.serve(async (req) => {
     // Generate batch ID
     const batchId = crypto.randomUUID();
 
-    // Check for existing rules to avoid duplicates
+    // Check for existing ACTIVE, VERIFIED rules to avoid true duplicates
+    // Legacy unverified rules should NOT block AI extraction — that's the whole point
     const { data: existingRules } = await supabase
       .from('credit_transfer_rules')
-      .select('source_institution, source_course_code, target_institution')
-      .eq('target_institution', target_institution.toUpperCase());
+      .select('source_institution, source_course_code, target_institution, data_quality')
+      .eq('target_institution', target_institution.toUpperCase())
+      .eq('is_active', true)
+      .in('data_quality', ['catalog_verified', 'ai_extracted']);
 
     const existingKeys = new Set(
       (existingRules || []).map((r: any) =>
@@ -190,7 +193,7 @@ Deno.serve(async (req) => {
       )
     );
 
-    // Also check existing candidates
+    // Also check existing candidates (pending/promoted — not rejected/duplicate)
     const { data: existingCandidates } = await supabase
       .from('transfer_rule_candidates')
       .select('source_institution, source_course_code, target_institution, status')
