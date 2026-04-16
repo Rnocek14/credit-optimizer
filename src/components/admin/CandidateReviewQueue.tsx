@@ -140,9 +140,9 @@ export function CandidateReviewQueue() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {candidates.map((c) => {
+                {candidates.flatMap((c) => {
                   const isExpanded = expandedId === c.id;
-                  return (
+                  const rows = [
                     <TableRow key={c.id} className="group">
                       <TableCell>
                         <Button
@@ -221,20 +221,19 @@ export function CandidateReviewQueue() {
                           )}
                         </div>
                       </TableCell>
-                    </TableRow>
-                  );
+                    </TableRow>,
+                  ];
+                  if (isExpanded) {
+                    rows.push(
+                      <TableRow key={`${c.id}-detail`}>
+                        <TableCell colSpan={7} className="p-0 border-0">
+                          <CandidateDetail candidate={c} />
+                        </TableCell>
+                      </TableRow>
+                    );
+                  }
+                  return rows;
                 })}
-                {/* Expanded detail row rendered outside the map iteration doesn't work in tables,
-                    so we handle it inline with a second row */}
-                {candidates.map((c) =>
-                  expandedId === c.id ? (
-                    <TableRow key={`${c.id}-detail`}>
-                      <TableCell colSpan={7} className="p-0 border-0">
-                        <CandidateDetail candidate={c} />
-                      </TableCell>
-                    </TableRow>
-                  ) : null
-                )}
               </TableBody>
             </Table>
           </div>
