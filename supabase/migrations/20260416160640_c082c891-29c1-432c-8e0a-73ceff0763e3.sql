@@ -1,0 +1,1 @@
+UPDATE transfer_rule_candidates SET status = 'duplicate' WHERE target_institution = 'TESU' AND status = 'pending';
