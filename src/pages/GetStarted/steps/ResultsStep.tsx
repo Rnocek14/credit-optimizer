@@ -2,8 +2,9 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { GraduationCap, DollarSign, Clock, ArrowRight, Sparkles, ChevronRight } from 'lucide-react';
+import { GraduationCap, ArrowRight, Sparkles, ChevronRight, TrendingUp, Zap, DollarSign } from 'lucide-react';
 import type { RankedTemplate } from '@/hooks/useQuickPlanGeneration';
+import type { StrategyBadge } from '@/lib/planScoring';
 
 interface ResultsStepProps {
   results: RankedTemplate[];
@@ -11,17 +12,21 @@ interface ResultsStepProps {
   isApplying: boolean;
 }
 
-const badgeColors: Record<string, string> = {
-  'Recommended': 'bg-primary/15 text-primary border-primary/30',
-  'Best Value': 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30',
-  'Fastest': 'bg-amber-500/15 text-amber-400 border-amber-500/30',
-  'Most Flexible': 'bg-cyan-500/15 text-cyan-400 border-cyan-500/30',
+const badgeStyles: Record<StrategyBadge, string> = {
+  'Best Overall': 'bg-primary/15 text-primary border-primary/30',
+  'Cheapest':     'bg-emerald-500/15 text-emerald-400 border-emerald-500/30',
+  'Fastest':      'bg-amber-500/15 text-amber-400 border-amber-500/30',
+  'Next Best':    'bg-muted text-muted-foreground border-border',
+  'Third Best':   'bg-muted text-muted-foreground border-border',
 };
 
-function formatCost(cost: number): string {
-  if (cost >= 1000) return `$${(cost / 1000).toFixed(1)}k`;
-  return `$${cost.toLocaleString()}`;
-}
+const badgeIcons: Record<StrategyBadge, React.ComponentType<{ className?: string }>> = {
+  'Best Overall': TrendingUp,
+  'Cheapest':     DollarSign,
+  'Fastest':      Zap,
+  'Next Best':    Sparkles,
+  'Third Best':   Sparkles,
+};
 
 export function ResultsStep({ results, onSelectTemplate, isApplying }: ResultsStepProps) {
   const navigate = useNavigate();
@@ -46,19 +51,20 @@ export function ResultsStep({ results, onSelectTemplate, isApplying }: ResultsSt
       <div className="text-center space-y-3">
         <div className="inline-flex items-center gap-2 text-primary">
           <Sparkles className="h-5 w-5" />
-          <span className="text-sm font-semibold tracking-wider uppercase">Your Top Matches</span>
+          <span className="text-sm font-semibold tracking-wider uppercase">Your Top 3 Paths</span>
         </div>
         <h2 className="text-3xl font-bold tracking-tight">
-          Here's your fastest path to a degree
+          Three smart ways to your degree
         </h2>
         <p className="text-muted-foreground text-lg max-w-lg mx-auto">
-          We analyzed transfer credits, alt-credit options, and real university requirements.
+          Ranked across cost, time, and transfer fit using verified data from 5 universities.
         </p>
       </div>
 
       <div className="grid gap-5 max-w-3xl mx-auto">
         {results.map((result, i) => {
           const t = result.template;
+          const Icon = badgeIcons[result.badge];
           const isFirst = i === 0;
           return (
             <div
@@ -70,61 +76,43 @@ export function ResultsStep({ results, onSelectTemplate, isApplying }: ResultsSt
                   : 'border-border/50 hover:border-border'
               )}
             >
-              {isFirst && (
-                <div className="absolute -top-3 left-6">
-                  <Badge className="bg-primary text-primary-foreground px-3 py-1 text-xs font-semibold">
-                    Top Pick
-                  </Badge>
-                </div>
-              )}
-
               <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-                {/* Info */}
-                <div className="flex-1 space-y-2">
+                <div className="flex-1 space-y-3">
+                  {/* Strategy badge + school */}
                   <div className="flex items-center gap-2 flex-wrap">
                     <Badge
                       variant="outline"
-                      className={cn('text-xs', badgeColors[result.badge])}
+                      className={cn('text-xs gap-1.5 px-2.5 py-1', badgeStyles[result.badge])}
                     >
+                      <Icon className="h-3 w-3" />
                       {result.badge}
                     </Badge>
-                    <span className="text-xs text-muted-foreground">
-                      {t.anchorSchool?.toUpperCase()}
+                    <span className="text-xs font-medium text-muted-foreground">
+                      {t.anchorSchool?.toUpperCase()} · {t.programId}
                     </span>
                   </div>
 
+                  {/* Title */}
                   <h3 className="text-lg font-semibold leading-tight">
                     {t.marketplace?.title || t.label}
                   </h3>
 
-                  {/* Stats row */}
-                  <div className="flex items-center gap-4 text-sm">
-                    <span className="flex items-center gap-1.5 text-primary">
-                      <DollarSign className="h-4 w-4" />
-                      {formatCost(result.estimatedCost)}
-                    </span>
-                    <span className="flex items-center gap-1.5 text-primary">
-                      <Clock className="h-4 w-4" />
-                      {result.estimatedYears} yrs
-                    </span>
-                    {result.transferPercent > 0 && (
-                      <span className="flex items-center gap-1.5 text-primary">
-                        <GraduationCap className="h-4 w-4" />
-                        {result.transferPercent}% transfer
-                      </span>
-                    )}
-                  </div>
+                  {/* Proof point — primary stat */}
+                  <p className="text-2xl font-bold text-primary leading-none">
+                    {result.proofPoint}
+                  </p>
+
+                  {/* Two supporting stats */}
+                  <p className="text-sm text-muted-foreground">
+                    {result.supportingStats[0]} · {result.supportingStats[1]}
+                  </p>
                 </div>
 
-                {/* CTA */}
                 <Button
                   onClick={() => onSelectTemplate(t.id)}
                   disabled={isApplying}
                   size={isFirst ? 'lg' : 'default'}
-                  className={cn(
-                    'gap-2 shrink-0',
-                    isFirst ? 'min-w-[160px]' : ''
-                  )}
+                  className={cn('gap-2 shrink-0', isFirst ? 'min-w-[160px]' : '')}
                 >
                   Start This Plan
                   <ChevronRight className="h-4 w-4" />
@@ -135,15 +123,22 @@ export function ResultsStep({ results, onSelectTemplate, isApplying }: ResultsSt
         })}
       </div>
 
-      {/* Secondary action */}
-      <div className="text-center pt-2">
+      {/* Secondary actions */}
+      <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+        <Button
+          variant="outline"
+          onClick={() => navigate('/compare')}
+          className="gap-2"
+        >
+          Compare all 5 schools
+          <ArrowRight className="h-4 w-4" />
+        </Button>
         <Button
           variant="ghost"
           onClick={() => navigate('/edu-tree-v5/marketplace')}
           className="text-muted-foreground gap-2"
         >
-          See all options
-          <ArrowRight className="h-4 w-4" />
+          See full marketplace
         </Button>
       </div>
     </div>
