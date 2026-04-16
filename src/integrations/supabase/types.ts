@@ -4160,6 +4160,7 @@ export type Database = {
           catalog_year_end: string | null
           catalog_year_start: string | null
           confidence: number | null
+          data_quality: string | null
           decay_after_months: number | null
           degree_family: string | null
           degree_program: string | null
@@ -4199,6 +4200,7 @@ export type Database = {
           target_institution: string
           target_institution_norm: string | null
           verification_source: string | null
+          verified: boolean | null
           verified_at: string | null
         }
         Insert: {
@@ -4206,6 +4208,7 @@ export type Database = {
           catalog_year_end?: string | null
           catalog_year_start?: string | null
           confidence?: number | null
+          data_quality?: string | null
           decay_after_months?: number | null
           degree_family?: string | null
           degree_program?: string | null
@@ -4245,6 +4248,7 @@ export type Database = {
           target_institution: string
           target_institution_norm?: string | null
           verification_source?: string | null
+          verified?: boolean | null
           verified_at?: string | null
         }
         Update: {
@@ -4252,6 +4256,7 @@ export type Database = {
           catalog_year_end?: string | null
           catalog_year_start?: string | null
           confidence?: number | null
+          data_quality?: string | null
           decay_after_months?: number | null
           degree_family?: string | null
           degree_program?: string | null
@@ -4291,6 +4296,7 @@ export type Database = {
           target_institution?: string
           target_institution_norm?: string | null
           verification_source?: string | null
+          verified?: boolean | null
           verified_at?: string | null
         }
         Relationships: [
