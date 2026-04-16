@@ -14,7 +14,6 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { ArrowRight, Trophy } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
 import type { CompareRow } from '../buildCompareRows';
 import { formatCost, formatYears } from '../buildCompareRows';
 import { isPickerActive } from '../hooks/useCompareUrlState';
@@ -23,10 +22,10 @@ import type { CreditPickerState } from '../types';
 interface CompareTableProps {
   rows: CompareRow[];
   picker: CreditPickerState;
+  onViewPlan: (programId: string) => void;
 }
 
-export function CompareTable({ rows, picker }: CompareTableProps) {
-  const navigate = useNavigate();
+export function CompareTable({ rows, picker, onViewPlan }: CompareTableProps) {
   const personalized = isPickerActive(picker);
 
   if (rows.length === 0) return null;
@@ -112,7 +111,7 @@ export function CompareTable({ rows, picker }: CompareTableProps) {
                 <Button
                   size="sm"
                   variant={r.isBest ? 'default' : 'outline'}
-                  onClick={() => navigate(`/edu-tree-v6/${r.template.id}`)}
+                  onClick={() => onViewPlan(r.template.id)}
                   className="gap-1.5"
                 >
                   View plan
