@@ -13846,6 +13846,75 @@ export type Database = {
           },
         ]
       }
+      transfer_rule_candidates: {
+        Row: {
+          acceptance_status: string
+          ai_model: string | null
+          batch_id: string | null
+          confidence_score: number
+          created_at: string
+          evidence_text: string | null
+          evidence_url: string | null
+          id: string
+          promotion_error: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          rule_source: string | null
+          source_course_code: string
+          source_course_title: string | null
+          source_institution: string
+          status: string
+          target_course_code: string | null
+          target_course_title: string | null
+          target_institution: string
+          updated_at: string
+        }
+        Insert: {
+          acceptance_status: string
+          ai_model?: string | null
+          batch_id?: string | null
+          confidence_score?: number
+          created_at?: string
+          evidence_text?: string | null
+          evidence_url?: string | null
+          id?: string
+          promotion_error?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          rule_source?: string | null
+          source_course_code: string
+          source_course_title?: string | null
+          source_institution: string
+          status?: string
+          target_course_code?: string | null
+          target_course_title?: string | null
+          target_institution: string
+          updated_at?: string
+        }
+        Update: {
+          acceptance_status?: string
+          ai_model?: string | null
+          batch_id?: string | null
+          confidence_score?: number
+          created_at?: string
+          evidence_text?: string | null
+          evidence_url?: string | null
+          id?: string
+          promotion_error?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          rule_source?: string | null
+          source_course_code?: string
+          source_course_title?: string | null
+          source_institution?: string
+          status?: string
+          target_course_code?: string | null
+          target_course_title?: string | null
+          target_institution?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       transfer_rules: {
         Row: {
           active: boolean | null
