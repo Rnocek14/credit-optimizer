@@ -3,13 +3,16 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { GraduationCap, ArrowRight, Sparkles, ChevronRight, TrendingUp, Zap, DollarSign } from 'lucide-react';
-import type { RankedTemplate } from '@/hooks/useQuickPlanGeneration';
+import type { RankedTemplate, GoalPreference } from '@/hooks/useQuickPlanGeneration';
 import type { StrategyBadge } from '@/lib/planScoring';
 
 interface ResultsStepProps {
   results: RankedTemplate[];
   onSelectTemplate: (templateId: string) => void;
   isApplying: boolean;
+  /** Forwarded to /compare so the comparison surface inherits the same context. */
+  goal?: GoalPreference;
+  careerId?: string | null;
 }
 
 const badgeStyles: Record<StrategyBadge, string> = {
