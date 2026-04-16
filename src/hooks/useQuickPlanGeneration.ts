@@ -1,9 +1,16 @@
 /**
- * useQuickPlanGeneration — ranks marketplace templates by career + constraint fit.
- * Returns top 3 templates for the GetStarted results page.
+ * useQuickPlanGeneration — ranks marketplace templates for the GetStarted flow.
+ *
+ * Pipeline:
+ *   1. Pull all active marketplace templates
+ *   2. Filter to the 5 catalog-verified schools (TESU/COSC/EXCELSIOR/EMPIRE/WGU)
+ *   3. Apply career match boost (if a career was selected)
+ *   4. Hand off to rankTopThree() for scoring + strategy assignment
  */
 import { useMemo } from 'react';
 import { useMarketplaceTemplates } from '@/hooks/useMarketplaceTemplates';
+import { rankTopThree, type RankedPlan } from '@/lib/planScoring';
+import { VERIFIED_SCHOOL_CODES } from '@/lib/planScoring/config';
 import type { MarketplaceDegreeTemplate } from '@/pages/EduTree/v5/types/templates';
 
 export type GoalPreference = 'cheapest' | 'fastest' | 'balanced';
@@ -15,97 +22,38 @@ export interface QuickPlanConstraints {
   experience: ExperienceLevel;
 }
 
-export interface RankedTemplate {
-  template: MarketplaceDegreeTemplate;
-  badge: 'Best Value' | 'Fastest' | 'Most Flexible' | 'Recommended';
-  estimatedYears: number;
-  estimatedCost: number;
-  transferPercent: number;
+/** Public re-export for legacy consumers (ResultsStep). */
+export type RankedTemplate = RankedPlan;
+
+const VERIFIED_SET = new Set<string>(VERIFIED_SCHOOL_CODES);
+
+function filterToVerifiedSchools(
+  templates: MarketplaceDegreeTemplate[]
+): MarketplaceDegreeTemplate[] {
+  return templates.filter((t) => VERIFIED_SET.has((t.anchorSchool || '').toUpperCase()));
 }
 
-function scoreCost(t: MarketplaceDegreeTemplate): number {
-  return t.totals?.costUsd ?? t.est?.costUsd ?? 99999;
-}
-
-function scoreTime(t: MarketplaceDegreeTemplate): number {
-  return t.totals?.weeks ?? t.est?.weeks ?? 200;
-}
-
-function rankTemplates(
+function applyCareerBoost(
   templates: MarketplaceDegreeTemplate[],
-  constraints: QuickPlanConstraints
-): RankedTemplate[] {
-  if (templates.length === 0) return [];
-
-  // Score each template
-  const scored = templates.map(t => {
-    const cost = scoreCost(t);
-    const weeks = scoreTime(t);
-    const totalCredits = t.totals?.credits ?? t.est?.credits ?? 120;
-    const altCredits = t.twoPhaseData?.altCredits ?? 0;
-    const transferPct = totalCredits > 0 ? Math.round((altCredits / totalCredits) * 100) : 0;
-
-    // Weighted score based on goal
-    let score: number;
-    switch (constraints.goal) {
-      case 'cheapest':
-        score = -cost + (-weeks * 10);
-        break;
-      case 'fastest':
-        score = -weeks * 100 + (-cost * 0.01);
-        break;
-      case 'balanced':
-      default:
-        score = -cost * 0.5 + -weeks * 50;
-        break;
-    }
-
-    // Career match bonus
-    if (constraints.careerId && t.primaryCareerIds?.includes(constraints.careerId)) {
-      score += 5000;
-    }
-
-    return { template: t, score, cost, weeks, transferPct };
-  });
-
-  // Sort by score descending
-  scored.sort((a, b) => b.score - a.score);
-
-  // Take top 3, assign badges
-  const top = scored.slice(0, 3);
-  const badges: Array<RankedTemplate['badge']> = ['Recommended', 'Recommended', 'Recommended'];
-
-  // Find cheapest and fastest among top 3
-  const cheapestIdx = top.reduce((best, item, i) => item.cost < top[best].cost ? i : best, 0);
-  const fastestIdx = top.reduce((best, item, i) => item.weeks < top[best].weeks ? i : best, 0);
-
-  if (cheapestIdx !== fastestIdx) {
-    badges[cheapestIdx] = 'Best Value';
-    badges[fastestIdx] = 'Fastest';
-    // Third gets Most Flexible
-    const thirdIdx = [0, 1, 2].find(i => i !== cheapestIdx && i !== fastestIdx) ?? 2;
-    badges[thirdIdx] = 'Most Flexible';
-  } else {
-    badges[0] = 'Recommended';
-    if (top.length > 1) badges[1] = 'Best Value';
-    if (top.length > 2) badges[2] = 'Most Flexible';
-  }
-
-  return top.map((item, i) => ({
-    template: item.template,
-    badge: badges[i],
-    estimatedYears: Math.round((item.weeks / 52) * 10) / 10,
-    estimatedCost: item.cost,
-    transferPercent: item.transferPct,
-  }));
+  careerId: string | null
+): MarketplaceDegreeTemplate[] {
+  if (!careerId) return templates;
+  // Prefer templates that explicitly target the chosen career — keep both groups,
+  // but matched templates come first so they win ties in the scoring step.
+  const matched = templates.filter((t) => t.primaryCareerIds?.includes(careerId));
+  const others = templates.filter((t) => !t.primaryCareerIds?.includes(careerId));
+  return [...matched, ...others];
 }
 
 export function useQuickPlanGeneration(constraints: QuickPlanConstraints | null) {
   const { data: allTemplates = [], isLoading } = useMarketplaceTemplates();
 
-  const results = useMemo(() => {
+  const results = useMemo<RankedPlan[]>(() => {
     if (!constraints || allTemplates.length === 0) return [];
-    return rankTemplates(allTemplates, constraints);
+    const verified = filterToVerifiedSchools(allTemplates);
+    if (verified.length === 0) return [];
+    const ordered = applyCareerBoost(verified, constraints.careerId);
+    return rankTopThree(ordered);
   }, [allTemplates, constraints]);
 
   return { results, isLoading };
