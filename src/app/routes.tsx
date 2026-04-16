@@ -305,11 +305,9 @@ export function AppRoutes() {
           </React.Suspense>
         </ProtectedRoute>
       } />
-      <Route path="/compare" element={
-        <ProtectedRoute requireAuth={true} requireOnboarding={true}>
-          <AppShell><TrackComparePage /></AppShell>
-        </ProtectedRoute>
-      } />
+      {/* /compare is registered above (Phase 3 surface). The legacy
+          TrackComparePage route was removed to avoid duplicate route keys —
+          track comparison lives at /plan/compare via CompareTracks. */}
       <Route path="/plan/compare" element={
         <ProtectedRoute requireAuth={true} requireOnboarding={true}>
           <AppShell><CompareTracks /></AppShell>
