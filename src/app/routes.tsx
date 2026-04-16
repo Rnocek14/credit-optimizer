@@ -258,6 +258,15 @@ export function AppRoutes() {
           </EnhancedErrorBoundary>
         </AppShell>
       } />
+      <Route path="/edu-tree-v6/:templateId" element={
+        <AppShell>
+          <EnhancedErrorBoundary fallback={<EduTreeError />}>
+            <React.Suspense fallback={<PageLoader message="Loading degree planner..." />}>
+              <EduTreeV6Route />
+            </React.Suspense>
+          </EnhancedErrorBoundary>
+        </AppShell>
+      } />
       {/* Marketplace V1 */}
       <Route path="/edu-tree-v5/marketplace" element={
         <AppShell>

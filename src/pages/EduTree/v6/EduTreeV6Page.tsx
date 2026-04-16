@@ -10,7 +10,7 @@
  */
 
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
-import { useSearchParams, useLocation } from 'react-router-dom';
+import { useSearchParams, useLocation, useParams } from 'react-router-dom';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 
@@ -83,7 +83,8 @@ export default function EduTreeV6Page() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
-  const templateId = searchParams.get('templateId');
+  const { templateId: paramTemplateId } = useParams<{ templateId?: string }>();
+  const templateId = paramTemplateId || searchParams.get('templateId');
   const careerPathId = searchParams.get('careerPathId');
 
   // ── Active plan + server sync ──
