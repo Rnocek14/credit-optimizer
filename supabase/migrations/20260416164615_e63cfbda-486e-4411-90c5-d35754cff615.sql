@@ -1,0 +1,1 @@
+UPDATE credit_transfer_rules SET data_quality = 'legacy_unverified' WHERE data_quality = 'unverified';
