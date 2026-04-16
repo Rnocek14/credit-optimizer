@@ -133,6 +133,9 @@ export async function checkTransferRule(
       .eq('source_institution_norm', provider)
       .eq('source_course_code_norm', code.toLowerCase())
       .eq('target_institution_norm', target)
+      .eq('is_active', true)
+      .order('confidence', { ascending: false })
+      .limit(1)
       .maybeSingle();
 
     // PGRST116 = no rows; treat as "no rule"
