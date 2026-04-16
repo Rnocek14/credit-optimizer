@@ -118,7 +118,11 @@ export function getPersonalizedTransferFit(
  */
 export function scorePool(
   templates: MarketplaceDegreeTemplate[],
-  opts: { inventory?: UserCreditInventory } = {}
+  opts: {
+    inventory?: UserCreditInventory;
+    /** Coarse picker state from /compare — credits per provider source code. */
+    creditsBySource?: Partial<Record<string, number>>;
+  } = {}
 ): ScoredTemplate[] {
   if (templates.length === 0) return [];
 
@@ -127,7 +131,9 @@ export function scorePool(
     weeks: getWeeks(t),
     transferFit: opts.inventory
       ? getPersonalizedTransferFit(t, opts.inventory)
-      : getTheoreticalTransferFit(t),
+      : opts.creditsBySource
+        ? getEstimatedTransferFitFromPicker(t, opts.creditsBySource)
+        : getTheoreticalTransferFit(t),
   }));
 
   const finiteCosts = raws.map((r) => r.cost).filter(Number.isFinite);
