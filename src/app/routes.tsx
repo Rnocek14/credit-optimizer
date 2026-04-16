@@ -40,7 +40,7 @@ import ContributeTabbed from '@/pages/ContributeTabbed';
 // ── Feature pages ──────────────────────────────────────────────
 import Build from '@/pages/Build';
 import { CompareTracks } from '@/pages/CompareTracks';
-import TrackComparePage from '@/components/compare/TrackComparePage';
+// TrackComparePage import removed — was only used by the duplicate /compare route.
 import EduTreeV5Route from '@/pages/EduTree/v5';
 import EduTreeV6Route from '@/pages/EduTree/v6';
 import MarketplacePage from '@/pages/EduTree/marketplace/MarketplacePage';
