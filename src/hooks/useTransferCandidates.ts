@@ -80,6 +80,48 @@ export function useTransferCandidateStats() {
   });
 }
 
+async function promoteCandidate(id: string) {
+  const { data: candidate } = await supabase
+    .from('transfer_rule_candidates')
+    .select('*')
+    .eq('id', id)
+    .single();
+
+  if (!candidate) return;
+
+  const srcNorm = candidate.source_institution.toUpperCase().replace(/[^A-Z0-9]/g, '_');
+  const codeNorm = candidate.source_course_code.toUpperCase().replace(/[^A-Z0-9]/g, '');
+  const tgtNorm = candidate.target_institution.toUpperCase().replace(/[^A-Z0-9]/g, '_');
+
+  const { error: insertErr } = await supabase
+    .from('credit_transfer_rules')
+    .upsert({
+      source_institution: candidate.source_institution,
+      source_course_code: candidate.source_course_code,
+      target_institution: candidate.target_institution,
+      target_course_code: candidate.target_course_code,
+      acceptance_status: candidate.acceptance_status,
+      rule_source: 'ai_validated_human_approved',
+      confidence: candidate.confidence_score,
+      evidence_url: candidate.evidence_url,
+      source_institution_norm: srcNorm,
+      source_course_code_norm: codeNorm,
+      target_institution_norm: tgtNorm,
+    }, { onConflict: 'source_institution_norm,source_course_code_norm,target_institution_norm' });
+
+  if (insertErr) {
+    await supabase
+      .from('transfer_rule_candidates')
+      .update({ promotion_error: insertErr.message })
+      .eq('id', id);
+  } else {
+    await supabase
+      .from('transfer_rule_candidates')
+      .update({ status: 'promoted' })
+      .eq('id', id);
+  }
+}
+
 export function useReviewCandidate() {
   const qc = useQueryClient();
   const { toast } = useToast();
@@ -100,48 +142,8 @@ export function useReviewCandidate() {
 
       if (error) throw error;
 
-      // If approved, promote to credit_transfer_rules
       if (action === 'approve') {
-        const { data: candidate } = await supabase
-          .from('transfer_rule_candidates')
-          .select('*')
-          .eq('id', id)
-          .single();
-
-        if (candidate) {
-          const srcNorm = candidate.source_institution.toUpperCase().replace(/[^A-Z0-9]/g, '_');
-          const codeNorm = candidate.source_course_code.toUpperCase().replace(/[^A-Z0-9]/g, '');
-          const tgtNorm = candidate.target_institution.toUpperCase().replace(/[^A-Z0-9]/g, '_');
-
-          const { error: insertErr } = await supabase
-            .from('credit_transfer_rules')
-            .upsert({
-              source_institution: candidate.source_institution,
-              source_course_code: candidate.source_course_code,
-              target_institution: candidate.target_institution,
-              target_course_code: candidate.target_course_code,
-              acceptance_status: candidate.acceptance_status,
-              rule_source: 'ai_validated_human_approved',
-              confidence: candidate.confidence_score,
-              evidence_url: candidate.evidence_url,
-              source_institution_norm: srcNorm,
-              source_course_code_norm: codeNorm,
-              target_institution_norm: tgtNorm,
-            }, { onConflict: 'source_institution_norm,source_course_code_norm,target_institution_norm' });
-
-          if (insertErr) {
-            // Mark promotion error but don't fail the review
-            await supabase
-              .from('transfer_rule_candidates')
-              .update({ promotion_error: insertErr.message })
-              .eq('id', id);
-          } else {
-            await supabase
-              .from('transfer_rule_candidates')
-              .update({ status: 'promoted' })
-              .eq('id', id);
-          }
-        }
+        await promoteCandidate(id);
       }
     },
     onSuccess: (_, { action }) => {
@@ -155,6 +157,46 @@ export function useReviewCandidate() {
     },
     onError: (err: Error) => {
       toast({ title: 'Review failed', description: err.message, variant: 'destructive' });
+    },
+  });
+}
+
+export function useBatchReviewCandidates() {
+  const qc = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async ({ ids, action }: { ids: string[]; action: 'approve' | 'reject' }) => {
+      const newStatus = action === 'approve' ? 'approved' : 'rejected';
+      const { data: { user } } = await supabase.auth.getUser();
+
+      const { error } = await supabase
+        .from('transfer_rule_candidates')
+        .update({
+          status: newStatus,
+          reviewed_at: new Date().toISOString(),
+          reviewed_by: user?.id ?? null,
+        })
+        .in('id', ids);
+
+      if (error) throw error;
+
+      if (action === 'approve') {
+        // Promote each sequentially to avoid conflicts
+        for (const id of ids) {
+          await promoteCandidate(id);
+        }
+      }
+    },
+    onSuccess: (_, { ids, action }) => {
+      qc.invalidateQueries({ queryKey: CANDIDATES_KEY });
+      toast({
+        title: `Batch ${action === 'approve' ? 'approved' : 'rejected'}`,
+        description: `${ids.length} candidates ${action === 'approve' ? 'promoted to production' : 'rejected'}.`,
+      });
+    },
+    onError: (err: Error) => {
+      toast({ title: 'Batch review failed', description: err.message, variant: 'destructive' });
     },
   });
 }

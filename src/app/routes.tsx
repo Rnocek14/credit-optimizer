@@ -524,6 +524,11 @@ export function AppRoutes() {
       <Route path="/admin/policy-refresh" element={<PolicyRefreshAdmin />} />
       <Route path="/admin/policy-promotion" element={<PolicyPackPromotion />} />
       <Route path="/admin/policy-pipeline" element={<PolicyPackPipeline />} />
+      <Route path="/admin/school-expansion" element={
+        <React.Suspense fallback={<PageLoader message="Loading..." />}>
+          {React.createElement(React.lazy(() => import('@/pages/Admin/SchoolExpansionPipeline')))}
+        </React.Suspense>
+      } />
       <Route path="/admin/policy-field-review" element={<PolicyFieldReview />} />
       <Route path="/admin/add-institution" element={
         <React.Suspense fallback={<PageLoader message="Loading..." />}>
