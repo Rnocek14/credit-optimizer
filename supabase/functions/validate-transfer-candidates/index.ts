@@ -163,8 +163,8 @@ async function checkCatalogMatch(
       detail: 'Elective mapping — no catalog check needed' };
   }
 
-  // Normalize: strip spaces/dashes for matching against code_norm
-  const codeNorm = targetCode.toUpperCase().replace(/[\s\-]/g, '');
+  // Normalize to match edu_courses.code_norm format (lowercase with dashes preserved)
+  const codeNorm = targetCode.toLowerCase().trim();
 
   // Query by institution AND normalized code — precise match
   const { data, error } = await supabase
