@@ -94,8 +94,9 @@ export default function ComparePage() {
       picker: state.picker,
       schoolCount: rows.length,
       source,
+      isPersonalized: personalized,
     });
-  }, [isLoading, rows.length, state.careerId, state.goal, state.picker]);
+  }, [isLoading, rows.length, state.careerId, state.goal, state.picker, personalized]);
 
   // 4. compare_rankings_updated — debounced after re-score.
   const debouncedRankings = useDebouncedCallback(trackCompareRankingsUpdated, 400);
@@ -124,6 +125,7 @@ export default function ComparePage() {
       toGoal: next,
       careerId: state.careerId,
       picker: state.picker,
+      isPersonalized: personalized,
     });
     setGoal(next);
   };
