@@ -27,6 +27,7 @@ import QuickStart from '@/pages/QuickStart';
 import NotFound from '@/pages/NotFound';
 import InternalError from '@/pages/InternalError';
 import GetStartedPage from '@/pages/GetStarted/GetStartedPage';
+import ComparePage from '@/pages/Compare/ComparePage';
 
 // ── Hub pages ──────────────────────────────────────────────────
 import DiscoverHub from '@/pages/DiscoverHub';
@@ -160,6 +161,17 @@ export function AppRoutes() {
       <Route path="/get-started" element={
         <ProtectedRoute requireAuth={true} requireOnboarding={true}>
           <GetStartedPage />
+        </ProtectedRoute>
+      } />
+
+      {/* ── Compare (Phase 3 placeholder) ───────────────────── */}
+      <Route path="/compare" element={
+        <ProtectedRoute requireAuth={true} requireOnboarding={true}>
+          <AppShell>
+            <EnhancedErrorBoundary name="compare-page">
+              <ComparePage />
+            </EnhancedErrorBoundary>
+          </AppShell>
         </ProtectedRoute>
       } />
 

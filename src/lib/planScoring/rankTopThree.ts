@@ -138,7 +138,7 @@ function buildProofPoint(
       return monthsSaved >= 2 ? `${monthsSaved} months faster` : `${(weeks / 52).toFixed(1)} years to degree`;
     }
     case 'Best Overall':
-      return `${formatCost(cost)} · ${(weeks / 52).toFixed(1)} yrs · ${altCredits} transfer credits`;
+      return `Balanced best value — ${formatCost(cost)} · ${(weeks / 52).toFixed(1)} yrs`;
     default:
       return `${formatCost(cost)} · ${(weeks / 52).toFixed(1)} yrs`;
   }
@@ -151,7 +151,7 @@ function buildSupportingStats(
   altCredits: number
 ): [string, string] {
   const yrs = `${(weeks / 52).toFixed(1)} years`;
-  const transfer = `up to ${altCredits} transfer credits`;
+  const transfer = `Accepts up to ${altCredits} transfer credits`;
   const total = formatCost(cost) + ' total';
   switch (badge) {
     case 'Cheapest':
@@ -159,6 +159,7 @@ function buildSupportingStats(
     case 'Fastest':
       return [total, transfer];
     case 'Best Overall':
+      return [transfer, yrs];
     default:
       return [total, yrs];
   }
