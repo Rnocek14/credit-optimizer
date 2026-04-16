@@ -26,6 +26,7 @@ import Onboarding from '@/pages/Onboarding';
 import QuickStart from '@/pages/QuickStart';
 import NotFound from '@/pages/NotFound';
 import InternalError from '@/pages/InternalError';
+import GetStartedPage from '@/pages/GetStarted/GetStartedPage';
 
 // ── Hub pages ──────────────────────────────────────────────────
 import DiscoverHub from '@/pages/DiscoverHub';
@@ -152,6 +153,13 @@ export function AppRoutes() {
       <Route path="/onboarding" element={
         <ProtectedRoute requireAuth={true} redirectIfComplete={true}>
           <AppShell><Onboarding /></AppShell>
+        </ProtectedRoute>
+      } />
+
+      {/* ── Get Started (onboarding flow) ───────────────────── */}
+      <Route path="/get-started" element={
+        <ProtectedRoute requireAuth={true} requireOnboarding={true}>
+          <GetStartedPage />
         </ProtectedRoute>
       } />
 

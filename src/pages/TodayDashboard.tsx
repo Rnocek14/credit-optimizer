@@ -1,3 +1,4 @@
+import { Navigate } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import { TodayHeroCard } from "@/components/today/TodayHeroCard";
 import { TodayRecommendationCard } from "@/components/today/TodayRecommendationCard";
@@ -40,12 +41,25 @@ export default function TodayDashboardPage() {
 
   const streak = getGamStreak ? getGamStreak() : currentStreak;
 
-  if (authLoading || !user) {
+  if (authLoading) {
     return (
       <div className="min-h-[50vh] flex items-center justify-center">
         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
       </div>
     );
+  }
+
+  if (!user) {
+    return (
+      <div className="min-h-[50vh] flex items-center justify-center">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  // Redirect to onboarding flow if user has no plan yet
+  if (!activePlan && !heroLoading) {
+    return <Navigate to="/get-started" replace />;
   }
 
   return (
