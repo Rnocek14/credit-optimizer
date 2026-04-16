@@ -40,7 +40,7 @@ import ContributeTabbed from '@/pages/ContributeTabbed';
 // ── Feature pages ──────────────────────────────────────────────
 import Build from '@/pages/Build';
 import { CompareTracks } from '@/pages/CompareTracks';
-import TrackComparePage from '@/components/compare/TrackComparePage';
+// TrackComparePage import removed — was only used by the duplicate /compare route.
 import EduTreeV5Route from '@/pages/EduTree/v5';
 import EduTreeV6Route from '@/pages/EduTree/v6';
 import MarketplacePage from '@/pages/EduTree/marketplace/MarketplacePage';
@@ -305,11 +305,9 @@ export function AppRoutes() {
           </React.Suspense>
         </ProtectedRoute>
       } />
-      <Route path="/compare" element={
-        <ProtectedRoute requireAuth={true} requireOnboarding={true}>
-          <AppShell><TrackComparePage /></AppShell>
-        </ProtectedRoute>
-      } />
+      {/* /compare is registered above (Phase 3 surface). The legacy
+          TrackComparePage route was removed to avoid duplicate route keys —
+          track comparison lives at /plan/compare via CompareTracks. */}
       <Route path="/plan/compare" element={
         <ProtectedRoute requireAuth={true} requireOnboarding={true}>
           <AppShell><CompareTracks /></AppShell>

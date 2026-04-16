@@ -3,13 +3,16 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { GraduationCap, ArrowRight, Sparkles, ChevronRight, TrendingUp, Zap, DollarSign } from 'lucide-react';
-import type { RankedTemplate } from '@/hooks/useQuickPlanGeneration';
+import type { RankedTemplate, GoalPreference } from '@/hooks/useQuickPlanGeneration';
 import type { StrategyBadge } from '@/lib/planScoring';
 
 interface ResultsStepProps {
   results: RankedTemplate[];
   onSelectTemplate: (templateId: string) => void;
   isApplying: boolean;
+  /** Forwarded to /compare so the comparison surface inherits the same context. */
+  goal?: GoalPreference;
+  careerId?: string | null;
 }
 
 const badgeStyles: Record<StrategyBadge, string> = {
@@ -28,8 +31,16 @@ const badgeIcons: Record<StrategyBadge, React.ComponentType<{ className?: string
   'Third Best':   Sparkles,
 };
 
-export function ResultsStep({ results, onSelectTemplate, isApplying }: ResultsStepProps) {
+export function ResultsStep({ results, onSelectTemplate, isApplying, goal, careerId }: ResultsStepProps) {
   const navigate = useNavigate();
+
+  const compareHref = (() => {
+    const sp = new URLSearchParams();
+    if (goal && goal !== 'balanced') sp.set('goal', goal);
+    if (careerId) sp.set('career', careerId);
+    const qs = sp.toString();
+    return qs ? `/compare?${qs}` : '/compare';
+  })();
 
   if (results.length === 0) {
     return (
@@ -127,7 +138,7 @@ export function ResultsStep({ results, onSelectTemplate, isApplying }: ResultsSt
       <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
         <Button
           variant="outline"
-          onClick={() => navigate('/compare')}
+          onClick={() => navigate(compareHref)}
           className="gap-2"
         >
           Compare all 5 schools
