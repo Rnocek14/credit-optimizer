@@ -24,11 +24,11 @@ export interface RankedTemplate {
 }
 
 function scoreCost(t: MarketplaceDegreeTemplate): number {
-  return t.totals?.costUsd ?? t.estimatedCost ?? 99999;
+  return t.totals?.costUsd ?? t.est?.costUsd ?? 99999;
 }
 
 function scoreTime(t: MarketplaceDegreeTemplate): number {
-  return t.totals?.weeks ?? (t.estimatedDurationMonths ?? 48) * 4.33;
+  return t.totals?.weeks ?? t.est?.weeks ?? 200;
 }
 
 function rankTemplates(
@@ -41,7 +41,7 @@ function rankTemplates(
   const scored = templates.map(t => {
     const cost = scoreCost(t);
     const weeks = scoreTime(t);
-    const totalCredits = t.totals?.credits ?? t.totalCredits ?? 120;
+    const totalCredits = t.totals?.credits ?? t.est?.credits ?? 120;
     const altCredits = t.twoPhaseData?.altCredits ?? 0;
     const transferPct = totalCredits > 0 ? Math.round((altCredits / totalCredits) * 100) : 0;
 

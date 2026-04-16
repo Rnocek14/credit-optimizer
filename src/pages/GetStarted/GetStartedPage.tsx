@@ -3,7 +3,7 @@
  * Career → Constraints → Generate → Top 3 Results
  */
 import { useState, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Navigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { toast } from 'sonner';
 import { CareerPickerStep } from './steps/CareerPickerStep';
@@ -27,14 +27,12 @@ export default function GetStartedPage() {
   const [careerId, setCareerId] = useState<string | null>(null);
   const [constraints, setConstraints] = useState<QuickPlanConstraints | null>(null);
   const [isApplying, setIsApplying] = useState(false);
-  const { data: activePlan } = useActivePlan();
+  const { data: activePlan, isLoading: planLoading } = useActivePlan();
+  const { results } = useQuickPlanGeneration(constraints);
 
-  const { results, isLoading: templatesLoading } = useQuickPlanGeneration(constraints);
-
-  // If user already has a plan, redirect
-  if (activePlan) {
-    navigate('/today', { replace: true });
-    return null;
+  // All hooks above — conditional returns below
+  if (!planLoading && activePlan) {
+    return <Navigate to="/today" replace />;
   }
 
   const handleCareerSelect = (id: string | null) => {
@@ -54,7 +52,6 @@ export default function GetStartedPage() {
   const handleSelectTemplate = async (templateId: string) => {
     setIsApplying(true);
     try {
-      // Navigate to the V6 planner with the selected template
       navigate(`/edu-tree-v6/${templateId}`);
       toast.success('Opening your degree plan…');
     } catch (err) {
@@ -71,7 +68,6 @@ export default function GetStartedPage() {
       </Helmet>
 
       <div className="min-h-screen bg-background">
-        {/* Minimal header */}
         <header className="border-b border-border/40 bg-card/50 backdrop-blur-sm">
           <div className="container mx-auto px-4 py-4 flex items-center gap-3">
             <GraduationCap className="h-6 w-6 text-primary" />
@@ -79,7 +75,6 @@ export default function GetStartedPage() {
           </div>
         </header>
 
-        {/* Content */}
         <main className="container mx-auto px-4 py-12 max-w-4xl">
           {step === 'career' && (
             <CareerPickerStep onSelect={handleCareerSelect} />

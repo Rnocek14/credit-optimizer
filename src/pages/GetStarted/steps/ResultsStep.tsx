@@ -94,21 +94,21 @@ export function ResultsStep({ results, onSelectTemplate, isApplying }: ResultsSt
                   </div>
 
                   <h3 className="text-lg font-semibold leading-tight">
-                    {t.marketplace?.title || `${t.title}`}
+                    {t.marketplace?.title || t.label}
                   </h3>
 
                   {/* Stats row */}
                   <div className="flex items-center gap-4 text-sm">
-                    <span className="flex items-center gap-1.5 text-emerald-400">
+                    <span className="flex items-center gap-1.5 text-primary">
                       <DollarSign className="h-4 w-4" />
                       {formatCost(result.estimatedCost)}
                     </span>
-                    <span className="flex items-center gap-1.5 text-amber-400">
+                    <span className="flex items-center gap-1.5 text-primary">
                       <Clock className="h-4 w-4" />
                       {result.estimatedYears} yrs
                     </span>
                     {result.transferPercent > 0 && (
-                      <span className="flex items-center gap-1.5 text-cyan-400">
+                      <span className="flex items-center gap-1.5 text-primary">
                         <GraduationCap className="h-4 w-4" />
                         {result.transferPercent}% transfer
                       </span>
