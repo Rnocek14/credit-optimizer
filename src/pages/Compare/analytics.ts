@@ -5,6 +5,7 @@
  * (broken down by goal, personalized vs theoretical, top school)
  *
  * Naming rule: lowercase + underscores, stable forever.
+ * Provider codes are lowercased at the event boundary for clean queries.
  */
 import { logEvent } from '@/lib/analytics';
 import type { GoalPreference } from '@/hooks/useQuickPlanGeneration';
@@ -14,12 +15,15 @@ import type { CompareRow } from './buildCompareRows';
 
 type CompareSource = 'get_started' | 'direct';
 
+const lc = (s: CreditSource) => s.toLowerCase();
+
 export function trackCompareViewed(params: {
   careerId: string | null;
   goal: GoalPreference;
   picker: CreditPickerState;
   schoolCount: number;
   source: CompareSource;
+  isPersonalized: boolean;
 }) {
   const total = totalPickerCredits(params.picker);
   logEvent('compare_viewed', {
@@ -29,6 +33,7 @@ export function trackCompareViewed(params: {
     picker_total_credits: total,
     school_count_shown: params.schoolCount,
     source: params.source,
+    is_personalized: params.isPersonalized,
   });
 }
 
@@ -37,12 +42,14 @@ export function trackCompareGoalChanged(params: {
   toGoal: GoalPreference;
   careerId: string | null;
   picker: CreditPickerState;
+  isPersonalized: boolean;
 }) {
   logEvent('compare_goal_changed', {
     from_goal: params.fromGoal,
     to_goal: params.toGoal,
     career_id: params.careerId,
     picker_total_credits: totalPickerCredits(params.picker),
+    is_personalized: params.isPersonalized,
   });
 }
 
@@ -55,7 +62,7 @@ export function trackComparePickerChanged(params: {
   goal: GoalPreference;
 }) {
   logEvent('compare_picker_changed', {
-    provider: params.provider,
+    provider: lc(params.provider),
     new_credits: params.newCredits,
     old_credits: params.oldCredits,
     picker_total_credits: totalPickerCredits(params.picker),
@@ -76,6 +83,7 @@ export function trackCompareRankingsUpdated(params: {
     goal: params.goal,
     career_id: params.careerId,
     picker_total_credits: totalPickerCredits(params.picker),
+    school_count_shown: params.rows.length,
     top_school: first?.school ?? null,
     top_program_id: first?.template.id ?? null,
     second_school: second?.school ?? null,
