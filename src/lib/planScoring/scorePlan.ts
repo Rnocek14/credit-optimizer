@@ -45,10 +45,51 @@ export function getTheoreticalTransferFit(t: MarketplaceDegreeTemplate): number 
 }
 
 /**
+ * Estimated transfer fit from a coarse "credits per provider" picker.
+ *
+ * Used by /compare where users tell us "I have 12 CLEP credits + 30 Sophia credits"
+ * via toggles + sliders, instead of picking individual courses. We:
+ *   1. Walk the template's alt-credit slots and tally how many credits each provider can fill.
+ *   2. Cap each source by what the user actually claims to have.
+ *   3. Return matched / totalCredits, clamped to [0, 1].
+ *
+ * This is *directionally accurate* — perfect precision requires the course-level picker.
+ */
+export function getEstimatedTransferFitFromPicker(
+  t: MarketplaceDegreeTemplate,
+  creditsBySource: Partial<Record<string, number>>
+): number {
+  const total = t.totals?.credits ?? t.est?.credits ?? 120;
+  if (total <= 0) return 0;
+
+  // Tally template's alt-credit capacity per provider
+  const capacityBySource = new Map<string, number>();
+  for (const year of t.yearTemplates ?? []) {
+    for (const mod of year.moduleTemplates ?? []) {
+      const opt = mod.options?.[0];
+      if (!opt?.providerCode) continue;
+      const code = opt.providerCode.toUpperCase();
+      // Only count alt-credit / testing-center options as "transferrable"
+      if (opt.providerType !== 'testing_center' && !opt.isAltCredit) continue;
+      capacityBySource.set(code, (capacityBySource.get(code) ?? 0) + (opt.credits ?? 3));
+    }
+  }
+
+  // Match user's claimed credits against template capacity
+  let matched = 0;
+  for (const [source, capacity] of capacityBySource) {
+    const owned = creditsBySource[source] ?? 0;
+    matched += Math.min(owned, capacity);
+  }
+
+  return Math.max(0, Math.min(1, matched / total));
+}
+
+/**
  * Personalized transfer fit: how much of the degree the user PERSONALLY can fill
  * with credits they already own. Walks template slots and counts matches.
  *
- * Until the credit picker ships on /compare, this is unused on /get-started.
+ * Until the course-level picker ships, /compare uses getEstimatedTransferFitFromPicker.
  */
 export function getPersonalizedTransferFit(
   t: MarketplaceDegreeTemplate,
