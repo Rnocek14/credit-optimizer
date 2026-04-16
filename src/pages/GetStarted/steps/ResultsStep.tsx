@@ -31,8 +31,16 @@ const badgeIcons: Record<StrategyBadge, React.ComponentType<{ className?: string
   'Third Best':   Sparkles,
 };
 
-export function ResultsStep({ results, onSelectTemplate, isApplying }: ResultsStepProps) {
+export function ResultsStep({ results, onSelectTemplate, isApplying, goal, careerId }: ResultsStepProps) {
   const navigate = useNavigate();
+
+  const compareHref = (() => {
+    const sp = new URLSearchParams();
+    if (goal && goal !== 'balanced') sp.set('goal', goal);
+    if (careerId) sp.set('career', careerId);
+    const qs = sp.toString();
+    return qs ? `/compare?${qs}` : '/compare';
+  })();
 
   if (results.length === 0) {
     return (
