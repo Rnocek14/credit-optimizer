@@ -368,8 +368,8 @@ Deno.serve(async (req) => {
       let action = 'validated';
 
       if (!dry_run && shouldPromote) {
-        // Promote to credit_transfer_rules
-        const { error: promoteErr } = await supabase
+        // Insert new AI-validated rule with quality tracking
+        const { data: newRule, error: promoteErr } = await supabase
           .from('credit_transfer_rules')
           .insert({
             source_institution: c.source_institution,
@@ -379,16 +379,41 @@ Deno.serve(async (req) => {
             acceptance_status: c.acceptance_status,
             rule_source: 'ai_validated',
             confidence: combinedScore,
-            evidence_url: null, // inherited from candidate
-          });
+            evidence_url: null,
+            verified: true,
+            data_quality: 'ai_extracted',
+            is_active: true,
+            promoted_at: new Date().toISOString(),
+          })
+          .select('id')
+          .single();
 
-        if (!promoteErr) {
+        if (!promoteErr && newRule) {
+          // Supersede any legacy rules for the same mapping
+          const { data: legacyRules } = await supabase
+            .from('credit_transfer_rules')
+            .select('id')
+            .eq('source_institution', c.source_institution)
+            .eq('target_institution', c.target_institution)
+            .eq('data_quality', 'legacy_unverified')
+            .eq('is_active', true)
+            .neq('id', newRule.id);
+
+          if (legacyRules && legacyRules.length > 0) {
+            const legacyIds = legacyRules.map(r => r.id);
+            await supabase
+              .from('credit_transfer_rules')
+              .update({ is_active: false, superseded_by: newRule.id })
+              .in('id', legacyIds);
+            console.log(`♻️ Superseded ${legacyIds.length} legacy rules for ${c.source_institution}→${c.target_institution}`);
+          }
+
           updateData.status = 'promoted';
           action = 'promoted';
           promotedCount++;
         } else {
-          console.warn(`Promotion failed for ${c.id}:`, promoteErr.message);
-          updateData.promotion_error = promoteErr.message;
+          console.warn(`Promotion failed for ${c.id}:`, promoteErr?.message);
+          updateData.promotion_error = promoteErr?.message;
           action = 'promotion_failed';
         }
       } else if (flags.length > 0) {
