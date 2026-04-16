@@ -163,13 +163,17 @@ async function checkCatalogMatch(
       detail: 'Elective mapping — no catalog check needed' };
   }
 
-  // Check if the target course exists in edu_courses for this institution
-  const codeNorm = targetCode.toUpperCase().replace(/[\s\-]/g, '');
+  // Normalize to match edu_courses.code_norm format (lowercase with dashes preserved)
+  const codeNorm = targetCode.toLowerCase().trim();
+
+  // Query by institution AND normalized code — precise match
   const { data, error } = await supabase
     .from('edu_courses')
-    .select('id, code, title, institution_code')
-    .or(`institution_code.eq.${targetInstitution},institution_code.is.null`)
-    .limit(50);
+    .select('id, code, title, institution_code, code_norm')
+    .eq('institution_code', targetInstitution.toUpperCase())
+    .eq('code_norm', codeNorm)
+    .limit(1)
+    .maybeSingle();
 
   if (error) {
     console.warn('Catalog lookup error:', error.message);
@@ -177,27 +181,25 @@ async function checkCatalogMatch(
       detail: `Catalog lookup failed: ${error.message}` };
   }
 
-  // Try to match course code (flexible matching)
-  const match = (data || []).find((c: any) => {
-    const dbCode = (c.code || '').toUpperCase().replace(/[\s\-]/g, '');
-    return dbCode === codeNorm;
-  });
-
-  if (match) {
+  if (data) {
     return { name: 'catalog_match', passed: true, score: 1.0, weight: 0.25,
-      detail: `Matched catalog course: ${match.code} — ${match.title}` };
+      detail: `Matched catalog course: ${data.code} — ${data.title}` };
   }
 
-  // Partial match: check if code starts with same prefix
+  // Fallback: check if ANY course with same department prefix exists
   const prefix = codeNorm.replace(/\d+.*/, '');
-  const partialMatch = (data || []).some((c: any) => {
-    const dbPrefix = (c.code || '').toUpperCase().replace(/[\s\-]/g, '').replace(/\d+.*/, '');
-    return dbPrefix === prefix;
-  });
+  if (prefix.length >= 2) {
+    const { data: prefixData } = await supabase
+      .from('edu_courses')
+      .select('id')
+      .eq('institution_code', targetInstitution.toUpperCase())
+      .like('code_norm', `${prefix}%`)
+      .limit(1);
 
-  if (partialMatch) {
-    return { name: 'catalog_match', passed: false, score: 0.5, weight: 0.25,
-      detail: `No exact match for ${targetCode}, but found courses with same department prefix` };
+    if (prefixData && prefixData.length > 0) {
+      return { name: 'catalog_match', passed: false, score: 0.5, weight: 0.25,
+        detail: `No exact match for ${targetCode}, but found courses with same department prefix` };
+    }
   }
 
   return { name: 'catalog_match', passed: false, score: 0.2, weight: 0.25,
