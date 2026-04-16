@@ -93,6 +93,8 @@ export default function GetStartedPage() {
               results={results}
               onSelectTemplate={handleSelectTemplate}
               isApplying={isApplying}
+              goal={constraints?.goal}
+              careerId={careerId}
             />
           )}
         </main>

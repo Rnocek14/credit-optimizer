@@ -130,7 +130,7 @@ export function ResultsStep({ results, onSelectTemplate, isApplying }: ResultsSt
       <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
         <Button
           variant="outline"
-          onClick={() => navigate('/compare')}
+          onClick={() => navigate(compareHref)}
           className="gap-2"
         >
           Compare all 5 schools
