@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { GraduationCap, ArrowRight, BookOpen, AlertTriangle, DollarSign, Clock, ExternalLink, Compass, X } from "lucide-react";
 import { PlanCourseList } from "@/components/plan/PlanCourseList";
+import { GraduationPlanCard } from "@/components/plan/GraduationPlanCard";
 import { Link } from "react-router-dom";
 import { useActivePlan } from "@/hooks/useActivePlan";
 import { useTargetCareer } from "@/hooks/useTargetCareer";
@@ -76,6 +77,9 @@ export default function PlanHub() {
           </Card>
         ) : activePlan ? (
           <div className="space-y-6">
+            {/* Graduation Plan — the closer. Answers all 6 questions on one screen. */}
+            <GraduationPlanCard />
+
             {/* Active Plan Summary */}
             <Card className="border-primary/20">
               <CardHeader>
