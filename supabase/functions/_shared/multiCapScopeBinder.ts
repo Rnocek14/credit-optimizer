@@ -205,18 +205,18 @@ export function detectMultiCapScope(
         if (candidateBach.value < 40 || candidateBach.value > 150) continue;
         if (candidateAssoc.value >= candidateBach.value) continue;
 
-        // Nearest-anchor-wins: each value's own anchor must be at least as
-        // close as the OTHER level's anchor. We allow a tie tolerance of 2
-        // chars so legitimate phrasings like "75 credits for a bachelor's"
-        // (where "associate's" sits 20 chars away in another clause) still
-        // bind correctly. Truly ambiguous "30 credits at the associate or
-        // bachelor level" still fails because both anchors sit equidistant.
-        const assocOwnDist = nearestAnchorDistance(text, ASSOCIATE_ANCHORS, candidateAssoc.index, 80);
-        const assocOtherDist = nearestAnchorDistance(text, BACHELOR_ANCHORS, candidateAssoc.index, 80);
-        const bachOwnDist = nearestAnchorDistance(text, BACHELOR_ANCHORS, candidateBach.index, 80);
-        const bachOtherDist = nearestAnchorDistance(text, ASSOCIATE_ANCHORS, candidateBach.index, 80);
-        if (assocOwnDist > assocOtherDist + 2) continue;
-        if (bachOwnDist > bachOtherDist + 2) continue;
+        // Ambiguity guard: reject if BOTH anchor types appear within a very
+        // tight window (±15 chars) of the SAME value — catches phrasings like
+        // "30 credits at the associate or bachelor level" where the value is
+        // genuinely ambiguous. Normal dual-cap sentences ("45 for associate...
+        // 90 for bachelor") pass because the OTHER anchor is far away.
+        const assocHasBothClose =
+          anchorNearby(text, ASSOCIATE_ANCHORS, candidateAssoc.index, 15) &&
+          anchorNearby(text, BACHELOR_ANCHORS, candidateAssoc.index, 15);
+        const bachHasBothClose =
+          anchorNearby(text, ASSOCIATE_ANCHORS, candidateBach.index, 15) &&
+          anchorNearby(text, BACHELOR_ANCHORS, candidateBach.index, 15);
+        if (assocHasBothClose || bachHasBothClose) continue;
 
         // Confidence model:
         //   base 80 — both anchors present, both in sane window
