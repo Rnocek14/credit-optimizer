@@ -15,7 +15,11 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
  * Fallback list used when database is unavailable
  * Keep in sync with initial seed in migration
  */
-const FALLBACK_V1_INSTITUTIONS: string[] = ['TESU', 'COSC', 'WGU', 'EXCELSIOR', 'EMPIRE'];
+const FALLBACK_V1_INSTITUTIONS: string[] = [
+  'TESU', 'COSC', 'WGU', 'EXCELSIOR', 'EMPIRE',
+  // V2 expansion (2026-04-17): dry-run validated, allowlisted in DB
+  'SNHU', 'ASUO', 'LIBERTY', 'UMGC', 'GCU',
+];
 
 /**
  * Check if an institution is in V1 scope (database-backed)
