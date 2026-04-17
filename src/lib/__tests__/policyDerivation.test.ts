@@ -65,17 +65,19 @@ describe('parsePercentageResidency', () => {
     expect(result).toBeNull();
   });
 
-  it('picks highest confidence candidate when multiple residency phrases exist', () => {
-    const text = `
-      Students may complete 50% of credits via transfer.
-      However, at least 25% of the degree must be completed at the institution to graduate.
-    `;
+  it('picks a residency-anchored candidate when both unrelated and residency phrases exist far apart', () => {
+    // Pad with >250 chars between phrases so each candidate's ±120 window
+    // is independent. This mirrors real catalog pages where unrelated %
+    // language (tuition, etc.) appears far from the residency clause.
+    const filler = ' '.repeat(300) + 'Unrelated paragraph about scholarships and aid programs offered to qualifying applicants throughout the year.' + ' '.repeat(300);
+    const text =
+      'Eligible students may receive a 50% tuition discount on graduate programs.' +
+      filler +
+      'At least 25% of the degree must be completed at the institution to graduate.';
     const result = parsePercentageResidency(text, 120, url);
     expect(result).not.toBeNull();
-    // Either the 50% candidate is rejected (no residency anchor near it) or
-    // the 25% candidate wins on confidence; either way the residency-anchored
-    // 25% × 120 = 30 should be the answer.
     expect(result!.value).toBe(30);
+    expect(result!.basis.percent).toBeCloseTo(0.25, 4);
   });
 
   it('uses provided degree_credit_total (e.g. 60 for associate) for the math', () => {
