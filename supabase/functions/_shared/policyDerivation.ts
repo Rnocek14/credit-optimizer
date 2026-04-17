@@ -74,8 +74,9 @@ export function parsePercentageResidency(
   ];
 
   // 1) Numeric percentage: "25%", "25 %", "25 percent", "twenty-five percent"
+  //    Note: no \b after % because % is non-word; word-boundary fails there.
   const percentPattern =
-    /(\d{1,2}(?:\.\d{1,2})?)\s*(?:%|percent)\b/gi;
+    /(\d{1,2}(?:\.\d{1,2})?)\s*(?:%|percent\b)/gi;
 
   // 2) Common spelled fractions
   const fractionMap: Record<string, number> = {
