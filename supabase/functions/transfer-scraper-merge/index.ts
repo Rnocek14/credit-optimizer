@@ -1002,7 +1002,85 @@ async function mergePolicyPacks(
       notes.push('⚠️ Residency fallback: no patterns matched in available text');
     }
   }
-  
+
+  // ==========================================================================
+  // RESIDENCY % DERIVATION (D3 Phase 2): If still no residency, try parsing
+  // percentage-of-degree phrases like "25% of the degree must be completed at
+  // the institution" and compute residency = percent × degree_credit_total.
+  //
+  // Trust model: result is recorded with provenance source = 'ai_extraction'
+  // and a derivation_basis payload (raw phrase, percent, degree total, computed
+  // value, source URL). The promotion gate still requires GT or human_override.
+  // ==========================================================================
+  if (!residencyCredits) {
+    console.log('[merge] No regex-fallback residency; attempting % derivation...');
+
+    // Derive degree_credit_total the same way the outer handler does, so the
+    // computed residency is consistent with the policy_data the gate sees.
+    // deno-lint-ignore no-explicit-any
+    const explicitTotalCandidates: Array<number | undefined> = validExtractions.map((e) => {
+      const p: any = e.extraction.policy_pack;
+      return p?.degree_credit_total ?? p?.total_credits ?? p?.degree_requirements?.total_credits;
+    });
+    const explicitTotal = explicitTotalCandidates.find(
+      (v) => typeof v === 'number' && v > 0,
+    );
+    const degreeCreditTotal = (typeof explicitTotal === 'number' && explicitTotal > 0)
+      ? explicitTotal
+      : 120; // standard undergraduate bachelor's fallback (matches outer handler)
+
+    const jobIdsToCheck = validExtractions.slice(0, 5).map((e) => e.jobId);
+    const { data: textContents } = await supabase
+      .from('scraped_content')
+      .select('scrape_job_id, extracted_text, url')
+      .in('scrape_job_id', jobIdsToCheck)
+      .not('extracted_text', 'is', null);
+
+    let bestPct: {
+      value: number;
+      confidence: number;
+      jobId: string;
+      url: string;
+      basis: Record<string, unknown>;
+    } | null = null;
+
+    for (const content of ((textContents || []) as Array<{ scrape_job_id: string; extracted_text: string | null; url: string | null }>)) {
+      if (!content.extracted_text) continue;
+      const urlBonus = content.url?.toLowerCase().includes('residency') ? 5 : 0;
+      const pct = parsePercentageResidency(
+        content.extracted_text,
+        degreeCreditTotal,
+        content.url || undefined,
+      );
+      if (!pct) continue;
+
+      const adjustedConfidence = Math.min(90, pct.confidence + urlBonus);
+      if (!bestPct || adjustedConfidence > bestPct.confidence) {
+        bestPct = {
+          value: pct.value,
+          confidence: adjustedConfidence,
+          jobId: content.scrape_job_id,
+          url: content.url || '',
+          basis: pct.basis as unknown as Record<string, unknown>,
+        };
+      }
+    }
+
+    if (bestPct) {
+      notes.push(`🧮 Residency derived from %: ${bestPct.value} credits = ${(bestPct.basis.percent as number) * 100}% × ${bestPct.basis.degree_credit_total} (confidence: ${bestPct.confidence})`);
+      notes.push(`   Phrase: "${bestPct.basis.context_snippet}"`);
+      residencyCredits = {
+        value: bestPct.value,
+        sourceJobId: bestPct.jobId,
+        confidence: bestPct.confidence,
+        sourceUrl: bestPct.url,
+        derivationBasis: bestPct.basis,
+      };
+    } else {
+      notes.push('⚠️ Residency % derivation: no qualifying percentage phrase found');
+    }
+  }
+
   // Non-numeric fields don't need scope detection
   const residencyWaiver = pickBestValue(validExtractions, p => p.residency_policy?.residency_waiver_available, 'residency.waiver');
   const academicYear = pickBestValue(validExtractions, p => p.academic_year, 'academic_year');
