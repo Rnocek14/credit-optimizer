@@ -188,6 +188,10 @@ interface FieldProvenance {
     overrode_value?: unknown;
     overrode_at?: string;
     confidence?: number;     // For verification queue
+    // D3 Phase 2: present when value was computed (not directly extracted).
+    // Reviewers and the trust gate can audit the math via this object.
+    // deno-lint-ignore no-explicit-any
+    derivation_basis?: Record<string, any>;
   };
 }
 
