@@ -118,8 +118,7 @@ import VerifySignature from '@/pages/VerifySignature';
 import BadgeDetail from '@/pages/BadgeDetail';
 
 // Maya/Mentor/AI standalone pages removed — redirected
-// MayaPage kept for /maya route
-import MayaPage from '@/pages/MayaPage';
+// MayaPage quarantined 2026-04 → src/_archive/maya-2026-04/. /maya now redirects to /today.
 
 // ── Other active pages ─────────────────────────────────────────
 import ShareTrust from '@/pages/ShareTrust';
@@ -469,11 +468,7 @@ export function AppRoutes() {
       {/* ── Admin Routes ────────────────────────────────────── */}
       <Route path="/admin" element={<Admin />} />
       <Route path="/mentor" element={<Navigate to="/discover" replace />} />
-      <Route path="/maya" element={
-        <ProtectedRoute requireAuth={true} requireOnboarding={true}>
-          <AppShell><MayaPage /></AppShell>
-        </ProtectedRoute>
-      } />
+      <Route path="/maya" element={<Navigate to="/today" replace />} />
       <Route path="/mentor-inbox" element={<Navigate to="/discover" replace />} />
       <Route path="/embed/:resumeId" element={<ResumeEmbed />} />
       <Route path="/embed-generator" element={<EmbedGenerator />} />
