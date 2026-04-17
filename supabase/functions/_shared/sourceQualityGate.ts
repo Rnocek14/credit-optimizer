@@ -17,7 +17,7 @@
 // stable; never repurpose. Add new codes if a new failure mode emerges.
 // -----------------------------------------------------------------------------
 
-export const SOURCE_QUALITY_GATE_VERSION = 'v1.0.0';
+export const SOURCE_QUALITY_GATE_VERSION = 'v1.1.0';
 
 export type SourceInsufficientCode =
   | 'source_insufficient_404'              // every candidate URL 404'd or status >= 400
@@ -51,6 +51,9 @@ export interface GateDiagnostic {
   content_class: 'ok' | 'too_short' | 'js_junk' | 'error_page' | null;
   keyword_hits?: number;
   status?: string;
+  // Optional sample text from the page; used for soft-404 detection when the
+  // HTTP status is a misleading 200 (e.g., ASU's "Oops! Page not found").
+  sample?: string | null;
 }
 
 // Minimal extraction shape we need to detect numeric policy signal.
@@ -101,6 +104,34 @@ function isHttpErrorStatus(status?: string): boolean {
   if (/^4\d\d|^5\d\d/.test(status)) return true;
   if (/error|fail|timeout/i.test(status)) return true;
   return false;
+}
+
+// Soft-404 detection: many sites (ASU, etc.) serve their "page not found"
+// template with HTTP 200, which fools status-only checks. Look at the page
+// sample for canonical not-found wording.
+const SOFT_404_PATTERNS = [
+  /page not found/i,
+  /\boops[!,. ]/i,
+  /\b404\b/,
+  /we can[''']?t find/i,
+  /the requested url/i,
+  /this page (?:doesn[''']?t exist|is no longer available|cannot be found)/i,
+  /sorry,? (?:the )?page/i,
+];
+
+function isSoft404(d: GateDiagnostic): boolean {
+  // Hard signal: scraper already classified it as error_page
+  if (d.content_class === 'error_page') return true;
+  // Sample-based signal
+  const sample = (d.sample ?? '').slice(0, 800);
+  if (!sample) return false;
+  return SOFT_404_PATTERNS.some((re) => re.test(sample));
+}
+
+// A diagnostic is considered a "404-equivalent" if either the HTTP status is
+// an error OR the page is a soft-404 (200 OK but content says "not found").
+function is404Equivalent(d: GateDiagnostic): boolean {
+  return isHttpErrorStatus(d.status) || isSoft404(d);
 }
 
 /**
