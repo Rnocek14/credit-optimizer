@@ -126,6 +126,10 @@ import ShareTrust from '@/pages/ShareTrust';
 import UploadCourse from '@/pages/UploadCourse';
 import Saved from '@/pages/Saved';
 
+// ── Public SEO surfaces (no auth, indexable) ───────────────────
+import GuidesIndexPage from '@/pages/public/GuidesIndexPage';
+import GuidePage from '@/pages/public/GuidePage';
+
 // ── Sandbox (DEV-only) ────────────────────────────────────────
 import TrackOverlayPOCPage from '../../sandbox/TrackOverlayPOCPage';
 
@@ -456,6 +460,10 @@ export function AppRoutes() {
       <Route path="/resume-gallery" element={<ResumeGallery />} />
       <Route path="/resume/:userId" element={<PublicResume />} />
       <Route path="/share/trust/:token" element={<ShareTrust />} />
+
+      {/* ── Public SEO surfaces (auth-free, indexable) ──────── */}
+      <Route path="/guides" element={<GuidesIndexPage />} />
+      <Route path="/guides/:slug" element={<GuidePage />} />
 
       {/* ── Active feature routes ───────────────────────────── */}
       <Route path="/badges/:slug" element={<BadgeDetail />} />

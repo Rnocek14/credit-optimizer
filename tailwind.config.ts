@@ -334,6 +334,7 @@ export default {
 	},
 	plugins: [
 		require("tailwindcss-animate"),
+		require("@tailwindcss/typography"),
 		// Plugin to ensure OKLCH utilities are always available
 		// All vars now contain full oklch() values, so use var() directly
 		({ addUtilities }) => {
