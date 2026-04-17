@@ -1,19 +1,25 @@
 /**
- * GraduationPlanCard — the "closer" for /plan.
+ * GraduationPlanCard — the "closer" for /plan and /plan/preview.
+ *
+ * Two modes:
+ *   - **active mode** (default): renders the user's saved plan with progress,
+ *     next-actions, and an "Open Planner" CTA.
+ *   - **preview mode** (when `templateId` prop provided): renders the same
+ *     story for a template the user is *considering* — no progress bar,
+ *     no next-actions list, primary CTA becomes "Make this my plan".
  *
  * Answers 6 questions on one screen:
  *   1. What degree am I finishing?
  *   2. At which school?
  *   3. How much will it cost?
  *   4. How long will it take?
- *   5. What do I take next?
+ *   5. What do I take next?              (active mode only)
  *   6. Why is this the best path?
  *
- * Composition-only: reuses existing DAL (useActivePlan, useDegreeProgress,
- * fetchPlanCoursesWithProvider, useTargetCareer). No new queries, no schema changes.
+ * Composition-only: reuses existing DAL. No schema changes.
  */
-import { useQuery } from '@tanstack/react-query';
-import { Link } from 'react-router-dom';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Link, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -28,12 +34,15 @@ import {
   Circle,
   PlayCircle,
   Sparkles,
+  Loader2,
 } from 'lucide-react';
 import { useActivePlan } from '@/hooks/useActivePlan';
 import { useDegreeProgress } from '@/hooks/useDegreeProgress';
 import { useTargetCareer } from '@/hooks/useTargetCareer';
-import { fetchPlanCoursesWithProvider } from '@/shared/lib/api/userPlans';
+import { fetchPlanCoursesWithProvider, createUserPlan } from '@/shared/lib/api/userPlans';
 import { supabase } from '@/integrations/supabase/client';
+import { getCurrentUser } from '@/lib/auth';
+import { toast } from 'sonner';
 
 interface NextAction {
   id: string;
@@ -49,19 +58,26 @@ interface PlanContext {
   baselineCostUsd: number | null;
   baselineWeeks: number | null;
   savingsUsd: number | null;
+  institutionCode: string | null;
+}
+
+interface GraduationPlanCardProps {
+  /**
+   * Preview mode — render this template instead of the active plan.
+   * Adds a "Make this my plan" CTA that creates the plan and navigates to /plan.
+   */
+  templateId?: string;
+  /** Optional career id to attach to the new plan when committing in preview mode. */
+  previewCareerId?: string | null;
 }
 
 /**
- * Looks up institution + program context + cost baseline for the plan.
- *
- * Strategy (read-only, gracefully degrades):
- *   1. Try `template_with_costs` view by template_id (when program_id is a real template UUID).
- *   2. Fallback to institution lookup by code if program_id looks like an institution code.
- *   3. Otherwise return nulls — UI shows "Not yet computed".
+ * Looks up institution + program context + cost baseline for either
+ * an active plan's program_id OR an explicit templateId (preview mode).
  */
-function usePlanContext(planId: string | null | undefined, programId: string | null | undefined) {
+function usePlanContext(programId: string | null | undefined) {
   return useQuery({
-    queryKey: ['plan-context', planId, programId],
+    queryKey: ['plan-context', programId],
     queryFn: async (): Promise<PlanContext> => {
       const result: PlanContext = {
         schoolName: null,
@@ -69,6 +85,7 @@ function usePlanContext(planId: string | null | undefined, programId: string | n
         baselineCostUsd: null,
         baselineWeeks: null,
         savingsUsd: null,
+        institutionCode: null,
       };
 
       if (!programId || programId === 'default') return result;
@@ -88,6 +105,7 @@ function usePlanContext(planId: string | null | undefined, programId: string | n
           result.baselineWeeks = (tpl as any).plan_weeks ?? null;
           result.savingsUsd = (tpl as any).savings_usd ?? null;
           result.programName = (tpl as any).program_code ?? null;
+          result.institutionCode = (tpl as any).institution_code ?? null;
 
           const code = (tpl as any).institution_code as string | null;
           if (code) {
@@ -110,11 +128,12 @@ function usePlanContext(planId: string | null | undefined, programId: string | n
         .maybeSingle();
       if (inst) {
         result.schoolName = (inst as any).name ?? (inst as any).code;
+        result.institutionCode = (inst as any).code ?? null;
       }
 
       return result;
     },
-    enabled: !!planId,
+    enabled: !!programId,
     staleTime: 10 * 60 * 1000,
   });
 }
@@ -127,7 +146,6 @@ function useNextActions(planId: string | null | undefined) {
     queryKey: ['plan-next-actions', planId],
     queryFn: async (): Promise<NextAction[]> => {
       const rows = await fetchPlanCoursesWithProvider(planId!);
-      // Prioritize enrolled first, then planned. Skip complete/dropped.
       const enrolled = rows.filter((r) => r.status === 'enrolled');
       const planned = rows.filter((r) => r.status === 'planned' || r.status === null);
       return [...enrolled, ...planned].slice(0, 3).map((r) => ({
@@ -143,36 +161,69 @@ function useNextActions(planId: string | null | undefined) {
   });
 }
 
-/**
- * Money saved vs sticker price baseline. Prefers the verified `savings_usd`
- * from `template_with_costs`. Returns null when no verified savings exist.
- */
 function pickSavings(verifiedSavings: number | null): number | null {
   if (verifiedSavings != null && verifiedSavings > 0) return verifiedSavings;
   return null;
 }
 
-export function GraduationPlanCard() {
+export function GraduationPlanCard({ templateId, previewCareerId }: GraduationPlanCardProps = {}) {
+  const isPreview = !!templateId;
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+
   const { data: activePlan } = useActivePlan();
-  const { data: targetCareer } = useTargetCareer(activePlan?.target_career_id);
+  const { data: targetCareer } = useTargetCareer(
+    isPreview ? previewCareerId ?? null : activePlan?.target_career_id,
+  );
+
+  // In preview mode, drive everything off the templateId.
+  // In active mode, drive off the active plan's program_id.
+  const programId = isPreview ? templateId : activePlan?.program_id;
+  const { data: ctx } = usePlanContext(programId);
+
   const { data: progress, isLoading: progressLoading } = useDegreeProgress();
-  const { data: ctx } = usePlanContext(activePlan?.id, activePlan?.program_id);
-  const { data: nextActions = [] } = useNextActions(activePlan?.id);
+  const { data: nextActions = [] } = useNextActions(isPreview ? null : activePlan?.id);
 
-  if (!activePlan) return null;
+  // Commit mutation (preview mode only)
+  const commitMutation = useMutation({
+    mutationFn: async () => {
+      if (!templateId) throw new Error('No template selected');
+      const user = await getCurrentUser();
+      if (!user?.id) throw new Error('Not authenticated');
+      const planName =
+        ctx?.programName && ctx?.schoolName
+          ? `${ctx.schoolName} — ${ctx.programName}`
+          : ctx?.schoolName ?? 'My Degree Plan';
+      return createUserPlan(user.id, planName, templateId, previewCareerId ?? null);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['edutree', 'active-plan'] });
+      toast.success('Your plan is locked in.');
+      navigate('/plan');
+    },
+    onError: (err) => {
+      toast.error(err instanceof Error ? err.message : 'Could not save plan');
+    },
+  });
 
-  const percent = progress?.percent ?? 0;
-  const creditsEarned = progress?.creditsEarned ?? 0;
-  const creditsRequired = progress?.creditsRequired ?? null;
+  // Active mode requires an active plan; preview mode requires templateId only.
+  if (!isPreview && !activePlan) return null;
+  if (isPreview && !templateId) return null;
+
+  const percent = isPreview ? null : progress?.percent ?? 0;
+  const creditsEarned = isPreview ? null : progress?.creditsEarned ?? 0;
+  const creditsRequired = isPreview ? null : progress?.creditsRequired ?? null;
   const creditsRemaining =
-    creditsRequired != null ? Math.max(0, creditsRequired - creditsEarned) : null;
+    !isPreview && creditsRequired != null
+      ? Math.max(0, creditsRequired - (progress?.creditsEarned ?? 0))
+      : null;
 
   const projectedCost = ctx?.baselineCostUsd ?? null;
   const projectedWeeks = ctx?.baselineWeeks ?? null;
   const savings = pickSavings(ctx?.savingsUsd ?? null);
 
   const schoolName = ctx?.schoolName ?? 'Your school';
-  const degreeName = ctx?.programName ?? activePlan.name;
+  const degreeName = ctx?.programName ?? activePlan?.name ?? 'Degree Plan';
 
   return (
     <Card className="border-primary/30 shadow-elevation overflow-hidden">
@@ -185,7 +236,7 @@ export function GraduationPlanCard() {
             </div>
             <div className="min-w-0">
               <p className="text-xs uppercase tracking-wide text-muted-foreground font-medium mb-1">
-                Your graduation plan
+                {isPreview ? 'You selected' : 'Your graduation plan'}
               </p>
               <h2 className="text-xl font-bold truncate">{degreeName}</h2>
               <div className="flex items-center gap-1.5 text-sm text-muted-foreground mt-1">
@@ -200,46 +251,48 @@ export function GraduationPlanCard() {
               </div>
             </div>
           </div>
-          <Badge variant="default" className="shrink-0">
-            Active
+          <Badge variant={isPreview ? 'secondary' : 'default'} className="shrink-0">
+            {isPreview ? 'Preview' : 'Active'}
           </Badge>
         </div>
       </CardHeader>
 
       <CardContent className="p-6 space-y-6">
-        {/* Progress bar — credits earned vs required */}
-        <div>
-          <div className="flex items-baseline justify-between mb-2">
-            <p className="text-sm font-medium">
-              {progressLoading ? (
-                <span className="text-muted-foreground">Loading progress…</span>
-              ) : creditsRequired ? (
-                <>
-                  <span className="text-2xl font-bold">{creditsEarned}</span>
-                  <span className="text-muted-foreground"> / {creditsRequired} credits</span>
-                </>
-              ) : (
-                <span className="text-muted-foreground">
-                  {creditsEarned} credits earned
-                </span>
-              )}
-            </p>
-            <p className="text-sm font-semibold text-primary">{percent}%</p>
+        {/* Progress bar — active mode only */}
+        {!isPreview && (
+          <div>
+            <div className="flex items-baseline justify-between mb-2">
+              <p className="text-sm font-medium">
+                {progressLoading ? (
+                  <span className="text-muted-foreground">Loading progress…</span>
+                ) : creditsRequired ? (
+                  <>
+                    <span className="text-2xl font-bold">{creditsEarned}</span>
+                    <span className="text-muted-foreground"> / {creditsRequired} credits</span>
+                  </>
+                ) : (
+                  <span className="text-muted-foreground">
+                    {creditsEarned} credits earned
+                  </span>
+                )}
+              </p>
+              <p className="text-sm font-semibold text-primary">{percent}%</p>
+            </div>
+            <Progress value={percent ?? 0} className="h-2" />
+            {creditsRemaining != null && creditsRemaining > 0 && (
+              <p className="text-xs text-muted-foreground mt-2">
+                {creditsRemaining} credits remaining to graduation
+              </p>
+            )}
           </div>
-          <Progress value={percent} className="h-2" />
-          {creditsRemaining != null && creditsRemaining > 0 && (
-            <p className="text-xs text-muted-foreground mt-2">
-              {creditsRemaining} credits remaining to graduation
-            </p>
-          )}
-        </div>
+        )}
 
         {/* Cost + Time strip */}
         <div className="grid grid-cols-2 gap-3">
           <div className="rounded-lg border bg-card p-4">
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
               <DollarSign className="h-3.5 w-3.5" />
-              Projected total cost
+              {isPreview ? 'Total projected cost' : 'Projected total cost'}
             </div>
             {projectedCost != null ? (
               <>
@@ -278,52 +331,54 @@ export function GraduationPlanCard() {
           </div>
         </div>
 
-        {/* Next actions — 1-3 courses */}
-        <div>
-          <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
-            <PlayCircle className="h-4 w-4 text-primary" />
-            What to take next
-          </h3>
-          {nextActions.length === 0 ? (
-            <div className="rounded-lg border border-dashed p-4 text-center">
-              <p className="text-sm text-muted-foreground mb-3">
-                No upcoming courses planned yet.
-              </p>
-              <Button asChild size="sm" variant="outline">
-                <Link to={`/edu-tree-v6?planId=${activePlan.id}`}>
-                  Open Planner to add courses
-                </Link>
-              </Button>
-            </div>
-          ) : (
-            <ul className="space-y-2">
-              {nextActions.map((action, idx) => (
-                <li
-                  key={action.id}
-                  className="flex items-center gap-3 rounded-lg border bg-card p-3 hover:bg-accent/50 transition-colors"
-                >
-                  <div className="shrink-0">
-                    {action.status === 'enrolled' ? (
-                      <PlayCircle className="h-5 w-5 text-primary" />
-                    ) : (
-                      <Circle className="h-5 w-5 text-muted-foreground" />
-                    )}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium truncate">
-                      {idx + 1}. {action.title}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {action.provider ?? 'Provider TBD'}
-                      {action.credits ? ` · ${action.credits} credits` : ''}
-                      {action.status === 'enrolled' && ' · Enrolled'}
-                    </p>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
+        {/* Next actions — active mode only */}
+        {!isPreview && (
+          <div>
+            <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+              <PlayCircle className="h-4 w-4 text-primary" />
+              What to take next
+            </h3>
+            {nextActions.length === 0 ? (
+              <div className="rounded-lg border border-dashed p-4 text-center">
+                <p className="text-sm text-muted-foreground mb-3">
+                  No upcoming courses planned yet.
+                </p>
+                <Button asChild size="sm" variant="outline">
+                  <Link to={`/edu-tree-v6?planId=${activePlan!.id}`}>
+                    Open Planner to add courses
+                  </Link>
+                </Button>
+              </div>
+            ) : (
+              <ul className="space-y-2">
+                {nextActions.map((action, idx) => (
+                  <li
+                    key={action.id}
+                    className="flex items-center gap-3 rounded-lg border bg-card p-3 hover:bg-accent/50 transition-colors"
+                  >
+                    <div className="shrink-0">
+                      {action.status === 'enrolled' ? (
+                        <PlayCircle className="h-5 w-5 text-primary" />
+                      ) : (
+                        <Circle className="h-5 w-5 text-muted-foreground" />
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium truncate">
+                        {idx + 1}. {action.title}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {action.provider ?? 'Provider TBD'}
+                        {action.credits ? ` · ${action.credits} credits` : ''}
+                        {action.status === 'enrolled' && ' · Enrolled'}
+                      </p>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
 
         {/* Why this is the best path */}
         <div className="rounded-lg bg-muted/40 border p-4">
@@ -351,18 +406,44 @@ export function GraduationPlanCard() {
           </ul>
         </div>
 
-        {/* Primary CTA */}
-        <div className="flex flex-col sm:flex-row gap-3 pt-2">
-          <Button asChild className="flex-1" size="lg">
-            <Link to={`/edu-tree-v6?planId=${activePlan.id}`}>
-              Open Planner
-              <ArrowRight className="ml-2 h-4 w-4" />
-            </Link>
-          </Button>
-          <Button asChild variant="outline" size="lg">
-            <Link to="/compare">Compare alternatives</Link>
-          </Button>
-        </div>
+        {/* Primary CTA — differs by mode */}
+        {isPreview ? (
+          <div className="flex flex-col sm:flex-row gap-3 pt-2">
+            <Button
+              size="lg"
+              className="flex-1"
+              onClick={() => commitMutation.mutate()}
+              disabled={commitMutation.isPending}
+            >
+              {commitMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Saving your plan…
+                </>
+              ) : (
+                <>
+                  Make this my plan
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </>
+              )}
+            </Button>
+            <Button asChild variant="outline" size="lg">
+              <Link to="/compare">Compare other options</Link>
+            </Button>
+          </div>
+        ) : (
+          <div className="flex flex-col sm:flex-row gap-3 pt-2">
+            <Button asChild className="flex-1" size="lg">
+              <Link to={`/edu-tree-v6?planId=${activePlan!.id}`}>
+                Open Planner
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Link>
+            </Button>
+            <Button asChild variant="outline" size="lg">
+              <Link to="/compare">Compare alternatives</Link>
+            </Button>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

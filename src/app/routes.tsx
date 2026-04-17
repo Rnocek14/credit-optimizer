@@ -32,6 +32,7 @@ import ComparePage from '@/pages/Compare/ComparePage';
 // ── Hub pages ──────────────────────────────────────────────────
 import DiscoverHub from '@/pages/DiscoverHub';
 import PlanHub from '@/pages/PlanHub';
+import PlanPreviewPage from '@/pages/PlanPreviewPage';
 import ProgressHub from '@/pages/ProgressHub';
 import TodayDashboard from '@/pages/TodayDashboard';
 import ContributeTabbed from '@/pages/ContributeTabbed';
@@ -189,6 +190,15 @@ export function AppRoutes() {
           <AppShell>
             <EnhancedErrorBoundary name="plan-hub">
               <PlanHub />
+            </EnhancedErrorBoundary>
+          </AppShell>
+        </ProtectedRoute>
+      } />
+      <Route path="/plan/preview/:templateId" element={
+        <ProtectedRoute requireAuth={true} requireOnboarding={true}>
+          <AppShell>
+            <EnhancedErrorBoundary name="plan-preview">
+              <PlanPreviewPage />
             </EnhancedErrorBoundary>
           </AppShell>
         </ProtectedRoute>

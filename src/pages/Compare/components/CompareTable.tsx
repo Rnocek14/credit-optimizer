@@ -112,9 +112,9 @@ export function CompareTable({ rows, picker, onViewPlan }: CompareTableProps) {
                   size="sm"
                   variant={r.isBest ? 'default' : 'outline'}
                   onClick={() => onViewPlan(r.template.id)}
-                  className="gap-1.5"
+                  className="gap-1.5 w-full"
                 >
-                  View plan
+                  {r.isBest ? 'See my full plan' : 'See this plan'}
                   <ArrowRight className="h-3 w-3" />
                 </Button>
               </TableCell>

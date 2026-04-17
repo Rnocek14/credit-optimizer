@@ -28,9 +28,20 @@ export function CompareCards({ rows, picker, onViewPlan }: CompareCardsProps) {
       {rows.map((row) => (
         <Card
           key={row.template.id}
+          role="button"
+          tabIndex={0}
+          onClick={() => onViewPlan(row.template.id)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              onViewPlan(row.template.id);
+            }
+          }}
           className={cn(
-            'transition-colors',
-            row.isBest ? 'border-primary/50 shadow-sm shadow-primary/5' : 'border-border/50'
+            'cursor-pointer transition-all hover:border-primary/40 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+            row.isBest
+              ? 'border-primary/50 shadow-sm shadow-primary/5 ring-1 ring-primary/20'
+              : 'border-border/50'
           )}
         >
           <CardContent className="p-4 space-y-4">
@@ -69,10 +80,13 @@ export function CompareCards({ rows, picker, onViewPlan }: CompareCardsProps) {
             <Button
               size="sm"
               variant={row.isBest ? 'default' : 'outline'}
-              onClick={() => onViewPlan(row.template.id)}
+              onClick={(e) => {
+                e.stopPropagation();
+                onViewPlan(row.template.id);
+              }}
               className="w-full gap-1.5"
             >
-              View plan
+              {row.isBest ? 'See my full plan' : 'See this plan'}
               <ArrowRight className="h-3.5 w-3.5" />
             </Button>
           </CardContent>
