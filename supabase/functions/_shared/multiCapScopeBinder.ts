@@ -197,11 +197,17 @@ export function detectMultiCapScope(
         if (candidateBach.value < 40 || candidateBach.value > 150) continue;
         if (candidateAssoc.value >= candidateBach.value) continue;
 
-        // Must not also have the OTHER level's anchor in the SAME tight window
-        // (rules out "30 credits at the associate or bachelor level" ambiguity)
-        const assocCrossContam = anchorNearby(text, BACHELOR_ANCHORS, candidateAssoc.index, 30);
-        const bachCrossContam = anchorNearby(text, ASSOCIATE_ANCHORS, candidateBach.index, 30);
-        if (assocCrossContam || bachCrossContam) continue;
+        // Nearest-anchor-wins: each value must be UNAMBIGUOUSLY closer to its
+        // own degree-level anchor than to the other one. Rules out
+        // "30 credits at the associate or bachelor level" where both anchors
+        // sit at roughly equal distance from the value.
+        const assocOwnDist = nearestAnchorDistance(text, ASSOCIATE_ANCHORS, candidateAssoc.index, 80);
+        const assocOtherDist = nearestAnchorDistance(text, BACHELOR_ANCHORS, candidateAssoc.index, 80);
+        const bachOwnDist = nearestAnchorDistance(text, BACHELOR_ANCHORS, candidateBach.index, 80);
+        const bachOtherDist = nearestAnchorDistance(text, ASSOCIATE_ANCHORS, candidateBach.index, 80);
+        // Each value's own anchor must be strictly closer (at least 5 chars) than the other.
+        if (assocOwnDist >= assocOtherDist - 4) continue;
+        if (bachOwnDist >= bachOtherDist - 4) continue;
 
         // Confidence model:
         //   base 80 — both anchors present, both in sane window
