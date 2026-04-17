@@ -108,7 +108,9 @@ export function HubNavigation() {
 
   // Progressive disclosure based on journey stage
   const showProgress = stage !== 'new';
-  const showContribute = permissions.admin || permissions.institution || permissions.employer || permissions.teach || hasPermission("admin") || hasPermission("user");
+  // CONTRIBUTE hidden from primary nav (cleanup 2026-04). Routes still accessible
+  // via direct URL for admin/institution/employer/teach roles. Future B2B surface.
+  const showContribute = false;
   const isBuildPage = location.pathname === '/build';
   const displayTrackTitle = currentTrack?.title || (activeTrackId ? `Track ${activeTrackId.slice(0, 8)}...` : null);
 
