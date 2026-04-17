@@ -20,6 +20,7 @@ import {
   isValueScopedByBinding,
   type MultiCapBinding,
 } from '../_shared/multiCapScopeBinder.ts';
+import { prePromotePolicyPack } from '../_shared/prePromotePolicyPack.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -2001,6 +2002,29 @@ Deno.serve(async (req) => {
       // Determine canonical provenance URL (GT source > first scrape URL)
       const canonicalProvenanceUrl = gt?.source_url || extractions[0]?.url || null;
 
+      // === D3 PHASE 2: prePromotePolicyPack normalizer (additive, idempotent) ===
+      // Standardizes confidence, coerces numeric strings, derives combined caps,
+      // mirrors alt cap, and stamps provenance_verified_at on critical fields.
+      // Trust posture: never overwrites ground_truth/human_override; derived
+      // values are hard-capped at confidence 90.
+      const normalized = prePromotePolicyPack({
+        policyData: policyData as unknown as Record<string, unknown>,
+        fieldProvenance: flatProvenance as unknown as Record<string, Record<string, unknown>>,
+        totalScore,
+        hasGroundTruth: !!gt,
+        canonicalProvenanceUrl,
+      });
+      // Replace policyData / flatProvenance with normalized output
+      const normalizedPolicyData = normalized.policyData as typeof policyData;
+      const normalizedFlatProvenance = normalized.fieldProvenance as typeof flatProvenance;
+      if (normalized.normalizationApplied.length > 0) {
+        notes.push(...normalized.normalizationNotes);
+        console.log(
+          `[merge] prePromotePolicyPack v${normalized.normalizationVersion}: ${normalized.normalizationApplied.length} actions`,
+          normalized.normalizationApplied,
+        );
+      }
+
       // Guardrail B: Explicit pack_scope based on institution scope
       // If institution is program-scoped, force pack_scope='program' to prevent false coverage
       const packScope = scope === 'program' ? 'program' : 'institution';
@@ -2051,14 +2075,14 @@ Deno.serve(async (req) => {
           degree_level: 'undergraduate',
           pack_scope: packScope,
           policy_json: mergedPack,
-          policy_data: policyData,
+          policy_data: normalizedPolicyData,
           confidence_score: totalScore,
           last_verified_at: new Date().toISOString(),
           verification_source: 'transfer-scraper-merge',
           status: 'draft',  // ALWAYS draft - GATE -1 compliance
           effective_start: mergedPack.policy_effective_dates?.effective_start,
           merged_from_job_ids: scrape_job_ids,
-          field_provenance: flatProvenance,
+          field_provenance: normalizedFlatProvenance,
           provenance_url: canonicalProvenanceUrl,
           last_run_id: run_id || null,
           blocked_reason: storedBlockedReason, // Phase C: store block/warning reason
