@@ -81,10 +81,14 @@ interface CreditOccurrence {
  * newline boundaries — looser than a real NLP segmenter but sufficient
  * for the catalog/policy text patterns we see in scraped pages.
  */
+/**
+ * Splits text into sentence-like chunks. Uses periods, ! ? and newline
+ * boundaries — but NOT semicolons (those are kept inside the sentence so
+ * "30 credits for assoc; 75 for bachelor" stays a single chunk).
+ */
 function splitSentences(text: string): Array<{ sentence: string; offset: number }> {
   const out: Array<{ sentence: string; offset: number }> = [];
-  // Split on . ; ! ? or newline, keeping the offset of each chunk.
-  const re = /[^.;!?\n]+[.;!?\n]?/g;
+  const re = /[^.!?\n]+[.!?\n]?/g;
   let m: RegExpExecArray | null;
   while ((m = re.exec(text)) !== null) {
     const sentence = m[0];
