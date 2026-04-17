@@ -1,0 +1,1 @@
+UPDATE public.institution_policy_packs SET status = 'active' WHERE id = '4457305f-8e48-400e-9111-21ac26f294ba' AND status = 'draft';
