@@ -46,6 +46,7 @@ const ASSOCIATE_ANCHORS = [
 ];
 
 // Anchors that unambiguously bind a credit number to "bachelor"
+// All entries lowercased — text is matched against text.toLowerCase().
 const BACHELOR_ANCHORS = [
   'bachelor degree',
   "bachelor's degree",
@@ -54,6 +55,9 @@ const BACHELOR_ANCHORS = [
   'baccalaureate',
   'bachelor of arts',
   'bachelor of science',
+  'ba degree',
+  'bs degree',
+  'bba degree',
   'four-year degree',
   '4-year degree',
   'undergraduate degree',
@@ -201,17 +205,18 @@ export function detectMultiCapScope(
         if (candidateBach.value < 40 || candidateBach.value > 150) continue;
         if (candidateAssoc.value >= candidateBach.value) continue;
 
-        // Nearest-anchor-wins: each value must be UNAMBIGUOUSLY closer to its
-        // own degree-level anchor than to the other one. Rules out
-        // "30 credits at the associate or bachelor level" where both anchors
-        // sit at roughly equal distance from the value.
+        // Nearest-anchor-wins: each value's own anchor must be at least as
+        // close as the OTHER level's anchor. We allow a tie tolerance of 2
+        // chars so legitimate phrasings like "75 credits for a bachelor's"
+        // (where "associate's" sits 20 chars away in another clause) still
+        // bind correctly. Truly ambiguous "30 credits at the associate or
+        // bachelor level" still fails because both anchors sit equidistant.
         const assocOwnDist = nearestAnchorDistance(text, ASSOCIATE_ANCHORS, candidateAssoc.index, 80);
         const assocOtherDist = nearestAnchorDistance(text, BACHELOR_ANCHORS, candidateAssoc.index, 80);
         const bachOwnDist = nearestAnchorDistance(text, BACHELOR_ANCHORS, candidateBach.index, 80);
         const bachOtherDist = nearestAnchorDistance(text, ASSOCIATE_ANCHORS, candidateBach.index, 80);
-        // Each value's own anchor must be strictly closer (at least 5 chars) than the other.
-        if (assocOwnDist >= assocOtherDist - 4) continue;
-        if (bachOwnDist >= bachOtherDist - 4) continue;
+        if (assocOwnDist > assocOtherDist + 2) continue;
+        if (bachOwnDist > bachOtherDist + 2) continue;
 
         // Confidence model:
         //   base 80 — both anchors present, both in sane window
