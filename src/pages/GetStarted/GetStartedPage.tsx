@@ -77,6 +77,14 @@ export default function GetStartedPage() {
   const handleSelectTemplate = async (templateId: string) => {
     setIsApplying(true);
     try {
+      // Funnel completion event — captures source attribution.
+      const attr = readGuideAttribution();
+      logEvent('get_started_completed', {
+        templateId,
+        careerId,
+        ref: attr.ref,
+        slug: attr.slug,
+      });
       navigate(`/edu-tree-v6/${templateId}`);
       toast.success('Opening your degree plan…');
     } catch (err) {
