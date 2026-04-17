@@ -128,6 +128,26 @@ function anchorNearby(text: string, anchors: string[], index: number, windowChar
 }
 
 /**
+ * Returns the distance (in chars) from `index` to the nearest match of any
+ * `anchor` in `text` within ±windowChars. Returns Infinity if none found.
+ */
+function nearestAnchorDistance(text: string, anchors: string[], index: number, windowChars = 80): number {
+  const lower = text.toLowerCase();
+  const start = Math.max(0, index - windowChars);
+  const end = Math.min(text.length, index + windowChars);
+  let best = Infinity;
+  for (const a of anchors) {
+    let pos = lower.indexOf(a, start);
+    while (pos !== -1 && pos < end) {
+      const dist = Math.abs(pos - index);
+      if (dist < best) best = dist;
+      pos = lower.indexOf(a, pos + 1);
+    }
+  }
+  return best;
+}
+
+/**
  * Detect a multi-cap binding in the text.
  *
  * Returns the FIRST unambiguous binding found. "Unambiguous" means:
