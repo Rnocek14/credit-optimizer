@@ -1492,11 +1492,52 @@ Deno.serve(async (req) => {
     let blocked_reason: string | null = null;  // Phase C: promotion gating
     let isBlocked = false;  // Phase C: whether pack is blocked
     if (mergedPack) {
-      // Build flat policy_data structure that trigger expects
+      // === DERIVE GATE-REQUIRED FIELDS ===
+      // The promotion gate (policyGate.ts) requires `transfer_alt_bucket_mode` and
+      // `degree_credit_total`. The scraper does not extract these directly, so we derive
+      // them from available evidence. If we cannot derive with confidence, we emit
+      // 'unknown' / omit, and the gate will correctly hold the pack out of promotion.
+
+      const maxTransferRaw = mergedPack.transfer_credit_limits?.max_total_transfer_credits;
+      const maxAceNccrsRaw = mergedPack.transfer_credit_limits?.max_ace_nccrs_credits;
+      const maxAltCombinedRaw = (mergedPack.transfer_credit_limits as any)?.max_transfer_alt_combined_credits;
+
+      // Bucket mode derivation — mirrors creditInvariantChecker.normalizePolicyData semantics
+      let derivedBucketMode: 'separate' | 'combined' | 'unknown' = 'unknown';
+      if (typeof maxAltCombinedRaw === 'number' && maxAltCombinedRaw > 0) {
+        derivedBucketMode = 'combined';
+      } else if (
+        typeof maxTransferRaw === 'number' && maxTransferRaw > 0 &&
+        typeof maxAceNccrsRaw === 'number' && maxAceNccrsRaw > 0
+      ) {
+        // Both an institutional total cap and a separate alt-credit (ACE/NCCRS) cap
+        // → school treats them as separate buckets.
+        derivedBucketMode = 'separate';
+      }
+
+      // Degree credit total — use any explicit value from the scrape, otherwise fall back
+      // to the standard undergraduate bachelor's total (120). This is institution-agnostic
+      // and matches the convention used in every seeded pack + the SCALE_READINESS_RUNBOOK.
+      const explicitTotal = (mergedPack as any)?.degree_credit_total
+        ?? (mergedPack as any)?.total_credits
+        ?? mergedPack?.degree_requirements?.total_credits;
+      const degreeCreditTotal: number = (typeof explicitTotal === 'number' && explicitTotal > 0)
+        ? explicitTotal
+        : 120; // safe fallback for `degree_level: 'undergraduate'`
+
+      // Build flat policy_data structure that trigger + gate expect
       const policyData = {
         residency_credits: mergedPack.residency_policy?.min_institutional_credits?.toString() ?? null,
         max_transfer_credits: mergedPack.transfer_credit_limits?.max_total_transfer_credits?.toString() ?? null,
         max_ace_nccrs_credits: mergedPack.transfer_credit_limits?.max_ace_nccrs_credits?.toString() ?? null,
+        // Gate-required fields (derived above)
+        transfer_alt_bucket_mode: derivedBucketMode,
+        degree_credit_total: degreeCreditTotal,
+        total_credits: degreeCreditTotal, // fallback key the gate also accepts
+        // Optional alt cap (only meaningful in 'separate' mode; mirrors max_ace_nccrs)
+        max_alt_credit: typeof maxAceNccrsRaw === 'number' && maxAceNccrsRaw > 0 ? maxAceNccrsRaw : null,
+        // Optional combined cap (only meaningful in 'combined' mode)
+        max_transfer_alt_combined_credits: typeof maxAltCombinedRaw === 'number' && maxAltCombinedRaw > 0 ? maxAltCombinedRaw : null,
         accepts_clep: mergedPack.credit_sources_accepted?.clep ?? null,
         accepts_dsst: mergedPack.credit_sources_accepted?.dsst ?? null,
         accepts_ap: mergedPack.credit_sources_accepted?.ap ?? null,
@@ -1506,6 +1547,8 @@ Deno.serve(async (req) => {
         cornerstone_required: mergedPack.institutional_course_requirements?.cornerstone_required ?? null,
         min_upper_level_credits: mergedPack.upper_level_requirements?.min_upper_level_credits?.toString() ?? null,
       };
+
+      console.log(`[merge] Derived gate fields: bucket_mode=${derivedBucketMode} (alt=${maxAceNccrsRaw}, combined=${maxAltCombinedRaw}, transfer=${maxTransferRaw}), degree_credit_total=${degreeCreditTotal} (explicit=${explicitTotal})`);
 
       // Check institution scope to determine if we should skip pack creation
       const { data: instData } = await supabase
