@@ -59,19 +59,19 @@ export const TesuVsCoscGuide = () => (
           </tr>
           <tr>
             <td className="p-3 font-medium">Sophia / Study.com accepted</td>
-            <td className="p-3 text-emerald-600 dark:text-emerald-400">
+            <td className="p-3 text-primary">
               <CheckCircle2 className="inline h-4 w-4 mr-1" /> Yes
             </td>
-            <td className="p-3 text-emerald-600 dark:text-emerald-400">
+            <td className="p-3 text-primary">
               <CheckCircle2 className="inline h-4 w-4 mr-1" /> Yes
             </td>
           </tr>
           <tr>
             <td className="p-3 font-medium">CLEP / DSST accepted</td>
-            <td className="p-3 text-emerald-600 dark:text-emerald-400">
+            <td className="p-3 text-primary">
               <CheckCircle2 className="inline h-4 w-4 mr-1" /> Yes
             </td>
-            <td className="p-3 text-emerald-600 dark:text-emerald-400">
+            <td className="p-3 text-primary">
               <CheckCircle2 className="inline h-4 w-4 mr-1" /> Yes
             </td>
           </tr>
@@ -82,7 +82,7 @@ export const TesuVsCoscGuide = () => (
           </tr>
           <tr>
             <td className="p-3 font-medium">Self-paced terms</td>
-            <td className="p-3 text-emerald-600 dark:text-emerald-400">
+            <td className="p-3 text-primary">
               <CheckCircle2 className="inline h-4 w-4 mr-1" /> 12-week + TECEP
             </td>
             <td className="p-3 text-muted-foreground">
