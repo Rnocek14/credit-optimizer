@@ -17,18 +17,35 @@ import { findGuide, GUIDES } from '@/content/guides/registry';
 import { TesuVsCoscGuide } from '@/content/guides/tesu-vs-cosc-bsba';
 import { CheapestBachelorsGuide } from '@/content/guides/cheapest-online-bachelors-2025';
 import { SophiaTransferGuide } from '@/content/guides/sophia-learning-transfer-guide';
+import { StraighterlineVsSophiaVsStudycomGuide } from '@/content/guides/straighterline-vs-sophia-vs-studycom';
+import { FinishBachelorsUnder10kGuide } from '@/content/guides/finish-bachelors-under-10k';
+import { useEffect } from 'react';
+import { logEvent } from '@/lib/analytics';
 
 // Map slug → component. New guides: add entry to registry + map below.
 const GUIDE_COMPONENTS: Record<string, React.ComponentType> = {
   'tesu-vs-cosc-bsba': TesuVsCoscGuide,
   'cheapest-online-bachelors-2025': CheapestBachelorsGuide,
   'sophia-learning-transfer-guide': SophiaTransferGuide,
+  'straighterline-vs-sophia-vs-studycom': StraighterlineVsSophiaVsStudycomGuide,
+  'finish-bachelors-under-10k': FinishBachelorsUnder10kGuide,
 };
 
 export default function GuidePage() {
   const { slug = '' } = useParams<{ slug: string }>();
   const meta = findGuide(slug);
   const GuideComponent = GUIDE_COMPONENTS[slug];
+
+  // Fire view event once per slug change. Tracks which guides actually get
+  // read so we can double down on what works (Track 1 measurement layer).
+  useEffect(() => {
+    if (meta) {
+      logEvent('public_guide_view', {
+        slug: meta.slug,
+        category: meta.category,
+      });
+    }
+  }, [meta]);
 
   if (!meta || !GuideComponent) {
     return <Navigate to="/guides" replace />;

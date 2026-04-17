@@ -1,8 +1,13 @@
 /**
  * GetStartedPage — 60-second onboarding flow.
  * Career → Constraints → Generate → Top 3 Results
+ *
+ * Also: captures SEO attribution (?ref=guide&slug=…) and fires lightweight
+ * funnel events (get_started_started, get_started_completed) tagged with the
+ * source slug. This is how we'll know which public guide actually drives
+ * conversions before building real attribution infrastructure.
  */
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useNavigate, Navigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { toast } from 'sonner';
@@ -17,6 +22,11 @@ import {
   type ExperienceLevel,
 } from '@/hooks/useQuickPlanGeneration';
 import { useActivePlan } from '@/hooks/useActivePlan';
+import {
+  useCaptureGuideAttribution,
+  readGuideAttribution,
+} from '@/hooks/useGuideAttribution';
+import { logEvent } from '@/lib/analytics';
 import { GraduationCap } from 'lucide-react';
 
 type Step = 'career' | 'constraints' | 'generating' | 'results';
@@ -29,6 +39,21 @@ export default function GetStartedPage() {
   const [isApplying, setIsApplying] = useState(false);
   const { data: activePlan, isLoading: planLoading } = useActivePlan();
   const { results } = useQuickPlanGeneration(constraints);
+
+  // Persist ?ref / ?slug from URL into sessionStorage on mount.
+  useCaptureGuideAttribution();
+
+  // Fire funnel-start event exactly once per session.
+  const startedFiredRef = useRef(false);
+  useEffect(() => {
+    if (startedFiredRef.current) return;
+    startedFiredRef.current = true;
+    const attr = readGuideAttribution();
+    logEvent('get_started_started', {
+      ref: attr.ref,
+      slug: attr.slug,
+    });
+  }, []);
 
   // All hooks above — conditional returns below
   if (!planLoading && activePlan) {
@@ -52,6 +77,14 @@ export default function GetStartedPage() {
   const handleSelectTemplate = async (templateId: string) => {
     setIsApplying(true);
     try {
+      // Funnel completion event — captures source attribution.
+      const attr = readGuideAttribution();
+      logEvent('get_started_completed', {
+        templateId,
+        careerId,
+        ref: attr.ref,
+        slug: attr.slug,
+      });
       navigate(`/edu-tree-v6/${templateId}`);
       toast.success('Opening your degree plan…');
     } catch (err) {

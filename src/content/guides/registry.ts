@@ -49,6 +49,24 @@ export const GUIDES: readonly GuideMeta[] = [
     updatedAt: '2026-04-17',
     order: 3,
   },
+  {
+    slug: 'straighterline-vs-sophia-vs-studycom',
+    title: 'StraighterLine vs Sophia vs Study.com: Real Cost & Transfer',
+    description:
+      'Side-by-side: per-credit cost, transfer acceptance, and which alt-credit provider actually fits your target school. Verified 2026 pricing.',
+    category: 'compare',
+    updatedAt: '2026-04-17',
+    order: 4,
+  },
+  {
+    slug: 'finish-bachelors-under-10k',
+    title: 'How to Finish Your Bachelor\'s Degree Under $10,000',
+    description:
+      'The exact recipe for finishing an accredited online bachelor\'s degree for under $10k — schools, alt-credit sequence, and the math line by line.',
+    category: 'pricing',
+    updatedAt: '2026-04-17',
+    order: 5,
+  },
 ] as const;
 
 export function findGuide(slug: string): GuideMeta | undefined {
