@@ -144,15 +144,12 @@ function useNextActions(planId: string | null | undefined) {
 }
 
 /**
- * Money saved vs sticker price baseline.
- * Conservative: compares plan's cumulative cost-paid vs a static $40k 4-yr public sticker.
- * If we have a baseline cost, use it; otherwise show projected total only.
+ * Money saved vs sticker price baseline. Prefers the verified `savings_usd`
+ * from `template_with_costs`. Returns null when no verified savings exist.
  */
-function computeSavings(baselineCostUsd: number | null) {
-  // Reference: avg public 4-yr in-state sticker for an adult completer. Keep conservative.
-  const STICKER_REFERENCE_USD = 40000;
-  if (!baselineCostUsd || baselineCostUsd >= STICKER_REFERENCE_USD) return null;
-  return STICKER_REFERENCE_USD - baselineCostUsd;
+function pickSavings(verifiedSavings: number | null): number | null {
+  if (verifiedSavings != null && verifiedSavings > 0) return verifiedSavings;
+  return null;
 }
 
 export function GraduationPlanCard() {
@@ -172,7 +169,7 @@ export function GraduationPlanCard() {
 
   const projectedCost = ctx?.baselineCostUsd ?? null;
   const projectedWeeks = ctx?.baselineWeeks ?? null;
-  const savings = computeSavings(projectedCost);
+  const savings = pickSavings(ctx?.savingsUsd ?? null);
 
   const schoolName = ctx?.schoolName ?? 'Your school';
   const degreeName = ctx?.programName ?? activePlan.name;
