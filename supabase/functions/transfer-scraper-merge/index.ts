@@ -15,6 +15,11 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.56.0?target=deno';
 import { checkV1InstitutionScope } from '../_shared/policyGate.ts';
 import { parsePercentageResidency } from '../_shared/policyDerivation.ts';
+import {
+  detectMultiCapScope,
+  isValueScopedByBinding,
+  type MultiCapBinding,
+} from '../_shared/multiCapScopeBinder.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -765,9 +770,28 @@ async function pickBestValueWithScopeDetection<T>(
     
     console.log(`[merge] Candidate: value=${value}, url=${url}, hasText=${text.length > 0}`);
     
-    const scopeResult = isNumeric && text
-      ? detectValueScope(numeric, text, url)
-      : { isScoped: false, scopeReason: null, contextSnippet: null };
+    // PRE-CHECK: multi-cap scope binder (associate vs bachelor in same sentence)
+    // Higher-precision; only fires on clean dual-cap phrasing. Falls through
+    // to detectValueScope when it returns null.
+    let scopeResult: { isScoped: boolean; scopeReason: string | null; contextSnippet: string | null; matchedPhrase?: string };
+    let multiCapBinding: MultiCapBinding | null = null;
+    if (isNumeric && text) {
+      const binding = detectMultiCapScope(text, url);
+      if (binding && (numeric === binding.associate_value || numeric === binding.bachelor_value)) {
+        multiCapBinding = binding;
+        const bound = isValueScopedByBinding(binding, numeric);
+        scopeResult = {
+          isScoped: bound.isScoped,
+          scopeReason: bound.reason,
+          contextSnippet: binding.raw_sentence.slice(0, 200) + (binding.raw_sentence.length > 200 ? '...' : ''),
+        };
+        console.log(`[merge] 🧭 Multi-cap binding fired: assoc=${binding.associate_value}, bach=${binding.bachelor_value}, value=${numeric} → isScoped=${bound.isScoped}`);
+      } else {
+        scopeResult = detectValueScope(numeric, text, url);
+      }
+    } else {
+      scopeResult = { isScoped: false, scopeReason: null, contextSnippet: null };
+    }
     
     console.log(`[merge] Scope result: isScoped=${scopeResult.isScoped}, reason=${scopeResult.scopeReason}`);
     
