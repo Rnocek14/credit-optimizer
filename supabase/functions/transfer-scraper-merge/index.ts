@@ -1542,6 +1542,8 @@ Deno.serve(async (req) => {
           final_value: mergedPack.residency_policy?.min_institutional_credits,
           source_url: pickedValues.residencyCredits?.sourceUrl || undefined,
           confidence: pickedValues.residencyCredits?.confidence || 0,
+          // D3 Phase 2: surface % derivation math when present
+          derivation_basis: pickedValues.residencyCredits?.derivationBasis,
         };
         fieldProvenance['transfer_credit_limits.max_total_transfer_credits'] = {
           source: 'ai_extraction',
