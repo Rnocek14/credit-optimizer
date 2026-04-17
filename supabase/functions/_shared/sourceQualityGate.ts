@@ -109,13 +109,15 @@ function isHttpErrorStatus(status?: string): boolean {
 // Soft-404 detection: many sites (ASU, etc.) serve their "page not found"
 // template with HTTP 200, which fools status-only checks. Look at the page
 // sample for canonical not-found wording.
+// NOTE: character classes include straight ASCII apostrophe (') AND the
+// curly right single quote (U+2019) since CMS output frequently smart-quotes.
 const SOFT_404_PATTERNS = [
   /page not found/i,
   /\boops[!,. ]/i,
   /\b404\b/,
-  /we can[''']?t find/i,
+  /we can['\u2019]?t find/i,
   /the requested url/i,
-  /this page (?:doesn[''']?t exist|is no longer available|cannot be found)/i,
+  /this page (?:doesn['\u2019]?t exist|is no longer available|cannot be found)/i,
   /sorry,? (?:the )?page/i,
 ];
 
