@@ -2075,14 +2075,14 @@ Deno.serve(async (req) => {
           degree_level: 'undergraduate',
           pack_scope: packScope,
           policy_json: mergedPack,
-          policy_data: policyData,
+          policy_data: normalizedPolicyData,
           confidence_score: totalScore,
           last_verified_at: new Date().toISOString(),
           verification_source: 'transfer-scraper-merge',
           status: 'draft',  // ALWAYS draft - GATE -1 compliance
           effective_start: mergedPack.policy_effective_dates?.effective_start,
           merged_from_job_ids: scrape_job_ids,
-          field_provenance: flatProvenance,
+          field_provenance: normalizedFlatProvenance,
           provenance_url: canonicalProvenanceUrl,
           last_run_id: run_id || null,
           blocked_reason: storedBlockedReason, // Phase C: store block/warning reason
