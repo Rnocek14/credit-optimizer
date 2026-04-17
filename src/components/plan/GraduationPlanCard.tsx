@@ -48,49 +48,71 @@ interface PlanContext {
   programName: string | null;
   baselineCostUsd: number | null;
   baselineWeeks: number | null;
+  savingsUsd: number | null;
 }
 
 /**
  * Looks up institution + program context + cost baseline for the plan.
- * Falls back gracefully when the join misses.
+ *
+ * Strategy (read-only, gracefully degrades):
+ *   1. Try `template_with_costs` view by template_id (when program_id is a real template UUID).
+ *   2. Fallback to institution lookup by code if program_id looks like an institution code.
+ *   3. Otherwise return nulls — UI shows "Not yet computed".
  */
 function usePlanContext(planId: string | null | undefined, programId: string | null | undefined) {
   return useQuery({
     queryKey: ['plan-context', planId, programId],
     queryFn: async (): Promise<PlanContext> => {
-      let schoolName: string | null = null;
-      let programName: string | null = null;
-      let baselineCostUsd: number | null = null;
-      let baselineWeeks: number | null = null;
+      const result: PlanContext = {
+        schoolName: null,
+        programName: null,
+        baselineCostUsd: null,
+        baselineWeeks: null,
+        savingsUsd: null,
+      };
 
-      // Try to resolve program → institution + program name
-      if (programId && programId !== 'default') {
-        const { data: prog } = await supabase
-          .from('programs')
-          .select('name, institution_code, institutions:institution_code ( name )')
-          .eq('id', programId)
+      if (!programId || programId === 'default') return result;
+
+      // 1. Try template_with_costs by template_id (UUID case)
+      const isUuid = /^[0-9a-f-]{36}$/i.test(programId);
+      if (isUuid) {
+        const { data: tpl } = await supabase
+          .from('template_with_costs')
+          .select(
+            'institution_code, program_code, plan_cost_usd, plan_weeks, savings_usd',
+          )
+          .eq('template_id', programId)
           .maybeSingle();
-        if (prog) {
-          programName = (prog as any).name ?? null;
-          schoolName =
-            (prog as any).institutions?.name ?? (prog as any).institution_code ?? null;
+        if (tpl) {
+          result.baselineCostUsd = (tpl as any).plan_cost_usd ?? null;
+          result.baselineWeeks = (tpl as any).plan_weeks ?? null;
+          result.savingsUsd = (tpl as any).savings_usd ?? null;
+          result.programName = (tpl as any).program_code ?? null;
 
-          // Try the cheapest catalog-verified template baseline for this institution
-          const { data: baseline } = await supabase
-            .from('template_baselines')
-            .select('baseline_cost_usd, baseline_weeks')
-            .eq('institution_code', (prog as any).institution_code)
-            .order('baseline_cost_usd', { ascending: true })
-            .limit(1)
-            .maybeSingle();
-          if (baseline) {
-            baselineCostUsd = (baseline as any).baseline_cost_usd ?? null;
-            baselineWeeks = (baseline as any).baseline_weeks ?? null;
+          const code = (tpl as any).institution_code as string | null;
+          if (code) {
+            const { data: inst } = await supabase
+              .from('institutions')
+              .select('name')
+              .eq('code', code)
+              .maybeSingle();
+            result.schoolName = (inst as any)?.name ?? code;
           }
+          return result;
         }
       }
 
-      return { schoolName, programName, baselineCostUsd, baselineWeeks };
+      // 2. Fallback: program_id may itself be an institution code (e.g. "TESU")
+      const { data: inst } = await supabase
+        .from('institutions')
+        .select('name, code')
+        .eq('code', programId.toUpperCase())
+        .maybeSingle();
+      if (inst) {
+        result.schoolName = (inst as any).name ?? (inst as any).code;
+      }
+
+      return result;
     },
     enabled: !!planId,
     staleTime: 10 * 60 * 1000,
