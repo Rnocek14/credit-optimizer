@@ -66,10 +66,13 @@ Deno.test('gate: source_insufficient_blocked when all pages empty/js_junk', () =
   }
 });
 
-Deno.test('gate: source_insufficient_shell when only error/shell pages', () => {
+Deno.test('gate: source_insufficient_shell when only too_short shell pages (no 404-equivalents)', () => {
+  // Both pages are tiny shells (200 OK, no keywords, no not-found markers).
+  // After v1.1 mixed-failure precedence, error_page entries are 404-equivalent,
+  // so the pure shell case requires non-error_page diagnostics.
   const diagnostics: GateDiagnostic[] = [
-    { url: 'https://x/a', text_length: 80, content_class: 'too_short', keyword_hits: 0, status: '200' },
-    { url: 'https://x/b', text_length: 50, content_class: 'error_page', status: '200' },
+    { url: 'https://x/a', text_length: 80, content_class: 'too_short', keyword_hits: 0, status: '200', sample: 'Welcome to our site' },
+    { url: 'https://x/b', text_length: 50, content_class: 'too_short', keyword_hits: 0, status: '200', sample: 'Cookie consent banner' },
   ];
   const v = evaluateSourceQuality({ url_diagnostics: diagnostics, extractions: [emptyExtraction] });
   assertEquals(v.ok, false);
