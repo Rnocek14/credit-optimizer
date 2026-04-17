@@ -20,6 +20,7 @@ import {
   isValueScopedByBinding,
   type MultiCapBinding,
 } from '../_shared/multiCapScopeBinder.ts';
+import { prePromotePolicyPack } from '../_shared/prePromotePolicyPack.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
