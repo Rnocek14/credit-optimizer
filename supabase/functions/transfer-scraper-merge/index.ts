@@ -153,6 +153,12 @@ interface SourcedValue<T> {
   sourceJobId: string;
   confidence: number;
   sourceUrl?: string;  // For evidence capture
+  // D3 Phase 2: optional derivation metadata. Present when the value was
+  // computed (e.g. "25% of degree" × degree_credit_total) instead of read
+  // directly from a source. Surfaced in field_provenance.derivation_basis
+  // so reviewers and the trust gate can audit the math.
+  // deno-lint-ignore no-explicit-any
+  derivationBasis?: Record<string, any>;
 }
 
 interface MergeResult {
