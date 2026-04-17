@@ -11,8 +11,7 @@ import {
 describe('extractMaxTransferCandidates', () => {
   it('returns [] for empty / non-string input', () => {
     expect(extractMaxTransferCandidates('')).toEqual([]);
-    // @ts-expect-error testing runtime guard
-    expect(extractMaxTransferCandidates(null)).toEqual([]);
+    expect(extractMaxTransferCandidates(null as unknown as string)).toEqual([]);
   });
 
   it('captures ASUO institution-wide cap "up to 64 transfer credits"', () => {
