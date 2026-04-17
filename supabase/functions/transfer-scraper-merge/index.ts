@@ -22,6 +22,11 @@ import {
 } from '../_shared/multiCapScopeBinder.ts';
 import { prePromotePolicyPack } from '../_shared/prePromotePolicyPack.ts';
 import {
+  extractMaxTransferCandidates,
+  pickBestInstitutionMax,
+  type MaxTransferCandidate,
+} from '../_shared/maxTransferExtraction.ts';
+import {
   evaluateSourceQuality,
   formatGateVerdict,
   SOURCE_QUALITY_GATE_VERSION,
