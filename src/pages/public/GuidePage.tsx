@@ -36,6 +36,17 @@ export default function GuidePage() {
   const meta = findGuide(slug);
   const GuideComponent = GUIDE_COMPONENTS[slug];
 
+  // Fire view event once per slug change. Tracks which guides actually get
+  // read so we can double down on what works (Track 1 measurement layer).
+  useEffect(() => {
+    if (meta) {
+      logEvent('public_guide_view', {
+        slug: meta.slug,
+        category: meta.category,
+      });
+    }
+  }, [meta]);
+
   if (!meta || !GuideComponent) {
     return <Navigate to="/guides" replace />;
   }

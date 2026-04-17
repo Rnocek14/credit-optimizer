@@ -77,27 +77,27 @@ export const StraighterlineVsSophiaVsStudycomGuide = () => (
         <tbody className="divide-y divide-border">
           <tr>
             <td className="p-3 font-medium">TESU</td>
-            <td className="p-3"><CheckCircle2 className="inline h-4 w-4 text-green-600" /> Accepted (cap applies)</td>
-            <td className="p-3"><CheckCircle2 className="inline h-4 w-4 text-green-600" /> Accepted (cap applies)</td>
-            <td className="p-3"><CheckCircle2 className="inline h-4 w-4 text-green-600" /> Accepted</td>
+            <td className="p-3"><CheckCircle2 className="inline h-4 w-4 text-primary" /> Accepted (cap applies)</td>
+            <td className="p-3"><CheckCircle2 className="inline h-4 w-4 text-primary" /> Accepted (cap applies)</td>
+            <td className="p-3"><CheckCircle2 className="inline h-4 w-4 text-primary" /> Accepted</td>
           </tr>
           <tr>
             <td className="p-3 font-medium">COSC</td>
-            <td className="p-3"><CheckCircle2 className="inline h-4 w-4 text-green-600" /> Accepted</td>
-            <td className="p-3"><CheckCircle2 className="inline h-4 w-4 text-green-600" /> Accepted</td>
-            <td className="p-3"><CheckCircle2 className="inline h-4 w-4 text-green-600" /> Accepted</td>
+            <td className="p-3"><CheckCircle2 className="inline h-4 w-4 text-primary" /> Accepted</td>
+            <td className="p-3"><CheckCircle2 className="inline h-4 w-4 text-primary" /> Accepted</td>
+            <td className="p-3"><CheckCircle2 className="inline h-4 w-4 text-primary" /> Accepted</td>
           </tr>
           <tr>
             <td className="p-3 font-medium">Excelsior</td>
-            <td className="p-3"><CheckCircle2 className="inline h-4 w-4 text-green-600" /> Accepted</td>
-            <td className="p-3"><CheckCircle2 className="inline h-4 w-4 text-green-600" /> Accepted</td>
-            <td className="p-3"><CheckCircle2 className="inline h-4 w-4 text-green-600" /> Accepted</td>
+            <td className="p-3"><CheckCircle2 className="inline h-4 w-4 text-primary" /> Accepted</td>
+            <td className="p-3"><CheckCircle2 className="inline h-4 w-4 text-primary" /> Accepted</td>
+            <td className="p-3"><CheckCircle2 className="inline h-4 w-4 text-primary" /> Accepted</td>
           </tr>
           <tr>
             <td className="p-3 font-medium">Most state universities</td>
             <td className="p-3"><XCircle className="inline h-4 w-4 text-muted-foreground" /> Spotty</td>
             <td className="p-3"><XCircle className="inline h-4 w-4 text-muted-foreground" /> Spotty</td>
-            <td className="p-3"><CheckCircle2 className="inline h-4 w-4 text-green-600" /> Better (ACE)</td>
+            <td className="p-3"><CheckCircle2 className="inline h-4 w-4 text-primary" /> Better (ACE)</td>
           </tr>
         </tbody>
       </table>
