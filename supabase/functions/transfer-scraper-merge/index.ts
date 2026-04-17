@@ -21,6 +21,12 @@ import {
   type MultiCapBinding,
 } from '../_shared/multiCapScopeBinder.ts';
 import { prePromotePolicyPack } from '../_shared/prePromotePolicyPack.ts';
+import {
+  evaluateSourceQuality,
+  formatGateVerdict,
+  SOURCE_QUALITY_GATE_VERSION,
+  type GateDiagnostic,
+} from '../_shared/sourceQualityGate.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -1304,6 +1310,50 @@ Deno.serve(async (req) => {
           action: 'hold',
           merge_notes: ['No valid extractions found to merge'],
           sources_used: [],
+          source_quality_gate: {
+            version: SOURCE_QUALITY_GATE_VERSION,
+            ok: false,
+            code: 'source_insufficient_no_extractions',
+            recommended_action: 'template_repair',
+            reason: 'No AI extractions were produced from any source URL.',
+          },
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // === PRE-MERGE SOURCE-QUALITY GATE =======================================
+    // Deterministic, additive classifier. Decides whether the bundle of sources
+    // is even viable BEFORE we spend cycles on merge / normalization. On failure
+    // we short-circuit with a stable machine code so the operator dashboard can
+    // route the next action (template repair vs rendered fetch vs alt source).
+    const gateVerdict = evaluateSourceQuality({
+      url_diagnostics: (url_diagnostics ?? []) as GateDiagnostic[],
+      extractions: extractions.map(e => ({ policy_pack: e.extraction.policy_pack })),
+    });
+    console.log(`[merge] sourceQualityGate: ${formatGateVerdict(gateVerdict)}`);
+    if (!gateVerdict.ok) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          merged_policy_pack: null,
+          merged_provider_rules: [],
+          confidence: { source_authority: 0, language_certainty: 0, cross_source_agreement: 0, recency: 0, structural_consistency: 0, ai_certainty: 0 },
+          total_score: 0,
+          action: 'hold',
+          merge_notes: [
+            formatGateVerdict(gateVerdict),
+            ...gateVerdict.notes,
+          ],
+          sources_used: extractions.map(e => e.url).filter(Boolean),
+          blocked_reason: gateVerdict.code,
+          source_quality_gate: {
+            version: SOURCE_QUALITY_GATE_VERSION,
+            ok: false,
+            code: gateVerdict.code,
+            recommended_action: gateVerdict.recommended_action,
+            reason: gateVerdict.reason,
+          },
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
