@@ -17,7 +17,7 @@
 // stable; never repurpose. Add new codes if a new failure mode emerges.
 // -----------------------------------------------------------------------------
 
-export const SOURCE_QUALITY_GATE_VERSION = 'v1.0.0';
+export const SOURCE_QUALITY_GATE_VERSION = 'v1.1.0';
 
 export type SourceInsufficientCode =
   | 'source_insufficient_404'              // every candidate URL 404'd or status >= 400
@@ -51,6 +51,9 @@ export interface GateDiagnostic {
   content_class: 'ok' | 'too_short' | 'js_junk' | 'error_page' | null;
   keyword_hits?: number;
   status?: string;
+  // Optional sample text from the page; used for soft-404 detection when the
+  // HTTP status is a misleading 200 (e.g., ASU's "Oops! Page not found").
+  sample?: string | null;
 }
 
 // Minimal extraction shape we need to detect numeric policy signal.
@@ -103,6 +106,36 @@ function isHttpErrorStatus(status?: string): boolean {
   return false;
 }
 
+// Soft-404 detection: many sites (ASU, etc.) serve their "page not found"
+// template with HTTP 200, which fools status-only checks. Look at the page
+// sample for canonical not-found wording.
+// NOTE: character classes include straight ASCII apostrophe (') AND the
+// curly right single quote (U+2019) since CMS output frequently smart-quotes.
+const SOFT_404_PATTERNS = [
+  /page not found/i,
+  /\boops[!,. ]/i,
+  /\b404\b/,
+  /we can['\u2019]?t find/i,
+  /the requested url/i,
+  /this page (?:doesn['\u2019]?t exist|is no longer available|cannot be found)/i,
+  /sorry,? (?:the )?page/i,
+];
+
+function isSoft404(d: GateDiagnostic): boolean {
+  // Hard signal: scraper already classified it as error_page
+  if (d.content_class === 'error_page') return true;
+  // Sample-based signal
+  const sample = (d.sample ?? '').slice(0, 800);
+  if (!sample) return false;
+  return SOFT_404_PATTERNS.some((re) => re.test(sample));
+}
+
+// A diagnostic is considered a "404-equivalent" if either the HTTP status is
+// an error OR the page is a soft-404 (200 OK but content says "not found").
+function is404Equivalent(d: GateDiagnostic): boolean {
+  return isHttpErrorStatus(d.status) || isSoft404(d);
+}
+
 /**
  * Classify the bundle of sources before merge.
  * Pure function — no I/O. Safe to call multiple times.
@@ -145,14 +178,35 @@ export function evaluateSourceQuality(input: GateInput): SourceQualityVerdict {
     return { ok: true, notes };
   }
 
-  // ---- Case 1: every URL 404'd / errored ------------------------------------
+  // Compute shared signal counts up front (used by multiple cases below).
   const errorStatusCount = diagnostics.filter((d) => isHttpErrorStatus(d.status)).length;
   const errorPageCount = diagnostics.filter((d) => d.content_class === 'error_page').length;
-  if (errorStatusCount === diagnostics.length && diagnostics.length > 0) {
+  const soft404Count = diagnostics.filter((d) => isSoft404(d)).length;
+  const notFoundCount = diagnostics.filter((d) => is404Equivalent(d)).length;
+  const okCount = diagnostics.filter((d) => d.content_class === 'ok').length;
+  const totalKeywordHits = diagnostics.reduce(
+    (sum, d) => sum + (d.keyword_hits ?? 0),
+    0,
+  );
+  const hasNumericSignal = hasNumericPolicySignal(extractions);
+
+  if (soft404Count > 0) {
+    notes.push(
+      `Soft-404 detected on ${soft404Count}/${diagnostics.length} page(s) ` +
+        `(HTTP 200 but content matches not-found patterns).`,
+    );
+  }
+
+  // ---- Case 1: every URL is a 404 (HTTP error or soft-404) ------------------
+  if (notFoundCount === diagnostics.length && diagnostics.length > 0) {
+    const detail =
+      errorStatusCount === diagnostics.length
+        ? 'HTTP error status'
+        : `${soft404Count} soft-404 + ${errorStatusCount} HTTP error`;
     return {
       ok: false,
       code: 'source_insufficient_404',
-      reason: `All ${diagnostics.length} candidate URL(s) returned an HTTP error status.`,
+      reason: `All ${diagnostics.length} candidate URL(s) returned not-found content (${detail}).`,
       notes,
       recommended_action: 'template_repair',
     };
@@ -175,6 +229,28 @@ export function evaluateSourceQuality(input: GateInput): SourceQualityVerdict {
     };
   }
 
+  // ---- Case 2.5: MIXED template failure (NEW) ------------------------------
+  // At least one URL is 404-equivalent AND no remaining page yields numeric
+  // policy signal. This is the ASUO pattern: "/admission/transfer-credit/" is
+  // a soft-404, the rest are marketing pages. Operationally this means the
+  // template URLs are wrong → template_repair, NOT extraction_review.
+  if (
+    notFoundCount > 0 &&
+    notFoundCount < diagnostics.length &&
+    !hasNumericSignal
+  ) {
+    return {
+      ok: false,
+      code: 'source_insufficient_404',
+      reason:
+        `${notFoundCount}/${diagnostics.length} candidate URL(s) are not-found ` +
+        `(soft-404 or HTTP error) and the remaining pages produced no numeric ` +
+        `policy signal — template URLs need repair.`,
+      notes,
+      recommended_action: 'template_repair',
+    };
+  }
+
   // ---- Case 3: shell / cookie / error pages dominate ------------------------
   // error_page class + tiny text but status was nominally 200
   const shellCount = diagnostics.filter((d) => {
@@ -189,7 +265,6 @@ export function evaluateSourceQuality(input: GateInput): SourceQualityVerdict {
     }
     return false;
   }).length;
-  const okCount = diagnostics.filter((d) => d.content_class === 'ok').length;
   if (shellCount > 0 && okCount === 0 && errorPageCount + shellCount >= diagnostics.length - 0) {
     return {
       ok: false,
@@ -204,10 +279,6 @@ export function evaluateSourceQuality(input: GateInput): SourceQualityVerdict {
 
   // ---- Case 4: nav / marketing only -----------------------------------------
   // Pages loaded fine ("ok"), but ZERO keyword hits anywhere → marketing pages.
-  const totalKeywordHits = diagnostics.reduce(
-    (sum, d) => sum + (d.keyword_hits ?? 0),
-    0,
-  );
   if (okCount >= minUsable && totalKeywordHits === 0) {
     return {
       ok: false,
@@ -221,7 +292,9 @@ export function evaluateSourceQuality(input: GateInput): SourceQualityVerdict {
   }
 
   // ---- Case 5: pages were OK but extractor produced no numeric signal -------
-  if (okCount >= minUsable && totalKeywordHits > 0 && !hasNumericPolicySignal(extractions)) {
+  // Only reachable when there are NO 404-equivalents in the bundle (Case 2.5
+  // handles the mixed case). This isolates true extractor-review cases.
+  if (okCount >= minUsable && totalKeywordHits > 0 && !hasNumericSignal) {
     return {
       ok: false,
       code: 'source_insufficient_no_numeric_policy',
