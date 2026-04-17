@@ -17,12 +17,18 @@ import { findGuide, GUIDES } from '@/content/guides/registry';
 import { TesuVsCoscGuide } from '@/content/guides/tesu-vs-cosc-bsba';
 import { CheapestBachelorsGuide } from '@/content/guides/cheapest-online-bachelors-2025';
 import { SophiaTransferGuide } from '@/content/guides/sophia-learning-transfer-guide';
+import { StraighterlineVsSophiaVsStudycomGuide } from '@/content/guides/straighterline-vs-sophia-vs-studycom';
+import { FinishBachelorsUnder10kGuide } from '@/content/guides/finish-bachelors-under-10k';
+import { useEffect } from 'react';
+import { logEvent } from '@/lib/analytics';
 
 // Map slug → component. New guides: add entry to registry + map below.
 const GUIDE_COMPONENTS: Record<string, React.ComponentType> = {
   'tesu-vs-cosc-bsba': TesuVsCoscGuide,
   'cheapest-online-bachelors-2025': CheapestBachelorsGuide,
   'sophia-learning-transfer-guide': SophiaTransferGuide,
+  'straighterline-vs-sophia-vs-studycom': StraighterlineVsSophiaVsStudycomGuide,
+  'finish-bachelors-under-10k': FinishBachelorsUnder10kGuide,
 };
 
 export default function GuidePage() {
