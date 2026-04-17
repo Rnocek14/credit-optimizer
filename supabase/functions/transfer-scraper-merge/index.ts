@@ -14,6 +14,7 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.56.0?target=deno';
 import { checkV1InstitutionScope } from '../_shared/policyGate.ts';
+import { parsePercentageResidency } from '../_shared/policyDerivation.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
