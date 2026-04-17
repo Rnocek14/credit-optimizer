@@ -22,6 +22,11 @@ import {
 } from '../_shared/multiCapScopeBinder.ts';
 import { prePromotePolicyPack } from '../_shared/prePromotePolicyPack.ts';
 import {
+  extractMaxTransferCandidates,
+  pickBestInstitutionMax,
+  type MaxTransferCandidate,
+} from '../_shared/maxTransferExtraction.ts';
+import {
   evaluateSourceQuality,
   formatGateVerdict,
   SOURCE_QUALITY_GATE_VERSION,
@@ -984,8 +989,74 @@ async function mergePolicyPacks(
   }
   
   let residencyCredits = residencyResult.selected;
-  const maxTransfer = maxTransferResult.selected;
+  let maxTransfer = maxTransferResult.selected;
   const maxAceNccrs = maxAceNccrsResult.selected;
+
+  // ==========================================================================
+  // MAX_TRANSFER FALLBACK (Type 2.5 fix): If AI extractor returned nothing
+  // (or the AI value was scoped/dropped), scan raw page text for anchored
+  // institution-wide cap phrasings ("up to 64 transfer credits", "maximum of
+  // 64 credits", etc.). Demotes program-scoped phrasings ("for the BA in
+  // Liberal Studies, up to 90 credits") so they don't masquerade as the
+  // institutional cap.
+  //
+  // Trust model: same as residency fallback — written with provenance
+  // source = 'ai_extraction', promotion gate still requires GT/human override.
+  // ==========================================================================
+  if (!maxTransfer) {
+    console.log('[merge] No AI-extracted max_transfer found, attempting regex fallback...');
+
+    const jobIdsForMaxTransfer = maxTransferExtractions.slice(0, 5).map((e) => e.jobId);
+    const { data: textsForMaxTransfer } = await supabase
+      .from('scraped_content')
+      .select('scrape_job_id, extracted_text, url')
+      .in('scrape_job_id', jobIdsForMaxTransfer)
+      .not('extracted_text', 'is', null);
+
+    let bestMaxFallback: {
+      cand: MaxTransferCandidate;
+      jobId: string;
+      url: string;
+    } | null = null;
+
+    for (const content of ((textsForMaxTransfer || []) as Array<{ scrape_job_id: string; extracted_text: string | null; url: string | null }>)) {
+      if (!content.extracted_text) continue;
+
+      const cands = extractMaxTransferCandidates(content.extracted_text);
+      const best = pickBestInstitutionMax(cands);
+      if (!best) continue;
+
+      // Light URL-priority bonus: transfer-policy URLs win over generic info pages
+      const urlLower = (content.url || '').toLowerCase();
+      const urlBonus =
+        urlLower.includes('transfer-credit') || urlLower.includes('transfer/') ? 5 : 0;
+      const adjustedConfidence = Math.min(best.confidence + urlBonus, 95);
+
+      if (!bestMaxFallback || adjustedConfidence > bestMaxFallback.cand.confidence) {
+        bestMaxFallback = {
+          cand: { ...best, confidence: adjustedConfidence },
+          jobId: content.scrape_job_id,
+          url: content.url || '',
+        };
+      }
+    }
+
+    if (bestMaxFallback) {
+      notes.push(
+        `🔍 max_transfer fallback: found ${bestMaxFallback.cand.value} credits via regex (pattern=${bestMaxFallback.cand.patternId}, confidence=${bestMaxFallback.cand.confidence})`,
+      );
+      notes.push(`   Context: "${bestMaxFallback.cand.contextSnippet}"`);
+      maxTransfer = {
+        value: bestMaxFallback.cand.value,
+        sourceJobId: bestMaxFallback.jobId,
+        confidence: bestMaxFallback.cand.confidence,
+        sourceUrl: bestMaxFallback.url,
+      };
+    } else {
+      notes.push('⚠️ max_transfer fallback: no institution-wide cap pattern matched in available text');
+    }
+  }
+
   
   // ==========================================================================
   // RESIDENCY FALLBACK: If AI extraction didn't find residency, try pattern matching
