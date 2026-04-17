@@ -151,10 +151,19 @@ export default function ComparePage() {
   };
 
   // 5. compare_view_plan_clicked — handed to Table/Cards.
+  // Routes through /plan/preview so the user sees the closer card before committing.
   const handleViewPlan = (programId: string) => {
     const idx = rows.findIndex((r) => r.template.id === programId);
+    const previewQs = new URLSearchParams();
+    if (state.goal) previewQs.set('goal', state.goal);
+    if (state.careerId) previewQs.set('career', state.careerId);
+    if (isPickerActive(state.picker)) {
+      previewQs.set('picker', JSON.stringify(state.picker));
+    }
+    const previewUrl = `/plan/preview/${programId}${previewQs.toString() ? `?${previewQs.toString()}` : ''}`;
+
     if (idx === -1) {
-      navigate(`/edu-tree-v6/${programId}`);
+      navigate(previewUrl);
       return;
     }
     const row = rows[idx];
@@ -168,7 +177,7 @@ export default function ComparePage() {
       isPersonalized: personalized,
       topSchoolAtClick: rows[0]?.school ?? null,
     });
-    navigate(`/edu-tree-v6/${programId}`);
+    navigate(previewUrl);
   };
 
   return (
