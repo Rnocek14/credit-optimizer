@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils';
 import { GraduationCap, ArrowRight, Sparkles, ChevronRight, TrendingUp, Zap, DollarSign } from 'lucide-react';
 import type { RankedTemplate, GoalPreference } from '@/hooks/useQuickPlanGeneration';
 import type { StrategyBadge } from '@/lib/planScoring';
+import { VERIFIED_SCHOOL_CODES } from '@/lib/planScoring/config';
 
 interface ResultsStepProps {
   results: RankedTemplate[];
@@ -68,7 +69,7 @@ export function ResultsStep({ results, onSelectTemplate, isApplying, goal, caree
           Three smart ways to your degree
         </h2>
         <p className="text-muted-foreground text-lg max-w-lg mx-auto">
-          Ranked across cost, time, and transfer fit using verified data from 5 universities.
+          Ranked across cost, time, and transfer fit using verified data from {VERIFIED_SCHOOL_CODES.length} universities.
         </p>
       </div>
 
