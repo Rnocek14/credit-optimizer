@@ -3,9 +3,9 @@
  * Renders nothing for the best row and nothing when both deltas are negligible.
  *
  * Output examples:
- *   "+$8.2k · +9 mo vs TESU"
- *   "+$3.1k vs TESU"
- *   "+6 mo vs TESU"
+ *   "Costs +$8.2k and +9 months vs TESU"
+ *   "Costs +$3.1k vs TESU"
+ *   "Costs +6 months vs TESU"
  */
 import { TrendingUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -22,10 +22,10 @@ function formatWeeksDelta(weeks: number): string | null {
   if (!Number.isFinite(weeks) || weeks < 4) return null;
   if (weeks < 52) {
     const months = Math.round(weeks / 4.345);
-    return `+${months} mo`;
+    return `+${months} ${months === 1 ? 'month' : 'months'}`;
   }
   const yrs = Math.round((weeks / 52) * 10) / 10;
-  return `+${yrs} yrs`;
+  return `+${yrs} ${yrs === 1 ? 'year' : 'years'}`;
 }
 
 export function PenaltyTag({ row, className }: PenaltyTagProps) {
@@ -40,16 +40,18 @@ export function PenaltyTag({ row, className }: PenaltyTagProps) {
 
   if (parts.length === 0 || !row.bestSchoolLabel) return null;
 
+  const consequence = `Costs ${parts.join(' and ')}`;
+
   return (
     <span
       className={cn(
         'inline-flex items-center gap-1 rounded-full border border-warning/30 bg-warning/10 px-2 py-0.5 text-[10px] font-medium text-warning tabular-nums',
         className
       )}
-      title={`Choosing ${row.school} over ${row.bestSchoolLabel} costs you ${parts.join(' and ')}`}
+      title={`Choosing ${row.school} over ${row.bestSchoolLabel} ${consequence.toLowerCase()}`}
     >
       <TrendingUp className="h-2.5 w-2.5" />
-      {parts.join(' · ')}
+      {consequence}
       <span className="text-warning/70 font-normal">vs {row.bestSchoolLabel}</span>
     </span>
   );
