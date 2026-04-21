@@ -237,15 +237,39 @@ export function extractMaxTransferCandidates(text: string): MaxTransferCandidate
       let confidence = spec.baseConfidence;
 
       if (kind === 'institution_max') {
-        // If the window is dominated by program-scope language, demote.
-        const isProgramScoped = PROGRAM_SCOPE_TERMS.some((t) => window.includes(t));
-        if (isProgramScoped) {
+        // SOURCE-TYPE SCOPE DETECTION (Fix 1):
+        // If the match is immediately followed by a "from <scoped-source>"
+        // clause within ~40 chars, the cap applies ONLY to that source-type
+        // (e.g. "70 semester hours may be transferred from approved two-year
+        // community colleges"). Demote to program_specific so it cannot win
+        // pickBestInstitutionMax.
+        //
+        // We require the source-type to appear AFTER a "from" preposition,
+        // not just anywhere in the window — that's the real signal of a
+        // restricted source. This avoids demoting institution-wide caps
+        // that merely mention community colleges as one accepted source
+        // (e.g. "ASU accepts up to 64 transfer credits from regionally
+        // accredited community colleges toward your bachelor degree").
+        const matchEnd = matchPos + matchedPhrase.length;
+        const tail = haystack.slice(matchEnd, matchEnd + 60);
+        const SOURCE_SCOPE_TAIL_RE =
+          /^\s*(?:may\s+be\s+)?(?:transferred|accepted|applied|earned)?\s*from\s+(?:approved\s+|accredited\s+|regionally\s+accredited\s+)?(two-year|2-year|community college|community colleges|junior college|partner college|partner institution)/i;
+        const hasScopedSourceTail = SOURCE_SCOPE_TAIL_RE.test(tail);
+
+        if (hasScopedSourceTail) {
           kind = 'program_specific';
           confidence = Math.min(confidence, 70);
         } else {
-          // Boost when explicit institution-wide language is in the window
-          const hasInstBoost = INSTITUTION_BOOST_TERMS.some((t) => window.includes(t));
-          if (hasInstBoost) confidence = Math.min(confidence + 5, 95);
+          // If the window is dominated by program-scope language, demote.
+          const isProgramScoped = PROGRAM_SCOPE_TERMS.some((t) => window.includes(t));
+          if (isProgramScoped) {
+            kind = 'program_specific';
+            confidence = Math.min(confidence, 70);
+          } else {
+            // Boost when explicit institution-wide language is in the window
+            const hasInstBoost = INSTITUTION_BOOST_TERMS.some((t) => window.includes(t));
+            if (hasInstBoost) confidence = Math.min(confidence + 5, 95);
+          }
         }
       }
 
