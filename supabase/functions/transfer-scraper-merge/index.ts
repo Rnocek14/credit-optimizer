@@ -2553,6 +2553,7 @@ Deno.serve(async (req) => {
         totalScore,
         hasGroundTruth: !!gt,
         canonicalProvenanceUrl,
+        degreeLevel: 'undergraduate',
       });
       // Replace policyData / flatProvenance with normalized output
       const normalizedPolicyData = normalized.policyData as typeof policyData;
