@@ -249,20 +249,32 @@ export default function ComparePage() {
           <CompareTable rows={rows} picker={state.picker} onViewPlan={handleViewPlan} />
         )}
 
-        {/* Footer */}
-        <div className="flex items-center justify-between gap-3 flex-wrap pt-4 border-t border-border/50">
-          <p className="text-xs text-muted-foreground">
-            Costs &amp; timelines from verified institutional catalogs and active provider pricing packs.
-          </p>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => navigate('/edu-tree-v5/marketplace')}
-            className="gap-1.5 text-muted-foreground"
-          >
-            See full marketplace
-            <ArrowRight className="h-3.5 w-3.5" />
-          </Button>
+        {/* Footer — freshness + trust signal */}
+        <div className="space-y-3 pt-4 border-t border-border/50">
+          <div className="inline-flex items-center gap-2 rounded-full border border-success/30 bg-success/5 px-3 py-1.5 text-xs">
+            <ShieldCheck className="h-3.5 w-3.5 text-success" />
+            <span className="font-medium text-foreground">
+              Verified from institutional policy data
+            </span>
+            <span className="text-muted-foreground">·</span>
+            <span className="text-muted-foreground">
+              {VERIFIED_SCHOOL_CODES.length} active policy packs
+            </span>
+          </div>
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <p className="text-xs text-muted-foreground">
+              Costs &amp; timelines pulled from verified institutional catalogs and active provider pricing packs.
+            </p>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => navigate('/edu-tree-v5/marketplace')}
+              className="gap-1.5 text-muted-foreground"
+            >
+              See full marketplace
+              <ArrowRight className="h-3.5 w-3.5" />
+            </Button>
+          </div>
         </div>
       </div>
     </>
