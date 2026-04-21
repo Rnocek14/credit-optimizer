@@ -28,7 +28,7 @@
 //   - This NEVER deletes existing templates; it only ADDS candidates.
 // -----------------------------------------------------------------------------
 
-import { createClient } from '@supabase/supabase-js';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.56.0?target=deno';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
