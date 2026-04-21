@@ -197,13 +197,11 @@ export function AppRoutes() {
         </ProtectedRoute>
       } />
       <Route path="/plan/preview/:templateId" element={
-        <ProtectedRoute requireAuth={true} requireOnboarding={false}>
-          <AppShell>
-            <EnhancedErrorBoundary name="plan-preview">
-              <PlanPreviewPage />
-            </EnhancedErrorBoundary>
-          </AppShell>
-        </ProtectedRoute>
+        <AppShell>
+          <EnhancedErrorBoundary name="plan-preview">
+            <PlanPreviewPage />
+          </EnhancedErrorBoundary>
+        </AppShell>
       } />
       <Route path="/progress" element={
         <ProtectedRoute requireAuth={true} requireOnboarding={true}>
