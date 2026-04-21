@@ -1108,6 +1108,112 @@ async function mergePolicyPacks(
   }
 
   // ==========================================================================
+  // AI-MAX_TRANSFER SANITY FILTER (mirror of AI-residency filter)
+  // --------------------------------------------------------------------------
+  // GCU reproduced this: the AI returned max_transfer=30 (a sub-cap, e.g.
+  // "up to 30 credits from CLEP/DSST") and it was selected even though the
+  // institution-wide cap is 90. UMGC was the regex-side mirror (regex wanted
+  // a 70 sub-cap). Both are the same problem: a credit cap that is scoped to
+  // a CATEGORY / SOURCE-TYPE / PROGRAM was promoted to institution-wide.
+  //
+  // Apply context-window scope checks to the AI value's own source text.
+  // If the value is clearly scoped, drop it so the regex pass below can pick
+  // the genuine institution-wide cap.
+  //
+  // Trust model: only DROPS suspect AI values; never invents a value.
+  // Provenance is preserved for whatever the regex pass lands on.
+  // ==========================================================================
+  if (maxTransfer && typeof maxTransfer.value === 'number') {
+    const aiVal = maxTransfer.value;
+    const aiConf = maxTransfer.confidence ?? 0;
+
+    // Hard floor: institution-wide bachelor-level transfer caps are
+    // realistically ≥ 30 credits but typically 45+. Values < 30 are almost
+    // always sub-caps (e.g. "up to 18 credits via CLEP", "up to 24 from
+    // exam credit"). Drop unconditionally — the regex pass will recover the
+    // real cap if it exists.
+    if (aiVal < 30) {
+      notes.push(
+        `🚫 AI-max_transfer dropped: ${aiVal} credits below hard floor (30); ` +
+        `almost certainly a category/source sub-cap (e.g. "up to ${aiVal} credits via CLEP"), not institution-wide.`,
+      );
+      console.log(`[merge] AI-max_transfer hard-floor drop: ${aiVal}`);
+      maxTransfer = null;
+    } else if (aiVal < 60) {
+      // Soft-floor band (30–59): inspect the AI value's source text window
+      // for scoped phrasing. Drop if scope signals dominate AND the value
+      // doesn't clear a high confidence bar (≥ 90).
+      let dropReason: string | null = null;
+      try {
+        const { data: srcText } = await supabase
+          .from('scraped_content')
+          .select('extracted_text')
+          .eq('scrape_job_id', maxTransfer.sourceJobId)
+          .maybeSingle();
+        const t = (srcText?.extracted_text || '').toLowerCase();
+        if (t) {
+          const valStr = String(aiVal);
+          // Window-level scope signals — same family used in regex extractor.
+          const SCOPE_SIGNALS = [
+            // category caps
+            'clep', 'dsst', 'dantes', 'tecep', 'sophia', 'study.com', 'studycom',
+            'ace credit', 'ace recommended', 'nccrs', 'prior learning', 'pla credit',
+            'examination', 'by exam', 'exam credit', 'credit by exam',
+            'military credit', 'military training', 'military experience',
+            // source-type caps
+            'two-year', '2-year', 'community college', 'junior college',
+            'associate degree', 'associates degree',
+            // program-specific
+            'liberal studies', 'general studies', 'major requirement',
+            'in the major', 'within the major', 'upper-division',
+            'graduate credit', 'graduate-level',
+            // category restrictions
+            'lower division', 'lower-division', 'developmental',
+          ];
+          // Find each occurrence of the value and check ±100 char window.
+          let idx = t.indexOf(valStr);
+          while (idx !== -1 && !dropReason) {
+            const winStart = Math.max(0, idx - 100);
+            const winEnd = Math.min(t.length, idx + valStr.length + 100);
+            const win = t.slice(winStart, winEnd);
+            // Must mention "credit" near the value (filters out unrelated 30s).
+            if (win.includes('credit') || win.includes('semester hour')) {
+              const matchedSignal = SCOPE_SIGNALS.find((s) => win.includes(s));
+              if (matchedSignal && aiConf < 90) {
+                dropReason = `scope signal "${matchedSignal}" near value, AI confidence ${aiConf} < 90`;
+                break;
+              }
+            }
+            idx = t.indexOf(valStr, idx + valStr.length);
+          }
+        }
+      } catch (err) {
+        console.log(`[merge] AI-max_transfer scope lookup failed: ${err}`);
+      }
+
+      if (dropReason) {
+        notes.push(
+          `🚫 AI-max_transfer dropped: ${aiVal} credits in soft-floor range (30–59); ${dropReason}. ` +
+          `Letting regex pass attempt institution-wide cap.`,
+        );
+        console.log(`[merge] AI-max_transfer soft-floor drop: ${aiVal} (${dropReason})`);
+        // Track the dropped AI value as a scoped cap for reviewer audit.
+        allScopedCaps.push({
+          field: 'max_transfer_credits',
+          value: aiVal,
+          url: maxTransfer.sourceUrl || '',
+          scopeReason: dropReason,
+        });
+        maxTransfer = null;
+      } else {
+        notes.push(
+          `✅ AI-max_transfer ${aiVal} retained: no dominant scope signal in source window (confidence ${aiConf}).`,
+        );
+      }
+    }
+  }
+
+  // ==========================================================================
   // MAX_TRANSFER PARALLEL REGEX + SCOPE-AWARE SELECTION (Type 2.5 fix v2)
   // --------------------------------------------------------------------------
   // Always run anchored-regex extraction in parallel with the AI value, then
