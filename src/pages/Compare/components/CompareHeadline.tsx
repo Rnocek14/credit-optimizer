@@ -1,8 +1,7 @@
 /**
  * CompareHeadline — the top-of-page emotional hook.
- * Renders the savings sentence with the recommended school name highlighted.
+ * Renders the savings sentence as the page anchor, not a card.
  */
-import { TrendingDown } from 'lucide-react';
 import type { CompareHeadline as Headline } from '../compareInsights';
 
 interface CompareHeadlineProps {
@@ -11,20 +10,8 @@ interface CompareHeadlineProps {
 
 export function CompareHeadline({ headline }: CompareHeadlineProps) {
   return (
-    <div className="rounded-xl border border-primary/30 bg-primary/5 px-4 py-4 sm:px-6 sm:py-5">
-      <div className="flex items-start gap-3 sm:gap-4">
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary">
-          <TrendingDown className="h-4 w-4 sm:h-5 sm:w-5" />
-        </div>
-        <div className="min-w-0 space-y-1">
-          <div className="text-[10px] font-semibold uppercase tracking-wider text-primary">
-            What this means for you
-          </div>
-          <h1 className="text-lg sm:text-2xl font-bold text-foreground leading-snug tracking-tight">
-            {headline.text}
-          </h1>
-        </div>
-      </div>
-    </div>
+    <h1 className="max-w-5xl text-3xl font-bold leading-tight text-foreground sm:text-4xl lg:text-5xl">
+      {headline.text}
+    </h1>
   );
 }

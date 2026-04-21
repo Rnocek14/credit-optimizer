@@ -27,8 +27,8 @@ export function WinnerBadges({ row, layout = 'inline', className }: WinnerBadges
     badges.push(
       <Badge
         key="best"
-        variant="outline"
-        className={cn(BADGE_BASE, 'border-primary/40 text-primary bg-primary/10')}
+        variant="default"
+        className={cn(BADGE_BASE, 'border-transparent bg-primary text-primary-foreground')}
       >
         <Trophy className="h-2.5 w-2.5" />
         Best fit
@@ -40,7 +40,7 @@ export function WinnerBadges({ row, layout = 'inline', className }: WinnerBadges
       <Badge
         key="cheap"
         variant="outline"
-        className={cn(BADGE_BASE, 'border-success/40 text-success bg-success/10')}
+        className={cn(BADGE_BASE, 'border-border/60 bg-muted/30 text-muted-foreground')}
       >
         <DollarSign className="h-2.5 w-2.5" />
         Cheapest
@@ -52,7 +52,7 @@ export function WinnerBadges({ row, layout = 'inline', className }: WinnerBadges
       <Badge
         key="fast"
         variant="outline"
-        className={cn(BADGE_BASE, 'border-info/40 text-info bg-info/10')}
+        className={cn(BADGE_BASE, 'border-border/60 bg-muted/30 text-muted-foreground')}
       >
         <Zap className="h-2.5 w-2.5" />
         Fastest
@@ -64,7 +64,7 @@ export function WinnerBadges({ row, layout = 'inline', className }: WinnerBadges
       <Badge
         key="credits"
         variant="outline"
-        className={cn(BADGE_BASE, 'border-warning/40 text-warning bg-warning/10')}
+        className={cn(BADGE_BASE, 'border-border/60 bg-muted/30 text-muted-foreground')}
       >
         <GraduationCap className="h-2.5 w-2.5" />
         Most credits

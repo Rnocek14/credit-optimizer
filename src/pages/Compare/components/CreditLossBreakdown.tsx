@@ -39,7 +39,7 @@ export function CreditLossBreakdown({ row, personalized, className }: CreditLoss
             <span className="text-foreground/70 font-medium tabular-nums">{remaining}</span> to take
           </>
         ) : (
-          <span className="text-success font-medium">No gap</span>
+          <span className="font-medium text-muted-foreground">No gap</span>
         )}
       </div>
     </div>
