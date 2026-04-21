@@ -33,6 +33,7 @@ export type ProvenanceSource =
   | 'ground_truth'
   | 'human_override'
   | 'auto_normalized'
+  | 'auto_defaulted'
   | 'derived';
 
 export interface FieldProvenanceEntry {
@@ -66,6 +67,8 @@ export interface PrePromoteInput {
   totalScore: number;
   hasGroundTruth: boolean;
   canonicalProvenanceUrl?: string | null;
+  /** Degree level used to pick sane US defaults (bachelors → 120/30, associate → 60/15). */
+  degreeLevel?: 'bachelors' | 'undergraduate' | 'associate' | 'graduate' | string | null;
 }
 
 export interface NormalizationAction {
@@ -76,7 +79,10 @@ export interface NormalizationAction {
     | 'numeric_string_dropped'
     | 'combined_cap_derived'
     | 'alt_cap_mirrored'
-    | 'provenance_verified_attached';
+    | 'provenance_verified_attached'
+    | 'bucket_mode_defaulted'
+    | 'degree_total_defaulted'
+    | 'residency_defaulted_from_25pct';
   before?: unknown;
   after?: unknown;
   note?: string;
