@@ -1034,20 +1034,46 @@ async function mergePolicyPacks(
     } | null = null;
     const programRegexHits: Array<{ value: number; url: string }> = [];
 
+    // URL fragments that mark a page as covering a SCOPED source-type only
+    // (e.g. community-college / 2-year transfer policies). Any institution_max
+    // candidate from these pages must be demoted to program_specific BEFORE
+    // selection, because the cap on these pages does not apply institution-wide.
+    const SCOPED_SOURCE_URL_FRAGMENTS = [
+      '/community-college', '/community-colleges',
+      '/two-year', '/2-year', '/junior-college',
+      '/articulation', '/pathway', '/pathways',
+      '/partner-colleges', '/partner-institutions',
+    ];
+
     for (const content of ((textsForMaxTransfer || []) as Array<{ scrape_job_id: string; extracted_text: string | null; url: string | null }>)) {
       if (!content.extracted_text) continue;
 
       const cands = extractMaxTransferCandidates(content.extracted_text);
       const urlLower = (content.url || '').toLowerCase();
+      const urlIsScopedSource = SCOPED_SOURCE_URL_FRAGMENTS.some((f) => urlLower.includes(f));
 
-      // Track program-specific hits separately (used to detect AI-mismatch)
-      for (const c of cands) {
+      // ---- SCOPE-FILTER-BEFORE-OVERRIDE ----
+      // If the URL itself is a scoped-source page (e.g. community-college),
+      // demote every institution_max candidate to program_specific. This MUST
+      // run before pickBestInstitutionMax so we never select a 2-year cap as
+      // the institution-wide cap.
+      const filteredCands = urlIsScopedSource
+        ? cands.map((c) =>
+            c.kind === 'institution_max'
+              ? { ...c, kind: 'program_specific' as const, confidence: Math.min(c.confidence, 70) }
+              : c,
+          )
+        : cands;
+
+      // Track program-specific hits separately (used to detect AI-mismatch).
+      // Includes anything demoted by the URL filter above.
+      for (const c of filteredCands) {
         if (c.kind === 'program_specific') {
           programRegexHits.push({ value: c.value, url: content.url || '' });
         }
       }
 
-      const best = pickBestInstitutionMax(cands);
+      const best = pickBestInstitutionMax(filteredCands);
       if (!best) continue;
 
       const urlBonus = HIGH_AUTHORITY_URL_FRAGMENTS.some((f) => urlLower.includes(f)) ? 8 : 0;
