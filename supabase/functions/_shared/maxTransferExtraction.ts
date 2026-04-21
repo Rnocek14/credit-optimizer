@@ -255,8 +255,14 @@ export function extractMaxTransferCandidates(text: string): MaxTransferCandidate
         //    institution-wide (UMGC's institution cap is 90).
         const matchEnd = matchPos + matchedPhrase.length;
         const tail = haystack.slice(matchEnd, matchEnd + 80);
+        // Two tail shapes are restrictive:
+        //  (a) "<cap> may be transferred from approved two-year ..."
+        //      → tail still contains "transferred from <scoped-source>"
+        //  (b) "<cap> may be transferred" already consumed by the main regex
+        //      → tail starts with " from approved two-year ..."
+        // Also: "may transfer" alone counts (some pages drop "be").
         const RESTRICTIVE_TAIL_RE =
-          /^[^.]{0,30}?(?:may\s+be\s+)?(?:transferred|accepted|applied|earned)\s+from\s+(?:approved\s+|accredited\s+|regionally\s+accredited\s+)?(?:two-year|2-year|community college|community colleges|junior college|partner college|partner institution)/i;
+          /^[^.]{0,30}?(?:(?:may\s+(?:be\s+)?)?(?:transferred|accepted|applied|earned|transfer)\s+)?from\s+(?:approved\s+|accredited\s+|regionally\s+accredited\s+)?(?:two-year|2-year|community college|community colleges|junior college|partner college|partner institution)/i;
         const hasRestrictiveSourceTail = RESTRICTIVE_TAIL_RE.test(tail);
 
         if (hasRestrictiveSourceTail) {
