@@ -3,13 +3,19 @@
  * Keep all magic numbers here so we can iterate without touching engine logic.
  */
 
-/** The 5 schools with rebuilt, catalog-verified transfer rules. */
+/**
+ * Schools with active, catalog-verified policy packs (residency + max transfer
+ * + degree total all backed by ground truth or safe auto-defaults at conf ≥80).
+ * Source of truth: institution_policy_packs.status = 'active'.
+ */
 export const VERIFIED_SCHOOL_CODES = [
   'TESU',
   'COSC',
   'EXCELSIOR',
   'EMPIRE',
   'WGU',
+  'LIBERTY',
+  'SNHU',
 ] as const;
 
 export type VerifiedSchoolCode = (typeof VERIFIED_SCHOOL_CODES)[number];
