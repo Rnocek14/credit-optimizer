@@ -15,8 +15,9 @@ describe('extractMaxTransferCandidates', () => {
   });
 
   it('captures ASUO institution-wide cap "up to 64 transfer credits"', () => {
+    // Institution-wide phrasing: no "from <scoped-source>" restriction.
     const text =
-      'ASU Online accepts up to 64 transfer credits from regionally accredited community colleges toward your bachelor degree.';
+      'ASU Online accepts up to 64 transfer credits toward your bachelor degree.';
     const cands = extractMaxTransferCandidates(text);
     const best = pickBestInstitutionMax(cands);
     expect(best).not.toBeNull();
