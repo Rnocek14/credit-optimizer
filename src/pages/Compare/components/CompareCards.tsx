@@ -3,14 +3,15 @@
  * One card per school, sorted by composite score. Top card gets a "Best fit" tag.
  */
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
-import { ArrowRight, Trophy } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import type { CompareRow } from '../buildCompareRows';
 import { formatCost, formatYears } from '../buildCompareRows';
 import { isPickerActive } from '../hooks/useCompareUrlState';
 import type { CreditPickerState } from '../types';
+import { WinnerBadges } from './WinnerBadges';
+import { CreditLossBreakdown } from './CreditLossBreakdown';
 
 interface CompareCardsProps {
   rows: CompareRow[];
@@ -46,16 +47,8 @@ export function CompareCards({ rows, picker, onViewPlan }: CompareCardsProps) {
         >
           <CardContent className="p-4 space-y-4">
             <div className="flex items-start justify-between gap-3">
-              <div className="space-y-1 min-w-0">
-                {row.isBest && (
-                  <Badge
-                    variant="outline"
-                    className="text-[10px] gap-1 px-1.5 py-0.5 border-primary/40 text-primary bg-primary/10"
-                  >
-                    <Trophy className="h-2.5 w-2.5" />
-                    Best fit
-                  </Badge>
-                )}
+              <div className="space-y-1.5 min-w-0">
+                <WinnerBadges row={row} layout="stack" />
                 <h3 className="text-base font-semibold leading-tight">{row.school}</h3>
                 <p className="text-xs text-muted-foreground">{row.programCode}</p>
               </div>
@@ -66,14 +59,12 @@ export function CompareCards({ rows, picker, onViewPlan }: CompareCardsProps) {
             </div>
 
             <div className="grid grid-cols-2 gap-3 text-xs">
-              <Stat
-                label={personalized ? 'You can transfer in' : 'Transfer ceiling'}
-                value={
-                  personalized
-                    ? `${row.matchedCredits} credits`
-                    : `up to ${row.acceptedCeiling} cr`
-                }
-              />
+              <div className="rounded-md bg-muted/30 p-2.5 space-y-1.5">
+                <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                  {personalized ? 'Credits transferred in' : 'Credits accepted'}
+                </div>
+                <CreditLossBreakdown row={row} personalized={personalized} />
+              </div>
               <Stat label="Personalized fit" value={`${row.transferPercent}%`} progress={row.transferPercent} />
             </div>
 
