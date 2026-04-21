@@ -993,47 +993,68 @@ async function mergePolicyPacks(
   const maxAceNccrs = maxAceNccrsResult.selected;
 
   // ==========================================================================
-  // MAX_TRANSFER FALLBACK (Type 2.5 fix): If AI extractor returned nothing
-  // (or the AI value was scoped/dropped), scan raw page text for anchored
-  // institution-wide cap phrasings ("up to 64 transfer credits", "maximum of
-  // 64 credits", etc.). Demotes program-scoped phrasings ("for the BA in
-  // Liberal Studies, up to 90 credits") so they don't masquerade as the
-  // institutional cap.
+  // MAX_TRANSFER PARALLEL REGEX + SCOPE-AWARE SELECTION (Type 2.5 fix v2)
+  // --------------------------------------------------------------------------
+  // Always run anchored-regex extraction in parallel with the AI value, then
+  // pick the strongest *institution-wide* cap. Rationale: the AI extractor
+  // tends to latch onto high-salience marketing numbers (e.g. ASUO BA Liberal
+  // Studies "up to 90 credits") while missing the standard institution cap
+  // (e.g. "up to 64 transfer credits") that lives in the policy/admissions
+  // pages. Selection rules below.
   //
-  // Trust model: same as residency fallback — written with provenance
-  // source = 'ai_extraction', promotion gate still requires GT/human override.
+  // Trust model: regex value written with provenance source = 'ai_extraction'
+  // (same as residency fallback). Promotion gate still requires GT/human
+  // override before activation.
   // ==========================================================================
-  if (!maxTransfer) {
-    console.log('[merge] No AI-extracted max_transfer found, attempting regex fallback...');
-
-    const jobIdsForMaxTransfer = maxTransferExtractions.slice(0, 5).map((e) => e.jobId);
+  {
+    const jobIdsForMaxTransfer = maxTransferExtractions.slice(0, 8).map((e) => e.jobId);
     const { data: textsForMaxTransfer } = await supabase
       .from('scraped_content')
       .select('scrape_job_id, extracted_text, url')
       .in('scrape_job_id', jobIdsForMaxTransfer)
       .not('extracted_text', 'is', null);
 
-    let bestMaxFallback: {
+    // Low-authority URL fragments — AI extractions from these pages should be
+    // treated as program/marketing context, not policy.
+    const LOW_AUTHORITY_URL_FRAGMENTS = [
+      '/newsroom/', '/news/', '/blog/', '/online-learning-tips',
+      '/article/', '/articles/', '/stories/', '/insights/',
+    ];
+    // High-authority URL fragments — boost regex picks from canonical sources.
+    const HIGH_AUTHORITY_URL_FRAGMENTS = [
+      '/admission/transfer', '/admissions/transfer', '/transfer-credit',
+      '/transferring-credits', 'mypath2asu', '/transfer-policy',
+      '/transfer/', '/policies/transfer',
+    ];
+
+    let bestInstitutionRegex: {
       cand: MaxTransferCandidate;
       jobId: string;
       url: string;
     } | null = null;
+    const programRegexHits: Array<{ value: number; url: string }> = [];
 
     for (const content of ((textsForMaxTransfer || []) as Array<{ scrape_job_id: string; extracted_text: string | null; url: string | null }>)) {
       if (!content.extracted_text) continue;
 
       const cands = extractMaxTransferCandidates(content.extracted_text);
+      const urlLower = (content.url || '').toLowerCase();
+
+      // Track program-specific hits separately (used to detect AI-mismatch)
+      for (const c of cands) {
+        if (c.kind === 'program_specific') {
+          programRegexHits.push({ value: c.value, url: content.url || '' });
+        }
+      }
+
       const best = pickBestInstitutionMax(cands);
       if (!best) continue;
 
-      // Light URL-priority bonus: transfer-policy URLs win over generic info pages
-      const urlLower = (content.url || '').toLowerCase();
-      const urlBonus =
-        urlLower.includes('transfer-credit') || urlLower.includes('transfer/') ? 5 : 0;
+      const urlBonus = HIGH_AUTHORITY_URL_FRAGMENTS.some((f) => urlLower.includes(f)) ? 8 : 0;
       const adjustedConfidence = Math.min(best.confidence + urlBonus, 95);
 
-      if (!bestMaxFallback || adjustedConfidence > bestMaxFallback.cand.confidence) {
-        bestMaxFallback = {
+      if (!bestInstitutionRegex || adjustedConfidence > bestInstitutionRegex.cand.confidence) {
+        bestInstitutionRegex = {
           cand: { ...best, confidence: adjustedConfidence },
           jobId: content.scrape_job_id,
           url: content.url || '',
@@ -1041,19 +1062,70 @@ async function mergePolicyPacks(
       }
     }
 
-    if (bestMaxFallback) {
-      notes.push(
-        `🔍 max_transfer fallback: found ${bestMaxFallback.cand.value} credits via regex (pattern=${bestMaxFallback.cand.patternId}, confidence=${bestMaxFallback.cand.confidence})`,
-      );
-      notes.push(`   Context: "${bestMaxFallback.cand.contextSnippet}"`);
-      maxTransfer = {
-        value: bestMaxFallback.cand.value,
-        sourceJobId: bestMaxFallback.jobId,
-        confidence: bestMaxFallback.cand.confidence,
-        sourceUrl: bestMaxFallback.url,
-      };
-    } else {
-      notes.push('⚠️ max_transfer fallback: no institution-wide cap pattern matched in available text');
+    // ----- Scope-aware selection -----
+    const aiValue = maxTransfer?.value ?? null;
+    const aiUrl = (maxTransfer?.sourceUrl || '').toLowerCase();
+    const aiFromLowAuthority = !!aiUrl && LOW_AUTHORITY_URL_FRAGMENTS.some((f) => aiUrl.includes(f));
+    const aiMatchesProgramHit = aiValue !== null && programRegexHits.some((p) => p.value === aiValue);
+    const aiFromHighAuthority = !!aiUrl && HIGH_AUTHORITY_URL_FRAGMENTS.some((f) => aiUrl.includes(f));
+
+    let regexShouldOverride = false;
+    let overrideReason = '';
+
+    if (bestInstitutionRegex) {
+      if (!maxTransfer) {
+        regexShouldOverride = true;
+        overrideReason = 'no AI value';
+      } else if (aiFromLowAuthority && !aiFromHighAuthority) {
+        regexShouldOverride = true;
+        overrideReason = `AI value ${aiValue} sourced from low-authority URL (${aiUrl})`;
+      } else if (aiMatchesProgramHit && bestInstitutionRegex.cand.value !== aiValue) {
+        regexShouldOverride = true;
+        overrideReason = `AI value ${aiValue} matches program-specific regex hit; institution-wide cap = ${bestInstitutionRegex.cand.value}`;
+      } else if (
+        !aiFromHighAuthority &&
+        bestInstitutionRegex.cand.confidence >= 88 &&
+        bestInstitutionRegex.cand.value !== aiValue
+      ) {
+        // Strong institution-wide pattern from a high-authority page beats
+        // an AI value sourced from an unknown / non-policy URL.
+        regexShouldOverride = true;
+        overrideReason = `high-confidence institution_max (${bestInstitutionRegex.cand.confidence}) on policy page beats AI value ${aiValue} from non-policy URL`;
+      }
+
+      if (regexShouldOverride) {
+        if (maxTransfer) {
+          notes.push(
+            `🔁 max_transfer override: AI=${aiValue} → regex=${bestInstitutionRegex.cand.value} (reason: ${overrideReason})`,
+          );
+          // Track the AI value as a program-scoped cap for reviewer audit.
+          if (aiValue !== null) {
+            allScopedCaps.push({
+              field: 'max_transfer_credits',
+              value: aiValue,
+              url: maxTransfer.sourceUrl || '',
+              scopeReason: 'overridden by institution-wide regex',
+            });
+          }
+        } else {
+          notes.push(
+            `🔍 max_transfer fallback: ${bestInstitutionRegex.cand.value} credits via regex (pattern=${bestInstitutionRegex.cand.patternId}, confidence=${bestInstitutionRegex.cand.confidence})`,
+          );
+        }
+        notes.push(`   Context: "${bestInstitutionRegex.cand.contextSnippet}"`);
+        maxTransfer = {
+          value: bestInstitutionRegex.cand.value,
+          sourceJobId: bestInstitutionRegex.jobId,
+          confidence: bestInstitutionRegex.cand.confidence,
+          sourceUrl: bestInstitutionRegex.url,
+        };
+      } else {
+        notes.push(
+          `ℹ️ max_transfer regex found ${bestInstitutionRegex.cand.value} (conf ${bestInstitutionRegex.cand.confidence}) but AI value ${aiValue} retained (high-authority or matching).`,
+        );
+      }
+    } else if (!maxTransfer) {
+      notes.push('⚠️ max_transfer: no AI value and no institution-wide regex pattern matched');
     }
   }
 
