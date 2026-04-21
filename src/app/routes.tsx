@@ -168,15 +168,13 @@ export function AppRoutes() {
         </ProtectedRoute>
       } />
 
-      {/* ── Compare (public decision surface — shareable, no onboarding gate) ── */}
+      {/* ── Compare (public decision surface — shareable, no auth/onboarding gate) ── */}
       <Route path="/compare" element={
-        <ProtectedRoute requireAuth={true} requireOnboarding={false}>
-          <AppShell>
-            <EnhancedErrorBoundary name="compare-page">
-              <ComparePage />
-            </EnhancedErrorBoundary>
-          </AppShell>
-        </ProtectedRoute>
+        <AppShell>
+          <EnhancedErrorBoundary name="compare-page">
+            <ComparePage />
+          </EnhancedErrorBoundary>
+        </AppShell>
       } />
 
       {/* ── 4-Hub Routes (all wrapped in AppShell) ──────────── */}
