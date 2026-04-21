@@ -7,22 +7,35 @@
  *   2. Where they came from (multi-select provider chips)
  *
  * The chips that map to alt-credit providers (Sophia, Study.com, CLEP,
- * StraighterLine) seed the /compare credit picker. The "I'm starting fresh"
- * shortcut bypasses both inputs. Non-alt chips (community college, 4-year,
- * other) contribute to the `prior` total but don't pre-fill the picker since
- * those credits transfer through institutional articulation, not provider rules.
+ * StraighterLine) seed the /compare credit picker. The "I don't have credits
+ * yet" shortcut bypasses both inputs. Non-alt chips (community college,
+ * 4-year, other) contribute to the `prior` total but don't pre-fill the
+ * picker since those credits transfer through institutional articulation,
+ * not provider rules.
+ *
+ * Inputs can be preloaded from URL via `initial` so the round-trip from
+ * /compare → "Update my credits" → /get-started restores prior state.
  */
 import { useMemo, useState } from 'react';
 import { Slider } from '@/components/ui/slider';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { ArrowRight, Sparkles } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import {
   CREDIT_SOURCE_META,
   EMPTY_PICKER,
   type CreditPickerState,
   type CreditSource,
 } from '@/pages/Compare/types';
+
+export type ProviderChipId =
+  | 'community-college'
+  | '4-year'
+  | 'SOPHIA'
+  | 'STUDYCOM'
+  | 'CLEP'
+  | 'STRAIGHTERLINE'
+  | 'other';
 
 export interface CreditsStepResult {
   /** Total prior credits the user claims (0–120). */
@@ -35,16 +48,9 @@ export interface CreditsStepResult {
 
 interface CreditsStepProps {
   onContinue: (result: CreditsStepResult) => void;
+  /** Preloaded state from a previous round-trip (e.g. "Update my credits"). */
+  initial?: { priorCredits: number; providers: ProviderChipId[] };
 }
-
-type ProviderChipId =
-  | 'community-college'
-  | '4-year'
-  | 'SOPHIA'
-  | 'STUDYCOM'
-  | 'CLEP'
-  | 'STRAIGHTERLINE'
-  | 'other';
 
 interface ChipDef {
   id: ProviderChipId;
@@ -89,9 +95,9 @@ function seedPicker(
   return picker;
 }
 
-export function CreditsStep({ onContinue }: CreditsStepProps) {
-  const [credits, setCredits] = useState<number>(30);
-  const [selected, setSelected] = useState<ProviderChipId[]>([]);
+export function CreditsStep({ onContinue, initial }: CreditsStepProps) {
+  const [credits, setCredits] = useState<number>(initial?.priorCredits ?? 30);
+  const [selected, setSelected] = useState<ProviderChipId[]>(initial?.providers ?? []);
 
   const toggleChip = (id: ProviderChipId) => {
     setSelected((prev) =>
@@ -153,9 +159,14 @@ export function CreditsStep({ onContinue }: CreditsStepProps) {
 
       {/* Provider chips */}
       <div className="space-y-3">
-        <label className="text-sm font-semibold text-foreground">
-          Where are they from? <span className="text-muted-foreground font-normal">(pick any)</span>
-        </label>
+        <div className="space-y-1">
+          <label className="text-sm font-semibold text-foreground">
+            Where are they from?
+          </label>
+          <p className="text-xs text-muted-foreground">
+            Pick any that apply — or none, if you're not sure.
+          </p>
+        </div>
         <div className="flex flex-wrap gap-2">
           {CHIPS.map((chip) => {
             const isOn = selected.includes(chip.id);
@@ -187,16 +198,15 @@ export function CreditsStep({ onContinue }: CreditsStepProps) {
           className="w-full gap-2 h-12 text-base"
           size="lg"
         >
-          See my best schools
+          Show my best path to graduate
           <ArrowRight className="h-4 w-4" />
         </Button>
         <button
           type="button"
           onClick={handleStartFresh}
-          className="w-full text-sm text-muted-foreground hover:text-foreground transition-colors inline-flex items-center justify-center gap-1.5"
+          className="w-full text-sm text-muted-foreground hover:text-foreground transition-colors"
         >
-          <Sparkles className="h-3.5 w-3.5" />
-          I'm starting fresh — skip this
+          I don't have credits yet
         </button>
       </div>
     </div>
