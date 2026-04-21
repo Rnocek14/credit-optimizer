@@ -3,14 +3,15 @@
  * One card per school, sorted by composite score. Top card gets a "Best fit" tag.
  */
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
-import { ArrowRight, Trophy } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import type { CompareRow } from '../buildCompareRows';
 import { formatCost, formatYears } from '../buildCompareRows';
 import { isPickerActive } from '../hooks/useCompareUrlState';
 import type { CreditPickerState } from '../types';
+import { WinnerBadges } from './WinnerBadges';
+import { CreditLossBreakdown } from './CreditLossBreakdown';
 
 interface CompareCardsProps {
   rows: CompareRow[];
