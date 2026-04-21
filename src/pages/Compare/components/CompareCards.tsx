@@ -61,14 +61,25 @@ export function CompareCards({ rows, picker, onViewPlan }: CompareCardsProps) {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3 text-xs">
+                <div
+                  className={cn(
+                    'grid gap-3 text-xs',
+                    personalized ? 'grid-cols-2' : 'grid-cols-1'
+                  )}
+                >
                   <div className="rounded-md bg-background/60 p-2.5 space-y-1.5">
                     <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
                       {personalized ? 'Credits transferred in' : 'Credits accepted'}
                     </div>
                     <CreditLossBreakdown row={row} personalized={personalized} />
                   </div>
-                  <Stat label="Personalized fit" value={`${row.transferPercent}%`} progress={row.transferPercent} />
+                  {personalized && (
+                    <Stat
+                      label="Personalized fit"
+                      value={`${row.transferPercent}%`}
+                      progress={row.transferPercent}
+                    />
+                  )}
                 </div>
 
                 <Button

@@ -45,14 +45,15 @@ export function PenaltyTag({ row, className }: PenaltyTagProps) {
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1 rounded-full border border-warning/30 bg-warning/10 px-2 py-0.5 text-[10px] font-medium text-warning tabular-nums',
+        'inline-flex max-w-full items-center gap-1 whitespace-nowrap overflow-hidden text-ellipsis rounded-full border border-warning/30 bg-warning/10 px-2 py-0.5 text-[10px] font-medium text-warning tabular-nums',
         className
       )}
       title={`Choosing ${row.school} over ${row.bestSchoolLabel} ${consequence.toLowerCase()}`}
     >
-      <TrendingUp className="h-2.5 w-2.5" />
-      {consequence}
-      <span className="text-warning/70 font-normal">vs {row.bestSchoolLabel}</span>
+      <TrendingUp className="h-2.5 w-2.5 shrink-0" />
+      <span className="truncate">
+        {consequence} <span className="text-warning/70 font-normal">vs {row.bestSchoolLabel}</span>
+      </span>
     </span>
   );
 }
