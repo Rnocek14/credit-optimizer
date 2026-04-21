@@ -1962,9 +1962,37 @@ Deno.serve(async (req) => {
         }
       }
 
-      // HARD GUARDRAIL: Never create packs without BOTH numeric caps
-      // This prevents "nil packs" that pollute data and confuse verification
-      if (!hasBothNumericCaps) {
+      // PARTIAL-PACK POLICY (Option A):
+      // Allow draft pack creation when we have at least max_transfer_credits with
+      // high-confidence evidence, even if residency is missing. This unblocks the
+      // onboarding loop for institutions where residency is program-scoped and
+      // therefore not extractable at the institution level.
+      //
+      // Safety: packs are ALWAYS inserted as status='draft'. The trust gate
+      // (validate_policy_pack_active_status trigger) still requires BOTH caps
+      // with ground_truth/human_override provenance to promote to 'active', so
+      // partial packs cannot accidentally serve users.
+      //
+      // Hard skip ONLY when neither cap is present (truly nothing to record).
+      const maxTransferProv = fieldProvenance['transfer_credit_limits.max_total_transfer_credits'];
+      const maxTransferConfidence = (maxTransferProv?.confidence as number | undefined) ?? 0;
+      const maxTransferEvidenceUrl = maxTransferProv?.source_url as string | undefined;
+      const allowPartialPack =
+        maxTransferOk &&
+        !residencyOk &&
+        maxTransferConfidence >= 75 &&
+        !!maxTransferEvidenceUrl;
+
+      if (allowPartialPack) {
+        console.log(
+          `[merge] Allowing PARTIAL pack for ${institution}: max_transfer=${maxTransfer} (conf=${maxTransferConfidence}) with evidence, residency missing → draft pack with missing_fields=['residency_credits']`,
+        );
+        notes.push(
+          `Partial pack: max_transfer_credits=${maxTransfer} captured with evidence; residency_credits missing (likely program-scoped). Pack created as draft pending residency backfill.`,
+        );
+      }
+
+      if (!hasBothNumericCaps && !allowPartialPack) {
         console.log(`[merge] Skipping pack creation for program-scoped institution ${institution} (missing numeric caps)`);
         
         // Build extracted_values with evidence structure for verification queue
@@ -2259,7 +2287,25 @@ Deno.serve(async (req) => {
       const storedBlockedReason = blocked_reason || warningReason;
       
       console.log(`[merge] Phase C gate: blocked=${isBlocked}, reason=${blocked_reason}, score=${totalScore}, conflicts=${conflicts.length}, packScope=${packScope}`);
-      
+
+      // Annotate partial packs with missing_fields metadata so downstream
+      // consumers (UI, ops dashboards, residency-backfill workers) can detect
+      // and prioritize them. Trust gate is unaffected — still requires both
+      // caps with ground_truth/human_override to promote to 'active'.
+      const isPartialPack = allowPartialPack;
+      const missingFields: string[] = [
+        ...(residencyOk ? [] : ['residency_credits']),
+        ...(maxTransferOk ? [] : ['max_transfer_credits']),
+      ];
+      const policyDataForInsert = isPartialPack
+        ? {
+            ...normalizedPolicyData,
+            partial_pack: true,
+            missing_fields: missingFields,
+            partial_reason: 'residency_likely_program_scoped',
+          }
+        : normalizedPolicyData;
+
       const { data: packData, error: policyError } = await supabase
         .from('institution_policy_packs')
         .insert({
@@ -2268,7 +2314,7 @@ Deno.serve(async (req) => {
           degree_level: 'undergraduate',
           pack_scope: packScope,
           policy_json: mergedPack,
-          policy_data: normalizedPolicyData,
+          policy_data: policyDataForInsert,
           confidence_score: totalScore,
           last_verified_at: new Date().toISOString(),
           verification_source: 'transfer-scraper-merge',
@@ -2288,7 +2334,8 @@ Deno.serve(async (req) => {
       } else {
         policyPackId = packData.id;
         const blockNote = blocked_reason ? ` [BLOCKED: ${blocked_reason}]` : (warningReason ? ` [WARNING: ${warningReason}]` : '');
-        notes.push(`Created merged policy pack: ${packData.id}${diffsWritten > 0 ? ` (${diffsWritten} diffs written)` : ''}${blockNote}`);
+        const partialNote = isPartialPack ? ` [PARTIAL: missing=${missingFields.join(',')}]` : '';
+        notes.push(`Created merged policy pack: ${packData.id}${diffsWritten > 0 ? ` (${diffsWritten} diffs written)` : ''}${blockNote}${partialNote}`);
 
         // === PHASE C: MARK ACTIVE PACK AS STALE (only for specific blocked reasons) ===
         // Only mark stale when blocked_reason indicates potential data staleness:
