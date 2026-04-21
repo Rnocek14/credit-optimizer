@@ -40,6 +40,15 @@ export interface CompareRow {
   isFastest: boolean;
   /** Accepts the most credits (highest matched/ceiling) */
   isMostCreditFriendly: boolean;
+  /**
+   * Extra cost vs. the #1 school (>= 0). Always 0 for the best row.
+   * Used to surface "what choosing wrong costs you".
+   */
+  costPenaltyVsBest: number;
+  /** Extra weeks vs. the #1 school (>= 0). Always 0 for the best row. */
+  weeksPenaltyVsBest: number;
+  /** Name of the #1 school (so penalty rows can render "vs TESU"). */
+  bestSchoolLabel: string;
 }
 
 const GOAL_TO_WEIGHTS = {
@@ -85,6 +94,9 @@ export function buildCompareRows(
       isCheapest: false,
       isFastest: false,
       isMostCreditFriendly: false,
+      costPenaltyVsBest: 0,
+      weeksPenaltyVsBest: 0,
+      bestSchoolLabel: '',
     };
   });
 
@@ -101,6 +113,17 @@ export function buildCompareRows(
     'isMostCreditFriendly',
     'max'
   );
+
+  // Compute "wrong choice penalty" for every non-best row, anchored to #1
+  if (rows.length > 1) {
+    const best = rows[0];
+    for (const r of rows) {
+      r.bestSchoolLabel = best.school;
+      if (r === best) continue;
+      r.costPenaltyVsBest = Math.max(0, r.cost - best.cost);
+      r.weeksPenaltyVsBest = Math.max(0, r.weeks - best.weeks);
+    }
+  }
 
   return rows;
 }
