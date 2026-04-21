@@ -16,9 +16,13 @@ import { CreditPicker } from './components/CreditPicker';
 import { CompareTable } from './components/CompareTable';
 import { CompareCards } from './components/CompareCards';
 import { GoalToggle } from './components/GoalToggle';
+import { CompareHeadline } from './components/CompareHeadline';
+import { BestFitReasons } from './components/BestFitReasons';
+import { ShareCompareButton } from './components/ShareCompareButton';
 import { useCompareUrlState, isPickerActive } from './hooks/useCompareUrlState';
 import { useDebouncedCallback } from './hooks/useDebouncedCallback';
 import { buildCompareRows } from './buildCompareRows';
+import { buildCompareHeadline, buildBestFitReasons } from './compareInsights';
 import {
   trackCompareViewed,
   trackCompareGoalChanged,
