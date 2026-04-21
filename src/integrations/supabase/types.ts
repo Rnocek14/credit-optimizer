@@ -17050,6 +17050,7 @@ export type Database = {
           institution: string | null
           is_promotable: boolean | null
           missing_critical: string[] | null
+          missing_warnings: string[] | null
           pack_id: string | null
           pending_templates: number | null
           status: string | null
@@ -17139,6 +17140,7 @@ export type Database = {
         }[]
       }
       after_maya_analysis_increment_quota: { Args: never; Returns: undefined }
+      auto_promote_eligible_packs: { Args: never; Returns: Json }
       award_xp: {
         Args: {
           action_type_param: string
