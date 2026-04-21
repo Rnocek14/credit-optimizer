@@ -61,7 +61,7 @@ export function ConstraintStep({ onGenerate, onBack }: ConstraintStepProps) {
 
       <div className="space-y-6">
         <SegmentedControl<GoalPreference>
-          label="🎯 What matters most?"
+          label="What matters most?"
           options={[
             { value: 'cheapest', label: 'Cheapest', desc: 'Lowest total cost' },
             { value: 'fastest', label: 'Fastest', desc: 'Graduate sooner' },
@@ -72,7 +72,7 @@ export function ConstraintStep({ onGenerate, onBack }: ConstraintStepProps) {
         />
 
         <SegmentedControl<ExperienceLevel>
-          label="🎓 Where are you starting?"
+          label="Where are you starting?"
           options={[
             { value: 'fresh', label: 'Starting fresh', desc: 'No prior credits' },
             { value: 'some-college', label: 'Some college', desc: 'Have some credits' },

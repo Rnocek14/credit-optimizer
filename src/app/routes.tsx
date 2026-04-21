@@ -168,9 +168,9 @@ export function AppRoutes() {
         </ProtectedRoute>
       } />
 
-      {/* ── Compare (Phase 3 placeholder) ───────────────────── */}
+      {/* ── Compare (public decision surface — shareable, no onboarding gate) ── */}
       <Route path="/compare" element={
-        <ProtectedRoute requireAuth={true} requireOnboarding={true}>
+        <ProtectedRoute requireAuth={true} requireOnboarding={false}>
           <AppShell>
             <EnhancedErrorBoundary name="compare-page">
               <ComparePage />
@@ -199,7 +199,7 @@ export function AppRoutes() {
         </ProtectedRoute>
       } />
       <Route path="/plan/preview/:templateId" element={
-        <ProtectedRoute requireAuth={true} requireOnboarding={true}>
+        <ProtectedRoute requireAuth={true} requireOnboarding={false}>
           <AppShell>
             <EnhancedErrorBoundary name="plan-preview">
               <PlanPreviewPage />

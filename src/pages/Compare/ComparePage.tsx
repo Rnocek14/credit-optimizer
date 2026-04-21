@@ -8,11 +8,11 @@ import { Helmet } from 'react-helmet-async';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ArrowLeft, ArrowRight, Scale, ShieldCheck } from 'lucide-react';
+import { ArrowLeft, ArrowRight, ShieldCheck } from 'lucide-react';
 import { useMarketplaceTemplates } from '@/hooks/useMarketplaceTemplates';
 import { VERIFIED_SCHOOL_CODES } from '@/lib/planScoring/config';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { CreditPicker } from './components/CreditPicker';
+import { CreditPickerCollapsible } from './components/CreditPickerCollapsible';
 import { CompareTable } from './components/CompareTable';
 import { CompareCards } from './components/CompareCards';
 import { GoalToggle } from './components/GoalToggle';
@@ -204,48 +204,50 @@ export default function ComparePage() {
         />
       </Helmet>
 
-      <div className="container mx-auto px-4 py-8 lg:py-12 max-w-6xl space-y-8">
-        {/* Header */}
-        <div className="space-y-4">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => navigate('/get-started')}
-            className="gap-1.5 -ml-2 text-muted-foreground"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Back to your top 3
-          </Button>
+      <div className="container mx-auto px-4 py-8 lg:py-10 max-w-6xl space-y-6">
+        {/* Back link only — no decorative chip, no filler H1 */}
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => navigate('/get-started')}
+          className="gap-1.5 -ml-2 text-muted-foreground"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back to your top 3
+        </Button>
 
-          <div className="flex items-start justify-between gap-4 flex-wrap">
-            <div className="space-y-2">
-              <div className="inline-flex items-center gap-2 text-primary">
-                <Scale className="h-4 w-4" />
-                <span className="text-xs font-semibold tracking-wider uppercase">
-                  Compare {VERIFIED_SCHOOL_CODES.length} verified schools
-                </span>
-              </div>
-              <h1 className="text-3xl font-bold tracking-tight">
-                Side-by-side
-              </h1>
-              <p className="text-muted-foreground max-w-2xl">
-                {personalized
-                  ? "Ranked using the credits you've claimed below. Adjust either to see the order shift in real time."
-                  : 'Add your existing credits below to personalize transfer fit, or switch how schools are ranked.'}
-              </p>
-            </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <ShareCompareButton />
-              <GoalToggle value={state.goal} onChange={handleGoalChange} />
-            </div>
+        {/* HERO: the savings sentence is the H1. No competition above the fold. */}
+        {!isLoading && headline ? (
+          <CompareHeadline headline={headline} />
+        ) : !isLoading ? (
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
+            Compare verified degree plans
+          </h1>
+        ) : null}
+
+        {/* Trust + controls row — sits directly under the decision, not in the footer */}
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div className="inline-flex items-center gap-2 text-xs text-muted-foreground">
+            <ShieldCheck className="h-3.5 w-3.5 text-success" />
+            <span>
+              <span className="text-foreground font-medium">{VERIFIED_SCHOOL_CODES.length} verified institutions</span>
+              <span className="mx-1.5">·</span>
+              <span>institutional policy data</span>
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <ShareCompareButton />
+            <GoalToggle value={state.goal} onChange={handleGoalChange} />
           </div>
         </div>
 
-        {/* Emotional headline — derived from best vs worst delta */}
-        {!isLoading && headline && <CompareHeadline headline={headline} />}
+        {/* Why #1 — explains the decision BEFORE the data table */}
+        {!isLoading && rows[0] && reasons.length > 0 && (
+          <BestFitReasons school={rows[0].school} reasons={reasons} />
+        )}
 
-        {/* Picker */}
-        <CreditPicker state={state.picker} onChange={handlePickerChange} />
+        {/* Quiet picker — collapsed by default, auto-expands if user has credits */}
+        <CreditPickerCollapsible state={state.picker} onChange={handlePickerChange} />
 
         {/* Comparison surface */}
         {isLoading ? (
@@ -263,45 +265,26 @@ export default function ComparePage() {
               Browse full marketplace
             </Button>
           </div>
+        ) : isMobile ? (
+          <CompareCards rows={rows} picker={state.picker} onViewPlan={handleViewPlan} />
         ) : (
-          <>
-            {isMobile ? (
-              <CompareCards rows={rows} picker={state.picker} onViewPlan={handleViewPlan} />
-            ) : (
-              <CompareTable rows={rows} picker={state.picker} onViewPlan={handleViewPlan} />
-            )}
-            {rows[0] && reasons.length > 0 && (
-              <BestFitReasons school={rows[0].school} reasons={reasons} />
-            )}
-          </>
+          <CompareTable rows={rows} picker={state.picker} onViewPlan={handleViewPlan} />
         )}
 
-        {/* Footer — freshness + trust signal */}
-        <div className="space-y-3 pt-4 border-t border-border/50">
-          <div className="inline-flex items-center gap-2 rounded-full border border-success/30 bg-success/5 px-3 py-1.5 text-xs">
-            <ShieldCheck className="h-3.5 w-3.5 text-success" />
-            <span className="font-medium text-foreground">
-              Verified from institutional policy data
-            </span>
-            <span className="text-muted-foreground">·</span>
-            <span className="text-muted-foreground">
-              {VERIFIED_SCHOOL_CODES.length} active policy packs
-            </span>
-          </div>
-          <div className="flex items-center justify-between gap-3 flex-wrap">
-            <p className="text-xs text-muted-foreground">
-              Costs &amp; timelines pulled from verified institutional catalogs and active provider pricing packs.
-            </p>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => navigate('/edu-tree-v5/marketplace')}
-              className="gap-1.5 text-muted-foreground"
-            >
-              See full marketplace
-              <ArrowRight className="h-3.5 w-3.5" />
-            </Button>
-          </div>
+        {/* Footer — quiet provenance line, no second trust card */}
+        <div className="flex items-center justify-between gap-3 flex-wrap pt-4 border-t border-border/50">
+          <p className="text-xs text-muted-foreground">
+            Costs &amp; timelines pulled from verified institutional catalogs and active provider pricing packs.
+          </p>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => navigate('/edu-tree-v5/marketplace')}
+            className="gap-1.5 text-muted-foreground"
+          >
+            See full marketplace
+            <ArrowRight className="h-3.5 w-3.5" />
+          </Button>
         </div>
       </div>
     </>
