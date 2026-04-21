@@ -24,6 +24,10 @@ export interface CompareUrlState {
   goal: GoalPreference;
   careerId: string | null;
   picker: CreditPickerState;
+  /** Total prior credits reported in /get-started; informational, not picker-mapped. */
+  priorCredits: number;
+  /** Raw provider chip ids from /get-started, preserved for round-trip prefill. */
+  providers: string[];
 }
 
 export function useCompareUrlState() {
@@ -47,7 +51,16 @@ export function useCompareUrlState() {
       }
     }
 
-    return { goal, careerId: career, picker };
+    const priorRaw = params.get('prior');
+    const priorParsed = priorRaw == null ? 0 : Number.parseInt(priorRaw, 10);
+    const priorCredits = Number.isFinite(priorParsed) && priorParsed > 0
+      ? Math.min(120, priorParsed)
+      : 0;
+
+    const providersRaw = params.get('providers');
+    const providers = providersRaw ? providersRaw.split(',').filter(Boolean) : [];
+
+    return { goal, careerId: career, picker, priorCredits, providers };
   }, [params]);
 
   const writeState = useCallback(
@@ -56,6 +69,8 @@ export function useCompareUrlState() {
         goal: next.goal ?? state.goal,
         careerId: next.careerId !== undefined ? next.careerId : state.careerId,
         picker: next.picker ?? state.picker,
+        priorCredits: next.priorCredits !== undefined ? next.priorCredits : state.priorCredits,
+        providers: next.providers !== undefined ? next.providers : state.providers,
       };
 
       const sp = new URLSearchParams();
@@ -65,6 +80,8 @@ export function useCompareUrlState() {
         const v = merged.picker[src];
         if (v > 0) sp.set(CREDIT_SOURCE_META[src].urlKey, String(v));
       }
+      if (merged.priorCredits > 0) sp.set('prior', String(merged.priorCredits));
+      if (merged.providers.length > 0) sp.set('providers', merged.providers.join(','));
       setParams(sp, { replace: true });
     },
     [setParams, state]
