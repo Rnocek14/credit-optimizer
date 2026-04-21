@@ -55,14 +55,19 @@ const HIGH_VALUE_PATH_FRAGMENTS: Record<PageType, string[]> = {
     '/credit-transfer', '/transfer-credits', '/transferability',
   ],
   residency: [
-    '/residency', '/residence', '/credit-in-residence',
-    '/institutional-credit', '/graduation-requirements',
-    '/degree-requirements',
+    // Use specific academic-residency phrases only. Bare "/residence" or
+    // "/residency" matches housing pages (residence halls, residency life).
+    '/credit-in-residence', '/credits-in-residence',
+    '/residency-requirement', '/residency-requirements',
+    '/institutional-credit', '/institutional-credits',
+    '/graduation-requirements', '/degree-requirements',
   ],
   catalog: [
     '/academic-catalog', '/academic-catalogs', '/catalog/',
-    '/catalogs/', '/policies/', '/academic-policies',
-    '/policy-library', '/student-handbook',
+    '/catalogs/', '/policy-library', '/student-handbook',
+    // NOTE: '/academic-policies' removed — it's too broad and also matches
+    // title-ix / misconduct pages. Per-page keyword scoring still picks up
+    // legitimate academic-policy URLs via 'policy' + 'academic' keywords.
   ],
   alt_credit: [
     '/credit-by-exam', '/clep', '/dsst', '/ace-credit',
@@ -70,6 +75,24 @@ const HIGH_VALUE_PATH_FRAGMENTS: Record<PageType, string[]> = {
     '/military-credit', '/cpl/',
   ],
 };
+
+// Anti-signals — if a path contains any of these, it is NOT what its
+// keywords suggest. Examples:
+//   /residence-halls/acacia → looks like residency, is housing
+//   /title-ix, /misconduct → looks like academic policy, is legal compliance
+//   /transfer-guides/<degree-name>.pdf → looks like transfer policy, is a
+//     per-program articulation worksheet (not institution-wide policy).
+const ANTI_SIGNAL_FRAGMENTS = [
+  // Housing
+  'residence-hall', 'residence-halls', 'housing', 'student-affairs',
+  'residence-life', 'residential-life',
+  // Legal/compliance pages that live under /academic-policies/
+  'title-ix', 'title-9', 'misconduct', 'harassment', 'discrimination',
+  'clery', 'ferpa-notice',
+  // Per-program articulation worksheets (NOT institution-wide policy)
+  '/transfer-guides/', '/transfer-guide/', '/articulation-guide',
+  '/program-articulation/',
+];
 
 // Paths that should NEVER be considered policy sources, even if keywords match.
 const LOW_AUTHORITY_FRAGMENTS = [
