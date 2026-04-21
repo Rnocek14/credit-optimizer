@@ -2287,7 +2287,25 @@ Deno.serve(async (req) => {
       const storedBlockedReason = blocked_reason || warningReason;
       
       console.log(`[merge] Phase C gate: blocked=${isBlocked}, reason=${blocked_reason}, score=${totalScore}, conflicts=${conflicts.length}, packScope=${packScope}`);
-      
+
+      // Annotate partial packs with missing_fields metadata so downstream
+      // consumers (UI, ops dashboards, residency-backfill workers) can detect
+      // and prioritize them. Trust gate is unaffected — still requires both
+      // caps with ground_truth/human_override to promote to 'active'.
+      const isPartialPack = allowPartialPack;
+      const missingFields: string[] = [
+        ...(residencyOk ? [] : ['residency_credits']),
+        ...(maxTransferOk ? [] : ['max_transfer_credits']),
+      ];
+      const policyDataForInsert = isPartialPack
+        ? {
+            ...normalizedPolicyData,
+            partial_pack: true,
+            missing_fields: missingFields,
+            partial_reason: 'residency_likely_program_scoped',
+          }
+        : normalizedPolicyData;
+
       const { data: packData, error: policyError } = await supabase
         .from('institution_policy_packs')
         .insert({
@@ -2296,7 +2314,7 @@ Deno.serve(async (req) => {
           degree_level: 'undergraduate',
           pack_scope: packScope,
           policy_json: mergedPack,
-          policy_data: normalizedPolicyData,
+          policy_data: policyDataForInsert,
           confidence_score: totalScore,
           last_verified_at: new Date().toISOString(),
           verification_source: 'transfer-scraper-merge',
@@ -2316,7 +2334,8 @@ Deno.serve(async (req) => {
       } else {
         policyPackId = packData.id;
         const blockNote = blocked_reason ? ` [BLOCKED: ${blocked_reason}]` : (warningReason ? ` [WARNING: ${warningReason}]` : '');
-        notes.push(`Created merged policy pack: ${packData.id}${diffsWritten > 0 ? ` (${diffsWritten} diffs written)` : ''}${blockNote}`);
+        const partialNote = isPartialPack ? ` [PARTIAL: missing=${missingFields.join(',')}]` : '';
+        notes.push(`Created merged policy pack: ${packData.id}${diffsWritten > 0 ? ` (${diffsWritten} diffs written)` : ''}${blockNote}${partialNote}`);
 
         // === PHASE C: MARK ACTIVE PACK AS STALE (only for specific blocked reasons) ===
         // Only mark stale when blocked_reason indicates potential data staleness:
