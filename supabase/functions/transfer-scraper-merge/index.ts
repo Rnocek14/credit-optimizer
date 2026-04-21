@@ -475,25 +475,48 @@ function extractResidencyFromText(text: string): ResidencyExtractionResult | nul
     let match;
     while ((match = pattern.exec(textLower)) !== null) {
       const creditValue = parseInt(match[1], 10);
-      
-      // Sanity check: residency is typically 20-50 credits (allow 10-80 range)
-      if (creditValue < 10 || creditValue > 80) continue;
-      
+
+      // SANITY FLOOR (Fix 2):
+      // Institution-wide residency is realistically 12+ credits. Values below
+      // that are almost always sub-requirements like "9 credits in the major"
+      // or "6 credits at the 400 level" — they are NOT the institution-wide
+      // residency signal. Drop unconditionally to avoid contaminating the
+      // policy pack with a misleading low number.
+      if (creditValue < 12) {
+        console.log(
+          `[residency-fallback] Dropping ${creditValue} credits — below institution-wide floor (12); likely a sub-requirement, not residency.`,
+        );
+        continue;
+      }
+      // Upper bound stays at 80 — anything higher is noise (degree totals etc.)
+      if (creditValue > 80) continue;
+
       // Get context around match
       const matchStart = Math.max(0, match.index - 50);
       const matchEnd = Math.min(text.length, match.index + match[0].length + 50);
       const snippet = text.slice(matchStart, matchEnd);
-      
+
       // Higher confidence if specific "earned at" / "in residence" / "institutional" language
-      const isHighConfidence = 
+      const isHighConfidence =
         match[0].includes('earned at') ||
         match[0].includes('completed at') ||
-        match[0].includes('in residence') || 
+        match[0].includes('in residence') ||
         match[0].includes('institutional') ||
         match[0].includes('must complete');
-      
+
+      // CORROBORATION RULE (Fix 2):
+      // Values in the 12–17 range are still suspicious (often "12 credits in
+      // the major" or "15 upper-division credits"). Require a high-confidence
+      // phrase as corroboration; otherwise drop.
+      if (creditValue < 18 && !isHighConfidence) {
+        console.log(
+          `[residency-fallback] Dropping ${creditValue} credits — low value (<18) without high-confidence phrase; treating as scoped/suspicious.`,
+        );
+        continue;
+      }
+
       const confidence = isHighConfidence ? 90 : 70;
-      
+
       // Keep best (highest confidence, or first if tie)
       if (!bestMatch || confidence > bestMatch.confidence) {
         bestMatch = {
