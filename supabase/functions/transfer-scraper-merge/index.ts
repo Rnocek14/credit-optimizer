@@ -192,6 +192,46 @@ interface MergeResult {
   trust_tier: 'verified' | 'partial' | 'unverified';
   blocked_reason?: string | null;  // Phase C: promotion gating
   stale_marked?: boolean;          // Phase C: whether active was marked stale
+
+  // === REVIEWER AUDIT DETAILS ===
+  // These are already collected internally; surfacing them so reviewers and
+  // ops dashboards can see EXACTLY why a value won, lost, or was flagged —
+  // without re-running the merge or grepping logs.
+  audit?: {
+    // Sub-cap / scoped values that were excluded from institution-wide selection
+    // (e.g. "30 credits from alternative transfer credit options" → demoted)
+    scoped_caps: Array<{
+      field: string;
+      value: number;
+      url: string;
+      scope_reason: string;
+      context_snippet?: string;
+    }>;
+    // Cross-source disagreements on otherwise-unscoped values
+    // (e.g. two evidence URLs both produced unscoped max_transfer with different numbers)
+    conflicts: Array<{
+      field: string;
+      values: Array<{ value: unknown; url: string; confidence: number }>;
+    }>;
+    // Whether the pack is partial (missing residency or max_transfer) and why
+    partial_pack: {
+      is_partial: boolean;
+      missing_fields: string[];
+      reason: string | null;
+    };
+    // The exact picked values + their source evidence URL
+    picked_values: {
+      residency: { value: number; source_url: string | null } | null;
+      max_transfer: { value: number; source_url: string | null } | null;
+      max_ace_nccrs: { value: number; source_url: string | null } | null;
+    };
+    // Counts for quick triage
+    counts: {
+      sources_total: number;
+      scoped_caps_excluded: number;
+      cross_source_conflicts: number;
+    };
+  };
 }
 
 // Per-field provenance tracking
