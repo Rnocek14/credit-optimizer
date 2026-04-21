@@ -186,7 +186,7 @@ export default function ComparePage() {
         <title>Compare Degree Plans | Pivot</title>
         <meta
           name="description"
-          content="Side-by-side comparison of 5 verified universities — cost, time, and personalized transfer fit."
+          content={`Side-by-side comparison of ${VERIFIED_SCHOOL_CODES.length} verified universities — cost, time, and personalized transfer fit.`}
         />
       </Helmet>
 
@@ -208,7 +208,7 @@ export default function ComparePage() {
               <div className="inline-flex items-center gap-2 text-primary">
                 <Scale className="h-4 w-4" />
                 <span className="text-xs font-semibold tracking-wider uppercase">
-                  Compare 5 verified schools
+                  Compare {VERIFIED_SCHOOL_CODES.length} verified schools
                 </span>
               </div>
               <h1 className="text-3xl font-bold tracking-tight">
