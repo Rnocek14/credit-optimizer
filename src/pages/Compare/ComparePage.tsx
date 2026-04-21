@@ -82,6 +82,16 @@ export default function ComparePage() {
 
   const personalized = isPickerActive(state.picker);
 
+  const headline = useMemo(
+    () => buildCompareHeadline(rows, state.goal, personalized),
+    [rows, state.goal, personalized]
+  );
+
+  const reasons = useMemo(
+    () => buildBestFitReasons(rows, personalized),
+    [rows, personalized]
+  );
+
   // ─────────────────────── analytics ───────────────────────
 
   // 1. compare_viewed — fire once per page load, after rows resolve.
@@ -224,9 +234,15 @@ export default function ComparePage() {
                   : 'Add your existing credits below to personalize transfer fit, or switch how schools are ranked.'}
               </p>
             </div>
-            <GoalToggle value={state.goal} onChange={handleGoalChange} />
+            <div className="flex items-center gap-2 shrink-0">
+              <ShareCompareButton />
+              <GoalToggle value={state.goal} onChange={handleGoalChange} />
+            </div>
           </div>
         </div>
+
+        {/* Emotional headline — derived from best vs worst delta */}
+        {!isLoading && headline && <CompareHeadline headline={headline} />}
 
         {/* Picker */}
         <CreditPicker state={state.picker} onChange={handlePickerChange} />
@@ -247,10 +263,17 @@ export default function ComparePage() {
               Browse full marketplace
             </Button>
           </div>
-        ) : isMobile ? (
-          <CompareCards rows={rows} picker={state.picker} onViewPlan={handleViewPlan} />
         ) : (
-          <CompareTable rows={rows} picker={state.picker} onViewPlan={handleViewPlan} />
+          <>
+            {isMobile ? (
+              <CompareCards rows={rows} picker={state.picker} onViewPlan={handleViewPlan} />
+            ) : (
+              <CompareTable rows={rows} picker={state.picker} onViewPlan={handleViewPlan} />
+            )}
+            {rows[0] && reasons.length > 0 && (
+              <BestFitReasons school={rows[0].school} reasons={reasons} />
+            )}
+          </>
         )}
 
         {/* Footer — freshness + trust signal */}
