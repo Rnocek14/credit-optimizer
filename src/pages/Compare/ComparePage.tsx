@@ -209,7 +209,14 @@ export default function ComparePage() {
         <Button
           variant="ghost"
           size="sm"
-          onClick={() => navigate('/get-started')}
+          onClick={() => {
+            // Preserve prior/providers so the entry step prefills cleanly.
+            const sp = new URLSearchParams();
+            if (state.priorCredits > 0) sp.set('prior', String(state.priorCredits));
+            if (state.providers.length > 0) sp.set('providers', state.providers.join(','));
+            const qs = sp.toString();
+            navigate(`/get-started${qs ? `?${qs}` : ''}`);
+          }}
           className="gap-1.5 -ml-2 text-muted-foreground"
         >
           <ArrowLeft className="h-4 w-4" />
@@ -218,7 +225,7 @@ export default function ComparePage() {
 
         {/* HERO: the savings sentence is the H1. No competition above the fold. */}
         {!isLoading && headline ? (
-          <CompareHeadline headline={headline} />
+          <CompareHeadline headline={headline} priorCredits={state.priorCredits} />
         ) : !isLoading ? (
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
             Compare verified degree plans
