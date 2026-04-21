@@ -45,8 +45,10 @@ Deno.serve(async (req) => {
         .eq('institution', institution);
     }
 
-    // Load URL templates with optional priority filter
-    let templateUrl = `${supabaseUrl}/rest/v1/scrape_url_templates?institution_code=eq.${institution}&order=priority.asc`;
+    // Load URL templates with optional priority filter.
+    // Only ACTIVE templates are eligible — disabled URLs (404s, marketing pages)
+    // are kept in the table for audit/history but excluded from sweeps.
+    let templateUrl = `${supabaseUrl}/rest/v1/scrape_url_templates?institution_code=eq.${institution}&status=eq.active&order=priority.desc`;
     if (maxPriority !== null) {
       templateUrl += `&priority=lte.${maxPriority}`;
     }
