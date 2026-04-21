@@ -12,6 +12,7 @@ import { isPickerActive } from '../hooks/useCompareUrlState';
 import type { CreditPickerState } from '../types';
 import { WinnerBadges } from './WinnerBadges';
 import { CreditLossBreakdown } from './CreditLossBreakdown';
+import { PenaltyTag } from './PenaltyTag';
 
 interface CompareCardsProps {
   rows: CompareRow[];
@@ -51,6 +52,7 @@ export function CompareCards({ rows, picker, onViewPlan }: CompareCardsProps) {
                 <WinnerBadges row={row} layout="stack" />
                 <h3 className="text-base font-semibold leading-tight">{row.school}</h3>
                 <p className="text-xs text-muted-foreground">{row.programCode}</p>
+                <PenaltyTag row={row} />
               </div>
               <div className="text-right shrink-0">
                 <div className="text-lg font-bold tabular-nums">{formatCost(row.cost)}</div>
