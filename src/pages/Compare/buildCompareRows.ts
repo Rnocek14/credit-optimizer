@@ -22,9 +22,24 @@ export interface CompareRow {
   matchedCredits: number;
   /** Total credits the school accepts via alt providers (ceiling) */
   acceptedCeiling: number;
+  /** Total credits required for the degree */
+  totalCredits: number;
+  /**
+   * Credits the user would need to take fresh at this school
+   * (totalCredits − matchedCredits when personalized, else totalCredits − acceptedCeiling).
+   * Lower = less time/money spent re-doing work.
+   */
+  remainingCredits: number;
   /** Composite score 0..1 under current goal weights */
   score: number;
+  /** Top composite score — anchor of the page */
   isBest: boolean;
+  /** Cheapest in the pool */
+  isCheapest: boolean;
+  /** Fastest in the pool */
+  isFastest: boolean;
+  /** Accepts the most credits (highest matched/ceiling) */
+  isMostCreditFriendly: boolean;
 }
 
 const GOAL_TO_WEIGHTS = {
@@ -43,11 +58,16 @@ export function buildCompareRows(
   const scored: ScoredTemplate[] = scorePool(templates, { creditsBySource: picker });
   const weights = GOAL_TO_WEIGHTS[goal];
 
+  const personalized =
+    (picker.CLEP ?? 0) + (picker.SOPHIA ?? 0) + (picker.STUDYCOM ?? 0) + (picker.STRAIGHTERLINE ?? 0) > 0;
+
   const rows: CompareRow[] = scored.map((s) => {
     const t = s.template;
     const totalCredits = t.totals?.credits ?? t.est?.credits ?? 120;
     const acceptedCeiling = t.twoPhaseData?.altCredits ?? 0;
     const matchedCredits = Math.round(s.normalized.transfer * totalCredits);
+    const effectiveAccepted = personalized ? matchedCredits : acceptedCeiling;
+    const remainingCredits = Math.max(0, totalCredits - effectiveAccepted);
     return {
       template: t,
       school: (t.anchorSchool || '').toUpperCase(),
@@ -58,15 +78,52 @@ export function buildCompareRows(
       transferPercent: Math.round(s.normalized.transfer * 100),
       matchedCredits,
       acceptedCeiling,
+      totalCredits,
+      remainingCredits,
       score: applyWeights(s, weights),
       isBest: false,
+      isCheapest: false,
+      isFastest: false,
+      isMostCreditFriendly: false,
     };
   });
 
   // Sort by composite score descending — that becomes the on-screen order
   rows.sort((a, b) => b.score - a.score);
   if (rows.length > 0) rows[0].isBest = true;
+
+  // Tag superlatives (only if there's a clear winner; ties → no badge to avoid noise)
+  tagWinner(rows, (r) => r.cost, 'isCheapest', 'min');
+  tagWinner(rows, (r) => r.weeks, 'isFastest', 'min');
+  tagWinner(
+    rows,
+    (r) => (personalized ? r.matchedCredits : r.acceptedCeiling),
+    'isMostCreditFriendly',
+    'max'
+  );
+
   return rows;
+}
+
+/**
+ * Mark exactly one row as the winner for a metric, but only if it's strictly
+ * better than the runner-up. Avoids slapping a badge on every school in a tie.
+ */
+function tagWinner(
+  rows: CompareRow[],
+  pick: (r: CompareRow) => number,
+  flag: 'isCheapest' | 'isFastest' | 'isMostCreditFriendly',
+  dir: 'min' | 'max'
+): void {
+  if (rows.length < 2) return;
+  const sorted = [...rows].sort((a, b) =>
+    dir === 'min' ? pick(a) - pick(b) : pick(b) - pick(a)
+  );
+  const winner = sorted[0];
+  const runnerUp = sorted[1];
+  if (!Number.isFinite(pick(winner)) || pick(winner) <= 0) return;
+  if (pick(winner) === pick(runnerUp)) return;
+  winner[flag] = true;
 }
 
 export function formatCost(c: number): string {
