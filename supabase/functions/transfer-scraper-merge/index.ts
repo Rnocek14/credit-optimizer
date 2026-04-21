@@ -2756,6 +2756,17 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Build reviewer audit block from data already collected during merge.
+    // No new computation — just expose what's already there.
+    const pickedResidency = mergeResult.pickedValues?.residencyCredits ?? null;
+    const pickedMaxTransfer = mergeResult.pickedValues?.maxTransfer ?? null;
+    const pickedMaxAceNccrs = mergeResult.pickedValues?.maxAceNccrs ?? null;
+    const auditMissingFields: string[] = [
+      ...(pickedResidency ? [] : ['residency_credits']),
+      ...(pickedMaxTransfer ? [] : ['max_transfer_credits']),
+    ];
+    const auditIsPartial = auditMissingFields.length > 0 && !!pickedMaxTransfer;
+
     const result: MergeResult = {
       success: true,
       merged_policy_pack: mergedPack,
@@ -2769,6 +2780,44 @@ Deno.serve(async (req) => {
       trust_tier: trustTier,
       blocked_reason: blocked_reason ?? null, // Phase C: promotion gating
       stale_marked: isBlocked, // Phase C: whether active was marked stale
+      audit: {
+        scoped_caps: (mergeResult.scopedCaps ?? []).map(sc => ({
+          field: sc.field,
+          value: sc.value,
+          url: sc.url,
+          scope_reason: sc.scopeReason,
+          context_snippet: sc.contextSnippet,
+        })),
+        conflicts: (mergeResult.conflicts ?? []).map(c => ({
+          field: c.field,
+          values: c.values.map(v => ({
+            value: v.value,
+            url: v.url,
+            confidence: v.confidence,
+          })),
+        })),
+        partial_pack: {
+          is_partial: auditIsPartial,
+          missing_fields: auditMissingFields,
+          reason: auditIsPartial ? 'residency_likely_program_scoped' : null,
+        },
+        picked_values: {
+          residency: pickedResidency
+            ? { value: pickedResidency.value as number, source_url: pickedResidency.sourceUrl ?? null }
+            : null,
+          max_transfer: pickedMaxTransfer
+            ? { value: pickedMaxTransfer.value as number, source_url: pickedMaxTransfer.sourceUrl ?? null }
+            : null,
+          max_ace_nccrs: pickedMaxAceNccrs
+            ? { value: pickedMaxAceNccrs.value as number, source_url: pickedMaxAceNccrs.sourceUrl ?? null }
+            : null,
+        },
+        counts: {
+          sources_total: sources.length,
+          scoped_caps_excluded: (mergeResult.scopedCaps ?? []).length,
+          cross_source_conflicts: (mergeResult.conflicts ?? []).length,
+        },
+      },
     };
 
     console.log(`[merge] Complete: score=${totalScore}, action=${action}, trust=${trustTier}, overrides=${fieldsOverridden}`);
