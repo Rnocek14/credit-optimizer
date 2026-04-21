@@ -1139,10 +1139,18 @@ async function mergePolicyPacks(
       );
       console.log(`[merge] AI-max_transfer hard-floor drop: ${aiVal}`);
       maxTransfer = null;
-    } else if (aiVal < 60) {
-      // Soft-floor band (30–59): inspect the AI value's source text window
-      // for scoped phrasing. Drop if scope signals dominate AND the value
-      // doesn't clear a high confidence bar (≥ 90).
+    } else if (aiVal < 70) {
+      // Soft-floor band (30–69): inspect the AI value's source text window
+      // for scoped phrasing. Drop if scope signals dominate.
+      //
+      // Two signal tiers:
+      //  - ALT_CREDIT_SIGNALS: alt-credit sub-cap phrases (e.g. "alternative
+      //    transfer credit options", "national exams", "LLA"). These are
+      //    high-confidence indicators that the value caps a SUBSET of credit
+      //    (CLEP/DSST/PLA/etc.), not the institution-wide max. Drop regardless
+      //    of AI confidence — the AI often reads these sentences literally.
+      //  - SCOPE_SIGNALS: general scope phrases (category/source/program).
+      //    Drop only if AI confidence < 90.
       let dropReason: string | null = null;
       try {
         const { data: srcText } = await supabase
@@ -1153,7 +1161,24 @@ async function mergePolicyPacks(
         const t = (srcText?.extracted_text || '').toLowerCase();
         if (t) {
           const valStr = String(aiVal);
-          // Window-level scope signals — same family used in regex extractor.
+          // Tier 1: alt-credit sub-cap signals — drop regardless of confidence.
+          // The AI tends to extract these literally ("transfer a total of N
+          // credits from alternative options"), giving high confidence to
+          // values that are actually category caps, not institution maxes.
+          const ALT_CREDIT_SIGNALS = [
+            'alternative transfer credit', 'alternative credit',
+            'alternative transfer', 'alternate credit',
+            'national exam', 'national exams',
+            'lifelong learning assessment', 'lla credit', ' lla ',
+            'prior learning assessment', 'pla credit', ' pla ',
+            'approved certificate', 'approved certificates',
+            'credit by exam', 'credit-by-exam', 'credit by examination',
+            'portfolio assessment', 'portfolio credit',
+            'non-traditional credit', 'nontraditional credit',
+            'experiential credit', 'experiential learning',
+            'gcu-approved certificate', 'institution-approved certificate',
+          ];
+          // Tier 2: window-level scope signals — same family used in regex extractor.
           const SCOPE_SIGNALS = [
             // category caps
             'clep', 'dsst', 'dantes', 'tecep', 'sophia', 'study.com', 'studycom',
@@ -1170,14 +1195,21 @@ async function mergePolicyPacks(
             // category restrictions
             'lower division', 'lower-division', 'developmental',
           ];
-          // Find each occurrence of the value and check ±100 char window.
+          // Find each occurrence of the value and check ±150 char window.
           let idx = t.indexOf(valStr);
           while (idx !== -1 && !dropReason) {
-            const winStart = Math.max(0, idx - 100);
-            const winEnd = Math.min(t.length, idx + valStr.length + 100);
+            const winStart = Math.max(0, idx - 150);
+            const winEnd = Math.min(t.length, idx + valStr.length + 150);
             const win = t.slice(winStart, winEnd);
-            // Must mention "credit" near the value (filters out unrelated 30s).
+            // Must mention "credit" near the value (filters out unrelated Ns).
             if (win.includes('credit') || win.includes('semester hour')) {
+              // Tier 1 first: alt-credit signals override AI confidence.
+              const altSignal = ALT_CREDIT_SIGNALS.find((s) => win.includes(s));
+              if (altSignal) {
+                dropReason = `alt-credit sub-cap signal "${altSignal.trim()}" near value (overrides AI confidence ${aiConf})`;
+                break;
+              }
+              // Tier 2: general scope signals require confidence < 90.
               const matchedSignal = SCOPE_SIGNALS.find((s) => win.includes(s));
               if (matchedSignal && aiConf < 90) {
                 dropReason = `scope signal "${matchedSignal}" near value, AI confidence ${aiConf} < 90`;
@@ -1193,7 +1225,7 @@ async function mergePolicyPacks(
 
       if (dropReason) {
         notes.push(
-          `🚫 AI-max_transfer dropped: ${aiVal} credits in soft-floor range (30–59); ${dropReason}. ` +
+          `🚫 AI-max_transfer dropped: ${aiVal} credits in soft-floor range (30–69); ${dropReason}. ` +
           `Letting regex pass attempt institution-wide cap.`,
         );
         console.log(`[merge] AI-max_transfer soft-floor drop: ${aiVal} (${dropReason})`);
