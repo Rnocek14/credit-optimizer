@@ -131,7 +131,7 @@ export function prePromotePolicyPack(input: PrePromoteInput): PrePromoteResult {
     } else {
       entry.confidence = Math.max(0, Math.min(100, entry.confidence));
     }
-    const isDerived = entry.source === 'derived' || entry.source === 'auto_normalized';
+    const isDerived = entry.source === 'derived' || entry.source === 'auto_normalized' || entry.source === 'auto_defaulted';
     if (isDerived && entry.confidence > DERIVED_CONFIDENCE_CAP) {
       entry.confidence = DERIVED_CONFIDENCE_CAP;
     }
