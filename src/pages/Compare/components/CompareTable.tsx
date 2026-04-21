@@ -19,6 +19,7 @@ import { isPickerActive } from '../hooks/useCompareUrlState';
 import type { CreditPickerState } from '../types';
 import { WinnerBadges } from './WinnerBadges';
 import { CreditLossBreakdown } from './CreditLossBreakdown';
+import { PenaltyTag } from './PenaltyTag';
 
 interface CompareTableProps {
   rows: CompareRow[];
@@ -55,6 +56,7 @@ export function CompareTable({ rows, picker, onViewPlan }: CompareTableProps) {
                   <div className="text-[11px] font-normal text-muted-foreground">
                     {row.programCode}
                   </div>
+                  <PenaltyTag row={row} className="mt-0.5" />
                 </div>
               </TableHead>
             ))}
