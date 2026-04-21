@@ -1962,9 +1962,37 @@ Deno.serve(async (req) => {
         }
       }
 
-      // HARD GUARDRAIL: Never create packs without BOTH numeric caps
-      // This prevents "nil packs" that pollute data and confuse verification
-      if (!hasBothNumericCaps) {
+      // PARTIAL-PACK POLICY (Option A):
+      // Allow draft pack creation when we have at least max_transfer_credits with
+      // high-confidence evidence, even if residency is missing. This unblocks the
+      // onboarding loop for institutions where residency is program-scoped and
+      // therefore not extractable at the institution level.
+      //
+      // Safety: packs are ALWAYS inserted as status='draft'. The trust gate
+      // (validate_policy_pack_active_status trigger) still requires BOTH caps
+      // with ground_truth/human_override provenance to promote to 'active', so
+      // partial packs cannot accidentally serve users.
+      //
+      // Hard skip ONLY when neither cap is present (truly nothing to record).
+      const maxTransferProv = fieldProvenance['transfer_credit_limits.max_total_transfer_credits'];
+      const maxTransferConfidence = (maxTransferProv?.confidence as number | undefined) ?? 0;
+      const maxTransferEvidenceUrl = maxTransferProv?.source_url as string | undefined;
+      const allowPartialPack =
+        maxTransferOk &&
+        !residencyOk &&
+        maxTransferConfidence >= 75 &&
+        !!maxTransferEvidenceUrl;
+
+      if (allowPartialPack) {
+        console.log(
+          `[merge] Allowing PARTIAL pack for ${institution}: max_transfer=${maxTransfer} (conf=${maxTransferConfidence}) with evidence, residency missing → draft pack with missing_fields=['residency_credits']`,
+        );
+        notes.push(
+          `Partial pack: max_transfer_credits=${maxTransfer} captured with evidence; residency_credits missing (likely program-scoped). Pack created as draft pending residency backfill.`,
+        );
+      }
+
+      if (!hasBothNumericCaps && !allowPartialPack) {
         console.log(`[merge] Skipping pack creation for program-scoped institution ${institution} (missing numeric caps)`);
         
         // Build extracted_values with evidence structure for verification queue
