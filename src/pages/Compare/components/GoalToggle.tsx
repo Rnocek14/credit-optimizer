@@ -23,7 +23,7 @@ const OPTIONS: Array<{
 
 export function GoalToggle({ value, onChange }: GoalToggleProps) {
   return (
-    <div className="space-y-2">
+    <div className="w-full space-y-2 sm:w-auto">
       <span className="text-xs font-medium text-muted-foreground tracking-wide uppercase">
         Rank by
       </span>
@@ -33,7 +33,7 @@ export function GoalToggle({ value, onChange }: GoalToggleProps) {
         onValueChange={(v) => v && onChange(v as GoalPreference)}
         variant="outline"
         size="sm"
-        className="justify-start"
+        className="w-full justify-start overflow-x-auto sm:w-auto"
       >
         {OPTIONS.map((opt) => {
           const Icon = opt.icon;
