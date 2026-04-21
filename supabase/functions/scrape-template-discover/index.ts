@@ -55,19 +55,21 @@ const HIGH_VALUE_PATH_FRAGMENTS: Record<PageType, string[]> = {
     '/credit-transfer', '/transfer-credits', '/transferability',
   ],
   residency: [
-    // Use specific academic-residency phrases only. Bare "/residence" or
-    // "/residency" matches housing pages (residence halls, residency life).
+    // Anti-signals already filter housing (/residence-hall, /residence-life,
+    // /housing). What's left is academic residency.
     '/credit-in-residence', '/credits-in-residence',
     '/residency-requirement', '/residency-requirements',
+    '/residency-policy', '/residency/',
     '/institutional-credit', '/institutional-credits',
     '/graduation-requirements', '/degree-requirements',
+    '/academic-residency',
   ],
   catalog: [
     '/academic-catalog', '/academic-catalogs', '/catalog/',
     '/catalogs/', '/policy-library', '/student-handbook',
-    // NOTE: '/academic-policies' removed — it's too broad and also matches
-    // title-ix / misconduct pages. Per-page keyword scoring still picks up
-    // legitimate academic-policy URLs via 'policy' + 'academic' keywords.
+    // '/academic-policies' is broad but anti-signals filter the bad children
+    // (/title-ix, /misconduct, etc.) so the parent landing page survives.
+    '/academic-policies', '/academic-policy',
   ],
   alt_credit: [
     '/credit-by-exam', '/clep', '/dsst', '/ace-credit',
