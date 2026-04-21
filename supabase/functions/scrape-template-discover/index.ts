@@ -139,6 +139,13 @@ function scoreUrl(rawUrl: string): ScoredUrl | null {
     if (path.includes(frag)) return null;
   }
 
+  // Hard exclude anti-signal paths (housing, legal compliance, per-program
+  // articulation worksheets) — these LOOK like policy pages by keyword but
+  // are not institution-wide policy.
+  for (const frag of ANTI_SIGNAL_FRAGMENTS) {
+    if (path.includes(frag)) return null;
+  }
+
   // Skip pure root + obvious non-content endpoints.
   if (path === '/' || path === '') return null;
   if (path.endsWith('.jpg') || path.endsWith('.png') || path.endsWith('.gif') || path.endsWith('.css') || path.endsWith('.js')) return null;
