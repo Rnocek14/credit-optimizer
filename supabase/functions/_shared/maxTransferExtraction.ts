@@ -151,20 +151,17 @@ const INSTITUTION_BOOST_TERMS = [
 ];
 
 // Keywords that, if present in the ±80 char window, DEMOTE institution_max
-// to program_specific (the cap is talking about ONE program or one source-type,
-// not the school as a whole).
+// to program_specific (the cap is talking about ONE program, not the school).
 //
-// Includes:
-//  - program scope (Liberal Studies, BA in X, this program, ...)
-//  - source-type scope (community college, two-year, junior college, ...)
-//
-// Source-type scope matters because pages like UMGC's "credit-from-colleges/
-// community-college" expose a 70-credit cap that ONLY applies to 2-year
-// transfers — it is NOT the institution-wide undergraduate transfer cap (90).
-// Without this filter, the regex would surface 70 as institution_max and
-// override the AI's correct 90.
+// NOTE: source-type scope (community college, two-year, etc.) is intentionally
+// NOT included here. Schools commonly mention community-college sources while
+// stating their institution-wide cap (e.g. "ASU Online accepts up to 64
+// transfer credits from regionally accredited community colleges"). Treating
+// "community college" as a window-level demoter would wrongly demote that 64.
+// Source-type scope is enforced at the merge site via the URL-fragment filter
+// (SCOPED_SOURCE_URL_FRAGMENTS in transfer-scraper-merge), which only fires
+// when the page itself is dedicated to a 2-year/articulation pipeline.
 const PROGRAM_SCOPE_TERMS = [
-  // program-scope
   'liberal studies',
   'ba in ',
   'bs in ',
@@ -177,18 +174,6 @@ const PROGRAM_SCOPE_TERMS = [
   'this program',
   'this degree',
   'the program requires',
-  // source-type scope (2-year / community-college pipelines only)
-  'community college',
-  'community colleges',
-  'two-year',
-  '2-year',
-  'two year college',
-  'junior college',
-  'partner college',
-  'partner institution',
-  'articulation agreement',
-  'transfer pathway',
-  'pathway program',
 ];
 
 // Keywords that mark the number as describing something OTHER than transfer
