@@ -151,8 +151,20 @@ const INSTITUTION_BOOST_TERMS = [
 ];
 
 // Keywords that, if present in the ±80 char window, DEMOTE institution_max
-// to program_specific (the cap is talking about ONE program, not the school).
+// to program_specific (the cap is talking about ONE program or one source-type,
+// not the school as a whole).
+//
+// Includes:
+//  - program scope (Liberal Studies, BA in X, this program, ...)
+//  - source-type scope (community college, two-year, junior college, ...)
+//
+// Source-type scope matters because pages like UMGC's "credit-from-colleges/
+// community-college" expose a 70-credit cap that ONLY applies to 2-year
+// transfers — it is NOT the institution-wide undergraduate transfer cap (90).
+// Without this filter, the regex would surface 70 as institution_max and
+// override the AI's correct 90.
 const PROGRAM_SCOPE_TERMS = [
+  // program-scope
   'liberal studies',
   'ba in ',
   'bs in ',
@@ -165,6 +177,18 @@ const PROGRAM_SCOPE_TERMS = [
   'this program',
   'this degree',
   'the program requires',
+  // source-type scope (2-year / community-college pipelines only)
+  'community college',
+  'community colleges',
+  'two-year',
+  '2-year',
+  'two year college',
+  'junior college',
+  'partner college',
+  'partner institution',
+  'articulation agreement',
+  'transfer pathway',
+  'pathway program',
 ];
 
 // Keywords that mark the number as describing something OTHER than transfer
