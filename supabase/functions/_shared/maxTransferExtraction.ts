@@ -152,6 +152,15 @@ const INSTITUTION_BOOST_TERMS = [
 
 // Keywords that, if present in the ±80 char window, DEMOTE institution_max
 // to program_specific (the cap is talking about ONE program, not the school).
+//
+// NOTE: source-type scope (community college, two-year, etc.) is intentionally
+// NOT included here. Schools commonly mention community-college sources while
+// stating their institution-wide cap (e.g. "ASU Online accepts up to 64
+// transfer credits from regionally accredited community colleges"). Treating
+// "community college" as a window-level demoter would wrongly demote that 64.
+// Source-type scope is enforced at the merge site via the URL-fragment filter
+// (SCOPED_SOURCE_URL_FRAGMENTS in transfer-scraper-merge), which only fires
+// when the page itself is dedicated to a 2-year/articulation pipeline.
 const PROGRAM_SCOPE_TERMS = [
   'liberal studies',
   'ba in ',
@@ -228,15 +237,48 @@ export function extractMaxTransferCandidates(text: string): MaxTransferCandidate
       let confidence = spec.baseConfidence;
 
       if (kind === 'institution_max') {
-        // If the window is dominated by program-scope language, demote.
-        const isProgramScoped = PROGRAM_SCOPE_TERMS.some((t) => window.includes(t));
-        if (isProgramScoped) {
+        // SOURCE-TYPE SCOPE DETECTION (Fix 1):
+        // Demote to program_specific when the matched cap is RESTRICTED to a
+        // specific source-type via a "may be transferred from <X>" / "earned
+        // from <X>" / "transferred from approved <X>" tail clause.
+        //
+        // Discriminator: only demote when the tail uses RESTRICTIVE verbs
+        // (transferred / earned / accepted from). We do NOT demote permissive
+        // phrasing like "accepts up to 64 transfer credits from regionally
+        // accredited community colleges toward your bachelor degree" — that
+        // 64 is the institution-wide cap, with community colleges named as
+        // the (only) accepted source rather than a sub-cap restriction.
+        //
+        // Real example we want to demote:
+        //   "A maximum of 70 semester hours may be transferred from approved
+        //    two-year community colleges" → 70 is a 2-year sub-cap, not
+        //    institution-wide (UMGC's institution cap is 90).
+        const matchEnd = matchPos + matchedPhrase.length;
+        const tail = haystack.slice(matchEnd, matchEnd + 80);
+        // Two tail shapes are restrictive:
+        //  (a) "<cap> may be transferred from approved two-year ..."
+        //      → tail still contains "transferred from <scoped-source>"
+        //  (b) "<cap> may be transferred" already consumed by the main regex
+        //      → tail starts with " from approved two-year ..."
+        // Also: "may transfer" alone counts (some pages drop "be").
+        const RESTRICTIVE_TAIL_RE =
+          /^[^.]{0,30}?(?:(?:may\s+(?:be\s+)?)?(?:transferred|accepted|applied|earned|transfer)\s+)?from\s+(?:approved\s+|accredited\s+|regionally\s+accredited\s+)?(?:two-year|2-year|community college|community colleges|junior college|partner college|partner institution)/i;
+        const hasRestrictiveSourceTail = RESTRICTIVE_TAIL_RE.test(tail);
+
+        if (hasRestrictiveSourceTail) {
           kind = 'program_specific';
           confidence = Math.min(confidence, 70);
         } else {
-          // Boost when explicit institution-wide language is in the window
-          const hasInstBoost = INSTITUTION_BOOST_TERMS.some((t) => window.includes(t));
-          if (hasInstBoost) confidence = Math.min(confidence + 5, 95);
+          // If the window is dominated by program-scope language, demote.
+          const isProgramScoped = PROGRAM_SCOPE_TERMS.some((t) => window.includes(t));
+          if (isProgramScoped) {
+            kind = 'program_specific';
+            confidence = Math.min(confidence, 70);
+          } else {
+            // Boost when explicit institution-wide language is in the window
+            const hasInstBoost = INSTITUTION_BOOST_TERMS.some((t) => window.includes(t));
+            if (hasInstBoost) confidence = Math.min(confidence + 5, 95);
+          }
         }
       }
 

@@ -475,25 +475,48 @@ function extractResidencyFromText(text: string): ResidencyExtractionResult | nul
     let match;
     while ((match = pattern.exec(textLower)) !== null) {
       const creditValue = parseInt(match[1], 10);
-      
-      // Sanity check: residency is typically 20-50 credits (allow 10-80 range)
-      if (creditValue < 10 || creditValue > 80) continue;
-      
+
+      // SANITY FLOOR (Fix 2):
+      // Institution-wide residency is realistically 12+ credits. Values below
+      // that are almost always sub-requirements like "9 credits in the major"
+      // or "6 credits at the 400 level" — they are NOT the institution-wide
+      // residency signal. Drop unconditionally to avoid contaminating the
+      // policy pack with a misleading low number.
+      if (creditValue < 12) {
+        console.log(
+          `[residency-fallback] Dropping ${creditValue} credits — below institution-wide floor (12); likely a sub-requirement, not residency.`,
+        );
+        continue;
+      }
+      // Upper bound stays at 80 — anything higher is noise (degree totals etc.)
+      if (creditValue > 80) continue;
+
       // Get context around match
       const matchStart = Math.max(0, match.index - 50);
       const matchEnd = Math.min(text.length, match.index + match[0].length + 50);
       const snippet = text.slice(matchStart, matchEnd);
-      
+
       // Higher confidence if specific "earned at" / "in residence" / "institutional" language
-      const isHighConfidence = 
+      const isHighConfidence =
         match[0].includes('earned at') ||
         match[0].includes('completed at') ||
-        match[0].includes('in residence') || 
+        match[0].includes('in residence') ||
         match[0].includes('institutional') ||
         match[0].includes('must complete');
-      
+
+      // CORROBORATION RULE (Fix 2):
+      // Values in the 12–17 range are still suspicious (often "12 credits in
+      // the major" or "15 upper-division credits"). Require a high-confidence
+      // phrase as corroboration; otherwise drop.
+      if (creditValue < 18 && !isHighConfidence) {
+        console.log(
+          `[residency-fallback] Dropping ${creditValue} credits — low value (<18) without high-confidence phrase; treating as scoped/suspicious.`,
+        );
+        continue;
+      }
+
       const confidence = isHighConfidence ? 90 : 70;
-      
+
       // Keep best (highest confidence, or first if tie)
       if (!bestMatch || confidence > bestMatch.confidence) {
         bestMatch = {
@@ -1034,20 +1057,46 @@ async function mergePolicyPacks(
     } | null = null;
     const programRegexHits: Array<{ value: number; url: string }> = [];
 
+    // URL fragments that mark a page as covering a SCOPED source-type only
+    // (e.g. community-college / 2-year transfer policies). Any institution_max
+    // candidate from these pages must be demoted to program_specific BEFORE
+    // selection, because the cap on these pages does not apply institution-wide.
+    const SCOPED_SOURCE_URL_FRAGMENTS = [
+      '/community-college', '/community-colleges',
+      '/two-year', '/2-year', '/junior-college',
+      '/articulation', '/pathway', '/pathways',
+      '/partner-colleges', '/partner-institutions',
+    ];
+
     for (const content of ((textsForMaxTransfer || []) as Array<{ scrape_job_id: string; extracted_text: string | null; url: string | null }>)) {
       if (!content.extracted_text) continue;
 
       const cands = extractMaxTransferCandidates(content.extracted_text);
       const urlLower = (content.url || '').toLowerCase();
+      const urlIsScopedSource = SCOPED_SOURCE_URL_FRAGMENTS.some((f) => urlLower.includes(f));
 
-      // Track program-specific hits separately (used to detect AI-mismatch)
-      for (const c of cands) {
+      // ---- SCOPE-FILTER-BEFORE-OVERRIDE ----
+      // If the URL itself is a scoped-source page (e.g. community-college),
+      // demote every institution_max candidate to program_specific. This MUST
+      // run before pickBestInstitutionMax so we never select a 2-year cap as
+      // the institution-wide cap.
+      const filteredCands = urlIsScopedSource
+        ? cands.map((c) =>
+            c.kind === 'institution_max'
+              ? { ...c, kind: 'program_specific' as const, confidence: Math.min(c.confidence, 70) }
+              : c,
+          )
+        : cands;
+
+      // Track program-specific hits separately (used to detect AI-mismatch).
+      // Includes anything demoted by the URL filter above.
+      for (const c of filteredCands) {
         if (c.kind === 'program_specific') {
           programRegexHits.push({ value: c.value, url: content.url || '' });
         }
       }
 
-      const best = pickBestInstitutionMax(cands);
+      const best = pickBestInstitutionMax(filteredCands);
       if (!best) continue;
 
       const urlBonus = HIGH_AUTHORITY_URL_FRAGMENTS.some((f) => urlLower.includes(f)) ? 8 : 0;

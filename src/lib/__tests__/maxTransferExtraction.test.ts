@@ -15,8 +15,9 @@ describe('extractMaxTransferCandidates', () => {
   });
 
   it('captures ASUO institution-wide cap "up to 64 transfer credits"', () => {
+    // Institution-wide phrasing: no "from <scoped-source>" restriction.
     const text =
-      'ASU Online accepts up to 64 transfer credits from regionally accredited community colleges toward your bachelor degree.';
+      'ASU Online accepts up to 64 transfer credits toward your bachelor degree.';
     const cands = extractMaxTransferCandidates(text);
     const best = pickBestInstitutionMax(cands);
     expect(best).not.toBeNull();
@@ -97,12 +98,23 @@ describe('extractMaxTransferCandidates', () => {
   });
 
   it('returns multiple candidates from a mixed paragraph (64 inst + 12 grad)', () => {
+    // Institution-wide phrasing without restrictive "from <source>" tail.
     const text =
-      "ASU Online accepts up to 64 transfer credits from community colleges. " +
+      "ASU Online accepts up to 64 transfer credits toward your bachelor degree. " +
       "Graduate programs allow up to 12 graduate credits to transfer.";
     const cands = extractMaxTransferCandidates(text);
     expect(pickBestInstitutionMax(cands)?.value).toBe(64);
     expect(pickBestGraduateMax(cands)?.value).toBe(12);
+  });
+
+  it('demotes restrictive-source cap (UMGC 70 from two-year community colleges)', () => {
+    // Real-world UMGC text: 70-credit cap restricted to 2-year sources only.
+    // Must NOT be selected as institution_max — would override the true 90 cap.
+    const text =
+      'A maximum of 70 semester hours may be transferred from approved two-year community colleges.';
+    const cands = extractMaxTransferCandidates(text);
+    expect(pickBestInstitutionMax(cands)).toBeNull();
+    expect(cands.some((c) => c.value === 70 && c.kind === 'program_specific')).toBe(true);
   });
 
   it('captures contextSnippet with original casing for reviewer audit', () => {
