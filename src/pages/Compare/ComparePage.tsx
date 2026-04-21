@@ -213,7 +213,7 @@ export default function ComparePage() {
           className="gap-1.5 -ml-2 text-muted-foreground"
         >
           <ArrowLeft className="h-4 w-4" />
-          Back to your top 3
+          Update my credits
         </Button>
 
         {/* HERO: the savings sentence is the H1. No competition above the fold. */}
