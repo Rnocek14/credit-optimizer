@@ -8,7 +8,7 @@ import { Helmet } from 'react-helmet-async';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ArrowLeft, ArrowRight, Scale } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Scale, ShieldCheck } from 'lucide-react';
 import { useMarketplaceTemplates } from '@/hooks/useMarketplaceTemplates';
 import { VERIFIED_SCHOOL_CODES } from '@/lib/planScoring/config';
 import { useIsMobile } from '@/hooks/use-mobile';
