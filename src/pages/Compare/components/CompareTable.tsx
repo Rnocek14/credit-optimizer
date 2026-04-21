@@ -11,13 +11,14 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { ArrowRight, Trophy } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import type { CompareRow } from '../buildCompareRows';
 import { formatCost, formatYears } from '../buildCompareRows';
 import { isPickerActive } from '../hooks/useCompareUrlState';
 import type { CreditPickerState } from '../types';
+import { WinnerBadges } from './WinnerBadges';
+import { CreditLossBreakdown } from './CreditLossBreakdown';
 
 interface CompareTableProps {
   rows: CompareRow[];
@@ -47,15 +48,7 @@ export function CompareTable({ rows, picker, onViewPlan }: CompareTableProps) {
                 )}
               >
                 <div className="flex flex-col items-center gap-1.5 py-2">
-                  {row.isBest && (
-                    <Badge
-                      variant="outline"
-                      className="text-[10px] gap-1 px-1.5 py-0.5 border-primary/40 text-primary bg-primary/10"
-                    >
-                      <Trophy className="h-2.5 w-2.5" />
-                      Best fit
-                    </Badge>
-                  )}
+                  <WinnerBadges row={row} layout="inline" />
                   <div className="font-semibold text-sm text-foreground">
                     {row.school}
                   </div>
@@ -71,15 +64,11 @@ export function CompareTable({ rows, picker, onViewPlan }: CompareTableProps) {
           <MetricRow label="Total cost" rows={rows} render={(r) => formatCost(r.cost)} bold />
           <MetricRow label="Time to degree" rows={rows} render={(r) => formatYears(r.weeks)} />
           <MetricRow
-            label={personalized ? 'You can transfer in' : 'Transfer ceiling'}
-            sublabel={personalized ? 'based on your credits' : 'max alt credits accepted'}
+            label={personalized ? 'Credits transferred in' : 'Credits accepted'}
+            sublabel={personalized ? 'of total required' : 'max via alt providers'}
             rows={rows}
-            render={(r) =>
-              personalized
-                ? `${r.matchedCredits} cr`
-                : `up to ${r.acceptedCeiling} cr`
-            }
-            bold
+            render={(r) => `${personalized ? r.matchedCredits : r.acceptedCeiling} / ${r.totalCredits} cr`}
+            renderCell={(r) => <CreditLossBreakdown row={r} personalized={personalized} />}
           />
           <MetricRow
             label="Personalized fit"
