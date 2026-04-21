@@ -1016,6 +1016,98 @@ async function mergePolicyPacks(
   const maxAceNccrs = maxAceNccrsResult.selected;
 
   // ==========================================================================
+  // AI-RESIDENCY SANITY FILTER (Fix 2 — applied at AI-merge layer)
+  // --------------------------------------------------------------------------
+  // The regex residency fallback already enforces:
+  //   - hard floor: drop values < 12 (sub-requirements like "9 in major")
+  //   - soft floor: 12–17 requires high-confidence phrasing
+  // But AI extraction was bypassing both. UMGC reproduced this: AI returned
+  // residency=9 (a "9 credits in the major" sub-requirement) and it was
+  // selected before any fallback could run.
+  //
+  // Apply the same rules to AI-picked values. If the AI value fails sanity,
+  // drop it to null so the regex fallback + % derivation can take over.
+  //
+  // Trust model: this only DROPS bad data; it never invents a value.
+  // Provenance is preserved for whatever the fallbacks land on.
+  // ==========================================================================
+  if (residencyCredits && typeof residencyCredits.value === 'number') {
+    const aiResVal = residencyCredits.value;
+    const aiResUrl = (residencyCredits.sourceUrl || '').toLowerCase();
+    const aiResConfidence = residencyCredits.confidence ?? 0;
+
+    // Hard floor: institution-wide residency is realistically ≥ 12 credits.
+    if (aiResVal < 12) {
+      notes.push(
+        `🚫 AI-residency dropped: ${aiResVal} credits below hard floor (12); ` +
+        `almost certainly a sub-requirement (e.g. "${aiResVal} credits in the major"), not institution-wide residency.`,
+      );
+      console.log(`[merge] AI-residency hard-floor drop: ${aiResVal} from ${aiResUrl}`);
+      residencyCredits = null;
+    } else if (aiResVal < 18) {
+      // Soft floor: 12–17 must be corroborated by a high-confidence phrase
+      // OR by another source agreeing on the value. Otherwise treat as
+      // suspicious / scoped and let the fallback attempt to do better.
+      const hasMultiSourceAgreement = (() => {
+        const agreeing = residencyExtractions
+          .map((e) => e.extraction.policy_pack?.residency_policy?.min_institutional_credits)
+          .filter((v) => v === aiResVal);
+        return agreeing.length >= 2;
+      })();
+
+      // Look for a high-confidence phrase in the source text for this value.
+      let hasHighConfidencePhrase = false;
+      try {
+        const { data: srcText } = await supabase
+          .from('scraped_content')
+          .select('extracted_text')
+          .eq('scrape_job_id', residencyCredits.sourceJobId)
+          .maybeSingle();
+        const t = (srcText?.extracted_text || '').toLowerCase();
+        if (t) {
+          const valStr = String(aiResVal);
+          // Anchor "<value> credits" within ±120 chars of strong residency phrasing.
+          const strongPhrases = [
+            'earned at', 'completed at', 'in residence', 'institutional credit',
+            'must be earned', 'must be completed', 'must be taken at',
+            'credits in residence', 'minimum residency', 'residency requirement',
+          ];
+          // Find each occurrence of the value and check window.
+          let idx = t.indexOf(valStr);
+          while (idx !== -1 && !hasHighConfidencePhrase) {
+            const winStart = Math.max(0, idx - 120);
+            const winEnd = Math.min(t.length, idx + valStr.length + 120);
+            const win = t.slice(winStart, winEnd);
+            // Must mention "credit" near the value AND a strong residency phrase.
+            if (win.includes('credit') && strongPhrases.some((p) => win.includes(p))) {
+              hasHighConfidencePhrase = true;
+              break;
+            }
+            idx = t.indexOf(valStr, idx + valStr.length);
+          }
+        }
+      } catch (err) {
+        console.log(`[merge] AI-residency phrase lookup failed: ${err}`);
+      }
+
+      if (!hasMultiSourceAgreement && !hasHighConfidencePhrase) {
+        notes.push(
+          `🚫 AI-residency dropped: ${aiResVal} credits in soft-floor range (12–17) ` +
+          `without high-confidence phrasing or multi-source agreement (AI confidence ${aiResConfidence}). ` +
+          `Letting fallback attempt a better value.`,
+        );
+        console.log(`[merge] AI-residency soft-floor drop: ${aiResVal} from ${aiResUrl}`);
+        residencyCredits = null;
+      } else {
+        notes.push(
+          `✅ AI-residency ${aiResVal} retained: ` +
+          `${hasMultiSourceAgreement ? 'multi-source agreement' : 'high-confidence phrase corroboration'}.`,
+        );
+      }
+    }
+  }
+
+  // ==========================================================================
   // MAX_TRANSFER PARALLEL REGEX + SCOPE-AWARE SELECTION (Type 2.5 fix v2)
   // --------------------------------------------------------------------------
   // Always run anchored-regex extraction in parallel with the AI value, then
