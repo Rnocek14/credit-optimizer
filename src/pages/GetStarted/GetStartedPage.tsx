@@ -112,10 +112,10 @@ export default function GetStartedPage() {
   return (
     <>
       <Helmet>
-        <title>Get Started – Find Your Best Degree Path | Pivot</title>
+        <title>Check Where Your Credits Count | Pivot</title>
         <meta
           name="description"
-          content="Tell us what credits you have. We'll show the schools where they go furthest."
+          content="Before you spend another dollar on credits — check where they'll actually count. See which schools accept them, credits transferred, and time and money saved."
         />
       </Helmet>
 
