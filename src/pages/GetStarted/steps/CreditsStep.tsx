@@ -119,13 +119,13 @@ export function CreditsStep({ onContinue, initial }: CreditsStepProps) {
     <div className="space-y-10 animate-fade-in-up max-w-xl mx-auto">
       <div className="text-center space-y-3">
         <p className="text-sm font-medium text-primary tracking-wider uppercase">
-          Get personalized in 10 seconds
+          Pre-decision check · 10 seconds
         </p>
         <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">
-          What credits do you already have?
+          Before you spend another dollar — check where your credits actually count.
         </h1>
         <p className="text-muted-foreground text-base max-w-md mx-auto">
-          We'll show the schools where they go furthest — fastest path, lowest cost.
+          See which schools accept them, how many transfer, and how much time and money you save.
         </p>
       </div>
 
