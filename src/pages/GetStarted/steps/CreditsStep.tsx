@@ -198,7 +198,7 @@ export function CreditsStep({ onContinue, initial }: CreditsStepProps) {
           className="w-full gap-2 h-12 text-base"
           size="lg"
         >
-          Show my best path to graduate
+          Check where they count
           <ArrowRight className="h-4 w-4" />
         </Button>
         <button
@@ -206,7 +206,7 @@ export function CreditsStep({ onContinue, initial }: CreditsStepProps) {
           onClick={handleStartFresh}
           className="w-full text-sm text-muted-foreground hover:text-foreground transition-colors"
         >
-          I don't have credits yet
+          I don't have credits yet — start fresh
         </button>
       </div>
     </div>
