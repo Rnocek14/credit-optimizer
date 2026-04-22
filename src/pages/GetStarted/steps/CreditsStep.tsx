@@ -119,13 +119,13 @@ export function CreditsStep({ onContinue, initial }: CreditsStepProps) {
     <div className="space-y-10 animate-fade-in-up max-w-xl mx-auto">
       <div className="text-center space-y-3">
         <p className="text-sm font-medium text-primary tracking-wider uppercase">
-          Get personalized in 10 seconds
+          Pre-decision check · 10 seconds
         </p>
         <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">
-          What credits do you already have?
+          Before you spend another dollar — check where your credits actually count.
         </h1>
         <p className="text-muted-foreground text-base max-w-md mx-auto">
-          We'll show the schools where they go furthest — fastest path, lowest cost.
+          See which schools accept them, how many transfer, and how much time and money you save.
         </p>
       </div>
 
@@ -198,7 +198,7 @@ export function CreditsStep({ onContinue, initial }: CreditsStepProps) {
           className="w-full gap-2 h-12 text-base"
           size="lg"
         >
-          Show my best path to graduate
+          Check where they count
           <ArrowRight className="h-4 w-4" />
         </Button>
         <button
@@ -206,7 +206,7 @@ export function CreditsStep({ onContinue, initial }: CreditsStepProps) {
           onClick={handleStartFresh}
           className="w-full text-sm text-muted-foreground hover:text-foreground transition-colors"
         >
-          I don't have credits yet
+          I don't have credits yet — start fresh
         </button>
       </div>
     </div>

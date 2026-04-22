@@ -13,11 +13,11 @@ const SecureLandingPage = () => {
           </div>
 
           <h1 className="text-3xl md:text-4xl font-bold text-foreground leading-tight">
-            Plan the smartest path to your degree
+            Before you spend another dollar on credits — check where they'll actually count.
           </h1>
 
           <p className="text-muted-foreground text-lg leading-relaxed">
-            Compare accredited programs, maximize transfer credits, and optimize for cost and time — all in one planner.
+            See which schools accept your courses, how many credits transfer, and how much time and money you save — in 10 seconds.
           </p>
         </div>
 
@@ -26,22 +26,22 @@ const SecureLandingPage = () => {
           <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
             <RefreshCw className="h-5 w-5 text-primary mt-0.5 shrink-0" />
             <div>
-              <p className="text-sm font-medium text-foreground">Transfer optimization</p>
-              <p className="text-xs text-muted-foreground">Maximize credits from prior learning</p>
+              <p className="text-sm font-medium text-foreground">Will it count?</p>
+              <p className="text-xs text-muted-foreground">Check transfer fit before you pay</p>
             </div>
           </div>
           <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
             <DollarSign className="h-5 w-5 text-primary mt-0.5 shrink-0" />
             <div>
-              <p className="text-sm font-medium text-foreground">Cost comparison</p>
-              <p className="text-xs text-muted-foreground">Find the most affordable path</p>
+              <p className="text-sm font-medium text-foreground">What you save</p>
+              <p className="text-xs text-muted-foreground">Real cost across 5 verified schools</p>
             </div>
           </div>
           <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
             <Clock className="h-5 w-5 text-primary mt-0.5 shrink-0" />
             <div>
-              <p className="text-sm font-medium text-foreground">Fastest completion</p>
-              <p className="text-xs text-muted-foreground">Graduate on your timeline</p>
+              <p className="text-sm font-medium text-foreground">How much faster</p>
+              <p className="text-xs text-muted-foreground">Time to graduate, not theory</p>
             </div>
           </div>
         </div>
@@ -50,13 +50,13 @@ const SecureLandingPage = () => {
         <div className="space-y-4 pt-2">
           <Button asChild size="lg" className="w-full text-base">
             <Link to="/auth">
-              Get Started
+              Check my credits
               <ArrowRight className="ml-2 h-4 w-4" />
             </Link>
           </Button>
 
           <p className="text-xs text-muted-foreground">
-            Free to explore. No credit card required.
+            Free. No credit card. 10 seconds to a real answer.
           </p>
         </div>
 
