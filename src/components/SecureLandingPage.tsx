@@ -13,11 +13,11 @@ const SecureLandingPage = () => {
           </div>
 
           <h1 className="text-3xl md:text-4xl font-bold text-foreground leading-tight">
-            Plan the smartest path to your degree
+            Before you spend another dollar on credits — check where they'll actually count.
           </h1>
 
           <p className="text-muted-foreground text-lg leading-relaxed">
-            Compare accredited programs, maximize transfer credits, and optimize for cost and time — all in one planner.
+            See which schools accept your courses, how many credits transfer, and how much time and money you save — in 10 seconds.
           </p>
         </div>
 
