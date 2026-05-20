@@ -34,6 +34,15 @@ export default function PlanPreviewPage() {
   });
   const compareHref = compareQs.toString() ? `/compare?${compareQs.toString()}` : '/compare';
 
+  useEffect(() => {
+    if (!templateId) return;
+    logEvent('plan_preview_viewed', {
+      template_id: templateId,
+      career_id: careerId,
+      ref: searchParams.get('ref'),
+    });
+  }, [templateId, careerId, searchParams]);
+
   if (!templateId) {
     return <Navigate to="/compare" replace />;
   }
