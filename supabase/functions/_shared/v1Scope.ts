@@ -16,10 +16,12 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
  * Keep in sync with initial seed in migration
  */
 const FALLBACK_V1_INSTITUTIONS: string[] = [
-  // Core 5 — only schools with non-trivial credit_transfer_rules coverage as of 2026-05-20.
-  // LIBERTY + SNHU removed from /compare; UMGC/GCU/ASUO never had production-quality data.
-  // Keep this list minimal — it's only used if the institution_v1_scope DB query fails.
+  // Operational scope (NOT the public display gate). Mirrors institution_v1_scope DB rows
+  // as of 2026-05-20 so a DB outage doesn't lock in-flight pipelines out of scope.
+  // Display gating for /compare lives in src/lib/planScoring/config.ts VERIFIED_SCHOOL_CODES.
+  // Only edit this list when the DB row set changes; keep them in sync.
   'TESU', 'COSC', 'WGU', 'EXCELSIOR', 'EMPIRE',
+  'LIBERTY', 'SNHU', 'UMGC', 'GCU', 'ASUO',
 ];
 
 /**
