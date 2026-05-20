@@ -8,6 +8,18 @@ import { DevMenu } from './components/dev/DevMenu';
 import { MobileNavigation } from './components/MobileNavigation';
 import { useCircuitBreakerClient } from './hooks/useCircuitBreakerClient';
 import { initializeCircuitBreaker } from './lib/edgeFunctionClient';
+import { useAuth } from '@/contexts/AuthContext';
+
+/**
+ * AuthedMobileNav — only mounts the bottom tab bar for signed-in users.
+ * Logged-out visitors on the public funnel (/, /get-started, /compare,
+ * /plan/preview, /guides) should not see hub-only navigation.
+ */
+const AuthedMobileNav = () => {
+  const { user } = useAuth();
+  if (!user) return null;
+  return <MobileNavigation className="block md:hidden" />;
+};
 
 const App = () => {
   const circuitBreaker = useCircuitBreakerClient();
@@ -22,7 +34,7 @@ const App = () => {
         <div className="pb-20 md:pb-0">
           <AppRoutes />
         </div>
-        <MobileNavigation className="block md:hidden" />
+        <AuthedMobileNav />
         <XPCelebrationOverlay />
         {process.env.NODE_ENV !== 'production' && <DevMenu />}
       </BrowserRouter>

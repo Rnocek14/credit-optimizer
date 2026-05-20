@@ -49,7 +49,7 @@ const SecureLandingPage = () => {
         {/* CTA */}
         <div className="space-y-4 pt-2">
           <Button asChild size="lg" className="w-full text-base">
-            <Link to="/auth">
+            <Link to="/get-started">
               Check if this counts
               <ArrowRight className="ml-2 h-4 w-4" />
             </Link>
