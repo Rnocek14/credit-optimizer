@@ -4,9 +4,25 @@
  */
 
 /**
- * Schools with active, catalog-verified policy packs (residency + max transfer
- * + degree total all backed by ground truth or safe auto-defaults at conf ≥80).
- * Source of truth: institution_policy_packs.status = 'active'.
+ * Schools rendered in /compare and /get-started.
+ *
+ * Inclusion criteria (as of 2026-05-20):
+ *   - status='active' policy pack in institution_policy_packs
+ *   - non-trivial credit_transfer_rules coverage (≥100 rules, ≥50% catalog_verified)
+ *
+ * Audit caveat (2026-05-20): every active pack currently passes Gate 5 via
+ * `auto_defaulted` provenance — NOT real ground truth. The "verified" label
+ * in product copy is held up by safe auto-defaults at confidence ≥0.80, not by
+ * curated catalog reads. Tracked separately; do not tighten this list until
+ * ground truth is populated.
+ *
+ * Removed 2026-05-20:
+ *   - LIBERTY: 3 transfer rules, 0 verified, 0 evidence URLs. Active pack has
+ *     auto_defaulted provenance only. NOTE: superseded pack
+ *     ec135abd-4c51-430f-94a3-3524deff9eae (source liberty_transfer_faq_2026_04_17)
+ *     carries real ground truth and was clobbered by a later scraper merge.
+ *     Recoverable — restore before re-adding.
+ *   - SNHU: 0 transfer rules. Empty shell.
  */
 export const VERIFIED_SCHOOL_CODES = [
   'TESU',
@@ -14,8 +30,6 @@ export const VERIFIED_SCHOOL_CODES = [
   'EXCELSIOR',
   'EMPIRE',
   'WGU',
-  'LIBERTY',
-  'SNHU',
 ] as const;
 
 export type VerifiedSchoolCode = (typeof VERIFIED_SCHOOL_CODES)[number];
