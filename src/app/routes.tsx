@@ -226,8 +226,8 @@ export function AppRoutes() {
 
       {/* ── DISCOVER Hub Redirects ──────────────────────────── */}
       <Route path="/explore" element={<Navigate to="/discover?tab=career" replace />} />
-      <Route path="/explore/careers" element={<AppShell><CareerListPage /></AppShell>} />
-      <Route path="/explore/careers/:careerPathId" element={<AppShell><CareerDetailPage /></AppShell>} />
+      <Route path="/explore/careers" element={<ProtectedRoute requireAuth={true}><AppShell><CareerListPage /></AppShell></ProtectedRoute>} />
+      <Route path="/explore/careers/:careerPathId" element={<ProtectedRoute requireAuth={true}><AppShell><CareerDetailPage /></AppShell></ProtectedRoute>} />
       <Route path="/diagnostic/career-data" element={<Navigate to="/discover" replace />} />
       <Route path="/explore-hub" element={<Navigate to="/discover" replace />} />
       <Route path="/explore-courses" element={<Navigate to="/discover?tab=courses" replace />} />
@@ -255,53 +255,63 @@ export function AppRoutes() {
       <Route path="/edu-tree-v3-vertical" element={<Navigate to="/edu-tree-v5" replace />} />
       <Route path="/edu-tree-v3-harness" element={<Navigate to="/edu-tree-v5" replace />} />
       <Route path="/edu-tree-v4" element={<Navigate to="/edu-tree-v5" replace />} />
-      {/* EduTree V5 — power user / dev mode */}
+      {/* EduTree V5 — power user / dev mode (auth-gated) */}
       <Route path="/edu-tree-v5" element={
-        <AppShell>
-          <EnhancedErrorBoundary fallback={<EduTreeError />}>
-            <React.Suspense fallback={<PageLoader message="Loading V5 testbed..." />}>
-              <EduTreeV5Route />
-            </React.Suspense>
-          </EnhancedErrorBoundary>
-        </AppShell>
+        <ProtectedRoute requireAuth={true}>
+          <AppShell>
+            <EnhancedErrorBoundary fallback={<EduTreeError />}>
+              <React.Suspense fallback={<PageLoader message="Loading V5 testbed..." />}>
+                <EduTreeV5Route />
+              </React.Suspense>
+            </EnhancedErrorBoundary>
+          </AppShell>
+        </ProtectedRoute>
       } />
-      {/* EduTree V6 — guided experience layer */}
+      {/* EduTree V6 — guided experience layer (auth-gated) */}
       <Route path="/edu-tree-v6" element={
-        <AppShell>
-          <EnhancedErrorBoundary fallback={<EduTreeError />}>
-            <React.Suspense fallback={<PageLoader message="Loading degree planner..." />}>
-              <EduTreeV6Route />
-            </React.Suspense>
-          </EnhancedErrorBoundary>
-        </AppShell>
+        <ProtectedRoute requireAuth={true}>
+          <AppShell>
+            <EnhancedErrorBoundary fallback={<EduTreeError />}>
+              <React.Suspense fallback={<PageLoader message="Loading degree planner..." />}>
+                <EduTreeV6Route />
+              </React.Suspense>
+            </EnhancedErrorBoundary>
+          </AppShell>
+        </ProtectedRoute>
       } />
       <Route path="/edu-tree-v6/:templateId" element={
-        <AppShell>
-          <EnhancedErrorBoundary fallback={<EduTreeError />}>
-            <React.Suspense fallback={<PageLoader message="Loading degree planner..." />}>
-              <EduTreeV6Route />
-            </React.Suspense>
-          </EnhancedErrorBoundary>
-        </AppShell>
+        <ProtectedRoute requireAuth={true}>
+          <AppShell>
+            <EnhancedErrorBoundary fallback={<EduTreeError />}>
+              <React.Suspense fallback={<PageLoader message="Loading degree planner..." />}>
+                <EduTreeV6Route />
+              </React.Suspense>
+            </EnhancedErrorBoundary>
+          </AppShell>
+        </ProtectedRoute>
       } />
-      {/* Marketplace V1 */}
+      {/* Marketplace V1 (auth-gated) */}
       <Route path="/edu-tree-v5/marketplace" element={
-        <AppShell>
-          <EnhancedErrorBoundary fallback={<EduTreeError />}>
-            <React.Suspense fallback={<PageLoader message="Loading marketplace..." />}>
-              <MarketplacePage />
-            </React.Suspense>
-          </EnhancedErrorBoundary>
-        </AppShell>
+        <ProtectedRoute requireAuth={true}>
+          <AppShell>
+            <EnhancedErrorBoundary fallback={<EduTreeError />}>
+              <React.Suspense fallback={<PageLoader message="Loading marketplace..." />}>
+                <MarketplacePage />
+              </React.Suspense>
+            </EnhancedErrorBoundary>
+          </AppShell>
+        </ProtectedRoute>
       } />
       {/* Legacy standalone marketplace → redirect to real marketplace */}
       <Route path="/marketplace" element={<Navigate to="/edu-tree-v5/marketplace" replace />} />
-      {/* Sandbox (DEV-only) */}
-      <Route path="/sandbox/track-overlay" element={<TrackOverlayPOCPage />} />
-      {/* Admin seeding */}
-      <Route path="/admin/seed-v5" element={<SeedV5Database />} />
-      <Route path="/optimizer-setup" element={<OptimizerSetup />} />
-      <Route path="/admin/optimizer-seeding" element={<OptimizerSeeding />} />
+      {/* Sandbox (DEV-only — disabled in production) */}
+      {import.meta.env.DEV && (
+        <Route path="/sandbox/track-overlay" element={<TrackOverlayPOCPage />} />
+      )}
+      {/* Admin seeding (auth-gated) */}
+      <Route path="/admin/seed-v5" element={<ProtectedRoute requireAuth={true}><SeedV5Database /></ProtectedRoute>} />
+      <Route path="/optimizer-setup" element={<ProtectedRoute requireAuth={true}><OptimizerSetup /></ProtectedRoute>} />
+      <Route path="/admin/optimizer-seeding" element={<ProtectedRoute requireAuth={true}><OptimizerSeeding /></ProtectedRoute>} />
       {/* URL Review Queue */}
       <Route path="/admin/url-review" element={
         <ProtectedRoute requireAuth={true}>
@@ -458,7 +468,7 @@ export function AppRoutes() {
       <Route path="/guides/:slug" element={<GuidePage />} />
 
       {/* ── Active feature routes ───────────────────────────── */}
-      <Route path="/badges/:slug" element={<BadgeDetail />} />
+      <Route path="/badges/:slug" element={<ProtectedRoute requireAuth={true}><BadgeDetail /></ProtectedRoute>} />
       <Route path="/upload-course" element={
         <ProtectedRoute requireAuth={true} requireOnboarding={true}>
           <UploadCourse />
@@ -471,23 +481,23 @@ export function AppRoutes() {
       } />
       <Route path="/maya-intelligence" element={<Navigate to="/plan" replace />} />
       <Route path="/ai-analyzer" element={<Navigate to="/plan" replace />} />
-      <Route path="/certificate-gallery" element={<AppShell><CertificateGallery /></AppShell>} />
+      <Route path="/certificate-gallery" element={<ProtectedRoute requireAuth={true}><AppShell><CertificateGallery /></AppShell></ProtectedRoute>} />
       <Route path="/verify/:code?" element={<VerifySignature />} />
-      <Route path="/teach" element={<AppShell><Teach /></AppShell>} />
+      <Route path="/teach" element={<ProtectedRoute requireAuth={true}><AppShell><Teach /></AppShell></ProtectedRoute>} />
 
       {/* ── Admin Routes ────────────────────────────────────── */}
-      <Route path="/admin" element={<Admin />} />
+      <Route path="/admin" element={<ProtectedRoute requireAuth={true}><Admin /></ProtectedRoute>} />
       <Route path="/mentor" element={<Navigate to="/discover" replace />} />
       <Route path="/maya" element={<Navigate to="/today" replace />} />
       <Route path="/mentor-inbox" element={<Navigate to="/discover" replace />} />
       <Route path="/embed/:resumeId" element={<ResumeEmbed />} />
-      <Route path="/embed-generator" element={<EmbedGenerator />} />
+      <Route path="/embed-generator" element={<ProtectedRoute requireAuth={true}><EmbedGenerator /></ProtectedRoute>} />
       <Route path="/analytics" element={
         <ProtectedRoute requireAuth={true} requireOnboarding={true}>
           <AppShell><Analytics /></AppShell>
         </ProtectedRoute>
       } />
-      <Route path="/analytics/exploration" element={<ExplorationDashboard />} />
+      <Route path="/analytics/exploration" element={<ProtectedRoute requireAuth={true}><ExplorationDashboard /></ProtectedRoute>} />
       <Route path="/admin/smart-weights" element={
         <StakeholderProtectedRoute requiredRole="admin">
           <SmartWeightsAdmin />
@@ -522,36 +532,44 @@ export function AppRoutes() {
           </StakeholderProtectedRoute>
         )
       } />
-      <Route path="/admin/locations" element={<LocationManagerPanel />} />
-      <Route path="/admin/template-validation" element={<TemplateValidation />} />
+      <Route path="/admin/locations" element={<ProtectedRoute requireAuth={true}><LocationManagerPanel /></ProtectedRoute>} />
+      <Route path="/admin/template-validation" element={<ProtectedRoute requireAuth={true}><TemplateValidation /></ProtectedRoute>} />
       <Route path="/admin/template-validation/:templateId/invariants" element={
-        <React.Suspense fallback={<PageLoader message="Loading..." />}>
-          {React.createElement(React.lazy(() => import('@/pages/admin/InvariantSnapshotDrilldown')))}
-        </React.Suspense>
+        <ProtectedRoute requireAuth={true}>
+          <React.Suspense fallback={<PageLoader message="Loading..." />}>
+            {React.createElement(React.lazy(() => import('@/pages/admin/InvariantSnapshotDrilldown')))}
+          </React.Suspense>
+        </ProtectedRoute>
       } />
       <Route path="/admin/invariants/bulk/:jobId" element={
-        <React.Suspense fallback={<PageLoader message="Loading..." />}>
-          {React.createElement(React.lazy(() => import('@/pages/admin/BulkRerunProgress')))}
-        </React.Suspense>
+        <ProtectedRoute requireAuth={true}>
+          <React.Suspense fallback={<PageLoader message="Loading..." />}>
+            {React.createElement(React.lazy(() => import('@/pages/admin/BulkRerunProgress')))}
+          </React.Suspense>
+        </ProtectedRoute>
       } />
-      <Route path="/admin/degree-integrity-scan" element={<DegreeIntegrityScan />} />
-      <Route path="/admin/transfer-scraper" element={<TransferScraperDashboard />} />
-      <Route path="/admin/policy-refresh" element={<PolicyRefreshAdmin />} />
-      <Route path="/admin/policy-promotion" element={<PolicyPackPromotion />} />
-      <Route path="/admin/policy-pipeline" element={<PolicyPackPipeline />} />
+      <Route path="/admin/degree-integrity-scan" element={<ProtectedRoute requireAuth={true}><DegreeIntegrityScan /></ProtectedRoute>} />
+      <Route path="/admin/transfer-scraper" element={<ProtectedRoute requireAuth={true}><TransferScraperDashboard /></ProtectedRoute>} />
+      <Route path="/admin/policy-refresh" element={<ProtectedRoute requireAuth={true}><PolicyRefreshAdmin /></ProtectedRoute>} />
+      <Route path="/admin/policy-promotion" element={<ProtectedRoute requireAuth={true}><PolicyPackPromotion /></ProtectedRoute>} />
+      <Route path="/admin/policy-pipeline" element={<ProtectedRoute requireAuth={true}><PolicyPackPipeline /></ProtectedRoute>} />
       <Route path="/admin/school-expansion" element={
-        <React.Suspense fallback={<PageLoader message="Loading..." />}>
-          {React.createElement(React.lazy(() => import('@/pages/Admin/SchoolExpansionPipeline')))}
-        </React.Suspense>
+        <ProtectedRoute requireAuth={true}>
+          <React.Suspense fallback={<PageLoader message="Loading..." />}>
+            {React.createElement(React.lazy(() => import('@/pages/Admin/SchoolExpansionPipeline')))}
+          </React.Suspense>
+        </ProtectedRoute>
       } />
-      <Route path="/admin/policy-field-review" element={<PolicyFieldReview />} />
+      <Route path="/admin/policy-field-review" element={<ProtectedRoute requireAuth={true}><PolicyFieldReview /></ProtectedRoute>} />
       <Route path="/admin/add-institution" element={
-        <React.Suspense fallback={<PageLoader message="Loading..." />}>
-          {React.createElement(React.lazy(() => import('@/pages/Admin/AddInstitution')))}
-        </React.Suspense>
+        <ProtectedRoute requireAuth={true}>
+          <React.Suspense fallback={<PageLoader message="Loading..." />}>
+            {React.createElement(React.lazy(() => import('@/pages/Admin/AddInstitution')))}
+          </React.Suspense>
+        </ProtectedRoute>
       } />
-      <Route path="/admin/generation-jobs" element={<GenerationJobs />} />
-      <Route path="/embed-explorer" element={<EmbedExplorer />} />
+      <Route path="/admin/generation-jobs" element={<ProtectedRoute requireAuth={true}><GenerationJobs /></ProtectedRoute>} />
+      <Route path="/embed-explorer" element={<ProtectedRoute requireAuth={true}><EmbedExplorer /></ProtectedRoute>} />
       <Route path="/cri-dashboard" element={<Navigate to="/plan" replace />} />
 
       {/* ── Error / Catch-all ───────────────────────────────── */}
