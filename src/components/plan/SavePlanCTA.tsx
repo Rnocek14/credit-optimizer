@@ -50,7 +50,7 @@ async function fetchTrustInfo(templateId: string): Promise<TrustInfo> {
   }
 
   // Most-recent verified policy pack for this institution.
-  const { data: pack } = await supabase
+  const packRes: any = await (supabase as any)
     .from('institution_policy_packs_live')
     .select('last_verified_at')
     .eq('institution_code', institutionCode)
@@ -59,7 +59,7 @@ async function fetchTrustInfo(templateId: string): Promise<TrustInfo> {
     .maybeSingle();
 
   // Best evidence URL: most-recent transfer rule for this institution.
-  const { data: rule } = await supabase
+  const ruleRes: any = await (supabase as any)
     .from('active_transfer_rules')
     .select('evidence_url, last_verified_at')
     .eq('target_institution_code', institutionCode)
@@ -69,8 +69,8 @@ async function fetchTrustInfo(templateId: string): Promise<TrustInfo> {
     .maybeSingle();
 
   return {
-    lastVerifiedAt: pack?.last_verified_at ?? rule?.last_verified_at ?? null,
-    evidenceUrl: rule?.evidence_url ?? null,
+    lastVerifiedAt: packRes?.data?.last_verified_at ?? ruleRes?.data?.last_verified_at ?? null,
+    evidenceUrl: ruleRes?.data?.evidence_url ?? null,
     institutionCode,
   };
 }
