@@ -6714,6 +6714,45 @@ export type Database = {
         }
         Relationships: []
       }
+      lead_captures: {
+        Row: {
+          career_id: string | null
+          created_at: string
+          credits_completed: number | null
+          email: string
+          id: string
+          metadata: Json | null
+          referrer: string | null
+          source: string
+          template_id: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          career_id?: string | null
+          created_at?: string
+          credits_completed?: number | null
+          email: string
+          id?: string
+          metadata?: Json | null
+          referrer?: string | null
+          source?: string
+          template_id?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          career_id?: string | null
+          created_at?: string
+          credits_completed?: number | null
+          email?: string
+          id?: string
+          metadata?: Json | null
+          referrer?: string | null
+          source?: string
+          template_id?: string | null
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
       learning_challenges: {
         Row: {
           badge_reward_id: string | null
