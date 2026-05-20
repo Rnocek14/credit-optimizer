@@ -161,12 +161,8 @@ export function AppRoutes() {
         </ProtectedRoute>
       } />
 
-      {/* ── Get Started (onboarding flow) ───────────────────── */}
-      <Route path="/get-started" element={
-        <ProtectedRoute requireAuth={true} requireOnboarding={true}>
-          <GetStartedPage />
-        </ProtectedRoute>
-      } />
+      {/* ── Get Started (public funnel entry — no auth gate) ── */}
+      <Route path="/get-started" element={<GetStartedPage />} />
 
       {/* ── Compare (public decision surface — shareable, no auth/onboarding gate) ── */}
       <Route path="/compare" element={
