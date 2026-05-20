@@ -11,11 +11,14 @@
  * Preserves career intent (?career=…) so the plan is tied to the user's goal.
  * Provides a clear "Back to compare" escape hatch.
  */
+import { useEffect } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { Link, Navigate, useParams, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
 import { GraduationPlanCard } from '@/components/plan/GraduationPlanCard';
+import { SavePlanCTA } from '@/components/plan/SavePlanCTA';
+import { logEvent } from '@/lib/analytics';
 
 export default function PlanPreviewPage() {
   const { templateId } = useParams<{ templateId: string }>();
