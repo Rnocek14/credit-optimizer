@@ -11,11 +11,14 @@
  * Preserves career intent (?career=…) so the plan is tied to the user's goal.
  * Provides a clear "Back to compare" escape hatch.
  */
+import { useEffect } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { Link, Navigate, useParams, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
 import { GraduationPlanCard } from '@/components/plan/GraduationPlanCard';
+import { SavePlanCTA } from '@/components/plan/SavePlanCTA';
+import { logEvent } from '@/lib/analytics';
 
 export default function PlanPreviewPage() {
   const { templateId } = useParams<{ templateId: string }>();
@@ -30,6 +33,15 @@ export default function PlanPreviewPage() {
     if (v) compareQs.set(k, v);
   });
   const compareHref = compareQs.toString() ? `/compare?${compareQs.toString()}` : '/compare';
+
+  useEffect(() => {
+    if (!templateId) return;
+    logEvent('plan_preview_viewed', {
+      template_id: templateId,
+      career_id: careerId,
+      ref: searchParams.get('ref'),
+    });
+  }, [templateId, careerId, searchParams]);
 
   if (!templateId) {
     return <Navigate to="/compare" replace />;
@@ -75,6 +87,9 @@ export default function PlanPreviewPage() {
 
         {/* The closer card in preview mode */}
         <GraduationPlanCard templateId={templateId} previewCareerId={careerId} />
+
+        {/* Day-2 funnel closer: capture email + magic-link back to this URL */}
+        <SavePlanCTA templateId={templateId} careerId={careerId} />
       </div>
     </>
   );
