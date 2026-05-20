@@ -87,6 +87,9 @@ export default function PlanPreviewPage() {
 
         {/* The closer card in preview mode */}
         <GraduationPlanCard templateId={templateId} previewCareerId={careerId} />
+
+        {/* Day-2 funnel closer: capture email + magic-link back to this URL */}
+        <SavePlanCTA templateId={templateId} careerId={careerId} />
       </div>
     </>
   );
