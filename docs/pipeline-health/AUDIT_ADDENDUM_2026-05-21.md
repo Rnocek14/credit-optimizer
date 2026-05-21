@@ -62,9 +62,9 @@ The original audit's "next 3 actions" are replaced by a single sequenced one. No
 2. **Build the admin panel on top of the views.** Tomorrow. Headline-cohort-split layout, per-section source-table captions, `pack_promotion_ratio` (lifetime) + `pack_promotion_ratio_live` (non-deprecated population) shown side by side.
 3. **Sit with the panel for 24 hours before patching anything.** The panel exists to make patches visible against history. Patching the same day defeats that.
 4. **Patch `transfer-scraper-auto-scan/index.ts:283`.** Manual invoke against TESU. Watch Q1, Q1b, Q2 for the four expected deltas. If Q1b stays null, line 283 is the wrong site and the patch is rolled back.
-5. **Restart cron.** Wait one cycle (one week).
+5. **Restart cron — staged.** Restart for one cohort first (TESU, since most data and most signal). Watch the panel for 24h. If Q1/Q1b/Q2 move as expected and nothing surprises, restart for the other nine. Do not restart all ten at once: if there's a fourth bug we haven't found, surface it in one institution, not ten. Same decoupled-change/deltable-signal pattern as steps 3 and 4.
 6. **Re-baseline.** Compare against v1. If UMGC still has scrapes and zero packs, escalate to a merge-pipeline investigation.
-7. **Only after a clean cycle:** revisit the UMPI-onboarding question with real data.
+7. **Only after a clean cycle:** revisit the UMPI-onboarding question with real data. "Real data" is concretely defined as: (a) Q1 shows successful scrapes within the last 7 days for at least 8 of 10 institutions, (b) Q1b shows non-null `last_scraped_at` template stamps for the same 8, and (c) `pack_promotion_ratio_live` is above 50% for at least 3 institutions. Failing any one of these three is a re-block, not a partial win.
 
 UMPI is not on this list by design. The question moves from "can we" to "should we re-ask the question" only after step 6.
 
