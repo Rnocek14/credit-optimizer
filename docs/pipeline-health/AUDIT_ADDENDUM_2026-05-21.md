@@ -76,7 +76,17 @@ UMPI is not on this list by design. The question moves from "can we" to "should 
 - **Does not:** edit a `PIVOT_SCRAPER_AUDIT.md` file (none exists in the repo). Edit existing repo content. Encode interpretations of numbers that may shift after the next cron cycle (those belong in panel captions, which are easier to update than a baseline file).
 
 Related artifacts:
+- `docs/pipeline-health/AUDIT_ADDENDUM_2026-05-21.md` — this document. Self-referential, listed so a reader landing here from search confirms they are in the canonical location.
 - `docs/pipeline-health/BASELINE_2026-05-21_v0_DO_NOT_USE.md` — superseded baseline retained as evidence of the value-verification gap.
 - `docs/pipeline-health/BASELINE_2026-05-21_v1.md` — current baseline with postmortem header.
 - `supabase/migrations/20260521131902_*.sql` — six pipeline-health views.
 - `supabase/migrations/20260521_133919_*.sql` and `20260521_134003_*.sql` — status-filter fix + helper EXECUTE grant.
+
+---
+
+## Appendix A: Original conversational audit (TL;DR / Pass 1 / Pass 2 / Pass 3)
+
+The original audit was produced in chat and never committed. The four-section markdown rendered during that session (TL;DR, Pass 1 pipeline map, Pass 2 row counts marked UNKNOWN, Pass 3 verdict YELLOW) should be pasted here verbatim so this addendum is self-contained and a future reader is not forced to reconstruct the original from chat history.
+
+> **TO PASTE:** original audit body. Source: the markdown the user produced in their sandbox during the original audit session. Until pasted, the verdict-revision section above references conclusions the reader cannot independently inspect.
+
