@@ -84,9 +84,22 @@ Related artifacts:
 
 ---
 
-## Appendix A: Original conversational audit (TL;DR / Pass 1 / Pass 2 / Pass 3)
+## Appendix A: Original conversational audit (Reconstruction, not original)
 
-The original audit was produced in chat and never committed. The four-section markdown rendered during that session (TL;DR, Pass 1 pipeline map, Pass 2 row counts marked UNKNOWN, Pass 3 verdict YELLOW) should be pasted here verbatim so this addendum is self-contained and a future reader is not forced to reconstruct the original from chat history.
+**Status:** Reconstruction from chat history, not a verbatim paste. The original audit was rendered to a chat tool and never committed; the file the user later referenced (`PIVOT_SCRAPER_AUDIT.md`) did not exist in any repo `find`/`rg` could see, and the paste promised in subsequent messages never arrived. This appendix exists so the addendum is self-contained; it should not be cited as evidence of what the original chat output literally said.
 
-> **TO PASTE:** original audit body. Source: the markdown the user produced in their sandbox during the original audit session. Until pasted, the verdict-revision section above references conclusions the reader cannot independently inspect.
+**TL;DR (reconstructed):** Pivot's scraper pipeline is architecturally sound across 5 stages (crawl → extract → merge → validate → promote), with 10 active institutions seeded. Verdict YELLOW: add UMPI next, watch for merge-side failures.
+
+**Pass 1 — Pipeline map (reconstructed):** Static analysis of `supabase/functions/transfer-scraper-*` plus `policy-refresh-start` and `promote-policy-pack`. Identified the 5-stage flow, the `scrape_url_templates` driver table, and the `institution_policy_packs` output table. No code-level red flags found.
+
+**Pass 2 — Row counts (reconstructed):** Marked UNKNOWN. The auditor noted they did not have DB access during the session and would need a follow-up query pass. This pass was never performed in the original audit; it became the addendum's Pass 4.
+
+**Pass 3 — Verdict YELLOW (reconstructed):** Recommendation to onboard UMPI next, on the assumption the pipeline was operational. The verdict-revision section above (RED) supersedes this, on the empirical grounds that the pipeline has not produced new output for 4 months for the original cohort and 1 month for V2.
+
+**Pass 3 also surfaced three side-recommendations** that did not make it into the addendum's revised next-actions and are noted here for the panel-then-pause phase to consider:
+- Add a write-quality SLO to `promote-policy-pack` (e.g., reject packs with confidence < 0.7).
+- Build per-institution rate limiting into `transfer-scraper-crawl` to avoid hostile-domain throttling.
+- Consider moving `validate` from synchronous-in-merge to its own queue.
+
+None of these are blocking; they belong post-Phase 7.
 
