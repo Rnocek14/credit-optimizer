@@ -96,6 +96,7 @@ import TemplateValidation from '@/pages/admin/TemplateValidation';
 import DegreeIntegrityScan from '@/pages/Admin/DegreeIntegrityScan';
 import PolicyRefreshAdmin from '@/pages/Admin/PolicyRefreshAdmin';
 import TransferScraperDashboard from '@/pages/Admin/TransferScraperDashboard';
+import PipelineHealth from '@/pages/Admin/PipelineHealth';
 import PolicyPackPromotion from '@/pages/Admin/PolicyPackPromotion';
 import PolicyPackPipeline from '@/pages/Admin/PolicyPackPipeline';
 import PolicyFieldReview from '@/pages/Admin/PolicyFieldReview';
@@ -550,6 +551,7 @@ export function AppRoutes() {
       } />
       <Route path="/admin/degree-integrity-scan" element={<ProtectedRoute requireAuth={true}><DegreeIntegrityScan /></ProtectedRoute>} />
       <Route path="/admin/transfer-scraper" element={<ProtectedRoute requireAuth={true}><TransferScraperDashboard /></ProtectedRoute>} />
+      <Route path="/admin/pipeline-health" element={<ProtectedRoute requireAuth={true}><PipelineHealth /></ProtectedRoute>} />
       <Route path="/admin/policy-refresh" element={<ProtectedRoute requireAuth={true}><PolicyRefreshAdmin /></ProtectedRoute>} />
       <Route path="/admin/policy-promotion" element={<ProtectedRoute requireAuth={true}><PolicyPackPromotion /></ProtectedRoute>} />
       <Route path="/admin/policy-pipeline" element={<ProtectedRoute requireAuth={true}><PolicyPackPipeline /></ProtectedRoute>} />
