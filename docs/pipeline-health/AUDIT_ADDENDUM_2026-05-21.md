@@ -22,7 +22,7 @@ The conversational audit's verdict was YELLOW, on the premise that the pipeline 
 
 Twenty-four hours of live database diagnostics surfaced the following, and the verdict moves to **RED**:
 
-1. **Cron is dead for both cohorts.** Original-5 (COSC, EMPIRE, TESU, WGU; EXCELSIOR never scraped) last scraped Jan 9–13 2026. V2-expansion-5 (ASUO, GCU, LIBERTY, SNHU, UMGC) last scraped Apr 17–21 2026. Zero successful scrapes for any institution in the last 7 days. The pipeline ran once, four months ago for the original cohort and one month ago for the V2 cohort, and has been silent since.
+1. **Cron is dead for both cohorts.** Original-5 (COSC, EMPIRE, TESU, WGU; EXCELSIOR never scraped) last scraped Jan 9–13 2026. V2-expansion-5 (ASUO, GCU, LIBERTY, SNHU, UMGC) last scraped Apr 17–21 2026. Zero successful scrapes for any institution in the last 7 days. The pipeline ran once, four months ago for the original cohort and one month ago for the V2 cohort, and has been silent since. (Provenance note on EXCELSIOR: verified 2026-05-21 via `SELECT count(*) FROM scrape_jobs WHERE institution = 'EXCELSIOR'` → 0. Its ~170 transfer rules were ingested via external paths — Study.com partner pages (69), CLEP/CollegeBoard registries (45), ACE Credit (56) — none of which touch `scrape_jobs`. EXCELSIOR is "never scraped" in the strict pipeline sense, not "no transfer data".)
 
 2. **Template-column stamping is broken.** `scrape_url_templates.last_scraped_at` is `NULL` for every active template across all 10 institutions, despite job-level success records. The write at `transfer-scraper-auto-scan/index.ts:283` either never executes or writes to the wrong column. Known patch site, not yet applied.
 
@@ -30,7 +30,7 @@ Twenty-four hours of live database diagnostics surfaced the following, and the v
 
 4. **The v1_scope set includes institutions producing no usable artifacts.** UMGC has 145 successful scrapes across both months and 0 packs total — a clean merge-side failure independent of scrape quality. ASUO, GCU show similar 0% promotion rates against small denominators.
 
-5. **Most pack non-promotion is unobservable in the database.** Of 32 non-deprecated packs, 19 (59%) have neither `promoted_at` nor `blocked_reason`. The gate-rejection narrative ("Gate 5 rejects most drafts for missing ground truth") is partially wrong: most non-promotions are not gate rejections — they are abandoned drafts that nothing ever attempted to promote.
+5. **Pack non-promotion is largely unobservable in the database, against a small denominator.** Of 32 non-deprecated packs, 19 (59%) have neither `promoted_at` nor `blocked_reason`. Three of those 19 trace to a January 2026 bulk-SQL backfill that bypassed `promote-policy-pack` entirely; the remaining 16 are likely abandoned drafts. Generalizable claim: the `promote-policy-pack` invocation rate is not currently logged anywhere queryable, so we cannot distinguish "promotion attempted and gate-rejected" from "promotion never attempted." Whether this matters depends on how often promotion is the bottleneck vs. drafts simply not being submitted. The earlier "Gate 5 rejects most drafts" narrative overstated the scope.
 
 **Implication for UMPI onboarding:** the audit's original "can we add UMPI in a day" question is RED-blocked until the pipeline can be shown to function for the existing five institutions. Adding UMPI to a non-functioning pipeline adds a sixth instance of a process that does not currently produce reliable output. The architecture is reusable; the operation is not. Those are different claims and the audit conflated them.
 
@@ -62,9 +62,9 @@ The original audit's "next 3 actions" are replaced by a single sequenced one. No
 2. **Build the admin panel on top of the views.** Tomorrow. Headline-cohort-split layout, per-section source-table captions, `pack_promotion_ratio` (lifetime) + `pack_promotion_ratio_live` (non-deprecated population) shown side by side.
 3. **Sit with the panel for 24 hours before patching anything.** The panel exists to make patches visible against history. Patching the same day defeats that.
 4. **Patch `transfer-scraper-auto-scan/index.ts:283`.** Manual invoke against TESU. Watch Q1, Q1b, Q2 for the four expected deltas. If Q1b stays null, line 283 is the wrong site and the patch is rolled back.
-5. **Restart cron.** Wait one cycle (one week).
+5. **Restart cron — staged.** Restart for one cohort first (TESU, since most data and most signal). Watch the panel for 24h. If Q1/Q1b/Q2 move as expected and nothing surprises, restart for the other nine. Do not restart all ten at once: if there's a fourth bug we haven't found, surface it in one institution, not ten. Same decoupled-change/deltable-signal pattern as steps 3 and 4.
 6. **Re-baseline.** Compare against v1. If UMGC still has scrapes and zero packs, escalate to a merge-pipeline investigation.
-7. **Only after a clean cycle:** revisit the UMPI-onboarding question with real data.
+7. **Only after a clean cycle:** revisit the UMPI-onboarding question with real data. "Real data" is concretely defined as: (a) Q1 shows successful scrapes within the last 7 days for at least 8 of 10 institutions, (b) Q1b shows non-null `last_scraped_at` template stamps for the same 8, and (c) `pack_promotion_ratio_live` is above 50% for at least 3 institutions. Failing any one of these three is a re-block, not a partial win.
 
 UMPI is not on this list by design. The question moves from "can we" to "should we re-ask the question" only after step 6.
 
@@ -76,7 +76,17 @@ UMPI is not on this list by design. The question moves from "can we" to "should 
 - **Does not:** edit a `PIVOT_SCRAPER_AUDIT.md` file (none exists in the repo). Edit existing repo content. Encode interpretations of numbers that may shift after the next cron cycle (those belong in panel captions, which are easier to update than a baseline file).
 
 Related artifacts:
+- `docs/pipeline-health/AUDIT_ADDENDUM_2026-05-21.md` — this document. Self-referential, listed so a reader landing here from search confirms they are in the canonical location.
 - `docs/pipeline-health/BASELINE_2026-05-21_v0_DO_NOT_USE.md` — superseded baseline retained as evidence of the value-verification gap.
 - `docs/pipeline-health/BASELINE_2026-05-21_v1.md` — current baseline with postmortem header.
 - `supabase/migrations/20260521131902_*.sql` — six pipeline-health views.
 - `supabase/migrations/20260521_133919_*.sql` and `20260521_134003_*.sql` — status-filter fix + helper EXECUTE grant.
+
+---
+
+## Appendix A: Original conversational audit (TL;DR / Pass 1 / Pass 2 / Pass 3)
+
+The original audit was produced in chat and never committed. The four-section markdown rendered during that session (TL;DR, Pass 1 pipeline map, Pass 2 row counts marked UNKNOWN, Pass 3 verdict YELLOW) should be pasted here verbatim so this addendum is self-contained and a future reader is not forced to reconstruct the original from chat history.
+
+> **TO PASTE:** original audit body. Source: the markdown the user produced in their sandbox during the original audit session. Until pasted, the verdict-revision section above references conclusions the reader cannot independently inspect.
+
