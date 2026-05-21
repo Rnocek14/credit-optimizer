@@ -17079,6 +17079,68 @@ export type Database = {
           },
         ]
       }
+      v_pipeline_health_funnel_monthly: {
+        Row: {
+          institution_code: string | null
+          month: string | null
+          pack_promotion_ratio: number | null
+          packs_promoted: number | null
+          packs_total: number | null
+          packs_via_merge: number | null
+          packs_via_validate: number | null
+          scrape_to_pack_ratio: number | null
+          scrapes_successful: number | null
+        }
+        Relationships: []
+      }
+      v_pipeline_health_gate_blocks: {
+        Row: {
+          blocked_reason: string | null
+          institution_code: string | null
+          packs_blocked: number | null
+        }
+        Relationships: []
+      }
+      v_pipeline_health_scrape_success_weekly: {
+        Row: {
+          attempts: number | null
+          institution_code: string | null
+          success_ratio: number | null
+          successes: number | null
+          week: string | null
+        }
+        Relationships: []
+      }
+      v_pipeline_health_stamped_7d: {
+        Row: {
+          institution_code: string | null
+          most_recent_stamp: string | null
+          stamped_within_7d: boolean | null
+          successful_scrapes_7d: number | null
+        }
+        Relationships: []
+      }
+      v_pipeline_health_template_inventory: {
+        Row: {
+          institution_code: string | null
+          templates_active: number | null
+          templates_changed: number | null
+          templates_disabled: number | null
+          templates_stale_30d: number | null
+          templates_total: number | null
+        }
+        Relationships: []
+      }
+      v_pipeline_health_template_stamp_freshness: {
+        Row: {
+          institution_code: string | null
+          most_recent_template_stamp: string | null
+          template_stamped_within_7d: boolean | null
+          templates_active: number | null
+          templates_stamped_7d: number | null
+        }
+        Relationships: []
+      }
       v_policy_pack_promotion_candidates: {
         Row: {
           active_templates: number | null
