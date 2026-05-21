@@ -1,0 +1,1 @@
+GRANT EXECUTE ON FUNCTION public._scrape_job_success_status() TO PUBLIC;

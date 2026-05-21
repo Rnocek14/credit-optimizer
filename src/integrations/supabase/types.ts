@@ -17169,6 +17169,7 @@ export type Database = {
       }
     }
     Functions: {
+      _scrape_job_success_status: { Args: never; Returns: string }
       activate_policy_pack: { Args: { p_pack_id: string }; Returns: Json }
       admin_check_and_complete_bulk_job: {
         Args: { p_job_id: string }
