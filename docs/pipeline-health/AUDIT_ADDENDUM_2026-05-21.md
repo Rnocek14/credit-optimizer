@@ -22,7 +22,7 @@ The conversational audit's verdict was YELLOW, on the premise that the pipeline 
 
 Twenty-four hours of live database diagnostics surfaced the following, and the verdict moves to **RED**:
 
-1. **Cron is dead for both cohorts.** Original-5 (COSC, EMPIRE, TESU, WGU; EXCELSIOR never scraped) last scraped Jan 9–13 2026. V2-expansion-5 (ASUO, GCU, LIBERTY, SNHU, UMGC) last scraped Apr 17–21 2026. Zero successful scrapes for any institution in the last 7 days. The pipeline ran once, four months ago for the original cohort and one month ago for the V2 cohort, and has been silent since.
+1. **Cron is dead for both cohorts.** Original-5 (COSC, EMPIRE, TESU, WGU; EXCELSIOR never scraped) last scraped Jan 9–13 2026. V2-expansion-5 (ASUO, GCU, LIBERTY, SNHU, UMGC) last scraped Apr 17–21 2026. Zero successful scrapes for any institution in the last 7 days. The pipeline ran once, four months ago for the original cohort and one month ago for the V2 cohort, and has been silent since. (Provenance note on EXCELSIOR: verified 2026-05-21 via `SELECT count(*) FROM scrape_jobs WHERE institution = 'EXCELSIOR'` → 0. Its ~170 transfer rules were ingested via external paths — Study.com partner pages (69), CLEP/CollegeBoard registries (45), ACE Credit (56) — none of which touch `scrape_jobs`. EXCELSIOR is "never scraped" in the strict pipeline sense, not "no transfer data".)
 
 2. **Template-column stamping is broken.** `scrape_url_templates.last_scraped_at` is `NULL` for every active template across all 10 institutions, despite job-level success records. The write at `transfer-scraper-auto-scan/index.ts:283` either never executes or writes to the wrong column. Known patch site, not yet applied.
 
