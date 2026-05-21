@@ -1,3 +1,5 @@
+> **SUPERSEDED — DO NOT USE.** Q1/Q2/Q3 in this baseline returned zeros because the views filtered `scrape_jobs.status = 'success'`, but the actual enum value is `completed`. See migration `20260521_134003` and `BASELINE_2026-05-21_v1.md`. Retained as evidence of the value-verification gap; not a valid reference for pipeline state.
+
 # Pipeline Health Baseline — 2026-05-21
 
 **Captured at (UTC):** 2026-05-21 13:24:47.682401+00 (SQL session `now()`)
