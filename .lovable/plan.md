@@ -1,63 +1,97 @@
-# Scraper Pipeline Revival — Phased Plan
+## California ASSIST Ingestion Pipeline — Build Plan
 
-End goal: scraper reliably pulls transfer data for the existing 10 institutions on a schedule, with a visible health panel, so adding new schools (UMPI next) becomes a config change instead of an investigation.
+Goal: ingest the California articulation system (116 CCs → 23 CSU + 10 UC) into a provenance-first transfer graph, then use it to power a "Cheapest Path" answer engine. No other states until this works end-to-end.
 
-## What the codebase actually shows (verified this pass)
+---
 
-- **No scraper cron is registered.** `cron.job` contains only `template-generation-cron`, `evidence-backfill-worker-15m`, `degree-truth-scan-nightly`, `maya-hourly-insight-generation`. No entry invokes `transfer-scraper-auto-scan`, `policy-refresh-start`, or `ops-cron-runner`. The "cron dead since January" symptom is "scraper cron was never wired in this repo."
-- **`last_scraped_at` write is missing, not broken.** `transfer-scraper-auto-scan/index.ts` reads `scrape_url_templates` but contains zero writes to `last_scraped_at` anywhere in the file. The audit addendum's `:283` is a misdiagnosis; it's an absent write, not a wrong one.
-- **Observability is already shipped.** Six `v_pipeline_health_*` views + `operational_health_dashboard` + `system-healthcheck` edge function exist. The admin panel just needs to render them.
-- **All pipeline stages exist** as edge functions (crawl, extract, merge, validate, promote-policy-pack, plus `ops-cron-runner` and `policy-refresh-start` as orchestrators). The plumbing is there; the orchestration trigger and the stamp-back write are not.
-- **Admin routes exist**: `/admin/transfer-scraper`, `/admin/policy-promotion`, `/admin/policy-pipeline`, `/admin/policy-refresh`. Link contract surface is stable.
+### Phase 1 — Provenance-first schema (Day 1)
 
-## Phases
+One migration. Extends what we have instead of forking it.
 
-### Phase 1 — Close the audit artifact (30 min, no code)
-Unblock the paper trail so future readers have a single source of truth.
-- Paste original audit into Appendix A of `AUDIT_ADDENDUM_2026-05-21.md`, **or** label Appendix A "Reconstruction, not original" and write from memory.
-- Link-contract audit: confirm `/admin/policy-promotion` and `/admin/transfer-scraper` do not parse `useSearchParams` today, so the panel can pass query strings without breaking either page. (Both files already confirmed not to use search params.)
+**Extend `credit_transfer_rules` (the "current verified snapshot" row):**
+- `source_url TEXT` — exact ASSIST agreement URL
+- `source_type TEXT` — `'state_articulation' | 'registrar' | 'ace' | 'clep' | 'ai_inferred' | 'legacy'`
+- `source_date DATE` — when ASSIST published it
+- `last_verified_at TIMESTAMPTZ`
+- `verification_status TEXT` — `'verified' | 'inferred' | 'stale' | 'rejected'`
+- `provenance_system TEXT` — `'ASSIST' | 'TCCNS' | 'FLVC' | ...`
+- `articulation_agreement_id UUID` — links to the parent agreement
+- Backfill existing rows to `source_type='legacy'`, `verification_status='inferred'`
 
-### Phase 2 — Build the pipeline-health panel (1 session)
-A read-only `/admin/pipeline-health` page on top of the six existing views. No new backend work.
-- Headline cohort split: Original-5 vs V2-expansion-5, last-scrape age per institution.
-- Per-section captions naming the source view (`v_pipeline_health_scrape_success_weekly`, etc.) so the panel is self-documenting.
-- `pack_promotion_ratio` (lifetime) and `pack_promotion_ratio_live` (non-deprecated) side by side.
-- "Investigate" links to `/admin/transfer-scraper?institution=X` and `/admin/policy-promotion?institution=X` (URL shape locked by Phase 1).
-- Re-uses `EnhancedErrorBoundary` and the standard admin layout.
+**New table `articulation_agreements`:**
+- `id`, `from_institution_code`, `to_institution_code`, `academic_year`, `major_code`, `agreement_type` (`'course-to-course' | 'major-prep' | 'igetc' | 'csu-ge'`), `source_url`, `source_system`, `effective_date`, `expires_date`, `pdf_snapshot_url`, `raw_html`, `fetched_at`
 
-### Phase 3 — 24-hour observation pause
-Panel sits before any patches. Purpose: subsequent patches show as deltas against a known baseline. Skip this and we lose the signal from steps 4 and 5.
+**Use existing `transfer_evidence` for the immutable history trail** — every time the ASSIST scraper re-confirms or changes a rule, insert a new evidence row pointing at the same `credit_transfer_rule_id`. Rule row = latest snapshot; evidence table = full audit log. (Matches your "Both" choice.)
 
-### Phase 4 — Fix template stamp-back (small patch)
-Add the missing `last_scraped_at` write in `transfer-scraper-auto-scan/index.ts` after a successful crawl, keyed on `(institution_code, url)`. Manual invoke against TESU only. Watch the `v_pipeline_health_template_stamp_freshness` view for null→timestamp transitions on the 9 TESU templates. If they don't move, the write is in the wrong handler and gets rolled back.
+**New table `assist_ingestion_runs`:** run_id, started_at, completed_at, agreements_discovered, agreements_parsed, rules_inserted, rules_superseded, errors, status.
 
-### Phase 5 — Wire scraper cron (staged)
-Register the missing cron job via the `pg_cron` + `pg_net` pattern (per project rules — insert via the Supabase tool, not migration, because the URL/key are project-specific).
-- **Stage 5a:** schedule `policy-refresh-start` for TESU only, daily. Watch panel for 24h.
-- **Stage 5b:** if Q1/Q1b/Q2 move as expected and nothing surprises, expand the schedule to the other 9 institutions.
-- Decoupled change + deltable signal. If a fourth bug exists, it surfaces in one institution, not ten.
+All tables get GRANTs + RLS (public read on agreements + rules, admin-only writes via `public.is_admin()`).
 
-### Phase 6 — Re-baseline and investigate stragglers
-Compare against `BASELINE_2026-05-21_v1.md`. Known suspects to investigate post-revival:
-- **UMGC:** 145 scrapes, 0 packs → merge-side failure independent of scrape quality.
-- **Validate writer silent since February** → no code change explains it, parked for this phase.
-- **16 abandoned drafts** with no `promoted_at` and no `blocked_reason` → either auto-expire or surface in the promotion queue.
+---
 
-### Phase 7 — UMPI onboarding (the actual end goal)
-Gated on: (a) Q1 shows successful scrapes within 7 days for ≥8/10 institutions, (b) Q1b shows non-null template stamps for the same 8, (c) `pack_promotion_ratio_live` >50% for ≥3 institutions. Failing any one is a re-block, not a partial win. If gates pass, UMPI is a row insert into `scrape_url_templates` + `institutions` and the existing pipeline handles it.
+### Phase 2 — ASSIST ingestion worker (Days 2–6)
 
-## Distance estimate
+Three edge functions, all gated by `x-cron-secret` (matches our ops auth standard):
 
-- Phases 1–2: ~1 working session (panel build is the bulk).
-- Phase 3: calendar wait, not work.
-- Phases 4–5: ~1 session combined if the stamp fix lands cleanly; +1 if Phase 4 reveals a deeper write-path issue.
-- Phase 6: scope unknown until panel shows post-cron state.
-- Phase 7: hours, once gates pass.
+1. **`assist-discover`** — hits `assist.org`'s public agreement index, enumerates `(from_inst, to_inst, major, year)` triples for the current academic year. Writes one `articulation_agreements` row per triple in `status='pending'`.
 
-Realistic: 2–3 focused sessions from here to the inflection point where new schools are routine.
+2. **`assist-fetch`** — workers pull pending agreements, scrape via Firecrawl (we already have `firecrawl-scrape`), store raw HTML + `pdf_snapshot_url` for audit, mark `status='fetched'`.
 
-## Out of scope for this plan
+3. **`assist-parse`** — parses each fetched agreement into structured `credit_transfer_rules` rows. ASSIST has a fairly regular DOM (course block → "satisfies" → target course block), so this is deterministic parsing + a Gemini fallback for irregular rows. Every rule written gets full provenance fields. Every change writes a `transfer_evidence` row.
 
-- Refactoring the 5-stage pipeline architecture (it works; the issue is orchestration and observability).
-- Adding new scrapers or new sources.
-- The validate-writer silence — surfaced in Phase 6 only after the cron-revival signal is clean enough to distinguish "validate broken" from "nothing reaches validate."
+Cron: nightly discover, hourly fetch/parse with a small batch size. Start with a single (from→to) pair to validate end-to-end before opening the floodgates.
+
+---
+
+### Phase 3 — Admin coverage dashboard (Day 7)
+
+New page `/admin/articulation-coverage`:
+- Heatmap: rows = CCs, cols = CSU/UC, cell = # of verified agreements / # of majors covered
+- Per-agreement drill-in: parsed rules vs raw HTML side-by-side, "approve / reject / re-parse" buttons
+- Recent ingestion runs + error log
+- Source-type breakdown of `credit_transfer_rules` (legacy vs state_articulation vs ai_inferred)
+
+This is the only thing you actually have to look at weekly.
+
+---
+
+### Phase 4 — Wire into the existing resolver (Days 8–9)
+
+The existing resolution engine v3 already prefers verified over inferred. We just:
+- Bump ordering so `source_type='state_articulation' + verification_status='verified'` is the highest tier
+- Show source badge in the marketplace ("Verified via ASSIST · updated 2026-05-12 · view agreement →")
+- Filter the marketplace by "California transfer-ready" when a CA CC is in the user's transcript
+
+---
+
+### Phase 5 — Cheapest Path query (Days 10–14)
+
+Given `{current_credits, target_major, target_institution}`:
+1. Pull verified `credit_transfer_rules` for the target
+2. Subtract what the user already has (via existing transcript / completed-courses)
+3. For each missing requirement, find the cheapest CA CC course that articulates (cost from existing pricing packs)
+4. Return: missing courses, recommended CC offerings, total $ + estimated months, full provenance trail per recommendation
+
+Surfaces on `/compare` as a new "California pathway" result card. No new top-level route.
+
+---
+
+### What I am explicitly NOT building
+- Multi-state framework (FLVC/TCCNS adapters wait for after CA is live)
+- Scraping GradFaster/Transferology/CollegeSource (legal blacklist already memorialized)
+- New SaaS tier, employer B2B, FOIA generator — all post-CA
+
+---
+
+### Technical notes (for the record)
+- Uses existing `firecrawl-scrape` edge function
+- Uses existing `transfer_evidence` provenance pattern
+- Uses existing `public.is_admin()` RLS standard
+- Uses existing ops-cron `x-cron-secret` standard
+- No new packages, no new connectors
+
+---
+
+### What I need from you to start
+- Just say **"go"** and I'll open the Phase 1 migration first (schema + grants + RLS), then build the three edge functions.
+- If you want to scope down further (e.g. "start with one CC → SJSU pair as proof"), say so and I'll narrow Phase 2 accordingly.
