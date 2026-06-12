@@ -926,6 +926,78 @@ export type Database = {
         }
         Relationships: []
       }
+      articulation_agreements: {
+        Row: {
+          academic_year: string
+          agreement_type: string
+          created_at: string
+          effective_date: string | null
+          expires_date: string | null
+          fetch_error: string | null
+          fetched_at: string | null
+          from_institution_code: string
+          id: string
+          major_code: string | null
+          major_name: string | null
+          parsed_at: string | null
+          pdf_snapshot_url: string | null
+          raw_html: string | null
+          raw_markdown: string | null
+          rules_extracted: number
+          source_system: string
+          source_url: string
+          status: string
+          to_institution_code: string
+          updated_at: string
+        }
+        Insert: {
+          academic_year: string
+          agreement_type?: string
+          created_at?: string
+          effective_date?: string | null
+          expires_date?: string | null
+          fetch_error?: string | null
+          fetched_at?: string | null
+          from_institution_code: string
+          id?: string
+          major_code?: string | null
+          major_name?: string | null
+          parsed_at?: string | null
+          pdf_snapshot_url?: string | null
+          raw_html?: string | null
+          raw_markdown?: string | null
+          rules_extracted?: number
+          source_system: string
+          source_url: string
+          status?: string
+          to_institution_code: string
+          updated_at?: string
+        }
+        Update: {
+          academic_year?: string
+          agreement_type?: string
+          created_at?: string
+          effective_date?: string | null
+          expires_date?: string | null
+          fetch_error?: string | null
+          fetched_at?: string | null
+          from_institution_code?: string
+          id?: string
+          major_code?: string | null
+          major_name?: string | null
+          parsed_at?: string | null
+          pdf_snapshot_url?: string | null
+          raw_html?: string | null
+          raw_markdown?: string | null
+          rules_extracted?: number
+          source_system?: string
+          source_url?: string
+          status?: string
+          to_institution_code?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       assignment_submissions: {
         Row: {
           assignment_id: string
@@ -972,6 +1044,66 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      assist_ingestion_runs: {
+        Row: {
+          agreements_discovered: number
+          agreements_fetched: number
+          agreements_parsed: number
+          completed_at: string | null
+          created_at: string
+          error_log: Json | null
+          errors_count: number
+          evidence_rows_inserted: number
+          id: string
+          parameters: Json | null
+          rules_inserted: number
+          rules_superseded: number
+          run_type: string
+          source_system: string
+          started_at: string
+          started_by: string | null
+          status: string
+        }
+        Insert: {
+          agreements_discovered?: number
+          agreements_fetched?: number
+          agreements_parsed?: number
+          completed_at?: string | null
+          created_at?: string
+          error_log?: Json | null
+          errors_count?: number
+          evidence_rows_inserted?: number
+          id?: string
+          parameters?: Json | null
+          rules_inserted?: number
+          rules_superseded?: number
+          run_type?: string
+          source_system?: string
+          started_at?: string
+          started_by?: string | null
+          status?: string
+        }
+        Update: {
+          agreements_discovered?: number
+          agreements_fetched?: number
+          agreements_parsed?: number
+          completed_at?: string | null
+          created_at?: string
+          error_log?: Json | null
+          errors_count?: number
+          evidence_rows_inserted?: number
+          id?: string
+          parameters?: Json | null
+          rules_inserted?: number
+          rules_superseded?: number
+          run_type?: string
+          source_system?: string
+          started_at?: string
+          started_by?: string | null
+          status?: string
+        }
+        Relationships: []
       }
       audit_findings: {
         Row: {
@@ -4157,6 +4289,7 @@ export type Database = {
       credit_transfer_rules: {
         Row: {
           acceptance_status: string | null
+          articulation_agreement_id: string | null
           catalog_year_end: string | null
           catalog_year_start: string | null
           confidence: number | null
@@ -4183,6 +4316,7 @@ export type Database = {
           precedence: number | null
           promoted_at: string | null
           provenance_notes: string | null
+          provenance_system: string | null
           rejection_count: number | null
           rule_payload: Json | null
           rule_scope: string | null
@@ -4207,6 +4341,7 @@ export type Database = {
         }
         Insert: {
           acceptance_status?: string | null
+          articulation_agreement_id?: string | null
           catalog_year_end?: string | null
           catalog_year_start?: string | null
           confidence?: number | null
@@ -4233,6 +4368,7 @@ export type Database = {
           precedence?: number | null
           promoted_at?: string | null
           provenance_notes?: string | null
+          provenance_system?: string | null
           rejection_count?: number | null
           rule_payload?: Json | null
           rule_scope?: string | null
@@ -4257,6 +4393,7 @@ export type Database = {
         }
         Update: {
           acceptance_status?: string | null
+          articulation_agreement_id?: string | null
           catalog_year_end?: string | null
           catalog_year_start?: string | null
           confidence?: number | null
@@ -4283,6 +4420,7 @@ export type Database = {
           precedence?: number | null
           promoted_at?: string | null
           provenance_notes?: string | null
+          provenance_system?: string | null
           rejection_count?: number | null
           rule_payload?: Json | null
           rule_scope?: string | null
@@ -4381,6 +4519,13 @@ export type Database = {
             columns: ["superseded_by"]
             isOneToOne: false
             referencedRelation: "transfer_rules_with_freshness"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_ctr_articulation_agreement"
+            columns: ["articulation_agreement_id"]
+            isOneToOne: false
+            referencedRelation: "articulation_agreements"
             referencedColumns: ["id"]
           },
         ]
