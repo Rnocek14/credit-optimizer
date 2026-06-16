@@ -358,6 +358,11 @@ export function AppRoutes() {
           <AdminTransferRules />
         </ProtectedRoute>
       } />
+      <Route path="/admin/articulation-coverage" element={
+        <ProtectedRoute requireAuth={true}>
+          <AppShell><ArticulationCoverage /></AppShell>
+        </ProtectedRoute>
+      } />
 
       {/* ── Teach Feature Routes ────────────────────────────── */}
       <Route path="/teach/discovery" element={
