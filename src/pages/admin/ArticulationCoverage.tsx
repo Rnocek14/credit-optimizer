@@ -61,12 +61,14 @@ export default function ArticulationCoverage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('credit_transfer_rules')
-        .select('source_type, verification_status, provenance_system')
+        .select('rule_source, provenance_system, verified')
         .limit(10000);
       if (error) throw error;
       const counts: Record<string, number> = {};
       for (const row of data ?? []) {
-        const key = `${row.source_type ?? 'unknown'} / ${row.verification_status ?? 'unknown'}`;
+        const provenance = row.provenance_system ?? row.rule_source ?? 'legacy';
+        const status = row.verified ? 'verified' : 'unverified';
+        const key = `${provenance} / ${status}`;
         counts[key] = (counts[key] ?? 0) + 1;
       }
       return Object.entries(counts)
