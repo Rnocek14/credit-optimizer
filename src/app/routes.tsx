@@ -84,6 +84,7 @@ import {
 // ── Admin pages ────────────────────────────────────────────────
 import Admin from '@/pages/Admin';
 import AdminTransferRules from '@/pages/AdminTransferRules';
+import ArticulationCoverage from '@/pages/admin/ArticulationCoverage';
 import AdminBadges from '@/pages/AdminBadges';
 import AdminModeration from '@/pages/AdminModeration';
 import AdminSettings from '@/pages/AdminSettings';
