@@ -13,10 +13,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { Helmet } from "react-helmet-async";
 import { toast } from "sonner";
 import { CareerContextBanner } from "@/components/CareerContextBanner";
+import { TodayHeroCard } from "@/components/today/TodayHeroCard";
+import { useTodayHeroAction } from "@/hooks/useTodayHeroAction";
 
 export default function PlanHub() {
   const { data: activePlan, isLoading: planLoading } = useActivePlan();
   const { data: targetCareer } = useTargetCareer(activePlan?.target_career_id);
+  const { hero, isLoading: heroLoading } = useTodayHeroAction();
   const queryClient = useQueryClient();
 
   const handleClearCareer = async () => {
@@ -68,6 +71,11 @@ export default function PlanHub() {
             Your saved degree plan and progress toward graduation
           </p>
           <CareerContextBanner />
+        </div>
+
+        {/* Next-action strip (salvaged from the Today dashboard) */}
+        <div className="mb-6">
+          <TodayHeroCard hero={hero} isLoading={heroLoading} />
         </div>
 
         {planLoading ? (

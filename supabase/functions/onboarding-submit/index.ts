@@ -74,40 +74,7 @@ serve(async (req) => {
     ];
     let mayaAnalysisData: any = null;
 
-    try {
-      const { data: mayaData, error: mayaError } = await supabase.functions.invoke(
-        'maya-intelligence-engine',
-        {
-          body: {
-            prompt: `Analyze career readiness for: Goal: ${career_goal}, Target Role: ${sanitizedTargetRole}, Location: ${sanitizedLocation}`,
-            context: {
-              career_goal,
-              target_role: sanitizedTargetRole,
-              location: sanitizedLocation,
-              analysis_type: 'onboarding_diagnosis'
-            },
-            persist: false // Don't persist this quick analysis
-          }
-        }
-      );
-
-      if (!mayaError && mayaData) {
-        mayaAnalysisData = mayaData;
-        const confidence = mayaData.insights?.confidence ?? mayaData.insights?.score ?? 65;
-        mayaScore = Math.round(Number(confidence) || 65);
-        
-        if (mayaData.guidance) {
-          const trimmed = String(mayaData.guidance).slice(0, 160);
-          insights = [
-            generateShortInsight(mayaScore, career_goal),
-            trimmed,
-            "Get a full analysis to see detailed recommendations."
-          ];
-        }
-      }
-    } catch (error) {
-      console.error('Maya analysis failed, using fallback:', error);
-    }
+    // maya-intelligence-engine removed in Phase-2 cut; deterministic insights only.
 
     // Ensure user has a referral code
     let referralCode = '';

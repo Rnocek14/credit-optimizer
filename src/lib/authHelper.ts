@@ -86,26 +86,6 @@ export const getCurrentUser = async (): Promise<AuthUser | null> => {
     console.error("Error getting user:", error);
   }
 
-  // If explicitly enabled, allow dev user in development
-  if (isDevAuthEnabled() && !isProduction()) {
-    const { getCurrentDevUser } = await import("./devUserSetup");
-    const devUser = getCurrentDevUser();
-    if (devUser) {
-      console.log('DEBUG: Valid dev user session found:', {
-        name: devUser.name,
-        role: devUser.role,
-        id: devUser.id,
-        sessionValid: devUser.sessionExpires ? Date.now() < devUser.sessionExpires : true
-      });
-      return {
-        id: devUser.id,
-        email: devUser.email,
-        role: toAppRole(devUser.role),
-        name: devUser.name,
-        isDevUser: true,
-      };
-    }
-  }
 
   return null;
 };
@@ -121,12 +101,6 @@ export async function ensureValidSession(userId?: string): Promise<boolean> {
       return true;
     }
 
-    // Check if it's a dev user
-    if (isDevAuthEnabled() && !isProduction()) {
-      const { getCurrentDevUser } = await import("./devUserSetup");
-      const devUser = getCurrentDevUser();
-      return devUser?.id === userId;
-    }
 
     return false;
   } catch (error) {
@@ -140,7 +114,7 @@ export const getUserProfile = async (userId: string, isDevUser: boolean = false)
   
   if (isDevUser) {
     // For dev users, always return a mock profile immediately
-    const devUser = window.__devUser__ || secureStorage.getItem("devUser") || {};
+    const devUser = (window as any).__devUser__ || secureStorage.getItem("devUser") || {};
     console.log("Dev user data:", devUser);
     
     if (devUser && devUser.id) {

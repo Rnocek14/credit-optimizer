@@ -1,7 +1,7 @@
 import type { ModuleTemplate, TemplateValidation, CanonicalId } from '../types/templates';
 import type { BasketItem, Constraints } from '../state/usePlanBasket';
 import type { MarketplaceOption } from '../types/exports';
-import type { EvidenceSummary } from '@/pages/EduTree/hooks/useUserEvidence'; // Phase 1c
+import type { EvidenceSummary } from '@/pages/EduTree/v5/hooks/useUserEvidence'; // Phase 1c
 import { resolveChain } from './prereqs';
 import { calculateTotals } from '../utils/totalsCalculator';
 import { getCanonicalIds } from '../data/canonicalMappings';

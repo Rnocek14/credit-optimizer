@@ -73,7 +73,7 @@ export const hasRole = async (userId: string, role: AppRole): Promise<boolean> =
 export const getUserProfile = async (userId: string, isDevUser: boolean = false): Promise<any | null> => {
   if (isDevUser) {
     // For dev users, return mock profile
-    const devUser = window.__devUser__ || secureStorage.getItem("devUser") || {};
+    const devUser = (window as any).__devUser__ || secureStorage.getItem("devUser") || {};
     
     if (devUser && devUser.id) {
       return {
@@ -139,20 +139,6 @@ export const getCurrentUser = async (): Promise<AppUser | null> => {
     console.error("Error getting user:", error);
   }
 
-  // If explicitly enabled and not production, allow dev user
-  if (isDevAuthEnabled() && !isProduction()) {
-    const { getCurrentDevUser } = await import("./devUserSetup");
-    const devUser = getCurrentDevUser();
-    if (devUser) {
-      return {
-        id: devUser.id,
-        email: devUser.email,
-        role: toAppRole(devUser.role),
-        name: devUser.name,
-        isDevUser: true,
-      };
-    }
-  }
 
   return null;
 };
@@ -179,12 +165,6 @@ export async function ensureValidSession(userId?: string): Promise<boolean> {
       return true;
     }
 
-    // Check if it's a dev user (only in non-production)
-    if (isDevAuthEnabled() && !isProduction()) {
-      const { getCurrentDevUser } = await import("./devUserSetup");
-      const devUser = getCurrentDevUser();
-      return devUser?.id === userId;
-    }
 
     return false;
   } catch (error) {

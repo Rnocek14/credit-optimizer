@@ -12,8 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { Loader2, Target, ArrowLeft, Linkedin, Play } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { enableDevAuth } from "@/lib/security";
-import { setupDevUser } from "@/lib/devUserSetup";
+import {} from "@/lib/security";
 import { MobileLayout, MobileContainer } from "@/components/ui/mobile";
 import { isMobileApp, getMobileAuthRedirectUrl } from "@/lib/mobile";
 
@@ -198,37 +197,6 @@ export default function Auth() {
     }
   };
 
-  const handleDemoLogin = async (userKey: 'aisha' | 'mateo' | 'jade') => {
-    setIsLoading(true);
-    try {
-      // Enable dev auth and set up demo user
-      enableDevAuth();
-      setupDevUser(userKey);
-      
-      const userNames = {
-        aisha: 'Aisha Khan (Mentor)',
-        mateo: 'Mateo Silva (Student)', 
-        jade: 'Jade Chen (Admin)'
-      };
-      
-      toast({
-        title: "Demo account ready!",
-        description: `You're now signed in as ${userNames[userKey]}.`,
-      });
-      
-      // Navigate to today dashboard
-      navigate("/today");
-    } catch (error: any) {
-      console.error("Demo login error:", error);
-      toast({
-        title: "Demo login failed",
-        description: error.message || "Something went wrong",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   return (
     <MobileLayout>
@@ -338,75 +306,6 @@ export default function Auth() {
                         Sign in with LinkedIn
                       </Button>
                       
-                       <div className="relative">
-                         <div className="absolute inset-0 flex items-center">
-                           <Separator className="w-full" />
-                         </div>
-                         <div className="relative flex justify-center text-xs uppercase">
-                           <span className="bg-background px-2 text-muted-foreground">
-                             Or try demo accounts
-                           </span>
-                         </div>
-                       </div>
-                       
-                       <div className="space-y-2">
-                         <p className="text-sm text-muted-foreground text-center">Choose a demo account to test with:</p>
-                         <div className="grid gap-2">
-                           <Button 
-                             type="button" 
-                             variant="outline" 
-                             className="w-full justify-start text-left" 
-                             disabled={isLoading}
-                             onClick={() => handleDemoLogin('mateo')}
-                           >
-                             <div className="flex items-center space-x-3">
-                               <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                                 <span className="text-sm font-semibold text-blue-600">M</span>
-                               </div>
-                               <div>
-                                 <div className="font-medium">Mateo Silva</div>
-                                 <div className="text-xs text-muted-foreground">Student • Has career tracks</div>
-                               </div>
-                             </div>
-                           </Button>
-                           
-                           <Button 
-                             type="button" 
-                             variant="outline" 
-                             className="w-full justify-start text-left" 
-                             disabled={isLoading}
-                             onClick={() => handleDemoLogin('aisha')}
-                           >
-                             <div className="flex items-center space-x-3">
-                               <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
-                                 <span className="text-sm font-semibold text-green-600">A</span>
-                               </div>
-                               <div>
-                                 <div className="font-medium">Aisha Khan</div>
-                                 <div className="text-xs text-muted-foreground">Mentor • Teaching dashboard</div>
-                               </div>
-                             </div>
-                           </Button>
-                           
-                           <Button 
-                             type="button" 
-                             variant="outline" 
-                             className="w-full justify-start text-left" 
-                             disabled={isLoading}
-                             onClick={() => handleDemoLogin('jade')}
-                           >
-                             <div className="flex items-center space-x-3">
-                               <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
-                                 <span className="text-sm font-semibold text-purple-600">J</span>
-                               </div>
-                               <div>
-                                 <div className="font-medium">Jade Chen</div>
-                                 <div className="text-xs text-muted-foreground">Admin • Full access</div>
-                               </div>
-                             </div>
-                           </Button>
-                         </div>
-                       </div>
                    </form>
                  </Form>
               </TabsContent>

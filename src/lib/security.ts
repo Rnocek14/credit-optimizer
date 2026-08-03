@@ -103,7 +103,7 @@ export const checkCriticalRateLimit = (
 // Clear dev mode data securely
 export const clearDevMode = (): void => {
   localStorage.removeItem("devUser");
-  delete window.__devUser__;
+  delete (window as any).__devUser__;
   
   // Clear any other dev-related localStorage items
   const devKeys = Object.keys(localStorage).filter(key => 

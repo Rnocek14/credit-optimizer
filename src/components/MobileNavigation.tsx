@@ -1,7 +1,6 @@
-import { CalendarDays, Compass, User, GraduationCap } from "lucide-react";
+import { Compass, GraduationCap, Store } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { useActivePlan } from "@/hooks/useActivePlan";
 
 interface MobileNavigationProps {
   className?: string;
@@ -10,24 +9,17 @@ interface MobileNavigationProps {
 export function MobileNavigation({ className }: MobileNavigationProps) {
   const location = useLocation();
   const currentPath = location.pathname;
-  const { data: activePlan } = useActivePlan();
-
-  // Always route to /plan — it handles both "has plan" and "no plan" states
-  const planPath = '/plan';
 
   const navigationItems = [
-    { icon: CalendarDays, label: "Today", path: "/today" },
-    { icon: Compass, label: "Discover", path: "/discover" },
-    { icon: GraduationCap, label: "Degree", path: planPath },
-    { icon: User, label: "Progress", path: "/progress" },
+    { icon: GraduationCap, label: "My Plan", path: "/plan" },
+    { icon: Store, label: "Marketplace", path: "/edu-tree-v5/marketplace" },
+    { icon: Compass, label: "Careers", path: "/explore/careers" },
   ];
 
-  // Group-based active detection (matches HubNavigation logic)
   const isActive = (item: typeof navigationItems[0]) => {
-    if (item.label === "Today") return currentPath === "/today";
-    if (item.label === "Discover") return currentPath.startsWith("/discover") || currentPath.startsWith("/explore");
-    if (item.label === "Degree") return currentPath.startsWith("/plan") || currentPath.startsWith("/edu-tree-v5") || currentPath.startsWith("/edu-tree-v6");
-    if (item.label === "Progress") return currentPath.startsWith("/progress");
+    if (item.label === "My Plan") return currentPath.startsWith("/plan") || currentPath.startsWith("/edu-tree-v6");
+    if (item.label === "Marketplace") return currentPath.startsWith("/edu-tree-v5");
+    if (item.label === "Careers") return currentPath.startsWith("/explore");
     return currentPath === item.path;
   };
 
@@ -43,7 +35,7 @@ export function MobileNavigation({ className }: MobileNavigationProps) {
         {navigationItems.map((item) => {
           const active = isActive(item);
           const Icon = item.icon;
-          
+
           return (
             <NavLink
               key={item.label}
@@ -52,8 +44,8 @@ export function MobileNavigation({ className }: MobileNavigationProps) {
               "flex flex-col items-center justify-center rounded-xl p-3 min-w-[56px] min-h-[56px] transition-all duration-200",
                 "hover:bg-accent hover:text-accent-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
                 "active:scale-95 transform",
-                active 
-                  ? "text-primary bg-primary/15" 
+                active
+                  ? "text-primary bg-primary/15"
                   : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
               )}
             >
@@ -62,7 +54,7 @@ export function MobileNavigation({ className }: MobileNavigationProps) {
             </NavLink>
           );
         })}
-        
+
       </div>
     </nav>
   );
