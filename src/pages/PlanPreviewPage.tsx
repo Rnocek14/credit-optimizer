@@ -90,6 +90,13 @@ export default function PlanPreviewPage() {
 
         {/* Day-2 funnel closer: capture email + magic-link back to this URL */}
         <SavePlanCTA templateId={templateId} careerId={careerId} />
+
+        <p className="text-xs text-muted-foreground leading-relaxed pt-2">
+          Costs, timelines, and transfer estimates are based on published institutional
+          policies and provider pricing at the time we last verified them. Policies
+          change and final credit decisions are always made by the institution —
+          confirm with an admissions advisor before purchasing courses or enrolling.
+        </p>
       </div>
     </>
   );

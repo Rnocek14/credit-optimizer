@@ -117,6 +117,7 @@ export default function GetStartedPage() {
           name="description"
           content="Before you spend another dollar on credits — check where they'll actually count. See which schools accept them, credits transferred, and time and money saved."
         />
+        <link rel="canonical" href="https://pivot.app/get-started" />
       </Helmet>
 
       <div className="min-h-screen bg-background">
