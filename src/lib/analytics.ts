@@ -1,13 +1,52 @@
+import { supabase } from '@/integrations/supabase/client';
+
 type EventPayload = Record<string, unknown> & { ts?: number };
+
+// Stable anonymous session id so funnel steps can be joined without auth.
+function getSessionId(): string {
+  try {
+    const KEY = 'pv_session_id';
+    let id = sessionStorage.getItem(KEY);
+    if (!id) {
+      id = crypto.randomUUID();
+      sessionStorage.setItem(KEY, id);
+    }
+    return id;
+  } catch {
+    return 'no-session';
+  }
+}
 
 export function logEvent(name: string, payload: EventPayload = {}) {
   const enriched = { ...payload, ts: Date.now() };
-  // Console sink
-  // eslint-disable-next-line no-console
-  console.log(`[analytics] ${name}`, enriched);
 
-  // OPTIONAL: send to Supabase if you have a table
-  // void supabase.from('events').insert({ name, payload: enriched, created_at: new Date().toISOString() });
+  if (import.meta.env.DEV) {
+    // eslint-disable-next-line no-console
+    console.log(`[analytics] ${name}`, enriched);
+  }
+
+  // Fire-and-forget; analytics must never block or break the UI.
+  try {
+    // Cast: `events` is created by migration 20260803180000 and is not yet in
+    // the generated Database types; regenerate types to drop this cast.
+    void (supabase as any)
+      .from('events')
+      .insert({
+        name,
+        payload: enriched,
+        session_id: getSessionId(),
+        path: typeof window !== 'undefined' ? window.location.pathname : null,
+        referrer: typeof document !== 'undefined' ? document.referrer || null : null,
+      })
+      .then(({ error }) => {
+        if (error && import.meta.env.DEV) {
+          // eslint-disable-next-line no-console
+          console.warn('[analytics] insert failed', error.message);
+        }
+      });
+  } catch {
+    // Swallow — never let telemetry surface to users.
+  }
 }
 
 // Legacy compatibility exports
