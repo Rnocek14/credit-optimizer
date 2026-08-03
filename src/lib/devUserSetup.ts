@@ -5,6 +5,17 @@
 
 import { secureStorage } from "@/lib/security";
 
+declare global {
+  interface Window {
+    __devUser__?: {
+      id: string;
+      email: string;
+      role: string;
+      name?: string;
+    };
+  }
+}
+
 export interface DevUser {
   id: string;
   email: string;

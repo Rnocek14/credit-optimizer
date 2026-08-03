@@ -21,7 +21,6 @@ import { AppShell } from '@/components/AppShell';
 // ── Core pages ─────────────────────────────────────────────────
 import Index from '@/pages/Index';
 import Auth from '@/pages/Auth';
-import DevLogin from '@/pages/DevLogin';
 import Onboarding from '@/pages/Onboarding';
 import QuickStart from '@/pages/QuickStart';
 import NotFound from '@/pages/NotFound';
@@ -156,7 +155,6 @@ export function AppRoutes() {
           <Auth />
         </ProtectedRoute>
       } />
-      <Route path="/dev-login" element={<DevLogin />} />
       <Route path="/onboarding" element={
         <ProtectedRoute requireAuth={true} redirectIfComplete={true}>
           <AppShell><Onboarding /></AppShell>

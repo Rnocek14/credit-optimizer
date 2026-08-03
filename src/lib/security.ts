@@ -132,12 +132,6 @@ export const isDevSessionExpired = (): boolean => {
 export const isProduction = (): boolean => {
   const host = window.location.hostname;
   const isLocal = host === 'localhost' || host === '127.0.0.1';
-  
-  // Check if dev auth is explicitly enabled (override production check)
-  if (isDevAuthEnabled()) {
-    return false;
-  }
-  
   return import.meta.env.PROD && !isLocal;
 };
 
@@ -147,8 +141,10 @@ export const isDevelopment = (): boolean => {
   return import.meta.env.DEV || isLocal;
 };
 
-// Explicit dev-auth toggle; must be enabled to allow dev users
+// Explicit dev-auth toggle; compile-time dead in production builds so no
+// runtime flag (localStorage, window global, or query param) can re-enable it.
 export const isDevAuthEnabled = (): boolean => {
+  if (!import.meta.env.DEV) return false;
   try {
     const flag = localStorage.getItem('enableDevAuth');
     const winFlag = (window as any).__ENABLE_DEV_AUTH__;
@@ -159,8 +155,9 @@ export const isDevAuthEnabled = (): boolean => {
   }
 };
 
-// Helper to enable dev auth mode
+// Helper to enable dev auth mode (dev builds only)
 export const enableDevAuth = (): void => {
+  if (!import.meta.env.DEV) return;
   try {
     localStorage.setItem('enableDevAuth', 'true');
     (window as any).__ENABLE_DEV_AUTH__ = true;
@@ -171,8 +168,8 @@ export const enableDevAuth = (): void => {
   }
 };
 
-// Make enableDevAuth globally available in console
-if (typeof window !== 'undefined') {
+// Console helper is only exposed in dev builds
+if (import.meta.env.DEV && typeof window !== 'undefined') {
   (window as any).enableDevAuth = enableDevAuth;
 }
 
