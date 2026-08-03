@@ -194,12 +194,11 @@ export function checkForDeadEnd(
       }
     }
     
-    // Check feasibility
-    if (needCredits > maxCreditsPossible) {
-      reasons.push(
-        `Insufficient remaining modules for credits (need ${needCredits}, max possible ${maxCreditsPossible})`
-      );
-    }
+    // NOTE (2026-08-03 fix): the remaining-modules list is a PARTIAL view of
+    // future capacity — degrees include free electives beyond structured
+    // modules, so a raw needCredits > maxCreditsPossible comparison produced
+    // false-positive dead-ends on valid selections. Total-credit feasibility
+    // cannot be proven from a partial list and is no longer a blocking check.
     
     if (needResidency > maxResidencyPossible) {
       reasons.push(
@@ -207,7 +206,11 @@ export function checkForDeadEnd(
       );
     }
     
-    if (needUpperDiv > maxUpperDivPossible) {
+    // Same closed-world guard for upper-division: only block when the option
+    // data actually carries level information (otherwise "0 possible" just
+    // means the list doesn't declare levels, not that 300-level is impossible).
+    const levelDataPresent = remainingModules.some(m => m.options.some(o => o.level != null));
+    if (levelDataPresent && needUpperDiv > maxUpperDivPossible) {
       reasons.push(
         `Cannot satisfy upper-division (need ${needUpperDiv} more, only ${maxUpperDivPossible} possible from remaining 300+ level slots)`
       );
