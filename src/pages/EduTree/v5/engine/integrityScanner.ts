@@ -10,6 +10,7 @@
 
 import { validateTemplate } from '../utils/templateValidator';
 import { validateGraduationReadiness, type GraduationReadiness } from '../utils/graduationValidator';
+import { getMinUpperDivisionCredits } from '../utils/policyFieldResolvers';
 import { filterEligibleOptions, scoreOptions, pickBestOption } from './optionFilters';
 import { checkForDeadEnd, type DeadEndCheck, type RemainingModule } from './deadEndDetector';
 import { checkTransferRule } from './transferEngine';
@@ -770,7 +771,6 @@ export function checkAnchorEligibility(policyData: any, institution: string): An
  */
 export function checkUpperDivisionVerified(policyData: any): { verified: boolean; value?: number } {
   // Use canonical resolver from shared module
-  const { getMinUpperDivisionCredits } = require('../utils/policyFieldResolvers');
   const minUL = getMinUpperDivisionCredits(policyData);
   return {
     verified: minUL !== null,
