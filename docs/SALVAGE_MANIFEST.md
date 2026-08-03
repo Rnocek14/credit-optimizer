@@ -106,9 +106,11 @@ Tests/config to update in the same PR:
   `src/hooks/__tests__/useTrackTranscript.test.ts`, `src/lib/__tests__/{telemetry,
   mapToAnalyticsEvent}.test.ts` (or port mapToAnalyticsEvent assertions to lib/analytics).
 - Delete ~38 cypress specs targeting legacy routes; keep the 4 listed in §1.
-- `supabase/config.toml`: remove per-function blocks for deleted functions — esp. the
-  `verify_jwt=false` (publicly invokable) ones: alt-resolve, yt-playlist-import,
-  seed-marketplace (if deleted). Public + deleted = security win.
+- `supabase/config.toml`: no deleted function has a config block (verified — see
+  `EDGE_FUNCTION_AUDIT.md`; an earlier claim here about alt-resolve/yt-playlist-import/
+  seed-marketplace being verify_jwt=false was stale old-repo data). The real security
+  items were in the KEEP set: run-migrations and purge-seeded-invariant-data have been
+  flipped to verify_jwt=true.
 - Deleting `components/ui/{pareto-frontier-panel,ghost-path-visuals,checkpoint-timeline,
   florida-articulation-filter}.tsx` (zero importers post-cut) releases
   `lib/pathfinding/**`, `lib/florida/`, `types/lifePathGraph.ts`.

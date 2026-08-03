@@ -9,7 +9,8 @@ verify_jwt = false
 
 # Edge Functions Configuration
 [functions.run-migrations]
-verify_jwt = false
+# Hardened 2026-08-03: schema-migration runner must not be publicly invokable
+verify_jwt = true
 
 [functions.run-seeds]
 verify_jwt = false
@@ -116,7 +117,8 @@ verify_jwt = false
 
 # Admin-only purge seeded invariant data
 [functions.purge-seeded-invariant-data]
-verify_jwt = false
+# Hardened 2026-08-03: data purge must not be publicly invokable
+verify_jwt = true
 
 # Admin-only rerun invariants for a template
 [functions.rerun-template-invariants]
