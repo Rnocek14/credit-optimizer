@@ -204,7 +204,7 @@ export default function Onboarding() {
               Create Your Career Profile
             </h1>
             <p className="text-muted-foreground text-sm md:text-base">
-            Tell us about yourself to generate your personalized career roadmap
+            Tell us about yourself so we can personalize your degree plan
           </p>
           </div>
 

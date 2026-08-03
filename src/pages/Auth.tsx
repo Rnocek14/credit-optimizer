@@ -212,7 +212,7 @@ export default function Auth() {
           </Link>
           <h1 className="text-2xl font-bold">Welcome</h1>
           <p className="text-muted-foreground">
-            {isMobileApp() ? "Sign in to access your career roadmap" : "Sign in to access your career roadmap"}
+            Sign in to access your degree plan
           </p>
         </div>
 

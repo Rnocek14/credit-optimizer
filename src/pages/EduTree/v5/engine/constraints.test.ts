@@ -30,12 +30,20 @@ describe('validatePlan - Transfer Cap', () => {
       }
     ];
 
-    const violations = validatePlan(basket, [], { max_ace_credits: 6 });
-    
+    // Bucket mode must be verified for caps to enforce (fail-closed design):
+    // without it, validatePlan emits POLICY_UNVERIFIED instead of ALT_CAP.
+    const unverified = validatePlan(basket, [], { max_ace_credits: 6 });
+    expect(unverified.find(v => v.type === VIOLATION_TYPES.POLICY_UNVERIFIED)).toBeDefined();
+
+    const violations = validatePlan(basket, [], {
+      max_ace_credits: 6,
+      transfer_alt_bucket_mode: 'separate',
+    } as any);
+
     const transferCapViolation = violations.find(v => v.type === VIOLATION_TYPES.ALT_CAP);
     expect(transferCapViolation).toBeDefined();
     expect(transferCapViolation?.severity).toBe('error');
-    expect(transferCapViolation?.message).toContain('7 ACE/alt credits exceeds 6');
+    expect(transferCapViolation?.message).toContain('7 alt credits exceeds 6');
   });
 
   it('no violation when ACE credits under cap', () => {
@@ -442,7 +450,7 @@ describe('validatePlan - Budget', () => {
     const budgetViolation = violations.find(v => v.type === VIOLATION_TYPES.BUDGET);
     expect(budgetViolation).toBeDefined();
     expect(budgetViolation?.severity).toBe('error');
-    expect(budgetViolation?.message).toContain('$1,300 exceeds budget of $1,000');
+    expect(budgetViolation?.message).toContain('Plan exceeds budget by $300');
   });
 
   it('handles null costs gracefully', () => {

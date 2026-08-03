@@ -6,6 +6,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { usePlanBasket } from '../state/usePlanBasket';
 import { calculateTotals } from '../utils/totalsCalculator';
+import { validatePlan } from '../engine/constraints';
 import type { OptimizationSuggestion, OptimizationSwap, OptimizationSummary } from '../types/optimizer';
 import type { MarketplaceOption } from '../types/v5';
 import { toast } from '@/hooks/use-toast';
@@ -171,6 +172,28 @@ export function useOptimizationSuggestion(
 
       // Only show suggestion if savings meet threshold
       if (costSaved >= minCostSaved || monthsSaved >= minMonthsSaved) {
+        // Validate the simulated post-swap basket against the real constraint
+        // engine instead of asserting compliance (the old code hardcoded true).
+        const swapByModule = new Map(swaps.map(sw => [sw.moduleId, sw]));
+        const simulatedBasket = items.map(item => {
+          const sw = swapByModule.get(item.moduleId);
+          if (!sw || sw.fromCourseId !== item.courseId) return item;
+          const alt = allOptions.find(o => o.courseId === sw.toCourseId);
+          if (!alt) return item;
+          return {
+            ...item,
+            courseId: alt.courseId,
+            title: alt.title,
+            cost_usd: alt.cost_usd ?? null,
+            duration_weeks: alt.duration_weeks ?? null,
+            credits: alt.credits ?? item.credits,
+            providerType: alt.providerType ?? item.providerType,
+            providerCode: (alt as any).providerCode ?? alt.provider ?? item.providerCode,
+          };
+        });
+        const postSwapViolations = validatePlan(simulatedBasket, allOptions, constraints);
+        const isPolicyCompliant = !postSwapViolations.some(v => v.severity === 'error');
+
         const summary: OptimizationSummary = {
           currentCost,
           optimizedCost,
@@ -179,7 +202,7 @@ export function useOptimizationSuggestion(
           costSaved,
           monthsSaved,
           anchorLabel,
-          isPolicyCompliant: true, // Note: Always verify with your advisor
+          isPolicyCompliant,
         };
 
         setSuggestion({

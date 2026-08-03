@@ -24,11 +24,19 @@
  *     Recoverable — restore before re-adding.
  *   - SNHU: 0 transfer rules. Empty shell.
  */
+/*
+ * Trimmed 2026-08-03 (Phase 3 honest-data pass):
+ *   - EMPIRE: no seeder, no fixture, no template migration — never rendered a
+ *     compare column and cannot back the "verified" claim.
+ *   - EXCELSIOR: excluded until evidence coverage reaches 50%+ (its ~170
+ *     course rules are real, but degree templates/baselines are not seeded) —
+ *     matches useAvailableInstitutions' own gate.
+ * Re-add each school only when it has: active templates, baseline snapshots,
+ * and ground-truth-backed policy fields. See docs/DATA_ASSET_REGISTER.md.
+ */
 export const VERIFIED_SCHOOL_CODES = [
   'TESU',
   'COSC',
-  'EXCELSIOR',
-  'EMPIRE',
   'WGU',
 ] as const;
 
