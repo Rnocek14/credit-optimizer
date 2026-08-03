@@ -179,7 +179,7 @@ export function SavePlanCTA({ templateId, careerId }: SavePlanCTAProps) {
   }
 
   return (
-    <Card className="p-6 md:p-8 bg-gradient-to-br from-primary/5 via-primary/10 to-accent/5 border-primary/20">
+    <Card id="save-plan-cta" className="p-6 md:p-8 bg-gradient-to-br from-primary/5 via-primary/10 to-accent/5 border-primary/20">
       <div className="flex flex-col gap-5">
         <div className="space-y-2">
           <Badge variant="secondary" className="self-start gap-1.5">
