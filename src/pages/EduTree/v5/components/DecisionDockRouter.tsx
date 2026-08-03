@@ -833,11 +833,13 @@ export function DecisionDockRouter(props: DecisionDockRouterProps) {
 
           {/* Header/title for ARIA */}
           <div className="flex items-center justify-between px-4 pb-2 border-b relative">
+            <DrawerPrimitive.Title asChild>
             <h2 id={titleId} className="text-sm font-medium text-muted-foreground">
               {scope === 'degree' && 'Degree Analyzer'}
               {scope === 'year' && `Year ${props.year} Marketplace`}
               {scope === 'module' && `${props.moduleLabel ?? 'Module'} Options`}
             </h2>
+            </DrawerPrimitive.Title>
             
             {/* Snap point indicator badges */}
             <div className="absolute top-1/2 -translate-y-1/2 right-12 flex gap-1 z-10 pointer-events-none">

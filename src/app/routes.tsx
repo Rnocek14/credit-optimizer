@@ -65,6 +65,7 @@ import OptimizerSeeding from '@/pages/Admin/OptimizerSeeding';
 // ── Public SEO surfaces (no auth, indexable) ───────────────────
 import GuidesIndexPage from '@/pages/public/GuidesIndexPage';
 import GuidePage from '@/pages/public/GuidePage';
+import TransferCheckPage from '@/pages/public/TransferCheckPage';
 
 export function AppRoutes() {
   return (
@@ -269,6 +270,7 @@ export function AppRoutes() {
       <Route path="/admin/generation-jobs" element={<ProtectedRoute requireAuth={true}><GenerationJobs /></ProtectedRoute>} />
 
       {/* ── Public SEO surfaces (auth-free, indexable) ──────── */}
+      <Route path="/transfer-check" element={<TransferCheckPage />} />
       <Route path="/guides" element={<GuidesIndexPage />} />
       <Route path="/guides/:slug" element={<GuidePage />} />
 

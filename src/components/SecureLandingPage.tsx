@@ -69,6 +69,12 @@ const SecureLandingPage = () => {
           <p className="text-xs text-muted-foreground">
             Free. No credit card. 10 seconds to a real answer.
           </p>
+
+          <Button asChild variant="ghost" size="sm" className="text-muted-foreground">
+            <Link to="/transfer-check">
+              Just want to check one course? Try the free transfer checker
+            </Link>
+          </Button>
         </div>
 
       </div>
