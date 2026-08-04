@@ -189,14 +189,27 @@ export function GraduationPlanCard({ templateId, previewCareerId }: GraduationPl
     mutationFn: async () => {
       if (!templateId) throw new Error('No template selected');
       const user = await getCurrentUser();
-      if (!user?.id) throw new Error('Not authenticated');
+      if (!user?.id) {
+        // Anonymous visitor: route them to the email/magic-link flow on this
+        // page instead of dead-ending — that flow signs them up and returns
+        // them here authenticated.
+        const cta = document.getElementById('save-plan-cta');
+        if (cta) {
+          cta.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          const input = cta.querySelector<HTMLInputElement>('input[type="email"]');
+          input?.focus({ preventScroll: true });
+        }
+        toast.info('Enter your email below — we’ll send a one-click link that saves this plan to your account.');
+        return null;
+      }
       const planName =
         ctx?.programName && ctx?.schoolName
           ? `${ctx.schoolName} — ${ctx.programName}`
           : ctx?.schoolName ?? 'My Degree Plan';
       return createUserPlan(user.id, planName, templateId, previewCareerId ?? null);
     },
-    onSuccess: () => {
+    onSuccess: (created) => {
+      if (!created) return; // anonymous path: handled above, nothing saved yet
       queryClient.invalidateQueries({ queryKey: ['edutree', 'active-plan'] });
       toast.success('Your plan is locked in.');
       navigate('/plan');

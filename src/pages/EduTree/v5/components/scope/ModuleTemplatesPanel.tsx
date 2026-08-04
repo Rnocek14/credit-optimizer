@@ -10,7 +10,7 @@ import type { ModuleData } from '../../types/v5';
 import type { ModuleTemplate } from '../../types/templates';
 import { trackTelemetryEvent } from '@/utils/telemetry';
 import { logEvent } from '@/lib/analytics';
-import { useUserEvidence } from '@/pages/EduTree/hooks/useUserEvidence';
+import { useUserEvidence } from '@/pages/EduTree/v5/hooks/useUserEvidence';
 import { useApplyTemplate } from '../../hooks/useApplyTemplate';
 import { previewTemplate } from '../../engine/previewTemplate';
 import { TemplateDiffStrip } from '../TemplateDiffStrip';

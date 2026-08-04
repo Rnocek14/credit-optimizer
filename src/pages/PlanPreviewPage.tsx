@@ -18,6 +18,7 @@ import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
 import { GraduationPlanCard } from '@/components/plan/GraduationPlanCard';
 import { SavePlanCTA } from '@/components/plan/SavePlanCTA';
+import { ProviderLinkStrip } from '@/components/ProviderLinkStrip';
 import { logEvent } from '@/lib/analytics';
 
 export default function PlanPreviewPage() {
@@ -90,6 +91,16 @@ export default function PlanPreviewPage() {
 
         {/* Day-2 funnel closer: capture email + magic-link back to this URL */}
         <SavePlanCTA templateId={templateId} careerId={careerId} />
+
+        {/* Monetization surface: tracked outbound provider links */}
+        <ProviderLinkStrip source="plan_preview" templateId={templateId} />
+
+        <p className="text-xs text-muted-foreground leading-relaxed pt-2">
+          Costs, timelines, and transfer estimates are based on published institutional
+          policies and provider pricing at the time we last verified them. Policies
+          change and final credit decisions are always made by the institution —
+          confirm with an admissions advisor before purchasing courses or enrolling.
+        </p>
       </div>
     </>
   );

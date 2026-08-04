@@ -38,8 +38,11 @@ interface TrustInfo {
 }
 
 async function fetchTrustInfo(templateId: string): Promise<TrustInfo> {
+  // templateId comes from degree_templates (program_templates is an unrelated
+  // AI-generation table — the old lookup always returned null, so the trust
+  // line never rendered).
   const { data: tpl } = await supabase
-    .from('program_templates')
+    .from('degree_templates')
     .select('institution_code')
     .eq('id', templateId)
     .maybeSingle();
@@ -179,7 +182,7 @@ export function SavePlanCTA({ templateId, careerId }: SavePlanCTAProps) {
   }
 
   return (
-    <Card className="p-6 md:p-8 bg-gradient-to-br from-primary/5 via-primary/10 to-accent/5 border-primary/20">
+    <Card id="save-plan-cta" className="p-6 md:p-8 bg-gradient-to-br from-primary/5 via-primary/10 to-accent/5 border-primary/20">
       <div className="flex flex-col gap-5">
         <div className="space-y-2">
           <Badge variant="secondary" className="self-start gap-1.5">

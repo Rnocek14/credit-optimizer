@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, CheckCircle2, AlertCircle, Database } from 'lucide-react';
+import { Loader2, CheckCircle2, AlertCircle, Database, XCircle, Circle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { seedEduTreeData } from '@/lib/seedData';
 import { seedMarketplace } from '@/lib/seedMarketplace';
@@ -10,14 +10,12 @@ import { toast } from 'sonner';
 interface SeedStatus {
   eduTree: 'idle' | 'loading' | 'success' | 'error';
   marketplace: 'idle' | 'loading' | 'success' | 'error';
-  demoCourses: 'idle' | 'loading' | 'success' | 'error';
 }
 
 export function ComprehensiveSeeder() {
   const [status, setStatus] = useState<SeedStatus>({
     eduTree: 'idle',
-    marketplace: 'idle',
-    demoCourses: 'idle'
+    marketplace: 'idle'
   });
   const [isSeeding, setIsSeeding] = useState(false);
 
@@ -61,46 +59,14 @@ export function ComprehensiveSeeder() {
       setStatus(prev => ({ ...prev, marketplace: 'error' }));
       toast.error(`Marketplace seeding failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
-
-    // 3. Seed Demo Courses
-    try {
-      setStatus(prev => ({ ...prev, demoCourses: 'loading' }));
-      console.log('🌱 Starting demo courses seeding...');
-      const { data, error } = await supabase.functions.invoke('demo-course-seeder', {
-        body: {}
-      });
-      if (error) {
-        console.error('❌ Demo courses edge function returned error:', error);
-        throw error;
-      }
-      console.log('✅ Demo courses seeded successfully:', data);
-      setStatus(prev => ({ ...prev, demoCourses: 'success' }));
-      toast.success(`Demo courses seeded: ${data?.coursesProcessed || 0} processed`);
-    } catch (error) {
-      console.error('❌ Demo courses seeding failed:', error);
-      console.error('Error details:', {
-        message: error instanceof Error ? error.message : 'Unknown error',
-        stack: error instanceof Error ? error.stack : undefined,
-        error
-      });
-      setStatus(prev => ({ ...prev, demoCourses: 'error' }));
-      toast.error(`Demo courses seeding failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    }
-
-    setIsSeeding(false);
-    toast.success('All seeding completed!');
   };
 
   const getStatusIcon = (state: 'idle' | 'loading' | 'success' | 'error') => {
     switch (state) {
-      case 'loading':
-        return <Loader2 className="h-4 w-4 animate-spin text-blue-500" />;
-      case 'success':
-        return <CheckCircle2 className="h-4 w-4 text-green-500" />;
-      case 'error':
-        return <AlertCircle className="h-4 w-4 text-red-500" />;
-      default:
-        return <div className="h-4 w-4 rounded-full border-2 border-muted" />;
+      case 'loading': return <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />;
+      case 'success': return <CheckCircle2 className="h-4 w-4 text-green-500" />;
+      case 'error': return <XCircle className="h-4 w-4 text-destructive" />;
+      default: return <Circle className="h-4 w-4 text-muted-foreground" />;
     }
   };
 
@@ -112,7 +78,7 @@ export function ComprehensiveSeeder() {
           Comprehensive Data Seeding
         </CardTitle>
         <CardDescription>
-          Seed all application data: EduTree courses, marketplace templates, and demo courses
+          Seed all application data: EduTree courses and marketplace templates
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -133,13 +99,7 @@ export function ComprehensiveSeeder() {
             </span>
           </div>
           
-          <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
-            {getStatusIcon(status.demoCourses)}
-            <span className="font-medium">Demo Courses</span>
-            <span className="text-sm text-muted-foreground ml-auto">
-              {status.demoCourses === 'success' ? 'Seeded' : status.demoCourses === 'loading' ? 'Seeding...' : 'Ready'}
-            </span>
-          </div>
+
         </div>
 
         <Button 

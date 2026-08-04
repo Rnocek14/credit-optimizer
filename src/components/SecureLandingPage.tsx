@@ -1,10 +1,21 @@
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
+import { Helmet } from "react-helmet-async";
 import { GraduationCap, ArrowRight, DollarSign, Clock, RefreshCw } from "lucide-react";
+
+const SITE_URL = "https://pivot.app";
 
 const SecureLandingPage = () => {
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
+      <Helmet>
+        <title>Pivot — Check Where Your College Credits Actually Count</title>
+        <meta
+          name="description"
+          content="Before you spend another dollar on credits, see exactly where they'll count. Compare verified degree paths across transfer-friendly universities and finish your bachelor's faster, for less."
+        />
+        <link rel="canonical" href={`${SITE_URL}/`} />
+      </Helmet>
       <div className="max-w-lg w-full space-y-10 text-center">
         {/* Hero */}
         <div className="space-y-5">
@@ -34,7 +45,7 @@ const SecureLandingPage = () => {
             <DollarSign className="h-5 w-5 text-primary mt-0.5 shrink-0" />
             <div>
               <p className="text-sm font-medium text-foreground">What you save</p>
-              <p className="text-xs text-muted-foreground">Real cost across 5 verified schools</p>
+              <p className="text-xs text-muted-foreground">Real cost across verified schools</p>
             </div>
           </div>
           <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
@@ -58,15 +69,14 @@ const SecureLandingPage = () => {
           <p className="text-xs text-muted-foreground">
             Free. No credit card. 10 seconds to a real answer.
           </p>
+
+          <Button asChild variant="ghost" size="sm" className="text-muted-foreground">
+            <Link to="/transfer-check">
+              Just want to check one course? Try the free transfer checker
+            </Link>
+          </Button>
         </div>
 
-        {process.env.NODE_ENV === 'development' && (
-          <div className="pt-4 border-t border-border">
-            <Button variant="ghost" size="sm" asChild>
-              <Link to="/dev-login">Development Login</Link>
-            </Button>
-          </div>
-        )}
       </div>
     </div>
   );

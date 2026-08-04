@@ -22,3 +22,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Local environment (anon key is public-by-design, but env files stay untracked)
+.env

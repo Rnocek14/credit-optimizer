@@ -51,6 +51,9 @@ function build() {
 
   const staticUrls = [
     urlEntry(`${SITE_URL}/`, today, '1.0'),
+    urlEntry(`${SITE_URL}/get-started`, today, '0.9'),
+    urlEntry(`${SITE_URL}/transfer-check`, today, '0.9'),
+    urlEntry(`${SITE_URL}/compare`, today, '0.9'),
     urlEntry(`${SITE_URL}/guides`, today, '0.9'),
   ];
 

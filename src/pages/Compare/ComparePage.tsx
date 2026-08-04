@@ -202,6 +202,7 @@ export default function ComparePage() {
           name="description"
           content={`Side-by-side comparison of ${VERIFIED_SCHOOL_CODES.length} verified universities — cost, time, and personalized transfer fit.`}
         />
+        <link rel="canonical" href="https://pivot.app/compare" />
       </Helmet>
 
       <div className="container mx-auto px-4 py-8 lg:py-10 max-w-6xl space-y-6">

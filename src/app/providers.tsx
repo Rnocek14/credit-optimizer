@@ -6,9 +6,6 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { HelmetProvider } from "react-helmet-async";
 import { ThemeProvider } from "next-themes";
 import { AuthProvider } from "@/contexts/AuthContext";
-import { UserJourneyProvider } from "@/contexts/UserJourneyContext";
-import { UnifiedDataProvider } from "@/contexts/UnifiedDataContext";
-import TutorialProvider from "@/tutorial/TutorialProvider";
 import { EnhancedErrorBoundary } from "@/components/enhanced/EnhancedErrorBoundary";
 
 const queryClient = new QueryClient();
@@ -20,24 +17,18 @@ export function AppProviders({ children }: { children: React.ReactNode }) {
         <HelmetProvider>
           <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
             <TooltipProvider>
-              <TutorialProvider>
-                <AuthProvider>
-                  <UserJourneyProvider>
-                    <UnifiedDataProvider>
-                      <EnhancedErrorBoundary
-                        name="app-content"
-                        onError={(error) => {
-                          console.error('App-level error:', error);
-                        }}
-                      >
-                        <Toaster />
-                        <Sonner />
-                        {children}
-                      </EnhancedErrorBoundary>
-                    </UnifiedDataProvider>
-                  </UserJourneyProvider>
-                </AuthProvider>
-              </TutorialProvider>
+              <AuthProvider>
+                <EnhancedErrorBoundary
+                  name="app-content"
+                  onError={(error) => {
+                    console.error('App-level error:', error);
+                  }}
+                >
+                  <Toaster />
+                  <Sonner />
+                  {children}
+                </EnhancedErrorBoundary>
+              </AuthProvider>
             </TooltipProvider>
           </ThemeProvider>
         </HelmetProvider>

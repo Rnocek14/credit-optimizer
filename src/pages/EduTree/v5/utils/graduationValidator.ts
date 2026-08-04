@@ -5,6 +5,7 @@
 
 import type { BasketItem } from '../state/usePlanBasket';
 import type { PartnerPolicy } from '../engine/yearPlanner';
+import { getMinUpperDivisionCredits } from './policyFieldResolvers';
 
 export interface GraduationRequirement {
   name: string;
@@ -178,7 +179,6 @@ export function validateGraduationReadiness(
 
   // Upper-division is only verified if the policy explicitly sets the requirement
   // Use canonical resolver from shared module for consistency
-  const { getMinUpperDivisionCredits } = require('./policyFieldResolvers');
   const minUL = getMinUpperDivisionCredits(policy);
   const isUpperDivisionVerified = minUL !== null;
 

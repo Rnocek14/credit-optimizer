@@ -280,6 +280,11 @@ Deno.serve(async (req) => {
             institution: institution,
             job_type: 'policy',
             priority: template.priority || 5,
+            // Fix (2026-08-03): template_id was never passed, so the crawl
+            // function's last_scraped_at stamp + hash change-detection block
+            // (crawl index.ts ~L292, gated on template_id) never executed —
+            // the root cause of Q1b showing NULL for all 10 institutions.
+            template_id: template.id,
           }),
         });
 

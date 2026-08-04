@@ -15,7 +15,6 @@ import { Loader2, User, Target, MapPin } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 // HubNavigation now provided by AppShell at route level
 import OnboardingConfirmation from "@/components/OnboardingConfirmation";
-import { LinkedInImport } from "@/components/LinkedInImport";
 
 const formSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
@@ -160,18 +159,13 @@ export default function Onboarding() {
         },
       };
 
-      // Call the generate-roadmap edge function
-      const { error: roadmapError } = await supabase.functions.invoke("generate-roadmap", {
-        body: edgeFunctionPayload,
-      });
-
-      if (roadmapError) {
-        throw roadmapError;
-      }
+      // Profile persisted above; the legacy AI roadmap generator was removed
+      // in the Phase-2 cut (see docs/SALVAGE_MANIFEST.md).
+      void edgeFunctionPayload;
 
       toast({
         title: "Profile Created Successfully!",
-        description: "Your personalized roadmap is being generated...",
+        description: "You're all set — let's build your plan.",
       });
 
       // Show confirmation screen instead of immediate redirect
@@ -210,13 +204,8 @@ export default function Onboarding() {
               Create Your Career Profile
             </h1>
             <p className="text-muted-foreground text-sm md:text-base">
-            Tell us about yourself to generate your personalized career roadmap
+            Tell us about yourself so we can personalize your degree plan
           </p>
-          </div>
-
-          {/* LinkedIn Import Option */}
-          <div className="mb-6">
-            <LinkedInImport />
           </div>
 
           <Form {...form}>
