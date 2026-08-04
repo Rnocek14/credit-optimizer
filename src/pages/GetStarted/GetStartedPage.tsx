@@ -115,7 +115,7 @@ export default function GetStartedPage() {
         <title>Check Where Your Credits Count | Pivot</title>
         <meta
           name="description"
-          content="Before you spend another dollar on credits — check where they'll actually count. See which schools accept them, credits transferred, and time and money saved."
+          content="Have college credits sitting unused? See which schools take them and your fastest, cheapest path to finishing a degree. Free, 10 seconds, no signup."
         />
         <link rel="canonical" href="https://pivot.app/get-started" />
       </Helmet>
