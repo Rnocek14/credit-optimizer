@@ -82,6 +82,19 @@ export function getEstimatedTransferFitFromPicker(
     matched += Math.min(owned, capacity);
   }
 
+  // General transferable college credit — community college, a prior 4-year
+  // school, or unspecified. It isn't tied to an alt-credit provider; it fills
+  // institutional slots up to the school's typical transfer cap (~75% of the
+  // degree at TESU/COSC/WGU). Without this, the most common visitor — someone
+  // with old college credits and no alt-provider credit — scored 0 transfer
+  // fit and got a generic, un-personalized comparison.
+  const general = creditsBySource['GENERAL'] ?? 0;
+  if (general > 0) {
+    const transferCap = total * 0.75;
+    const roomLeft = Math.max(0, transferCap - matched);
+    matched += Math.min(general, roomLeft);
+  }
+
   return Math.max(0, Math.min(1, matched / total));
 }
 

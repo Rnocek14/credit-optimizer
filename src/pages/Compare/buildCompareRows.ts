@@ -60,15 +60,24 @@ const GOAL_TO_WEIGHTS = {
 export function buildCompareRows(
   templates: MarketplaceDegreeTemplate[],
   picker: CreditPickerState,
-  goal: GoalPreference
+  goal: GoalPreference,
+  /**
+   * General transferable college credit not tied to an alt-credit provider
+   * (community college, a prior 4-year school, or unspecified). Personalizes
+   * the ranking for the most common visitor, who has old college credits and
+   * no Sophia/CLEP/Study.com credit.
+   */
+  generalCredits = 0
 ): CompareRow[] {
   if (templates.length === 0) return [];
 
-  const scored: ScoredTemplate[] = scorePool(templates, { creditsBySource: picker });
+  const creditsBySource = { ...picker, GENERAL: generalCredits } as Record<string, number>;
+  const scored: ScoredTemplate[] = scorePool(templates, { creditsBySource });
   const weights = GOAL_TO_WEIGHTS[goal];
 
   const personalized =
-    (picker.CLEP ?? 0) + (picker.SOPHIA ?? 0) + (picker.STUDYCOM ?? 0) + (picker.STRAIGHTERLINE ?? 0) > 0;
+    (picker.CLEP ?? 0) + (picker.SOPHIA ?? 0) + (picker.STUDYCOM ?? 0) + (picker.STRAIGHTERLINE ?? 0)
+    + generalCredits > 0;
 
   const rows: CompareRow[] = scored.map((s) => {
     const t = s.template;

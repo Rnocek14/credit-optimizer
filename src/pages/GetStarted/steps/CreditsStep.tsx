@@ -122,10 +122,10 @@ export function CreditsStep({ onContinue, initial }: CreditsStepProps) {
           Pre-decision check · 10 seconds
         </p>
         <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">
-          Before you spend another dollar — check where your credits actually count.
+          You've got credits. Let's see where they finish a degree.
         </h1>
         <p className="text-muted-foreground text-base max-w-md mx-auto">
-          See which schools accept them, how many transfer, and how much time and money you save.
+          Community college, a school you left, Sophia, CLEP — tell us roughly what you have and we'll show your fastest, cheapest path to a degree.
         </p>
       </div>
 

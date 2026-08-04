@@ -24,11 +24,11 @@ const SecureLandingPage = () => {
           </div>
 
           <h1 className="text-3xl md:text-4xl font-bold text-foreground leading-tight">
-            Before you spend another dollar on credits — check where they'll actually count.
+            Have college credits? See where they finish a degree — fastest and cheapest.
           </h1>
 
           <p className="text-muted-foreground text-lg leading-relaxed">
-            See which schools accept your courses, how many credits transfer, and how much time and money you save — in 10 seconds.
+            Old community-college credits, a half-finished degree, Sophia or CLEP — see which schools take them, how much you'd save, and your fastest path to done. 10 seconds, no signup.
           </p>
         </div>
 
@@ -61,7 +61,7 @@ const SecureLandingPage = () => {
         <div className="space-y-4 pt-2">
           <Button asChild size="lg" className="w-full text-base">
             <Link to="/get-started">
-              Check if this counts
+              See where my credits count
               <ArrowRight className="ml-2 h-4 w-4" />
             </Link>
           </Button>

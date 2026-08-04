@@ -75,12 +75,21 @@ export default function ComparePage() {
     return Array.from(bySchool.values());
   }, [allTemplates, state.careerId]);
 
-  const rows = useMemo(
-    () => buildCompareRows(schoolTemplates, state.picker, state.goal),
-    [schoolTemplates, state.picker, state.goal]
+  // General transferable credit = total prior credits the user reported minus
+  // whatever they attributed to named alt-credit providers. This is what a
+  // community-college / 4-year / "not sure where" visitor is carrying, and it
+  // personalizes their ranking instead of leaving it generic.
+  const generalCredits = Math.max(
+    0,
+    state.priorCredits - totalPickerCredits(state.picker)
   );
 
-  const personalized = isPickerActive(state.picker);
+  const rows = useMemo(
+    () => buildCompareRows(schoolTemplates, state.picker, state.goal, generalCredits),
+    [schoolTemplates, state.picker, state.goal, generalCredits]
+  );
+
+  const personalized = isPickerActive(state.picker) || generalCredits > 0;
 
   const headline = useMemo(
     () => buildCompareHeadline(rows, state.goal, personalized),
@@ -226,7 +235,12 @@ export default function ComparePage() {
 
         {/* HERO: the savings sentence is the H1. No competition above the fold. */}
         {!isLoading && headline ? (
-          <CompareHeadline headline={headline} priorCredits={state.priorCredits} />
+          <CompareHeadline
+            headline={headline}
+            bestRow={rows[0]}
+            personalized={personalized}
+            priorCredits={state.priorCredits}
+          />
         ) : !isLoading ? (
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
             Compare verified degree plans
