@@ -1,41 +1,49 @@
+import { vi } from 'vitest';
 import { render } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { ModuleCard } from './ModuleCard';
 import type { MarketplaceOption } from '../types/v5';
 
 // Mock Zustand stores
-jest.mock('../state/usePlanStore', () => ({
-  usePlanStore: () => ({
-    selections: {},
-    toggleCourse: jest.fn(),
-  }),
-}));
+vi.mock('../state/usePlanStore', () => {
+  const state = { selections: {}, toggleCourse: vi.fn() };
+  return {
+    usePlanStore: (selector?: (s: typeof state) => unknown) =>
+      typeof selector === 'function' ? selector(state) : state,
+  };
+});
 
-jest.mock('../state/usePlanBasket', () => ({
-  usePlanBasket: () => ({
-    items: [],
-    moduleStates: {},
-  }),
-}));
+// usePlanBasket is a Zustand store, so callers pass a SELECTOR:
+// `usePlanBasket(s => s.items)`. The old mock ignored the selector and
+// returned the whole state object, so ModuleCard's `basket` was
+// `{items, moduleStates}` rather than an array — every test in this file
+// died on "TypeError: basket is not iterable".
+vi.mock('../state/usePlanBasket', () => {
+  const state = { items: [], moduleStates: {} };
+  return {
+    usePlanBasket: (selector?: (s: typeof state) => unknown) =>
+      typeof selector === 'function' ? selector(state) : state,
+  };
+});
 
-jest.mock('../hooks/usePlanBasketWithToasts', () => ({
+vi.mock('../hooks/usePlanBasketWithToasts', () => ({
   usePlanBasketWithToasts: () => ({
-    removeItemWithToast: jest.fn(),
+    removeItemWithToast: vi.fn(),
   }),
 }));
 
-jest.mock('../hooks/useAutoFillModule', () => ({
+vi.mock('../hooks/useAutoFillModule', () => ({
   useAutoFillModule: () => ({
-    quickPick: jest.fn(),
+    quickPick: vi.fn(),
   }),
 }));
 
-jest.mock('@/utils/telemetry', () => ({
-  trackTelemetryEvent: jest.fn(),
+vi.mock('@/utils/telemetry', () => ({
+  trackTelemetryEvent: vi.fn(),
 }));
 
-jest.mock('../utils/safeTelemetry', () => ({
-  safeTrack: jest.fn(),
+vi.mock('../utils/safeTelemetry', () => ({
+  safeTrack: vi.fn(),
 }));
 
 describe('ModuleCard - Options Count Display', () => {
@@ -48,7 +56,7 @@ describe('ModuleCard - Options Count Display', () => {
     creditsEarned: 0,
     creditsRequired: 6,
     isCollapsed: false,
-    onToggle: jest.fn(),
+    onToggle: vi.fn(),
     optionsCount: 0,
   };
 
@@ -179,7 +187,7 @@ describe('ModuleCard - Edge Cases', () => {
     creditsEarned: 0,
     creditsRequired: 6,
     isCollapsed: false,
-    onToggle: jest.fn(),
+    onToggle: vi.fn(),
     optionsCount: 0,
   };
 
