@@ -1,5 +1,26 @@
 # Monetization Runbook
 
+> ## ⛔ BLOCKED — do not drive paid or SEO traffic yet
+>
+> **See `docs/TRANSFERABILITY_ACCURACY_AUDIT_2026-09-15.md` (verdict: RED).**
+>
+> The affiliate plumbing described below is complete and correct. The product
+> it monetizes is not currently accurate. Specifically: when no transfer rule
+> exists, `useTransferVerification.ts:205-220` returns `verified` or `elective`
+> rather than `unknown`, so the UI asserts a transfer approval it has no basis
+> for — under a green "Verified" badge, on public pages, next to affiliate
+> links.
+>
+> That combination is the problem. Unverified claims are an editorial mistake;
+> unverified claims **monetized by affiliate links** are a commercial
+> representation. The disclosure this runbook adds even states "our
+> recommendations come from verified transfer data," which is not true today.
+>
+> **Order of operations is therefore: fix accuracy (audit items 1-4, ~2 days),
+> then apply to affiliate programs.** Applying first is also tactically wrong —
+> networks review live sites, and one that overstates verification is a
+> rejection risk.
+
 How this project makes money, what is already wired, and the exact steps left.
 
 **Current revenue: $0/month.** Not because the product is broken — it builds and
