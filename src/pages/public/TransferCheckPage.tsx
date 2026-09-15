@@ -23,6 +23,7 @@ import { ArrowRight, Search, ShieldCheck, ExternalLink, Loader2, GraduationCap }
 import { supabase } from '@/integrations/supabase/client';
 import { logEvent } from '@/lib/analytics';
 import { VERIFIED_SCHOOL_CODES } from '@/lib/planScoring/config';
+import { ProviderLinkStrip } from '@/components/ProviderLinkStrip';
 
 interface RuleRow {
   id: string;
@@ -223,6 +224,15 @@ export default function TransferCheckPage() {
                     </Link>
                   </Button>
                 </Card>
+
+                {/* Revenue surface — a user who just confirmed their credits
+                    transfer is the most likely person on the site to buy the
+                    next course today. */}
+                <ProviderLinkStrip
+                  source="transfer_check"
+                  heading="Fill the gaps"
+                  subheading="Need the courses you don't have yet? These are the transfer-friendly providers behind the rules above."
+                />
               </>
             )}
           </div>

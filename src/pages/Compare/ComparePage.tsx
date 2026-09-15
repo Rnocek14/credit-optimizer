@@ -12,6 +12,7 @@ import { ArrowLeft, ArrowRight, ShieldCheck } from 'lucide-react';
 import { useMarketplaceTemplates } from '@/hooks/useMarketplaceTemplates';
 import { VERIFIED_SCHOOL_CODES } from '@/lib/planScoring/config';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { ProviderLinkStrip } from '@/components/ProviderLinkStrip';
 import { CreditPickerCollapsible } from './components/CreditPickerCollapsible';
 import { CompareTable } from './components/CompareTable';
 import { CompareCards } from './components/CompareCards';
@@ -277,6 +278,16 @@ export default function ComparePage() {
           <CompareCards rows={rows} picker={state.picker} onViewPlan={handleViewPlan} />
         ) : (
           <CompareTable rows={rows} picker={state.picker} onViewPlan={handleViewPlan} />
+        )}
+
+        {/* Revenue surface — only once there is something to compare, so an
+            empty state never leads with commercial links. */}
+        {!isLoading && rows.length > 0 && (
+          <ProviderLinkStrip
+            source="compare"
+            heading="Where these plans get their credits"
+            subheading="Every plan above is built from these providers. Start with the cheapest source that covers what you still need."
+          />
         )}
 
         {/* Footer — quiet provenance line, no second trust card */}
