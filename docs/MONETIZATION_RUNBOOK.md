@@ -1,25 +1,39 @@
 # Monetization Runbook
 
-> ## ⛔ BLOCKED — do not drive paid or SEO traffic yet
+> ## ⚠️ PARTIALLY UNBLOCKED — accuracy fixes 1-4 shipped, 5-10 outstanding
 >
 > **See `docs/TRANSFERABILITY_ACCURACY_AUDIT_2026-09-15.md` (verdict: RED).**
 >
-> The affiliate plumbing described below is complete and correct. The product
-> it monetizes is not currently accurate. Specifically: when no transfer rule
-> exists, `useTransferVerification.ts:205-220` returns `verified` or `elective`
-> rather than `unknown`, so the UI asserts a transfer approval it has no basis
-> for — under a green "Verified" badge, on public pages, next to affiliate
-> links.
+> The affiliate plumbing below is complete. The product it monetizes was
+> asserting things it could not support. Audit items 1-4 are now fixed:
 >
-> That combination is the problem. Unverified claims are an editorial mistake;
-> unverified claims **monetized by affiliate links** are a commercial
-> representation. The disclosure this runbook adds even states "our
-> recommendations come from verified transfer data," which is not true today.
+> - The no-rule path returns `unknown` instead of inventing `verified` /
+>   `elective` from the provider name. Coverage now keys on whether a rule row
+>   actually exists, so it is no longer pinned at 100%.
+> - A rule verified more than 180 days ago no longer renders as "Verified" —
+>   it downgrades to "review" / "needs recheck" and shows its date.
+> - Trust copy matches the code: no "Guaranteed acceptance", no
+>   "we only show rules we've verified", and a rejected rule no longer prints
+>   as "→ accepted".
+> - The seed functions that rewrite policy and template data now require an
+>   admin session or CRON_SECRET, and the worker that manufactured evidence
+>   URLs every 15 minutes is unscheduled.
 >
-> **Order of operations is therefore: fix accuracy (audit items 1-4, ~2 days),
-> then apply to affiliate programs.** Applying first is also tactically wrong —
-> networks review live sites, and one that overstates verification is a
-> rejection risk.
+> **Still outstanding before this is a product worth paying to promote:**
+>
+> - `institutionPolicies.ts` still contradicts the seeded ground truth
+>   (WGU alt-credit cap reads 78; ground truth says 45). Audit item 5.
+> - Unknown institutions still fall back to TESU's policy. Audit item 6.
+> - The rule corpus is ~8 months stale and no scraper schedule exists in
+>   version control. Audit item 7. **This is the one that decides whether the
+>   product is true, as opposed to merely honest about its uncertainty.**
+> - Guide pricing is internally inconsistent and unowned. Audit item 9.
+>
+> The site can now say "we don't know" where it doesn't know, which is what
+> made it unsafe to promote. It still cannot claim accurate transfer analysis
+> for the stale majority of its corpus. Judgement call for the owner: driving
+> SEO traffic to honest-but-thin pages is defensible; buying paid traffic
+> against them is not.
 
 How this project makes money, what is already wired, and the exact steps left.
 

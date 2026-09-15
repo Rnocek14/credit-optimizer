@@ -32,8 +32,9 @@ export function AffiliateDisclosure({
       <strong className="font-semibold text-foreground">Disclosure:</strong> some
       links on this page are affiliate links. If you sign up through one, we may
       earn a commission at no extra cost to you. It never changes your price, and
-      it never changes our rankings — our recommendations come from verified
-      transfer data, and we link to CLEP and DSST, which pay us nothing.
+      it never changes what we recommend — we rank on cost and on the transfer
+      records we hold, and we link to CLEP and DSST, which pay us nothing.
+      Always confirm with your school before paying for a course.
     </>
   );
 

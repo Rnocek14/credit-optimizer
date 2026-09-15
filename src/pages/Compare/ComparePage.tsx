@@ -293,7 +293,9 @@ export default function ComparePage() {
         {/* Footer — quiet provenance line, no second trust card */}
         <div className="flex items-center justify-between gap-3 flex-wrap pt-4 border-t border-border/50">
           <p className="text-xs text-muted-foreground">
-            Costs &amp; timelines pulled from verified institutional catalogs and active provider pricing packs.
+            Costs &amp; timelines come from institutional catalogs and provider pricing we've
+            recorded, which schools revise each catalog year. Confirm with the school before
+            enrolling.
           </p>
           <Button
             variant="ghost"
