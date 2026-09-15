@@ -39,6 +39,7 @@ import {
   RULE_FRESHNESS_DAYS,
 } from '@/lib/transfer/ruleFreshness';
 import { classifyEvidenceUrl, evidenceLinkLabel } from '@/lib/transfer/evidenceQuality';
+import { absoluteUrl } from '@/lib/siteUrl';
 
 interface RuleRow {
   id: string;
@@ -138,7 +139,7 @@ export default function TransferCheckPage() {
           name="description"
           content="Check where your existing credits — Sophia, Study.com, CLEP, or college courses — actually transfer. Transfer rules with source links and last-checked dates for TESU, Charter Oak, and WGU."
         />
-        <link rel="canonical" href="https://pivot.app/transfer-check" />
+        <link rel="canonical" href={absoluteUrl('/transfer-check')} />
       </Helmet>
 
       <div className="container mx-auto px-4 py-10 max-w-3xl space-y-8">

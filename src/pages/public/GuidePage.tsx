@@ -29,6 +29,7 @@ import { StraighterlineVsSophiaVsStudycomGuide } from '@/content/guides/straight
 import { FinishBachelorsUnder10kGuide } from '@/content/guides/finish-bachelors-under-10k';
 import { useEffect } from 'react';
 import { logEvent } from '@/lib/analytics';
+import { absoluteUrl } from '@/lib/siteUrl';
 
 // Map slug → component. New guides: add entry to registry + map below.
 const GUIDE_COMPONENTS: Record<string, React.ComponentType> = {
@@ -71,7 +72,7 @@ export default function GuidePage() {
     publisher: { '@type': 'Organization', name: 'Pivot' },
     mainEntityOfPage: {
       '@type': 'WebPage',
-      '@id': `https://pivot.app/guides/${meta.slug}`,
+      '@id': absoluteUrl(`/guides/${meta.slug}`),
     },
   };
 

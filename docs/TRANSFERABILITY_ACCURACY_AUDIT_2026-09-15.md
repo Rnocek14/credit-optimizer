@@ -27,8 +27,8 @@ treat this document as having settled those.
 | 4 | Seed/worker functions require admin or CRON_SECRET; evidence worker unscheduled | ✅ done |
 | 5 | Policy constants reconciled with ground truth + divergence test | ✅ done |
 | 6 | Unknown institutions and unaccepted providers fail closed | ✅ done |
-| 7 | **Restore the scraper schedule** | ⛔ blocked — needs DB access |
-| 8 | Fixture-merge keys / `providerType` union | ⬜ open |
+| 7 | **Restore the scraper schedule** | ⛔ blocked — needs DB access; runbook ready at `SCRAPER_RESTART_RUNBOOK.md` |
+| 8 | Fixture-merge keys / `providerType` union | ✅ done |
 | 9 | Own the pricing numbers (one source) | ✅ done |
 | 10 | Resolution-layer tests (templateValidator, tieredSavingsCalculator, …) | ✅ done |
 
@@ -124,6 +124,56 @@ Two real defects surfaced while writing them:
 changed: its regex requires `(6cr)` exactly, so `(6 cr)` silently halves a
 module's credits. Changing the parser could shift live template totals, so the
 behaviour is documented and locked instead — a deliberate call, flagged here.
+
+### Notes on 8, plus the domain fix (landed 2026-09-15)
+
+**8.** Three defects, all confirmed by inspection before changing anything:
+
+- **`providerType` union break.** The V2 fixtures carried `"institutional"`
+  (38 options) and `"exam"` (5); `ProviderType` is
+  `university | mooc | bootcamp | testing_center`. Every consumer tests for
+  union members, so those 43 options counted as *neither* residency nor
+  alt-credit — `universityCredits` came out 0 for all 11 templates, firing a
+  user-visible "Need 15 more institutional credits (0/15)" warning on plans
+  that were fine. Normalised to `university` / `testing_center`. V1 fixtures
+  were already correct.
+- **Fixture-map key mismatch.** The map was keyed on the fixture's *raw*
+  `optimization` while the lookup used `normalizeOptimization(track_type)`, so
+  only `TESU-fastest`, `TESU-balanced` and `WGU-balanced` could ever match —
+  8 of 11 fixtures unreachable. The composite key also omitted the program, so
+  the three `cs-bachelor` fixtures were silently overwritten by the three
+  `business-admin-bachelor` ones. Now resolved by **exact id first** (which is
+  what the seeded rows actually line up with), composite second, with a warning
+  on collision instead of last-write-wins. A second call site hand-rolled
+  `track_type === 'alt_max' ? 'alt-credit' : 'standard'` and compared it to raw
+  fixture optimizations — it could never match, and computed an unused key
+  variable. Both sites now share one resolver.
+- **`acceptedCeiling` always 0.** It read `twoPhaseData?.altCredits ?? 0`, and
+  no fixture or seeded row carries `twoPhaseData` — so /compare rendered
+  "max via alt providers: 0 / 120 cr" for every school and the
+  credit-friendliness badge never appeared (`tagWinner` bails at <= 0). It now
+  falls back to the institution's alt-credit cap, which is the correct source
+  for a policy fact; schools with no policy stay at 0 rather than borrowing
+  another school's number.
+
+`fixtureIntegrity.test.ts` (12 tests) pins all of it, including a test that
+every template yields *some* university credit — the direct symptom of the
+union break.
+
+**Domain configurability (was an open blocker, not a numbered item).**
+`https://pivot.app` was hardcoded in eight source files plus `index.html`,
+`robots.txt` and `sitemap.xml`. If that is not the live domain, every canonical
+tag declares the real pages duplicates of somewhere else, which on its own
+prevents ranking — and no amount of accuracy work matters on a site that is
+not indexed.
+
+Now driven by `VITE_SITE_URL` through `src/lib/siteUrl.ts`, with
+`vite.config.ts` defaulting it so `index.html`'s `%VITE_SITE_URL%` placeholders
+never ship as literal text, and `scripts/build-sitemap.mjs` rewriting both
+`sitemap.xml` and `robots.txt` from the same value. Verified end to end with a
+non-default origin: index.html, sitemap, robots and the JS bundle all picked it
+up. **The default is unchanged, so this is a no-op until the owner sets the
+variable** — which is now the entire fix for a wrong domain.
 
 ---
 

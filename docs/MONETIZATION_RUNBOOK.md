@@ -1,6 +1,6 @@
 # Monetization Runbook
 
-> ## ⚠️ PARTIALLY UNBLOCKED — accuracy fixes 1-6, 9-10 shipped; 7-8 outstanding
+> ## ⚠️ PARTIALLY UNBLOCKED — accuracy fixes 1-6 and 8-10 shipped; only 7 outstanding
 >
 > **See `docs/TRANSFERABILITY_ACCURACY_AUDIT_2026-09-15.md` (verdict: RED).**
 >
@@ -29,11 +29,14 @@
 > - The rule corpus is ~8 months stale and no scraper schedule exists in
 >   version control. Audit item 7. **This is the one that decides whether the
 >   product is true, as opposed to merely honest about its uncertainty.**
-> - Fixture-merge keys and the `providerType` union. Audit item 8.
+> Every code-only item is now done (1-6, 8-10). **Item 7 is the only one left,
+> and it needs database access, not code** — see
+> `docs/SCRAPER_RESTART_RUNBOOK.md`, which has the diagnosis queries, the
+> staged restart, and the four signals to watch.
 >
-> Guide pricing (item 9) is now single-sourced and reconciled against the
-> seeded pricing packs, and the untested resolution layer (item 10) has tests.
-> Item 7 remains the one that decides whether the numbers are *current*.
+> Also fixed: the site origin is now driven by `VITE_SITE_URL` rather than
+> hardcoded in eleven places. **Set it before doing any SEO work** — a wrong
+> canonical domain stops the site ranking regardless of how good the content is.
 >
 > The site can now say "we don't know" where it doesn't know, which is what
 > made it unsafe to promote. It still cannot claim accurate transfer analysis

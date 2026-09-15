@@ -10,6 +10,7 @@ import { PublicLayout } from '@/components/public/PublicLayout';
 import { Card } from '@/components/ui/card';
 import { GUIDES } from '@/content/guides/registry';
 import { ArrowRight } from 'lucide-react';
+import { absoluteUrl } from '@/lib/siteUrl';
 
 const CATEGORY_LABELS: Record<string, string> = {
   compare: 'School comparisons',
@@ -27,11 +28,11 @@ export default function GuidesIndexPage() {
     name: 'Pivot Guides — Online Degree Planning',
     description:
       'Data-backed guides for finishing your accredited online bachelor\'s degree faster and cheaper.',
-    url: 'https://pivot.app/guides',
+    url: absoluteUrl('/guides'),
     hasPart: sorted.map((g) => ({
       '@type': 'Article',
       headline: g.title,
-      url: `https://pivot.app/guides/${g.slug}`,
+      url: absoluteUrl(`/guides/${g.slug}`),
     })),
   };
 
