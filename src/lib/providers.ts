@@ -16,6 +16,13 @@
  *
  * Unset vars fall back to the provider's plain URL — never a broken link.
  *
+ * PRICING comes from `@/lib/pricing/referenceRates`, not from strings typed
+ * here. This file previously advertised Study.com at "from $95/month" beside a
+ * transfer-credit recommendation, while the guides quoted $199/month — the
+ * $95 tier does not include college-credit courses, so the cheaper number was
+ * not just inconsistent, it implied you could earn credit at a price you
+ * cannot.
+ *
  * Every generated URL also carries a sub-ID (`subIdParam`) built from the page
  * that produced the click. That is what lets a commission that lands in the
  * network dashboard weeks later be traced back to the guide that earned it.
@@ -25,6 +32,8 @@
  * these at build time and dynamic lookup (`import.meta.env[key]`) silently
  * yields undefined in production. Hence the explicit constants below.
  */
+
+import { PROVIDER_RATES } from '@/lib/pricing/referenceRates';
 
 export type ProviderKey = 'SOPHIA' | 'STUDYCOM' | 'CLEP' | 'DSST' | 'STRAIGHTERLINE';
 
@@ -69,7 +78,7 @@ export const PROVIDERS: Record<ProviderKey, ProviderInfo> = {
     name: 'Sophia Learning',
     baseUrl: 'https://www.sophia.org/',
     blurb: 'Unlimited self-paced gen-ed courses, ACE-recommended.',
-    pricing: '$99/month, unlimited courses (2 at a time)',
+    pricing: PROVIDER_RATES.SOPHIA.summary,
     refParam: 'ref',
     subIdParam: 'subId',
     affiliateUrl: clean(AFF_SOPHIA_URL),
@@ -81,7 +90,7 @@ export const PROVIDERS: Record<ProviderKey, ProviderInfo> = {
     name: 'Study.com',
     baseUrl: 'https://study.com/',
     blurb: 'Largest catalog including upper-division courses.',
-    pricing: 'from $95/month',
+    pricing: PROVIDER_RATES.STUDYCOM.summary,
     refParam: 'ref',
     subIdParam: 'sub1',
     affiliateUrl: clean(AFF_STUDYCOM_URL),
@@ -93,7 +102,7 @@ export const PROVIDERS: Record<ProviderKey, ProviderInfo> = {
     name: 'StraighterLine',
     baseUrl: 'https://www.straighterline.com/',
     blurb: 'Self-paced courses with wide partner-school acceptance.',
-    pricing: '$99/month + per-course fees',
+    pricing: PROVIDER_RATES.STRAIGHTERLINE.summary,
     refParam: 'ref',
     subIdParam: 'subId',
     affiliateUrl: clean(AFF_STRAIGHTERLINE_URL),
@@ -105,7 +114,7 @@ export const PROVIDERS: Record<ProviderKey, ProviderInfo> = {
     name: 'CLEP (College Board)',
     baseUrl: 'https://clep.collegeboard.org/',
     blurb: 'One proctored exam = a whole course. Cheapest per credit.',
-    pricing: '~$95 per exam',
+    pricing: PROVIDER_RATES.CLEP.summary,
     refParam: 'ref',
     subIdParam: 'subId',
     // College Board runs no affiliate program — this stays unsponsored by
@@ -118,7 +127,7 @@ export const PROVIDERS: Record<ProviderKey, ProviderInfo> = {
     name: 'DSST',
     baseUrl: 'https://dsst.getcollegecredit.com/',
     blurb: 'Exam credit for subjects CLEP does not cover.',
-    pricing: '~$100 per exam',
+    pricing: PROVIDER_RATES.DSST.summary,
     refParam: 'ref',
     subIdParam: 'subId',
     sponsored: false,

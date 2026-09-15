@@ -29,8 +29,8 @@ treat this document as having settled those.
 | 6 | Unknown institutions and unaccepted providers fail closed | ✅ done |
 | 7 | **Restore the scraper schedule** | ⛔ blocked — needs DB access |
 | 8 | Fixture-merge keys / `providerType` union | ⬜ open |
-| 9 | Own the pricing numbers (one source) | ⬜ open |
-| 10 | Resolution-layer tests (templateValidator, tieredSavingsCalculator, …) | ⬜ partial |
+| 9 | Own the pricing numbers (one source) | ✅ done |
+| 10 | Resolution-layer tests (templateValidator, tieredSavingsCalculator, …) | ✅ done |
 
 ### Notes on 5 and 6 (landed 2026-09-15)
 
@@ -76,6 +76,54 @@ the predicate to gate on.
 **Still true after 5 and 6:** these numbers are internally consistent and
 honestly labelled. They are not freshly verified. Every value predates the
 2026-2027 catalog year, and item 7 is what changes that.
+
+### Notes on 9 and 10 (landed 2026-09-15)
+
+**9.** `src/lib/pricing/referenceRates.ts` is now the single source for every
+price quoted in editorial content, and `referenceRates.test.ts` reconciles it
+against the seeded `institution_pricing_packs` rows **by parsing the migration
+SQL**, so prose and computation cannot drift apart.
+
+| Was | Now |
+|---|---|
+| TESU per-credit as $519 / $419 / ~$400 / $564 in four places | $564 out-of-state, $353 in-state, both cited, effective 2024-09-01 |
+| Study.com "from $95/month" beside a transfer-credit recommendation | $199/month College Plus — the $95 tier earns no college credit |
+| StraighterLine 60 cr billed at $79/credit = $4,740 | 20 courses × $79 = $1,580 (the $3,160 error) |
+| Excelsior "117 cr" max transfer | 108 — 117 is TESU's figure |
+| TESU/COSC "90 cr" max transfer | 117 / 114 (90 is the separate alt-credit sub-cap) |
+| TESU residency "16", COSC "36 minimum" | 15 / 6, from ground truth |
+
+While fixing the `finish-bachelors-under-10k` arithmetic I found the corrected
+figures described a **96-credit plan** — i.e. not a degree. COSC's residency
+*minimum* is 6, but the binding constraint is the separate 90-credit alt-credit
+ceiling, which leaves 30 credits that must come from a college. The guide now
+models that explicitly and says so, because it is the number that actually
+decides the bill.
+
+Rates now carry an `asOf` date and `formatRateCaveat()`, which every quoted
+institutional rate must render. The institution rates are ~24 months old; they
+are the best-sourced figures in the repo, which is not the same as current.
+
+**10.** Test files added for four modules that had none:
+`degreeSafetyScore` (13), `tieredSavingsCalculator` (19), `templateValidator`
+(15), `buildCompareRows` (17), plus `referenceRates` (21). Suite went from 387
+to 472 passing.
+
+Two real defects surfaced while writing them:
+
+- `validateTemplate` used `template.anchorSchool || 'TESU'` — the same
+  substitute-another-school's-policy defect fixed in `anchorPolicyAdapter`.
+- Guarding that exposed a **pre-existing crash**: `residenceCourseCheck` is set
+  to `null` when no policy resolves, and line ~252 dereferenced it
+  unconditionally. Any template whose `anchorSchool` was not in the policy
+  registry threw a `TypeError`; it never fired only because the TESU default
+  always resolved. Both fixed, with an early return that still yields the
+  policy-independent metrics.
+
+`parseCreditsFromLabel`'s silent 3-credit default is pinned by test rather than
+changed: its regex requires `(6cr)` exactly, so `(6 cr)` silently halves a
+module's credits. Changing the parser could shift live template totals, so the
+behaviour is documented and locked instead — a deliberate call, flagged here.
 
 ---
 

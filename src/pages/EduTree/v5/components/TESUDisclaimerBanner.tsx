@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { AlertCircle, ChevronDown, ChevronUp, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { INSTITUTION_RATES, PROVIDER_RATES } from '@/lib/pricing/referenceRates';
 
 interface TESUDisclaimerBannerProps {
   onDismiss?: () => void;
@@ -20,11 +21,15 @@ export function TESUDisclaimerBanner({ onDismiss }: TESUDisclaimerBannerProps) {
             <div className="font-semibold text-foreground flex items-center gap-2">
               Cost & Time Estimates
               <span className="text-xs font-normal text-muted-foreground px-2 py-0.5 bg-background/50 rounded">
-                2025 Pricing
+                Pricing as of {INSTITUTION_RATES.TESU.effectiveDate}
               </span>
             </div>
             <p className="text-sm text-muted-foreground mt-1">
-              Based on current provider pricing (Sophia $99/mo, CLEP $95/exam, Study.com $199/mo, TESU ~$400/credit).
+              Based on provider pricing as of {PROVIDER_RATES.SOPHIA.asOf} (Sophia $
+              {PROVIDER_RATES.SOPHIA.monthlyUsd}/mo, CLEP ~${PROVIDER_RATES.CLEP.perExamUsd}/exam,
+              Study.com ${PROVIDER_RATES.STUDYCOM.monthlyUsd}/mo) and TESU tuition effective{' '}
+              {INSTITUTION_RATES.TESU.effectiveDate} (${INSTITUTION_RATES.TESU.perCreditInStateUsd}/credit
+              in state, ${INSTITUTION_RATES.TESU.perCreditUsd} out of state).
               <strong className="text-foreground"> Does NOT include</strong> TESU enrollment fees (~$3,192), books, proctoring fees, or potential price changes.
             </p>
           </div>
@@ -60,12 +65,25 @@ export function TESUDisclaimerBanner({ onDismiss }: TESUDisclaimerBannerProps) {
         <div className="border-t border-warning/20 bg-warning/[0.02] px-4 py-3">
           <div className="space-y-3 text-sm">
             <div>
-              <div className="font-medium text-foreground mb-1">Pricing Assumptions (Jan 2025)</div>
+              <div className="font-medium text-foreground mb-1">Pricing Assumptions</div>
               <ul className="space-y-1 text-muted-foreground ml-4 list-disc">
-                <li><strong>Sophia Learning:</strong> $99/month (unlimited courses)</li>
-                <li><strong>CLEP:</strong> $95 per exam + proctoring ($25-$50)</li>
-                <li><strong>Study.com:</strong> $199/month (2 exams) or $239/month (5 exams)</li>
-                <li><strong>TESU Courses:</strong> ~$400/credit (NJ residents; out-of-state higher)</li>
+                <li>
+                  <strong>Sophia Learning:</strong> ${PROVIDER_RATES.SOPHIA.monthlyUsd}/month
+                  (unlimited courses)
+                </li>
+                <li>
+                  <strong>CLEP:</strong> ~${PROVIDER_RATES.CLEP.perExamUsd} per exam + proctoring ($25-$50)
+                </li>
+                <li>
+                  <strong>Study.com:</strong> ${PROVIDER_RATES.STUDYCOM.monthlyUsd}/month (College Plus)
+                </li>
+                <li>
+                  {/* Was "~$400/credit (NJ residents)", which matched neither
+                      the in-state nor the out-of-state published rate. */}
+                  <strong>TESU Courses:</strong> ${INSTITUTION_RATES.TESU.perCreditInStateUsd}/credit
+                  (NJ residents), ${INSTITUTION_RATES.TESU.perCreditUsd}/credit out of state — effective{' '}
+                  {INSTITUTION_RATES.TESU.effectiveDate}, so verify current rates before enrolling
+                </li>
               </ul>
             </div>
             

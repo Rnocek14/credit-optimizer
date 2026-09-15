@@ -1,3 +1,5 @@
+import { POLICY_GROUND_TRUTH } from '@/lib/degree/policyGroundTruth';
+import { PROVIDER_RATES } from '@/lib/pricing/referenceRates';
 /**
  * Guide content: Cheapest accredited online bachelor's degree in 2025.
  *
@@ -22,8 +24,10 @@ export const CheapestBachelorsGuide = () => (
     <ol>
       <li>
         <strong>Transfer in ~90 credits</strong> from a combination of Sophia
-        Learning ($99/mo unlimited), Study.com ($199/mo for 2 courses), CLEP
-        exams ($90 each), and DSST exams ($100 each).
+        Learning (${PROVIDER_RATES.SOPHIA.monthlyUsd}/mo unlimited), Study.com
+        (${PROVIDER_RATES.STUDYCOM.monthlyUsd}/mo College Plus), CLEP exams
+        (~${PROVIDER_RATES.CLEP.perExamUsd} each), and DSST exams
+        (~${PROVIDER_RATES.DSST.perExamUsd} each).
       </li>
       <li>
         <strong>Finish the remaining ~30 residency credits</strong> at a
@@ -46,25 +50,43 @@ export const CheapestBachelorsGuide = () => (
         <tbody className="divide-y divide-border">
           <tr>
             <td className="p-3 font-medium">Thomas Edison State (TESU)</td>
-            <td className="p-3">90 cr</td>
+            <td className="p-3">
+              {POLICY_GROUND_TRUTH.TESU.maxTransferCredits} cr
+              <span className="block text-xs text-muted-foreground">
+                ({POLICY_GROUND_TRUTH.TESU.maxAceNccrsCredits} cr max from alt-credit)
+              </span>
+            </td>
             <td className="p-3">~$10,000</td>
             <td className="p-3">Lowest residency requirement</td>
           </tr>
           <tr>
             <td className="p-3 font-medium">Charter Oak State (COSC)</td>
-            <td className="p-3">90 cr</td>
+            <td className="p-3">
+              {POLICY_GROUND_TRUTH.COSC.maxTransferCredits} cr
+              <span className="block text-xs text-muted-foreground">(90 cr max from alt-credit)</span>
+            </td>
             <td className="p-3">~$11,500</td>
             <td className="p-3">Lower per-credit tuition</td>
           </tr>
           <tr>
             <td className="p-3 font-medium">Excelsior University</td>
-            <td className="p-3">117 cr</td>
+            <td className="p-3">
+              {POLICY_GROUND_TRUTH.EXCELSIOR.maxTransferCredits} cr
+              <span className="block text-xs text-muted-foreground">
+                ({POLICY_GROUND_TRUTH.EXCELSIOR.maxAceNccrsCredits} cr max from alt-credit)
+              </span>
+            </td>
             <td className="p-3">~$13,000</td>
             <td className="p-3">High transfer ceiling</td>
           </tr>
           <tr>
             <td className="p-3 font-medium">WGU</td>
-            <td className="p-3">Varies</td>
+            <td className="p-3">
+              {POLICY_GROUND_TRUTH.WGU.maxTransferCredits} cr
+              <span className="block text-xs text-muted-foreground">
+                ({POLICY_GROUND_TRUTH.WGU.maxAceNccrsCredits} cr max from alt-credit; no Sophia or Study.com)
+              </span>
+            </td>
             <td className="p-3">~$8,500/yr (flat)</td>
             <td className="p-3">Self-paced, finish fast</td>
           </tr>
@@ -77,6 +99,12 @@ export const CheapestBachelorsGuide = () => (
         </tbody>
       </table>
     </div>
+    <p className="text-xs text-muted-foreground mt-2">
+      Transfer ceilings come from each school's published policy. The
+      <strong> total-cost estimates are rough planning figures</strong>, not quotes —
+      they move with how many credits you transfer, your residency status, and the
+      year you enrol. Treat them as an ordering, not a price.
+    </p>
 
     <h2>What "cheapest" actually means</h2>
     <p>
