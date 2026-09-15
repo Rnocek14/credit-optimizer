@@ -94,7 +94,13 @@ jobs:
         run: pnpm build
       
       - name: Start server
-        run: pnpm preview &
+        # `vite preview` defaults to port 4173, but the wait step below and
+        # CYPRESS_BASE_URL both point at 5173 (Vite's DEV port). The wait
+        # therefore timed out after 60s and Cypress never ran. Pin the port so
+        # all three agree; --strictPort fails loudly instead of silently
+        # drifting to another port, which is the bug this replaces.
+        # A dedicated script also avoids pnpm swallowing the --port flag.
+        run: pnpm preview:ci &
       
       - name: Wait for server
         uses: nev7n/wait_for_response@v1

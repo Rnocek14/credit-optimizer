@@ -10,7 +10,8 @@
     "lint": "eslint .",
     "test": "vitest",
     "test:coverage": "vitest run --coverage",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "preview:ci": "vite preview --port 5173 --strictPort"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
