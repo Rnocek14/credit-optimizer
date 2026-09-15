@@ -44,6 +44,16 @@ export interface VerifiedPolicy {
   maxTransferVerified?: boolean;  // True if max_transfer has evidence
   maxTransferEvidenceUrl?: string;
   residencyVerified?: boolean;    // True if residency has evidence
+  /**
+   * True when the alt-credit cap came from the pack rather than falling back
+   * to the TypeScript constant. Until 2026-09-15 this was ALWAYS a fallback:
+   * parsePolicyData read `max_noncollegiate_credits`, a key no pack writes,
+   * so WGU's cap rendered as the constant 78 behind a 95%-confidence badge
+   * while the pack itself said 45.
+   */
+  maxNoncollegiateVerified?: boolean;
+  /** True when the upper-division minimum came from the pack, not a constant. */
+  upperDivisionVerified?: boolean;
 }
 
 export interface VerifiedPolicyResult {
@@ -67,11 +77,47 @@ function parsePolicyData(policyData: Record<string, unknown>): {
     return isNaN(num) ? null : num;
   };
 
+  /** Read a nested object key without widening types at every call site. */
+  const nested = (obj: unknown, key: string): unknown =>
+    obj && typeof obj === 'object' ? (obj as Record<string, unknown>)[key] : undefined;
+
+  /** First non-null candidate wins. */
+  const firstOf = (...vals: unknown[]): number | null => {
+    for (const v of vals) {
+      const n = parseNumber(v);
+      if (n !== null) return n;
+    }
+    return null;
+  };
+
+  // Key names below are taken from the packs actually committed in
+  // supabase/migrations/20260111183654 (policy_data column), e.g.:
+  //   {"residency_credits": 24, "max_transfer_credits": 90,
+  //    "max_alt_credit": 45,
+  //    "residency_requirement": {"credits": 24},
+  //    "transfer_credit_policy": {"max_total_transfer": 90, "max_alt_credit": 45}}
+  //
+  // `max_noncollegiate_credits` is retained LAST as a legacy alias only. It is
+  // written by nothing; reading it first is what made the alt-credit cap
+  // silently fall back to the TypeScript constant on every verified pack.
   return {
-    residencyCredits: parseNumber(policyData.residency_credits),
-    maxTransferCredits: parseNumber(policyData.max_transfer_credits),
-    maxNoncollegiateCredits: parseNumber(policyData.max_noncollegiate_credits),
-    upperDivisionMin: parseNumber(policyData.upper_division_min),
+    residencyCredits: firstOf(
+      policyData.residency_credits,
+      nested(policyData.residency_requirement, 'credits'),
+    ),
+    maxTransferCredits: firstOf(
+      policyData.max_transfer_credits,
+      nested(policyData.transfer_credit_policy, 'max_total_transfer'),
+    ),
+    maxNoncollegiateCredits: firstOf(
+      policyData.max_alt_credit,
+      nested(policyData.transfer_credit_policy, 'max_alt_credit'),
+      policyData.max_noncollegiate_credits,
+    ),
+    upperDivisionMin: firstOf(
+      policyData.upper_division_min,
+      nested(policyData.degree_requirements, 'upper_division_min'),
+    ),
   };
 }
 
@@ -99,6 +145,8 @@ export async function getVerifiedPolicy(
     isProgramScoped: false,
     maxTransferVerified: false,
     residencyVerified: false,
+    maxNoncollegiateVerified: false,
+    upperDivisionVerified: false,
   };
 
   try {
@@ -126,9 +174,27 @@ export async function getVerifiedPolicy(
         parsed.residencyCredits !== null && 
         parsed.maxTransferCredits !== null;
 
+      // Confidence used to be a flat 95 whenever residency and max-transfer
+      // were non-null — but a CHECK constraint (20260109170551) already
+      // guarantees both are non-null on every non-deprecated pack, so every
+      // active pack scored 95 regardless of what it actually contained. That
+      // is an assertion, not a measurement.
+      //
+      // Now it counts how many of the four policy values genuinely came from
+      // the pack rather than falling back to a TypeScript constant. All four
+      // present still reaches 95; a pack carrying only the two constrained
+      // fields scores 75 and says so.
+      const fieldsFromPack = [
+        parsed.residencyCredits,
+        parsed.maxTransferCredits,
+        parsed.maxNoncollegiateCredits,
+        parsed.upperDivisionMin,
+      ].filter((v) => v !== null).length;
+      const measuredConfidence = 55 + fieldsFromPack * 10;
+
       return {
         verified: hasRequiredValues,
-        confidence: hasRequiredValues ? 95 : 75,
+        confidence: hasRequiredValues ? measuredConfidence : Math.min(measuredConfidence, 70),
         institutionCode,
         institutionName: packData.institution || centralPolicy.name,
         residencyCredits: parsed.residencyCredits ?? getCentralResidency(institutionCode),
@@ -144,6 +210,8 @@ export async function getVerifiedPolicy(
         isProgramScoped: false,
         maxTransferVerified: parsed.maxTransferCredits !== null,
         residencyVerified: parsed.residencyCredits !== null,
+        maxNoncollegiateVerified: parsed.maxNoncollegiateCredits !== null,
+        upperDivisionVerified: parsed.upperDivisionMin !== null,
       };
     }
 
@@ -200,6 +268,8 @@ export async function getVerifiedPolicy(
         maxTransferVerified: hasMaxTransferEvidence,
         maxTransferEvidenceUrl: hasMaxTransferEvidence ? evidenceUrl : undefined,
         residencyVerified: false,
+        maxNoncollegiateVerified: false,
+        upperDivisionVerified: false,
       };
     }
 

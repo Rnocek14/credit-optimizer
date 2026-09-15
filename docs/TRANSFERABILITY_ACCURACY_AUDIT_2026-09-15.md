@@ -17,6 +17,68 @@ treat this document as having settled those.
 
 ---
 
+## Remediation status (updated as work lands)
+
+| # | Item | Status |
+|---|------|--------|
+| 1 | No-rule path returns `unknown`; coverage keys on `hasRule` | ✅ done |
+| 2 | Trust copy matches code; `last_verified_at` rendered; `→ accepted` bug fixed | ✅ done |
+| 3 | Freshness gate (180d): stale rules downgrade to "review" | ✅ done |
+| 4 | Seed/worker functions require admin or CRON_SECRET; evidence worker unscheduled | ✅ done |
+| 5 | Policy constants reconciled with ground truth + divergence test | ✅ done |
+| 6 | Unknown institutions and unaccepted providers fail closed | ✅ done |
+| 7 | **Restore the scraper schedule** | ⛔ blocked — needs DB access |
+| 8 | Fixture-merge keys / `providerType` union | ⬜ open |
+| 9 | Own the pricing numbers (one source) | ⬜ open |
+| 10 | Resolution-layer tests (templateValidator, tieredSavingsCalculator, …) | ⬜ partial |
+
+### Notes on 5 and 6 (landed 2026-09-15)
+
+**5.** `src/lib/degree/policyGroundTruth.ts` transcribes the committed
+`institution_policy_ground_truth` rows with per-row provenance, and
+`policyGroundTruthReconciliation.test.ts` fails the build when the TypeScript
+constants disagree with them. Reconciled values:
+
+| Institution | Field | Was | Now | Ground-truth provenance |
+|---|---|---|---|---|
+| WGU | alt-credit cap | 78 | **45** | seeded row + `human_override` pack |
+| WGU | residency | 42 | **24** | seeded row + `human_override` pack |
+| WGU | max transfer | 78 | **90** | seeded row + `human_override` pack |
+| COSC | residency | 30 | **6** | `manual_verification`, catalog |
+| COSC | max transfer | 90 | **114** | `manual_verification`, catalog |
+| TESU | max transfer | unenforced | **117** | `manual_verification`, SmartCatalog |
+
+Provenance is recorded rather than flattened: WGU's ground-truth row is
+`verified_by='system'` ("Seeded for Phase A activation"), so its confidence was
+*lowered* to 70 even though the numbers now agree — two records agreeing is not
+the same as one record being checked. UMGC has no ground-truth row at all and
+was dropped to confidence 50 with an explicit warning in its notes.
+
+Also fixed: `parsePolicyData` read `max_noncollegiate_credits`, a key no pack
+writes, so the alt-credit cap always fell back to the TypeScript constant even
+on a "verified" pack. It now reads `max_alt_credit` (what packs actually write)
+with documented fallbacks, and exposes `maxNoncollegiateVerified` /
+`upperDivisionVerified`. Pack confidence is now measured from how many fields
+genuinely came from the pack, instead of being a flat 95 that a CHECK
+constraint guaranteed.
+
+**6.** `validateNoncollegiateCredits` and `validateUpperDivision` returned `[]`
+for an unknown institution — indistinguishable downstream from "validated, no
+problems". Both now return an `UNKNOWN_INSTITUTION` error. Providers are sorted
+three ways instead of two: allowlisted (counted), explicitly excluded
+(`PROVIDER_NOT_ACCEPTED` error — this is the 90-Sophia-credits-at-WGU case that
+previously scored zero), and known alt-credit with no record either way
+(`PROVIDER_NOT_MAPPED` warning, e.g. StraighterLine, which no institution on
+file either allows or refuses). `anchorPolicyAdapter` no longer defaults to
+TESU; it returns `undefined`, which callers already handle. `hasPolicy()` is
+the predicate to gate on.
+
+**Still true after 5 and 6:** these numbers are internally consistent and
+honestly labelled. They are not freshly verified. Every value predates the
+2026-2027 catalog year, and item 7 is what changes that.
+
+---
+
 ## Synthesis
 
 # Will Pivot give accurate transferability analysis?

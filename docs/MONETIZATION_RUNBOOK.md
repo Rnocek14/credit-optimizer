@@ -1,6 +1,6 @@
 # Monetization Runbook
 
-> ## ⚠️ PARTIALLY UNBLOCKED — accuracy fixes 1-4 shipped, 5-10 outstanding
+> ## ⚠️ PARTIALLY UNBLOCKED — accuracy fixes 1-6 shipped, 7-10 outstanding
 >
 > **See `docs/TRANSFERABILITY_ACCURACY_AUDIT_2026-09-15.md` (verdict: RED).**
 >
@@ -19,15 +19,18 @@
 >   admin session or CRON_SECRET, and the worker that manufactured evidence
 >   URLs every 15 minutes is unscheduled.
 >
+> Items 5 and 6 are now fixed too: policy constants are reconciled with ground
+> truth and a test fails the build if they drift again (WGU's alt-credit cap
+> 78 → 45, COSC residency 30 → 6), and unknown institutions / unaccepted
+> providers now fail closed instead of silently validating.
+>
 > **Still outstanding before this is a product worth paying to promote:**
 >
-> - `institutionPolicies.ts` still contradicts the seeded ground truth
->   (WGU alt-credit cap reads 78; ground truth says 45). Audit item 5.
-> - Unknown institutions still fall back to TESU's policy. Audit item 6.
 > - The rule corpus is ~8 months stale and no scraper schedule exists in
 >   version control. Audit item 7. **This is the one that decides whether the
 >   product is true, as opposed to merely honest about its uncertainty.**
 > - Guide pricing is internally inconsistent and unowned. Audit item 9.
+> - Fixture-merge keys and the `providerType` union. Audit item 8.
 >
 > The site can now say "we don't know" where it doesn't know, which is what
 > made it unsafe to promote. It still cannot claim accurate transfer analysis

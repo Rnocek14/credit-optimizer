@@ -9,63 +9,78 @@ import {
   getPolicyOrDefault, 
   getNoncollegiateCap, 
   getResidencyCredits,
+  hasPolicy,
   type InstitutionCode 
 } from '@/lib/degree/institutionPolicies';
 
 /**
- * Extract anchor policy from constraints for year planner
- * Uses central policy service - NO hardcoded fallbacks allowed
+ * Extract anchor policy from constraints for year planner.
+ *
+ * Returns undefined when we have no policy for the target school. Callers
+ * already handle undefined (it is returned when no target school is set at
+ * all), and an absent policy is the honest answer.
+ *
+ * Until 2026-09-15 this defaulted to TESU: `codeMap[normalized] || 'TESU'`.
+ * The map covered three schools, so UMGC, SNHU, Phoenix, Strayer and every
+ * scrape-template institution code — all selectable in the anchor picker —
+ * were silently validated against TESU's 15-credit residency and 90-credit
+ * alt-credit pool. A student targeting a school with a 30-credit residency was
+ * told 15 would do. The object branch was worse: any `school.code` was cast
+ * straight to InstitutionCode with no check at all.
  */
 export function getAnchorPolicyFromConstraints(
   constraints: Constraints
 ): PartnerPolicy | undefined {
   const targetSchool = constraints.target_school;
   if (!targetSchool) return undefined;
-  
-  // Extract institution code from target_school
-  let institutionCode: InstitutionCode = 'TESU'; // Default to TESU via central service
-  let partnerName = 'Thomas Edison State University';
-  
+
+  // Known aliases → institution code. Every code here must exist in
+  // institutionPolicies.ts; unknown input resolves to null, never a default.
+  const codeMap: Record<string, InstitutionCode> = {
+    'tesu': 'TESU',
+    'thomas edison': 'TESU',
+    'thomas edison state university': 'TESU',
+    'wgu': 'WGU',
+    'western governors': 'WGU',
+    'western governors university': 'WGU',
+    'cosc': 'COSC',
+    'charter oak': 'COSC',
+    'charter oak state college': 'COSC',
+    'umgc': 'UMGC',
+    'university of maryland global campus': 'UMGC',
+    'snhu': 'SNHU',
+    'southern new hampshire university': 'SNHU',
+  };
+
+  let institutionCode: InstitutionCode | null = null;
+  let partnerName: string;
+
   if (typeof targetSchool === 'string') {
-    // Map string to institution code
-    // Map known school names to institution codes (only supported codes)
-    const codeMap: Partial<Record<string, InstitutionCode>> = {
-      'tesu': 'TESU',
-      'thomas edison': 'TESU',
-      'thomas edison state university': 'TESU',
-      'wgu': 'WGU',
-      'western governors': 'WGU',
-      'cosc': 'COSC',
-      'charter oak': 'COSC',
-      // Other institutions default to TESU via getPolicyOrDefault()
-    };
-    const normalized = targetSchool.toLowerCase();
-    institutionCode = codeMap[normalized] || 'TESU';
     partnerName = targetSchool;
-  } else if (typeof targetSchool === 'object') {
-    const school = targetSchool as any;
+    institutionCode = codeMap[targetSchool.trim().toLowerCase()] ?? null;
+  } else if (targetSchool && typeof targetSchool === 'object') {
+    const school = targetSchool as { name?: string; code?: string };
     partnerName = school.name || 'Unknown';
-    // Try to extract code from object
-    if (school.code) {
-      institutionCode = school.code as InstitutionCode;
-    }
+    const raw = (school.code || school.name || '').trim();
+    // Resolve via the alias map, then verify the result is a code we hold a
+    // policy for. Never trust a caller-supplied code unchecked.
+    const candidate = codeMap[raw.toLowerCase()] ?? (raw.toUpperCase() as InstitutionCode);
+    institutionCode = hasPolicy(candidate) ? candidate : null;
+  } else {
+    return undefined;
   }
-  
-  // Get policy from central service (single source of truth)
+
+  if (!institutionCode || !hasPolicy(institutionCode)) {
+    console.warn(
+      `[anchorPolicyAdapter] No policy for target school "${partnerName}" — ` +
+      `returning undefined rather than substituting another school's policy.`
+    );
+    return undefined;
+  }
+
   const centralPolicy = getPolicyOrDefault(institutionCode);
-  
-  // P1 Safety: Handle missing policy explicitly
-  if (!centralPolicy) {
-    console.warn(`[anchorPolicyAdapter] No policy for "${institutionCode}" - falling back to safe defaults`);
-    return {
-      partner_name: partnerName,
-      max_alt_credits: getNoncollegiateCap(institutionCode) || 90,
-      min_residency_credits: getResidencyCredits(institutionCode, 'standard') || 30,
-      upper_division_min: 18, // Safe conservative default
-      notes: `No verified policy for ${institutionCode} - using safe defaults`,
-    };
-  }
-  
+  if (!centralPolicy) return undefined;
+
   return {
     partner_name: partnerName,
     max_alt_credits: getNoncollegiateCap(institutionCode),

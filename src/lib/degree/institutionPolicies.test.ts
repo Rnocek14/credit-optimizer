@@ -261,12 +261,18 @@ describe('institutionPolicies', () => {
 
     it('WGU has different residency than TESU', () => {
       expect(getResidencyCredits('TESU', 'standard')).toBe(15);
-      expect(getResidencyCredits('WGU', 'standard')).toBe(42);
+      // Reconciled 2026-09-15: was asserting 42, which matched the uncited
+      // constant rather than ground truth. Ground truth and the WGU policy
+      // pack (field_provenance human_override) both record 24.
+      expect(getResidencyCredits('WGU', 'standard')).toBe(24);
     });
 
     it('WGU has different noncollegiate cap', () => {
       expect(getNoncollegiateCap('TESU')).toBe(90);
-      expect(getNoncollegiateCap('WGU')).toBe(78);
+      // Reconciled 2026-09-15: was asserting 78. Ground truth records
+      // max_ace_nccrs_credits = 45 and the pack records max_alt_credit = 45.
+      // This test previously locked in a 33-credit overstatement.
+      expect(getNoncollegiateCap('WGU')).toBe(45);
     });
 
     it('WGU does NOT accept Sophia or Study.com', () => {
