@@ -19,7 +19,19 @@ vi.mock('../state/usePlanStore', () => {
 // `{items, moduleStates}` rather than an array — every test in this file
 // died on "TypeError: basket is not iterable".
 vi.mock('../state/usePlanBasket', () => {
-  const state = { items: [], moduleStates: {} };
+  // Mirror the real store's initial state (usePlanBasket.ts). `constraints`
+  // matters: a child of ModuleCard selects it and reads `.target_school`.
+  // The old selector-ignoring mock handed that caller the whole state object,
+  // so the read yielded undefined instead of throwing; a selector-aware mock
+  // returns undefined for a key it does not define, which crashes the render.
+  const state = {
+    items: [],
+    moduleStates: {},
+    constraints: { max_ace_credits: 90, max_concurrent_courses: 2 },
+    scenarios: [],
+    currentBasket: null,
+    showDeadEndReasons: false,
+  };
   return {
     usePlanBasket: (selector?: (s: typeof state) => unknown) =>
       typeof selector === 'function' ? selector(state) : state,

@@ -39,7 +39,11 @@ jobs:
         run: pnpm install
       
       - name: Run unit tests with coverage
-        run: pnpm test run --coverage
+        # `pnpm test run --coverage` does NOT work: pnpm parses --coverage as
+        # its own option and errors with "Unknown option: 'coverage'" before
+        # the script ever starts. (npm forwards trailing args; pnpm does not.)
+        # A dedicated script takes no CLI args, so there is nothing to misparse.
+        run: pnpm test:coverage
       
       - name: Upload coverage
         uses: codecov/codecov-action@v3
