@@ -1134,23 +1134,6 @@ function DegreeAnalyzerContent(props: DecisionDockRouterProps) {
 function YearMarketplaceContent(props: DecisionDockRouterProps) {
   const { year, yearModules = [], degreeSummary, onNavigate, onOpenModulePanel, onClose, nodeData } = props;
   
-  // Show loading state if year data is still hydrating
-  if (!year || !yearModules || yearModules.length === 0) {
-    console.warn('[YearMarketplaceContent] Missing data, showing loading state:', {
-      hasYear: !!year,
-      yearModulesCount: yearModules?.length || 0
-    });
-    
-    return (
-      <div className="flex items-center justify-center py-12">
-        <div className="text-center space-y-3">
-          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-primary border-r-transparent"></div>
-          <p className="text-sm text-muted-foreground">Loading year {year || '?'} data...</p>
-        </div>
-      </div>
-    );
-  }
-  
   const basketItems = usePlanBasket(s => s.items);
   const constraints = usePlanBasket(s => s.constraints);
   const addItem = usePlanBasket(s => s.addItem);
@@ -1238,6 +1221,32 @@ function YearMarketplaceContent(props: DecisionDockRouterProps) {
         : 0
     };
   }, [yearModules]);
+
+  // Show loading state if year data is still hydrating.
+  //
+  // This guard USED TO SIT ABOVE every hook in this component, which crashed
+  // React on the ordinary hydration path: the first render returned here having
+  // called zero hooks, then the render after the data arrived called all
+  // thirteen, and React threw "Rendered more hooks than during the previous
+  // render." It has to come after the last hook. Every hook above already
+  // tolerates an empty yearModules (enrichedModules returns [] explicitly, and
+  // yearModules defaults to [] in the destructure), so running them first is
+  // safe — only the RETURN is conditional now, never a hook call.
+  if (!year || !yearModules || yearModules.length === 0) {
+    console.warn('[YearMarketplaceContent] Missing data, showing loading state:', {
+      hasYear: !!year,
+      yearModulesCount: yearModules?.length || 0
+    });
+
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="text-center space-y-3">
+          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-primary border-r-transparent"></div>
+          <p className="text-sm text-muted-foreground">Loading year {year || '?'} data...</p>
+        </div>
+      </div>
+    );
+  }
 
   // Legacy auto-fill handler (kept for fallback)
   const handleAutoFillYear = async () => {
