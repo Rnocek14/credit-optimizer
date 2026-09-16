@@ -16,6 +16,7 @@ import { Helmet } from 'react-helmet-async';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { ArrowRight } from 'lucide-react';
+import { absoluteUrl } from '@/lib/siteUrl';
 
 export interface PublicLayoutProps {
   /** Page <title>. Keep ≤60 chars; keyword first. */
@@ -39,7 +40,7 @@ export function PublicLayout({
   children,
 }: PublicLayoutProps) {
   const canonical = canonicalPath
-    ? `https://pivot.app${canonicalPath}`
+    ? absoluteUrl(canonicalPath)
     : undefined;
 
   return (

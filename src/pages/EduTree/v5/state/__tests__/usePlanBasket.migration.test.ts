@@ -33,7 +33,7 @@ describe('usePlanBasket v3 Migration', () => {
     localStorage.clear();
   });
   
-  it('migrates v2 scenarios (Record) to v3 (PlanScenario[])', () => {
+  it('migrates v2 scenarios (Record) to v3 (PlanScenario[])', async () => {
     const v2State = {
       items: [],
       constraints: {},
@@ -49,7 +49,13 @@ describe('usePlanBasket v3 Migration', () => {
       version: 2,
     }));
     
-    // Hydrate store (triggers migration)
+    // zustand's `persist` reads storage once, when the store module is first
+    // imported — which already happened at the top of this file, before
+    // beforeEach wrote anything. Without an explicit rehydrate the assertions
+    // below run against the empty store and the migrate() path is never
+    // exercised at all.
+    await usePlanBasket.persist.rehydrate();
+
     const { scenarios } = usePlanBasket.getState();
     
     expect(Array.isArray(scenarios)).toBe(true);
@@ -67,7 +73,7 @@ describe('usePlanBasket v3 Migration', () => {
     expect(names).toEqual(['Plan A', 'Plan B']);
   });
   
-  it('caps scenarios at 20 and evicts oldest', () => {
+  it('caps scenarios at 20 and evicts oldest', async () => {
     // Create 25 v2 scenarios
     const v2Scenarios: any = {};
     for (let i = 0; i < 25; i++) {
@@ -82,8 +88,10 @@ describe('usePlanBasket v3 Migration', () => {
       version: 2,
     }));
     
+    await usePlanBasket.persist.rehydrate();
+
     const { scenarios } = usePlanBasket.getState();
-    
+
     expect(scenarios).toHaveLength(20);
     // All should have valid structure
     scenarios.forEach(s => {

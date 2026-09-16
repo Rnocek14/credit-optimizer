@@ -67,6 +67,11 @@ export function autoCompletePlan(
   let status: PlanAutoCompleteResult['status'] = 'ok';
   let stoppedReason: string | undefined;
 
+  // Modules the loop skipped. Every `continue` below used to leave status at
+  // 'ok', so a run that filled one module out of five still reported a
+  // complete plan — only the withinConstraints break ever downgraded it.
+  const unfilledModuleIds: string[] = [];
+
   const allOptions: MarketplaceOption[] = modules.flatMap(m => m.marketplaceOptions ?? []);
   const basketIds = new Set<string>(basket.map(b => b.courseId));
 
@@ -89,9 +94,23 @@ export function autoCompletePlan(
 
     // Filter eligible options (local constraints: budget/workload/prereq/transfer cap)
     const runningBefore = computeRunning();
-    const eligible = filterEligibleOptions(options, constraints, runningBefore, basketIds);
+    // skipPrereqCheck: this function resolves prerequisite chains below. If the
+    // filter cut options with unmet prereqs, resolveChain() would only ever see
+    // options that need no prereqs and the whole chain feature would be inert.
+    // Options with UNSATISFIABLE prereqs are still rejected, further down.
+    const eligibleRaw = filterEligibleOptions(options, constraints, runningBefore, basketIds, {
+      skipPrereqCheck: true,
+    });
+
+    // A course already in the basket cannot fill this module too — you take it
+    // once. Without this, the scorer could pick an already-selected course as
+    // the module's best option, the commit loop below would drop it as a
+    // duplicate, and the module would end up empty while still counting as
+    // filled.
+    const eligible = eligibleRaw.filter((o) => !basketIds.has(o.courseId));
 
     if (eligible.length === 0) {
+      unfilledModuleIds.push(mod.id);
       continue;
     }
 
@@ -112,6 +131,7 @@ export function autoCompletePlan(
 
     if (viable.length === 0) {
       // All eligible options are dead-ends - skip module
+      unfilledModuleIds.push(mod.id);
       continue;
     }
 
@@ -123,7 +143,10 @@ export function autoCompletePlan(
     };
     const scored = scoreOptions(viable, scoringWeights);
     const best = pickBestOption(scored);
-    if (!best) continue;
+    if (!best) {
+      unfilledModuleIds.push(mod.id);
+      continue;
+    }
 
     // Resolve missing prereqs for this best choice
     const chain = resolveChain(best.courseId, allOptions, [...basket, ...suggestions]);
@@ -131,6 +154,7 @@ export function autoCompletePlan(
     // Check for unsatisfiable prereqs
     if (chain.unsatisfiable.length > 0) {
       // Skip this option if prereqs can't be satisfied
+      unfilledModuleIds.push(mod.id);
       continue;
     }
 
@@ -165,6 +189,16 @@ export function autoCompletePlan(
 
   // Finalize totals
   const totals = calculateTotals([...basket, ...suggestions], constraints);
+
+  // A module the loop could not fill means the plan is incomplete, whichever
+  // `continue` skipped it.
+  if (status === 'ok' && unfilledModuleIds.length > 0) {
+    status = suggestions.length ? 'partial' : 'none';
+    stoppedReason =
+      `Constraints limit what fits: no option available for ${unfilledModuleIds.length} ` +
+      `module${unfilledModuleIds.length === 1 ? '' : 's'} (${unfilledModuleIds.join(', ')})`;
+  }
+
   if (suggestions.length === 0) status = 'none';
 
   return {

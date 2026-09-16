@@ -5,9 +5,18 @@
  *  - "I have unused credits and want to find a degree I can actually finish."
  *  - "I'm switching majors/schools — what carries over?"
  *
- * Looks up verified rows in credit_transfer_rules by source (provider or
- * institution) and shows what counts at each verified anchor school, with
- * evidence links and last-verified dates. Ends in the Get Started funnel.
+ * Looks up active rows in credit_transfer_rules by source (provider or
+ * institution) and shows what each says at each anchor school, with evidence
+ * links and last-verified dates. Ends in the Get Started funnel.
+ *
+ * HONESTY CONTRACT (this page is public, indexed, and carries affiliate
+ * links, so every claim here is a commercial representation):
+ *  - A row is shown with its ACTUAL acceptance_status. Never assume acceptance.
+ *  - A row is shown with its verification age. A rule older than
+ *    RULE_FRESHNESS_DAYS is labelled "needs recheck", not "verified".
+ *  - The word "verified" is used only where the underlying query actually
+ *    establishes it.
+ *
  * Public + indexable: this is also our GradFaster-style lookup surface, aimed
  * at the alt-credit queries they don't serve.
  */
@@ -23,6 +32,14 @@ import { ArrowRight, Search, ShieldCheck, ExternalLink, Loader2, GraduationCap }
 import { supabase } from '@/integrations/supabase/client';
 import { logEvent } from '@/lib/analytics';
 import { VERIFIED_SCHOOL_CODES } from '@/lib/planScoring/config';
+import { ProviderLinkStrip } from '@/components/ProviderLinkStrip';
+import {
+  classifyRuleFreshness,
+  formatVerifiedLabel,
+  RULE_FRESHNESS_DAYS,
+} from '@/lib/transfer/ruleFreshness';
+import { classifyEvidenceUrl, evidenceLinkLabel } from '@/lib/transfer/evidenceQuality';
+import { absoluteUrl } from '@/lib/siteUrl';
 
 interface RuleRow {
   id: string;
@@ -34,6 +51,33 @@ interface RuleRow {
   confidence: number | null;
   evidence_url: string | null;
   last_verified_at?: string | null;
+}
+
+/**
+ * Render a rule's actual outcome.
+ *
+ * Previously this was `r.target_course_code ?? 'accepted'`, which printed
+ * "accepted" for every row lacking a mapped target course — including rows
+ * whose acceptance_status is literally 'rejected'. The seeded rule stating
+ * that Sophia SOPH-COMM-101 is REJECTED at WGU rendered as "→ accepted".
+ */
+function describeOutcome(r: RuleRow): string {
+  const status = (r.acceptance_status ?? '').toLowerCase();
+
+  if (status === 'rejected' || status === 'denied' || status === 'not_accepted') {
+    return 'not accepted';
+  }
+  if (status === 'elective') {
+    return r.target_course_code
+      ? `${r.target_course_code} (elective credit)`
+      : 'elective credit';
+  }
+  if (status === 'accepted') {
+    return r.target_course_code ?? 'accepted as transfer credit';
+  }
+
+  // Unrecognised or absent status: report it verbatim rather than guessing.
+  return r.target_course_code ?? (status ? `status: ${status}` : 'outcome not recorded');
 }
 
 const SCHOOL_NAMES: Record<string, string> = {
@@ -93,9 +137,9 @@ export default function TransferCheckPage() {
         <title>Will My Credits Transfer? Free Checker | Pivot</title>
         <meta
           name="description"
-          content="Check where your existing credits — Sophia, Study.com, CLEP, or college courses — actually transfer. Verified rules with source links for TESU, Charter Oak, and WGU."
+          content="Check where your existing credits — Sophia, Study.com, CLEP, or college courses — actually transfer. Transfer rules with source links and last-checked dates for TESU, Charter Oak, and WGU."
         />
-        <link rel="canonical" href="https://pivot.app/transfer-check" />
+        <link rel="canonical" href={absoluteUrl('/transfer-check')} />
       </Helmet>
 
       <div className="container mx-auto px-4 py-10 max-w-3xl space-y-8">
@@ -108,8 +152,8 @@ export default function TransferCheckPage() {
           </h1>
           <p className="text-muted-foreground max-w-2xl">
             Sitting on credits from a provider or a school you left? Switching majors?
-            Look up verified transfer rules — with the source document for every rule —
-            before you spend another dollar.
+            Look up what our transfer records say — with the source document and the date
+            we last checked it — before you spend another dollar.
           </p>
         </div>
 
@@ -151,11 +195,12 @@ export default function TransferCheckPage() {
           <div className="space-y-4">
             {rows.length === 0 ? (
               <Card className="p-6 text-center space-y-3">
-                <p className="font-medium">No verified rules matched that search.</p>
+                <p className="font-medium">No rules matched that search.</p>
                 <p className="text-sm text-muted-foreground">
-                  We only show rules we've verified against source documents — a miss here
-                  doesn't mean your credits won't transfer. Run the full check to see how
-                  your credits fit at each school.
+                  Our rule database doesn't cover every course yet, so a miss here tells you
+                  nothing either way about whether your credits transfer — it only means we
+                  don't have a record. Check with the school directly, or run the full check
+                  to see how your credits fit.
                 </p>
                 <Button asChild variant="outline">
                   <Link to="/get-started">
@@ -173,30 +218,59 @@ export default function TransferCheckPage() {
                       <h2 className="font-semibold">
                         {SCHOOL_NAMES[school] ?? school}
                       </h2>
-                      <Badge variant="secondary">{schoolRows.length} verified rule{schoolRows.length === 1 ? '' : 's'}</Badge>
+                      <Badge variant="secondary">
+                        {schoolRows.length} rule{schoolRows.length === 1 ? '' : 's'}
+                      </Badge>
+                      {(() => {
+                        const staleCount = schoolRows.filter(
+                          (r) => classifyRuleFreshness(r.last_verified_at) !== 'fresh'
+                        ).length;
+                        return staleCount > 0 ? (
+                          <Badge
+                            variant="outline"
+                            className="border-amber-400/50 text-amber-700 dark:text-amber-400"
+                          >
+                            {staleCount} need recheck
+                          </Badge>
+                        ) : null;
+                      })()}
                     </div>
                     <div className="divide-y divide-border/60">
                       {schoolRows.slice(0, 15).map((r) => (
                         <div key={r.id} className="py-2.5 flex items-center justify-between gap-3 text-sm">
                           <div className="min-w-0">
                             <span className="font-medium">{r.source_course_code ?? '—'}</span>
-                            <span className="text-muted-foreground"> → {r.target_course_code ?? 'accepted'}</span>
-                            {r.acceptance_status && (
-                              <span className="ml-2 text-xs text-muted-foreground">({r.acceptance_status})</span>
-                            )}
+                            <span className="text-muted-foreground"> → {describeOutcome(r)}</span>
+                            <span className="block text-xs text-muted-foreground mt-0.5">
+                              {formatVerifiedLabel(r.last_verified_at)}
+                              {classifyRuleFreshness(r.last_verified_at) !== 'fresh' && (
+                                <span className="ml-1.5 text-amber-700 dark:text-amber-400 font-medium">
+                                  · needs recheck
+                                </span>
+                              )}
+                            </span>
                           </div>
-                          {r.evidence_url && (
-                            <a
-                              href={r.evidence_url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="shrink-0 inline-flex items-center gap-1 text-xs text-primary hover:underline"
-                            >
-                              <ShieldCheck className="h-3.5 w-3.5" />
-                              source
-                              <ExternalLink className="h-3 w-3" />
-                            </a>
-                          )}
+                          {r.evidence_url && (() => {
+                            // A generic landing page auto-attached by the old
+                            // backfill worker must not read as "source" — it
+                            // does not evidence this particular course.
+                            const quality = classifyEvidenceUrl(r.evidence_url);
+                            const isSpecific = quality === 'specific';
+                            return (
+                              <a
+                                href={r.evidence_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className={`shrink-0 inline-flex items-center gap-1 text-xs hover:underline ${
+                                  isSpecific ? 'text-primary' : 'text-muted-foreground'
+                                }`}
+                              >
+                                {isSpecific && <ShieldCheck className="h-3.5 w-3.5" />}
+                                {evidenceLinkLabel(r.evidence_url)}
+                                <ExternalLink className="h-3 w-3" />
+                              </a>
+                            );
+                          })()}
                         </div>
                       ))}
                       {schoolRows.length > 15 && (
@@ -223,13 +297,24 @@ export default function TransferCheckPage() {
                     </Link>
                   </Button>
                 </Card>
+
+                {/* Revenue surface — a user who just confirmed their credits
+                    transfer is the most likely person on the site to buy the
+                    next course today. */}
+                <ProviderLinkStrip
+                  source="transfer_check"
+                  heading="Fill the gaps"
+                  subheading="Need the courses you don't have yet? These are the transfer-friendly providers behind the rules above."
+                />
               </>
             )}
           </div>
         )}
 
         <p className="text-[11px] text-muted-foreground leading-relaxed">
-          Rules reflect published policies at the time we verified them. Final transfer
+          Rules reflect published policies at the time we checked them, and schools revise
+          transfer policy with each catalog year. Anything we checked more than{' '}
+          {RULE_FRESHNESS_DAYS} days ago is marked "needs recheck" above. Final transfer
           decisions are always made by the receiving institution — confirm with an
           admissions advisor before enrolling or purchasing courses.
         </p>

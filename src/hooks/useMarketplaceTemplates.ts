@@ -18,6 +18,60 @@ interface DegreeTemplateRow {
   template_data: Record<string, unknown> | null;
 }
 
+/**
+ * Fixture lookup for DB template rows.
+ *
+ * Two bugs lived here before 2026-09-15:
+ *
+ *  1. The map was keyed on the fixture's RAW `optimization`
+ *     (cheapest / fastest / balanced / multi-school-cheapest) while the lookup
+ *     used `normalizeOptimization(track_type)` (standard / alt-credit /
+ *     balanced / fastest / multi-school). Only TESU-fastest, TESU-balanced and
+ *     WGU-balanced could ever match — 8 of the 11 fixtures were unreachable,
+ *     so those rows silently fell through to the thin DB-only transform.
+ *
+ *  2. The composite key omitted the program, so `Map.set` quietly overwrote:
+ *     the three cs-bachelor fixtures were shadowed by the three
+ *     business-admin-bachelor fixtures at the same school and optimization.
+ *
+ * Resolution order is now exact-id first, which is both collision-free and
+ * what the committed seed rows actually line up with
+ * (`it-bachelor-wgu-multischool-2025` etc. are identical on both sides), then
+ * the normalized school+optimization composite as a fallback.
+ */
+const fixtureList = marketplaceFixtures as unknown as MarketplaceDegreeTemplate[];
+
+const fixturesById = new Map<string, MarketplaceDegreeTemplate>();
+const fixturesByComposite = new Map<string, MarketplaceDegreeTemplate>();
+
+for (const fixture of fixtureList) {
+  if (fixture.id) fixturesById.set(fixture.id, fixture);
+
+  // Normalize the fixture side with the SAME function the lookup uses.
+  const composite = `${fixture.anchorSchool}-${normalizeOptimization(fixture.optimization)}`;
+  const existing = fixturesByComposite.get(composite);
+  if (existing && existing.id !== fixture.id) {
+    // Previously silent last-write-wins. Keep the first and say so, rather
+    // than serving one program's plan under another program's row.
+    console.warn(
+      `[useMarketplaceTemplates] Fixture key collision on "${composite}": ` +
+      `keeping "${existing.id}", ignoring "${fixture.id}". ` +
+      `Composite lookups for this key are ambiguous — match by id instead.`
+    );
+    continue;
+  }
+  fixturesByComposite.set(composite, fixture);
+}
+
+/** Resolve the richest fixture for a DB row, or undefined for none. */
+function resolveFixture(row: { id: string; institution_code: string; track_type: string }) {
+  const byId = fixturesById.get(row.id);
+  if (byId) return byId;
+  return fixturesByComposite.get(
+    `${row.institution_code}-${normalizeOptimization(row.track_type)}`
+  );
+}
+
 interface BaselineSnapshot {
   template_id: string;
   institution_code: string;
@@ -417,13 +471,7 @@ export function useMarketplaceTemplates(filters?: Partial<MarketplaceFilters>) {
       
       console.log('[useMarketplaceTemplates] Loaded', snapshotMap.size, 'baseline snapshots');
       
-      // Create a map of fixtures by anchorSchool + optimization for rich data lookup
-      const fixtureMap = new Map<string, MarketplaceDegreeTemplate>();
-      (marketplaceFixtures as unknown as MarketplaceDegreeTemplate[]).forEach(t => {
-        const key = `${t.anchorSchool}-${t.optimization}`;
-        fixtureMap.set(key, t);
-      });
-      
+
       // Helper to generate synthetic year breakdown from aggregate data
       const generateYearBreakdown = (
         totalCost: number,
@@ -525,9 +573,7 @@ export function useMarketplaceTemplates(filters?: Partial<MarketplaceFilters>) {
       for (const row of (dbRows || [])) {
         try {
           const typedRow = row as unknown as DegreeTemplateRow;
-          const optimization = normalizeOptimization(typedRow.track_type);
-          const fixtureKey = `${typedRow.institution_code}-${optimization}`;
-          const fixture = fixtureMap.get(fixtureKey);
+          const fixture = resolveFixture(typedRow);
           
           let template: MarketplaceDegreeTemplate;
           
@@ -745,14 +791,11 @@ export function useMarketplaceTemplate(templateId: string) {
       
       if (dbRow) {
         const typedRow = dbRow as unknown as DegreeTemplateRow;
-        const optimization = typedRow.track_type === 'alt_max' ? 'alt-credit' : 'standard';
-        const fixtureKey = `${typedRow.institution_code}-${optimization}`;
-        
-        // Check if we have rich fixture data
-        const fixtures = marketplaceFixtures as unknown as MarketplaceDegreeTemplate[];
-        const fixture = fixtures.find(t => 
-          t.anchorSchool === typedRow.institution_code && t.optimization === optimization
-        );
+        // Was a hand-rolled `track_type === 'alt_max' ? 'alt-credit' : 'standard'`
+        // compared against raw fixture optimizations (cheapest/fastest/...),
+        // so it could never match — plus an unused fixtureKey. Same resolver
+        // as the list query now, so both paths agree.
+        const fixture = resolveFixture(typedRow);
         
         let template: MarketplaceDegreeTemplate;
         
@@ -774,8 +817,7 @@ export function useMarketplaceTemplate(templateId: string) {
       }
       
       // Fallback to fixtures for backwards compatibility
-      const fixtures = marketplaceFixtures as unknown as MarketplaceDegreeTemplate[];
-      const template = fixtures.find(t => t.id === templateId);
+      const template = fixturesById.get(templateId);
       
       if (!template) {
         console.warn(`[useMarketplaceTemplate] Template not found: ${templateId}`);

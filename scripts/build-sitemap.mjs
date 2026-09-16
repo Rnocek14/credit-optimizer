@@ -18,7 +18,10 @@ import { dirname, join } from 'node:path';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, '..');
 
-const SITE_URL = process.env.SITE_URL || 'https://pivot.app';
+// Same origin the app uses (src/lib/siteUrl.ts). Accepts either name so the
+// deploy only has to set one.
+const SITE_URL = (process.env.VITE_SITE_URL || process.env.SITE_URL || 'https://pivot.app')
+  .replace(/\/+$/, '');
 
 // Parse the guide registry without importing TS — read the file as text and
 // extract slugs + updatedAt fields. Crude but dependency-free.
@@ -69,8 +72,22 @@ ${[...staticUrls, ...guideUrls].join('\n')}
 
   writeFileSync(join(ROOT, 'public/sitemap.xml'), xml);
   console.log(
-    `[sitemap] wrote ${staticUrls.length + guideUrls.length} URLs to public/sitemap.xml`
+    `[sitemap] wrote ${staticUrls.length + guideUrls.length} URLs to public/sitemap.xml (${SITE_URL})`
   );
+
+  // robots.txt carries an absolute Sitemap: URL, so it has the same
+  // wrong-domain failure mode as the canonicals. Rewrite it from the same
+  // value rather than leaving a second hardcoded origin behind.
+  const robotsPath = join(ROOT, 'public/robots.txt');
+  const robots = readFileSync(robotsPath, 'utf8');
+  const updated = robots.replace(
+    /^Sitemap:.*$/m,
+    `Sitemap: ${SITE_URL}/sitemap.xml`
+  );
+  if (updated !== robots) {
+    writeFileSync(robotsPath, updated);
+    console.log(`[sitemap] updated robots.txt Sitemap -> ${SITE_URL}/sitemap.xml`);
+  }
 }
 
 build();

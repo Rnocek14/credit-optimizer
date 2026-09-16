@@ -17,6 +17,8 @@ export interface TransferRule {
   rule_source: string | null;
   confidence: number | null;
   evidence_url: string | null;
+  /** When this rule was last checked against the source. Drives freshness. */
+  last_verified_at: string | null;
 }
 
 /** Accepted transfer source used for marketplace matching */

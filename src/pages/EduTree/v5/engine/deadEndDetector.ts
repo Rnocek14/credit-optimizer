@@ -200,7 +200,17 @@ export function checkForDeadEnd(
     // false-positive dead-ends on valid selections. Total-credit feasibility
     // cannot be proven from a partial list and is no longer a blocking check.
     
-    if (needResidency > maxResidencyPossible) {
+    // Residency needs the same closed-world guard as total credits above and
+    // upper-division below. "Only N possible from remaining institutional
+    // slots" proves residency is unreachable ONLY if the listed modules are
+    // the whole degree; free electives beyond them can carry residency credit.
+    //
+    // Without this guard the check was also self-inconsistent: the LAST module
+    // has an empty remainingModules list, so it fell through to the legacy
+    // branch and was never blocked, while an identical option in an earlier
+    // module was. Same plan, different verdict purely by iteration order.
+    const unlistedCredits = Math.max(0, needCredits - maxCreditsPossible);
+    if (needResidency > maxResidencyPossible + unlistedCredits) {
       reasons.push(
         `Cannot satisfy residency (need ${needResidency} more, only ${maxResidencyPossible} possible from remaining institutional slots)`
       );

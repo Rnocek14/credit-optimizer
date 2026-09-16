@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import { GraduationCap, ArrowRight, DollarSign, Clock, RefreshCw } from "lucide-react";
 
-const SITE_URL = "https://pivot.app";
+import { SITE_URL } from "@/lib/siteUrl";
 
 const SecureLandingPage = () => {
   return (

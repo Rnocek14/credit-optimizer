@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { renderHook, act, render } from '@testing-library/react';
+import { renderHook, act, render, fireEvent } from '@testing-library/react';
 import { usePlanBasket } from '../state/usePlanBasket';
 import ConstraintsPanel from './ConstraintsPanel';
 
@@ -206,27 +206,18 @@ describe('ConstraintsPanel - UI Debounce', () => {
     const minCRISlider = document.querySelector('input[type="range"][aria-label="Min CRI"]') as HTMLInputElement;
     expect(minCRISlider).toBeTruthy();
 
-    // 5 rapid changes - use manual event triggering for speed
-    act(() => {
-      minCRISlider.value = '70';
-      minCRISlider.dispatchEvent(new Event('change', { bubbles: true }));
-    });
-    act(() => {
-      minCRISlider.value = '75';
-      minCRISlider.dispatchEvent(new Event('change', { bubbles: true }));
-    });
-    act(() => {
-      minCRISlider.value = '80';
-      minCRISlider.dispatchEvent(new Event('change', { bubbles: true }));
-    });
-    act(() => {
-      minCRISlider.value = '85';
-      minCRISlider.dispatchEvent(new Event('change', { bubbles: true }));
-    });
-    act(() => {
-      minCRISlider.value = '90';
-      minCRISlider.dispatchEvent(new Event('change', { bubbles: true }));
-    });
+    // 5 rapid changes.
+    //
+    // These must go through fireEvent.change. Assigning `.value` and
+    // dispatching a raw Event does not update React's internal value tracker,
+    // so on a CONTROLLED input React treats the change as a no-op and onChange
+    // never fires — the slider looked like it moved but the component never
+    // saw any of the five changes.
+    for (const value of ['70', '75', '80', '85', '90']) {
+      act(() => {
+        fireEvent.change(minCRISlider, { target: { value } });
+      });
+    }
 
     // Nothing yet (debounce window hasn't elapsed)
     expect(logEvent).not.toHaveBeenCalled();

@@ -13,6 +13,8 @@
  * two institutions. Keep them in sync with the marketplace pricing source.
  */
 import { CheckCircle2, XCircle } from 'lucide-react';
+import { POLICY_GROUND_TRUTH } from '@/lib/degree/policyGroundTruth';
+import { INSTITUTION_RATES, formatRateCaveat } from '@/lib/pricing/referenceRates';
 
 export const TesuVsCoscGuide = () => (
   <article className="prose prose-slate dark:prose-invert max-w-none">
@@ -44,18 +46,20 @@ export const TesuVsCoscGuide = () => (
           </tr>
           <tr>
             <td className="p-3 font-medium">Max transfer credits</td>
-            <td className="p-3">90</td>
-            <td className="p-3">90</td>
+            <td className="p-3">{POLICY_GROUND_TRUTH.TESU.maxTransferCredits}</td>
+            <td className="p-3">{POLICY_GROUND_TRUTH.COSC.maxTransferCredits}</td>
           </tr>
           <tr>
             <td className="p-3 font-medium">Residency credits</td>
-            <td className="p-3">16 (TECEP or course)</td>
-            <td className="p-3">36 minimum</td>
+            <td className="p-3">{POLICY_GROUND_TRUTH.TESU.residencyCredits}</td>
+            <td className="p-3">
+              {POLICY_GROUND_TRUTH.COSC.residencyCredits} (Cornerstone + Capstone)
+            </td>
           </tr>
           <tr>
             <td className="p-3 font-medium">Per-credit tuition (out-of-state)</td>
-            <td className="p-3">~$519</td>
-            <td className="p-3">~$469</td>
+            <td className="p-3">${INSTITUTION_RATES.TESU.perCreditUsd}</td>
+            <td className="p-3">${INSTITUTION_RATES.COSC.perCreditUsd}</td>
           </tr>
           <tr>
             <td className="p-3 font-medium">Sophia / Study.com accepted</td>
@@ -111,7 +115,8 @@ export const TesuVsCoscGuide = () => (
     <ul>
       <li>
         Out-of-pocket per-credit cost matters more than residency requirements.
-        COSC is ~$50/credit cheaper out of state.
+        COSC is ~${INSTITUTION_RATES.TESU.perCreditUsd - INSTITUTION_RATES.COSC.perCreditUsd}/credit
+        cheaper out of state. {formatRateCaveat('TESU')}
       </li>
       <li>You prefer structured 8-week terms and a defined cohort cadence.</li>
       <li>

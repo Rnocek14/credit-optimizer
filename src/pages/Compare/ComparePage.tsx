@@ -12,6 +12,7 @@ import { ArrowLeft, ArrowRight, ShieldCheck } from 'lucide-react';
 import { useMarketplaceTemplates } from '@/hooks/useMarketplaceTemplates';
 import { VERIFIED_SCHOOL_CODES } from '@/lib/planScoring/config';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { ProviderLinkStrip } from '@/components/ProviderLinkStrip';
 import { CreditPickerCollapsible } from './components/CreditPickerCollapsible';
 import { CompareTable } from './components/CompareTable';
 import { CompareCards } from './components/CompareCards';
@@ -38,6 +39,7 @@ import {
 } from './types';
 import type { GoalPreference } from '@/hooks/useQuickPlanGeneration';
 import type { MarketplaceDegreeTemplate } from '@/pages/EduTree/v5/types/templates';
+import { absoluteUrl } from '@/lib/siteUrl';
 
 const VERIFIED_SET = new Set<string>(VERIFIED_SCHOOL_CODES);
 
@@ -202,7 +204,7 @@ export default function ComparePage() {
           name="description"
           content={`Side-by-side comparison of ${VERIFIED_SCHOOL_CODES.length} verified universities — cost, time, and personalized transfer fit.`}
         />
-        <link rel="canonical" href="https://pivot.app/compare" />
+        <link rel="canonical" href={absoluteUrl('/compare')} />
       </Helmet>
 
       <div className="container mx-auto px-4 py-8 lg:py-10 max-w-6xl space-y-6">
@@ -279,10 +281,22 @@ export default function ComparePage() {
           <CompareTable rows={rows} picker={state.picker} onViewPlan={handleViewPlan} />
         )}
 
+        {/* Revenue surface — only once there is something to compare, so an
+            empty state never leads with commercial links. */}
+        {!isLoading && rows.length > 0 && (
+          <ProviderLinkStrip
+            source="compare"
+            heading="Where these plans get their credits"
+            subheading="Every plan above is built from these providers. Start with the cheapest source that covers what you still need."
+          />
+        )}
+
         {/* Footer — quiet provenance line, no second trust card */}
         <div className="flex items-center justify-between gap-3 flex-wrap pt-4 border-t border-border/50">
           <p className="text-xs text-muted-foreground">
-            Costs &amp; timelines pulled from verified institutional catalogs and active provider pricing packs.
+            Costs &amp; timelines come from institutional catalogs and provider pricing we've
+            recorded, which schools revise each catalog year. Confirm with the school before
+            enrolling.
           </p>
           <Button
             variant="ghost"

@@ -46,12 +46,19 @@ async function waitForCondition(
   throw new Error('Condition not met within timeout');
 }
 
-function createWrapper() {
-  const queryClient = new QueryClient({
+function createClient() {
+  return new QueryClient({
     defaultOptions: {
       queries: { retry: false },
     },
   });
+}
+
+// Pass a client to SHARE a cache across renders. With no argument each wrapper
+// gets its own client, which is what isolated tests want — but a test about
+// caching has to reuse one, or the second render starts from an empty cache and
+// can never hit it.
+function createWrapper(queryClient: QueryClient = createClient()) {
   return ({ children }: { children: React.ReactNode }) => (
     <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   );
@@ -130,15 +137,16 @@ describe('useExplorationAnalytics', () => {
     vi.mocked(explorationApi.getExplorationAnalytics).mockResolvedValue(mockData);
 
     const params = { since: '14 days', moduleCategory: 'core' };
+    const sharedClient = createClient();
     const { result } = renderHook(() => useExplorationAnalytics(params), {
-      wrapper: createWrapper(),
+      wrapper: createWrapper(sharedClient),
     });
 
     await waitForCondition(() => result.current.isSuccess === true);
 
-    // Second render with same params should use cache
+    // Second render with same params and the SAME client should use cache
     const { result: result2 } = renderHook(() => useExplorationAnalytics(params), {
-      wrapper: createWrapper(),
+      wrapper: createWrapper(sharedClient),
     });
 
     // Should immediately have data from cache

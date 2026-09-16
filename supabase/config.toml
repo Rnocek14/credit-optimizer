@@ -1,5 +1,11 @@
 project_id = "vzpissitddpunkpythsb"
 
+# NOTE ON verify_jwt: it checks the Authorization header carries a VALID JWT.
+# The anon key is a valid JWT and is published in every browser bundle, so
+# verify_jwt = true does NOT make a function admin-only. Any function that
+# writes data needs an in-code guard as well - see
+# supabase/functions/_shared/requireAdminOrCron.ts.
+
 # Ops Automation
 [functions.system-healthcheck]
 verify_jwt = false
@@ -13,7 +19,10 @@ verify_jwt = false
 verify_jwt = true
 
 [functions.run-seeds]
-verify_jwt = false
+# Hardened 2026-09-15: writes policy/template data. Real guard is
+# requireAdminOrCron in the function; verify_jwt alone is NOT access
+# control (the anon key is a valid JWT and ships in the browser bundle).
+verify_jwt = true
 
 # Transfer Scraper Pipeline
 [functions.transfer-scraper-crawl]
@@ -55,28 +64,49 @@ verify_jwt = true
 
 
 [functions.seed-data-2025]
-verify_jwt = false
+# Hardened 2026-09-15: writes policy/template data. Real guard is
+# requireAdminOrCron in the function; verify_jwt alone is NOT access
+# control (the anon key is a valid JWT and ships in the browser bundle).
+verify_jwt = true
 
 [functions.seed-v5-marketplace]
-verify_jwt = false
+# Hardened 2026-09-15: writes policy/template data. Real guard is
+# requireAdminOrCron in the function; verify_jwt alone is NOT access
+# control (the anon key is a valid JWT and ships in the browser bundle).
+verify_jwt = true
 
 [functions.optimizer-seed-tesu]
-verify_jwt = false
+# Hardened 2026-09-15: writes policy/template data. Real guard is
+# requireAdminOrCron in the function; verify_jwt alone is NOT access
+# control (the anon key is a valid JWT and ships in the browser bundle).
+verify_jwt = true
 
 [functions.optimizer-seed-cosc]
-verify_jwt = false
+# Hardened 2026-09-15: writes policy/template data. Real guard is
+# requireAdminOrCron in the function; verify_jwt alone is NOT access
+# control (the anon key is a valid JWT and ships in the browser bundle).
+verify_jwt = true
 
 [functions.optimizer-seed-excelsior]
-verify_jwt = false
+# Hardened 2026-09-15: writes policy/template data. Real guard is
+# requireAdminOrCron in the function; verify_jwt alone is NOT access
+# control (the anon key is a valid JWT and ships in the browser bundle).
+verify_jwt = true
 
 [functions.optimizer-seed-wgu]
-verify_jwt = false
+# Hardened 2026-09-15: writes policy/template data. Real guard is
+# requireAdminOrCron in the function; verify_jwt alone is NOT access
+# control (the anon key is a valid JWT and ships in the browser bundle).
+verify_jwt = true
 
 [functions.run-degree-truth-scan]
 verify_jwt = false
 
 [functions.evidence-backfill-worker]
-verify_jwt = false
+# Hardened 2026-09-15: writes policy/template data. Real guard is
+# requireAdminOrCron in the function; verify_jwt alone is NOT access
+# control (the anon key is a valid JWT and ships in the browser bundle).
+verify_jwt = true
 
 # Program Inventory Pipeline
 [functions.program-inventory-scraper]

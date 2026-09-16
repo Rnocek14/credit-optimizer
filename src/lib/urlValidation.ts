@@ -173,16 +173,35 @@ export function isValidHttpUrl(url: string | undefined | null): boolean {
 export function isFabricatedUrl(url: string | undefined | null): boolean {
   if (!url?.trim()) return false;
   
-  const fabricationPatterns = [
+  // Structural giveaways. These are path shapes, so matching the whole URL is
+  // safe.
+  const structuralPatterns = [
     // UUID-based fabrications
     /\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i,
     // Generic ID-based paths like /learn/coursera-1 or /course/edx_123
     /\/(learn|course)\/(coursera|edx|udemy|mock)[_-]\d+/i,
-    // Mock/test indicators
-    /mock|test|placeholder|sample|demo/i,
   ];
-  
-  return fabricationPatterns.some(pattern => pattern.test(url));
+
+  if (structuralPatterns.some(pattern => pattern.test(url))) return true;
+
+  // Placeholder words, checked as WHOLE WORDS against the host and path only.
+  //
+  // This used to be /mock|test|placeholder|sample|demo/i run against the entire
+  // raw URL, which produced false positives on two counts, each of which killed
+  // a real outbound provider link:
+  //   - the query string counted, so '?utm_source=test' or '?utm_campaign=demo'
+  //     marked a perfectly good URL as fabricated;
+  //   - there were no word boundaries, so 'latest', 'testing', 'demographics'
+  //     and 'resample' all matched.
+  const placeholderWord = /(^|[^a-z0-9])(mock|test|placeholder|sample|demo)([^a-z0-9]|$)/i;
+
+  try {
+    const parsed = new URL(url.trim());
+    return placeholderWord.test(`${parsed.hostname}${parsed.pathname}`);
+  } catch {
+    // Unparseable: fall back to the whole string rather than passing it.
+    return placeholderWord.test(url);
+  }
 }
 
 /**

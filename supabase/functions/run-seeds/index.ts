@@ -1,12 +1,18 @@
+import { requireAdminOrCron } from '../_shared/requireAdminOrCron.ts';
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-cron-secret",
 };
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
+
+  // Authorization: admin user or CRON_SECRET (2026-09-15 audit).
+  const denied = await requireAdminOrCron(req, corsHeaders);
+  if (denied) return denied;
 
   try {
     const body = await req.json().catch(() => ({}));

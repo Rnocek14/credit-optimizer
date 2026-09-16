@@ -71,7 +71,21 @@ function getBaselineLabel(source: string | undefined, anchorSchool: string): str
 
 export function YearComparisonTable({ template, baselineStatus }: YearComparisonTableProps) {
   const baseline = template.singleSchoolBaseline;
-  
+
+  // Precompute all year totals once (not inside the render loop).
+  //
+  // This has to run BEFORE the two early returns below. It used to sit after
+  // them, so a render that bailed out early called no hooks while a render with
+  // a baseline called one, and React threw "Rendered more hooks than during the
+  // previous render" on the transition — which is the normal path, since the
+  // baseline arrives asynchronously. Made null-safe so it can run before the
+  // guards; the value is still only READ after both guards have passed.
+  const multiSchoolYearTotals = useMemo(() => {
+    return (baseline?.yearBreakdown ?? []).map((_, idx) =>
+      computeYearTotals(template.yearTemplates?.[idx])
+    );
+  }, [template.yearTemplates, baseline?.yearBreakdown]);
+
   // No baseline at all - show appropriate message based on status
   if (!baseline) {
     return (
@@ -173,13 +187,6 @@ export function YearComparisonTable({ template, baselineStatus }: YearComparison
       </div>
     );
   }
-
-  // Precompute all year totals once (not inside render loop)
-  const multiSchoolYearTotals = useMemo(() => {
-    return baseline.yearBreakdown!.map((_, idx) => 
-      computeYearTotals(template.yearTemplates?.[idx])
-    );
-  }, [template.yearTemplates, baseline.yearBreakdown]);
 
   // Calculate overall totals
   const baselineTotalCost = baseline.costUsd;

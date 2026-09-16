@@ -1,6 +1,16 @@
 /**
  * Transfer Coverage Scoring
- * Computes what % of template courses have verified transfer rules
+ * Computes what % of template courses have verified transfer rules.
+ *
+ * Coverage keys on `hasRule` - whether an actual credit_transfer_rules row
+ * backed the result - NOT on the displayed status. Inferring coverage from
+ * status is what previously pinned this metric at 100%: the no-rule path in
+ * useTransferVerification returned a non-`unknown` status, and this function
+ * counted anything that wasn't `unknown` as covered, so no database state
+ * could ever move the number.
+ *
+ * This percentage is a readiness metric for the underlying rule table. It is
+ * not a measure of whether a plan will be accepted.
  */
 
 import { normalizeProviderCode } from './providerNormalization';
@@ -11,8 +21,8 @@ type TransferStatus = 'verified' | 'elective' | 'review' | 'unknown';
 
 export interface TransferCoverageBreakdown {
   totalPairs: number;           // courses with providerCode present (excludes anchor residency)
-  coveredPairs: number;         // has a rule match -> status != unknown
-  uncoveredPairs: number;       // status == unknown
+  coveredPairs: number;         // backed by a real credit_transfer_rules row
+  uncoveredPairs: number;       // no rule on file - genuinely unknown
   coveragePercent: number;      // rounded integer 0-100
   byProvider: Record<string, { 
     total: number; 
@@ -55,9 +65,11 @@ export function getCoverageBadgeClasses(level: CoverageLevel): string {
  * @param anchorSchool - The anchor school (to exclude residency courses)
  */
 export function computeTransferCoverage(
-  verifications: Array<{ 
-    providerCode: string; 
+  verifications: Array<{
+    providerCode: string;
     status: TransferStatus;
+    /** True only when a real transfer rule backed this result. Required: see file header. */
+    hasRule: boolean;
     courseCode?: string;
   }>,
   anchorSchool?: string
@@ -86,10 +98,9 @@ export function computeTransferCoverage(
     totalPairs++;
     byProvider[normalizedProvider].total++;
     
-    // Covered = any status that isn't 'unknown'
-    // TransferStatus is: 'verified' | 'elective' | 'review' | 'unknown'
-    const isCovered = v.status !== 'unknown';
-    
+    // Covered = an actual rule row exists. Never infer this from `status`.
+    const isCovered = v.hasRule;
+
     if (isCovered) {
       coveredPairs++;
       byProvider[normalizedProvider].covered++;

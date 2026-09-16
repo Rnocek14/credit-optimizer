@@ -6,6 +6,7 @@
  */
 
 import { supabase } from '@/integrations/supabase/client';
+import { isRuleStale } from '@/lib/transfer/ruleFreshness';
 
 // ============================================================================
 // Types
@@ -16,6 +17,21 @@ export interface TransferRuleCheckResult {
   electiveOnly: boolean;      // transfers, but as elective only
   targetEquivCode?: string;   // mapped target course code, if any
   confidence: number;         // 0-1; always present
+  /**
+   * True when the backing rule exists but was verified outside the freshness
+   * window (see `@/lib/transfer/ruleFreshness`). Always false when there is no
+   * rule at all — absent and stale are different states.
+   *
+   * NOT currently enforced: a stale rule still reports `accepted` as its
+   * status dictates. That is deliberate and temporary. As of the 2026-09-15
+   * audit the entire rule corpus is ~8 months old with no live scraper, so
+   * hard-failing on staleness here would zero out every plan in the product
+   * rather than improve any answer. Staleness is therefore surfaced to the UI
+   * (which downgrades the badge to "review") until the ingestion pipeline is
+   * demonstrably live again — at which point flipping this to an enforcement
+   * gate is a one-line change at the call sites that read it.
+   */
+  stale: boolean;
 }
 
 type TransferRuleCacheEntry =
@@ -23,6 +39,7 @@ type TransferRuleCacheEntry =
       acceptance_status: 'accepted' | 'elective' | 'rejected';
       target_equiv_code?: string | null;
       confidence?: number | null;
+      stale?: boolean;
     }
   | null;
 
@@ -71,6 +88,7 @@ export async function checkTransferRule(
       electiveOnly: false,
       targetEquivCode: undefined,
       confidence: 0,
+      stale: false,
     };
   }
 
@@ -86,6 +104,7 @@ export async function checkTransferRule(
         electiveOnly: false,
         targetEquivCode: undefined,
         confidence: 0,
+        stale: false,
       };
     }
 
@@ -106,6 +125,7 @@ export async function checkTransferRule(
       electiveOnly: cached.acceptance_status === 'elective',
       targetEquivCode: cached.target_equiv_code || undefined,
       confidence: normalizedConfidence,
+      stale: cached.stale ?? false,
     };
   }
 
@@ -122,6 +142,7 @@ export async function checkTransferRule(
       electiveOnly: false,
       targetEquivCode: code,
       confidence: 1.0,
+      stale: false,
     };
   }
 
@@ -148,6 +169,7 @@ export async function checkTransferRule(
         electiveOnly: false,
         targetEquivCode: undefined,
         confidence: 0,
+        stale: false,
       };
     }
 
@@ -159,6 +181,7 @@ export async function checkTransferRule(
         electiveOnly: false,
         targetEquivCode: undefined,
         confidence: 0,
+        stale: false,
       };
     }
 
@@ -172,13 +195,17 @@ export async function checkTransferRule(
         electiveOnly: false,
         targetEquivCode: undefined,
         confidence: 0,
+        stale: false,
       };
     }
+
+    const stale = isRuleStale(data.last_verified_at);
 
     const entry: TransferRuleCacheEntry = {
       acceptance_status: data.acceptance_status as 'accepted' | 'elective' | 'rejected',
       target_equiv_code: data.target_course_code,
       confidence: data.confidence,
+      stale,
     };
 
     transferRuleCache[cacheKey] = entry;
@@ -200,6 +227,7 @@ export async function checkTransferRule(
       electiveOnly: data.acceptance_status === 'elective',
       targetEquivCode: data.target_course_code || undefined,
       confidence: normalizedConfidence,
+      stale,
     };
   } catch (err) {
     console.error('[TransferEngine] Unexpected error:', err);
@@ -209,6 +237,7 @@ export async function checkTransferRule(
       electiveOnly: false,
       targetEquivCode: undefined,
       confidence: 0,
+      stale: false,
     };
   }
 }

@@ -139,10 +139,34 @@ function validateRequiredResidenceCourses(
  */
 export function validateTemplate(template: any): TemplateValidationResult {
   const issues: ValidationIssue[] = [];
-  const anchorSchool = template.anchorSchool || 'TESU';
-  
+
+  // Was `template.anchorSchool || 'TESU'`. A template with no anchor school
+  // was silently validated against TESU's 15-credit residency and 90-credit
+  // alt-credit pool — the same substitute-another-school's-policy defect fixed
+  // in anchorPolicyAdapter (2026-09-15 audit, item 6). An unanchored template
+  // cannot be checked for graduation, so say so instead of guessing.
+  const anchorSchool = template.anchorSchool || '';
+  if (!anchorSchool) {
+    issues.push({
+      type: 'error',
+      code: 'MISSING_ANCHOR_SCHOOL',
+      message: 'Template has no anchor school — cannot validate graduation requirements',
+      details: { expected: 1, actual: 0 },
+      blocksPublish: true,
+    });
+  }
+
   // Get policy from central service - handle null safely
   const policy = getPolicyOrDefault(anchorSchool);
+  if (anchorSchool && !policy) {
+    issues.push({
+      type: 'error',
+      code: 'UNKNOWN_ANCHOR_SCHOOL',
+      message: `No policy on file for anchor school "${anchorSchool}" — cannot validate graduation requirements`,
+      details: { expected: 1, actual: 0 },
+      blocksPublish: true,
+    });
+  }
   const residencyCreditsRequired = getResidencyCredits(anchorSchool);
   const genEdReqs = policy?.genEdRequirements;
   
@@ -224,6 +248,37 @@ export function validateTemplate(template: any): TemplateValidationResult {
     }
   }
   
+  // Without a policy there is nothing left to validate against, and every
+  // check below dereferences `policy` / `residenceCourseCheck`. Both were
+  // already nullable here (line ~174 sets residenceCourseCheck to null when
+  // policy is null), so ANY template whose anchorSchool was not in the policy
+  // registry crashed this function with a TypeError — it simply never happened
+  // while anchorSchool defaulted to TESU, which always resolves.
+  //
+  // Return the policy-independent metrics along with the anchor-school issues
+  // already recorded, so callers get a usable, honest result instead of an
+  // exception or a plan validated against the wrong school.
+  if (!policy || !residenceCourseCheck) {
+    return {
+      valid: false,
+      publishable: false,
+      issues,
+      metrics: {
+        totalCredits,
+        universityCredits,
+        upperDivCredits,
+        moocCredits,
+        moduleCount,
+        filledModules,
+        unfilledModules,
+        creditsByProvider,
+        genedCreditsByCategory,
+        hasRequiredResidenceCourses: false,
+        missingResidenceCourses: [],
+      },
+    };
+  }
+
   // Validate: Required in-residence courses (BLOCKS PUBLISH)
   if (!residenceCourseCheck.hasAll) {
     issues.push({

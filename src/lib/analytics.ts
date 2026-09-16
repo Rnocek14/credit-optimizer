@@ -3,7 +3,9 @@ import { supabase } from '@/integrations/supabase/client';
 type EventPayload = Record<string, unknown> & { ts?: number };
 
 // Stable anonymous session id so funnel steps can be joined without auth.
-function getSessionId(): string {
+// Exported so outbound affiliate links can carry it as a network sub-ID —
+// that is the only thread tying a commission back to the page that earned it.
+export function getSessionId(): string {
   try {
     const KEY = 'pv_session_id';
     let id = sessionStorage.getItem(KEY);

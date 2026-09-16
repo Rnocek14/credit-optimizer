@@ -10,6 +10,8 @@
  * should answer ONE high-intent search query backed by real platform data.
  */
 
+import type { ProviderKey } from '@/lib/providers';
+
 export interface GuideMeta {
   slug: string;
   title: string;          // <60 chars, keyword-first — used as <h1> AND <title>
@@ -19,6 +21,15 @@ export interface GuideMeta {
   updatedAt: string;
   /** Order on the /guides index — lower = earlier. */
   order: number;
+  /**
+   * Providers this guide should link out to, in display order.
+   *
+   * This is the guide's monetization surface. Order is editorial, not
+   * commercial: lead with whatever genuinely fits the query, which is why
+   * pricing guides lead with CLEP (which pays us nothing). A comparison
+   * site that reorders for commission stops being worth linking to.
+   */
+  providers: readonly ProviderKey[];
 }
 
 export const GUIDES: readonly GuideMeta[] = [
@@ -30,6 +41,7 @@ export const GUIDES: readonly GuideMeta[] = [
     category: 'compare',
     updatedAt: '2026-04-17',
     order: 1,
+    providers: ['SOPHIA', 'STUDYCOM', 'CLEP', 'DSST'],
   },
   {
     slug: 'cheapest-online-bachelors-2025',
@@ -39,6 +51,7 @@ export const GUIDES: readonly GuideMeta[] = [
     category: 'pricing',
     updatedAt: '2026-04-17',
     order: 2,
+    providers: ['CLEP', 'SOPHIA', 'DSST', 'STUDYCOM'],
   },
   {
     slug: 'sophia-learning-transfer-guide',
@@ -48,6 +61,7 @@ export const GUIDES: readonly GuideMeta[] = [
     category: 'transfer',
     updatedAt: '2026-04-17',
     order: 3,
+    providers: ['SOPHIA', 'STUDYCOM', 'STRAIGHTERLINE', 'CLEP'],
   },
   {
     slug: 'straighterline-vs-sophia-vs-studycom',
@@ -57,6 +71,7 @@ export const GUIDES: readonly GuideMeta[] = [
     category: 'compare',
     updatedAt: '2026-04-17',
     order: 4,
+    providers: ['SOPHIA', 'STUDYCOM', 'STRAIGHTERLINE', 'CLEP'],
   },
   {
     slug: 'finish-bachelors-under-10k',
@@ -66,6 +81,7 @@ export const GUIDES: readonly GuideMeta[] = [
     category: 'pricing',
     updatedAt: '2026-04-17',
     order: 5,
+    providers: ['CLEP', 'SOPHIA', 'DSST', 'STUDYCOM'],
   },
 ] as const;
 

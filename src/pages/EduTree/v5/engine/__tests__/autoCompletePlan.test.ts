@@ -47,7 +47,10 @@ describe('autoCompletePlan (preview)', () => {
   });
 
   it('adds shared prereqs only once across modules', () => {
-    const shared = mo('MATH-101', 50, 90);
+    // MATH-101 has to be a WORSE standalone fill than C1/C2, or the scorer
+    // legitimately picks the cheap prereq to satisfy m1 on its own and the
+    // chain resolver never runs — which is what this test is here to exercise.
+    const shared = mo('MATH-101', 700, 90);
     const m1Pick = { ...mo('C1', 200, 85), prereq_course_ids: ['MATH-101'] };
     const m2Pick = { ...mo('C2', 220, 86), prereq_course_ids: ['MATH-101'] };
 
@@ -64,11 +67,13 @@ describe('autoCompletePlan (preview)', () => {
   });
 
   it('assigns prerequisites to neutral "prereqs" module', () => {
-    const prereq = mo('PREREQ-101', 50, 80);
+    // Same reason as above: PREREQ-101 is priced so MAIN-201 wins on score and
+    // is pulled in as a prerequisite rather than as the module's own fill.
+    const prereq = mo('PREREQ-101', 700, 80);
     const main = { ...mo('MAIN-201', 100, 90), prereq_course_ids: ['PREREQ-101'] };
     const modules = [mod('target-module', [main, prereq])];
 
-    const r = autoCompletePlan(modules, [], { max_concurrent_courses: 2, max_budget_usd: 1000 }, weights);
+    const r = autoCompletePlan(modules, [], { max_concurrent_courses: 2, max_budget_usd: 2000 }, weights);
     
     const p = r.suggestions.find(s => s.courseId === 'PREREQ-101');
     expect(p?.moduleId).toBe('prereqs');

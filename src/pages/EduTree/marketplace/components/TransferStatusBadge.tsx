@@ -139,6 +139,17 @@ export function TransferStatusBadge({
               </div>
             </div>
           )}
+
+          {/* An empty popover on 'unknown' reads as "nothing to worry about".
+              Say plainly that we have no rule, because we have no rule. */}
+          {status === 'unknown' && (
+            <div className="rounded-md bg-muted/50 border border-border px-2 py-1.5">
+              <div className="text-muted-foreground">
+                No transfer rule on file. We can't confirm this course transfers —
+                check with the school's admissions office before paying for it.
+              </div>
+            </div>
+          )}
           
           {(ruleSource || confidence !== null) && (
             <div className="text-[11px] text-muted-foreground pt-1 border-t">

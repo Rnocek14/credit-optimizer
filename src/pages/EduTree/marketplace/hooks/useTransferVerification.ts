@@ -5,6 +5,7 @@ import { normalizeProviderCode, normalizeCourseCode } from '@/lib/providerNormal
 import type { EvidenceTier } from '@/types/evidenceTiers';
 import { classifyTier } from '@/lib/tieredSavingsCalculator';
 import type { VerifiedPolicy } from '@/lib/degree/verifiedPolicyService';
+import { isRuleStale } from '@/lib/transfer/ruleFreshness';
 
 // Re-export for convenience
 export { normalizeProviderCode, normalizeCourseCode } from '@/lib/providerNormalization';
@@ -19,6 +20,7 @@ export interface TransferRule {
   rule_source?: string | null;
   confidence?: number | null;
   evidence_url?: string | null;
+  last_verified_at?: string | null;
 }
 
 export interface TransferVerificationResult {
@@ -26,6 +28,26 @@ export interface TransferVerificationResult {
   providerCode: string;
   status: TransferStatus;
   rule?: TransferRule;
+  /**
+   * True only when an actual credit_transfer_rules row backed this result.
+   *
+   * Coverage math MUST key on this rather than inferring from `status`.
+   * Inferring is what previously pinned coverage at 100%: the no-rule path
+   * returned a non-`unknown` status, and coverage counted anything that
+   * wasn't `unknown` as covered.
+   */
+  hasRule: boolean;
+  /**
+   * True when the course is taken AT the target school (provider === target),
+   * so no transfer rule is required or meaningful.
+   */
+  institutional: boolean;
+  /**
+   * True when a rule exists but was verified too long ago to stand behind.
+   * Stale rules are downgraded to 'review' rather than hidden — see
+   * `@/lib/transfer/ruleFreshness`.
+   */
+  isStale: boolean;
   // Evidence tier info
   tier: EvidenceTier;
   confidence: number | null;
@@ -51,6 +73,9 @@ export function useTransferVerification(
           courseCode: c.code,
           providerCode: c.providerCode || '',
           status: 'unknown' as TransferStatus,
+          hasRule: false,
+          institutional: false,
+          isStale: false,
           tier: 'C' as EvidenceTier,
           confidence: null,
           evidenceUrl: null,
@@ -73,6 +98,9 @@ export function useTransferVerification(
           courseCode: c.code,
           providerCode: c.providerCode || '',
           status: 'unknown' as TransferStatus,
+          hasRule: false,
+          institutional: false,
+          isStale: false,
           tier: 'C' as EvidenceTier,
           confidence: null,
           evidenceUrl: null,
@@ -142,6 +170,9 @@ export function useTransferVerification(
             courseCode: c.code,
             providerCode: '',
             status: 'unknown' as TransferStatus,
+            hasRule: false,
+            institutional: false,
+            isStale: false,
             tier: 'C' as EvidenceTier,
             confidence: null,
             evidenceUrl: null,
@@ -156,28 +187,56 @@ export function useTransferVerification(
         const rule = rulesMap.get(key);
 
         if (!rule) {
-          // No rule found - provider-specific heuristics
-          const status = getHeuristicStatus(c.providerCode);
-          const tier = classifyTier(false, null, policy ?? null);
-          
+          // No rule on file. Two genuinely different cases:
+          //
+          //  a) The course is taken AT the target school. Nothing transfers -
+          //     it is native credit - so the absence of a rule is expected.
+          //     This mirrors transferEngine.ts, which accepts institutional
+          //     courses at confidence 1.0.
+          //
+          //  b) Everything else: we do not know. Say so.
+          //
+          // (b) used to run through a `getHeuristicStatus` fallback that
+          // returned 'verified' for TESU/COSC/EXCELSIOR and 'elective' for the
+          // alt-credit providers, purely from the provider code and without
+          // consulting the target school at all. That turned "no data" into an
+          // affirmative transfer claim rendered under a green Verified badge,
+          // and pinned Transfer Verification Coverage at 100% by construction.
+          // Users make five-figure decisions on this surface; an honest
+          // "Unknown" is the only defensible output when the table is empty.
+          const isInstitutional =
+            normalizedProvider === normalizeProviderCode(targetSchool);
+
           return {
             courseCode: c.code,
             providerCode: c.providerCode,
-            status,
-            tier,
+            status: (isInstitutional ? 'verified' : 'unknown') as TransferStatus,
+            hasRule: false,
+            institutional: isInstitutional,
+            isStale: false,
+            tier: classifyTier(false, null, policy ?? null),
             confidence: null,
             evidenceUrl: null,
             ruleSource: null,
           };
         }
 
-        // Map acceptance_status to TransferStatus
-        const status: TransferStatus =
+        // Map acceptance_status to TransferStatus, then age-gate it.
+        //
+        // A rule verified outside the freshness window describes the catalog
+        // that was current when we captured it, not necessarily today's. It
+        // still counts as "a rule exists" (hasRule stays true, so coverage is
+        // unaffected), but it must not render as Verified — it drops to
+        // 'review', which tells the user to reconfirm.
+        const baseStatus: TransferStatus =
           rule.acceptance_status === 'accepted'
             ? 'verified'
             : rule.acceptance_status === 'elective'
             ? 'elective'
             : 'review';
+
+        const stale = isRuleStale(rule.last_verified_at);
+        const status: TransferStatus = stale ? 'review' : baseStatus;
 
         // Classify into evidence tier
         const tier = classifyTier(true, rule, policy ?? null);
@@ -187,6 +246,9 @@ export function useTransferVerification(
           providerCode: c.providerCode,
           status,
           rule,
+          hasRule: true,
+          institutional: false,
+          isStale: stale,
           tier,
           confidence: rule.confidence ?? null,
           evidenceUrl: rule.evidence_url ?? null,
@@ -197,26 +259,6 @@ export function useTransferVerification(
     enabled: !!targetSchool && courses.length > 0,
     staleTime: 60_000, // 1 minute
   });
-}
-
-/**
- * Heuristic fallback when no explicit rule exists
- */
-function getHeuristicStatus(providerCode: string): TransferStatus {
-  const code = normalizeProviderCode(providerCode);
-  
-  // Regionally accredited universities - likely to transfer
-  if (code === 'TESU' || code === 'COSC' || code === 'EXCELSIOR') {
-    return 'verified';
-  }
-  
-  // Known ACE-recommended providers
-  if (code === 'SOPHIA' || code === 'STUDYCOM' || code === 'STRAIGHTERLINE' || code === 'CLEP') {
-    return 'elective';
-  }
-  
-  // Everything else requires review
-  return 'review';
 }
 
 /**

@@ -154,6 +154,49 @@ interface PlanBasketState {
 /**
  * Migration helper: backfill missing fields and structured provenance
  */
+/**
+ * Valid domain for each numeric constraint, matching the slider ranges in
+ * ConstraintsPanel.
+ *
+ * The panel was the ONLY place these bounds were enforced, so every other write
+ * path — persisted state from an older build, an applied template, a URL
+ * parameter, a programmatic call — could put a value like max_ace_credits: 200
+ * into the store. The planner then treats that as the real transfer cap, and
+ * the dead-end detector and auto-fill both plan against a ceiling no school
+ * actually allows. Clamp at the store, the one point every write goes through.
+ */
+const CONSTRAINT_BOUNDS: Record<string, { min: number; max: number }> = {
+  max_budget_usd: { min: 0, max: Number.MAX_SAFE_INTEGER },
+  max_weekly_hours: { min: 0, max: 80 },
+  min_cri_score: { min: 0, max: 100 },
+  max_ace_credits: { min: 0, max: 120 },
+  max_concurrent_courses: { min: 1, max: 6 },
+};
+
+const clampConstraints = (c: Partial<Constraints>): Partial<Constraints> => {
+  const out: Record<string, unknown> = { ...c };
+
+  for (const [key, bounds] of Object.entries(CONSTRAINT_BOUNDS)) {
+    if (!(key in out)) continue;
+    const raw = out[key];
+
+    // Leave an explicit clear alone — undefined means "no constraint".
+    if (raw === undefined || raw === null) continue;
+
+    const n = Number(raw);
+    // A non-numeric value is not a constraint of 0; drop it rather than
+    // silently turning it into the most restrictive possible setting.
+    if (!Number.isFinite(n)) {
+      out[key] = undefined;
+      continue;
+    }
+
+    out[key] = Math.min(bounds.max, Math.max(bounds.min, n));
+  }
+
+  return out as Partial<Constraints>;
+};
+
 const migrateBasketItems = (items: BasketItem[]): BasketItem[] => {
   return items.map(item => {
     const migrated = {
@@ -250,7 +293,7 @@ export const usePlanBasket = create<PlanBasketState>()(
       },
       
       setConstraints: (c) => {
-        set({ constraints: { ...get().constraints, ...c } });
+        set({ constraints: { ...get().constraints, ...clampConstraints(c) } });
       },
       
       setModuleState: (moduleId, state) => {

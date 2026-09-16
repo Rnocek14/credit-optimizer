@@ -29,18 +29,39 @@ vi.mock('../../hooks/useApplyYearTemplate', () => ({
   }),
 }));
 
+// This fixture must match what generateYearTemplates actually returns. It used
+// to be an invented shape (totalCost / totalDuration / avgCRI / moduleBreakdowns)
+// that the generator has never produced, so the panel's
+// `template.moduleTemplates.length` threw "Cannot read properties of undefined"
+// on first render and all three tests timed out waiting for a list that could
+// never appear.
 vi.mock('../../engine/yearTemplateGenerator', () => ({
   generateYearTemplates: vi.fn(() =>
     Promise.resolve([
       {
-        label: 'Budget-Optimized',
-        badge: '💰',
-        totalCost: 1200,
-        totalDuration: 12,
-        totalCredits: 30,
-        avgCRI: 85,
-        moduleBreakdowns: [],
+        id: 'year-1-budget',
+        kind: 'year' as const,
+        year: 1,
+        label: '💰 Budget-Optimized Year 1',
+        summary: '30 credits • $1,200 • 12 weeks • CRI 85',
+        badge: 'Budget',
+        moduleTemplates: [
+          {
+            moduleId: 'm1',
+            options: [],
+            recommendedCourseId: 'c1',
+            targetCanonicalIds: [],
+          },
+        ],
+        est: {
+          costUsd: 1200,
+          weeks: 12,
+          credits: 30,
+          cri: 85,
+          workloadHours: 30,
+        },
         semesterDistribution: { fall: [], spring: [] },
+        warnings: [],
       },
     ])
   ),

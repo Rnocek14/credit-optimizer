@@ -8,6 +8,7 @@ import { scorePool, applyWeights, type ScoredTemplate } from '@/lib/planScoring'
 import { STRATEGY_WEIGHTS } from '@/lib/planScoring/config';
 import type { GoalPreference } from '@/hooks/useQuickPlanGeneration';
 import type { CreditPickerState } from './types';
+import { getNoncollegiateCap, hasPolicy } from '@/lib/degree/institutionPolicies';
 
 export interface CompareRow {
   template: MarketplaceDegreeTemplate;
@@ -73,13 +74,26 @@ export function buildCompareRows(
   const rows: CompareRow[] = scored.map((s) => {
     const t = s.template;
     const totalCredits = t.totals?.credits ?? t.est?.credits ?? 120;
-    const acceptedCeiling = t.twoPhaseData?.altCredits ?? 0;
+    // `twoPhaseData.altCredits` is absent from every committed fixture and
+    // every seeded row, so this was always 0 — the compare table rendered
+    // "max via alt providers: 0 / 120 cr" for every school, and the
+    // credit-friendliness badge never appeared at all (tagWinner bails when
+    // the winner is <= 0).
+    //
+    // The ceiling is a POLICY fact, not a per-template one, so fall back to the
+    // institution's alt-credit cap when the template does not carry a figure.
+    // Schools we hold no policy for stay at 0 rather than borrowing another
+    // school's number.
+    const school = (t.anchorSchool || '').toUpperCase();
+    const acceptedCeiling =
+      t.twoPhaseData?.altCredits ??
+      (hasPolicy(school) ? getNoncollegiateCap(school, 'bachelor') : 0);
     const matchedCredits = Math.round(s.normalized.transfer * totalCredits);
     const effectiveAccepted = personalized ? matchedCredits : acceptedCeiling;
     const remainingCredits = Math.max(0, totalCredits - effectiveAccepted);
     return {
       template: t,
-      school: (t.anchorSchool || '').toUpperCase(),
+      school,
       programCode: t.programId,
       cost: s.raw.cost,
       weeks: s.raw.weeks,

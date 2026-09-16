@@ -180,7 +180,7 @@ export function DegreeAnalyzerPanel({
               </Button>
               <Button variant="outline" className="h-auto flex-col items-start p-4">
                 <div className="text-sm font-medium mb-1">🎓 Transfer-Safe</div>
-                <div className="text-xs text-muted-foreground">Guaranteed acceptance</div>
+                <div className="text-xs text-muted-foreground">Prefers verified rules</div>
               </Button>
               <Button variant="outline" className="h-auto flex-col items-start p-4">
                 <div className="text-sm font-medium mb-1">⚖️ Balanced</div>

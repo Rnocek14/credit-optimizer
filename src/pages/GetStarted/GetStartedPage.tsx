@@ -28,6 +28,7 @@ import {
 import { logEvent } from '@/lib/analytics';
 import { CREDIT_SOURCE_META, type CreditSource } from '@/pages/Compare/types';
 import { GraduationCap } from 'lucide-react';
+import { absoluteUrl } from '@/lib/siteUrl';
 
 const VALID_CHIP_IDS: ReadonlySet<string> = new Set<ProviderChipId>([
   'community-college',
@@ -117,7 +118,7 @@ export default function GetStartedPage() {
           name="description"
           content="Before you spend another dollar on credits — check where they'll actually count. See which schools accept them, credits transferred, and time and money saved."
         />
-        <link rel="canonical" href="https://pivot.app/get-started" />
+        <link rel="canonical" href={absoluteUrl('/get-started')} />
       </Helmet>
 
       <div className="min-h-screen bg-background">

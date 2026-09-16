@@ -8,11 +8,19 @@
  * Each guide ships its own React component (in src/content/guides/) so we
  * keep content + layout decoupled and can iterate on copy without touching
  * route plumbing.
+ *
+ * Monetization: guides are the highest-intent surface on the site — someone
+ * reading "which alt-credit provider should I pick" is one decision from a
+ * purchase. Every guide therefore carries its own ProviderLinkStrip (ordered
+ * per-guide via the registry) directly after the body, with the FTC
+ * disclosure rendered above it.
  */
 import { Navigate, useParams, Link } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { PublicLayout } from '@/components/public/PublicLayout';
 import { PlanPreviewCTA } from '@/components/public/PlanPreviewCTA';
+import { ProviderLinkStrip } from '@/components/ProviderLinkStrip';
+import { AffiliateDisclosure } from '@/components/monetization/AffiliateDisclosure';
 import { findGuide, GUIDES } from '@/content/guides/registry';
 import { TesuVsCoscGuide } from '@/content/guides/tesu-vs-cosc-bsba';
 import { CheapestBachelorsGuide } from '@/content/guides/cheapest-online-bachelors-2025';
@@ -21,6 +29,7 @@ import { StraighterlineVsSophiaVsStudycomGuide } from '@/content/guides/straight
 import { FinishBachelorsUnder10kGuide } from '@/content/guides/finish-bachelors-under-10k';
 import { useEffect } from 'react';
 import { logEvent } from '@/lib/analytics';
+import { absoluteUrl } from '@/lib/siteUrl';
 
 // Map slug → component. New guides: add entry to registry + map below.
 const GUIDE_COMPONENTS: Record<string, React.ComponentType> = {
@@ -63,7 +72,7 @@ export default function GuidePage() {
     publisher: { '@type': 'Organization', name: 'Pivot' },
     mainEntityOfPage: {
       '@type': 'WebPage',
-      '@id': `https://pivot.app/guides/${meta.slug}`,
+      '@id': absoluteUrl(`/guides/${meta.slug}`),
     },
   };
 
@@ -102,8 +111,20 @@ export default function GuidePage() {
           </p>
         </header>
 
+        {/* FTC disclosure — must precede any affiliate link on the page. */}
+        <AffiliateDisclosure providerKeys={[...meta.providers]} />
+
         {/* Guide body */}
         <GuideComponent />
+
+        {/* Revenue surface: the reader just decided — let them act on it here,
+            at peak intent, rather than three funnel steps later. */}
+        <ProviderLinkStrip
+          providerKeys={[...meta.providers]}
+          source={`guide:${meta.slug}`}
+          heading="Ready to start?"
+          subheading="Go straight to the providers covered in this guide. Always confirm a course counts toward your specific program before you pay."
+        />
 
         {/* End-of-guide CTA → product */}
         <PlanPreviewCTA sourceSlug={meta.slug} />

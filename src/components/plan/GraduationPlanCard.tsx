@@ -14,7 +14,7 @@
  *   3. How much will it cost?
  *   4. How long will it take?
  *   5. What do I take next?              (active mode only)
- *   6. Why is this the best path?
+ *   6. What do we actually know about this path, and how confident are we?
  *
  * Composition-only: reuses existing DAL. No schema changes.
  */
@@ -90,9 +90,19 @@ function usePlanContext(programId: string | null | undefined) {
 
       if (!programId || programId === 'default') return result;
 
-      // 1. Try template_with_costs by template_id (UUID case)
-      const isUuid = /^[0-9a-f-]{36}$/i.test(programId);
-      if (isUuid) {
+      // 1. Look up template_with_costs by template_id.
+      //
+      // This used to be gated on `/^[0-9a-f-]{36}$/i.test(programId)` — i.e. it
+      // only ran when the id looked like a UUID. NOT ONE of the 15 active rows
+      // in degree_templates has a UUID id; they are slugs like
+      // 'bsba-cosc-multischool-2025' and 'COSC-BSBA-ALT_MAX-V2'. So this lookup
+      // never fired for any real template, and every visitor arriving from
+      // /compare saw the placeholder card: "Your school", "Degree Plan",
+      // "Total projected cost: Not yet computed", "Time to finish: Not yet
+      // computed" — on the screen where they decide to commit.
+      //
+      // template_id is a text column; matching it does not require a UUID.
+      {
         const { data: tpl } = await supabase
           .from('template_with_costs')
           .select(
@@ -393,31 +403,87 @@ export function GraduationPlanCard({ templateId, previewCareerId }: GraduationPl
           </div>
         )}
 
-        {/* Why this is the best path */}
-        <div className="rounded-lg bg-muted/40 border p-4">
-          <h3 className="text-sm font-semibold mb-2 flex items-center gap-2">
-            <CheckCircle2 className="h-4 w-4 text-primary" />
-            Why this is your best path
-          </h3>
-          <ul className="text-sm text-muted-foreground space-y-1.5">
-            {projectedCost != null && (
-              <li>
-                ✓ Lowest verified cost path among comparable accredited programs
-              </li>
-            )}
-            <li>
-              ✓ Catalog-verified transfer rules — no surprise rejections
-            </li>
-            {targetCareer && (
-              <li>
-                ✓ Aligned with your career goal: {targetCareer.title}
-              </li>
-            )}
-            <li>
-              ✓ Built from your real credits, not a generic template
-            </li>
-          </ul>
-        </div>
+        {/* What we actually know about this plan.
+         *
+         * Every line here is gated on the fact it asserts. This block used to
+         * render unconditionally with "Why this is your best path",
+         * "Catalog-verified transfer rules — no surprise rejections" and
+         * "Built from your real credits, not a generic template" — sitting
+         * directly above "Not yet computed" for both cost and time, on a card
+         * whose header read "Your school" / "Degree Plan". It promised a
+         * verified, personalized best path while displaying nothing at all.
+         *
+         * "No surprise rejections" is also a guarantee nobody can make: the
+         * receiving institution decides, and our rules carry a last-verified
+         * date (see docs/TRANSFERABILITY_ACCURACY_AUDIT_2026-09-15.md).
+         */}
+        {(() => {
+          const facts: string[] = [];
+
+          // `schoolName` falls back to the literal string "Your school", which
+          // reads as a real name once interpolated into a sentence. Only the
+          // resolved name is usable in copy.
+          const namedSchool = ctx?.schoolName ?? null;
+
+          if (savings != null && namedSchool) {
+            facts.push(
+              `Projected to cost about $${savings.toLocaleString()} less than taking every credit at ${namedSchool}`,
+            );
+          }
+          if (projectedWeeks != null) {
+            facts.push(
+              `Estimated ${Math.round(projectedWeeks / 4)} months at full pace`,
+            );
+          }
+          if (ctx?.institutionCode && namedSchool) {
+            facts.push(
+              `Built from ${namedSchool}'s published transfer policy — confirm current policy with the school before you enroll`,
+            );
+          }
+          if (targetCareer) {
+            facts.push(`Aligned with your career goal: ${targetCareer.title}`);
+          }
+          if (!isPreview) {
+            facts.push('Based on the credits saved to your account');
+          }
+
+          // Nothing resolved: say so, rather than asserting a "best path".
+          if (facts.length === 0) {
+            return (
+              <div className="rounded-lg bg-muted/40 border p-4">
+                <h3 className="text-sm font-semibold mb-2 flex items-center gap-2">
+                  <Circle className="h-4 w-4 text-muted-foreground" />
+                  We couldn't load the details for this plan
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  Cost and timeline aren't available for this program yet, so we can't
+                  tell you whether it's a good fit. Compare the other options, or
+                  check this program directly with the school.
+                </p>
+              </div>
+            );
+          }
+
+          return (
+            <div className="rounded-lg bg-muted/40 border p-4">
+              <h3 className="text-sm font-semibold mb-2 flex items-center gap-2">
+                <CheckCircle2 className="h-4 w-4 text-primary" />
+                What we know about this path
+              </h3>
+              <ul className="text-sm text-muted-foreground space-y-1.5">
+                {facts.map((f) => (
+                  <li key={f}>✓ {f}</li>
+                ))}
+              </ul>
+              {projectedCost == null && (
+                <p className="text-xs text-muted-foreground mt-2.5 pt-2.5 border-t">
+                  We don't have a cost estimate for this program yet — the figures above
+                  don't include tuition.
+                </p>
+              )}
+            </div>
+          );
+        })()}
 
         {/* Primary CTA — differs by mode */}
         {isPreview ? (

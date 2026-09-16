@@ -63,9 +63,22 @@ export function TransferCoveragePanel({ coverage, className }: TransferCoverageP
           </Badge>
         </div>
         
-        {/* Stats line */}
+        {/* Stats line. Naming the uncovered count matters more than the
+            covered one - it is the part that costs the user money if they
+            assume it is handled. */}
         <div className="text-xs text-muted-foreground">
-          {coverage.coveredPairs} of {coverage.totalPairs} transferable courses have verified rules
+          {coverage.coveredPairs} of {coverage.totalPairs} transferable courses have a
+          verified rule on file.
+          {coverage.uncoveredPairs > 0 && (
+            <>
+              {' '}
+              <span className="text-foreground font-medium">
+                {coverage.uncoveredPairs}{' '}
+                {coverage.uncoveredPairs === 1 ? 'has' : 'have'} no rule yet
+              </span>{' '}
+              — confirm those with the school before enrolling.
+            </>
+          )}
         </div>
         
         {/* Provider breakdown chips */}
@@ -115,7 +128,7 @@ export function TransferCoverageBadge({
   return (
     <Badge variant="outline" className={`${badgeClasses} text-[10px]`}>
       <Shield className="h-3 w-3 mr-1" />
-      {coverage.coveragePercent}% verified
+      {coverage.coveragePercent}% rules on file
     </Badge>
   );
 }

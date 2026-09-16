@@ -19,6 +19,20 @@ export interface ScoredOption extends MarketplaceOption {
   };
 }
 
+export interface FilterOptions {
+  /**
+   * Skip the prerequisite check.
+   *
+   * For a caller that resolves prerequisite chains itself (autoCompletePlan),
+   * cutting options here is wrong and silently disables that feature: an
+   * option whose prereqs are not yet in the basket is exactly the case the
+   * chain resolver exists to handle, but it never sees the option because
+   * this filter already removed it. Such a caller must still handle options
+   * whose prereqs are genuinely unsatisfiable.
+   */
+  skipPrereqCheck?: boolean;
+}
+
 /**
  * Filter marketplace options based on constraints and prerequisites
  */
@@ -29,7 +43,8 @@ export function filterEligibleOptions(
     cost: number;
     aceCredits: number;
   },
-  basketCourseIds: Set<string>
+  basketCourseIds: Set<string>,
+  filterOptions: FilterOptions = {}
 ): MarketplaceOption[] {
   return options.filter((opt) => {
     // Budget check
@@ -70,7 +85,7 @@ export function filterEligibleOptions(
     }
 
     // Prerequisite check
-    if (opt.prereq_course_ids?.length) {
+    if (!filterOptions.skipPrereqCheck && opt.prereq_course_ids?.length) {
       const prereqsMet = opt.prereq_course_ids.every((pid) => basketCourseIds.has(pid));
       if (!prereqsMet) return false;
     }

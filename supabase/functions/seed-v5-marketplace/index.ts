@@ -1,15 +1,22 @@
 // Deployment trigger: 2025-12-02T22:30:00Z – force redeploy for optimizer seeding fix
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1';
+import { requireAdminOrCron } from '../_shared/requireAdminOrCron.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-cron-secret',
 };
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
+
+  // Authorization: admin user or CRON_SECRET. This function writes the
+  // policy/template data every cost estimate derives from and was
+  // previously callable by anyone (2026-09-15 audit).
+  const denied = await requireAdminOrCron(req, corsHeaders);
+  if (denied) return denied;
 
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
