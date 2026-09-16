@@ -39,7 +39,11 @@ jobs:
         run: pnpm install
       
       - name: Run unit tests with coverage
-        run: pnpm test run --coverage
+        # `pnpm test run --coverage` does NOT work: pnpm parses --coverage as
+        # its own option and errors with "Unknown option: 'coverage'" before
+        # the script ever starts. (npm forwards trailing args; pnpm does not.)
+        # A dedicated script takes no CLI args, so there is nothing to misparse.
+        run: pnpm test:coverage
       
       - name: Upload coverage
         uses: codecov/codecov-action@v3
@@ -90,7 +94,13 @@ jobs:
         run: pnpm build
       
       - name: Start server
-        run: pnpm preview &
+        # `vite preview` defaults to port 4173, but the wait step below and
+        # CYPRESS_BASE_URL both point at 5173 (Vite's DEV port). The wait
+        # therefore timed out after 60s and Cypress never ran. Pin the port so
+        # all three agree; --strictPort fails loudly instead of silently
+        # drifting to another port, which is the bug this replaces.
+        # A dedicated script also avoids pnpm swallowing the --port flag.
+        run: pnpm preview:ci &
       
       - name: Wait for server
         uses: nev7n/wait_for_response@v1
@@ -106,14 +116,14 @@ jobs:
           CYPRESS_BASE_URL: http://localhost:5173
       
       - name: Upload Cypress screenshots
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         if: failure()
         with:
           name: cypress-screenshots
           path: cypress/screenshots
       
       - name: Upload Cypress videos
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         if: failure()
         with:
           name: cypress-videos
