@@ -103,7 +103,7 @@ export const CheapestBachelorsGuide = () => (
       Transfer ceilings come from each school's published policy. The
       <strong> total-cost estimates are rough planning figures</strong>, not quotes —
       they move with how many credits you transfer, your residency status, and the
-      year you enrol. Treat them as an ordering, not a price.
+      year you enroll. Treat them as an ordering, not a price.
     </p>
 
     <h2>What "cheapest" actually means</h2>
