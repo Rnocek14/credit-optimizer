@@ -10,6 +10,16 @@ describe('filterEligibleOptions', () => {
     max_ace_credits: 90,
   };
 
+  // opt2's CRI is 60, below mockConstraints.min_cri_score, so the CRI floor
+  // cuts it in EVERY test that uses mockConstraints. Tests that are about a
+  // different filter (the ACE cap, prerequisites) have to drop the floor or
+  // they assert on a fixture that was never eligible for reasons unrelated to
+  // what they claim to be testing.
+  const noCriFloor: Constraints = {
+    max_budget_usd: 1000,
+    max_ace_credits: 90,
+  };
+
   const mockOptions: MarketplaceOption[] = [
     {
       id: 'opt1',
@@ -73,7 +83,7 @@ describe('filterEligibleOptions', () => {
     const runningTotals = { cost: 0, aceCredits: 88 };
     const basketIds = new Set<string>();
 
-    const eligible = filterEligibleOptions(mockOptions, mockConstraints, runningTotals, basketIds);
+    const eligible = filterEligibleOptions(mockOptions, noCriFloor, runningTotals, basketIds);
 
     // opt3 is MOOC with 3 credits, would push ACE total to 91, exceeding 90 cap
     expect(eligible).toHaveLength(2);
@@ -90,7 +100,7 @@ describe('filterEligibleOptions', () => {
     const runningTotals = { cost: 0, aceCredits: 0 };
     const basketIds = new Set(['c1']); // Only c1 is in basket
 
-    const eligible = filterEligibleOptions(optionsWithPrereqs, mockConstraints, runningTotals, basketIds);
+    const eligible = filterEligibleOptions(optionsWithPrereqs, noCriFloor, runningTotals, basketIds);
 
     // opt3 needs both c1 and c2, but c2 is not in basket
     expect(eligible).toHaveLength(2);

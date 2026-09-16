@@ -24,20 +24,3 @@ vi.mock('@/integrations/supabase/client', () => ({
     },
   },
 }));
-
-// Mock React Query
-vi.mock('@tanstack/react-query', () => ({
-  useQuery: vi.fn(() => ({ data: null, isLoading: false, error: null })),
-  useMutation: vi.fn(() => ({ 
-    mutate: vi.fn(), 
-    mutateAsync: vi.fn(),
-    isPending: false,
-    error: null,
-    data: null
-  })),
-  useQueryClient: vi.fn(() => ({
-    invalidateQueries: vi.fn(),
-    setQueryData: vi.fn(),
-    getQueryData: vi.fn(),
-  })),
-}));

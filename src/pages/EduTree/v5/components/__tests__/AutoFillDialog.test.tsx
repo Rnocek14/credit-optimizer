@@ -3,6 +3,10 @@ import userEvent from '@testing-library/user-event';
 import React from 'react';
 import { describe, it, expect, vi } from 'vitest';
 import { useAutoFillPlan } from '../../hooks/useAutoFillPlan';
+// CommonJS require() does not resolve TS modules under vitest's ESM loader —
+// every `require('../AutoFillDialog')` below failed with "Cannot find module",
+// so none of these tests ever rendered the component.
+import { AutoFillPlanButton } from '../AutoFillDialog';
 
 // Mock hook to simulate states
 vi.mock('../../hooks/useAutoFillPlan', () => ({
@@ -25,6 +29,7 @@ vi.mock('../../hooks/useAutoFillPlan', () => ({
       ],
       reasoning: ['Top-rated match','Budget-friendly']
     },
+    error: null,
     run: vi.fn(),
     accept: vi.fn(),
     reject: vi.fn(),
@@ -32,13 +37,18 @@ vi.mock('../../hooks/useAutoFillPlan', () => ({
   })),
 }));
 
-const modules: any[] = [{ id:'m1' }, { id:'m2' }];
+// The trigger is disabled unless some module still needs credits
+// (`creditsRequired - creditsEarned > 0`). Without these fields that subtraction
+// is NaN, NaN > 0 is false, and the dialog can never be opened.
+const modules: any[] = [
+  { id: 'm1', creditsRequired: 3, creditsEarned: 0 },
+  { id: 'm2', creditsRequired: 3, creditsEarned: 0 },
+];
 const weights: any = { cost:0.33, time:0.33, cri:0.34 };
 
 // Phase 1c.2: Active tests for AutoFillDialog
 describe('AutoFillDialog', () => {
   it('shows button and can be triggered', () => {
-    const { AutoFillPlanButton } = require('../AutoFillDialog');
     const { getByRole } = render(
       <AutoFillPlanButton modules={modules as any} constraints={{}} weights={weights as any} />
     );
@@ -88,7 +98,6 @@ describe('AutoFillDialog', () => {
     });
     
     const user = userEvent.setup();
-    const { AutoFillPlanButton } = require('../AutoFillDialog');
     const { getByRole, getByText } = render(
       <AutoFillPlanButton modules={modules} constraints={{}} weights={weights as any} />
     );

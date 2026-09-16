@@ -285,15 +285,29 @@ export function YearTemplatesPanel({
     }
   }, [year, modules, allOptions, blocks, basket, visibleTemplates, debouncedFocusTerm, sortedTemplates, constraints]);
 
-  // Loading state (also during first freeze with no cache)
+  // Loading state (also during first freeze with no cache).
+  //
+  // This has to carry the same landmark as the loaded state below. It used to
+  // return a bare <div> of skeletons, which meant a screen reader was told
+  // nothing at all while templates computed — and made the `aria-busy={showLoading}`
+  // on the section below dead code, since that section only ever renders once
+  // showLoading is already false.
   if (showLoading) {
     return (
-      <div className="space-y-4">
+      <section
+        aria-label={`Year ${year} template suggestions`}
+        aria-busy={true}
+        tabIndex={-1}
+        className="space-y-4"
+      >
+        <span role="status" className="sr-only">
+          Loading Year {year} template suggestions…
+        </span>
         <Skeleton className="h-32 w-full" />
         <Skeleton className="h-32 w-full" />
         <Skeleton className="h-32 w-full" />
         <Skeleton className="h-32 w-full" />
-      </div>
+      </section>
     );
   }
 
@@ -307,7 +321,11 @@ export function YearTemplatesPanel({
       : 'Try: increase budget, relax CRI minimum, adjust ACE cap, or use Unmet Modules.';
     
     return (
-      <Alert>
+      <Alert
+        role="status"
+        aria-label={`Year ${year} template suggestions`}
+        aria-busy={false}
+      >
         <AlertDescription className="text-center py-8">
           <div className="text-4xl mb-2">{allModulesSatisfied ? '✅' : '📝'}</div>
           <div className="font-medium">{message}</div>

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { usePlanBasket } from "../state/usePlanBasket";
 import { logEvent } from "@/lib/analytics";
 
@@ -23,32 +23,60 @@ export default function ConstraintsPanel() {
     max_concurrent_courses: constraints.max_concurrent_courses ?? 2,
   });
 
-  // Debounced commit
-  const commit = useMemo(() => {
-    let t: ReturnType<typeof setTimeout> | null = null;
-    return (next: Partial<typeof local>) => {
-      const prev = { ...local };
-      const merged = { ...local, ...next };
+  // Debounced commit.
+  //
+  // The timer and the latest values live in refs, NOT in a closure rebuilt by
+  // useMemo. The previous version held `t` inside a useMemo keyed on [local,
+  // constraints, setConstraints], and the first thing every commit did was
+  // setLocal(...) — which changed `local`, re-ran the memo, and handed back a
+  // brand new closure with `t = null`. The clearTimeout therefore never saw the
+  // pending timer, so dragging a slider scheduled one write per tick instead of
+  // one per drag: a burst of setConstraints calls, a plan_constraint_changed
+  // analytics event for every intermediate value, and — because each timer
+  // sanitised its OWN captured snapshot — no guarantee that the value the user
+  // actually left the slider on was the one written last.
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Mirror the latest render values so the callback can stay stable.
+  const localRef = useRef(local);
+  localRef.current = local;
+  const constraintsRef = useRef(constraints);
+  constraintsRef.current = constraints;
+
+  useEffect(() => () => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+  }, []);
+
+  const commit = useCallback(
+    (next: Partial<typeof local>) => {
+      // Merge off the ref, not off `local`: within one debounce window several
+      // commits run before React re-renders, and each must build on the last.
+      const merged = { ...localRef.current, ...next };
+      localRef.current = merged;
       setLocal(merged);
 
-      if (t) clearTimeout(t);
-      t = setTimeout(() => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+      timerRef.current = setTimeout(() => {
+        timerRef.current = null;
+
+        const latest = localRef.current;
         // sanitize
         const sanitized = {
           max_budget_usd:
-            merged.max_budget_usd == null ? undefined : Math.max(0, merged.max_budget_usd),
-          target_graduation_date: merged.target_graduation_date,
-          max_weekly_hours: clamp(merged.max_weekly_hours, 0, 80),
-          min_cri_score: clamp(merged.min_cri_score, 0, 100),
-          max_ace_credits: clamp(merged.max_ace_credits, 0, 120),
-          max_concurrent_courses: clamp(merged.max_concurrent_courses, 1, 6),
+            latest.max_budget_usd == null ? undefined : Math.max(0, latest.max_budget_usd),
+          target_graduation_date: latest.target_graduation_date,
+          max_weekly_hours: clamp(latest.max_weekly_hours, 0, 80),
+          min_cri_score: clamp(latest.min_cri_score, 0, 100),
+          max_ace_credits: clamp(latest.max_ace_credits, 0, 120),
+          max_concurrent_courses: clamp(latest.max_concurrent_courses, 1, 6),
         };
 
+        const previous = constraintsRef.current;
         setConstraints(sanitized);
 
         // analytics (old → new)
         Object.entries(sanitized).forEach(([k, v]) => {
-          const oldV = constraints[k as keyof typeof constraints];
+          const oldV = previous[k as keyof typeof previous];
           const changed =
             (oldV instanceof Date && v instanceof Date && oldV.getTime() !== v.getTime()) ||
             oldV !== v;
@@ -57,9 +85,9 @@ export default function ConstraintsPanel() {
           }
         });
       }, 300);
-    };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [local, constraints, setConstraints]);
+    },
+    [setConstraints],
+  );
 
   return (
     <div className="space-y-6 rounded-2xl border p-4">
